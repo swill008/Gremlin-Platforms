@@ -33,8 +33,7 @@ function topics() {
         topic("Configuration", "Actions",
             "<p>Configuration is where one physical input gets its actions. The actions are stored in the profile. They are written to disk when you save the profile.</p>"
             + "<p>View → Configuration opens the focused device. Add Action on an input opens the editor for that input. Build the action, then press OK. The action appears under that input. Delete removes it. Close pane after OK closes the editor when OK succeeds.</p>"
-            + "<p>Leaving an input that has changes asks you to save or discard them. Save here means keep the action in the profile. It does not replace File → Save Profile.</p>"
-            + "<p>Tools → Action Editor opens the same actions in a window. Opened from the menu, it can show the whole device. Opened for one input, it shows that input only.</p>"),
+            + "<p>Leaving an input that has changes asks you to save or discard them. Save here means keep the action in the profile. It does not replace File → Save Profile.</p>"),
         topic("Configuration", "Containers",
             "<p>Some actions hold other actions. Chain runs the next action in a list on each press, then starts over. Condition runs its action only when the condition is true. Tempo uses one action for a short press and another for a long press. Double Tap uses one action for a single press and another for a quick second press. Smart Toggle turns a momentary press into on, then off.</p>"
             + "<p>Add the container first, then add the actions it should run. A hat can use Hat as Buttons so each direction is its own button. Unmapped directions do nothing.</p>"),

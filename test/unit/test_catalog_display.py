@@ -55,7 +55,7 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "def writeSimpleMap" in py
     assert "function openAdvancedPane" in qml
     main = Path(__file__).resolve().parents[2].joinpath("qml/Main.qml").read_text(encoding="utf-8")
-    assert "DialogActionEditor.qml" in main
+    assert "DialogActionEditor.qml" not in main
     assert 'text: "Add Action"' in qml
     assert "_hold_reload" not in py
     assert "setHoldReload" not in qml
