@@ -130,13 +130,16 @@ Window {
                         text: _hh.driverVersion
                     }
                 }
-                Button {
-                    text: "Get HiDHide"
-                    onClicked: _hh.openDownload()
-                }
-                Button {
-                    text: "Test"
-                    onClicked: _hh.openGameControllers()
+                RowLayout {
+                    spacing: 4
+                    Button {
+                        text: "Get HiDHide"
+                        onClicked: _hh.openDownload()
+                    }
+                    Button {
+                        text: "Test HiDHide"
+                        onClicked: _hh.openGameControllers()
+                    }
                 }
             }
         }
