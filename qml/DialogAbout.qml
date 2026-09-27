@@ -33,6 +33,11 @@ Window {
         }
 
         DisplayLabel {
+            text: "Based on Joystick Gremlin R15."
+            font.pointSize: 12
+        }
+
+        DisplayLabel {
             text: "<html><a href='https://whitemagic.github.io/JoystickGremlin/'>https://whitemagic.github.io/JoystickGremlin/</a></html>"
             font.pointSize: 14
             onLinkActivated: (url) => { Qt.openUrlExternally(url) }

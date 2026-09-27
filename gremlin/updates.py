@@ -4,10 +4,10 @@
 """Online version check used by Options -> Check for updates.
 
 The fetch / parse / compare / notify path in Backend.check_for_updates() is
-unchanged. Replace UPDATE_VERSION_URL later with the R15-OSC version.json
-location. The file is expected to look like:
+unchanged. Replace UPDATE_VERSION_URL later with this project's version.json.
+The file is expected to look like:
 
-    {"version": "0.0.0"}
+    {"version": "1.0.0"}
 """
 
 from __future__ import annotations
