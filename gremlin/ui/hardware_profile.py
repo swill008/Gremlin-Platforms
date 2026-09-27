@@ -199,22 +199,16 @@ def resolve_module_slug(device_name: str, guid: str = "") -> str:
 
 
 def module_file_choices(device_name: str, guid: str = "") -> list[str]:
-    """Files that can be copied onto this device. Not the file the device uses."""
-    del guid
-    own = _slug(device_name)
-    names = [
-        path.stem
-        for path in sorted(_maps_dir().glob("*.json"))
-        if path.is_file() and path.stem.lower() != own
-    ]
+    """Files in the import folder. Live module files are not listed."""
+    del device_name, guid
     imported = _maps_dir() / "imported"
-    if imported.is_dir():
-        names.extend(
-            f"imported/{path.stem}"
-            for path in sorted(imported.glob("*.json"))
-            if path.is_file()
-        )
-    return names
+    if not imported.is_dir():
+        return []
+    return [
+        f"imported/{path.stem}"
+        for path in sorted(imported.glob("*.json"))
+        if path.is_file()
+    ]
 
 
 def own_module_slug(device_name: str) -> str:
@@ -476,23 +470,6 @@ def _replace_file(path: Path, data: bytes) -> None:
         raise
 
 
-def _owner_name(stem: str, device_name: str, guid: str) -> str:
-    """Another connected device whose own file name is this stem. A binding is not ownership."""
-    me = _norm_guid(guid)
-    me_name = str(device_name or "").strip().lower()
-    want = stem.lower()
-    for dev in _live_devices():
-        name = str(getattr(dev, "name", "") or "").strip()
-        dev_guid = _norm_guid(getattr(dev, "device_guid", ""))
-        if me and dev_guid == me:
-            continue
-        if not me and name.lower() == me_name:
-            continue
-        if _slug(name).lower() == want:
-            return name or want
-    return ""
-
-
 def _clear_bindings_to(slug: str) -> None:
     data = _binding_store()
     want = _plain_slug(slug)
@@ -538,41 +515,25 @@ def drop_import_undo() -> None:
 
 
 def undo_last_import() -> str:
-    """Put this device's previous file back. Do not put old bindings back."""
+    """Put this device's previous file back. The chosen file is not touched."""
     global _import_undo
     record = _import_undo
     if not record:
         return "Undo failed. There is nothing to undo."
-    notes = []
     dest = Path(record["dest"])
     previous = record.get("previous")
     try:
         if previous is None:
             if dest.is_file():
                 dest.unlink()
-            notes.append("The new module file was removed.")
+            note = "The new module file was removed."
         else:
             _replace_file(dest, previous)
-            notes.append("The previous module file was put back.")
+            note = "The previous module file was put back."
     except OSError:
         return "Undo failed. The previous module file could not be put back."
-    moved_from = str(record.get("moved_from") or "")
-    moved_to = str(record.get("moved_to") or "")
-    if moved_from and moved_to:
-        source = Path(moved_to)
-        target = Path(moved_from)
-        if not source.is_file():
-            notes.append(f"{source.name} could not be moved back.")
-        elif target.exists():
-            notes.append(f"{target.name} could not be moved back because that name is already in use.")
-        else:
-            try:
-                shutil.move(str(source), str(target))
-                notes.append(f"{target.name} was moved back.")
-            except OSError:
-                notes.append(f"{source.name} could not be moved back.")
     _import_undo = None
-    return "Undone. " + " ".join(notes)
+    return "Undone. " + note
 
 
 def import_module_file(device_name: str, guid: str, file_name: str, direction: str = "source") -> str:
@@ -659,8 +620,7 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
     else:
         lines.append("No picture was added from the chosen file.")
     lines.append("Profile wires were not changed.")
-    moved_from = ""
-    moved_to = ""
+    lines.append("The chosen file was left where it was.")
     if previous_bytes is not None:
         backup = _archive_path(own_slug, stamp)
         try:
@@ -671,44 +631,11 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
             lines.append(backup.name.replace("-", "\u2011"))
         except OSError:
             lines.append("The previous file could not be saved to imported.")
-    maps = _maps_dir().resolve()
-    imported = (maps / "imported").resolve()
-    try:
-        src_res = src.resolve()
-    except OSError:
-        src_res = src
-    if src_res.parent == imported:
-        lines.append(f"{src.name} was left in imported.")
-    else:
-        owner = _owner_name(src.stem, name, str(guid or ""))
-        if owner:
-            lines.append(f"{src.name} was left in place. {owner} uses that file.")
-        else:
-            archived = _archive_path(src.stem, stamp)
-            try:
-                if archived.exists():
-                    raise FileExistsError(archived)
-                archived.parent.mkdir(parents=True, exist_ok=True)
-                if src_res.parent == maps:
-                    shutil.move(str(src_res), str(archived))
-                    moved_from = str(src_res)
-                    moved_to = str(archived)
-                    lines.append(f"{src.name} was moved to imported as")
-                    lines.append(archived.name.replace("-", "\u2011"))
-                else:
-                    _replace_file(archived, src_res.read_bytes())
-                    lines.append(f"{src.name} was copied to imported as")
-                    lines.append(archived.name.replace("-", "\u2011"))
-                    lines.append("The original was left where it was.")
-            except OSError:
-                lines.append(f"{src.name} could not be moved to imported.")
     _clear_bindings_to(src.stem)
     _clear_device_binding(name, str(guid or ""))
     _import_undo = {
         "dest": str(dest),
         "previous": previous_bytes,
-        "moved_from": moved_from,
-        "moved_to": moved_to,
     }
     persist_log(f"Persist import file name={name!r} guid={guid!r} src={src} dest={dest}")
     return "\n".join(lines)
@@ -803,6 +730,12 @@ def delete_module_file(device_name: str, guid: str) -> str:
 
 def maps_folder_url() -> str:
     return _maps_dir().as_uri()
+
+
+def imported_folder_url() -> str:
+    path = _maps_dir() / "imported"
+    path.mkdir(parents=True, exist_ok=True)
+    return path.as_uri()
 
 
 def _stock_photo() -> Path:

@@ -31,6 +31,7 @@ from gremlin.ui.hardware_profile import (
     import_can_undo,
     drop_import_undo,
     undo_last_import,
+    imported_folder_url,
     maps_folder_url,
     module_file_choices,
     module_json_path,
@@ -1195,6 +1196,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(result=str)
     def mapsFolderUrl(self) -> str:
         return maps_folder_url()
+
+    @QtCore.Slot(result=str)
+    def importedFolderUrl(self) -> str:
+        return imported_folder_url()
 
     @QtCore.Slot(str, str, result=bool)
     def moduleFileExists(self, guid: str, device_name: str) -> bool:

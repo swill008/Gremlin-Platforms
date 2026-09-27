@@ -377,7 +377,7 @@ Window {
             }
             Label {
                 Layout.fillWidth: true
-                text: "Import copies the chosen file into this file. After the copy is saved, a file from the maps folder is moved to imported."
+                text: "Import copies the chosen file into this device's file. The chosen file is left where it was."
                 color: "#A1A1AA"
                 wrapMode: Text.WordWrap
                 font.pixelSize: 12
@@ -420,8 +420,16 @@ Window {
                 Layout.fillWidth: true
                 onClicked: {
                     if (moduleModel)
-                        _moduleLoadDialog.currentFolder = moduleModel.mapsFolderUrl()
+                        _moduleLoadDialog.currentFolder = moduleModel.importedFolderUrl()
                     _moduleLoadDialog.open()
+                }
+            }
+            Button {
+                text: "Open configuration folder"
+                Layout.fillWidth: true
+                onClicked: {
+                    if (moduleModel)
+                        Qt.openUrlExternally(moduleModel.mapsFolderUrl())
                 }
             }
             Button {
