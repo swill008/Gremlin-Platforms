@@ -40,6 +40,7 @@ Window {
     property var targets: ({})
     property int tickRev: 0
     property int openRev: 0
+    property var folded: ({})
 
     ListModel { id: _deviceModel }
     HardwareProfile { id: _hw }
@@ -105,6 +106,7 @@ Window {
         sections = rows
         checks = next
         targets = names
+        folded = {}
         tickRev = tickRev + 1
         openRev = openRev + 1
         status = ""
@@ -132,13 +134,33 @@ Window {
     }
 
     function setAll(open) {
+        var next = {}
         for (var s = 0; s < sections.length; ++s) {
-            sections[s].open = open
-            var items = sections[s].items || []
-            for (var i = 0; i < items.length; ++i)
-                items[i].open = open
+            var section = sections[s]
+            if (!section)
+                continue
+            next["s:" + (section.id || s)] = open
+            var items = section.items || []
+            for (var i = 0; i < items.length; ++i) {
+                var item = items[i]
+                next["r:" + (section.id || s) + "/" + ((item && item.id) || i)] = open
+            }
         }
+        folded = next
         openRev = openRev + 1
+    }
+
+    function toggleFold(key) {
+        var next = {}
+        for (var name in folded)
+            next[name] = folded[name]
+        next[key] = folded[key] !== true
+        folded = next
+        openRev = openRev + 1
+    }
+
+    function isFoldedOpen(key) {
+        return folded[key] === true
     }
 
     function anyChecked() {
@@ -433,22 +455,21 @@ Window {
                         }
                     }
                     Item { Layout.fillWidth: true }
-                    Button { text: "Open all"; onClicked: setAll(true); enabled: sections.length > 0 }
-                    Button { text: "Close all"; onClicked: setAll(false); enabled: sections.length > 0 }
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 12
+                    spacing: 16
                     Rectangle {
-                        Layout.preferredWidth: 72
-                        Layout.preferredHeight: 72
+                        Layout.preferredWidth: 200
+                        Layout.preferredHeight: 200
+                        Layout.alignment: Qt.AlignTop
                         color: "#18181B"
                         border.color: "#3F3F46"
                         radius: 4
                         visible: importPhoto.length > 0 && mode === "import"
                         Image {
                             anchors.fill: parent
-                            anchors.margins: 4
+                            anchors.margins: 8
                             source: importPhoto
                             fillMode: Image.PreserveAspectFit
                         }
@@ -488,6 +509,24 @@ Window {
                     Layout.fillWidth: true
                     placeholderText: "Device name on this machine"
                 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 0
+                    spacing: 8
+                    Button {
+                        text: "Open all"
+                        focusPolicy: Qt.NoFocus
+                        enabled: sections.length > 0
+                        onClicked: setAll(true)
+                    }
+                    Button {
+                        text: "Close all"
+                        focusPolicy: Qt.NoFocus
+                        enabled: sections.length > 0
+                        onClicked: setAll(false)
+                    }
+                    Item { Layout.fillWidth: true }
+                }
                 ScrollView {
                     id: _scroll
                     Layout.fillWidth: true
@@ -501,6 +540,8 @@ Window {
                             model: _win.sections
                             delegate: ColumnLayout {
                                 required property var modelData
+                                required property int index
+                                property string sectionKey: "s:" + (modelData.id || index)
                                 Layout.fillWidth: true
                                 spacing: 4
                                 Rectangle {
@@ -523,7 +564,7 @@ Window {
                                                 Label {
                                                     text: {
                                                         var rev = _win.openRev
-                                                        return modelData.open ? "\u25BC" : "\u25B6"
+                                                        return _win.isFoldedOpen(sectionKey) ? "\u25BC" : "\u25B6"
                                                     }
                                                     color: "#E4E4E7"
                                                     font.pixelSize: 10
@@ -540,10 +581,7 @@ Window {
                                             MouseArea {
                                                 anchors.fill: parent
                                                 cursorShape: Qt.PointingHandCursor
-                                                onClicked: {
-                                                    modelData.open = !modelData.open
-                                                    _win.openRev = _win.openRev + 1
-                                                }
+                                                onClicked: _win.toggleFold(sectionKey)
                                             }
                                         }
                                     }
@@ -551,7 +589,7 @@ Window {
                                 ColumnLayout {
                                     visible: {
                                         var rev = _win.openRev
-                                        return !!modelData.open
+                                        return _win.isFoldedOpen(sectionKey)
                                     }
                                     Layout.fillWidth: true
                                     Layout.leftMargin: 28
@@ -564,9 +602,13 @@ Window {
                                         onTextEdited: _win.targets[modelData.id] = text
                                     }
                                     Repeater {
+                                        id: itemRows
+                                        property string sectionId: modelData.id || ""
                                         model: modelData.items || []
                                         delegate: ColumnLayout {
                                             required property var modelData
+                                            required property int index
+                                            property string rowKey: "r:" + itemRows.sectionId + "/" + (modelData.id || index)
                                             Layout.fillWidth: true
                                             spacing: 2
                                             Rectangle {
@@ -599,7 +641,7 @@ Window {
                                                             Label {
                                                                 text: {
                                                                     var rev = _win.openRev
-                                                                    return modelData.open ? "\u25BC" : "\u25B6"
+                                                                    return _win.isFoldedOpen(rowKey) ? "\u25BC" : "\u25B6"
                                                                 }
                                                                 color: "#A1A1AA"
                                                                 font.pixelSize: 10
@@ -614,10 +656,7 @@ Window {
                                                         MouseArea {
                                                             anchors.fill: parent
                                                             cursorShape: Qt.PointingHandCursor
-                                                            onClicked: {
-                                                                modelData.open = !modelData.open
-                                                                _win.openRev = _win.openRev + 1
-                                                            }
+                                                            onClicked: _win.toggleFold(rowKey)
                                                         }
                                                     }
                                                 }
@@ -625,15 +664,16 @@ Window {
                                             ColumnLayout {
                                                 visible: {
                                                     var rev = _win.openRev
-                                                    return !!modelData.open
+                                                    return _win.isFoldedOpen(rowKey)
                                                 }
                                                 Layout.fillWidth: true
                                                 Layout.leftMargin: 28
                                                 spacing: 4
                                                 Image {
                                                     visible: modelData.kind === "image" && (modelData.url || "").length > 0
-                                                    Layout.preferredWidth: 220
-                                                    Layout.preferredHeight: 140
+                                                    Layout.preferredWidth: 480
+                                                    Layout.preferredHeight: 320
+                                                    Layout.maximumWidth: _scroll.availableWidth - 56
                                                     fillMode: Image.PreserveAspectFit
                                                     source: modelData.url || ""
                                                 }
