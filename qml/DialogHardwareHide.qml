@@ -389,7 +389,9 @@ Window {
                         autoExclusive: false
                         text: "Allow list"
                         enabled: _hh.installed && _hh.gremlinControl
-                        checked: !_hh.inverseOn
+                        property bool shown: !_hh.inverseOn
+                        onShownChanged: if (!pressed) checked = shown
+                        Component.onCompleted: checked = shown
                         onClicked: _hh.setInverse(false)
                     }
                     RadioButton {
@@ -397,7 +399,9 @@ Window {
                         autoExclusive: false
                         text: "Block list"
                         enabled: _hh.installed && _hh.gremlinControl
-                        checked: _hh.inverseOn
+                        property bool shown: _hh.inverseOn
+                        onShownChanged: if (!pressed) checked = shown
+                        Component.onCompleted: checked = shown
                         onClicked: _hh.setInverse(true)
                     }
                 }
@@ -463,8 +467,8 @@ Window {
                     color: "#A1A1AA"
                     font.pixelSize: 12
                     text: _hh.inverseOn
-                          ? "Add a program here to block it from the hidden sticks. Joystick Gremlin is not added to this list."
-                          : "Add a program here to let it see the hidden sticks. Joystick Gremlin is allowed during this session. After Exit, HiDHide uses the list that was already in its Client."
+                          ? "Add a program here to block it from the hidden controllers."
+                          : "Add a program here to let it see the hidden controllers. Joystick Gremlin can still see them."
                 }
             }
         }
