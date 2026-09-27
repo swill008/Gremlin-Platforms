@@ -16,7 +16,7 @@ ToolButton {
             id: _icon
             text: parent.parent.text
             font.family: "bootstrap-icons"
-            font.pixelSize: 24
+            font.pixelSize: 48
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             width: parent.width
