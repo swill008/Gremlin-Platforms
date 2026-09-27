@@ -14,10 +14,10 @@ import "helpers.js" as Helpers
 
 Window {
     id: _win
-    width: 720
-    height: 640
-    minimumWidth: 640
-    minimumHeight: 560
+    width: 860
+    height: 780
+    minimumWidth: 720
+    minimumHeight: 640
     title: "Device Pack"
 
     Shortcut { sequence: "Esc"; onActivated: {} }
@@ -28,11 +28,20 @@ Window {
 
     property string mode: "export"
     property string zipUrl: ""
-    property string report: "Choose Export or Import. Nothing is written until you confirm."
+    property string status: ""
+    property string exportPhoto: ""
+    property string exportName: ""
+    property string exportSize: ""
+    property string importPhoto: ""
+    property string importName: ""
     property var packInfo: ({})
+    property var sections: []
+    property var checks: ({})
+    property var targets: ({})
+    property int tickRev: 0
+    property int openRev: 0
 
     ListModel { id: _deviceModel }
-
     HardwareProfile { id: _hw }
 
     function _parse(raw) {
@@ -41,18 +50,6 @@ Window {
         } catch (e) {
             return { ok: false, error: "Bad response" }
         }
-    }
-
-    function _yesNo(value) {
-        return value ? "Yes" : "No"
-    }
-
-    function _counts(info) {
-        if (!info)
-            return ""
-        return (info.buttons || 0) + " buttons, "
-                + (info.axes || 0) + " axes, "
-                + (info.hats || 0) + " hats"
     }
 
     function reloadDevices() {
@@ -70,69 +67,145 @@ Window {
         if (mode !== "export")
             return
         var name = _exportDevice.currentText || ""
+        exportName = name
+        exportPhoto = ""
+        exportSize = ""
         if (!name.length) {
-            report = "Choose a device to pack."
+            status = "Choose a device."
             return
         }
         var info = _parse(_hw.peekPackDevice(name))
         if (!info.ok) {
-            report = info.error || "This device has no module file yet."
+            status = info.error || "This device has no module file yet."
             return
         }
-        report = "Device: " + info.device
-                + "\nModule file: " + (info.fileName || "")
-                + "\nDevice id: " + (info.guid || "Not connected, and this profile has not seen it.")
-                + "\n" + _counts(info)
-                + "\nPicture: " + _yesNo(info.hasPhoto)
-                + "\nButton map: " + _yesNo(info.hasMap)
-                + "\nWires: not included"
-                + "\n\nExport writes a zip only. The module file is not changed."
+        exportName = info.device || name
+        exportPhoto = info.photoUrl || ""
+        exportSize = info.sizeText || ""
+        status = ""
     }
 
-    function refreshTarget() {
-        if (mode !== "import" || !packInfo.ok)
-            return
-        var name = _saveAs.text || ""
-        var target = name.length ? _parse(_hw.packTarget(name)) : { ok: false }
-        var lines = [
-            "Exported as: " + (packInfo.exportedName || ""),
-            "Exported id: " + (packInfo.exportedGuid || "Not in this pack"),
-            _counts(packInfo),
-            "Picture: " + _yesNo(packInfo.hasPhoto),
-            "Button map: " + _yesNo(packInfo.hasMap),
-            "Wires: not included",
-            ""
-        ]
-        if (!name.length) {
-            lines.push("Type the device this pack is for, or pick one. Nothing is written yet.")
-        } else if (target.hasFile) {
-            lines.push("This will replace " + target.fileName + ".")
-            lines.push("The current file will be saved in the imported folder first.")
-        } else {
-            lines.push("No module file exists for this name. A new file will be created.")
-        }
-        if (name.length && !(target.guid && target.guid.length))
-            lines.push("No device id matches this name. The file can still be saved. Wires are not in this pack.")
-        else if (name.length)
-            lines.push("The file will use the id of the device you picked, not the id in the pack.")
-        report = lines.join("\n")
-    }
-
-    function applySuggestion() {
-        var suggested = packInfo.suggestedName || ""
-        if (!suggested.length) {
-            _saveAs.text = ""
-            refreshTarget()
-            return
-        }
-        for (var i = 0; i < _importDevice.count; i++) {
-            if (_importDevice.textAt(i) === suggested) {
-                _importDevice.currentIndex = i
-                break
+    function loadPack(info) {
+        packInfo = info
+        importName = info.exportedName || ""
+        importPhoto = info.photoUrl || ""
+        var rows = info.sections || []
+        var next = {}
+        var names = {}
+        for (var s = 0; s < rows.length; ++s) {
+            rows[s].open = false
+            if (String(rows[s].id || "").indexOf("out:") === 0)
+                names[rows[s].id] = rows[s].target || rows[s].title || ""
+            var items = rows[s].items || []
+            for (var i = 0; i < items.length; ++i) {
+                items[i].open = false
+                next[items[i].id] = items[i].checked !== false
             }
         }
-        _saveAs.text = suggested
-        refreshTarget()
+        sections = rows
+        checks = next
+        targets = names
+        tickRev = tickRev + 1
+        openRev = openRev + 1
+        status = ""
+    }
+
+    function groupState(section) {
+        var items = section.items || []
+        var on = 0
+        for (var i = 0; i < items.length; ++i) {
+            if (checks[items[i].id] === true)
+                on = on + 1
+        }
+        if (!items.length || on === 0)
+            return Qt.Unchecked
+        if (on === items.length)
+            return Qt.Checked
+        return Qt.PartiallyChecked
+    }
+
+    function setGroup(section, on) {
+        var items = section.items || []
+        for (var i = 0; i < items.length; ++i)
+            checks[items[i].id] = on
+        tickRev = tickRev + 1
+    }
+
+    function setAll(open) {
+        for (var s = 0; s < sections.length; ++s) {
+            sections[s].open = open
+            var items = sections[s].items || []
+            for (var i = 0; i < items.length; ++i)
+                items[i].open = open
+        }
+        openRev = openRev + 1
+    }
+
+    function anyChecked() {
+        for (var key in checks) {
+            if (checks[key] === true)
+                return true
+        }
+        return false
+    }
+
+    function missingPictures() {
+        var titles = []
+        var seen = {}
+        var byId = {}
+        for (var s = 0; s < sections.length; ++s) {
+            var items = sections[s].items || []
+            for (var i = 0; i < items.length; ++i)
+                byId[items[i].id] = items[i]
+        }
+        for (var id in byId) {
+            if (checks[id] !== true)
+                continue
+            var needs = byId[id].needs || []
+            for (var n = 0; n < needs.length; ++n) {
+                var pic = byId[needs[n]]
+                if (!pic || checks[pic.id] === true || seen[pic.id])
+                    continue
+                seen[pic.id] = true
+                titles.push(pic.title || "Picture")
+            }
+        }
+        return titles
+    }
+
+    function selectionJson() {
+        var items = []
+        var outputs = {}
+        for (var s = 0; s < sections.length; ++s) {
+            var section = sections[s]
+            if (String(section.id || "").indexOf("out:") === 0)
+                outputs[String(section.id).substring(4)] = targets[section.id] || section.target || ""
+            var rows = section.items || []
+            for (var i = 0; i < rows.length; ++i) {
+                if (checks[rows[i].id] === true)
+                    items.push(rows[i].id)
+            }
+        }
+        return JSON.stringify({ items: items, outputs: outputs })
+    }
+
+    function runImport() {
+        var info = _parse(_hw.importPack(zipUrl, _saveAs.text, selectionJson()))
+        status = info.ok ? (info.report || "Imported.") : (info.error || "Import failed.")
+        if (info.ok)
+            reloadDevices()
+    }
+
+    function askImport() {
+        var missing = missingPictures()
+        if (!missing.length) {
+            runImport()
+            return
+        }
+        _warnText.text = "The map uses a picture that is not ticked: "
+                + missing.join(", ")
+                + ". Those chips will have no picture."
+        _warn.open()
     }
 
     Component.onCompleted: reloadDevices()
@@ -147,7 +220,9 @@ Window {
             var dest = Helpers.fileDialogUrl(_save)
             var name = _exportDevice.currentText || ""
             var info = _parse(_hw.exportPack(name, dest))
-            report = info.ok ? ("Wrote " + info.path) : (info.error || "Export failed.")
+            status = info.ok
+                    ? ("Wrote " + info.path + (info.sizeText ? " (" + info.sizeText + ")." : "."))
+                    : (info.error || "Export failed.")
         }
     }
 
@@ -158,14 +233,71 @@ Window {
         nameFilters: ["Device packs (*.zip)"]
         onAccepted: {
             zipUrl = Helpers.fileDialogUrl(_pick)
-            packInfo = _parse(_hw.peekPackZip(zipUrl))
-            if (!packInfo.ok) {
-                report = packInfo.error || "Could not read that pack."
+            var info = _parse(_hw.peekPackZip(zipUrl))
+            if (!info.ok) {
+                status = info.error || "Could not read that pack."
                 return
             }
             mode = "import"
             _pages.currentIndex = 1
-            applySuggestion()
+            loadPack(info)
+            var suggested = info.suggestedName || ""
+            _saveAs.text = suggested
+            if (suggested.length) {
+                for (var i = 0; i < _importDevice.count; i++) {
+                    if (_importDevice.textAt(i) === suggested) {
+                        _importDevice.currentIndex = i
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: _warn
+        title: "Picture not included"
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        width: 460
+        standardButtons: Dialog.NoButton
+        background: Rectangle { color: "#18181B"; border.color: "#3F3F46"; radius: 4 }
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                id: _warnText
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                color: "#E4E4E7"
+            }
+            RowLayout {
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: "Go back"
+                    onClicked: _warn.close()
+                }
+                Button {
+                    text: "Import"
+                    onClicked: {
+                        _warn.close()
+                        runImport()
+                    }
+                }
+            }
+        }
+    }
+
+    component PackMark: CheckBox {
+        property var section
+        tristate: true
+        checkState: {
+            var rev = _win.tickRev
+            return _win.groupState(section)
+        }
+        nextCheckState: function() {
+            var turnOn = _win.groupState(section) !== Qt.Checked
+            _win.setGroup(section, turnOn)
+            return turnOn ? Qt.Checked : Qt.Unchecked
         }
     }
 
@@ -182,7 +314,9 @@ Window {
             color: Style.foreground
         }
         Label {
-            text: "A pack is one device's module file and its pictures. It does not include wires."
+            text: mode === "export"
+                  ? "Export sends the whole device. Nothing on the device is changed."
+                  : "Tick a section to include every row in it. A partial tick means only some rows are included. Nothing is written until you import."
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             color: "#A1A1AA"
@@ -195,8 +329,6 @@ Window {
                 mode = currentIndex === 0 ? "export" : "import"
                 if (mode === "export")
                     refreshExport()
-                else
-                    refreshTarget()
             }
             TabButton { text: "Export"; width: implicitWidth }
             TabButton { text: "Import"; width: implicitWidth }
@@ -204,12 +336,11 @@ Window {
 
         StackLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 280
+            Layout.fillHeight: true
             currentIndex: _pages.currentIndex
 
             ColumnLayout {
-                spacing: 8
-                Label { text: "Device"; font.bold: true; color: Style.foreground }
+                spacing: 10
                 ComboBox {
                     id: _exportDevice
                     Layout.fillWidth: true
@@ -218,89 +349,311 @@ Window {
                     onActivated: refreshExport()
                     onCurrentIndexChanged: refreshExport()
                 }
-                Button {
-                    text: "Export…"
-                    focusPolicy: Qt.NoFocus
-                    enabled: (_exportDevice.currentText || "").length > 0
-                    onClicked: {
-                        var name = _exportDevice.currentText
-                        var hint = _hw.defaultExportUrl(name)
-                        if (hint && hint.length) {
-                            try { _save.selectedFile = hint } catch (e) {}
-                            try { _save.currentFile = hint } catch (e) {}
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 16
+                    Rectangle {
+                        Layout.preferredWidth: 180
+                        Layout.preferredHeight: 180
+                        color: "#18181B"
+                        border.color: "#3F3F46"
+                        radius: 4
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            source: exportPhoto
+                            fillMode: Image.PreserveAspectFit
+                            visible: exportPhoto.length > 0
                         }
-                        _save.open()
+                        Label {
+                            anchors.centerIn: parent
+                            visible: exportPhoto.length === 0
+                            text: "No picture"
+                            color: "#A1A1AA"
+                        }
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Label {
+                            text: exportName.length ? exportName : "No device"
+                            color: Style.foreground
+                            font.pixelSize: 20
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            text: exportSize.length ? ("Pack size: " + exportSize) : ""
+                            color: "#E4E4E7"
+                            font.pixelSize: 16
+                        }
+                        Button {
+                            text: "Export…"
+                            focusPolicy: Qt.NoFocus
+                            enabled: (_exportDevice.currentText || "").length > 0 && exportSize.length > 0
+                            onClicked: {
+                                var name = _exportDevice.currentText
+                                var hint = _hw.defaultExportUrl(name)
+                                if (hint && hint.length) {
+                                    try { _save.selectedFile = hint } catch (e) {}
+                                    try { _save.currentFile = hint } catch (e) {}
+                                }
+                                _save.open()
+                            }
+                        }
                     }
                 }
+                Item { Layout.fillHeight: true }
             }
 
             ColumnLayout {
                 spacing: 8
-                Button {
-                    text: "Choose zip…"
-                    focusPolicy: Qt.NoFocus
-                    onClicked: _pick.open()
-                }
-                Label { text: "Put this pack on"; font.bold: true; color: Style.foreground }
-                ComboBox {
-                    id: _importDevice
+                RowLayout {
                     Layout.fillWidth: true
-                    model: _deviceModel
-                    textRole: "name"
-                    onActivated: _saveAs.text = currentText
+                    Button {
+                        text: "Choose zip…"
+                        focusPolicy: Qt.NoFocus
+                        onClicked: _pick.open()
+                    }
+                    Item { Layout.fillWidth: true }
+                    Button { text: "Open all"; onClicked: setAll(true); enabled: sections.length > 0 }
+                    Button { text: "Close all"; onClicked: setAll(false); enabled: sections.length > 0 }
                 }
-                Label { text: "Save as"; color: Style.foreground }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+                    Rectangle {
+                        Layout.preferredWidth: 72
+                        Layout.preferredHeight: 72
+                        color: "#18181B"
+                        border.color: "#3F3F46"
+                        radius: 4
+                        visible: importPhoto.length > 0 && mode === "import"
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            source: importPhoto
+                            fillMode: Image.PreserveAspectFit
+                        }
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: importName.length ? importName : "No pack open"
+                            color: Style.foreground
+                            font.pixelSize: 18
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            text: "Windows name in the pack. The device you choose below is the one that is written."
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                            color: "#A1A1AA"
+                            visible: importName.length > 0
+                        }
+                    }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Put this pack on"; color: Style.foreground }
+                    ComboBox {
+                        id: _importDevice
+                        Layout.fillWidth: true
+                        model: _deviceModel
+                        textRole: "name"
+                        onActivated: _saveAs.text = currentText
+                    }
+                }
                 TextField {
                     id: _saveAs
                     Layout.fillWidth: true
                     placeholderText: "Device name on this machine"
-                    onTextChanged: refreshTarget()
                 }
-                Label {
-                    text: "The name and id in the pack are labels. The device you type here is the one that is written."
-                    wrapMode: Text.WordWrap
+                ScrollView {
+                    id: _scroll
                     Layout.fillWidth: true
-                    color: "#A1A1AA"
+                    Layout.fillHeight: true
+                    clip: true
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    ColumnLayout {
+                        width: _scroll.availableWidth
+                        spacing: 8
+                        Repeater {
+                            model: _win.sections
+                            delegate: ColumnLayout {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                spacing: 4
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 32
+                                    color: "#27272A"
+                                    radius: 3
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 6
+                                        anchors.rightMargin: 8
+                                        spacing: 6
+                                        PackMark { section: modelData }
+                                        Item {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                spacing: 6
+                                                Label {
+                                                    text: {
+                                                        var rev = _win.openRev
+                                                        return modelData.open ? "\u25BC" : "\u25B6"
+                                                    }
+                                                    color: "#E4E4E7"
+                                                    font.pixelSize: 10
+                                                }
+                                                Label {
+                                                    text: modelData.title || ""
+                                                    color: "#E4E4E7"
+                                                    font.pixelSize: 13
+                                                    font.bold: true
+                                                    Layout.fillWidth: true
+                                                    elide: Text.ElideRight
+                                                }
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    modelData.open = !modelData.open
+                                                    _win.openRev = _win.openRev + 1
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                ColumnLayout {
+                                    visible: {
+                                        var rev = _win.openRev
+                                        return !!modelData.open
+                                    }
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    spacing: 4
+                                    TextField {
+                                        visible: modelData.kind === "output"
+                                        Layout.fillWidth: true
+                                        placeholderText: "Output name on this machine"
+                                        Component.onCompleted: text = _win.targets[modelData.id] || modelData.target || ""
+                                        onTextEdited: _win.targets[modelData.id] = text
+                                    }
+                                    Repeater {
+                                        model: modelData.items || []
+                                        delegate: ColumnLayout {
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            Rectangle {
+                                                Layout.fillWidth: true
+                                                height: 28
+                                                color: "#18181B"
+                                                border.color: "#3F3F46"
+                                                radius: 3
+                                                RowLayout {
+                                                    anchors.fill: parent
+                                                    anchors.leftMargin: 6
+                                                    anchors.rightMargin: 8
+                                                    spacing: 6
+                                                    CheckBox {
+                                                        checked: {
+                                                            var rev = _win.tickRev
+                                                            return _win.checks[modelData.id] === true
+                                                        }
+                                                        onToggled: {
+                                                            _win.checks[modelData.id] = checked
+                                                            _win.tickRev = _win.tickRev + 1
+                                                        }
+                                                    }
+                                                    Item {
+                                                        Layout.fillWidth: true
+                                                        Layout.fillHeight: true
+                                                        RowLayout {
+                                                            anchors.fill: parent
+                                                            spacing: 6
+                                                            Label {
+                                                                text: {
+                                                                    var rev = _win.openRev
+                                                                    return modelData.open ? "\u25BC" : "\u25B6"
+                                                                }
+                                                                color: "#A1A1AA"
+                                                                font.pixelSize: 10
+                                                            }
+                                                            Label {
+                                                                text: modelData.title || ""
+                                                                color: "#E4E4E7"
+                                                                Layout.fillWidth: true
+                                                                elide: Text.ElideRight
+                                                            }
+                                                        }
+                                                        MouseArea {
+                                                            anchors.fill: parent
+                                                            cursorShape: Qt.PointingHandCursor
+                                                            onClicked: {
+                                                                modelData.open = !modelData.open
+                                                                _win.openRev = _win.openRev + 1
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            ColumnLayout {
+                                                visible: {
+                                                    var rev = _win.openRev
+                                                    return !!modelData.open
+                                                }
+                                                Layout.fillWidth: true
+                                                Layout.leftMargin: 28
+                                                spacing: 4
+                                                Image {
+                                                    visible: modelData.kind === "image" && (modelData.url || "").length > 0
+                                                    Layout.preferredWidth: 220
+                                                    Layout.preferredHeight: 140
+                                                    fillMode: Image.PreserveAspectFit
+                                                    source: modelData.url || ""
+                                                }
+                                                Label {
+                                                    visible: modelData.kind !== "image"
+                                                    text: modelData.body || ""
+                                                    color: "#E4E4E7"
+                                                    wrapMode: Text.WordWrap
+                                                    Layout.fillWidth: true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 Button {
                     text: "Import"
                     focusPolicy: Qt.NoFocus
-                    enabled: zipUrl.length > 0 && packInfo.ok === true && _saveAs.text.length > 0
-                    onClicked: {
-                        var info = _parse(_hw.importPack(zipUrl, _saveAs.text))
-                        report = info.ok ? (info.report || "Imported.") : (info.error || "Import failed.")
-                        if (info.ok)
-                            reloadDevices()
+                    enabled: {
+                        var rev = tickRev
+                        return zipUrl.length > 0 && packInfo.ok === true && _saveAs.text.length > 0 && anyChecked()
                     }
+                    onClicked: askImport()
                 }
             }
         }
 
-        Rectangle {
-            id: _reportBox
+        Label {
+            text: status
+            wrapMode: Text.WordWrap
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            color: "#18181B"
-            border.color: "#3F3F46"
-            radius: 4
-            ScrollView {
-                anchors.fill: parent
-                anchors.margins: 10
-                TextArea {
-                    text: report
-                    wrapMode: Text.WordWrap
-                    readOnly: true
-                    selectByMouse: true
-                    color: Style.foreground
-                    width: _reportBox.width - 28
-                    background: null
-                }
-            }
-        }
-
-        RowLayout {
-            Item { Layout.fillWidth: true }
-            Button { text: "Close"; focusPolicy: Qt.NoFocus; onClicked: _win.close() }
+            color: "#E4E4E7"
+            visible: status.length > 0
         }
     }
 

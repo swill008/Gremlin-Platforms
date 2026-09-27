@@ -1273,79 +1273,44 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def peekPackDevice(self, device_name: str) -> str:
-        name = " ".join(str(device_name or "").split())
-        path = self._file_for(name) if name else Path()
-        doc = _read_json_dict(path) if name and path.is_file() else None
-        if not doc:
-            return json.dumps({
-                "ok": False,
-                "error": "This device has no module file yet.",
-                "device": name,
-                "fileName": path.name if name else "",
-            })
-        summary = _claim_summary(doc)
-        match = _match_pack_device(name)
-        photo = self._resolve_existing(str(doc.get("image") or ""))
+        from gremlin.ui.device_pack import assemble
+
+        built = assemble(device_name, self._resolve_existing)
+        if isinstance(built, str):
+            return json.dumps({"ok": False, "error": built, "device": device_name})
+        _data, info = built
+        photo = info.get("photoPath") or ""
         return json.dumps({
             "ok": True,
-            "device": name,
-            "guid": str(match["guid"]) if match and match.get("guid") else "",
-            "fileName": path.name,
-            "hasPhoto": bool(photo and photo.is_file()),
-            "hasMap": summary["hasMap"],
-            "buttons": summary["buttons"],
-            "axes": summary["axes"],
-            "hats": summary["hats"],
-            "wires": False,
+            "device": info["device"],
+            "photoUrl": Path(photo).as_uri() if photo else "",
+            "sizeText": info["sizeText"],
+            "bytes": info["bytes"],
         })
 
     @QtCore.Slot(str, result=str)
     def peekPackZip(self, zip_url: str) -> str:
+        from gremlin.ui.device_pack import describe_zip
+
         try:
             src = to_local_path(zip_url)
         except Exception:
             return json.dumps({"ok": False, "error": "Cannot read that file."})
         if not src or not src.is_file():
             return json.dumps({"ok": False, "error": "File not found."})
-        try:
-            with zipfile.ZipFile(src, "r") as zf:
-                json_name = _zip_map_name(zf.namelist())
-                if not json_name:
-                    return json.dumps({"ok": False, "error": "No map.json in this zip."})
-                doc = json.loads(zf.read(json_name).decode("utf-8"))
-        except zipfile.BadZipFile:
-            return json.dumps({"ok": False, "error": "Not a valid zip."})
-        except Exception as exc:
-            return json.dumps({"ok": False, "error": str(exc)})
-        if not isinstance(doc, dict):
-            return json.dumps({"ok": False, "error": "No map.json in this zip."})
-        label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
-        exported = str(label.get("exportedName") or doc.get("device") or "").strip()
-        if not exported:
-            return json.dumps({"ok": False, "error": "This pack has no device name."})
-        summary = _claim_summary(doc)
-        devices = _known_pack_devices()
-        suggested = _suggest_pack_name(exported, devices)
-        return json.dumps({
-            "ok": True,
-            "exportedName": exported,
-            "exportedGuid": str(label.get("exportedGuid") or ""),
-            "suggestedName": suggested,
-            "hasPhoto": summary["hasPhoto"],
-            "hasMap": summary["hasMap"],
-            "buttons": summary["buttons"],
-            "axes": summary["axes"],
-            "hats": summary["hats"],
-            "wires": False,
-            "direction": _doc_direction(doc, exported),
-        })
+        described = describe_zip(Path(src))
+        if isinstance(described, str):
+            return json.dumps({"ok": False, "error": described})
+        return json.dumps(described)
 
     @QtCore.Slot(str, str, result=str)
     def exportPack(self, device_name: str, dest_url: str) -> str:
-        built = self._build_pack(device_name)
+        from gremlin.ui.device_pack import assemble
+
+        built = assemble(device_name, self._resolve_existing)
         if isinstance(built, str):
             return json.dumps({"ok": False, "error": built})
-        packed, files = built
+        data, info = built
         try:
             dest = to_local_path(dest_url)
         except Exception:
@@ -1361,151 +1326,49 @@ class HardwareProfile(QtCore.QObject):
             })
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with zipfile.ZipFile(dest, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                zf.writestr("map.json", json.dumps(packed, indent=2) + "\n")
-                for src, arc in files:
-                    zf.write(src, arc)
+            dest.write_bytes(data)
         except Exception as exc:
             return json.dumps({"ok": False, "error": str(exc)})
         return json.dumps({
             "ok": True,
             "path": str(dest),
-            "device": packed.get("device") or device_name,
+            "device": info["device"],
+            "sizeText": info["sizeText"],
         })
 
-    @QtCore.Slot(str, str, result=str)
-    def importPack(self, zip_url: str, target_name: str) -> str:
-        target = " ".join(str(target_name or "").split())
-        if not target:
-            return json.dumps({"ok": False, "error": "Choose the device this pack is for."})
+    @QtCore.Slot(str, str, str, result=str)
+    def importPack(self, zip_url: str, target_name: str, selection: str) -> str:
+        from gremlin.ui.device_pack import apply_zip, describe_zip
+
         try:
             src = to_local_path(zip_url)
         except Exception:
             return json.dumps({"ok": False, "error": "Cannot read that file."})
         if not src or not src.is_file():
             return json.dumps({"ok": False, "error": "File not found."})
-        try:
-            with zipfile.ZipFile(src, "r") as zf:
-                names = zf.namelist()
-                json_name = _zip_map_name(names)
-                if not json_name:
-                    return json.dumps({"ok": False, "error": "No map.json in this zip."})
-                payload = json.loads(zf.read(json_name).decode("utf-8"))
-                if not isinstance(payload, dict):
-                    return json.dumps({"ok": False, "error": "No map.json in this zip."})
-                label = payload.get("pack") if isinstance(payload.get("pack"), dict) else {}
-                exported = str(label.get("exportedName") or payload.get("device") or "").strip()
-                members = {}
-                for member in names:
-                    if member.endswith("/") or member == json_name:
-                        continue
-                    base = Path(member).name
-                    if not base or Path(base).suffix.lower() not in _IMAGE_EXT:
-                        continue
-                    members[base] = zf.read(member)
-        except zipfile.BadZipFile:
-            return json.dumps({"ok": False, "error": "Not a valid zip."})
-        except Exception as exc:
-            return json.dumps({"ok": False, "error": str(exc)})
-        if not exported:
-            return json.dumps({"ok": False, "error": "This pack has no device name."})
-        if _doc_direction(payload, exported) != _target_direction(target):
-            if _doc_direction(payload, exported) == "dest":
-                return json.dumps({"ok": False, "error": "A vJoy pack cannot be copied onto a stick."})
-            return json.dumps({"ok": False, "error": "A stick pack cannot be copied onto a vJoy."})
-        slug = _slug(target)
-        folder = _maps_dir() / slug
-        folder.mkdir(parents=True, exist_ok=True)
-        written: dict[str, str] = {}
-        for base, data in members.items():
-            dest_image = folder / _safe_name(base, base)
-            if dest_image.is_file():
-                previous_image = _unique_archive(f"{slug}_{dest_image.stem}")
-                try:
-                    _replace_file(previous_image.with_suffix(dest_image.suffix), dest_image.read_bytes())
-                except OSError:
-                    return json.dumps({
-                        "ok": False,
-                        "error": "The current picture could not be saved, so nothing was replaced.",
-                    })
+        chosen: dict | None
+        if str(selection or "").strip():
             try:
-                dest_image.write_bytes(data)
-            except OSError:
-                return json.dumps({"ok": False, "error": "The picture could not be written."})
-            written[base] = dest_image.name
-        photo_key = Path(str(payload.get("image") or "")).name
-        if photo_key in written:
-            payload["image"] = f"qml/maps/{slug}/{written[photo_key]}"
-        elif payload.get("image"):
-            payload.pop("image", None)
-        for node in payload.get("nodes") or []:
-            if not isinstance(node, dict):
-                continue
-            key = Path(str(node.get("src") or "")).name
-            if key in written:
-                node["src"] = f"qml/maps/{slug}/{written[key]}"
-            node.pop("srcUrl", None)
-        payload.pop("pack", None)
-        payload["kind"] = "control.hardware"
-        payload["device"] = target
-        match = _match_pack_device(target)
-        guid = str(match["guid"]) if match and match.get("guid") else ""
-        if guid:
-            payload["boundName"] = target
-            payload["boundGuidLocal"] = guid
+                chosen = json.loads(selection)
+            except json.JSONDecodeError:
+                return json.dumps({"ok": False, "error": "The selection could not be read."})
         else:
-            payload.pop("boundGuidLocal", None)
-            payload.pop("boundName", None)
-        dest = _maps_dir() / f"{slug}.json"
-        previous = dest.read_bytes() if dest.is_file() else None
-        backup_name = ""
-        if previous is not None:
-            backup = _unique_archive(slug)
-            try:
-                _replace_file(backup, previous)
-            except OSError:
-                return json.dumps({
-                    "ok": False,
-                    "error": "The previous file could not be saved, so nothing was replaced.",
-                })
-            backup_name = backup.name
-        try:
-            _replace_file(dest, (json.dumps(payload, indent=2) + "\n").encode("utf-8"))
-        except OSError:
-            return json.dumps({"ok": False, "error": "The module file could not be written."})
-        _clear_device_binding(target, guid)
-        self._path = str(dest)
-        self._text = dest.read_text(encoding="utf-8")
-        self.pathChanged.emit()
-        self.documentChanged.emit()
-        self.imageChanged.emit()
-        signal.configChanged.emit()
-        summary = _claim_summary(payload)
-        lines = [
-            f"Saved {dest.name} for {target}.",
-            (
-                f"Replaced the previous file. It was saved as {backup_name}."
-                if backup_name
-                else "A new file was created. Nothing was replaced."
-            ),
-            _copied_sentence(summary["buttons"], summary["axes"], summary["hats"], 0),
-            "A picture was included." if summary["hasPhoto"] else "No picture was in the pack.",
-            "The button map was included." if summary["hasMap"] else "No button map was in the pack.",
-            "This pack does not include wires.",
-            f"Exported as {exported}.",
-        ]
-        if guid:
-            lines.append("The file uses the id of the device you picked.")
-        else:
-            lines.append("No device id matched this name. The file was saved under the name you typed.")
-        return json.dumps({
-            "ok": True,
-            "device": target,
-            "fileName": dest.name,
-            "replaced": bool(backup_name),
-            "backup": backup_name,
-            "report": "\n".join(lines),
-        })
+            described = describe_zip(Path(src))
+            if isinstance(described, str):
+                return json.dumps({"ok": False, "error": described})
+            items = []
+            outputs = {}
+            for section in described.get("sections") or []:
+                if str(section.get("id", "")).startswith("out:"):
+                    slug = str(section["id"])[4:]
+                    outputs[slug] = section.get("target") or section.get("title") or ""
+                for item in section.get("items") or []:
+                    if str(item.get("id", "")).endswith("camera"):
+                        continue
+                    items.append(item["id"])
+            chosen = {"items": items, "outputs": outputs}
+        result = apply_zip(Path(src), target_name, chosen if isinstance(chosen, dict) else {})
+        return json.dumps(result)
 
     @QtCore.Slot(str, str, result=str)
     def exportMap(self, device_name: str, dest_url: str) -> str:
@@ -1535,7 +1398,7 @@ class HardwareProfile(QtCore.QObject):
         exported = str(label.get("exportedName") or doc.get("device") or "").strip()
         if not exported:
             return json.dumps({"ok": False, "error": "This pack has no device name."})
-        return self.importPack(zip_url, exported)
+        return self.importPack(zip_url, exported, "")
 
     @QtCore.Slot(str, result="QVariant")
     def chips(self, guid: str):
