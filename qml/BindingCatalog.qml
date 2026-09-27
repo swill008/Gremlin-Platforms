@@ -540,7 +540,22 @@ Item {
         }
     }
 
+    property bool _leaveOnly: false
+    signal leaveResolved()
+    signal leaveCancelled()
+
+    function requestLeave() {
+        if (!hasUnsaved()) {
+            leaveResolved()
+            return
+        }
+        _leaveOnly = true
+        _saveGate.detail = "Display options are not saved. Leave this device and they will be lost."
+        _saveGate.ask()
+    }
+
     function requestClose() {
+        _leaveOnly = false
         if (hasUnsaved()) {
             _saveGate.detail = "Display options are not saved. Close this panel and they will be lost."
             _saveGate.ask()
@@ -819,38 +834,60 @@ Item {
         }
     }
 
+    component TrackSpin: SpinBox {
+        property int source: 0
+        signal userSet(int value)
+        editable: true
+        Component.onCompleted: value = source
+        onSourceChanged: if (value !== source) value = source
+        onUserSet: (v) => { userSet(v); }}
+
+    component FlagBox: CheckBox {
+        property bool source: false
+        signal userSet(bool value)
+        Component.onCompleted: checked = source
+        onSourceChanged: if (!pressed) checked = source
+        onClicked: userSet(checked)
+    }
+
     component AlignFields: ColumnLayout {
         property string align: "left"
         property int fromLeft: 0
         property int fromRight: 0
         property int widthPct: 100
         signal edited(string align, int fromLeft, int fromRight, int widthPct)
+        onAlignChanged: if (_alignPick) _alignPick.currentIndex = _alignPick.pick(align)
         Layout.fillWidth: true
         spacing: 4
 
         RowLayout {
             Label { text: "Align"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
             ComboBox {
+                id: _alignPick
                 Layout.fillWidth: true
                 model: ["left", "center", "right"]
-                currentIndex: align === "center" ? 1 : (align === "right" ? 2 : 0)
+                function pick(value) {
+                    var i = indexOfValue(value)
+                    return i < 0 ? 0 : i
+                }
+                Component.onCompleted: currentIndex = pick(align)
                 onActivated: edited(currentText, fromLeft, fromRight, widthPct)
             }
         }
         RowLayout {
             visible: align !== "center"
             Label { text: "Left"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 0; to: 800; stepSize: 8; value: fromLeft; onValueModified: edited(align, value, fromRight, widthPct) }
+            TrackSpin { from: 0; to: 800; stepSize: 8; source: fromLeft; onUserSet: (v) => { edited(align, v, fromRight, widthPct); }}
         }
         RowLayout {
             visible: align !== "center"
             Label { text: "Right"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 0; to: 800; stepSize: 8; value: fromRight; onValueModified: edited(align, fromLeft, value, widthPct) }
+            TrackSpin { from: 0; to: 800; stepSize: 8; source: fromRight; onUserSet: (v) => { edited(align, fromLeft, v, widthPct); }}
         }
         RowLayout {
             visible: align === "center"
             Label { text: "Width %"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 20; to: 100; value: widthPct; onValueModified: edited(align, fromLeft, fromRight, value) }
+            TrackSpin { from: 20; to: 100; source: widthPct; onUserSet: (v) => { edited(align, fromLeft, fromRight, v); }}
         }
     }
 
@@ -862,15 +899,18 @@ Item {
         property int padBottom: 0
         property int padLeft: 8
         signal edited(string shape, int size, int padTop, int padRight, int padBottom, int padLeft)
+        onShapeChanged: if (_shapePick) _shapePick.currentIndex = _shapePick.pick(shape)
         Layout.fillWidth: true
         spacing: 4
 
         RowLayout {
             Label { text: "Shape"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
             ComboBox {
+                id: _shapePick
                 Layout.fillWidth: true
                 model: ["Box", "Sides"]
-                currentIndex: shape === "sides" ? 1 : 0
+                function pick(value) { return value === "sides" ? 1 : 0 }
+                Component.onCompleted: currentIndex = pick(shape)
                 onActivated: {
                     if (currentText === "Box")
                         edited("box", size, size, size, size, size)
@@ -882,27 +922,27 @@ Item {
         RowLayout {
             visible: shape !== "sides"
             Label { text: "Size"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 0; to: 48; value: size; onValueModified: edited("box", value, value, value, value, value) }
+            TrackSpin { from: 0; to: 48; source: size; onUserSet: (v) => { edited("box", v, v, v, v, v); }}
         }
         RowLayout {
             visible: shape === "sides"
             Label { text: "Top"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 0; to: 48; value: padTop; onValueModified: edited("sides", size, value, padRight, padBottom, padLeft) }
+            TrackSpin { from: 0; to: 48; source: padTop; onUserSet: (v) => { edited("sides", size, v, padRight, padBottom, padLeft); }}
         }
         RowLayout {
             visible: shape === "sides"
             Label { text: "Right"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 0; to: 48; value: padRight; onValueModified: edited("sides", size, padTop, value, padBottom, padLeft) }
+            TrackSpin { from: 0; to: 48; source: padRight; onUserSet: (v) => { edited("sides", size, padTop, v, padBottom, padLeft); }}
         }
         RowLayout {
             visible: shape === "sides"
             Label { text: "Bottom"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 0; to: 48; value: padBottom; onValueModified: edited("sides", size, padTop, padRight, value, padLeft) }
+            TrackSpin { from: 0; to: 48; source: padBottom; onUserSet: (v) => { edited("sides", size, padTop, padRight, v, padLeft); }}
         }
         RowLayout {
             visible: shape === "sides"
             Label { text: "Left"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 0; to: 48; value: padLeft; onValueModified: edited("sides", size, padTop, padRight, padBottom, value) }
+            TrackSpin { from: 0; to: 48; source: padLeft; onUserSet: (v) => { edited("sides", size, padTop, padRight, padBottom, v); }}
         }
     }
 
@@ -1373,7 +1413,7 @@ Item {
                             SectionHead { title: "LIST" }
                             RowLayout {
                                 Label { text: "Between"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 48; value: groupBetween; onValueModified: groupBetween = value }
+                                TrackSpin { from: 0; to: 48; source: groupBetween; onUserSet: (v) => { groupBetween = v; }}
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
                             PadFields {
@@ -1392,13 +1432,13 @@ Item {
                                     listPadLeft = padLeft
                                 }
                             }
-                            CheckBox { text: "Show child rows"; checked: showChildren; onToggled: showChildren = checked }
-                            CheckBox { text: "Show live bars"; checked: showLiveBars; onToggled: showLiveBars = checked }
-                            CheckBox { text: "Show LED dots"; checked: showLeds; onToggled: showLeds = checked }
-                            CheckBox { text: "Show summary"; checked: showSummary; onToggled: showSummary = checked }
+                            FlagBox { text: "Show child rows"; source: showChildren; onUserSet: (v) => { showChildren = v } }
+                            FlagBox { text: "Show live bars"; source: showLiveBars; onUserSet: (v) => { showLiveBars = v } }
+                            FlagBox { text: "Show LED dots"; source: showLeds; onUserSet: (v) => { showLeds = v } }
+                            FlagBox { text: "Show summary"; source: showSummary; onUserSet: (v) => { showSummary = v } }
                             RowLayout {
                                 Label { text: "Summary size"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 9; to: 20; value: summaryFont; onValueModified: summaryFont = value }
+                                TrackSpin { from: 9; to: 20; source: summaryFont; onUserSet: (v) => { summaryFont = v; }}
                             }
                         }
 
@@ -1408,7 +1448,7 @@ Item {
                             SectionHead { title: "GROUP" }
                             RowLayout {
                                 Label { text: "Inside"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 48; value: groupInside; onValueModified: groupInside = value }
+                                TrackSpin { from: 0; to: 48; source: groupInside; onUserSet: (v) => { groupInside = v; }}
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
                             PadFields {
@@ -1441,7 +1481,7 @@ Item {
                             }
                             RowLayout {
                                 Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 16; value: groupRadius; onValueModified: groupRadius = value }
+                                TrackSpin { from: 0; to: 16; source: groupRadius; onUserSet: (v) => { groupRadius = v; }}
                             }
                             ColorPick { label: "Color"; swatch: colorGroup; target: "group" }
                         }
@@ -1452,11 +1492,11 @@ Item {
                             SectionHead { title: "PARENT ROW" }
                             RowLayout {
                                 Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 36; to: 80; value: parentHeight; onValueModified: parentHeight = value }
+                                TrackSpin { from: 36; to: 80; source: parentHeight; onUserSet: (v) => { parentHeight = v; }}
                             }
                             RowLayout {
                                 Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 16; value: rowRadius; onValueModified: rowRadius = value }
+                                TrackSpin { from: 0; to: 16; source: rowRadius; onUserSet: (v) => { rowRadius = v; }}
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
                             PadFields {
@@ -1489,12 +1529,12 @@ Item {
                             }
                             RowLayout {
                                 Label { text: "Text size"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 10; to: 22; value: parentFont; onValueModified: parentFont = value }
+                                TrackSpin { from: 10; to: 22; source: parentFont; onUserSet: (v) => { parentFont = v; }}
                             }
-                            CheckBox { text: "Bold names"; checked: parentBold; onToggled: parentBold = checked }
+                            FlagBox { text: "Bold names"; source: parentBold; onUserSet: (v) => { parentBold = v } }
                             RowLayout {
                                 Label { text: "Name column"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 80; to: 360; stepSize: 10; value: nameColW; onValueModified: nameColW = value }
+                                TrackSpin { from: 80; to: 360; stepSize: 10; source: nameColW; onUserSet: (v) => { nameColW = v; }}
                             }
                             ColorPick { label: "Color"; swatch: colorParent; target: "parent" }
                         }
@@ -1505,11 +1545,11 @@ Item {
                             SectionHead { title: "CHILD ROW" }
                             RowLayout {
                                 Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 24; to: 60; value: childHeight; onValueModified: childHeight = value }
+                                TrackSpin { from: 24; to: 60; source: childHeight; onUserSet: (v) => { childHeight = v; }}
                             }
                             RowLayout {
                                 Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 16; value: childRadius; onValueModified: childRadius = value }
+                                TrackSpin { from: 0; to: 16; source: childRadius; onUserSet: (v) => { childRadius = v; }}
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
                             PadFields {
@@ -1542,11 +1582,11 @@ Item {
                             }
                             RowLayout {
                                 Label { text: "Text size"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 9; to: 20; value: childFont; onValueModified: childFont = value }
+                                TrackSpin { from: 9; to: 20; source: childFont; onUserSet: (v) => { childFont = v; }}
                             }
                             RowLayout {
                                 Label { text: "Name column"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 80; to: 360; stepSize: 10; value: childNameColW; onValueModified: childNameColW = value }
+                                TrackSpin { from: 80; to: 360; stepSize: 10; source: childNameColW; onUserSet: (v) => { childNameColW = v; }}
                             }
                             ColorPick { label: "Color"; swatch: colorChild; target: "child" }
                         }
@@ -1586,21 +1626,21 @@ Item {
                             }
                             RowLayout {
                                 Label { text: "Gap below row"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 24; value: editorGap; onValueModified: editorGap = value }
+                                TrackSpin { from: 0; to: 24; source: editorGap; onUserSet: (v) => { editorGap = v; }}
                             }
                             RowLayout {
                                 Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 16; value: editorRadius; onValueModified: editorRadius = value }
+                                TrackSpin { from: 0; to: 16; source: editorRadius; onUserSet: (v) => { editorRadius = v; }}
                             }
                             RowLayout {
                                 Label { text: "Border width"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 8; value: editorBorderW; onValueModified: editorBorderW = value }
+                                TrackSpin { from: 0; to: 8; source: editorBorderW; onUserSet: (v) => { editorBorderW = v; }}
                             }
                             RowLayout {
                                 Label { text: "Accent width"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 12; value: editorAccentW; onValueModified: editorAccentW = value }
+                                TrackSpin { from: 0; to: 12; source: editorAccentW; onUserSet: (v) => { editorAccentW = v; }}
                             }
-                            CheckBox { text: "Show accent bar"; checked: showEditorAccent; onToggled: showEditorAccent = checked }
+                            FlagBox { text: "Show accent bar"; source: showEditorAccent; onUserSet: (v) => { showEditorAccent = v } }
                             ColorPick { label: "Fill"; swatch: colorEditor; target: "editor" }
                             ColorPick { label: "Edge"; swatch: colorEditorBorder; target: "editorBorder" }
                             ColorPick { label: "Accent"; swatch: colorEditorAccent; target: "editorAccent" }
@@ -1634,12 +1674,29 @@ Item {
         id: _saveGate
         onSaveChosen: {
             saveCatalog()
-            if (!hasUnsaved())
-                closePanel()
+            if (hasUnsaved())
+                return
+            if (_leaveOnly) {
+                _leaveOnly = false
+                leaveResolved()
+                return
+            }
+            closePanel()
         }
         onDiscardChosen: {
             loadCatalog()
+            if (_leaveOnly) {
+                _leaveOnly = false
+                leaveResolved()
+                return
+            }
             closePanel()
+        }
+        onCancelled: {
+            if (_leaveOnly) {
+                _leaveOnly = false
+                leaveCancelled()
+            }
         }
     }
 
