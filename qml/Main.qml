@@ -1064,7 +1064,7 @@ ApplicationWindow {
             }
             onOpenCalibration: function(card) {
                 _statusLastCard = card
-                Helpers.createComponent("DialogCalibration.qml")
+                Helpers.createComponent("DialogCalibration.qml", {"initialSlug": card.slug || ""})
             }
             onOpenDeviceInformation: function(card) {
                 _statusLastCard = card

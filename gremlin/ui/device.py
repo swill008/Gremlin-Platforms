@@ -34,6 +34,7 @@ from gremlin.input_cache import DeviceDatabase
 from gremlin.logical_device import LogicalDevice
 from gremlin.profile import InputItem
 from gremlin.ui.hardware_profile import persist_log
+from gremlin.ui.module_calibration import values_for_module, write_axis
 from gremlin.signal import signal
 from gremlin.types import (
     InputType,
@@ -1382,6 +1383,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
 
         self._device = None
         self._device_uuid = None
+        self._module_slug = ""
         self._state = []
         self._calibration_fn = []
         self._active_calibrations = []
@@ -1525,16 +1527,17 @@ class AxisCalibration(QtCore.QAbstractListModel):
         Args:
             index: index of the axis whose data to save
         """
-        if self._device_uuid is None or self._device is None:
-            persist_log(f"Persist calibration skipped index={index} reason='no device'")
+        if self._device_uuid is None or self._device is None or not self._module_slug:
+            persist_log(f"Persist calibration skipped index={index} reason='no module'")
             return False
         if not (0 <= index < len(self._state)):
             persist_log(f"Persist calibration skipped index={index} reason='bad index'")
             return False
 
-        self._config.set_calibration(
-            self._device_uuid,
-            self._device.axis_map[index].axis_index,
+        axis_id = self._device.axis_map[index].axis_index
+        saved = write_axis(
+            self._module_slug,
+            axis_id,
             (
                 self._state[index]["low"],
                 self._state[index]["centerLow"],
@@ -1543,14 +1546,19 @@ class AxisCalibration(QtCore.QAbstractListModel):
                 self._state[index]["withCenter"],
             ),
         )
+        if not saved:
+            persist_log(
+                f"Persist calibration skipped slug={self._module_slug} axis={axis_id} reason='write failed'"
+            )
+            return False
         self._state[index]["unsavedChanges"] = False
         self._event_listener.reload_calibration(
             self._device.device_guid,
-            self._device.axis_map[index].axis_index,
+            axis_id,
         )
         self.emit_update(index)
         persist_log(
-            f"Persist calibration ok guid={self._device_uuid} axis={self._device.axis_map[index].axis_index}"
+            f"Persist calibration ok slug={self._module_slug} guid={self._device_uuid} axis={axis_id}"
         )
         return True
 
@@ -1593,35 +1601,17 @@ class AxisCalibration(QtCore.QAbstractListModel):
         )
 
     def _set_guid(self, guid: str) -> None:
-        if self._device is not None and guid == str(self._device.device_guid):
-            return
-
-        self.beginResetModel()
-        self._device = dill.DILL.get_device_information_by_guid(
-            dill.GUID.from_str(guid)
-        )
-        self._device_uuid = uuid.UUID(guid)
-        self._device_mapping = self._device_db.get_mapping(self._device)
-        self._state = []
-        self._calibration_fn = []
-        self._active_calibrations = []
-        self._initialize_state()
-        self.deviceChanged.emit()
-        self.modelReset.emit()
-        self.endResetModel()
+        return
 
     def _initialize_state(self) -> None:
         if self._device_uuid is None or self._device is None:
             return
 
         for i in range(self._device.axis_count):
-            # Register the device in the configuration system, does not
-            # change the calibration values if the device has previously been
-            # calibrated.
             key = (self._device_uuid, self._device.axis_map[i].axis_index)
-            self._config.init_calibration(*key)
-
-            calibration_data = self._config.get_calibration(*key)
+            calibration_data = values_for_module(
+                self._module_slug, self._device_uuid, key[1]
+            )
             self._state.append(
                 {
                     "identifier": common.input_to_ui_string(
@@ -1698,6 +1688,45 @@ class AxisCalibration(QtCore.QAbstractListModel):
 
             # Signal that the model has changed for a UI update
             self.emit_update(index)
+
+    def _get_module_slug(self) -> str:
+        return self._module_slug
+
+    def _set_module_slug(self, slug: str) -> None:
+        slug = str(slug or "").strip().lower()
+        if not slug or slug == self._module_slug:
+            return
+        from gremlin.ui.module_calibration import module_for_slug
+
+        row = module_for_slug(slug)
+        if row is None:
+            return
+        try:
+            device_uuid = uuid.UUID(str(row["guid"]))
+            device = dill.DILL.get_device_information_by_guid(
+                dill.GUID.from_str(str(row["guid"]))
+            )
+        except Exception:
+            return
+        if device is None:
+            return
+
+        self.beginResetModel()
+        self._module_slug = slug
+        self._device = device
+        self._device_uuid = device_uuid
+        self._device_mapping = self._device_db.get_mapping(self._device)
+        self._state = []
+        self._calibration_fn = []
+        self._active_calibrations = []
+        self._initialize_state()
+        self.deviceChanged.emit()
+        self.modelReset.emit()
+        self.endResetModel()
+
+    moduleSlug = QtCore.Property(
+        str, fget=_get_module_slug, fset=_set_module_slug, notify=deviceChanged
+    )
 
     guid = QtCore.Property(str, fset=_set_guid, notify=deviceChanged)
 

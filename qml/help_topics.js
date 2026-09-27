@@ -9,11 +9,10 @@ function topics() {
             "<p>Gremlin-Platforms reads your physical controllers and runs the actions in the loaded profile. A game or another program then sees the result, usually through vJoy, a logical device, or an Xbox controller.</p>"
             + "<p>Start from Home, or open a profile with File → Load Profile. Open Configuration for a device and use Add Action on an input. Turn Gremlin-Platforms on with Toggle when those actions should run. Turn it off when the physical devices should be left alone.</p>"),
         topic("Start", "What is saved where",
-            "<p>Four stores are kept separate. Saving one does not save the others.</p>"
+            "<p>Three stores are kept separate. Saving one does not save the others.</p>"
             + "<p><b>Profile.</b> Modes, bindings, and actions. File → Save Profile writes this file. File → Save Profile As writes a new one. Closing the program asks when the profile has changes that are not saved.</p>"
-            + "<p><b>Module file.</b> One file for each device. It holds the device picture, the configuration list’s look, and an output device’s look. The input module chooses which file that device uses. Button Map, Configure input module, and Configure output module write this file. Display options are written only when you press Save with module.</p>"
-            + "<p><b>Program settings.</b> Options, the Home layout, window sizes, and HiDHide choices. These are kept for the program, not inside one profile.</p>"
-            + "<p><b>Calibration.</b> The center and the ends of an axis. Save on that axis writes it. Closing Calibration, or choosing another device, asks when an axis is not saved.</p>"),
+            + "<p><b>Module file.</b> One file for each device. It holds the device picture, the configuration list’s look, an output device’s look, and the calibration for an input stick. The input module chooses which file that device uses. Button Map, Configure input module, Configure output module, and Calibration write this file. Display options are written only when you press Save with module.</p>"
+            + "<p><b>Program settings.</b> Options, the Home layout, window sizes, and HiDHide choices. These are kept for the program, not inside one profile.</p>"),
         topic("Start", "Toggle",
             "<p>Toggle makes the loaded profile live. While it is off, you are only editing. While it is on, inputs run their actions.</p>"
             + "<p>Use Toggle on the toolbar. It uses the accent color while Gremlin-Platforms is on. Turn it off before you change hardware, or before you close a game, if you want the physical devices visible again.</p>"),
@@ -111,8 +110,8 @@ function topics() {
             "<p>The viewers show live values. They do not change the profile.</p>"
             + "<p>Tools → Device Viewer shows every control on a device. Tools → vJoy Viewer shows the vJoy device an input is driving. Tools → Xbox Viewer shows the virtual Xbox control. The same viewers are on the toolbar. Leave one open while you move the stick.</p>"),
         topic("Tools", "Calibration",
-            "<p>Calibration sets the center and the ends of an axis so the full travel is used. It is stored with the program, not in the profile.</p>"
-            + "<p>Tools → Calibration. Choose the device. Move the axis, or type the values. The axis shows Not saved until you press its save button. A successful save says “Saved to calibration.” Closing the window, or choosing another device, asks when an axis is not saved. Save writes it. Discard returns to the last saved calibration.</p>"),
+            "<p>Calibration sets the center and the ends of an axis so the full travel is used. It is stored in that input module’s file, not in the profile.</p>"
+            + "<p>Tools → Calibration, or right-click an input module and choose Calibration. Choose the input module. Move the axis, or type the values. The axis shows Not saved until you press its save button. A successful save says “Saved to the module file.” Closing the window, or choosing another input module, asks when an axis is not saved. Save writes it. Discard returns to the last saved calibration. While that module is in use, the saved curve is applied to the live stick before any action sees it.</p>"),
         topic("Tools", "Device information",
             "<p>Device information shows the name and the identifiers Windows reports for a device.</p>"
             + "<p>Tools → Device Information. Select the device. Use the identifiers when two devices look alike.</p>"),

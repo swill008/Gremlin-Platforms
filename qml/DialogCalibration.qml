@@ -23,8 +23,9 @@ Window {
 
     title: "Calibration"
 
-    property string shownGuid: ""
-    property string pendingGuid: ""
+    property string shownSlug: ""
+    property string pendingSlug: ""
+    property string initialSlug: ""
     property bool allowClose: false
 
     ToolWindowMemory {
@@ -34,29 +35,31 @@ Window {
         defaultHeight: 600
     }
 
-    function chooseDevice(guid) {
-        var next = guid ? String(guid) : ""
-        if (!next.length || next === shownGuid)
+    function chooseModule(slug) {
+        var next = slug ? String(slug) : ""
+        if (!next.length || next === shownSlug)
             return
         if (_calib.hasUnsaved()) {
-            pendingGuid = next
-            var back = _deviceSelection.indexOfValue(shownGuid)
+            pendingSlug = next
+            var back = _moduleSelection.indexOfValue(shownSlug)
+            if (back < 0)
+                back = _moduleSelection.currentIndex
             if (back >= 0)
-                _deviceSelection.currentIndex = back
-            _saveGate.detail = "Calibration is not saved. Change device and it will be lost."
+                _moduleSelection.currentIndex = back
+            _saveGate.detail = "Calibration is not saved. Change input module and it will be lost."
             _saveGate.ask()
             return
         }
-        shownGuid = next
+        shownSlug = next
     }
 
     function finishLeave() {
-        if (pendingGuid.length) {
-            shownGuid = pendingGuid
-            pendingGuid = ""
-            var next = _deviceSelection.indexOfValue(shownGuid)
+        if (pendingSlug.length) {
+            shownSlug = pendingSlug
+            pendingSlug = ""
+            var next = _moduleSelection.indexOfValue(shownSlug)
             if (next >= 0)
-                _deviceSelection.currentIndex = next
+                _moduleSelection.currentIndex = next
             return
         }
         allowClose = true
@@ -66,25 +69,33 @@ Window {
     onClosing: (close) => {
         if (!allowClose && _calib.hasUnsaved()) {
             close.accepted = false
-            pendingGuid = ""
+            pendingSlug = ""
             _saveGate.detail = "Calibration is not saved. Close this window and it will be lost."
             _saveGate.ask()
             return
         }
         _axisView.model.destroy()
         _axisView.destroy()
-        _deviceData.destroy()
+        _modules.destroy()
         backend.resumeInputHighlighting()
     }
 
+    property bool _ready: false
+
     Component.onCompleted: () => {
+        _ready = true
         backend.pauseInputHighlighting()
+        if (initialSlug.length)
+            chooseModule(initialSlug)
     }
 
-    DeviceListModel {
-        id: _deviceData
+    onInitialSlugChanged: {
+        if (_ready && initialSlug.length)
+            chooseModule(initialSlug)
+    }
 
-        deviceType: "physical"
+    CalibrationModuleModel {
+        id: _modules
     }
 
     ColumnLayout {
@@ -97,22 +108,34 @@ Window {
 
             Label {
                 Layout.preferredWidth: 150
-                text: "Device to calibrate"
+                text: "Input module"
             }
 
             ComboBox {
-                id: _deviceSelection
+                id: _moduleSelection
 
-                model: _deviceData
+                model: _modules
                 textRole: "name"
-                valueRole: "guid"
+                valueRole: "slug"
                 implicitContentWidthPolicy: ComboBox.WidestText
-                onActivated: _calibrationDialog.chooseDevice(currentValue)
+                onActivated: _calibrationDialog.chooseModule(currentValue)
                 onCurrentValueChanged: {
-                    if (!_calibrationDialog.shownGuid.length && currentValue)
-                        _calibrationDialog.shownGuid = String(currentValue)
+                    if (!_calibrationDialog.shownSlug.length && currentValue)
+                        _calibrationDialog.shownSlug = String(currentValue)
                 }
             }
+        }
+
+        Label {
+            visible: _modules.count === 0
+            text: "No connected input module."
+            color: "#A1A1AA"
+        }
+
+        Label {
+            visible: _modules.count > 0 && _calibrationDialog.shownSlug.length > 0 && _axisView.count === 0
+            text: "This input module is not connected."
+            color: "#A1A1AA"
         }
 
         JGListView {
@@ -125,7 +148,7 @@ Window {
 
             model: AxisCalibration {
                 id: _calib
-                guid: _calibrationDialog.shownGuid
+                moduleSlug: _calibrationDialog.shownSlug
             }
 
             delegate: CalibrationItem {
@@ -300,7 +323,7 @@ Window {
                         onClicked: {
                             var ok = _axisView.model.save(index)
                             _saveGate.announce(ok,
-                                ok ? "Saved to calibration."
+                                ok ? "Saved to the module file."
                                    : "Not written. It is still only on this screen.")
                         }
 
@@ -374,7 +397,7 @@ Window {
             _calib.discard()
             _calibrationDialog.finishLeave()
         }
-        onCancelled: _calibrationDialog.pendingGuid = ""
+        onCancelled: _calibrationDialog.pendingSlug = ""
     }
 
     DebugFileLine {
