@@ -82,6 +82,18 @@ class LiveLog(QtCore.QObject):
         self.textChanged.emit()
 
     @QtCore.Slot()
+    def clear(self) -> None:
+        dest = log_path()
+        try:
+            with _LOCK:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_text("", encoding="utf-8")
+        except OSError:
+            return
+        self._text = ""
+        self.textChanged.emit()
+
+    @QtCore.Slot()
     def copyAll(self) -> None:
         clipboard = QtGui.QGuiApplication.clipboard()
         if clipboard is not None:

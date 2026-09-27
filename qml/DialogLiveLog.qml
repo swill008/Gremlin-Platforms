@@ -144,6 +144,13 @@ Window {
         RowLayout {
             Layout.alignment: Qt.AlignRight
             Button {
+                text: qsTr("Clear log")
+                onClicked: {
+                    _win._follow = true
+                    _log.clear()
+                }
+            }
+            Button {
                 text: qsTr("Copy all logs")
                 onClicked: _log.copyAll()
             }
