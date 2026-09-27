@@ -26,6 +26,7 @@ KEY_MENU_H = "button-map-menu-height"
 KEY_DISPLAY_PANELS = "display-panels"
 KEY_CLOSE_PANE = "close-pane-after-ok"
 KEY_PANE_W = "action-pane-width"
+KEY_TOOLS = "tool-windows"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
@@ -46,6 +47,7 @@ def _ensure() -> Configuration:
         (KEY_DISPLAY_PANELS, PropertyType.String, "{}"),
         (KEY_CLOSE_PANE, PropertyType.Bool, False),
         (KEY_PANE_W, PropertyType.Int, 560),
+        (KEY_TOOLS, PropertyType.String, "{}"),
     )
     for name, data_type, initial in specs:
         props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
@@ -166,6 +168,82 @@ def save_window(window: QtGui.QWindow) -> None:
     cfg.set(SECTION, GROUP, KEY_H, int(window.height()))
 
 
+def _tool_map(cfg: Configuration) -> dict:
+    raw = cfg.value(SECTION, GROUP, KEY_TOOLS) or "{}"
+    try:
+        data = json.loads(str(raw))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return data
+
+
+def _clamp_on_screen(rect: QtCore.QRect, screen: QtGui.QScreen) -> QtCore.QRect:
+    avail = screen.availableGeometry()
+    width = min(max(rect.width(), 1), avail.width())
+    height = min(max(rect.height(), 1), avail.height())
+    x = min(max(rect.x(), avail.x()), avail.x() + avail.width() - width)
+    y = min(max(rect.y(), avail.y()), avail.y() + avail.height() - height)
+    return QtCore.QRect(x, y, width, height)
+
+
+def restore_tool(window: QtGui.QWindow, name: str, default_w: int, default_h: int) -> None:
+    entry = _tool_map(_ensure()).get(str(name)) or {}
+    if not isinstance(entry, dict):
+        entry = {}
+    try:
+        width = int(entry.get("w", default_w))
+        height = int(entry.get("h", default_h))
+    except (TypeError, ValueError):
+        width, height = int(default_w), int(default_h)
+    width = max(200, width)
+    height = max(160, height)
+    app = QtGui.QGuiApplication.instance()
+    saved = None
+    try:
+        if "x" in entry and "y" in entry:
+            saved = QtCore.QRect(int(entry["x"]), int(entry["y"]), width, height)
+    except (TypeError, ValueError):
+        saved = None
+    screen = _target_screen(saved) if saved is not None else None
+    if saved is not None and screen is not None and _intersects_enough(saved, screen):
+        window.setVisibility(QtGui.QWindow.Visibility.Windowed)
+        window.setGeometry(_clamp_on_screen(saved, screen))
+        if entry.get("max"):
+            window.setVisibility(QtGui.QWindow.Visibility.Maximized)
+        return
+    if screen is None and app is not None:
+        screen = app.screenAt(QtGui.QCursor.pos()) or app.primaryScreen()
+    if screen is None:
+        window.setWidth(width)
+        window.setHeight(height)
+        return
+    avail = screen.availableGeometry()
+    width = min(width, avail.width())
+    height = min(height, avail.height())
+    x = avail.x() + max(0, (avail.width() - width) // 2)
+    y = avail.y() + max(0, (avail.height() - height) // 2)
+    window.setVisibility(QtGui.QWindow.Visibility.Windowed)
+    window.setGeometry(QtCore.QRect(x, y, width, height))
+
+
+def save_tool(window: QtGui.QWindow, name: str) -> None:
+    cfg = _ensure()
+    saved = _tool_map(cfg)
+    key = str(name)
+    entry = saved.get(key) if isinstance(saved.get(key), dict) else {}
+    maximized = window.visibility() == QtGui.QWindow.Visibility.Maximized
+    entry["max"] = bool(maximized)
+    if not maximized:
+        entry["x"] = int(window.x())
+        entry["y"] = int(window.y())
+        entry["w"] = int(window.width())
+        entry["h"] = int(window.height())
+    saved[key] = entry
+    cfg.set(SECTION, GROUP, KEY_TOOLS, json.dumps(saved, sort_keys=True))
+
+
 @ta.QmlElement
 class WindowPlacement(QtCore.QObject):
     def __init__(self, parent: ta.OQO = None) -> None:
@@ -183,6 +261,18 @@ class WindowPlacement(QtCore.QObject):
         if window is None:
             return
         save_window(window)
+
+    @QtCore.Slot(QtCore.QObject, str, int, int)
+    def restoreTool(self, window: QtCore.QObject, name: str, default_w: int, default_h: int) -> None:
+        if window is None:
+            return
+        restore_tool(window, name, default_w, default_h)
+
+    @QtCore.Slot(QtCore.QObject, str)
+    def saveTool(self, window: QtCore.QObject, name: str) -> None:
+        if window is None:
+            return
+        save_tool(window, name)
 
     @QtCore.Slot(result=int)
     def buttonMapMenuWidth(self) -> int:
