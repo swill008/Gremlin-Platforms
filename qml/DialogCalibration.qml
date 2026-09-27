@@ -13,8 +13,9 @@ import Gremlin.Style
 Window {
     id: _calibrationDialog
 
+    width: 850
+    height: 600
     minimumWidth: 850
-    maximumWidth: 850
     minimumHeight: 600
 
     color: Style.background
@@ -22,20 +23,58 @@ Window {
 
     title: "Calibration"
 
-    Shortcut { sequence: "Esc"; onActivated: {} }
-    Shortcut { sequence: "Return"; onActivated: {} }
-    Shortcut { sequence: "Enter"; onActivated: {} }
+    property string shownGuid: ""
+    property string pendingGuid: ""
+    property bool allowClose: false
 
+    ToolWindowMemory {
+        host: _calibrationDialog
+        name: "calibration"
+        defaultWidth: 850
+        defaultHeight: 600
+    }
 
-    Connections {
-        target: _calibrationDialog
-
-        function onClosing() {
-            _axisView.model.destroy()
-            _axisView.destroy()
-            _deviceData.destroy()
-            backend.resumeInputHighlighting()
+    function chooseDevice(guid) {
+        var next = guid ? String(guid) : ""
+        if (!next.length || next === shownGuid)
+            return
+        if (_calib.hasUnsaved()) {
+            pendingGuid = next
+            var back = _deviceSelection.indexOfValue(shownGuid)
+            if (back >= 0)
+                _deviceSelection.currentIndex = back
+            _saveGate.detail = "Calibration is not saved. Change device and it will be lost."
+            _saveGate.ask()
+            return
         }
+        shownGuid = next
+    }
+
+    function finishLeave() {
+        if (pendingGuid.length) {
+            shownGuid = pendingGuid
+            pendingGuid = ""
+            var next = _deviceSelection.indexOfValue(shownGuid)
+            if (next >= 0)
+                _deviceSelection.currentIndex = next
+            return
+        }
+        allowClose = true
+        close()
+    }
+
+    onClosing: (close) => {
+        if (!allowClose && _calib.hasUnsaved()) {
+            close.accepted = false
+            pendingGuid = ""
+            _saveGate.detail = "Calibration is not saved. Close this window and it will be lost."
+            _saveGate.ask()
+            return
+        }
+        _axisView.model.destroy()
+        _axisView.destroy()
+        _deviceData.destroy()
+        backend.resumeInputHighlighting()
     }
 
     Component.onCompleted: () => {
@@ -68,6 +107,11 @@ Window {
                 textRole: "name"
                 valueRole: "guid"
                 implicitContentWidthPolicy: ComboBox.WidestText
+                onActivated: _calibrationDialog.chooseDevice(currentValue)
+                onCurrentValueChanged: {
+                    if (!_calibrationDialog.shownGuid.length && currentValue)
+                        _calibrationDialog.shownGuid = String(currentValue)
+                }
             }
         }
 
@@ -80,7 +124,8 @@ Window {
             Layout.fillHeight: true
 
             model: AxisCalibration {
-                guid: _deviceSelection.currentValue
+                id: _calib
+                guid: _calibrationDialog.shownGuid
             }
 
             delegate: CalibrationItem {
@@ -310,7 +355,21 @@ Window {
         value: 0
     }
 
-    DismissibleDialog { id: _saveGate }
+    DismissibleDialog {
+        id: _saveGate
+        onSaveChosen: {
+            if (!_calib.saveAll()) {
+                _saveGate.announce(false, "Calibration was not written.")
+                return
+            }
+            _calibrationDialog.finishLeave()
+        }
+        onDiscardChosen: {
+            _calib.discard()
+            _calibrationDialog.finishLeave()
+        }
+        onCancelled: _calibrationDialog.pendingGuid = ""
+    }
 
     DebugFileLine {
         anchors.left: parent.left
