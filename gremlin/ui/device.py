@@ -1554,6 +1554,30 @@ class AxisCalibration(QtCore.QAbstractListModel):
         )
         return True
 
+    @QtCore.Slot(result=bool)
+    def hasUnsaved(self) -> bool:
+        return any(bool(row.get("unsavedChanges")) for row in self._state)
+
+    @QtCore.Slot(result=bool)
+    def saveAll(self) -> bool:
+        ok = True
+        for index, row in enumerate(list(self._state)):
+            if row.get("unsavedChanges"):
+                ok = self.save(index) and ok
+        return ok
+
+    @QtCore.Slot()
+    def discard(self) -> None:
+        if self._device is None or self._device_uuid is None:
+            return
+        self.beginResetModel()
+        self._state = []
+        self._calibration_fn = []
+        self._active_calibrations = []
+        self._initialize_state()
+        self.endResetModel()
+        self.deviceChanged.emit()
+
     def _update_calibration(self, index: int) -> None:
         """Creates the calibration function based on the stored values.
 
