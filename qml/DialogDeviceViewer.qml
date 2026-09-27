@@ -23,6 +23,13 @@ Window {
 
     title: "Device Viewer"
 
+    ToolWindowMemory {
+        host: _deviceViewer
+        name: "device-viewer"
+        defaultWidth: 1400
+        defaultHeight: 800
+    }
+
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
