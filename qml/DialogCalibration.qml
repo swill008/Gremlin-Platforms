@@ -300,8 +300,8 @@ Window {
                         onClicked: {
                             var ok = _axisView.model.save(index)
                             _saveGate.announce(ok,
-                                ok ? "Calibration was written to the configuration file."
-                                   : "Calibration was not written.")
+                                ok ? "Saved to calibration."
+                                   : "Not written. It is still only on this screen.")
                         }
 
                         Rectangle {
@@ -309,6 +309,12 @@ Window {
                             color: unsavedChanges ? "gold" : "transparent"
                         }
                     }
+                }
+                Label {
+                    visible: unsavedChanges
+                    text: "Not saved"
+                    color: "#FBBF24"
+                    font.pixelSize: 11
                 }
 
                 Button {
@@ -359,7 +365,7 @@ Window {
         id: _saveGate
         onSaveChosen: {
             if (!_calib.saveAll()) {
-                _saveGate.announce(false, "Calibration was not written.")
+                _saveGate.announce(false, "Not written. It is still only on this screen.")
                 return
             }
             _calibrationDialog.finishLeave()
