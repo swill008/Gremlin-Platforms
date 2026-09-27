@@ -59,7 +59,7 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "signal.inputItemChanged.connect(self.reload)" not in py
     assert "def assignment_summary" in py
     text = _QML.read_text(encoding="utf-8")
-    assert 'text: "Configuration — Display"' in text
+    assert 'text: "Input Configuration — Display"' in text
     assert "Layout.preferredWidth: 360" in text
     assert 'text: "Save with module"' in text
     assert "onClicked: resetCatalog()" in text

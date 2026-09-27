@@ -1153,7 +1153,7 @@ ApplicationWindow {
                         }
                         Label {
                             visible: configDirection !== "dest"
-                            text: "Configuration"
+                            text: "Input Configuration"
                             font.pixelSize: 22
                             font.bold: true
                         }

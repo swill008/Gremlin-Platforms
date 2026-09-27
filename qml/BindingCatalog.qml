@@ -1485,7 +1485,7 @@ Item {
 
                 RowLayout {
                     Label {
-                        text: "Configuration — Display"
+                        text: "Input Configuration — Display"
                         color: "#E4E4E7"
                         font.bold: true
                         font.pixelSize: 13
