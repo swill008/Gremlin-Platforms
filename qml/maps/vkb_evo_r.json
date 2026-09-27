@@ -1,6 +1,7 @@
 {
   "kind": "control.hardware",
   "device": " VKBsim Gladiator EVO R  ",
+  "direction": "source",
   "space": "world",
   "page": 32000,
   "pageW": 32000,
