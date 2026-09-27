@@ -24,6 +24,13 @@ Window {
 
     title: targetName.length ? ("Button Mapper — " + targetName) : "Button Mapper"
 
+    ToolWindowMemory {
+        host: _buttonMap
+        name: "button-map"
+        defaultWidth: 1180
+        defaultHeight: 980
+    }
+
     onClosing: (e) => {
         if (_allowClose || !editing)
             return
