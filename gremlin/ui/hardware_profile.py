@@ -238,13 +238,8 @@ def _hid(node: dict) -> int | None:
 
 
 def _infer_direction(doc: dict, path: Path) -> str:
-    direction = str(doc.get("direction") or "").strip().lower()
-    if direction in ("dest", "target", "output"):
-        return "dest"
-    if direction == "source":
-        return "source"
-    name = str(doc.get("device") or path.stem).strip().lower()
-    if path.stem.lower().startswith("vjoy") or name.startswith("vjoy"):
+    del doc
+    if path.stem.lower().startswith("vjoy"):
         return "dest"
     return "source"
 

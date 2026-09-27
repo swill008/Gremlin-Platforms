@@ -1837,7 +1837,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, str, result=bool)
     def saveClaim(self, device_name: str, direction: str) -> bool:
         name = device_name or self._device_name
-        path = _maps_dir() / f"{resolve_module_slug(name, self._guid)}.json"
+        slug = _slug(name)
+        path = _maps_dir() / f"{slug}.json"
         doc: dict = {}
         if path.is_file():
             try:
@@ -1871,11 +1872,11 @@ class DriverInputModel(QtCore.QAbstractListModel):
         doc.setdefault("pageH", 18000)
         doc.setdefault("photoWell", 0.75)
         doc.setdefault("nodes", [])
-        folder = _maps_dir() / resolve_module_slug(name, self._guid)
+        folder = _maps_dir() / slug
         if folder.is_dir():
             photos = sorted(p for p in folder.glob("photo.*") if p.is_file())
             if photos:
-                doc["image"] = f"qml/maps/{resolve_module_slug(name, self._guid)}/{photos[-1].name}"
+                doc["image"] = f"qml/maps/{slug}/{photos[-1].name}"
         path.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(doc, indent=2) + "\n"
         _plog(
@@ -1905,7 +1906,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         if [int(n) for n in (got.get("hats") or [])] != hats:
             _plog("save claim mismatch", path=str(path), field="hats", wrote=hats, read=got.get("hats"))
             return False
-        bind_module_file(name, self._guid, resolve_module_slug(name, self._guid))
+        bind_module_file(name, self._guid, slug)
         signal.configChanged.emit()
         _plog("save claim ok", path=str(path), bytes=path.stat().st_size)
         self._last_saved_path = str(path)
