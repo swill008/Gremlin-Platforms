@@ -1,6 +1,6 @@
 {
   "kind": "control.hardware",
-  "device": " VKBsim Gladiator EVO OT L  ",
+  "device": "vJoy 1",
   "space": "world",
   "page": 32000,
   "pageW": 32000,
@@ -10,7 +10,7 @@
   "imageWidth": 1348,
   "imageHeight": 1380,
   "photo": {
-    "scale": 1.33,
+    "scale": 1.0,
     "offX": 0.0,
     "offY": 0.0,
     "rot": 0.0
@@ -22,9 +22,9 @@
     "snapOn": true,
     "snapEntOn": true,
     "gridSize": 4,
-    "viewPct": 1,
-    "panX": 0,
-    "panY": 0
+    "viewPct": 1.5,
+    "panX": 8.666666984558105,
+    "panY": 24.66666603088379
   },
   "nodes": [
     {
@@ -38,7 +38,13 @@
       "chipFx": 0.652125,
       "chipFy": 0.1691111111111111,
       "pin": "left",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.6171875,
+          "fy": 0.17999999999999994,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -60,7 +66,13 @@
             "type": "hot",
             "id": "h1"
           },
-          "spines": []
+          "spines": [
+            {
+              "fx": 0.6171875,
+              "fy": 0.17999999999999994,
+              "curve": true
+            }
+          ]
         }
       ],
       "from": {
@@ -251,7 +263,13 @@
       "chipFx": 0.676548496462264,
       "chipFy": 0.26840251572327045,
       "pin": "left",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.6301492482311319,
+          "fy": 0.26697903563941294,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -273,7 +291,13 @@
             "type": "hot",
             "id": "b3"
           },
-          "spines": []
+          "spines": [
+            {
+              "fx": 0.6301492482311319,
+              "fy": 0.26697903563941294,
+              "curve": true
+            }
+          ]
         }
       ],
       "hotSize": 4,
@@ -451,8 +475,8 @@
       "label": "",
       "nx": 0.385383759733037,
       "ny": 0.24888888888888894,
-      "chipFx": 0.380991081957547,
-      "chipFy": 0.2484025157232705,
+      "chipFx": 0.3846545498381037,
+      "chipFy": 0.24840251572327043,
       "pin": "right",
       "spines": [
         {
@@ -502,8 +526,8 @@
         "type": "hot",
         "id": "b4"
       },
-      "hotFx": 0.373,
-      "hotFy": 0.26
+      "hotFx": 0.397875,
+      "hotFy": 0.26222222222222225
     },
     {
       "id": "p2122",
@@ -653,10 +677,16 @@
       "label": "",
       "nx": 0.39038684958596,
       "ny": 0.42222222222222233,
-      "chipFx": 0.411323481721698,
-      "chipFy": 0.42452830188679247,
+      "chipFx": 0.3941586334745763,
+      "chipFy": 0.43054329673453434,
       "pin": "right",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.4273077539976075,
+          "fy": 0.4295578737929126,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -671,21 +701,27 @@
           "id": "b5_L0",
           "from": {
             "type": "free",
-            "fx": 0.442740507995215,
-            "fy": 0.422893525363603
+            "fx": 0.45508474562801204,
+            "fy": 0.4404896426634899
           },
           "to": {
             "type": "hot",
             "id": "b5"
           },
-          "spines": []
+          "spines": [
+            {
+              "fx": 0.4273077539976075,
+              "fy": 0.4295578737929126,
+              "curve": true
+            }
+          ]
         }
       ],
       "hotSize": 4,
       "from": {
         "type": "free",
-        "fx": 0.442740507995215,
-        "fy": 0.422893525363603
+        "fx": 0.45508474562801204,
+        "fy": 0.4404896426634899
       },
       "to": {
         "type": "hot",
@@ -705,7 +741,13 @@
       "chipFx": 0.503651580103665,
       "chipFy": 0.6165012581735122,
       "pin": "bottom",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.49021482606878164,
+          "fy": 0.6752506290867561,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -727,7 +769,13 @@
             "type": "hot",
             "id": "b28"
           },
-          "spines": []
+          "spines": [
+            {
+              "fx": 0.49021482606878164,
+              "fy": 0.6752506290867561,
+              "curve": true
+            }
+          ]
         }
       ],
       "from": {
@@ -754,7 +802,13 @@
       "chipFx": 0.46832233932783,
       "chipFy": 0.6165012581735122,
       "pin": "bottom",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.45939978195205056,
+          "fy": 0.6684728513089783,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -776,7 +830,13 @@
             "type": "hot",
             "id": "b27"
           },
-          "spines": []
+          "spines": [
+            {
+              "fx": 0.45939978195205056,
+              "fy": 0.6684728513089783,
+              "curve": true
+            }
+          ]
         }
       ],
       "to": {
@@ -803,7 +863,13 @@
       "chipFx": 0.434194389069634,
       "chipFy": 0.6165012581735122,
       "pin": "bottom",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.42958580682295255,
+          "fy": 0.6654728513089784,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -825,7 +891,13 @@
             "type": "hot",
             "id": "b29"
           },
-          "spines": []
+          "spines": [
+            {
+              "fx": 0.42958580682295255,
+              "fy": 0.6654728513089784,
+              "curve": true
+            }
+          ]
         }
       ],
       "from": {
@@ -861,7 +933,13 @@
       "chipFx": 0.437258952748879,
       "chipFy": 0.8484444444444444,
       "pin": "top",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.4394107263744395,
+          "fy": 0.8266666666666668,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -883,7 +961,13 @@
             "type": "hot",
             "id": "p2526"
           },
-          "spines": []
+          "spines": [
+            {
+              "fx": 0.4394107263744395,
+              "fy": 0.8266666666666668,
+              "curve": true
+            }
+          ]
         }
       ],
       "from": {
@@ -910,7 +994,13 @@
       "chipFx": 0.396125,
       "chipFy": 0.8591991614255765,
       "pin": "top",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.4034451800847458,
+          "fy": 0.821377358490566,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -932,7 +1022,13 @@
             "type": "hot",
             "id": "a4"
           },
-          "spines": []
+          "spines": [
+            {
+              "fx": 0.4034451800847458,
+              "fy": 0.821377358490566,
+              "curve": true
+            }
+          ]
         }
       ],
       "to": {
@@ -968,7 +1064,13 @@
       "chipFx": 0.3665,
       "chipFy": 0.8484444444444444,
       "pin": "top",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.37790624999999994,
+          "fy": 0.8132222222222222,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -990,7 +1092,13 @@
             "type": "hot",
             "id": "p2324"
           },
-          "spines": []
+          "spines": [
+            {
+              "fx": 0.37790624999999994,
+              "fy": 0.8132222222222222,
+              "curve": true
+            }
+          ]
         }
       ],
       "hotSize": 4,
@@ -998,9 +1106,6 @@
       "hotFy": 0.7780000000000001
     }
   ],
-  "direction": "source",
-  "boundName": " VKBsim Gladiator EVO OT L  ",
-  "boundGuidLocal": "092E91F0-A6E3-11F1-8002-444553540000",
   "claim": {
     "buttons": [
       1,
@@ -1045,36 +1150,195 @@
       1
     ],
     "keys": [],
-    "friendly": {
-      "button:1": "Button 1",
-      "button:2": "Button 2",
-      "button:3": "Axis 3",
-      "button:4": "Button 4",
-      "button:5": "Button 5",
-      "button:6": "Button 6",
-      "button:7": "Button 7",
-      "button:8": "Button 8",
-      "button:9": "Button 9",
-      "button:10": "Button 10",
-      "button:11": "Button 11",
-      "button:12": "Button 12",
-      "button:13": "Button 13",
-      "button:14": "Button 14",
-      "button:15": "Button 15",
-      "button:16": "Button 16",
-      "button:17": "Button 17",
-      "button:18": "Button 18",
-      "button:19": "Button 19",
-      "button:20": "Button 20",
-      "button:21": "Button 21",
-      "button:22": "Button 22",
-      "button:23": "Button 23",
-      "button:24": "Button 24",
-      "button:25": "Button 25",
-      "button:26": "Button 26",
-      "button:27": "Button 27",
-      "button:28": "Button 28",
-      "button:29": "Button 29"
+    "friendly": {}
+  },
+  "direction": "dest",
+  "boundGuidLocal": "CAA59390-A6E0-11F1-800E-444553540000",
+  "boundName": "vJoy 1",
+  "view": {
+    "layout": "pads_meters_grid",
+    "padAX": 1,
+    "padAY": 2,
+    "padBX": 4,
+    "padBY": 5,
+    "showPads": true,
+    "showHats": true,
+    "showMeters": true,
+    "meterStyle": "vertical",
+    "meterWidth": 23,
+    "meters": [],
+    "buttonStyle": "tile",
+    "buttonSize": "medium",
+    "buttonColumns": 12,
+    "buttonWidth": 64,
+    "colorLive": "#22C55E",
+    "colorMeter": "#3B82F6",
+    "colorPress": "#22C55E",
+    "colorScreen": "#00000000",
+    "screenImage": "",
+    "sections": {
+      "screen": false,
+      "layout": false,
+      "pads": false,
+      "meters": false,
+      "buttons": false,
+      "colors": false
     }
+  },
+  "catalog": {
+    "listPadding": 8,
+    "rowSpacing": 4,
+    "parentHeight": 50,
+    "childHeight": 36,
+    "parentAlign": "left",
+    "parentLeft": 0,
+    "parentRight": 0,
+    "parentWidthPct": 100,
+    "childAlign": "left",
+    "childLeft": 24,
+    "childRight": 24,
+    "childWidthPct": 50,
+    "parentFont": 13,
+    "childFont": 12,
+    "summaryFont": 12,
+    "parentBold": true,
+    "showChildren": true,
+    "showLiveBars": true,
+    "showLeds": true,
+    "showSummary": true,
+    "rowRadius": 3,
+    "nameColW": 180,
+    "childNameColW": 160,
+    "rowInnerPad": 10,
+    "editorIndent": 12,
+    "editorAlign": "left",
+    "editorRight": 0,
+    "editorWidthPct": 100,
+    "editorPad": 10,
+    "editorGap": 4,
+    "editorRadius": 3,
+    "editorBorderW": 1,
+    "editorAccentW": 3,
+    "showEditorAccent": true,
+    "colorParent": "#111113",
+    "colorChild": "#111113",
+    "colorSelected": "#27272A",
+    "colorText": "#E4E4E7",
+    "colorMuted": "#A1A1AA",
+    "colorLive": "#22C55E",
+    "colorBorder": "#3F3F46",
+    "colorSelectBorder": "#E4E4E7",
+    "colorEditor": "#0F2744",
+    "colorEditorBorder": "#3B82F6",
+    "colorEditorAccent": "#3B82F6",
+    "groupBetween": 4,
+    "groupInside": 5,
+    "groupAlign": "left",
+    "groupLeft": 0,
+    "groupRight": 0,
+    "groupWidthPct": 100,
+    "groupPadShape": "box",
+    "groupPad": 48,
+    "groupPadTop": 48,
+    "groupPadRight": 48,
+    "groupPadBottom": 48,
+    "groupPadLeft": 48,
+    "groupRadius": 0,
+    "colorGroup": "#00000000",
+    "listPadShape": "sides",
+    "listPad": 8,
+    "listPadTop": 0,
+    "listPadRight": 8,
+    "listPadBottom": 0,
+    "listPadLeft": 8,
+    "parentPadShape": "sides",
+    "parentPad": 10,
+    "parentPadTop": 0,
+    "parentPadRight": 8,
+    "parentPadBottom": 0,
+    "parentPadLeft": 10,
+    "childPadShape": "sides",
+    "childPad": 10,
+    "childPadTop": 0,
+    "childPadRight": 8,
+    "childPadBottom": 0,
+    "childPadLeft": 10,
+    "childRadius": 3,
+    "editorPadShape": "box",
+    "editorPadTop": 10,
+    "editorPadRight": 10,
+    "editorPadBottom": 10,
+    "editorPadLeft": 10,
+    "colorScreen": "#00000000",
+    "screenImage": "",
+    "sections": {
+      "screen": false,
+      "shown": false,
+      "list": false,
+      "group": false,
+      "parent": false,
+      "child": false,
+      "text": false,
+      "selection": false,
+      "editor": false
+    }
+  },
+  "calibration": {
+    "1": [
+      -32768,
+      0,
+      0,
+      32767,
+      true
+    ],
+    "2": [
+      -32768,
+      0,
+      0,
+      32767,
+      true
+    ],
+    "3": [
+      -32768,
+      0,
+      0,
+      32767,
+      true
+    ],
+    "4": [
+      -32768,
+      0,
+      0,
+      32767,
+      true
+    ],
+    "5": [
+      -32768,
+      0,
+      0,
+      32767,
+      true
+    ],
+    "6": [
+      -32768,
+      0,
+      0,
+      32767,
+      true
+    ],
+    "7": [
+      -32768,
+      0,
+      0,
+      32767,
+      true
+    ],
+    "8": [
+      -32768,
+      0,
+      0,
+      32767,
+      true
+    ]
   }
 }

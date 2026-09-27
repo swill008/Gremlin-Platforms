@@ -1,10 +1,10 @@
 {
   "kind": "control.hardware",
-  "device": "vJoy 1",
+  "device": " VKBsim Gladiator EVO OT L  ",
   "image": "qml/maps/vjoy_1/photo.jpg",
-  "direction": "dest",
-  "boundName": "vJoy 1",
-  "boundGuidLocal": "CAA59390-A6E0-11F1-800E-444553540000",
+  "direction": "source",
+  "boundName": " VKBsim Gladiator EVO OT L  ",
+  "boundGuidLocal": "092E91F0-A6E3-11F1-8002-444553540000",
   "claim": {
     "buttons": [
       1,
