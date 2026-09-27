@@ -534,9 +534,9 @@ Item {
             ok = moduleModel.saveCatalogConfig(claimDeviceName, device ? device.guid : "", JSON.stringify(catalogPayload()))
         if (ok) {
             rememberCatalog()
-            _saveGate.announce(true, "Display options were written to the module file.")
+            _saveGate.announce(true, "Saved to the module file.")
         } else {
-            _saveGate.announce(false, "Display options were not written. They are still only on this screen.")
+            _saveGate.announce(false, "Not written. It is still only on this screen.")
         }
     }
 
