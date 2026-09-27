@@ -22,7 +22,7 @@ Window {
     color: Style.background
     Universal.theme: Style.theme
 
-    title: targetName.length ? ("Button Mapper — " + targetName) : "Button Mapper"
+    title: targetName.length ? ("Button Map — " + targetName) : "Button Map"
 
     ToolWindowMemory {
         host: _buttonMap
@@ -539,14 +539,14 @@ Window {
         if (!_hw.save(targetName, payload)) {
             saveOk = false
             if (report)
-                _saveGate.announce(false, "The map was not written. It is still only on this screen.")
+                _saveGate.announce(false, "Not written. It is still only on this screen.")
             return false
         }
         var check = parseDoc(_hw.load(targetName))
         if (!check || !check.nodes) {
             saveOk = false
             if (report)
-                _saveGate.announce(false, "The map was written but could not be read back.")
+                _saveGate.announce(false, "Saved to the module file, but it could not be read back.")
             return false
         }
         liveNodes = JSON.parse(JSON.stringify(nodes))
@@ -556,7 +556,7 @@ Window {
         hydrateOverlays(liveNodes)
         saveOk = true
         if (report)
-            _saveGate.announce(true, "Mapping saved.")
+            _saveGate.announce(true, "Saved to the module file.")
         return true
     }
 
@@ -768,7 +768,7 @@ Window {
 
     Dialog {
         id: _helpDlg
-        title: "Button Map Editor — Help"
+        title: "Button Map — Help"
         modal: true
         anchors.centerIn: parent
         width: 640
@@ -787,7 +787,7 @@ Window {
             model: [
                 {
                     h: "Overview",
-                    b: "Button Map is a photo of the VKBsim Gladiator EVO R with chips on the hardware contacts. File → Edit Mapping starts a session. The live window uses the same layout; pressing the stick still lights the matching chip. Layout does not change bindings.\n\nFile → Save writes control.hardware (qml/maps/vkb_evo_r.json) and becomes the live map. File → Cancel drops the session. Closing the main Gremlin window while Button Map is open runs the same unsaved check. Closing this window with unsaved work asks first.\nF1 or Help → Editor help opens this page."
+                    b: "Button Map is a picture of the selected device. Each chip marks one control. File → Edit Mapping starts an edit. The live view uses the same layout, and a press still lights the matching chip. Moving a chip does not change the action bound to that control.\n\nFile → Save writes the layout to this device’s module file. A successful save says “Saved to the module file.” File → Cancel drops the edit. Closing this window asks when the edit is not saved.\nF1 opens this page."
                 },
                 {
                     h: "World page",
@@ -795,7 +795,7 @@ Window {
                 },
                 {
                     h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Saved appears. Click outside it or Esc to dismiss. If the write or re-read fails, Save failed stays up until OK.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nFit to photo frame — once, if the saved layout is twice as large as the photo. Then Save.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExport map… — Save As a zip named after this hardware. Confirm the photo, then write.\nImport map… — pick a zip, confirm the device photo, then replace that device profile.\nClose — close the window. Unsaved work still warns."
+                    b: "Edit Mapping — start the editor.\nSave — write this device’s module file. The editor stays open. A successful save says “Saved to the module file.” If the write fails, the message stays up until OK.\nCancel — leave without writing.\nReset layout — send every chip back to the pool. Inputs still light.\nFit to photo frame — used once when a saved layout is much larger than the photo. Then Save.\nChoose background… — pick a photo under the map.\nClear image — restore the picture from the module.\nExport map… — write a zip named after this device. Confirm the photo, then write.\nImport map… — pick a zip, confirm the device photo, then replace this device’s layout.\nClose — close the window. Unsaved work still asks."
                 },
                 {
                     h: "Edit menu",
@@ -819,7 +819,7 @@ Window {
                 },
                 {
                     h: "Format and Align",
-                    b: "Format and Align are first-level drawers, not inside Group.\nFormat → 5-Way (five-member hat groups only):\n  Plus cluster — Up / Left / Push / Right / Down cross. Group name once. One leader.\n  Mini hat — compact U/D/L/R/C glyph.\n  Named card — header plus role-only rows.\n  Radial leaders — spokes from the group (can crowd three hats on this grip).\nPicking the theme that is already on re-applies it: stock layout, cell offsets and style overrides cleared, names kept.\nClear Format under Undo/Redo (group click) or Format → Clear Format strips the 5-Way theme and every cell override (size, shape, colors, offsets). Names, Align, and the group stay. Enabled when a theme or any cell override exists.\nAlign left / center / right / Free layout — only when the target is a group.\nFormat is presentation. Hardware ids stay grouped. Save writes format to control.hardware."
+                    b: "Format and Align are first-level drawers, not inside Group.\nFormat → 5-Way (five-member hat groups only):\n  Plus cluster — Up / Left / Push / Right / Down cross. Group name once. One leader.\n  Mini hat — compact U/D/L/R/C glyph.\n  Named card — header plus role-only rows.\n  Radial leaders — spokes from the group (can crowd three hats on this grip).\nPicking the theme that is already on re-applies it: stock layout, cell offsets and style overrides cleared, names kept.\nClear Format under Undo/Redo (group click) or Format → Clear Format strips the 5-Way theme and every cell override (size, shape, colors, offsets). Names, Align, and the group stay. Enabled when a theme or any cell override exists.\nAlign left / center / right / Free layout — only when the target is a group.\nFormat is presentation. Hardware ids stay grouped. Save writes the layout to this device’s module file."
                 },
                 {
                     h: "Context menu",
@@ -851,7 +851,7 @@ Window {
                 },
                 {
                     h: "Save and live map",
-                    b: "Save writes kind control.hardware for VKBsim Gladiator EVO R. Nodes, image path, ui (grid), space world, and page 32000×18000 go to the hardware profile.\nThe live face rebinds dest labels from pairing / vJoy / Xbox the same way as before. Theme and chip names are layout only.\nHardware ids on this grip stay locked (buttons 1–29, hat 1, axes 1–4)."
+                    b: "Save writes the layout to this device’s module file. That includes the chips, the photo, and the grid settings.\nThe live view still lights the control that is pressed. Chip names and colors are layout only. They do not change the actions in the profile."
                 }
             ]
             delegate: Column {
@@ -1391,7 +1391,7 @@ Window {
         if (editing) {
             saveEdit(false)
             if (!saveOk) {
-                _saveGate.announce(false, "The map was not written. Export was not started.")
+                _saveGate.announce(false, "Not written. It is still only on this screen.")
                 return
             }
         }
@@ -1971,7 +1971,7 @@ Window {
                 }
                 Label {
                     visible: editing
-                    text: "control.hardware  " + _hw.path
+                    text: "Module file  " + _hw.path
                     color: "#A1A1AA"
                     font.pixelSize: 11
                     elide: Text.ElideMiddle
