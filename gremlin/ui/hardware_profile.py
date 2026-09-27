@@ -667,7 +667,8 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
             if backup.exists():
                 raise FileExistsError(backup)
             _replace_file(backup, previous_bytes)
-            lines.append(f"The previous file was saved as {backup.name}.")
+            lines.append("The previous file was saved as")
+            lines.append(backup.name.replace("-", "\u2011"))
         except OSError:
             lines.append("The previous file could not be saved to imported.")
     maps = _maps_dir().resolve()
@@ -692,10 +693,13 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
                     shutil.move(str(src_res), str(archived))
                     moved_from = str(src_res)
                     moved_to = str(archived)
-                    lines.append(f"{src.name} was moved to imported as {archived.name}.")
+                    lines.append(f"{src.name} was moved to imported as")
+                    lines.append(archived.name.replace("-", "\u2011"))
                 else:
                     _replace_file(archived, src_res.read_bytes())
-                    lines.append(f"{src.name} was copied to imported as {archived.name}. The original was left where it was.")
+                    lines.append(f"{src.name} was copied to imported as")
+                    lines.append(archived.name.replace("-", "\u2011"))
+                    lines.append("The original was left where it was.")
             except OSError:
                 lines.append(f"{src.name} could not be moved to imported.")
     _clear_bindings_to(src.stem)

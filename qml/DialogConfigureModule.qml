@@ -135,9 +135,9 @@ Window {
     }
 
     function showImportResult(message) {
-        moduleFileMessage = message
         moduleFileError = message.indexOf("Imported ") !== 0
         refreshModuleFileLabel()
+        moduleFileMessage = moduleFileError ? message : ("Imported into " + moduleFileLabel)
         if (!moduleFileError)
             reloadModuleControls()
         _importNotice.titleText = moduleFileError ? "Import failed" : "Imported"
@@ -493,14 +493,14 @@ Window {
                 font.pixelSize: 16
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
-                Layout.preferredWidth: 460
+                Layout.preferredWidth: 560
             }
 
             Label {
                 text: _importNotice.messageText
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
-                Layout.preferredWidth: 460
+                Layout.preferredWidth: 560
             }
 
             RowLayout {
