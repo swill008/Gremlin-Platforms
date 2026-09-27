@@ -100,7 +100,7 @@ def test_save_writes_catalog_not_view() -> None:
     save = text[text.find("function saveCatalog") : text.find("function resetCatalog")]
     assert "saveCatalogConfig" in save
     assert "saveViewConfig" not in save
-    assert "Display options were written to the module file." in save
+    assert "Saved to the module file." in save
     mm = _MM.read_text(encoding="utf-8")
     assert 'doc["catalog"] = catalog' in mm
     assert "_DEFAULT_CATALOG" in mm
