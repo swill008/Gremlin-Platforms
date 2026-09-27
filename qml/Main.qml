@@ -396,9 +396,9 @@ ApplicationWindow {
 
     function showSaveResult(ok, path) {
         if (ok)
-            _saveResultDialog.announce(true, "The profile has been saved.\n" + path)
+            _saveResultDialog.announce(true, "Saved to the profile.")
         else
-            _saveResultDialog.announce(false, "The profile was not written to disk.")
+            _saveResultDialog.announce(false, "Not written. It is still only on this screen.")
     }
 
     ColorInformation {
@@ -579,15 +579,6 @@ ApplicationWindow {
                 onTriggered: () => { pinFocusedControlDisplay() }
             }
             MenuSeparator {}
-            MenuItem {
-                text: qsTr("Button Map")
-                onTriggered: () => { openBlankButtonMap() }
-            }
-            MenuItem {
-                text: qsTr("Device Viewer")
-                onTriggered: () => { Helpers.toggleComponent("DialogDeviceViewer.qml") }
-            }
-            MenuSeparator {}
             Menu {
                 title: qsTr("Home layout")
                 MenuItem { text: qsTr("Single list"); onTriggered: _moduleModel.setSplitMode("none") }
@@ -638,6 +629,10 @@ ApplicationWindow {
                 onTriggered: () => {
                     Helpers.toggleComponent("DialogXboxViewer.qml")
                 }
+            }
+            MenuItem {
+                text: qsTr("Device Viewer")
+                onTriggered: () => { Helpers.toggleComponent("DialogDeviceViewer.qml") }
             }
             MenuItem {
                 text: qsTr("Action Editor")
@@ -707,18 +702,13 @@ ApplicationWindow {
             title: qsTr("Help")
 
             MenuItem {
-                text: qsTr("Joystick Gremlin Help")
+                text: qsTr("User Guide")
                 onTriggered: () => {
                     Helpers.createComponent("DialogHelp.qml")
                 }
             }
-        }
-
-        Menu {
-            title: qsTr("About")
-
             MenuItem {
-                text: qsTr("About Joystick Gremlin")
+                text: qsTr("About")
                 onTriggered: () => {
                     Helpers.createComponent("DialogAbout.qml")
                 }
