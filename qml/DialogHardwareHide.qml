@@ -210,7 +210,7 @@ Window {
             Layout.fillWidth: true
             color: "#A1A1AA"
             font.pixelSize: 12
-            text: "Install HiDHide from the Nefarius releases page, then click Refresh. Gremlin will not download or bundle that installer."
+            text: "Install HiDHide from the Nefarius releases page, then open this window again. Gremlin will not download or bundle that installer."
         }
 
         Switch {
@@ -394,6 +394,12 @@ Window {
                     font.bold: true
                 }
 
+                Button {
+                    text: "Add Program"
+                    enabled: _hh.installed
+                    onClicked: _pickExe.open()
+                }
+
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 16
@@ -483,24 +489,6 @@ Window {
                           ? "Add a program here to block it from the hidden controllers."
                           : "Add a program here to let it see the hidden controllers. Gremlin-Platforms can still see them."
                 }
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Button {
-                text: "Add Program"
-                enabled: _hh.installed
-                onClicked: _pickExe.open()
-            }
-            Button {
-                text: "Refresh"
-                onClicked: _hh.refresh()
-            }
-            Item { Layout.fillWidth: true }
-            Button {
-                text: "Close"
-                onClicked: _win.close()
             }
         }
     }
