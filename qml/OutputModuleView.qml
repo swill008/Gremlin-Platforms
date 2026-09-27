@@ -44,6 +44,74 @@ Item {
     property string _colorTarget: "live"
     property string toastText: "Display Options Saved"
 
+    component TrackSpin: SpinBox {
+        property int source: 0
+        signal userSet(int value)
+        editable: true
+        Component.onCompleted: value = source
+        onSourceChanged: if (value !== source) value = source
+        onValueModified: userSet(value)
+    }
+
+    component FlagBox: CheckBox {
+        property bool source: false
+        signal userSet(bool value)
+        Component.onCompleted: checked = source
+        onSourceChanged: if (!pressed) checked = source
+        onClicked: userSet(checked)
+    }
+
+    component ChoiceMenu: ComboBox {
+        property var choices: []
+        property string current: ""
+        signal userSet(string value)
+        Layout.fillWidth: true
+        function pick(value) {
+            for (var i = 0; i < choices.length; ++i)
+                if (choices[i].value === value)
+                    return i
+            return 0
+        }
+        model: {
+            var labels = []
+            for (var i = 0; i < choices.length; ++i)
+                labels.push(choices[i].label)
+            return labels
+        }
+        Component.onCompleted: currentIndex = pick(current)
+        onCurrentChanged: currentIndex = pick(current)
+        onActivated: if (choices[currentIndex]) userSet(choices[currentIndex].value)
+    }
+
+    component AxisMenu: ComboBox {
+        property int hw: 0
+        signal userSet(int value)
+        Layout.fillWidth: true
+        property int options: (_root.axisPick || []).length
+        function pick(value) {
+            var rows = _root.axisPick || []
+            for (var i = 0; i < rows.length; ++i)
+                if (rows[i].hw === value)
+                    return i
+            return 0
+        }
+        model: {
+            var labels = []
+            var rows = _root.axisPick || []
+            for (var i = 0; i < rows.length; ++i)
+                labels.push(rows[i].label)
+            return labels
+        }
+        Component.onCompleted: currentIndex = pick(hw)
+        onHwChanged: currentIndex = pick(hw)
+        onOptionsChanged: currentIndex = pick(hw)
+        onActivated: {
+            var rows = _root.axisPick || []
+            if (rows[currentIndex])
+                userSet(rows[currentIndex].hw)
+        }
+    }
+
     readonly property bool padsOn: showPads
     readonly property bool padAOn: padsOn && (padAX > 0 || padAY > 0)
     readonly property bool padBOn: padsOn && (padBX > 0 || padBY > 0)
@@ -602,9 +670,9 @@ Item {
                                     font.bold: true
                                 }
                             }
-                            CheckBox { text: "Show pads"; checked: showPads; onToggled: showPads = checked }
-                            CheckBox { text: "Show hats"; checked: showHats; onToggled: showHats = checked }
-                            CheckBox { text: "Show meters"; checked: showMeters; onToggled: showMeters = checked }
+                            FlagBox { text: "Show pads"; source: showPads; onUserSet: (v) => { showPads = v } }
+                            FlagBox { text: "Show hats"; source: showHats; onUserSet: (v) => { showHats = v } }
+                            FlagBox { text: "Show meters"; source: showMeters; onUserSet: (v) => { showMeters = v } }
                         }
 
                         ColumnLayout {
@@ -637,76 +705,20 @@ Item {
                                 Label { text: "X / Y pad"; color: "#E4E4E7"; font.pixelSize: 11 }
                                 RowLayout {
                                     Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
-                                    ComboBox {
-                                        Layout.fillWidth: true
-                                        model: {
-                                            var labels = []
-                                            for (var i = 0; i < (axisPick || []).length; ++i)
-                                                labels.push(axisPick[i].label)
-                                            return labels
-                                        }
-                                        currentIndex: {
-                                            for (var i = 0; i < (axisPick || []).length; ++i)
-                                                if (axisPick[i].hw === padAX) return i
-                                            return 0
-                                        }
-                                        onActivated: if (axisPick && axisPick[currentIndex]) padAX = axisPick[currentIndex].hw
-                                    }
+                                    AxisMenu { hw: padAX; onUserSet: (v) => { padAX = v } }
                                 }
                                 RowLayout {
                                     Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
-                                    ComboBox {
-                                        Layout.fillWidth: true
-                                        model: {
-                                            var labels = []
-                                            for (var i = 0; i < (axisPick || []).length; ++i)
-                                                labels.push(axisPick[i].label)
-                                            return labels
-                                        }
-                                        currentIndex: {
-                                            for (var i = 0; i < (axisPick || []).length; ++i)
-                                                if (axisPick[i].hw === padAY) return i
-                                            return 0
-                                        }
-                                        onActivated: if (axisPick && axisPick[currentIndex]) padAY = axisPick[currentIndex].hw
-                                    }
+                                    AxisMenu { hw: padAY; onUserSet: (v) => { padAY = v } }
                                 }
                                 Label { text: "Rx / Ry pad"; color: "#E4E4E7"; font.pixelSize: 11 }
                                 RowLayout {
                                     Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
-                                    ComboBox {
-                                        Layout.fillWidth: true
-                                        model: {
-                                            var labels = []
-                                            for (var i = 0; i < (axisPick || []).length; ++i)
-                                                labels.push(axisPick[i].label)
-                                            return labels
-                                        }
-                                        currentIndex: {
-                                            for (var i = 0; i < (axisPick || []).length; ++i)
-                                                if (axisPick[i].hw === padBX) return i
-                                            return 0
-                                        }
-                                        onActivated: if (axisPick && axisPick[currentIndex]) padBX = axisPick[currentIndex].hw
-                                    }
+                                    AxisMenu { hw: padBX; onUserSet: (v) => { padBX = v } }
                                 }
                                 RowLayout {
                                     Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
-                                    ComboBox {
-                                        Layout.fillWidth: true
-                                        model: {
-                                            var labels = []
-                                            for (var i = 0; i < (axisPick || []).length; ++i)
-                                                labels.push(axisPick[i].label)
-                                            return labels
-                                        }
-                                        currentIndex: {
-                                            for (var i = 0; i < (axisPick || []).length; ++i)
-                                                if (axisPick[i].hw === padBY) return i
-                                            return 0
-                                        }
-                                        onActivated: if (axisPick && axisPick[currentIndex]) padBY = axisPick[currentIndex].hw
-                                    }
+                                    AxisMenu { hw: padBY; onUserSet: (v) => { padBY = v } }
                                 }
                             }
                         }
@@ -728,17 +740,19 @@ Item {
                                     font.bold: true
                                 }
                             }
-                            ComboBox {
-                                Layout.fillWidth: true
+                            ChoiceMenu {
                                 enabled: showMeters
-                                model: ["Vertical bar", "Horizontal bar"]
-                                currentIndex: meterStyle === "horizontal" ? 1 : 0
-                                onActivated: meterStyle = currentIndex === 1 ? "horizontal" : "vertical"
+                                current: meterStyle
+                                choices: [
+                                    { "label": "Vertical bar", "value": "vertical" },
+                                    { "label": "Horizontal bar", "value": "horizontal" }
+                                ]
+                                onUserSet: (v) => { meterStyle = v }
                             }
                             RowLayout {
                                 enabled: showMeters
                                 Label { text: "Width"; color: "#E4E4E7" }
-                                SpinBox { from: 12; to: 48; value: meterWidth; onValueModified: meterWidth = value }
+                                TrackSpin { from: 12; to: 48; source: meterWidth; onUserSet: (v) => { meterWidth = v } }
                             }
                             Label {
                                 text: "Axes on bars"
@@ -760,13 +774,13 @@ Item {
                                 rowSpacing: 0
                                 Repeater {
                                     model: axisModel
-                                    delegate: CheckBox {
+                                    delegate: FlagBox {
                                         required property int hw
                                         required property string name
                                         Layout.preferredWidth: 155
                                         text: axisLabel(hw, name)
-                                        checked: meterOn(hw)
-                                        onToggled: toggleMeter(hw, checked)
+                                        source: meterOn(hw)
+                                        onUserSet: (v) => toggleMeter(hw, v)
                                     }
                                 }
                             }
@@ -789,23 +803,29 @@ Item {
                                     font.bold: true
                                 }
                             }
-                            ComboBox {
-                                Layout.fillWidth: true
-                                model: ["Tile", "LED + number", "Compact"]
-                                currentIndex: buttonStyle === "led" ? 1 : (buttonStyle === "compact" ? 2 : 0)
-                                onActivated: buttonStyle = ["tile", "led", "compact"][currentIndex]
+                            ChoiceMenu {
+                                current: buttonStyle
+                                choices: [
+                                    { "label": "Tile", "value": "tile" },
+                                    { "label": "LED + number", "value": "led" },
+                                    { "label": "Compact", "value": "compact" }
+                                ]
+                                onUserSet: (v) => { buttonStyle = v }
                             }
-                            ComboBox {
-                                Layout.fillWidth: true
-                                model: ["Small", "Medium", "Large"]
-                                currentIndex: buttonSize === "small" ? 0 : (buttonSize === "large" ? 2 : 1)
-                                onActivated: buttonSize = ["small", "medium", "large"][currentIndex]
+                            ChoiceMenu {
+                                current: buttonSize
+                                choices: [
+                                    { "label": "Small", "value": "small" },
+                                    { "label": "Medium", "value": "medium" },
+                                    { "label": "Large", "value": "large" }
+                                ]
+                                onUserSet: (v) => { buttonSize = v }
                             }
                             RowLayout {
                                 Label { text: "Columns"; color: "#E4E4E7" }
-                                SpinBox { from: 1; to: 16; value: buttonColumns; onValueModified: buttonColumns = value }
+                                TrackSpin { from: 1; to: 16; source: buttonColumns; onUserSet: (v) => { buttonColumns = v } }
                                 Label { text: "Width"; color: "#E4E4E7" }
-                                SpinBox { from: 40; to: 200; value: buttonWidth; onValueModified: buttonWidth = value }
+                                TrackSpin { from: 40; to: 200; source: buttonWidth; onUserSet: (v) => { buttonWidth = v } }
                             }
                         }
 
