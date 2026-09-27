@@ -1938,17 +1938,57 @@ Item {
                 }
 
                 RowLayout {
-                    Button { text: "Reset"; onClicked: resetCatalog() }
+                    spacing: 6
+                    Button {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        text: "Reset All\nSettings"
+                        onClicked: resetCatalog()
+                        contentItem: Text {
+                            text: parent.text
+                            color: "#FFFFFF"
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        background: Rectangle {
+                            implicitHeight: 44
+                            color: parent.down ? "#991B1B" : (parent.hovered ? "#EF4444" : "#DC2626")
+                            border.width: 1
+                            border.color: parent.hovered ? "#FCA5A5" : "#B91C1C"
+                        }
+                    }
                     Button {
                         id: _copyButton
-                        text: "Copy from…"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        text: "Copy Settings\nfrom…"
                         onClicked: {
                             refreshCopySources()
                             _copyMenu.popup(_copyButton, 0, _copyButton.height)
                         }
+                        contentItem: Text {
+                            text: parent.text
+                            color: "#F4F4F5"
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
                     }
-                    Item { Layout.fillWidth: true }
-                    Button { text: "Save with module"; highlighted: true; onClicked: saveCatalog() }
+                    Button {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        text: "Save\nSettings"
+                        highlighted: true
+                        onClicked: saveCatalog()
+                        contentItem: Text {
+                            text: parent.text
+                            color: "#FFFFFF"
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
                 }
             }
         }

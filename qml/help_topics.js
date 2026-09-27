@@ -11,7 +11,7 @@ function topics() {
         topic("Start", "What is saved where",
             "<p>Three stores are kept separate. Saving one does not save the others.</p>"
             + "<p><b>Profile.</b> Modes, bindings, and actions. File → Save Profile writes this file. File → Save Profile As writes a new one. Closing the program asks when the profile has changes that are not saved.</p>"
-            + "<p><b>Module file.</b> One file for each device. It holds the device picture, the configuration list’s look, an output device’s look, and the calibration for an input stick. The input module chooses which file that device uses. Button Map, Configure input module, Configure output module, and Calibration write this file. Display options are written only when you press Save with module.</p>"
+            + "<p><b>Module file.</b> One file for each device. It holds the device picture, the configuration list’s look, an output device’s look, and the calibration for an input stick. The input module chooses which file that device uses. Button Map, Configure input module, Configure output module, and Calibration write this file. Display options are written only when you press the save button on that panel.</p>"
             + "<p><b>Program settings.</b> Options, the Home layout, window sizes, and HiDHide choices. These are kept for the program, not inside one profile.</p>"),
         topic("Start", "Toggle",
             "<p>Toggle makes the loaded profile live. While it is off, you are only editing. While it is on, inputs run their actions.</p>"
@@ -39,7 +39,7 @@ function topics() {
             + "<p>Add the container first, then add the actions it should run. A hat can use Hat as Buttons so each direction is its own button. Unmapped directions do nothing.</p>"),
         topic("Configuration", "Display options",
             "<p>Display options change how this device’s configuration list looks. They do not change the actions. The look is stored in that device’s module file. Whether the panel is open is stored with the program, separately for each device.</p>"
-            + "<p>Edit Display Options opens the panel. Changes show immediately and stay on the screen until Save with module. A successful save says “Saved to the module file.” Reset returns the built-in look and still needs Save with module if you want that kept.</p>"
+            + "<p>Edit Display Options opens the panel. Changes show immediately and stay on the screen until Save Settings. A successful save says “Saved to the module file.” Reset All Settings returns the built-in look and still needs Save Settings if you want that kept.</p>"
             + "<p>Hide Display Options, Close, or opening another device asks when there are unsaved changes. Save writes the module file. Discard returns to the last save. The first visit opens the panel. After that, the program restores whether you left it open or closed.</p>"
             + "<p>An output device has its own display options for pads, hats, meters, and buttons. Those are saved the same way, into that device’s module file.</p>"),
         topic("Actions", "Map to Keyboard",
