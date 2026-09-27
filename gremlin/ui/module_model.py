@@ -475,6 +475,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._rows: list[ModuleRow] = []
         self._focus = ""
         self._last: dict[str, tuple[str, str]] = {}
+        self._last_saved_path = ""
         self._hw = HardwareProfile(self)
         _ensure_display_options()
         self._reload_timer = QtCore.QTimer(self)
@@ -635,7 +636,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         self.viewChanged.emit()
         _plog("save view ok", path=str(path))
+        self._last_saved_path = str(path)
         return True
+
+    @QtCore.Slot(result=str)
+    def lastSavedPath(self) -> str:
+        return self._last_saved_path
 
     @QtCore.Slot(str, str, result=str)
     def catalogConfigJson(self, device_name: str, guid: str) -> str:
@@ -717,6 +723,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         self.viewChanged.emit()
         _plog("save catalog ok", path=str(path))
+        self._last_saved_path = str(path)
         return True
 
     @QtCore.Slot(str)
@@ -1448,6 +1455,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self._device_name = ""
         self._rows: list[dict] = []
         self._lit_index = -1
+        self._last_saved_path = ""
         try:
             listener = event_handler.EventListener()
             listener.joystick_event.connect(
@@ -1891,4 +1899,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
         bind_module_file(name, self._guid, resolve_module_slug(name, self._guid))
         signal.configChanged.emit()
         _plog("save claim ok", path=str(path), bytes=path.stat().st_size)
+        self._last_saved_path = str(path)
         return True
+
+    @QtCore.Slot(result=str)
+    def lastSavedPath(self) -> str:
+        return self._last_saved_path

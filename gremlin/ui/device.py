@@ -1562,6 +1562,15 @@ class AxisCalibration(QtCore.QAbstractListModel):
         )
         return True
 
+    @QtCore.Slot(result=str)
+    def moduleFilePath(self) -> str:
+        from gremlin.ui.module_calibration import module_for_slug
+
+        row = module_for_slug(self._module_slug)
+        if not row:
+            return ""
+        return str(row.get("path") or "")
+
     @QtCore.Slot(result=bool)
     def hasUnsaved(self) -> bool:
         return any(bool(row.get("unsavedChanges")) for row in self._state)

@@ -17,7 +17,10 @@ def test_main_has_catalog_display_button() -> None:
     assert "displayPanelOpen(panelKind(), id)" in text
     assert "setDisplayPanelOpen(kind, id, open)" in text
     assert 'return configDirection === "dest" ? "output" : "configuration"' in text
-    assert 'text: catalogPanel ? "Hide Display Options" : "Edit Display Options"' in text
+    assert 'text: catalogPanel ? "Hide Editor" : "Show Editor"' in text
+    assert 'text: outputViewPanel ? "Hide Editor" : "Show Editor"' in text
+    assert "property string lastSaveText" in text
+    assert "function onSaveNoted" in text
     assert "showPanel: _root.outputViewPanel" in text
     assert 'showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel' in text
     assert "_root.outputViewPanel = false" in text

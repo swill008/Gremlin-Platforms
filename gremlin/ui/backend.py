@@ -183,6 +183,7 @@ class Backend(QtCore.QObject):
     propertyChanged = QtCore.Signal()
     uiChanged = QtCore.Signal()
     quitRequested = QtCore.Signal()
+    saveNoted = QtCore.Signal(str)
 
     def __init__(
         self, engine: QtQml.QQmlApplicationEngine, parent: ta.OQO = None
@@ -433,6 +434,10 @@ class Backend(QtCore.QObject):
             persist_log(f"Persist profile save failed path={qml_url!r}")
             logging.getLogger("system").exception("Failed to save profile")
             return False
+
+    @QtCore.Slot(str)
+    def noteSave(self, text: str) -> None:
+        self.saveNoted.emit(str(text or ""))
 
     @QtCore.Slot(result=str)
     def profilePath(self) -> str:

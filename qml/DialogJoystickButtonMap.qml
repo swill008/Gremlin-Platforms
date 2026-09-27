@@ -538,15 +538,21 @@ Window {
         var payload = JSON.stringify(doc)
         if (!_hw.save(targetName, payload)) {
             saveOk = false
-            if (report)
+            if (report) {
                 _saveGate.announce(false, "Not written. It is still only on this screen.")
+                if (backend)
+                    backend.noteSave("The module file was not written.")
+            }
             return false
         }
         var check = parseDoc(_hw.load(targetName))
         if (!check || !check.nodes) {
             saveOk = false
-            if (report)
+            if (report) {
                 _saveGate.announce(false, "Saved to the module file, but it could not be read back.")
+                if (backend)
+                    backend.noteSave("Saved the module file to " + _hw.path + ", but it could not be read back.")
+            }
             return false
         }
         liveNodes = JSON.parse(JSON.stringify(nodes))
@@ -555,8 +561,11 @@ Window {
         applyImage(liveImage)
         hydrateOverlays(liveNodes)
         saveOk = true
-        if (report)
+        if (report) {
             _saveGate.announce(true, "Saved to the module file.")
+            if (backend)
+                backend.noteSave("Saved the module file to " + _hw.path)
+        }
         return true
     }
 

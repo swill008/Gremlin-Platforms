@@ -27,6 +27,8 @@ ApplicationWindow {
     visible: true
     id: _root
 
+    property string lastSaveText: ""
+
     WindowPlacement { id: _windowPlacement }
 
     Component.onCompleted: () => {
@@ -440,10 +442,16 @@ ApplicationWindow {
     }
 
     function showSaveResult(ok, path) {
-        if (ok)
+        var where = path ? String(path) : ""
+        if (ok) {
             _saveResultDialog.announce(true, "Saved to the profile.")
-        else
+            if (backend)
+                backend.noteSave(where.length ? ("Saved the profile to " + where) : "Saved the profile.")
+        } else {
             _saveResultDialog.announce(false, "Not written. It is still only on this screen.")
+            if (backend)
+                backend.noteSave("The profile was not written.")
+        }
     }
 
     ColorInformation {
@@ -844,7 +852,7 @@ ApplicationWindow {
             Label {
                 Layout.rightMargin: 10
 
-                text: uiState && uiState.currentRoom === "configuration" && configDirection !== "dest" ? "Configuring mode" : "Mode"
+                text: "Configuring mode"
             }
 
             TooltipComboBox {
@@ -911,7 +919,7 @@ ApplicationWindow {
 
                 ToolTip {
                     visible: parent.hovered
-                    text: qsTr("Select mode to edit")
+                    text: qsTr("Configuring mode. This is the map you are editing. It does not change Executing mode.")
                     delay: 500
                 }
             }
@@ -950,10 +958,21 @@ ApplicationWindow {
             }
 
             Label {
-                Layout.fillWidth: true
+                Layout.preferredWidth: 220
                 padding: 5
 
                 text: "<B>Executing mode: </B>" + (backend ? backend.currentMode : "")
+            }
+
+            Label {
+                id: _savedLine
+                Layout.fillWidth: true
+                padding: 5
+                color: "#E4E4E7"
+                elide: Text.ElideMiddle
+                text: _root.lastSaveText
+                ToolTip.visible: hovered && text.length > 0
+                ToolTip.text: text
             }
         }
     }
@@ -1003,6 +1022,10 @@ ApplicationWindow {
 
         function onQuitRequested() {
             _root.quitGremlin()
+        }
+
+        function onSaveNoted(text) {
+            _root.lastSaveText = text
         }
     }
     Connections {
@@ -1202,7 +1225,7 @@ ApplicationWindow {
                 }
                 Button {
                     visible: configDirection === "dest"
-                    text: outputViewPanel ? "Hide Display Options" : "Edit Display Options"
+                    text: outputViewPanel ? "Hide Editor" : "Show Editor"
                     onClicked: {
                         outputViewPanel = !outputViewPanel
                         rememberDisplayPanel()
@@ -1210,15 +1233,11 @@ ApplicationWindow {
                 }
                 Button {
                     visible: configDirection !== "dest"
-                    text: catalogPanel ? "Hide Display Options" : "Edit Display Options"
+                    text: catalogPanel ? "Hide Editor" : "Show Editor"
                     onClicked: {
                         catalogPanel = !catalogPanel
                         rememberDisplayPanel()
                     }
-                }
-                Button {
-                    text: "Close"
-                    onClicked: closeWorkRoom()
                 }
             }
 

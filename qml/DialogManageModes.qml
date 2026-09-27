@@ -45,6 +45,15 @@ Window {
         anchors.topMargin: 10
         anchors.bottomMargin: 58
 
+        Label {
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
+            wrapMode: Text.WordWrap
+            color: "#E4E4E7"
+            text: "Configuring mode is the map you are editing. Executing mode is the map that runs. Modes are stored in the profile."
+        }
+
         JGListView  {
             Layout.fillWidth: true
             Layout.fillHeight: true

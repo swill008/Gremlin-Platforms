@@ -332,9 +332,14 @@ Window {
 
                         onClicked: {
                             var ok = _axisView.model.save(index)
+                            var where = ok && _axisView.model.moduleFilePath ? _axisView.model.moduleFilePath() : ""
                             _saveGate.announce(ok,
                                 ok ? "Saved to the module file."
                                    : "Not written. It is still only on this screen.")
+                            if (backend)
+                                backend.noteSave(ok
+                                    ? ("Saved the calibration to " + where)
+                                    : "The calibration was not written.")
                         }
 
                         Rectangle {
@@ -399,8 +404,12 @@ Window {
         onSaveChosen: {
             if (!_calib.saveAll()) {
                 _saveGate.announce(false, "Not written. It is still only on this screen.")
+                if (backend)
+                    backend.noteSave("The calibration was not written.")
                 return
             }
+            if (backend && _calib.moduleFilePath)
+                backend.noteSave("Saved the calibration to " + _calib.moduleFilePath())
             _calibrationDialog.finishLeave()
         }
         onDiscardChosen: {

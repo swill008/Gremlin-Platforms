@@ -105,11 +105,15 @@ Window {
             _hw.keepPhoto(deviceName, _win.photoUrl)
         if (!_driver.saveClaim(deviceName, direction)) {
             _saveGate.announce(false, "Not written. It is still only on this screen.")
+            if (backend)
+                backend.noteSave("The module file was not written.")
             return false
         }
-        if (direction === "dest" && backend && backend.profilePath() !== "") {
-            if (!backend.saveProfile(backend.profilePath())) {
+        var profilePath = backend ? backend.profilePath() : ""
+        if (direction === "dest" && profilePath !== "") {
+            if (!backend.saveProfile(profilePath)) {
                 _saveGate.announce(false, "Saved to the module file. The profile was not written.")
+                backend.noteSave("Saved the module file to " + _driver.lastSavedPath() + ". The profile was not written.")
                 return false
             }
         }
@@ -118,6 +122,12 @@ Window {
         claimDirty = false
         refreshModuleFileLabel()
         _saveGate.announce(true, "Saved to the module file.")
+        if (backend) {
+            var note = "Saved the module file to " + _driver.lastSavedPath()
+            if (direction === "dest" && profilePath !== "")
+                note += ". Saved the profile to " + profilePath
+            backend.noteSave(note)
+        }
         return true
     }
 
