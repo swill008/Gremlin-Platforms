@@ -772,6 +772,13 @@ def _active_module_path(device_name: str, guid: str) -> Path:
     return _maps_dir() / f"{(slug or _slug(device_name))}.json"
 
 
+def _is_protected_output(device_name: str) -> bool:
+    """vJoy and Xbox module files stay. Delete Device removes their wires only."""
+    slug = _slug(device_name)
+    lower = " ".join(str(device_name or "").split()).lower()
+    return slug.startswith("vjoy") or slug.startswith("xbox") or "xbox" in lower
+
+
 def _own_file_shared(device_name: str, guid: str) -> bool:
     own = _slug(device_name)
     if not (_maps_dir() / f"{own}.json").is_file():
@@ -812,24 +819,8 @@ def delete_preview(device_name: str, guid: str) -> str:
         "shared": _own_file_shared(name, guid),
         "foreign": bool(foreign_module_file(name, guid)),
         "listed": _device_stays_listed(name),
+        "keepModule": _is_protected_output(name),
     })
-
-
-def _child_actions(action) -> list:
-    getter = getattr(action, "get_actions", None)
-    if not callable(getter):
-        return []
-    try:
-        buckets = getter()
-    except Exception:
-        return []
-    if not isinstance(buckets, (list, tuple)):
-        return []
-    found = []
-    for bucket in buckets:
-        if isinstance(bucket, (list, tuple)):
-            found.extend(bucket)
-    return [child for child in found if child is not None]
 
 
 def _drop_binding_tree(profile, binding) -> None:
@@ -847,55 +838,6 @@ def _drop_inputs(profile, uid) -> None:
     for item in items:
         for binding in list(getattr(item, "action_sequences", None) or []):
             _drop_binding_tree(profile, binding)
-
-
-def _matches_output(action, kind: str, number: int) -> bool:
-    if kind == "vjoy":
-        try:
-            return int(getattr(action, "vjoy_device_id")) == int(number)
-        except (TypeError, ValueError, AttributeError):
-            return False
-    if kind == "xbox":
-        return getattr(action, "xbox_device_id", None) is not None
-    return False
-
-
-def _drop_output_targets(profile, device_name: str) -> None:
-    name = " ".join(str(device_name or "").split())
-    lower = name.lower()
-    if lower.startswith("vjoy "):
-        digits = "".join(ch for ch in name if ch.isdigit())
-        if not digits:
-            return
-        kind, number = "vjoy", int(digits)
-    elif "xbox" in lower:
-        kind, number = "xbox", 0
-    else:
-        return
-    for items in list(profile.inputs.values()):
-        for item in list(items):
-            sequences = list(getattr(item, "action_sequences", None) or [])
-            for binding in sequences:
-                root = getattr(binding, "root_action", None)
-                if root is None:
-                    continue
-                pending = _child_actions(root)
-                seen = {id(root)}
-                while pending:
-                    action = pending.pop()
-                    if action is None or id(action) in seen:
-                        continue
-                    seen.add(id(action))
-                    if _matches_output(action, kind, number):
-                        try:
-                            profile.remove_action(action, binding)
-                        except Exception:
-                            pass
-                        continue
-                    pending.extend(_child_actions(action))
-                if not _child_actions(root):
-                    item.remove_item_binding(binding)
-                    _drop_binding_tree(profile, binding)
 
 
 def _prune_empty_inputs(profile) -> None:
@@ -921,8 +863,6 @@ def _save_profile_wires(device_name: str, guid: str) -> str:
     uid = _guid(text)
     if uid is not None:
         _drop_inputs(profile, uid)
-    if _target_direction(device_name) == "dest":
-        _drop_output_targets(profile, device_name)
     _prune_empty_inputs(profile)
     path = getattr(profile, "fpath", None)
     if path:
@@ -1015,8 +955,9 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
                 pass
         return json.dumps({"ok": False, "error": wire_error})
     shared = _own_file_shared(name, guid)
+    protected = _is_protected_output(name)
     file_error = ""
-    if not shared:
+    if not shared and not protected:
         file_error = _delete_own_module_files(name)
     _clear_device_binding_keys(name, guid)
     own_left = (_maps_dir() / f"{_slug(name)}.json").is_file()
@@ -1039,7 +980,8 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
         "ok": True,
         "name": name,
         "packPath": pack_path,
-        "keptFile": bool(shared and own_left),
+        "keptFile": bool((shared or protected) and own_left),
+        "keepModule": protected,
         "stub": listed and not own_left,
         "listed": listed,
         "profileSaved": saved,
@@ -1106,10 +1048,15 @@ def _collapsed_name(value: str) -> str:
 
 
 def _name_direction(name: str) -> str:
-    return "dest" if _slug(name).startswith("vjoy") else "source"
+    """A vJoy or Xbox is an output. The stored direction field cannot change that."""
+    return "dest" if _is_protected_output(name) else "source"
 
 
 def _doc_direction(doc: dict, exported_name: str) -> str:
+    label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
+    named = str(doc.get("device") or label.get("exportedName") or exported_name or "")
+    if _name_direction(named) == "dest":
+        return "dest"
     raw = str(doc.get("direction") or "").strip().lower()
     if raw in ("source", "dest"):
         return raw
@@ -1788,6 +1735,8 @@ class HardwareProfile(QtCore.QObject):
                 ):
                     if key in existing and key not in payload:
                         payload[key] = existing[key]
+        if _name_direction(name) == "dest":
+            payload["direction"] = "dest"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         kept = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}

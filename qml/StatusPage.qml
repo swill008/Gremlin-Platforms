@@ -373,6 +373,7 @@ Item {
         _deleteShared = !!preview.shared
         _deleteForeign = !!preview.foreign
         _deleteListed = preview.listed !== false
+        _deleteKeepModule = !!preview.keepModule
         _deleteSaveCopy = _deleteCanPack
         _saveCopyBox.checked = _deleteCanPack
         _explainAdvance = false
@@ -381,13 +382,17 @@ Item {
 
     function explainBody() {
         var lines = ["Delete " + _deleteName + "."]
-        if (_deleteForeign)
-            lines.push("This device is using another device's file. That file stays. This device's wires are removed.")
-        if (_deleteShared)
-            lines.push("Another device uses this module file, so the file stays. This device's wires are removed. The card stays.")
-        else if (!_deleteForeign)
-            lines.push("This removes the module file, its pictures, and the wires in every mode. The card's size and stack are cleared.")
-        if (!_deleteShared && _deleteListed)
+        if (_deleteKeepModule)
+            lines.push("This does not delete the vJoy or Xbox module file. Only wires stored on this device are removed. Wires from input devices stay.")
+        else if (_deleteForeign)
+            lines.push("This device is using another device's file. That file stays. Only this device's wires are removed.")
+        else if (_deleteShared)
+            lines.push("Another device uses this module file, so the file stays. Only this device's wires are removed. The card stays.")
+        else
+            lines.push("This removes this device's module file, its pictures, and its wires in every mode. The card's size and stack are cleared.")
+        if (!_deleteKeepModule)
+            lines.push("vJoy and Xbox module files stay. Other input devices that use them are not changed.")
+        if (!_deleteKeepModule && !_deleteShared && _deleteListed)
             lines.push("The Windows device stays, and a stub card remains.")
         else if (!_deleteListed)
             lines.push("This device is not connected, so no card will remain.")
@@ -402,7 +407,9 @@ Item {
             line += " A pack will be written to deleted devices first."
         else
             line += " No copy will be saved."
-        if (_deleteShared)
+        if (_deleteKeepModule)
+            line += " The output module file stays. Only this device's wires are removed."
+        else if (_deleteShared)
             line += " The module file stays."
         else if (_deleteListed)
             line += " A stub card will remain."
@@ -435,7 +442,9 @@ Item {
             done += " A copy was saved to " + result.packPath + "."
         else
             done += " No copy was saved."
-        if (result.keptFile)
+        if (result.keepModule)
+            done += " The output module file was kept. Only this device's wires were removed."
+        else if (result.keptFile)
             done += " The module file was kept because another device uses it."
         else if (result.stub)
             done += " A stub card remains."
@@ -455,6 +464,7 @@ Item {
     property bool _deleteShared: false
     property bool _deleteForeign: false
     property bool _deleteListed: true
+    property bool _deleteKeepModule: false
     property bool _deleteSaveCopy: true
     property bool _explainAdvance: false
     property bool _confirmAdvance: false

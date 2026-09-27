@@ -38,6 +38,7 @@ from gremlin.ui.hardware_profile import (
     module_file_choices,
     module_json_path,
     persist_log,
+    _name_direction,
     resolve_module_slug,
 )
 
@@ -1944,7 +1945,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 friendly[f"{r['kind']}:{int(r['hwId'])}"] = str(r["friendly"])
         doc["kind"] = "control.hardware"
         doc["device"] = name
-        doc["direction"] = direction or "source"
+        doc["direction"] = "dest" if _name_direction(name) == "dest" else (direction or "source")
         if self._guid:
             doc["boundName"] = name
             # GUID stays local-only; stored for this machine bind, not exported.
