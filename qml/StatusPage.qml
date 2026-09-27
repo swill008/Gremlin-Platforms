@@ -617,8 +617,9 @@ Item {
             Label {
                 visible: _pane.title.length
                 text: _pane.title
-                color: "#A1A1AA"
-                font.pixelSize: 11
+                color: "#E4E4E7"
+                font.pixelSize: 20
+                font.bold: true
                 font.capitalization: Font.AllUppercase
             }
 
