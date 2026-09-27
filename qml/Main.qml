@@ -1143,16 +1143,26 @@ ApplicationWindow {
                     }
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 6
-                        Button {
+                        spacing: 2
+                        IconButton {
                             visible: configDirection !== "dest"
-                            text: "←"
-                            flat: true
+                            text: "\uF284"
                             font.pixelSize: 18
                             enabled: _root.sourceModuleCount > 1
+                            opacity: enabled ? 1 : 0.35
                             onClicked: _root.cycleConfiguration(-1)
                             ToolTip.visible: hovered
                             ToolTip.text: "Previous input module"
+                        }
+                        IconButton {
+                            visible: configDirection !== "dest"
+                            text: "\uF285"
+                            font.pixelSize: 18
+                            enabled: _root.sourceModuleCount > 1
+                            opacity: enabled ? 1 : 0.35
+                            onClicked: _root.cycleConfiguration(1)
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Next input module"
                         }
                         Label {
                             id: _configTitle
@@ -1161,17 +1171,6 @@ ApplicationWindow {
                             font.bold: true
                             elide: Text.ElideRight
                             Layout.fillWidth: true
-                            Layout.maximumWidth: implicitWidth
-                        }
-                        Button {
-                            visible: configDirection !== "dest"
-                            text: "→"
-                            flat: true
-                            font.pixelSize: 18
-                            enabled: _root.sourceModuleCount > 1
-                            onClicked: _root.cycleConfiguration(1)
-                            ToolTip.visible: hovered
-                            ToolTip.text: "Next input module"
                         }
                     }
                     Label {
