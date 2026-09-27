@@ -198,12 +198,401 @@ def resolve_module_slug(device_name: str, guid: str = "") -> str:
 
 
 def module_file_choices(device_name: str, guid: str = "") -> list[str]:
-    names = sorted(path.stem for path in _maps_dir().glob("*.json") if path.is_file())
-    current = resolve_module_slug(device_name, guid)
-    if current and current not in names:
-        names.append(current)
-        names.sort()
+    """Files that can be copied onto this device. Not the file the device uses."""
+    del guid
+    own = _slug(device_name)
+    names = [
+        path.stem
+        for path in sorted(_maps_dir().glob("*.json"))
+        if path.is_file() and path.stem.lower() != own
+    ]
+    imported = _maps_dir() / "imported"
+    if imported.is_dir():
+        names.extend(
+            f"imported/{path.stem}"
+            for path in sorted(imported.glob("*.json"))
+            if path.is_file()
+        )
     return names
+
+
+def own_module_slug(device_name: str) -> str:
+    return _slug(device_name)
+
+
+def foreign_module_file(device_name: str, guid: str = "") -> str:
+    """A binding that still points this device at some other file."""
+    bound = resolve_module_slug(device_name, guid)
+    own = _slug(device_name)
+    if bound and bound != own:
+        return bound
+    return ""
+
+
+def _hid(node: dict) -> int | None:
+    try:
+        number = int(node.get("hwId"))
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def _infer_direction(doc: dict, path: Path) -> str:
+    direction = str(doc.get("direction") or "").strip().lower()
+    if direction in ("dest", "target", "output"):
+        return "dest"
+    if direction == "source":
+        return "source"
+    name = str(doc.get("device") or path.stem).strip().lower()
+    if path.stem.lower().startswith("vjoy") or name.startswith("vjoy"):
+        return "dest"
+    return "source"
+
+
+def _filter_nodes(nodes: list, buttons: set[int], axes: set[int], hats: set[int], keys: set[int]) -> list:
+    kept: list = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        kind = str(node.get("kind") or "")
+        if kind in ("stack", "axis_stack"):
+            want = axes if kind == "axis_stack" else buttons
+            members = []
+            for member in node.get("members") or []:
+                if not isinstance(member, dict):
+                    continue
+                hid = _hid(member)
+                if hid is not None and hid not in want:
+                    continue
+                members.append(member)
+            if not members:
+                continue
+            copied = dict(node)
+            copied["members"] = members
+            kept.append(copied)
+            continue
+        hid = _hid(node)
+        if kind in ("btn", "button"):
+            if hid in buttons:
+                kept.append(node)
+            continue
+        if kind == "axis":
+            if hid in axes:
+                kept.append(node)
+            continue
+        if kind == "hat":
+            if hid in hats:
+                kept.append(node)
+            continue
+        if kind == "key":
+            if hid in keys:
+                kept.append(node)
+            continue
+        if hid is None:
+            kept.append(node)
+    return kept
+
+
+def _filter_friendly(friendly: dict, buttons: set[int], axes: set[int], hats: set[int], keys: set[int]) -> dict:
+    pools = {"button": buttons, "axis": axes, "hat": hats, "key": keys}
+    out = {}
+    for key, value in friendly.items():
+        kind, _, raw = str(key).partition(":")
+        try:
+            hid = int(raw)
+        except ValueError:
+            continue
+        if hid in pools.get(kind, ()):
+            out[str(key)] = value
+    return out
+
+
+def _left_out_text(labels: list[str]) -> str:
+    if not labels:
+        return ""
+    if len(labels) == 1:
+        return f" {labels[0]} was not copied. This device does not have {labels[0]}."
+    listed = ", ".join(labels[:-1]) + " and " + labels[-1]
+    return f" {listed} were not copied. This device does not have them."
+
+
+def _connected_input_ids(guid: str) -> tuple[set[int], set[int], set[int]] | None:
+    if not str(guid or "").strip():
+        return None
+    try:
+        import dill
+        info = dill.DILL.get_device_information_by_guid(dill.GUID.from_str(guid))
+    except Exception:
+        info = None
+    if info is None:
+        return None
+    buttons, axes, hats = _device_input_ids(guid)
+    return set(buttons), set(axes), set(hats)
+
+
+def prepare_imported_doc(
+    doc: dict,
+    device_name: str,
+    guid: str,
+    direction: str,
+    buttons: set[int],
+    axes: set[int],
+    hats: set[int],
+    *,
+    keep_keys: bool,
+    previous_image: str = "",
+) -> tuple[dict, str]:
+    """Copy a module onto this device. The returned document is the copy."""
+    claim = doc.get("claim") if isinstance(doc.get("claim"), dict) else {}
+    keys = set()
+    if keep_keys:
+        for item in claim.get("keys") or []:
+            try:
+                number = int(item)
+            except (TypeError, ValueError):
+                continue
+            if number > 0:
+                keys.add(number)
+    source_buttons = set(_explicit_ids(claim, "buttons"))
+    source_axes = set(_explicit_ids(claim, "axes"))
+    source_hats = set(_explicit_ids(claim, "hats"))
+    source_keys = set()
+    for item in claim.get("keys") or []:
+        try:
+            number = int(item)
+        except (TypeError, ValueError):
+            continue
+        if number > 0:
+            source_keys.add(number)
+    kept_buttons = source_buttons & buttons
+    kept_axes = source_axes & axes
+    kept_hats = source_hats & hats
+    kept_keys = source_keys & keys
+    payload = json.loads(json.dumps(doc))
+    payload["kind"] = "control.hardware"
+    payload["device"] = device_name
+    payload["direction"] = "dest" if direction == "dest" else "source"
+    if guid:
+        payload["boundName"] = device_name
+        payload["boundGuidLocal"] = guid
+    else:
+        payload.pop("boundGuidLocal", None)
+        payload.pop("boundName", None)
+    payload["claim"] = {
+        "buttons": sorted(kept_buttons),
+        "axes": sorted(kept_axes),
+        "hats": sorted(kept_hats),
+        "keys": sorted(kept_keys),
+        "friendly": _filter_friendly(
+            claim.get("friendly") if isinstance(claim.get("friendly"), dict) else {},
+            kept_buttons,
+            kept_axes,
+            kept_hats,
+            kept_keys,
+        ),
+    }
+    nodes = payload.get("nodes") if isinstance(payload.get("nodes"), list) else []
+    payload["nodes"] = _filter_nodes(nodes, kept_buttons, kept_axes, kept_hats, kept_keys)
+    calibration = payload.get("calibration")
+    if isinstance(calibration, dict):
+        kept_cal = {}
+        for key, value in calibration.items():
+            try:
+                number = int(key)
+            except (TypeError, ValueError):
+                continue
+            if number in kept_axes:
+                kept_cal[str(int(number))] = value
+        payload["calibration"] = kept_cal
+    view = payload.get("view")
+    if isinstance(view, dict) and isinstance(view.get("meters"), list):
+        meters = []
+        for item in view["meters"]:
+            try:
+                number = int(item)
+            except (TypeError, ValueError):
+                meters.append(item)
+                continue
+            if number == 0 or number in kept_axes:
+                meters.append(item)
+        view = dict(view)
+        view["meters"] = meters
+        payload["view"] = view
+    if previous_image:
+        payload["image"] = previous_image
+    else:
+        payload.pop("image", None)
+    left = []
+    left.extend(f"Button {number}" for number in sorted(source_buttons - kept_buttons))
+    left.extend(f"Axis {number}" for number in sorted(source_axes - kept_axes))
+    left.extend(f"Hat {number}" for number in sorted(source_hats - kept_hats))
+    left.extend(f"Key {number}" for number in sorted(source_keys - kept_keys))
+    return payload, _left_out_text(left)
+
+
+def _resolve_import_source(file_name: str) -> Path | None:
+    raw = str(file_name or "").strip()
+    if not raw:
+        return None
+    if "://" in raw or raw.lower().startswith("file:"):
+        try:
+            src = to_local_path(raw)
+        except Exception:
+            return None
+        return src if src and Path(src).is_file() else None
+    direct = Path(raw)
+    if direct.is_file():
+        return direct
+    rel = raw.replace("\\", "/")
+    if rel.lower().endswith(".json"):
+        rel = rel[:-5]
+    if rel.lower().startswith("imported/"):
+        path = _maps_dir() / "imported" / f"{Path(rel).name}.json"
+        return path if path.is_file() else None
+    path = _maps_dir() / f"{_plain_slug(rel)}.json"
+    return path if path.is_file() else None
+
+
+def _other_device_uses(slug: str, device_name: str, guid: str) -> bool:
+    me = _norm_guid(guid)
+    me_name = str(device_name or "").strip().lower()
+    for dev in _live_devices():
+        name = str(getattr(dev, "name", "") or "")
+        dev_guid = _norm_guid(getattr(dev, "device_guid", ""))
+        if me and dev_guid == me:
+            continue
+        if not me and name.strip().lower() == me_name:
+            continue
+        if _slug(name) == slug:
+            return True
+        if resolve_module_slug(name, str(getattr(dev, "device_guid", "") or "")) == slug:
+            return True
+    return False
+
+
+def _stash_name(folder: Path, name: str, original: bytes) -> Path | None:
+    candidate = folder / name
+    stem = Path(name).stem
+    suffix = Path(name).suffix or ".json"
+    number = 1
+    while candidate.exists():
+        try:
+            if candidate.read_bytes() == original:
+                return None
+        except OSError:
+            pass
+        number += 1
+        candidate = folder / f"{stem}_{number}{suffix}"
+    return candidate
+
+
+def _stash_original(src: Path, device_name: str, guid: str) -> None:
+    """Hide a gift, or this device's old file, from the live maps folder."""
+    maps = _maps_dir().resolve()
+    imported = maps / "imported"
+    imported.mkdir(parents=True, exist_ok=True)
+    src_res = src.resolve()
+    if src_res.parent == imported:
+        return
+    own = (maps / f"{_slug(device_name)}.json").resolve()
+    if src_res == own:
+        return
+    original = src.read_bytes()
+    dest = _stash_name(imported, src_res.name, original)
+    if src_res.parent == maps:
+        if _other_device_uses(src_res.stem.lower(), device_name, guid):
+            return
+        if dest is None:
+            src.unlink()
+            return
+        shutil.move(str(src), str(dest))
+        return
+    if dest is None:
+        return
+    dest.write_bytes(original)
+
+
+def _clear_device_binding(device_name: str, guid: str) -> None:
+    data = _binding_store()
+    key = _norm_guid(guid) or _guid_for_name(device_name)
+    name_key = _name_key(device_name)
+    changed = False
+    if key and key in data:
+        data.pop(key, None)
+        changed = True
+    if name_key and name_key in data:
+        data.pop(name_key, None)
+        changed = True
+    if changed:
+        _write_bindings(data)
+
+
+def import_module_file(device_name: str, guid: str, file_name: str, direction: str = "source") -> str:
+    """Copy a module file onto this device's own file. The chosen file is not edited."""
+    name = str(device_name or "").strip()
+    if not name:
+        return "That file could not be read."
+    src = _resolve_import_source(file_name)
+    if src is None or not src.is_file():
+        return "That file could not be read."
+    own_slug = _slug(name)
+    dest = _maps_dir() / f"{own_slug}.json"
+    try:
+        if src.resolve() == dest.resolve():
+            return "That file is already this device's file."
+    except OSError:
+        return "That file could not be read."
+    try:
+        doc = json.loads(src.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "That file could not be read."
+    if not isinstance(doc, dict) or doc.get("kind") != "control.hardware":
+        return "That file is not a module file."
+    target = "dest" if str(direction or "").strip().lower() == "dest" else "source"
+    source_direction = _infer_direction(doc, src)
+    if target == "source" and source_direction == "dest":
+        return "A vJoy file cannot be copied onto a stick."
+    if target == "dest" and source_direction == "source":
+        return "A stick file cannot be copied onto a vJoy."
+    keyboard = name.lower() == "keyboard"
+    if keyboard:
+        limits = (set(), set(), set())
+    else:
+        limits = _connected_input_ids(guid)
+        if limits is None:
+            return "This device is not connected, so the file cannot be checked."
+    buttons, axes, hats = limits
+    previous_image = ""
+    if dest.is_file():
+        try:
+            previous = json.loads(dest.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            previous = None
+        if isinstance(previous, dict):
+            previous_image = str(previous.get("image") or "")
+    payload, left = prepare_imported_doc(
+        doc,
+        name,
+        str(guid or ""),
+        target,
+        buttons,
+        axes,
+        hats,
+        keep_keys=keyboard,
+        previous_image=previous_image,
+    )
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        dest.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        return "That file could not be read."
+    try:
+        _stash_original(src, name, str(guid or ""))
+    except OSError:
+        left += " The original file was left where it was."
+    _clear_device_binding(name, str(guid or ""))
+    persist_log(f"Persist import file name={name!r} guid={guid!r} src={src} dest={dest}")
+    return f"Imported into {own_slug}.json.{left}"
 
 
 def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
@@ -249,39 +638,32 @@ def _users_of_slug(slug: str) -> set[str]:
     return users
 
 
-def load_module_file(device_name: str, guid: str, source_url: str) -> str:
-    try:
-        src = to_local_path(source_url)
-    except Exception:
-        return ""
-    if not src or not src.is_file() or src.suffix.lower() != ".json":
-        return ""
-    slug = _plain_slug(src.stem)
-    if not slug:
-        return ""
-    dest = _maps_dir() / f"{slug}.json"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    if src.resolve() != dest.resolve():
-        if dest.exists():
-            return ""
-        shutil.copy2(src, dest)
-    return bind_module_file(device_name, guid, slug)
+def load_module_file(device_name: str, guid: str, source_url: str, direction: str = "source") -> str:
+    return import_module_file(device_name, guid, source_url, direction)
 
 
 def delete_module_file(device_name: str, guid: str) -> str:
-    slug = resolve_module_slug(device_name, guid)
+    """Delete this device's own file. Do not delete, or unhook, a different file."""
+    slug = _slug(device_name)
     key = _norm_guid(guid) or _guid_for_name(device_name)
     others = _users_of_slug(slug) - ({key} if key else set())
+    name_key = _name_key(device_name)
+    others.discard(name_key)
     if others:
         return "Another stick is using this file."
     path = _maps_dir() / f"{slug}.json"
     if path.is_file():
         path.unlink()
     data = _binding_store()
-    for stored, value in list(data.items()):
-        if _plain_slug(value) == slug or stored == key:
-            data.pop(stored, None)
-    _write_bindings(data)
+    changed = False
+    if key and _plain_slug(str(data.get(key, ""))) == slug:
+        data.pop(key, None)
+        changed = True
+    if name_key and _plain_slug(str(data.get(name_key, ""))) == slug:
+        data.pop(name_key, None)
+        changed = True
+    if changed:
+        _write_bindings(data)
     return ""
 
 

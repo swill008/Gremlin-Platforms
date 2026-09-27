@@ -25,11 +25,11 @@ from gremlin.ui.hardware_profile import (
     _slug,
     bind_module_file,
     delete_module_file,
+    foreign_module_file,
     guid_for_module,
-    load_module_file,
+    import_module_file,
     maps_folder_url,
     module_file_choices,
-    module_file_exists,
     module_json_path,
     persist_log,
     resolve_module_slug,
@@ -1175,7 +1175,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=str)
     def moduleFileFor(self, guid: str, device_name: str) -> str:
-        return resolve_module_slug(device_name, guid)
+        del guid
+        return _slug(device_name)
+
+    @QtCore.Slot(str, str, result=str)
+    def foreignModuleFile(self, guid: str, device_name: str) -> str:
+        return foreign_module_file(device_name, guid)
 
     @QtCore.Slot(str, str, str)
     def bindModuleFile(self, guid: str, device_name: str, file_name: str) -> None:
@@ -1190,16 +1195,20 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=bool)
     def moduleFileExists(self, guid: str, device_name: str) -> bool:
-        return module_file_exists(device_name, guid)
+        del guid
+        return (_maps_dir() / f"{_slug(device_name)}.json").is_file()
+
+    @QtCore.Slot(str, str, str, str, result=str)
+    def importModuleFile(self, guid: str, device_name: str, file_name: str, direction: str) -> str:
+        message = import_module_file(device_name, guid, file_name, direction)
+        if str(message).startswith("Imported "):
+            signal.configChanged.emit()
+            self._refresh_inplace()
+        return message
 
     @QtCore.Slot(str, str, str, result=str)
     def loadModuleFile(self, guid: str, device_name: str, source_url: str) -> str:
-        slug = load_module_file(device_name, guid, source_url)
-        if not slug:
-            return "That file could not be loaded."
-        signal.configChanged.emit()
-        self._refresh_inplace()
-        return ""
+        return self.importModuleFile(guid, device_name, source_url, "source")
 
     @QtCore.Slot(str, str, result=str)
     def deleteModuleFile(self, guid: str, device_name: str) -> str:

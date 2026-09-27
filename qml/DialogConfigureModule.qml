@@ -23,6 +23,8 @@ Window {
 
     property string moduleFileLabel: ""
     property string moduleFileMessage: ""
+    property bool moduleFileError: false
+    property string moduleFileNotice: ""
     property string shownModulePath: ""
     property bool claimDirty: false
     property bool allowClose: false
@@ -40,22 +42,23 @@ Window {
         var slug = String(moduleModel.moduleFileFor(deviceGuid, deviceName) || "")
         var saved = moduleModel.moduleFileExists(deviceGuid, deviceName)
         var names = moduleModel.moduleFileNames(deviceGuid, deviceName) || []
+        var foreign = String(moduleModel.foreignModuleFile(deviceGuid, deviceName) || "")
         var choices = []
-        var pick = 0
         var i
         moduleFileLabel = slug + ".json" + (saved ? "" : " (not saved yet)")
+        moduleFileNotice = foreign.length
+            ? ("This stick still opens " + foreign + ".json. Import that file to copy it here.")
+            : ""
         for (i = 0; i < names.length; i++) {
             var item = String(names[i] || "")
             if (!item.length)
                 continue
-            if (item === slug)
-                pick = choices.length
             choices.push(item + ".json")
         }
         _moduleFileQuiet = true
         moduleFileChoices = choices
         if (_moduleFilePick)
-            _moduleFilePick.currentIndex = pick
+            _moduleFilePick.currentIndex = -1
         _moduleFileQuiet = false
     }
 
@@ -134,11 +137,13 @@ Window {
     function applyPendingFile() {
         if (!pendingFileSlug.length || !moduleModel)
             return
-        moduleModel.bindModuleFile(deviceGuid, deviceName, pendingFileSlug)
+        var message = moduleModel.importModuleFile(deviceGuid, deviceName, pendingFileSlug, direction)
         pendingFileSlug = ""
-        moduleFileMessage = ""
+        moduleFileMessage = message
+        moduleFileError = message.indexOf("Imported ") !== 0
         refreshModuleFileLabel()
-        reloadModuleControls()
+        if (!moduleFileError)
+            reloadModuleControls()
     }
 
     onClosing: function(close) {
@@ -316,7 +321,6 @@ Window {
             }
             Button {
                 text: "Module file"
-                visible: direction !== "dest"
                 focusPolicy: Qt.NoFocus
                 onClicked: {
                     refreshModuleFileLabel()
@@ -365,9 +369,22 @@ Window {
             }
             Label {
                 Layout.fillWidth: true
-                text: "This stick's inputs and button map use this file."
+                text: "Import copies the chosen file into this file. The chosen file is not changed."
                 color: "#A1A1AA"
                 wrapMode: Text.WordWrap
+                font.pixelSize: 12
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: moduleFileNotice.length > 0
+                text: moduleFileNotice
+                color: "#A1A1AA"
+                wrapMode: Text.WordWrap
+                font.pixelSize: 12
+            }
+            Label {
+                text: "Import from"
+                color: "#A1A1AA"
                 font.pixelSize: 12
             }
             ComboBox {
@@ -382,7 +399,7 @@ Window {
                     if (claimDirty) {
                         pendingFileSlug = slug
                         saveIntent = "file"
-                        _saveGate.detail = "Checks on this screen are not saved. Switch files without saving and they will be lost."
+                        _saveGate.detail = "Checks on this screen are not saved. Import without saving and they will be lost."
                         _saveGate.ask()
                         return
                     }
@@ -406,6 +423,7 @@ Window {
                     if (!moduleModel)
                         return
                     moduleFileMessage = moduleModel.deleteModuleFile(deviceGuid, deviceName)
+                    moduleFileError = moduleFileMessage.length > 0
                     refreshModuleFileLabel()
                     if (!moduleFileMessage.length)
                         reloadModuleControls()
@@ -415,7 +433,7 @@ Window {
                 Layout.fillWidth: true
                 visible: moduleFileMessage.length > 0
                 text: moduleFileMessage
-                color: "#F87171"
+                color: moduleFileError ? "#F87171" : "#A1A1AA"
                 wrapMode: Text.WordWrap
             }
         }
@@ -432,9 +450,10 @@ Window {
             var src = selectedFile
             if (src && src.toString)
                 src = src.toString()
-            moduleFileMessage = moduleModel.loadModuleFile(deviceGuid, deviceName, src || "")
+            moduleFileMessage = moduleModel.importModuleFile(deviceGuid, deviceName, src || "", direction)
+            moduleFileError = moduleFileMessage.indexOf("Imported ") !== 0
             refreshModuleFileLabel()
-            if (!moduleFileMessage.length)
+            if (!moduleFileError)
                 reloadModuleControls()
         }
     }
