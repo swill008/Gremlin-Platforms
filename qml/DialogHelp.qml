@@ -20,6 +20,13 @@ Window {
     color: Style.background
     Universal.theme: Style.theme
 
+    ToolWindowMemory {
+        host: _win
+        name: "help"
+        defaultWidth: 920
+        defaultHeight: 640
+    }
+
     property var _topics: HelpTopics.topics()
     property int _index: 0
 
