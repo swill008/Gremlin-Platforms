@@ -74,9 +74,12 @@ Window {
             _saveGate.ask()
             return
         }
-        _axisView.model.destroy()
-        _axisView.destroy()
-        _modules.destroy()
+        if (_axisView && _axisView.model)
+            _axisView.model.destroy()
+        if (_axisView)
+            _axisView.destroy()
+        if (_modules)
+            _modules.destroy()
         backend.resumeInputHighlighting()
     }
 
@@ -127,15 +130,22 @@ Window {
         }
 
         Label {
-            visible: _modules.count === 0
+            visible: _modules && _modules.moduleCount === 0
             text: "No connected input module."
             color: "#A1A1AA"
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
         }
 
         Label {
-            visible: _modules.count > 0 && _calibrationDialog.shownSlug.length > 0 && _axisView.count === 0
+            visible: _modules && _axisView
+                    && _modules.moduleCount > 0
+                    && _calibrationDialog.shownSlug.length > 0
+                    && _axisView.count === 0
             text: "This input module is not connected."
             color: "#A1A1AA"
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
         }
 
         JGListView {

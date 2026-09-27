@@ -169,7 +169,7 @@ class CalibrationModuleModel(QtCore.QAbstractListModel):
         return self.roles
 
     @QtCore.Property(int, notify=countChanged)
-    def count(self) -> int:
+    def moduleCount(self) -> int:
         return len(self._rows)
 
     @QtCore.Slot(str, result=int)
