@@ -6,8 +6,8 @@
 function topics() {
     return [
         topic("Start", "Overview",
-            "<p>Joystick Gremlin reads your physical controllers and runs the actions in the loaded profile. A game or another program then sees the result, usually through vJoy, a logical device, or an Xbox controller.</p>"
-            + "<p>Start from Home, or open a profile with File → Load Profile. Open Configuration for a device and use Add Action on an input. Turn Joystick Gremlin on with Toggle when those actions should run. Turn it off when the physical devices should be left alone.</p>"),
+            "<p>Gremlin-Platforms reads your physical controllers and runs the actions in the loaded profile. A game or another program then sees the result, usually through vJoy, a logical device, or an Xbox controller.</p>"
+            + "<p>Start from Home, or open a profile with File → Load Profile. Open Configuration for a device and use Add Action on an input. Turn Gremlin-Platforms on with Toggle when those actions should run. Turn it off when the physical devices should be left alone.</p>"),
         topic("Start", "What is saved where",
             "<p>Four stores are kept separate. Saving one does not save the others.</p>"
             + "<p><b>Profile.</b> Modes, bindings, and actions. File → Save Profile writes this file. File → Save Profile As writes a new one. Closing the program asks when the profile has changes that are not saved.</p>"
@@ -16,10 +16,10 @@ function topics() {
             + "<p><b>Calibration.</b> The center and the ends of an axis. Save on that axis writes it. Closing Calibration, or choosing another device, asks when an axis is not saved.</p>"),
         topic("Start", "Toggle",
             "<p>Toggle makes the loaded profile live. While it is off, you are only editing. While it is on, inputs run their actions.</p>"
-            + "<p>Use Toggle on the toolbar. It uses the accent color while Joystick Gremlin is on. Turn it off before you change hardware, or before you close a game, if you want the physical devices visible again.</p>"),
+            + "<p>Use Toggle on the toolbar. It uses the accent color while Gremlin-Platforms is on. Turn it off before you change hardware, or before you close a game, if you want the physical devices visible again.</p>"),
         topic("Start", "Profiles",
             "<p>A profile stores modes and the actions bound to each device.</p>"
-            + "<p>File → New Profile starts an empty profile. File → Load Profile opens one. File → Recent lists profiles you have opened. File → Save Profile writes the current file. A successful save says “Saved to the profile.” Options can also open a profile when a chosen program starts. File → Exit closes Joystick Gremlin.</p>"),
+            + "<p>File → New Profile starts an empty profile. File → Load Profile opens one. File → Recent lists profiles you have opened. File → Save Profile writes the current file. A successful save says “Saved to the profile.” Options can also open a profile when a chosen program starts. File → Exit closes Gremlin-Platforms.</p>"),
         topic("Home", "Home",
             "<p>Home lists input devices and output devices. Each card is one device.</p>"
             + "<p>View → Home, or Home on the toolbar, returns here. Select a card to work on that device. Right-click a card for Button Map and the other actions for that device.</p>"
@@ -57,7 +57,7 @@ function topics() {
             + "<p>Choose the logical device and the control on it.</p>"),
         topic("Actions", "Map to Xbox",
             "<p>Sends the input to a virtual Xbox controller. That output needs its own driver. This program does not ship that driver.</p>"
-            + "<p>Choose the Xbox control. Use the Xbox Viewer to confirm the output while Joystick Gremlin is on.</p>"),
+            + "<p>Choose the Xbox control. Use the Xbox Viewer to confirm the output while Gremlin-Platforms is on.</p>"),
         topic("Actions", "Macro",
             "<p>Plays a sequence of keys, buttons, mouse moves, and pauses.</p>"
             + "<p>Record or insert the steps. Set whether a new press waits, interrupts, or is ignored while the macro is still running.</p>"),
@@ -83,7 +83,7 @@ function topics() {
             "<p>Loads another profile when the input fires.</p>"
             + "<p>Choose the profile file.</p>"),
         topic("Actions", "Pause and Resume",
-            "<p>Pauses Joystick Gremlin, resumes it, or toggles that state from a button.</p>"
+            "<p>Pauses Gremlin-Platforms, resumes it, or toggles that state from a button.</p>"
             + "<p>Choose pause, resume, or toggle.</p>"),
         topic("Actions", "Play Sound",
             "<p>Plays a sound file when the input fires.</p>"
@@ -127,11 +127,11 @@ function topics() {
             + "<p>Tools → Configure input module edits an input. Tools → Configure output module edits an output. Module file opens the file controls: the files in the current folder, Browse for File, and Delete. Checks, names, and the picture ask before the window closes if they are not saved. A successful save says “Saved to the module file.”</p>"
             + "<p>The picture set here is the one HiDHide uses until you choose a different picture for that device in HiDHide. Tools → Import devices reads a device file. Tools → Export devices writes the selected device.</p>"),
         topic("Tools", "HiDHide",
-            "<p>HiDHide hides selected controllers from other programs. Joystick Gremlin does not install the driver. Tools → HiDHide opens the window. Get HiDHide opens the download page. Test opens the Windows game-controller panel so you can see whether a controller is still visible.</p>"
-            + "<p>The top row shows whether the driver was found, its version, and Gremlin control. Gremlin control starts off. While it is off, this window does not change the driver. Turn it on to let Joystick Gremlin apply the device list, the program list, Allow list or Block list, and HiDHide Enabled. Those choices are kept, and they are written to the driver while Gremlin control is on. They stay when you exit.</p>"
+            "<p>HiDHide hides selected controllers from other programs. Gremlin-Platforms does not install the driver. Tools → HiDHide opens the window. Get HiDHide opens the download page. Test opens the Windows game-controller panel so you can see whether a controller is still visible.</p>"
+            + "<p>The top row shows whether the driver was found, its version, and Gremlin control. Gremlin control starts off. While it is off, this window does not change the driver. Turn it on to let Gremlin-Platforms apply the device list, the program list, Allow list or Block list, and HiDHide Enabled. Those choices are kept, and they are written to the driver while Gremlin control is on. They stay when you exit.</p>"
             + "<p>HiDHide Enabled means the driver enforces both lists. Off means the driver is installed but it is not hiding anything. Gaming devices only limits the list to game controllers. Turn it off and press Refresh to look at a wider list.</p>"
             + "<p>A device can use the picture from its module. Change image or Add image replaces that picture for this list only, and the replacement is kept. The selector adds or removes that device. A device that is actually hidden is dimmed, and HIDDEN is drawn across the row.</p>"
-            + "<p>Allow list means only the programs in the list can see the hidden controllers. Block list means the programs in the list cannot see them. Joystick Gremlin can still see the devices in both modes. Add Program adds an executable. Remove takes it off the list. The window size, and the bar between the devices and the programs, are kept.</p>"),
+            + "<p>Allow list means only the programs in the list can see the hidden controllers. Block list means the programs in the list cannot see them. Gremlin-Platforms can still see the devices in both modes. Add Program adds an executable. Remove takes it off the list. The window size, and the bar between the devices and the programs, are kept.</p>"),
         topic("Tools", "Options",
             "<p>Options are program settings. They are not stored inside one profile.</p>"
             + "<p>Tools → Options. Action sequence ordering sets the order actions run. Highlight scope and highlight speed control how a live press is shown. Log level sets how much is written to the log. OSC input host, OSC output host, and OSC auto-release set the OSC connection and how long an OSC input stays down. Profile auto-loading opens a profile when a chosen program starts. Status cards resets the Home card sizes. Text to Speech chooses the voice used by the Text to Speech action.</p>"),

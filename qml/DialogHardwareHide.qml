@@ -411,7 +411,7 @@ Window {
                     Layout.fillWidth: true
                     color: "#A1A1AA"
                     font.pixelSize: 12
-                    text: "Allow list: only these programs can see the hidden controllers. Block list: these programs cannot see them. Joystick Gremlin is allowed in both modes."
+                    text: "Allow list: only these programs can see the hidden controllers. Block list: these programs cannot see them. Gremlin-Platforms is allowed in both modes."
                 }
 
                 ListView {
@@ -468,7 +468,7 @@ Window {
                     font.pixelSize: 12
                     text: _hh.inverseOn
                           ? "Add a program here to block it from the hidden controllers."
-                          : "Add a program here to let it see the hidden controllers. Joystick Gremlin can still see them."
+                          : "Add a program here to let it see the hidden controllers. Gremlin-Platforms can still see them."
                 }
             }
         }

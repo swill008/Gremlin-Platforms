@@ -832,14 +832,6 @@ def set_whitelist(paths: list[str]) -> bool:
     return _set_multi(IOCTL_SET_WHITELIST, paths)
 
 
-def restore_borrowed() -> None:
-    """Write Gremlin's saved HiDHide settings again. The previous client state is not put back."""
-    try:
-        apply_saved_list()
-    except Exception:
-        _hh_log("shutdown apply failed")
-
-
 def _is_virtual(instance: str, name: str) -> bool:
     blob = f"{instance} {name}".upper()
     return any(

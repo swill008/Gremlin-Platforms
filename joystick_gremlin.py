@@ -87,7 +87,7 @@ def configure_logger(config: dict[str, Any]) -> None:
     if config["mode"] != "session":
         logger.debug("-" * 80)
         logger.debug(time.strftime("%Y-%m-%d %H:%M"))
-        logger.debug(f"Starting Joystick Gremlin {gremlin.util.get_code_release()}-OSC")
+        logger.debug("Starting Gremlin-Platforms R1")
         logger.debug("-" * 80)
 
 
@@ -252,7 +252,7 @@ def _gremlin_window_titles() -> list[str]:
             buf = ctypes.create_unicode_buffer(length)
             user32.GetWindowTextW(hwnd, buf, length)
             title = buf.value
-            if not title or "Joystick Gremlin" not in title:
+            if not title or "Gremlin-Platforms" not in title:
                 return True
             pid = ctypes.c_ulong()
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
@@ -280,7 +280,7 @@ def _window_process_ids() -> set[int]:
             length = user32.GetWindowTextLengthW(hwnd) + 1
             buf = ctypes.create_unicode_buffer(length)
             user32.GetWindowTextW(hwnd, buf, length)
-            if "Joystick Gremlin" not in buf.value:
+            if "Gremlin-Platforms" not in buf.value:
                 return True
             pid = ctypes.c_ulong()
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
@@ -382,7 +382,7 @@ def _confirm_second_instance(
     if pids and not windows:
         hung_hint = "\nA Gremlin process is running with no visible window. It may be hung."
     text = (
-        "Another Joystick Gremlin window is already running.\n"
+        "Another Gremlin-Platforms window is already running.\n"
         f"Process IDs: {pid_text}"
         f"{extra}{hung_hint}\n\n"
         "Only one copy can own vJoy.\n\n"
@@ -393,7 +393,7 @@ def _confirm_second_instance(
     result = ctypes.windll.user32.MessageBoxW(
         None,
         text,
-        "Joystick Gremlin",
+        "Gremlin-Platforms R1",
         0x33,
     )
     if result == 6:
@@ -610,11 +610,11 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         parser = argparse.ArgumentParser()
         parser.add_argument("--profile", help="Path to the profile to load on startup")
         parser.add_argument(
-            "--enable", help="Enable Joystick Gremlin upon launch", action="store_true"
+            "--enable", help="Enable Gremlin-Platforms upon launch", action="store_true"
         )
         parser.add_argument(
             "--start-minimized",
-            help="Start Joystick Gremlin minimized",
+            help="Start Gremlin-Platforms minimized",
             action="store_true",
         )
         cmd_args, qt_argv = parser.parse_known_args(argv)
@@ -711,12 +711,10 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         app_id = "joystick.gremlin"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
         self.setWindowIcon(QtGui.QIcon(gremlin.util.resource_path("gfx/icon.png")))
-        self.setApplicationDisplayName(
-            f"Joystick Gremlin {gremlin.util.get_code_release()}-OSC"
-        )
+        self.setApplicationDisplayName("Gremlin-Platforms R1")
         self.setOrganizationName("H2IK")
         self.setOrganizationDomain("https://whitemagic.github.io/JoystickGremlin/")
-        self.setApplicationName("Joystick Gremlin")
+        self.setApplicationName("Gremlin-Platforms R1")
         self.setFont(QtGui.QFont("Segoe UI", 11))
         if QtGui.QFontDatabase.addApplicationFont(":/BootstrapIcons") < 0:
             self.syslog.error("Failed to load BootstrapIcons")

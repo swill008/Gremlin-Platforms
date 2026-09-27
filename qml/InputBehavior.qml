@@ -28,29 +28,32 @@ Item {
         RadioButton {
             autoExclusive: false
             text: "Button"
-
-            checked: _root.inputBinding.behavior == "button"
-            onClicked: () => { _root.inputBinding.behavior = "button" }
+            property bool shown: _root.inputBinding && _root.inputBinding.behavior == "button"
+            onShownChanged: if (!pressed) checked = shown
+            Component.onCompleted: checked = shown
+            onClicked: if (_root.inputBinding) _root.inputBinding.behavior = "button"
         }
 
         RadioButton {
             autoExclusive: false
             text: "Axis"
 
-            visible: _root.inputBinding.inputType == "axis"
-
-            checked: _root.inputBinding.behavior == "axis"
-            onClicked: () => { _root.inputBinding.behavior = "axis" }
+            visible: _root.inputBinding && _root.inputBinding.inputType == "axis"
+            property bool shown: _root.inputBinding && _root.inputBinding.behavior == "axis"
+            onShownChanged: if (!pressed) checked = shown
+            Component.onCompleted: checked = shown
+            onClicked: if (_root.inputBinding) _root.inputBinding.behavior = "axis"
         }
 
         RadioButton {
             autoExclusive: false
             text: "Hat"
 
-            visible: _root.inputBinding.inputType == "hat"
-
-            checked: _root.inputBinding.behavior == "hat"
-            onClicked: () => { _root.inputBinding.behavior = "hat" }
+            visible: _root.inputBinding && _root.inputBinding.inputType == "hat"
+            property bool shown: _root.inputBinding && _root.inputBinding.behavior == "hat"
+            onShownChanged: if (!pressed) checked = shown
+            Component.onCompleted: checked = shown
+            onClicked: if (_root.inputBinding) _root.inputBinding.behavior = "hat"
         }
     }
 }

@@ -1,4 +1,4 @@
-# Joystick Gremlin
+# Gremlin-Platforms R1
 
 ## Introduction
 
@@ -6,7 +6,7 @@
 make certain things work, the best place to ask for help is in the
 `#joystick-gremlin` channel on the [HOTAS Discord](https://discord.gg/hotas).
 
-Joystick Gremlin is a program that allows the configuration of joystick like devices, similar to what CH Control Manager and Thrustmaster's T.A.R.G.E.T. do for their respectively supported joysticks. However, Joystick Gremlin works with any device be it from different manufacturers or custom devices that appear as a joystick to Windows. Joystick Gremlin uses the virtual joysticks provided by vJoy to map physical to virtual inputs and apply various other transformations such as response curves to analogue axes. In addition to customizing joysticks, Joystick Gremlin also provides powerful macro functionalities, a flexible mode system, scripting using Python, and many other features.
+Gremlin-Platforms R1 configures joystick-like devices. It is built on Joystick Gremlin. It works with any device that appears as a joystick to Windows, including devices from different manufacturers and custom devices. It uses the virtual joysticks provided by vJoy to map physical inputs to virtual inputs and to apply transformations such as response curves. It also provides macros, modes, and Python scripting.
 
 The main features are:
 

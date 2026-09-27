@@ -448,13 +448,11 @@ class Library:
             fid: self._actions[fid] for fid in file_ids if fid in self._actions
         }
 
-    def to_xml(self) -> ElementTree.Element:
-        """Returns an XML node encoding the content of this library.
+    def drop_invalid_actions(self) -> None:
+        """Remove unfinished actions from the open profile.
 
-        Returns:
-            XML node holding the instance's content
+        An explicit save does this. Checking for unsaved work must not.
         """
-        # Process the entire library, removing links to invalid actions
         invalid_aids = [n.id for n in self._actions.values() if not n.is_valid()]
         for action in self._actions.values():
             for selector in action._valid_selectors():
@@ -467,7 +465,15 @@ class Library:
                 for i in reversed(to_remove):
                     action.remove_action(i, selector)
 
-        # Generate library subtree
+    def to_xml(self) -> ElementTree.Element:
+        """Returns an XML node encoding the content of this library.
+
+        Invalid actions are left out of the node. They stay in the open
+        profile until drop_invalid_actions is called.
+
+        Returns:
+            XML node holding the instance's content
+        """
         node = ElementTree.Element("library")
         for action in [n for n in self._actions.values() if n.is_valid()]:
             node.append(action.to_xml())
@@ -609,12 +615,17 @@ class Profile:
         for node in root.findall("./inputs/input"):
             self._process_input(node)
 
-    def to_xml(self, fpath: Path) -> None:
+    def to_xml(self, fpath: Path, *, prune: bool = True) -> None:
         """Writes the profile's content to an XML file.
 
         Args:
             fpath: path to the XML file in which to write the content
+            prune: when True, unfinished actions are removed from the open
+                profile before the file is written. The unsaved check passes
+                False so looking does not delete anything.
         """
+        if prune:
+            self.library.drop_invalid_actions()
         root = ElementTree.Element("profile")
         root.set("version", str(Profile.current_version))
 
@@ -765,8 +776,8 @@ class Profile:
         if self.fpath is None:
             return True
         else:
-            tmp_path = os.path.join(os.getenv("temp"), "gremlin.xml")
-            self.to_xml(tmp_path)
+            tmp_path = os.path.join(os.getenv("temp") or os.getenv("TMP") or ".", "gremlin.xml")
+            self.to_xml(tmp_path, prune=False)
             current_sha = hashlib.sha256(
                 open(tmp_path).read().encode("utf-8")
             ).hexdigest()

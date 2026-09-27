@@ -291,7 +291,7 @@ class Backend(QtCore.QObject):
                 version_string = ".".join(str(x) for x in version)
                 signal.showNotification.emit(
                     "New version available",
-                    f"A newer version of Joystick Gremlin, {version_string} "
+                    f"A newer version of Gremlin-Platforms, {version_string} "
                     f"is available.",
                 )
                 self.config.set(

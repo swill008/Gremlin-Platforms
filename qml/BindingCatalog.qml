@@ -1353,8 +1353,10 @@ Item {
                 RowLayout {
                     CheckBox {
                         text: "Close pane after OK"
-                        checked: _root.closeAfterOk
-                        onCheckedChanged: {
+                        property bool shown: _root.closeAfterOk
+                        onShownChanged: if (!pressed) checked = shown
+                        Component.onCompleted: checked = shown
+                        onClicked: {
                             _root.closeAfterOk = checked
                             if (_root.paneChoiceReady)
                                 _panePlacement.setClosePaneAfterOk(checked)

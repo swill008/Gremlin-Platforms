@@ -13,7 +13,7 @@ ApplicationWindow {
     width: 600
     height: 300
     visible: true
-    title: qsTr("Joystick Gremlin")
+    title: qsTr("Gremlin-Platforms R1")
 
     ColumnLayout {
         anchors.fill: parent

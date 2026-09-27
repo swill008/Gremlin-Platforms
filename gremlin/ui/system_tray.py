@@ -125,7 +125,7 @@ class SystemTrayIcon(QtCore.QObject):
         self._hwnd = win32gui.CreateWindowEx(
             win32con.WS_EX_TOOLWINDOW | win32con.WS_EX_NOACTIVATE,
             self._class_atom,
-            "Joystick Gremlin",
+            "Gremlin-Platforms",
             win32con.WS_OVERLAPPED,
             0,
             0,
@@ -165,7 +165,7 @@ class SystemTrayIcon(QtCore.QObject):
                     | _NIF_SHOWTIP,
                     _WM_TRAY,
                     self._current_icon(),
-                    "Joystick Gremlin",
+                    "Gremlin-Platforms",
                 ),
             )
             win32gui.Shell_NotifyIcon(
@@ -250,9 +250,9 @@ class SystemTrayIcon(QtCore.QObject):
         menu = win32gui.CreatePopupMenu()
         try:
             show_hide = (
-                "Hide Joystick Gremlin"
+                "Hide Gremlin-Platforms"
                 if self._window.isVisible()
-                else "Show Joystick Gremlin"
+                else "Show Gremlin-Platforms"
             )
             win32gui.AppendMenu(menu, win32con.MF_STRING, _ID_SHOW, show_hide)
             win32gui.AppendMenu(menu, win32con.MF_SEPARATOR, 0, "")
@@ -260,7 +260,7 @@ class SystemTrayIcon(QtCore.QObject):
             win32gui.AppendMenu(menu, win32con.MF_STRING, _ID_TOGGLE, label)
             win32gui.AppendMenu(menu, win32con.MF_SEPARATOR, 0, "")
             win32gui.AppendMenu(
-                menu, win32con.MF_STRING, _ID_QUIT, "Quit Joystick Gremlin"
+                menu, win32con.MF_STRING, _ID_QUIT, "Quit Gremlin-Platforms"
             )
             with contextlib.suppress(win32gui.error):
                 win32gui.SetForegroundWindow(self._hwnd)

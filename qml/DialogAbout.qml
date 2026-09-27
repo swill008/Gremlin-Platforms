@@ -23,12 +23,12 @@ Window {
         anchors.bottomMargin: 58
 
         DisplayLabel {
-            text: "<b>Joystick Gremlin</b>"
+            text: "<b>Gremlin-Platforms</b>"
             font.pointSize: 36
         }
 
         DisplayLabel {
-            text: "Release " + backend.gremlinVersion + "-OSC"
+            text: "R1"
             font.pointSize: 14
         }
 

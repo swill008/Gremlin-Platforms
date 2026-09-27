@@ -1,26 +1,24 @@
-# Button Map Editor — Help
+# Button Map — Help
 
-Same text as **Help → Editor help** (F1) on the VKB-joystick-Button-Map window.
-
-Device: VKBsim Gladiator EVO R. Save target: `control.hardware` (`qml/maps/vkb_evo_r.json`).
+This note matches the editor. It is not limited to one stick. File → Save writes the layout to that device’s module file. A successful save says “Saved to the module file.” Moving a chip does not change the action bound to that control.
 
 ## Overview
 
-Button Map is a photo of the stick with chips on the hardware contacts. **File → Edit Mapping** starts a session. The live window uses the same layout; pressing the stick still lights the matching chip. Layout does not change bindings.
+Button Map is a picture of the selected device. Each chip marks one control. **File → Edit Mapping** starts an edit. The live view uses the same layout, and a press still lights the matching chip.
 
-**File → Save** writes the profile and becomes the live map. **File → Cancel** drops the session. Closing with unsaved work asks first.
+**File → Save** writes this device’s module file. **File → Cancel** drops the edit. Closing with unsaved work asks first.
 
 ## File
 
 | Command | Function |
 |---|---|
-| Edit Mapping | Start the editor session |
-| Save | Write `control.hardware` and the live map |
+| Edit Mapping | Start the editor |
+| Save | Write this device’s module file |
 | Cancel | Leave without writing |
-| Reset layout | Send every chip back to the reservoir. Inputs still illuminate |
+| Reset layout | Send every chip back to the pool. Inputs still light |
 | Choose background… | Pick a photo under the map |
-| Clear image | Restore the stock rig photo |
-| Exit | Close the window. Unsaved work still warns |
+| Clear image | Restore the picture from the module |
+| Exit | Close the window. Unsaved work still asks |
 
 ## Edit menu
 
@@ -129,7 +127,7 @@ Picking the theme that is already on **re-applies** it: stock layout, cell offse
 
 **Align** left / center / right / Free layout — only when the target is a group.
 
-Format is presentation. Hardware ids stay grouped. Save writes format to `control.hardware`.
+Format is presentation. Hardware ids stay grouped. Save writes the layout to this device’s module file.
 
 ## Context menu
 
@@ -199,8 +197,6 @@ Arrows nudge 1 px. Shift+arrows nudge by the grid size.
 
 ## Save and live map
 
-Save writes `kind: control.hardware` for **VKBsim Gladiator EVO R**. Nodes, image path, and `ui` (grid) go to the hardware profile.
+Save writes the layout to this device’s module file. That includes the chips, the photo, and the grid settings.
 
-The live face rebinds dest labels from pairing / vJoy / Xbox the same way as before. Theme and chip names are layout only.
-
-Hardware ids on this grip stay locked (buttons 1–29, hat 1, axes 1–4). See `qml/vkb_evo_r_face_map.md` for JPEG pixel lock.
+The live view still lights the control that is pressed. Chip names and colors are layout only. They do not change the actions in the profile.

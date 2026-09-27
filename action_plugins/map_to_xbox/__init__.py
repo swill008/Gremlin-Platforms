@@ -229,8 +229,8 @@ class MapToXboxData(AbstractActionData):
 
     @override
     def user_feedback(self) -> List[UserFeedback]:
-        # Warning only. An Error makes is_valid() false and Library.to_xml()
-        # silently drops the action, so Xbox binds never reached profile.xml.
+        # Warning only. An Error makes is_valid() false, and an explicit
+        # profile save then drops the action. A warning does not.
         if not XboxProxy().available():
             return [
                 UserFeedback(

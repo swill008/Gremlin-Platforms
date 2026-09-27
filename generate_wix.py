@@ -98,7 +98,7 @@ def create_folder_structure(folder_list):
     )
     structure["jg"] = create_node(
         "Directory",
-        {"Id": "INSTALLDIR", "Name": "Joystick Gremlin"}
+        {"Id": "INSTALLDIR", "Name": "Gremlin-Platforms R1"}
     )
     structure["root"].append(structure["pfiles"])
     structure["pfiles"].append(structure["h2ik"])
@@ -179,7 +179,7 @@ def create_feature(data):
             {
                 "Id": "Complete",
                 "Level": 1,
-                "Title": "Joystick Gremlin",
+                "Title": "Gremlin-Platforms R1",
                 "Description": "The main program",
                 "Display": "expand",
                 "ConfigurableDirectory": "INSTALLDIR"
@@ -213,7 +213,7 @@ def create_document():
     prod = create_node(
         "Product",
         {
-            "Name": "Joystick Gremlin",
+            "Name": "Gremlin-Platforms R1",
             "Manufacturer": "H2IK",
             # "Id": "a0a7fc85-8651-4b57-b7ee-a7f718857939", # 4.0.0
             # "Id": "447529e9-4f78-4baf-b51c-21db602a5f7b", # 4.0.1
@@ -247,7 +247,7 @@ def create_document():
         {
             "Id": "*",
             "Keywords": "Installer",
-            "Description": "Joystick Gremlin R13.1 Installer",
+            "Description": "Gremlin-Platforms R1 Installer",
             "Manufacturer": "H2IK",
             "InstallerVersion": "100",
             "Languages": "1033",
@@ -340,7 +340,7 @@ def create_shortcuts(doc, root, product_node):
     #             {
     #                 "Id": "startmenu_joystick_gremlin",
     #                 "Directory": "ProgramMenuDir",
-    #                 "Name": "Joystick Gremlin",
+    #                 "Name": "Gremlin-Platforms R1",
     #                 "Target": "[INSTALLDIR]joystick_gremlin.exe",
     #                 "WorkingDirectory": "INSTALLDIR",
     #                 "Advertise": "no",
@@ -352,7 +352,7 @@ def create_shortcuts(doc, root, product_node):
     #             {
     #                 "Id": "desktop_joystick_gremlin",
     #                 "Directory": "DesktopFolder",
-    #                 "Name": "Joystick Gremlin",
+    #                 "Name": "Gremlin-Platforms R1",
     #                 "Target": "[INSTALLDIR]joystick_gremlin.exe",
     #                 "WorkingDirectory": "INSTALLDIR",
     #                 "Advertise": "no",
@@ -402,7 +402,7 @@ def create_shortcuts(doc, root, product_node):
     )
     app_folder_node = create_node(
         "Directory",
-        {"Id": "ApplicationProgramsFolder", "Name": "Joystick Gremlin"}
+        {"Id": "ApplicationProgramsFolder", "Name": "Gremlin-Platforms R1"}
     )
     menu_folder_node.append(app_folder_node)
     root.append(menu_folder_node)
@@ -427,7 +427,7 @@ def create_shortcuts(doc, root, product_node):
         "Shortcut",
         {
             "Id": "ApplicationStartMenuShortcut",
-            "Name": "Joystick Gremlin",
+            "Name": "Gremlin-Platforms R1",
             "Target": "[#file_joystick_gremlin.exe]",
             "WorkingDirectory": "INSTALLDIR",
             "Advertise": "no",

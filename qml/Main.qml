@@ -19,7 +19,7 @@ import "helpers.js" as Helpers
 
 ApplicationWindow {
 
-    title: backend ? backend.windowTitle : "Joystick Gremlin"
+    title: backend ? backend.windowTitle : "Gremlin-Platforms R1"
     minimumWidth: 1300
     minimumHeight: 700
     width: 1400
@@ -592,19 +592,23 @@ ApplicationWindow {
             MenuItem {
                 text: qsTr("Scripts")
                 onTriggered: () => {
-                    if (uiState) {
-                        uiState.setCurrentRoom("scripts")
-                        uiState.setCurrentTab("scripts")
-                    }
+                    leaveDisplayThen(function() {
+                        if (uiState) {
+                            uiState.setCurrentRoom("scripts")
+                            uiState.setCurrentTab("scripts")
+                        }
+                    })
                 }
             }
             MenuItem {
                 text: qsTr("Profile Settings")
                 onTriggered: () => {
-                    if (uiState) {
-                        uiState.setCurrentRoom("settings")
-                        uiState.setCurrentTab("settings")
-                    }
+                    leaveDisplayThen(function() {
+                        if (uiState) {
+                            uiState.setCurrentRoom("settings")
+                            uiState.setCurrentTab("settings")
+                        }
+                    })
                 }
             }
         }
@@ -1145,10 +1149,12 @@ ApplicationWindow {
                     checked: false
 
                     onClicked: () => {
-                        if (uiState) {
-                            uiState.setCurrentRoom("scripts")
-                            uiState.setCurrentTab("scripts")
-                        }
+                        leaveDisplayThen(function() {
+                            if (uiState) {
+                                uiState.setCurrentRoom("scripts")
+                                uiState.setCurrentTab("scripts")
+                            }
+                        })
                     }
 
                     TextMetrics {
@@ -1167,10 +1173,12 @@ ApplicationWindow {
                     checked: false
 
                     onClicked: () => {
-                        if (uiState) {
-                            uiState.setCurrentRoom("settings")
-                            uiState.setCurrentTab("settings")
-                        }
+                        leaveDisplayThen(function() {
+                            if (uiState) {
+                                uiState.setCurrentRoom("settings")
+                                uiState.setCurrentTab("settings")
+                            }
+                        })
                     }
 
                     TextMetrics {
