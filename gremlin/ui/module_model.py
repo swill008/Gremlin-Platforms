@@ -366,6 +366,8 @@ _DEFAULT_VIEW = {
     "colorLive": "#22C55E",
     "colorMeter": "#3B82F6",
     "colorPress": "#22C55E",
+    "colorScreen": "#00000000",
+    "screenImage": "",
 }
 
 
@@ -651,6 +653,22 @@ class ModuleListModel(QtCore.QAbstractListModel):
         seen = set()
         for row in self._rows:
             if getattr(row, "direction", "") != "source":
+                continue
+            name = str(getattr(row, "name", "") or "").strip()
+            if not name or name.casefold() == current.casefold() or name.casefold() in seen:
+                continue
+            seen.add(name.casefold())
+            rows.append({"name": name, "guid": str(getattr(row, "guid", "") or "")})
+        rows.sort(key=lambda item: item["name"].lower())
+        return json.dumps(rows)
+
+    @QtCore.Slot(str, result=str)
+    def otherDestViews(self, current_name: str) -> str:
+        current = str(current_name or "").strip()
+        rows = []
+        seen = set()
+        for row in self._rows:
+            if getattr(row, "direction", "") != "dest":
                 continue
             name = str(getattr(row, "name", "") or "").strip()
             if not name or name.casefold() == current.casefold() or name.casefold() in seen:

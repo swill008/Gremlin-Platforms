@@ -44,6 +44,7 @@ ApplicationWindow {
     property string configTitleName: ""
     property string configDirection: ""
     property int sourceModuleCount: 0
+    property int destModuleCount: 0
     property bool outputViewPanel: true
     property bool catalogPanel: true
     property bool _panelReady: false
@@ -176,37 +177,42 @@ ApplicationWindow {
     function refreshSourceModuleCount() {
         var slugs = _moduleModel ? _moduleModel.pileLeaders("source") : []
         sourceModuleCount = slugs ? slugs.length : 0
+        slugs = _moduleModel ? _moduleModel.pileLeaders("dest") : []
+        destModuleCount = slugs ? slugs.length : 0
+    }
+
+    function moduleIndex(slugs, focus) {
+        var index = 0
+        for (var i = 0; i < slugs.length; ++i) {
+            if (String(slugs[i]) === focus)
+                return i
+            var members = _moduleModel.pileMembers(slugs[i]) || []
+            for (var m = 0; m < members.length; ++m) {
+                if (String(members[m]) === focus)
+                    return i
+            }
+        }
+        return index
+    }
+
+    function cycleModules(direction, step) {
+        if (configDirection !== direction || !_moduleModel)
+            return
+        var slugs = _moduleModel.pileLeaders(direction) || []
+        if (slugs.length < 2)
+            return
+        var index = moduleIndex(slugs, String(_moduleModel.focusedSlug || ""))
+        var card = _moduleModel.cardMap(slugs[(index + step + slugs.length) % slugs.length])
+        if (card && card.slug)
+            openConfigurationForCard(card)
     }
 
     function cycleConfiguration(step) {
-        if (configDirection === "dest" || !_moduleModel || sourceModuleCount < 2)
-            return
-        var slugs = _moduleModel.pileLeaders("source") || []
-        if (!slugs.length)
-            return
-        var focus = String(_moduleModel.focusedSlug || "")
-        var index = 0
-        for (var i = 0; i < slugs.length; ++i) {
-            if (String(slugs[i]) === focus) {
-                index = i
-                break
-            }
-            var members = _moduleModel.pileMembers(slugs[i]) || []
-            var found = false
-            for (var m = 0; m < members.length; ++m) {
-                if (String(members[m]) === focus) {
-                    index = i
-                    found = true
-                    break
-                }
-            }
-            if (found)
-                break
-        }
-        var nextIndex = (index + step + slugs.length) % slugs.length
-        var card = _moduleModel.cardMap(slugs[nextIndex])
-        if (card && card.slug)
-            openConfigurationForCard(card)
+        cycleModules("source", step)
+    }
+
+    function cycleOutput(step) {
+        cycleModules("dest", step)
     }
 
     function openOutputViewForCard(card) {
@@ -1136,15 +1142,15 @@ ApplicationWindow {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 2
-                    Label {
-                        visible: configDirection === "dest"
-                        text: "Output Module View"
-                        color: "#A1A1AA"
-                        font.pixelSize: 12
-                    }
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
+                        Label {
+                            visible: configDirection === "dest"
+                            text: "Output Module View"
+                            font.pixelSize: 22
+                            font.bold: true
+                        }
                         Label {
                             visible: configDirection !== "dest"
                             text: "Configuration"
@@ -1152,24 +1158,22 @@ ApplicationWindow {
                             font.bold: true
                         }
                         IconButton {
-                            visible: configDirection !== "dest"
                             text: "\uF284"
                             font.pixelSize: 18
-                            enabled: _root.sourceModuleCount > 1
+                            enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
-                            onClicked: _root.cycleConfiguration(-1)
+                            onClicked: configDirection === "dest" ? _root.cycleOutput(-1) : _root.cycleConfiguration(-1)
                             ToolTip.visible: hovered
-                            ToolTip.text: "Previous input module"
+                            ToolTip.text: configDirection === "dest" ? "Previous output module" : "Previous input module"
                         }
                         IconButton {
-                            visible: configDirection !== "dest"
                             text: "\uF285"
                             font.pixelSize: 18
-                            enabled: _root.sourceModuleCount > 1
+                            enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
-                            onClicked: _root.cycleConfiguration(1)
+                            onClicked: configDirection === "dest" ? _root.cycleOutput(1) : _root.cycleConfiguration(1)
                             ToolTip.visible: hovered
-                            ToolTip.text: "Next input module"
+                            ToolTip.text: configDirection === "dest" ? "Next output module" : "Next input module"
                         }
                         Label {
                             id: _configTitle
@@ -1213,7 +1217,6 @@ ApplicationWindow {
                     }
                 }
                 Button {
-                    visible: configDirection !== "dest"
                     text: "Close"
                     onClicked: closeWorkRoom()
                 }

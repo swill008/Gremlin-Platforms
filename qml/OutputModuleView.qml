@@ -41,6 +41,8 @@ Item {
     property string colorLive: "#22C55E"
     property string colorMeter: "#3B82F6"
     property string colorPress: "#22C55E"
+    property string colorScreen: "#00000000"
+    property string screenImage: ""
     property string _colorTarget: "live"
     property string toastText: "Display Options Saved"
 
@@ -135,10 +137,22 @@ Item {
                 colorMeter = c
             else if (_colorTarget === "press")
                 colorPress = c
+            else if (_colorTarget === "screen")
+                colorScreen = c
             else
                 colorLive = c
         }
     }
+
+    FileDialog {
+        id: _screenImageDlg
+        title: "Screen background"
+        nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp *.webp)"]
+        fileMode: FileDialog.OpenFile
+        onAccepted: screenImage = selectedFile.toString()
+    }
+
+    ListModel { id: _copySources }
 
     DeviceLiveState {
         id: _live
@@ -256,18 +270,13 @@ Item {
             "buttonWidth": buttonWidth,
             "colorLive": colorLive,
             "colorMeter": colorMeter,
-            "colorPress": colorPress
+            "colorPress": colorPress,
+            "colorScreen": colorScreen,
+            "screenImage": screenImage
         }
     }
 
-    function loadView() {
-        if (!moduleModel || !deviceName)
-            return
-        try {
-            var v = JSON.parse(moduleModel.viewConfigJson(deviceName, guid))
-        } catch (e) {
-            return
-        }
+    function applyViewValues(v) {
         layout = v.layout || "pads_meters_grid"
         padAX = (v.padAX === undefined || v.padAX === null) ? 1 : v.padAX
         padAY = (v.padAY === undefined || v.padAY === null) ? 2 : v.padAY
@@ -292,7 +301,50 @@ Item {
         colorLive = v.colorLive || "#22C55E"
         colorMeter = v.colorMeter || "#3B82F6"
         colorPress = v.colorPress || "#22C55E"
+        colorScreen = v.colorScreen || "#00000000"
+        screenImage = v.screenImage || ""
+    }
+
+    function loadView() {
+        if (!moduleModel || !deviceName)
+            return
+        refreshCopySources()
+        try {
+            var v = JSON.parse(moduleModel.viewConfigJson(deviceName, guid))
+        } catch (e) {
+            return
+        }
+        applyViewValues(v)
         rememberView()
+    }
+
+    function refreshCopySources() {
+        _copySources.clear()
+        if (!moduleModel || !moduleModel.otherDestViews)
+            return
+        var rows = []
+        try {
+            rows = JSON.parse(moduleModel.otherDestViews(deviceName) || "[]")
+        } catch (e) {
+            return
+        }
+        for (var i = 0; i < rows.length; ++i)
+            _copySources.append({
+                "label": rows[i].name,
+                "name": rows[i].name,
+                "guid": rows[i].guid || ""
+            })
+    }
+
+    function copyViewFrom(name, guid) {
+        if (!moduleModel || !name)
+            return
+        try {
+            var v = JSON.parse(moduleModel.viewConfigJson(name, guid || ""))
+        } catch (e) {
+            return
+        }
+        applyViewValues(v)
     }
 
     function saveView() {
@@ -347,6 +399,8 @@ Item {
         colorLive = "#22C55E"
         colorMeter = "#3B82F6"
         colorPress = "#22C55E"
+        colorScreen = "#00000000"
+        screenImage = ""
         toastText = "Options have been reset"
         _savedToast.open()
     }
@@ -433,6 +487,19 @@ Item {
             color: "#A1A1AA"
             font.pixelSize: 12
         }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        visible: _root.colorScreen !== "#00000000"
+        color: _root.colorScreen
+    }
+    Image {
+        anchors.fill: parent
+        visible: _root.screenImage.length > 0
+        source: _root.screenImage
+        fillMode: Image.PreserveAspectCrop
+        asynchronous: true
     }
 
     RowLayout {
@@ -652,6 +719,77 @@ Item {
                     ColumnLayout {
                         width: 330
                         spacing: 12
+
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 26
+                                color: "#27272A"
+                                Label {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 8
+                                    text: "SCREEN"
+                                    color: "#E4E4E7"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: "Color"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+                                Button {
+                                    Layout.fillWidth: true
+                                    text: colorScreen === "#00000000" ? "None" : "Choose…"
+                                    onClicked: {
+                                        _colorTarget = "screen"
+                                        _colorDlg.selectedColor = colorScreen === "#00000000" ? "#111113" : colorScreen
+                                        _colorDlg.open()
+                                    }
+                                    background: Rectangle {
+                                        color: colorScreen === "#00000000" ? "#27272A" : colorScreen
+                                        border.color: "#3F3F46"
+                                        border.width: 1
+                                        radius: 3
+                                    }
+                                    contentItem: Label {
+                                        text: parent.text
+                                        color: "#F4F4F5"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                Button {
+                                    text: "Clear"
+                                    enabled: colorScreen !== "#00000000"
+                                    onClicked: colorScreen = "#00000000"
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: "Image"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+                                Button {
+                                    Layout.fillWidth: true
+                                    text: screenImage.length ? "Change…" : "Choose…"
+                                    onClicked: _screenImageDlg.open()
+                                }
+                                Button {
+                                    text: "Clear"
+                                    enabled: screenImage.length > 0
+                                    onClicked: screenImage = ""
+                                }
+                            }
+                            Label {
+                                visible: screenImage.length > 0
+                                text: "The image covers the color."
+                                color: "#A1A1AA"
+                                font.pixelSize: 11
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                        }
 
                         ColumnLayout {
                             spacing: 4
@@ -912,10 +1050,37 @@ Item {
 
                 RowLayout {
                     Button { text: "Reset"; onClicked: resetView() }
+                    Button {
+                        id: _copyButton
+                        text: "Copy from…"
+                        onClicked: {
+                            refreshCopySources()
+                            _copyMenu.popup(_copyButton, 0, _copyButton.height)
+                        }
+                    }
                     Item { Layout.fillWidth: true }
                     Button { text: "Save with module"; highlighted: true; onClicked: saveView() }
                 }
             }
+        }
+    }
+
+    Menu {
+        id: _copyMenu
+        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+        width: 360
+        Instantiator {
+            model: _copySources
+            delegate: MenuItem {
+                required property string label
+                required property string name
+                required property string guid
+                text: label
+                width: 360
+                onTriggered: _root.copyViewFrom(name, guid)
+            }
+            onObjectAdded: (index, object) => _copyMenu.insertItem(_copyMenu.count, object)
+            onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
         }
     }
 
