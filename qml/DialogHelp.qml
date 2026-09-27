@@ -57,18 +57,19 @@ Window {
                     required property string section
                     width: _contents.width
                     text: section
-                    color: "#A1A1AA"
-                    font.pixelSize: 11
+                    color: "#E4E4E7"
+                    font.pixelSize: 18
                     font.bold: true
                     leftPadding: 8
-                    topPadding: 10
-                    bottomPadding: 4
+                    topPadding: 14
+                    bottomPadding: 6
                 }
                 delegate: ItemDelegate {
                     required property int index
                     required property string title
                     width: _contents.width
                     text: title
+                    font.pixelSize: 13
                     highlighted: index === _win._index
                     onClicked: _win._index = index
                 }
