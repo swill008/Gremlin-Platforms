@@ -778,6 +778,7 @@ ApplicationWindow {
 
         RowLayout {
             anchors.fill: parent
+            spacing: 8
 
             JGToolButton {
                 text: "\uF425"
