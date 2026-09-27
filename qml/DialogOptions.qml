@@ -12,6 +12,9 @@ import Gremlin.Style
 import "helpers.js" as Helpers
 
 Window {
+    id: _options
+    width: 1200
+    height: 700
     minimumWidth: 1200
     minimumHeight: 600
 
@@ -19,6 +22,13 @@ Window {
     color: Style.background
 
     title: "Options"
+
+    ToolWindowMemory {
+        host: _options
+        name: "options"
+        defaultWidth: 1200
+        defaultHeight: 700
+    }
 
     onClosing: () => {
         backend.emitConfigChanged()
