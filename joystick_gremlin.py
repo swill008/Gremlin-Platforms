@@ -628,6 +628,10 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.syslog = logging.getLogger("system")
         register_config_options()
         gremlin.ui.log_option.apply_log_level()
+        try:
+            gremlin.ui.hidhide.apply_on_start()
+        except Exception:
+            self.syslog.exception("HiDHide start")
         sys.excepthook = exception_hook
 
         dill.DILL.init()

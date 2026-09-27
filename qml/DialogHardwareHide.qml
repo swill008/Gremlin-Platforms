@@ -130,18 +130,13 @@ Window {
                         text: _hh.driverVersion
                     }
                 }
-                Switch {
-                    id: controlSwitch
-                    enabled: _hh.installed
-                    property bool shown: _hh.gremlinControl
-                    onShownChanged: if (!pressed) checked = shown
-                    Component.onCompleted: checked = shown
-                    text: "Gremlin control"
-                    onClicked: _hh.setGremlinControl(checked)
-                }
                 Button {
                     text: "Get HiDHide"
                     onClicked: _hh.openDownload()
+                }
+                Button {
+                    text: "Test"
+                    onClicked: _hh.openGameControllers()
                 }
             }
         }
@@ -161,6 +156,15 @@ Window {
                 anchors.margins: 10
                 spacing: 10
                 Switch {
+                    id: controlSwitch
+                    enabled: _hh.installed
+                    property bool shown: _hh.gremlinControl
+                    onShownChanged: if (!pressed) checked = shown
+                    Component.onCompleted: checked = shown
+                    text: "Gremlin control"
+                    onClicked: _hh.setGremlinControl(checked)
+                }
+                Switch {
                     id: cloakSwitch
                     enabled: _hh.installed && _hh.gremlinControl
                     property bool shown: _hh.cloakOn
@@ -170,16 +174,13 @@ Window {
                     onClicked: _hh.setCloak(checked)
                 }
                 Switch {
-                    id: _gamingOnly
-                    property bool shown: _hh.gamingOnly
+                    id: startSwitch
+                    enabled: _hh.installed
+                    property bool shown: _hh.startOn
                     onShownChanged: if (!pressed) checked = shown
                     Component.onCompleted: checked = shown
-                    text: "Gaming devices only"
-                    onClicked: _hh.setGamingOnly(checked)
-                }
-                Button {
-                    text: "Test"
-                    onClicked: _hh.openGameControllers()
+                    text: "Start HiDHide"
+                    onClicked: _hh.setStartOn(checked)
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -197,7 +198,7 @@ Window {
             wrapMode: Text.WordWrap
             color: "#A1A1AA"
             font.pixelSize: 12
-            text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. HiDHide hides the selected controllers from other programs. This program does not install HiDHide. Click on Get HiDHide to download the program."
+            text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. Start HiDHide turns Gremlin control and HiDHide Enabled on each time this program starts. This program does not install HiDHide. Click on Get HiDHide to download the program."
         }
 
         Label {
@@ -207,6 +208,15 @@ Window {
             color: "#A1A1AA"
             font.pixelSize: 12
             text: "Install HiDHide from the Nefarius releases page, then click Refresh. Gremlin will not download or bundle that installer."
+        }
+
+        Switch {
+            id: _gamingOnly
+            property bool shown: _hh.gamingOnly
+            onShownChanged: if (!pressed) checked = shown
+            Component.onCompleted: checked = shown
+            text: "Gaming devices only"
+            onClicked: _hh.setGamingOnly(checked)
         }
 
         SplitView {

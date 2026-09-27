@@ -27,6 +27,8 @@ _CFG_LIST_MODE = "list-mode"
 _CFG_HIDDEN = "hidden-devices"
 _CFG_CLOAK = "cloak"
 _CFG_MANAGED = "managed"
+_CFG_START = "start-enabled"
+_CFG_GAMING = "gaming-only"
 _CFG_WINDOW_W = "window-width"
 _CFG_WINDOW_H = "window-height"
 _CFG_SPLIT = "split-ratio"
@@ -167,6 +169,26 @@ def _ensure_options() -> None:
         cfg.register(
             _CFG_SECTION,
             _CFG_GROUP,
+            _CFG_START,
+            PropertyType.String,
+            "",
+            "Turn Gremlin control and HiDHide Enabled on when the program starts.",
+            {},
+            True,
+        )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_GAMING,
+            PropertyType.String,
+            "",
+            "Limit the HiDHide device list to game controllers.",
+            {},
+            True,
+        )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
             _CFG_WINDOW_W,
             PropertyType.Int,
             720,
@@ -298,11 +320,11 @@ def _save_list_mode(block: bool) -> None:
 
 
 def _apply_saved_list_mode() -> bool:
-    """Write the saved Allow or Block choice. The first run keeps the driver's current mode."""
+    """Write Allow list until the user picks Block list."""
     choice = _saved_block_list()
     if choice is None:
-        choice = bool(get_inverse())
-        _save_list_mode(choice)
+        choice = False
+        _save_list_mode(False)
     if bool(get_inverse()) != choice:
         if not set_inverse(choice):
             return bool(get_inverse())
@@ -344,10 +366,10 @@ def _save_hidden(ids: list[str]) -> None:
 
 
 def _apply_saved_hidden() -> None:
-    """Write the saved device list. The first run keeps the driver's current list."""
+    """Write the saved device list. A new install hides nothing."""
     saved = _saved_hidden()
     if saved is None:
-        saved = get_blacklist()
+        saved = []
         _save_hidden(saved)
     set_blacklist(saved)
 
@@ -366,6 +388,32 @@ def _save_cloak(on: bool) -> None:
     _ensure_options()
     try:
         config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_CLOAK, "on" if on else "off")
+    except Exception:
+        pass
+
+
+def _start_enabled() -> bool:
+    _ensure_options()
+    return str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_START) or "").strip().lower() == "on"
+
+
+def _save_start(on: bool) -> None:
+    _ensure_options()
+    try:
+        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_START, "on" if on else "off")
+    except Exception:
+        pass
+
+
+def _saved_gaming_only() -> bool:
+    _ensure_options()
+    return str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_GAMING) or "").strip().lower() == "on"
+
+
+def _save_gaming_only(on: bool) -> None:
+    _ensure_options()
+    try:
+        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_GAMING, "on" if on else "off")
     except Exception:
         pass
 
@@ -1447,9 +1495,10 @@ class HidHideModel(QtCore.QObject):
         super().__init__(parent)
         self._present = False
         self._active = False
+        self._driver_active = False
         self._devices: list[dict] = []
         self._games: list[dict] = []
-        self._gaming_only = True
+        self._gaming_only = _saved_gaming_only()
         self._generation = 0
         self._last_error = ""
         self._inverse = False
@@ -1459,12 +1508,14 @@ class HidHideModel(QtCore.QObject):
 
     def reload(self) -> None:
         self._present = driver_present()
-        self._active = get_active() if self._present else False
-        if not _hidhide_managed():
-            self._active = False
-        self._inverse = get_inverse() if self._present else False
+        self._driver_active = get_active() if self._present else False
+        saved_cloak = _saved_cloak()
+        self._active = bool(saved_cloak) if saved_cloak is not None else False
+        saved_block = _saved_block_list()
+        self._inverse = bool(saved_block) if saved_block is not None else False
         self._version = driver_version() if self._present else ""
-        persistent = {i.upper() for i in get_blacklist()} if self._present else set()
+        saved_ids = {i.upper() for i in (_saved_hidden() or [])}
+        driver_ids = {i.upper() for i in get_blacklist()} if self._present else set()
         prior_index = {}
         for old in self._devices:
             for raw in old.get("instanceIds") or [old.get("instanceId")]:
@@ -1481,10 +1532,10 @@ class HidHideModel(QtCore.QObject):
         for row in _enrich_devices(rows):
             item = dict(row)
             ids = [str(x).upper() for x in (item.get("instanceIds") or [item.get("instanceId")]) if x]
-            item["session"] = any(i in persistent for i in ids)
-            item["clientBlocked"] = item["session"]
-            item["hidden"] = item["session"]
-            item["confirmed"] = bool(self._active and item["hidden"])
+            item["session"] = any(i in saved_ids for i in ids)
+            item["clientBlocked"] = any(i in driver_ids for i in ids)
+            item["hidden"] = item["clientBlocked"]
+            item["confirmed"] = bool(self._driver_active and item["clientBlocked"])
             built.append(item)
         order = []
         for index, item in enumerate(built):
@@ -1496,8 +1547,9 @@ class HidHideModel(QtCore.QObject):
         self._games = _load_games()
         self._generation += 1
         _hh_log(
-            f"reload present={self._present} version={self._version} cloak={self._active} inverse={self._inverse} "
-            f"client={len(persistent)} rows={len(self._devices)}"
+            f"reload present={self._present} version={self._version} cloak={self._active} "
+            f"driver={self._driver_active} inverse={self._inverse} "
+            f"client={len(driver_ids)} rows={len(self._devices)}"
         )
         self.changed.emit()
 
@@ -1581,6 +1633,7 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Slot(bool)
     def setGamingOnly(self, on: bool) -> None:
         self._gaming_only = bool(on)
+        _save_gaming_only(self._gaming_only)
         self.reload()
 
     @QtCore.Property(int, notify=changed)
@@ -1628,6 +1681,16 @@ class HidHideModel(QtCore.QObject):
         self.reload()
         return True
 
+    @QtCore.Property(bool, notify=changed)
+    def startOn(self) -> bool:
+        return _start_enabled()
+
+    @QtCore.Slot(bool, result=bool)
+    def setStartOn(self, on: bool) -> bool:
+        _save_start(bool(on))
+        self.changed.emit()
+        return True
+
     @QtCore.Slot(bool, result=bool)
     def setCloak(self, on: bool) -> bool:
         if not self._present or not _hidhide_managed():
@@ -1651,7 +1714,7 @@ class HidHideModel(QtCore.QObject):
         drop = {x.upper() for x in group_ids}
         base = _saved_hidden()
         if base is None:
-            base = get_blacklist()
+            base = []
         kept = [i for i in base if i.upper() not in drop]
         if hidden:
             have = {i.upper() for i in kept}
@@ -1759,13 +1822,28 @@ class HidHideModel(QtCore.QObject):
         apply_saved_list()
 
 
+def apply_on_start() -> None:
+    """If Start HiDHide is on, turn on Gremlin control and HiDHide Enabled."""
+    _ensure_options()
+    if not _start_enabled():
+        _hh_log("start skipped, Start HiDHide is off")
+        return
+    if not driver_present():
+        _hh_log("start skipped, driver not present")
+        return
+    _hh_log("Start HiDHide")
+    _mark_managed()
+    _save_cloak(True)
+    apply_saved_list()
+
+
 def apply_saved_list() -> None:
     """Write Gremlin's saved HiDHide settings after the user has saved HiDHide Enabled."""
     if not driver_present():
         _hh_log("apply skipped, driver not present")
         return
     if not _hidhide_managed():
-        _hh_log("apply skipped, HiDHide Enabled has not been saved")
+        _hh_log("apply skipped, Gremlin control is off")
         return
     _hh_log("apply saved list")
     inverse = _apply_saved_list_mode()
