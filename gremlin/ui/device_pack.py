@@ -33,7 +33,7 @@ from gremlin.ui.hardware_profile import (
     _suggest_pack_name,
     _target_direction,
     _unique_archive,
-    resolve_module_slug,
+    module_json_path,
 )
 
 _UUID_RE = re.compile(
@@ -468,8 +468,8 @@ def _collect_wires(guid: str) -> dict:
 def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]]) -> tuple[dict, list[dict]] | None:
     match = _match_pack_device(name)
     guid = str(match["guid"]) if match and match.get("guid") else ""
-    slug = resolve_module_slug(name, guid)
-    path = _maps_dir() / f"{slug}.json"
+    slug = _slug(name)
+    path = module_json_path(name, guid)
     doc = _read_json_dict(path) if path.is_file() else None
     if not doc:
         return None
@@ -477,6 +477,8 @@ def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]
     packed.pop("boundGuidLocal", None)
     packed.pop("boundName", None)
     packed["device"] = name
+    if _name_direction(name) == "dest":
+        packed["direction"] = "dest"
     packed["pack"] = {"exportedName": name, "exportedGuid": guid, "slug": slug}
     return packed, pictures
 
@@ -484,7 +486,7 @@ def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]
 def _device_path(name: str) -> Path:
     match = _match_pack_device(name)
     guid = str(match["guid"]) if match and match.get("guid") else ""
-    return _maps_dir() / f"{resolve_module_slug(name, guid)}.json"
+    return module_json_path(name, guid)
 
 
 def assemble(device_name: str, resolve) -> tuple[bytes, dict] | str:

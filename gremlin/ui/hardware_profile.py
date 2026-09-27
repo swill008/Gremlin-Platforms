@@ -1048,10 +1048,15 @@ def _collapsed_name(value: str) -> str:
 
 
 def _name_direction(name: str) -> str:
-    return "dest" if _slug(name).startswith("vjoy") else "source"
+    """A vJoy or Xbox is an output. The stored direction field cannot change that."""
+    return "dest" if _is_protected_output(name) else "source"
 
 
 def _doc_direction(doc: dict, exported_name: str) -> str:
+    label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
+    named = str(doc.get("device") or label.get("exportedName") or exported_name or "")
+    if _name_direction(named) == "dest":
+        return "dest"
     raw = str(doc.get("direction") or "").strip().lower()
     if raw in ("source", "dest"):
         return raw
@@ -1730,6 +1735,8 @@ class HardwareProfile(QtCore.QObject):
                 ):
                     if key in existing and key not in payload:
                         payload[key] = existing[key]
+        if _name_direction(name) == "dest":
+            payload["direction"] = "dest"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         kept = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
