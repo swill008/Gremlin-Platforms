@@ -464,12 +464,6 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Label {
-                text: "Home"
-                color: "#E4E4E7"
-                font.pixelSize: 13
-                font.bold: true
-            }
             Item { Layout.fillWidth: true }
             Label { text: "Split"; color: "#A1A1AA"; font.pixelSize: 11 }
             ComboBox {
