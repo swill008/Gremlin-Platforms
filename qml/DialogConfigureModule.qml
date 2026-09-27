@@ -134,16 +134,24 @@ Window {
         return true
     }
 
-    function applyPendingFile() {
-        if (!pendingFileSlug.length || !moduleModel)
-            return
-        var message = moduleModel.importModuleFile(deviceGuid, deviceName, pendingFileSlug, direction)
-        pendingFileSlug = ""
+    function showImportResult(message) {
         moduleFileMessage = message
         moduleFileError = message.indexOf("Imported ") !== 0
         refreshModuleFileLabel()
         if (!moduleFileError)
             reloadModuleControls()
+        _importNotice.titleText = moduleFileError ? "Import failed" : "Imported"
+        _importNotice.messageText = message
+        _importNotice.canUndo = !moduleFileError && moduleModel && moduleModel.importCanUndo()
+        _importNotice.open()
+    }
+
+    function applyPendingFile() {
+        if (!pendingFileSlug.length || !moduleModel)
+            return
+        var message = moduleModel.importModuleFile(deviceGuid, deviceName, pendingFileSlug, direction)
+        pendingFileSlug = ""
+        showImportResult(message)
     }
 
     onClosing: function(close) {
@@ -369,7 +377,7 @@ Window {
             }
             Label {
                 Layout.fillWidth: true
-                text: "Import copies the chosen file into this file. The chosen file is not changed."
+                text: "Import copies the chosen file into this file. After the copy is saved, a file from the maps folder is moved to imported."
                 color: "#A1A1AA"
                 wrapMode: Text.WordWrap
                 font.pixelSize: 12
@@ -451,10 +459,81 @@ Window {
             if (src && src.toString)
                 src = src.toString()
             moduleFileMessage = moduleModel.importModuleFile(deviceGuid, deviceName, src || "", direction)
-            moduleFileError = moduleFileMessage.indexOf("Imported ") !== 0
-            refreshModuleFileLabel()
-            if (!moduleFileError)
-                reloadModuleControls()
+            showImportResult(moduleFileMessage)
+        }
+    }
+
+    Popup {
+        id: _importNotice
+
+        property string titleText: "Imported"
+        property string messageText: ""
+        property bool canUndo: false
+
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        focus: true
+        closePolicy: Popup.NoAutoClose
+        padding: 16
+
+        background: Rectangle {
+            color: Style.background
+            border.color: (_importNotice.titleText === "Import failed" || _importNotice.titleText === "Undo failed") ? "#DC2626" : Style.accent
+            border.width: 1
+            radius: 4
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+
+            Label {
+                text: _importNotice.titleText
+                font.bold: true
+                font.pixelSize: 16
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.preferredWidth: 460
+            }
+
+            Label {
+                text: _importNotice.messageText
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.preferredWidth: 460
+            }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+
+                Button {
+                    visible: _importNotice.canUndo
+                    text: "Undo"
+                    onClicked: {
+                        if (!moduleModel)
+                            return
+                        var message = moduleModel.undoLastImport()
+                        var ok = message.indexOf("Undone") === 0
+                        _importNotice.titleText = ok ? "Undone" : "Undo failed"
+                        _importNotice.messageText = message
+                        _importNotice.canUndo = false
+                        refreshModuleFileLabel()
+                        if (ok)
+                            reloadModuleControls()
+                    }
+                }
+
+                Button {
+                    text: "OK"
+                    highlighted: true
+                    onClicked: {
+                        if (moduleModel && _importNotice.titleText === "Imported")
+                            moduleModel.dropImportUndo()
+                        _importNotice.close()
+                    }
+                }
+            }
         }
     }
 

@@ -9,6 +9,7 @@ import shutil
 import sys
 import tempfile
 import zipfile
+from datetime import datetime
 from pathlib import Path
 
 from PySide6 import QtCore
@@ -448,82 +449,135 @@ def _resolve_import_source(file_name: str) -> Path | None:
     return path if path.is_file() else None
 
 
-def _other_device_uses(slug: str, device_name: str, guid: str) -> bool:
+def _archive_stamp(moment: datetime | None = None) -> str:
+    """Year, day, month, then hour, minute, and second. Local time."""
+    moment = moment or datetime.now()
+    month = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")[moment.month - 1]
+    return f"{moment.year:04d}-{moment.day:02d}-{month}_{moment.hour:02d}_{moment.minute:02d}_{moment.second:02d}"
+
+
+def _archive_path(stem: str, stamp: str) -> Path:
+    return _maps_dir() / "imported" / f"{stem}.{stamp}.json"
+
+
+def _replace_file(path: Path, data: bytes) -> None:
+    """Write a temporary file, then replace the live file only if that write finishes."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        temporary.write_bytes(data)
+        os.replace(temporary, path)
+    except OSError:
+        if temporary.exists():
+            try:
+                temporary.unlink()
+            except OSError:
+                pass
+        raise
+
+
+def _owner_name(stem: str, device_name: str, guid: str) -> str:
+    """Another connected device whose own file name is this stem. A binding is not ownership."""
     me = _norm_guid(guid)
     me_name = str(device_name or "").strip().lower()
+    want = stem.lower()
     for dev in _live_devices():
-        name = str(getattr(dev, "name", "") or "")
+        name = str(getattr(dev, "name", "") or "").strip()
         dev_guid = _norm_guid(getattr(dev, "device_guid", ""))
         if me and dev_guid == me:
             continue
-        if not me and name.strip().lower() == me_name:
+        if not me and name.lower() == me_name:
             continue
-        if _slug(name) == slug:
-            return True
-        if resolve_module_slug(name, str(getattr(dev, "device_guid", "") or "")) == slug:
-            return True
-    return False
+        if _slug(name).lower() == want:
+            return name or want
+    return ""
 
 
-def _stash_name(folder: Path, name: str, original: bytes) -> Path | None:
-    candidate = folder / name
-    stem = Path(name).stem
-    suffix = Path(name).suffix or ".json"
-    number = 1
-    while candidate.exists():
-        try:
-            if candidate.read_bytes() == original:
-                return None
-        except OSError:
-            pass
-        number += 1
-        candidate = folder / f"{stem}_{number}{suffix}"
-    return candidate
-
-
-def _stash_original(src: Path, device_name: str, guid: str) -> None:
-    """Hide a gift, or this device's old file, from the live maps folder."""
-    maps = _maps_dir().resolve()
-    imported = maps / "imported"
-    imported.mkdir(parents=True, exist_ok=True)
-    src_res = src.resolve()
-    if src_res.parent == imported:
-        return
-    own = (maps / f"{_slug(device_name)}.json").resolve()
-    if src_res == own:
-        return
-    original = src.read_bytes()
-    dest = _stash_name(imported, src_res.name, original)
-    if src_res.parent == maps:
-        if _other_device_uses(src_res.stem.lower(), device_name, guid):
-            return
-        if dest is None:
-            src.unlink()
-            return
-        shutil.move(str(src), str(dest))
-        return
-    if dest is None:
-        return
-    dest.write_bytes(original)
-
-
-def _clear_device_binding(device_name: str, guid: str) -> None:
+def _clear_bindings_to(slug: str) -> None:
     data = _binding_store()
-    key = _norm_guid(guid) or _guid_for_name(device_name)
-    name_key = _name_key(device_name)
-    changed = False
-    if key and key in data:
+    want = _plain_slug(slug)
+    keys = [key for key, value in data.items() if _plain_slug(value) == want]
+    if not keys:
+        return
+    for key in keys:
         data.pop(key, None)
-        changed = True
-    if name_key and name_key in data:
-        data.pop(name_key, None)
-        changed = True
-    if changed:
-        _write_bindings(data)
+    _write_bindings(data)
+
+
+def _count_phrase(count: int, singular: str, plural: str) -> str:
+    return f"{count} {singular if count == 1 else plural}"
+
+
+def _copied_sentence(buttons: int, axes: int, hats: int, keys: int) -> str:
+    parts = []
+    if buttons:
+        parts.append(_count_phrase(buttons, "button", "buttons"))
+    if axes:
+        parts.append(_count_phrase(axes, "axis", "axes"))
+    if hats:
+        parts.append(_count_phrase(hats, "hat", "hats"))
+    if keys:
+        parts.append(_count_phrase(keys, "key", "keys"))
+    if not parts:
+        return "No buttons, axes, or hats were copied."
+    if len(parts) == 1:
+        return f"Copied {parts[0]}."
+    return "Copied " + ", ".join(parts[:-1]) + ", and " + parts[-1] + "."
+
+
+_import_undo: dict | None = None
+
+
+def import_can_undo() -> bool:
+    return _import_undo is not None
+
+
+def drop_import_undo() -> None:
+    global _import_undo
+    _import_undo = None
+
+
+def undo_last_import() -> str:
+    """Put this device's previous file back. Do not put old bindings back."""
+    global _import_undo
+    record = _import_undo
+    if not record:
+        return "Undo failed. There is nothing to undo."
+    notes = []
+    dest = Path(record["dest"])
+    previous = record.get("previous")
+    try:
+        if previous is None:
+            if dest.is_file():
+                dest.unlink()
+            notes.append("The new module file was removed.")
+        else:
+            _replace_file(dest, previous)
+            notes.append("The previous module file was put back.")
+    except OSError:
+        return "Undo failed. The previous module file could not be put back."
+    moved_from = str(record.get("moved_from") or "")
+    moved_to = str(record.get("moved_to") or "")
+    if moved_from and moved_to:
+        source = Path(moved_to)
+        target = Path(moved_from)
+        if not source.is_file():
+            notes.append(f"{source.name} could not be moved back.")
+        elif target.exists():
+            notes.append(f"{target.name} could not be moved back because that name is already in use.")
+        else:
+            try:
+                shutil.move(str(source), str(target))
+                notes.append(f"{target.name} was moved back.")
+            except OSError:
+                notes.append(f"{source.name} could not be moved back.")
+    _import_undo = None
+    return "Undone. " + " ".join(notes)
 
 
 def import_module_file(device_name: str, guid: str, file_name: str, direction: str = "source") -> str:
-    """Copy a module file onto this device's own file. The chosen file is not edited."""
+    """Copy a module file onto this device's own file. Archives happen only after that write."""
+    global _import_undo
     name = str(device_name or "").strip()
     if not name:
         return "That file could not be read."
@@ -558,11 +612,13 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
             return "This device is not connected, so the file cannot be checked."
     buttons, axes, hats = limits
     previous_image = ""
+    previous_bytes: bytes | None = None
     if dest.is_file():
         try:
-            previous = json.loads(dest.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            previous = None
+            previous_bytes = dest.read_bytes()
+            previous = json.loads(previous_bytes.decode("utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return "The current file could not be read, so it was not replaced."
         if isinstance(previous, dict):
             previous_image = str(previous.get("image") or "")
     payload, left = prepare_imported_doc(
@@ -576,18 +632,97 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
         keep_keys=keyboard,
         previous_image=previous_image,
     )
-    dest.parent.mkdir(parents=True, exist_ok=True)
     try:
-        dest.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        _replace_file(dest, (json.dumps(payload, indent=2) + "\n").encode("utf-8"))
     except OSError:
-        return "That file could not be read."
+        return "The module file could not be written."
+    claim = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
+    friendly = claim.get("friendly") if isinstance(claim.get("friendly"), dict) else {}
+    stamp = _archive_stamp()
+    lines = [
+        f"Imported into {own_slug}.json.",
+        _copied_sentence(
+            len(claim.get("buttons") or []),
+            len(claim.get("axes") or []),
+            len(claim.get("hats") or []),
+            len(claim.get("keys") or []),
+        ),
+    ]
+    if friendly:
+        lines.append(_count_phrase(len(friendly), "name was copied.", "names were copied."))
+    if left.strip():
+        lines.append(left.strip())
+    else:
+        lines.append("Everything in the file was copied.")
+    if previous_image:
+        lines.append("The picture already on this device was kept.")
+    else:
+        lines.append("No picture was added from the chosen file.")
+    lines.append("Profile wires were not changed.")
+    moved_from = ""
+    moved_to = ""
+    if previous_bytes is not None:
+        backup = _archive_path(own_slug, stamp)
+        try:
+            if backup.exists():
+                raise FileExistsError(backup)
+            _replace_file(backup, previous_bytes)
+            lines.append(f"The previous file was saved as {backup.name}.")
+        except OSError:
+            lines.append("The previous file could not be saved to imported.")
+    maps = _maps_dir().resolve()
+    imported = (maps / "imported").resolve()
     try:
-        _stash_original(src, name, str(guid or ""))
+        src_res = src.resolve()
     except OSError:
-        left += " The original file was left where it was."
+        src_res = src
+    if src_res.parent == imported:
+        lines.append(f"{src.name} was left in imported.")
+    else:
+        owner = _owner_name(src.stem, name, str(guid or ""))
+        if owner:
+            lines.append(f"{src.name} was left in place. {owner} uses that file.")
+        else:
+            archived = _archive_path(src.stem, stamp)
+            try:
+                if archived.exists():
+                    raise FileExistsError(archived)
+                archived.parent.mkdir(parents=True, exist_ok=True)
+                if src_res.parent == maps:
+                    shutil.move(str(src_res), str(archived))
+                    moved_from = str(src_res)
+                    moved_to = str(archived)
+                    lines.append(f"{src.name} was moved to imported as {archived.name}.")
+                else:
+                    _replace_file(archived, src_res.read_bytes())
+                    lines.append(f"{src.name} was copied to imported as {archived.name}. The original was left where it was.")
+            except OSError:
+                lines.append(f"{src.name} could not be moved to imported.")
+    _clear_bindings_to(src.stem)
     _clear_device_binding(name, str(guid or ""))
+    _import_undo = {
+        "dest": str(dest),
+        "previous": previous_bytes,
+        "moved_from": moved_from,
+        "moved_to": moved_to,
+    }
     persist_log(f"Persist import file name={name!r} guid={guid!r} src={src} dest={dest}")
-    return f"Imported into {own_slug}.json.{left}"
+    return "\n".join(lines)
+
+
+def _clear_device_binding(device_name: str, guid: str) -> None:
+    data = _binding_store()
+    key = _norm_guid(guid) or _guid_for_name(device_name)
+    name_key = _name_key(device_name)
+    changed = False
+    if key and key in data:
+        data.pop(key, None)
+        changed = True
+    if name_key and name_key in data:
+        data.pop(name_key, None)
+        changed = True
+    if changed:
+        _write_bindings(data)
 
 
 def bind_module_file(device_name: str, guid: str, file_name: str) -> str:

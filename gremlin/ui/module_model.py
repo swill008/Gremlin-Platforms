@@ -28,6 +28,9 @@ from gremlin.ui.hardware_profile import (
     foreign_module_file,
     guid_for_module,
     import_module_file,
+    import_can_undo,
+    drop_import_undo,
+    undo_last_import,
     maps_folder_url,
     module_file_choices,
     module_json_path,
@@ -1202,6 +1205,22 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def importModuleFile(self, guid: str, device_name: str, file_name: str, direction: str) -> str:
         message = import_module_file(device_name, guid, file_name, direction)
         if str(message).startswith("Imported "):
+            signal.configChanged.emit()
+            self._refresh_inplace()
+        return message
+
+    @QtCore.Slot(result=bool)
+    def importCanUndo(self) -> bool:
+        return import_can_undo()
+
+    @QtCore.Slot()
+    def dropImportUndo(self) -> None:
+        drop_import_undo()
+
+    @QtCore.Slot(result=str)
+    def undoLastImport(self) -> str:
+        message = undo_last_import()
+        if str(message).startswith("Undone"):
             signal.configChanged.emit()
             self._refresh_inplace()
         return message
