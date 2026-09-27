@@ -350,17 +350,20 @@ Window {
                     onCurrentIndexChanged: refreshExport()
                 }
                 RowLayout {
+                    id: _exportRow
                     Layout.fillWidth: true
-                    spacing: 16
+                    Layout.fillHeight: true
+                    spacing: 28
                     Rectangle {
-                        Layout.preferredWidth: 180
-                        Layout.preferredHeight: 180
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: Math.min(_exportRow.height, 560)
+                        Layout.maximumWidth: 560
                         color: "#18181B"
                         border.color: "#3F3F46"
-                        radius: 4
+                        radius: 6
                         Image {
                             anchors.fill: parent
-                            anchors.margins: 8
+                            anchors.margins: 16
                             source: exportPhoto
                             fillMode: Image.PreserveAspectFit
                             visible: exportPhoto.length > 0
@@ -370,15 +373,18 @@ Window {
                             visible: exportPhoto.length === 0
                             text: "No picture"
                             color: "#A1A1AA"
+                            font.pixelSize: 22
                         }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 6
+                        Layout.fillHeight: true
+                        spacing: 16
+                        Item { Layout.fillHeight: true; Layout.maximumHeight: 40 }
                         Label {
                             text: exportName.length ? exportName : "No device"
                             color: Style.foreground
-                            font.pixelSize: 20
+                            font.pixelSize: 36
                             font.bold: true
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
@@ -386,11 +392,14 @@ Window {
                         Label {
                             text: exportSize.length ? ("Pack size: " + exportSize) : ""
                             color: "#E4E4E7"
-                            font.pixelSize: 16
+                            font.pixelSize: 24
                         }
                         Button {
                             text: "Export…"
                             focusPolicy: Qt.NoFocus
+                            font.pixelSize: 18
+                            implicitHeight: 44
+                            implicitWidth: 160
                             enabled: (_exportDevice.currentText || "").length > 0 && exportSize.length > 0
                             onClicked: {
                                 var name = _exportDevice.currentText
@@ -402,9 +411,9 @@ Window {
                                 _save.open()
                             }
                         }
+                        Item { Layout.fillHeight: true }
                     }
                 }
-                Item { Layout.fillHeight: true }
             }
 
             ColumnLayout {
