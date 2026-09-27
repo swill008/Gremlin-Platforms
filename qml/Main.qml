@@ -940,7 +940,10 @@ ApplicationWindow {
                 color: "#E4E4E7"
                 elide: Text.ElideMiddle
                 text: _root.lastSaveText
-                ToolTip.visible: hovered && text.length > 0
+                HoverHandler {
+                    id: _savedHover
+                }
+                ToolTip.visible: _savedHover.hovered && text.length > 0
                 ToolTip.text: text
             }
         }
