@@ -152,10 +152,12 @@ Item {
             _root.panePending = null
             if (!pending)
                 return
-            if (pending.close)
+            if (pending.close) {
                 _root.closeAdvancedPane()
-            else
+                _root.afterPaneClosedForLeave()
+            } else {
                 _root.startPane(pending.hid, pending.seq)
+            }
         }
         onDiscardChosen: {
             _catalog.discardPane()
@@ -163,12 +165,20 @@ Item {
             _root.panePending = null
             if (!pending)
                 return
-            if (pending.close)
+            if (pending.close) {
                 _root.closeAdvancedPane()
-            else
+                _root.afterPaneClosedForLeave()
+            } else {
                 _root.startPane(pending.hid, pending.seq)
+            }
         }
-        onCancelled: _root.panePending = null
+        onCancelled: {
+            _root.panePending = null
+            if (_root._leaveAfterPane) {
+                _root._leaveAfterPane = false
+                _root.leaveCancelled()
+            }
+        }
     }
 
     Component.onCompleted: {
@@ -577,10 +587,26 @@ Item {
     }
 
     property bool _leaveOnly: false
+    property bool _leaveAfterPane: false
     signal leaveResolved()
     signal leaveCancelled()
 
+    function afterPaneClosedForLeave() {
+        if (!_leaveAfterPane)
+            return
+        _leaveAfterPane = false
+        requestLeave()
+    }
+
     function requestLeave() {
+        if (paneHid >= 0 && _catalog.paneDirty()) {
+            _leaveAfterPane = true
+            panePending = { "close": true }
+            _paneLeave.ask("This control has changes that are not saved.")
+            return
+        }
+        if (paneHid >= 0)
+            closeAdvancedPane()
         if (!hasUnsaved()) {
             leaveResolved()
             return

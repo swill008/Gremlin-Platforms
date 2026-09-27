@@ -34,6 +34,7 @@ ApplicationWindow {
             Style.isDarkMode = backend.useDarkMode
         }
         _windowPlacement.restore(_root)
+        refreshSourceModuleCount()
     }
 
     Universal.theme: Style.theme
@@ -42,6 +43,7 @@ ApplicationWindow {
     property string pinSlug: ""
     property string configTitleName: ""
     property string configDirection: ""
+    property int sourceModuleCount: 0
     property bool outputViewPanel: true
     property bool catalogPanel: true
     property bool _panelReady: false
@@ -130,6 +132,7 @@ ApplicationWindow {
         uiState.setCurrentTab(card.tab || "physical")
         uiState.setCurrentRoom("configuration")
         applyDisplayPanel()
+        refreshSourceModuleCount()
     }
 
     property var _afterDisplayLeave: null
@@ -168,6 +171,42 @@ ApplicationWindow {
             return
         }
         leaveDisplayThen(function() { openConfigurationNow(card) })
+    }
+
+    function refreshSourceModuleCount() {
+        var slugs = _moduleModel ? _moduleModel.pileLeaders("source") : []
+        sourceModuleCount = slugs ? slugs.length : 0
+    }
+
+    function cycleConfiguration(step) {
+        if (configDirection === "dest" || !_moduleModel || sourceModuleCount < 2)
+            return
+        var slugs = _moduleModel.pileLeaders("source") || []
+        if (!slugs.length)
+            return
+        var focus = String(_moduleModel.focusedSlug || "")
+        var index = 0
+        for (var i = 0; i < slugs.length; ++i) {
+            if (String(slugs[i]) === focus) {
+                index = i
+                break
+            }
+            var members = _moduleModel.pileMembers(slugs[i]) || []
+            var found = false
+            for (var m = 0; m < members.length; ++m) {
+                if (String(members[m]) === focus) {
+                    index = i
+                    found = true
+                    break
+                }
+            }
+            if (found)
+                break
+        }
+        var nextIndex = (index + step + slugs.length) % slugs.length
+        var card = _moduleModel.cardMap(slugs[nextIndex])
+        if (card && card.slug)
+            openConfigurationForCard(card)
     }
 
     function openOutputViewForCard(card) {
@@ -1018,6 +1057,8 @@ ApplicationWindow {
         Connections {
             target: _moduleModel
             function onClaimsChanged() { refreshDestBound() }
+            function onPanesChanged() { _root.refreshSourceModuleCount() }
+            function onModelReset() { _root.refreshSourceModuleCount() }
         }
 
         StatusPage {
@@ -1100,13 +1141,38 @@ ApplicationWindow {
                         color: "#A1A1AA"
                         font.pixelSize: 12
                     }
-                    Label {
-                        id: _configTitle
-                        text: configTitleName.length ? configTitleName : "device"
-                        font.pixelSize: 22
-                        font.bold: true
-                        elide: Text.ElideRight
+                    RowLayout {
                         Layout.fillWidth: true
+                        spacing: 6
+                        Button {
+                            visible: configDirection !== "dest"
+                            text: "←"
+                            flat: true
+                            font.pixelSize: 18
+                            enabled: _root.sourceModuleCount > 1
+                            onClicked: _root.cycleConfiguration(-1)
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Previous input module"
+                        }
+                        Label {
+                            id: _configTitle
+                            text: configTitleName.length ? configTitleName : "device"
+                            font.pixelSize: 22
+                            font.bold: true
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: implicitWidth
+                        }
+                        Button {
+                            visible: configDirection !== "dest"
+                            text: "→"
+                            flat: true
+                            font.pixelSize: 18
+                            enabled: _root.sourceModuleCount > 1
+                            onClicked: _root.cycleConfiguration(1)
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Next input module"
+                        }
                     }
                     Label {
                         id: _destBound
