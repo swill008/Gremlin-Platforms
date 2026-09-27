@@ -239,7 +239,22 @@ Item {
         }
     }
 
+    function requestLeave() {
+        if (!hasUnsaved()) {
+            leaveResolved()
+            return
+        }
+        _leaveOnly = true
+        _saveGate.detail = "Display options are not saved. Leave this device and they will be lost."
+        _saveGate.ask()
+    }
+
+    property bool _leaveOnly: false
+    signal leaveResolved()
+    signal leaveCancelled()
+
     function requestClose() {
+        _leaveOnly = false
         if (hasUnsaved()) {
             _saveGate.detail = "Display options are not saved. Close this panel and they will be lost."
             _saveGate.ask()
@@ -888,12 +903,29 @@ Item {
         id: _saveGate
         onSaveChosen: {
             saveView()
-            if (!hasUnsaved())
-                closePanel()
+            if (hasUnsaved())
+                return
+            if (_leaveOnly) {
+                _leaveOnly = false
+                leaveResolved()
+                return
+            }
+            closePanel()
         }
         onDiscardChosen: {
             loadView()
+            if (_leaveOnly) {
+                _leaveOnly = false
+                leaveResolved()
+                return
+            }
             closePanel()
+        }
+        onCancelled: {
+            if (_leaveOnly) {
+                _leaveOnly = false
+                leaveCancelled()
+            }
         }
     }
 
