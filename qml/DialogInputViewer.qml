@@ -23,6 +23,13 @@ Window {
 
     title: "vJoy Viewer"
 
+    ToolWindowMemory {
+        host: _inputViewer
+        name: "vjoy-viewer"
+        defaultWidth: 1200
+        defaultHeight: 800
+    }
+
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
