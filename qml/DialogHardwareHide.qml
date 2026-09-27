@@ -179,7 +179,7 @@ Window {
                     property bool shown: _hh.startOn
                     onShownChanged: if (!pressed) checked = shown
                     Component.onCompleted: checked = shown
-                    text: "Start HiDHide"
+                    text: "Automatically Start"
                     onClicked: _hh.setStartOn(checked)
                 }
                 Item { Layout.fillWidth: true }
@@ -198,7 +198,7 @@ Window {
             wrapMode: Text.WordWrap
             color: "#A1A1AA"
             font.pixelSize: 12
-            text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. Start HiDHide turns Gremlin control and HiDHide Enabled on each time this program starts. This program does not install HiDHide. Click on Get HiDHide to download the program."
+            text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. Automatically Start turns Gremlin control and HiDHide Enabled on each time this program starts. This program does not install HiDHide. Click on Get HiDHide to download the program."
         }
 
         Label {

@@ -172,7 +172,7 @@ def _ensure_options() -> None:
             _CFG_START,
             PropertyType.String,
             "",
-            "Turn Gremlin control and HiDHide Enabled on when the program starts.",
+            "Automatically Start turns Gremlin control and HiDHide Enabled on when the program starts.",
             {},
             True,
         )
@@ -1823,15 +1823,15 @@ class HidHideModel(QtCore.QObject):
 
 
 def apply_on_start() -> None:
-    """If Start HiDHide is on, turn on Gremlin control and HiDHide Enabled."""
+    """If Automatically Start is on, turn on Gremlin control and HiDHide Enabled."""
     _ensure_options()
     if not _start_enabled():
-        _hh_log("start skipped, Start HiDHide is off")
+        _hh_log("start skipped, Automatically Start is off")
         return
     if not driver_present():
         _hh_log("start skipped, driver not present")
         return
-    _hh_log("Start HiDHide")
+    _hh_log("Automatically Start")
     _mark_managed()
     _save_cloak(True)
     apply_saved_list()
