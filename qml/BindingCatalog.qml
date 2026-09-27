@@ -135,6 +135,8 @@ Item {
         deviceName: _root.claimDeviceName
     }
 
+    ListModel { id: _copySources }
+
     WindowPlacement {
         id: _panePlacement
     }
@@ -423,11 +425,47 @@ Item {
     function loadCatalog() {
         if (!moduleModel || !claimDeviceName.length)
             return
+        refreshCopySources()
         try {
             var v = JSON.parse(moduleModel.catalogConfigJson(claimDeviceName, device ? device.guid : ""))
         } catch (e) {
             return
         }
+        applyCatalogValues(v)
+        rememberCatalog()
+    }
+
+    function copyCatalogFrom(name, guid) {
+        if (!moduleModel || !name)
+            return
+        try {
+            var v = JSON.parse(moduleModel.catalogConfigJson(name, guid || ""))
+        } catch (e) {
+            return
+        }
+        applyCatalogValues(v)
+    }
+
+    function refreshCopySources() {
+        _copySources.clear()
+        _copySources.append({"label": "Copy from", "name": "", "guid": ""})
+        if (!moduleModel || !moduleModel.otherSourceCatalogs)
+            return
+        var rows = []
+        try {
+            rows = JSON.parse(moduleModel.otherSourceCatalogs(claimDeviceName) || "[]")
+        } catch (e) {
+            return
+        }
+        for (var i = 0; i < rows.length; ++i)
+            _copySources.append({
+                "label": rows[i].name,
+                "name": rows[i].name,
+                "guid": rows[i].guid || ""
+            })
+    }
+
+    function applyCatalogValues(v) {
         listPadding = numVal(v.listPadding, 8)
         rowSpacing = numVal(v.rowSpacing, 4)
         groupBetween = edgeOr(v.groupBetween, rowSpacing)
@@ -515,7 +553,6 @@ Item {
         colorEditor = v.colorEditor || "#0F2744"
         colorEditorBorder = v.colorEditorBorder || "#3B82F6"
         colorEditorAccent = v.colorEditorAccent || v.colorEditorBorder || "#3B82F6"
-        rememberCatalog()
     }
 
     property string savedCatalog: ""
@@ -1666,6 +1703,19 @@ Item {
 
                 RowLayout {
                     Button { text: "Reset"; onClicked: resetCatalog() }
+                    ComboBox {
+                        id: _copyFrom
+                        model: _copySources
+                        textRole: "label"
+                        implicitWidth: 200
+                        onActivated: {
+                            if (currentIndex <= 0)
+                                return
+                            var row = _copySources.get(currentIndex)
+                            copyCatalogFrom(row.name, row.guid)
+                            currentIndex = 0
+                        }
+                    }
                     Item { Layout.fillWidth: true }
                     Button { text: "Save with module"; highlighted: true; onClicked: saveCatalog() }
                 }

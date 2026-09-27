@@ -644,6 +644,22 @@ class ModuleListModel(QtCore.QAbstractListModel):
             catalog.update(raw)
         return json.dumps(catalog)
 
+    @QtCore.Slot(str, result=str)
+    def otherSourceCatalogs(self, current_name: str) -> str:
+        current = str(current_name or "").strip()
+        rows = []
+        seen = set()
+        for row in self._rows:
+            if getattr(row, "direction", "") != "source":
+                continue
+            name = str(getattr(row, "name", "") or "").strip()
+            if not name or name.casefold() == current.casefold() or name.casefold() in seen:
+                continue
+            seen.add(name.casefold())
+            rows.append({"name": name, "guid": str(getattr(row, "guid", "") or "")})
+        rows.sort(key=lambda item: item["name"].lower())
+        return json.dumps(rows)
+
     @QtCore.Slot(str, str, str, result=bool)
     def saveCatalogConfig(self, device_name: str, guid: str, json_text: str) -> bool:
         name = str(device_name or "").strip()
