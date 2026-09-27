@@ -104,12 +104,12 @@ Window {
         if (_win.photoUrl && _win.photoUrl.length)
             _hw.keepPhoto(deviceName, _win.photoUrl)
         if (!_driver.saveClaim(deviceName, direction)) {
-            _saveGate.announce(false, "The module file was not written. The checks are still only on this screen.")
+            _saveGate.announce(false, "Not written. It is still only on this screen.")
             return false
         }
         if (direction === "dest" && backend && backend.profilePath() !== "") {
             if (!backend.saveProfile(backend.profilePath())) {
-                _saveGate.announce(false, "The module file was written, but the profile file was not.")
+                _saveGate.announce(false, "Saved to the module file. The profile was not written.")
                 return false
             }
         }
@@ -117,7 +117,7 @@ Window {
             moduleModel.notifyClaims()
         claimDirty = false
         refreshModuleFileLabel()
-        _saveGate.announce(true, "Saved " + (shownModulePath.length ? shownModulePath : moduleFileLabel))
+        _saveGate.announce(true, "Saved to the module file.")
         return true
     }
 
