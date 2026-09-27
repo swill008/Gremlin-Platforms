@@ -117,8 +117,9 @@ function topics() {
             "<p>Device information shows the name and the identifiers Windows reports for a device.</p>"
             + "<p>Tools → Device Information. Select the device. Use the identifiers when two devices look alike.</p>"),
         topic("Tools", "Auto Mapper",
-            "<p>Auto Mapper builds a starting set of actions from a physical device to an output device.</p>"
-            + "<p>Tools → Auto Mapper. Choose the source and the target. Review the result in Configuration before you rely on it, then save the profile.</p>"),
+            "<p>Auto Mapper builds a starting 1:1 map. Check the input modules and the output modules, then choose the mode. Create 1:1 mappings copies each selected button, axis, and hat onto the same number on the output. The new wires are stored only in that mode.</p>"
+            + "<p>Combine onto Selected Outputs is off by default. The first checked input is wired to the first checked output, then the next, and an input with no output left is skipped. Turn it on to map the checked inputs onto the checked outputs. If there are more inputs than outputs, the output list starts over.</p>"
+            + "<p>Overwrite used inputs replaces wires that already exist on those controls in the selected mode. Off leaves those wires in place. Review the result in Configuration, then save the profile.</p>"),
         topic("Tools", "Swap Devices",
             "<p>Swap Devices moves a profile’s bindings from one physical device to another of the same kind.</p>"
             + "<p>Tools → Swap Devices. Choose the device that is in the profile and the device that should take its place. Save the profile afterward.</p>"),

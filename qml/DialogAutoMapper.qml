@@ -174,7 +174,7 @@ Window {
             Switch {
                 id: _repeatDevices
 
-                text: "Repeat output modules"
+                text: "Combine onto Selected Outputs"
             }
         }
 
@@ -213,7 +213,13 @@ Window {
                 font.pixelSize: 24
 
                 ToolTip {
-                    text: "- Select mode.\n- Check an input module and an output module.\n- Create 1:1 mappings copies the input module's selected buttons, axes, and hats onto the same IDs on the output module.\n\nOverwrite used inputs: replace existing wires on those selected controls.\nRepeat output modules: extra input modules wrap onto the output-module list."
+                    width: 480
+                    text: "Auto Mapper builds a starting 1:1 map.\n\n"
+                        + "Check the input modules and the output modules. Choose the mode. The new wires are stored only in that mode. Other modes are not changed.\n\n"
+                        + "Create 1:1 mappings copies each selected button, axis, and hat onto the same number on the output.\n\n"
+                        + "Combine onto Selected Outputs is off by default. The first checked input is wired to the first checked output. The second input is wired to the second output. An input with no output left is skipped.\n\n"
+                        + "Turn it on to map the checked inputs onto the checked outputs. If there are more inputs than outputs, the output list starts over. One checked output means every checked input is mapped onto that output.\n\n"
+                        + "Overwrite used inputs replaces wires that already exist on those controls in the selected mode. Off leaves those wires in place."
 
                     visible: parent.hovered
                     delay: 500
