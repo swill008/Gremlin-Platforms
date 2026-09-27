@@ -1137,13 +1137,20 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     spacing: 2
                     Label {
-                        text: configDirection === "dest" ? "Output Module View" : "Configuration"
+                        visible: configDirection === "dest"
+                        text: "Output Module View"
                         color: "#A1A1AA"
                         font.pixelSize: 12
                     }
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 2
+                        spacing: 8
+                        Label {
+                            visible: configDirection !== "dest"
+                            text: "Configuration"
+                            font.pixelSize: 22
+                            font.bold: true
+                        }
                         IconButton {
                             visible: configDirection !== "dest"
                             text: "\uF284"
