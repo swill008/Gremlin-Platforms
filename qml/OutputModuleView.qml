@@ -784,7 +784,7 @@ Item {
 
                 RowLayout {
                     Label {
-                        text: "Output Module View — Display"
+                        text: "Output Module View — Display Editor"
                         color: "#E4E4E7"
                         font.bold: true
                         font.pixelSize: 13
@@ -812,12 +812,12 @@ Item {
                         spacing: 12
 
                         FoldSection {
-                            title: "SCREEN"
+                            title: "Screen"
                             open: openScreen
                             onToggled: (v) => { openScreen = v }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Color"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+                                Label { text: "Color"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
                                 Button {
                                     Layout.fillWidth: true
                                     text: colorScreen === "#00000000" ? "None" : "Choose…"
@@ -847,7 +847,7 @@ Item {
                             }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Image"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+                                Label { text: "Image"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
                                 Button {
                                     Layout.fillWidth: true
                                     text: screenImage.length ? "Change…" : "Choose…"
@@ -870,7 +870,7 @@ Item {
                         }
 
                         FoldSection {
-                            title: "LAYOUT"
+                            title: "Layout"
                             open: openLayout
                             onToggled: (v) => { openLayout = v }
                             FlagBox { text: "Show pads"; source: showPads; onUserSet: (v) => { showPads = v } }
@@ -879,7 +879,7 @@ Item {
                         }
 
                         FoldSection {
-                            title: "PADS"
+                            title: "Pads"
                             open: openPads
                             onToggled: (v) => { openPads = v }
                             Label {
@@ -914,7 +914,7 @@ Item {
                         }
 
                         FoldSection {
-                            title: "METERS"
+                            title: "Meters"
                             open: openMeters
                             onToggled: (v) => { openMeters = v }
                             ChoiceMenu {
@@ -964,7 +964,7 @@ Item {
                         }
 
                         FoldSection {
-                            title: "BUTTONS"
+                            title: "Buttons"
                             open: openButtons
                             onToggled: (v) => { openButtons = v }
                             ChoiceMenu {
@@ -994,7 +994,7 @@ Item {
                         }
 
                         FoldSection {
-                            title: "COLORS"
+                            title: "Colors"
                             open: openColors
                             onToggled: (v) => { openColors = v }
                         RowLayout {
@@ -1062,17 +1062,57 @@ Item {
                 }
 
                 RowLayout {
-                    Button { text: "Reset"; onClicked: resetView() }
+                    spacing: 6
+                    Button {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        text: "Reset View\nto Default"
+                        onClicked: resetView()
+                        contentItem: Text {
+                            text: parent.text
+                            color: "#FFFFFF"
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        background: Rectangle {
+                            implicitHeight: 44
+                            color: parent.down ? "#991B1B" : (parent.hovered ? "#EF4444" : "#DC2626")
+                            border.width: 1
+                            border.color: parent.hovered ? "#FCA5A5" : "#B91C1C"
+                        }
+                    }
                     Button {
                         id: _copyButton
-                        text: "Copy from…"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        text: "Copy View\nfrom…"
                         onClicked: {
                             refreshCopySources()
                             _copyMenu.popup(_copyButton, 0, _copyButton.height)
                         }
+                        contentItem: Text {
+                            text: parent.text
+                            color: "#F4F4F5"
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
                     }
-                    Item { Layout.fillWidth: true }
-                    Button { text: "Save with module"; highlighted: true; onClicked: saveView() }
+                    Button {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        text: "Save View\nSettings"
+                        highlighted: true
+                        onClicked: saveView()
+                        contentItem: Text {
+                            text: parent.text
+                            color: "#FFFFFF"
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
                 }
             }
         }

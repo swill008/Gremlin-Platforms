@@ -59,7 +59,7 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "signal.inputItemChanged.connect(self.reload)" not in py
     assert "def assignment_summary" in py
     text = _QML.read_text(encoding="utf-8")
-    assert 'text: "Input Configuration — Display"' in text
+    assert 'text: "Input Configuration — Display Editor"' in text
     assert 'text: "Open all"' in text
     assert 'text: "Close all"' in text
     assert "Layout.preferredWidth: 360" in text
@@ -77,6 +77,16 @@ def test_assignment_summary_counts_destinations() -> None:
     assert 'title: "Parent row"' in text
     assert 'title: "Child row"' in text
     assert 'title: "Selection"' in text
+    output = Path(__file__).resolve().parents[2].joinpath("qml/OutputModuleView.qml").read_text(encoding="utf-8")
+    assert 'text: "Output Module View — Display Editor"' in output
+    assert 'title: "Screen"' in output
+    assert 'title: "Pads"' in output
+    assert 'title: "Colors"' in output
+    assert "onClicked: resetView()" in output
+    assert "onClicked: saveView()" in output
+    assert 'text: "Save View\\nSettings"' in output
+    assert "Save with module" not in output
+    assert 'title: "SCREEN"' not in output
     assert 'title: "Text"' in text
     assert 'title: "Shown"' in text
     assert 'title: "Editor"' in text

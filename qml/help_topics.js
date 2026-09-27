@@ -11,7 +11,7 @@ function topics() {
         topic("Start", "What is saved where",
             "<p>Three stores are kept separate. Saving one does not save the others.</p>"
             + "<p><b>Profile.</b> Modes, bindings, and actions. File → Save Profile writes this file. File → Save Profile As writes a new one. Closing the program asks when the profile has changes that are not saved.</p>"
-            + "<p><b>Module file.</b> One file for each device. It holds the device picture, the configuration list’s look, an output device’s look, and the calibration for an input stick. The input module chooses which file that device uses. Button Map, Configure input module, Configure output module, and Calibration write this file. Display options are written only when you press the save button on that panel.</p>"
+            + "<p><b>Module file.</b> One file for each device. It holds the device picture, the configuration list’s look, an output device’s look, and the calibration for an input stick. The input module chooses which file that device uses. Button Map, Configure input module, Configure output module, and Calibration write this file. The display look is written only when you press Save View Settings on that panel.</p>"
             + "<p><b>Program settings.</b> Options, the Home layout, window sizes, and HiDHide choices. These are kept for the program, not inside one profile.</p>"),
         topic("Start", "Toggle",
             "<p>Toggle makes the loaded profile live. While it is off, you are only editing. While it is on, inputs run their actions.</p>"
@@ -51,7 +51,7 @@ function topics() {
             + "<p><b>Text.</b> Sets the words. Parent text size and Bold names change the control name. Child text size changes the action names. Text color is the main words. Muted text is the quieter words, such as the type and the destination.</p>"
             + "<p><b>Selection.</b> Sets the row you have selected. Fill of a selected row is its background. Line around a selected row replaces the normal outline while that row is selected.</p>"
             + "<p><b>Editor.</b> Sets the action editor that opens beside a control. Alignment, padding, and the gap below the row place it. Corner radius, border width, and the border color draw its edge. Show accent bar adds a bar on the side. Accent width and Accent bar set that bar.</p>"
-            + "<p>An output device has its own display options for pads, hats, meters, and buttons. Those are saved the same way, into that device’s module file.</p>"),
+            + "<p>An output device uses Output Module View — Display Editor. That panel has its own options for pads, hats, meters, and buttons. Reset View to Default, Copy View from…, and Save View Settings work the same way. The look is stored in that device’s module file.</p>"),
         topic("Actions", "Map to Keyboard",
             "<p>Sends one or more keyboard keys when the input fires.</p>"
             + "<p>Choose the key, and whether the key is held while the input is held or tapped once.</p>"),
