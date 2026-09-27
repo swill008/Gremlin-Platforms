@@ -118,7 +118,7 @@ ApplicationWindow {
         return card.rawName || card.name || ""
     }
 
-    function openConfigurationForCard(card) {
+    function openConfigurationNow(card) {
         if (!uiState || !card)
             return
         _panelReady = false
@@ -130,6 +130,44 @@ ApplicationWindow {
         uiState.setCurrentTab(card.tab || "physical")
         uiState.setCurrentRoom("configuration")
         applyDisplayPanel()
+    }
+
+    property var _afterDisplayLeave: null
+
+    function leaveDisplayThen(next) {
+        _afterDisplayLeave = next
+        continueDisplayLeave()
+    }
+
+    function continueDisplayLeave() {
+        if (_deviceInputList && _deviceInputList.hasUnsaved && _deviceInputList.hasUnsaved()) {
+            _deviceInputList.requestLeave()
+            return
+        }
+        if (_outputModuleView && _outputModuleView.hasUnsaved && _outputModuleView.hasUnsaved()) {
+            _outputModuleView.requestLeave()
+            return
+        }
+        var next = _afterDisplayLeave
+        _afterDisplayLeave = null
+        if (next)
+            next()
+    }
+
+    function cancelDisplayLeave() {
+        _afterDisplayLeave = null
+    }
+
+    function openConfigurationForCard(card) {
+        if (!uiState || !card)
+            return
+        var name = moduleFileName(card)
+        var direction = card.direction || "source"
+        if (uiState.currentRoom === "configuration" && configTitleName === name && configDirection === direction) {
+            applyDisplayPanel()
+            return
+        }
+        leaveDisplayThen(function() { openConfigurationNow(card) })
     }
 
     function openOutputViewForCard(card) {
@@ -215,7 +253,7 @@ ApplicationWindow {
             Helpers.toggleComponent("DialogInputViewer.qml")
     }
 
-    function closeWorkRoom() {
+    function closeWorkRoomNow() {
         if (!uiState)
             return
         _panelReady = false
@@ -227,6 +265,10 @@ ApplicationWindow {
             _scriptButton.checked = false
         if (_profileSettingsButton)
             _profileSettingsButton.checked = false
+    }
+
+    function closeWorkRoom() {
+        leaveDisplayThen(function() { closeWorkRoomNow() })
     }
 
     function requestNewProfile() {
@@ -1167,6 +1209,8 @@ ApplicationWindow {
                 _root.outputViewPanel = false
                 _root.rememberDisplayPanel()
             }
+            onLeaveResolved: _root.continueDisplayLeave()
+            onLeaveCancelled: _root.cancelDisplayLeave()
         }
 
         SplitView {
@@ -1200,6 +1244,8 @@ ApplicationWindow {
                         _root.catalogPanel = false
                     _root.rememberDisplayPanel()
                 }
+                onLeaveResolved: _root.continueDisplayLeave()
+                onLeaveCancelled: _root.cancelDisplayLeave()
             }
 
             LogicalDevice {
