@@ -92,7 +92,6 @@ class Configuration(metaclass=common.SingletonMetaclass):
                     }
 
         self._last_reload = time.time()
-        self.save()
 
     def save(self) -> None:
         json_data = {}
@@ -149,20 +148,25 @@ class Configuration(metaclass=common.SingletonMetaclass):
                         + f"'{req_type}' but got '{type(properties[req_prop])}' "
                         + f"in entry {key}"
                     )
+        changed = False
         if key in self._data:
             if self._data[key]["properties"] != properties:
                 logging.getLogger("system").warning(
                     f"Properties for parameter '{key}' changed, updating"
                 )
                 self._data[key]["properties"] = properties
+                changed = True
             if data_type != self._data[key]["data_type"]:
                 logging.getLogger("system").warning(
                     f"Data type for parameter '{key}' changed, updating from "
                     + f"'{self._data[key]['data_type']}' to '{data_type}'"
                 )
                 self._data[key]["data_type"] = data_type
+                changed = True
+            if bool(self._data[key].get("expose")) != bool(expose):
+                self._data[key]["expose"] = bool(expose)
+                changed = True
             self._data[key]["description"] = description
-            self._data[key]["expose"] = expose
         else:
             self._data[key] = {
                 "value": initial_value,
@@ -171,12 +175,14 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 "properties": properties,
                 "expose": expose,
             }
-        try:
-            self.save()
-        except TypeError:
-            logging.getLogger("system").error(
-                f"Failed to save configuration after registering parameter {key}."
-            )
+            changed = True
+        if changed:
+            try:
+                self.save()
+            except TypeError:
+                logging.getLogger("system").error(
+                    f"Failed to save configuration after registering parameter {key}."
+                )
         self._data[key]["is_registered"] = True
 
     def purge_unused(self) -> None:
@@ -184,13 +190,16 @@ class Configuration(metaclass=common.SingletonMetaclass):
         for key, value in self._data.items():
             if not value.get("is_registered", False):
                 keys_to_delete.append(key)
+        removed = False
         for key in keys_to_delete:
             if key[0] != "calibration":
                 logging.getLogger("system").warning(
                     f"Parameter '{key}' has not been registered, purging."
                 )
                 del self._data[key]
-        self.save()
+                removed = True
+        if removed:
+            self.save()
 
     def get(self, section: str, group: str, name: str, entry: str) -> Any:
         return self._retrieve_value(section, group, name, entry)
@@ -201,8 +210,9 @@ class Configuration(metaclass=common.SingletonMetaclass):
             raise error.GremlinError(f"No parameter with key '{key}' exists.")
         _, is_valid = util.determine_value_type(value, self._data[key]["data_type"])
         if is_valid:
-            self._data[key]["value"] = value
-            self.save()
+            if self._data[key]["value"] != value:
+                self._data[key]["value"] = value
+                self.save()
         else:
             data_type = self._data[key]["data_type"]
             raise error.GremlinError(
