@@ -214,12 +214,11 @@ Window {
 
                 ToolTip {
                     width: 480
-                    text: "Auto Mapper builds a starting 1:1 map.\n\n"
-                        + "Check the input modules and the output modules. Choose the mode. The new wires are stored only in that mode. Other modes are not changed.\n\n"
-                        + "Create 1:1 mappings copies each selected button, axis, and hat onto the same number on the output.\n\n"
-                        + "Combine onto Selected Outputs is off by default. The first checked input is wired to the first checked output. The second input is wired to the second output. An input with no output left is skipped.\n\n"
-                        + "Turn it on to map the checked inputs onto the checked outputs. If there are more inputs than outputs, the output list starts over. One checked output means every checked input is mapped onto that output.\n\n"
-                        + "Overwrite used inputs replaces wires that already exist on those controls in the selected mode. Off leaves those wires in place."
+                    text: "See Help, then Tools, then Auto Mapper, for the full Help Guide. The intent of this tool is to build a starting 1:1 mapping.\n\n"
+                        + "Mode selection defaults to the default mode, change this if required for another mode.\n\n"
+                        + "This tool does not match devices by name. It uses the order shown in the lists. The first checked input is wired to the first checked output. The second input is wired to the second output.\n\n"
+                        + "Overwrite used inputs: Replaces wires that already exist on those controls in the selected mode. Leave it off, and those wires stay as they are.\n\n"
+                        + "Combine onto Selected Outputs: This should stay off when each input should have its own output. Turn it on when you check more inputs than outputs."
 
                     visible: parent.hovered
                     delay: 500
