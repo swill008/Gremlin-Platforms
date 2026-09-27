@@ -129,6 +129,35 @@ Window {
                 textRole: "value"
                 valueRole: "value"
 
+                background: Rectangle {
+                    implicitWidth: 120
+                    implicitHeight: 32
+                    border.width: 1
+                    border.color: _parentMode.down || _parentMode.hovered
+                            ? _parentMode.Universal.baseMediumColor
+                            : _parentMode.Universal.baseMediumLowColor
+                    color: _parentMode.down
+                            ? _parentMode.Universal.listMediumColor
+                            : _parentMode.Universal.altMediumLowColor
+                }
+
+                delegate: ItemDelegate {
+                    required property var model
+                    required property int index
+
+                    width: ListView.view ? ListView.view.width : implicitWidth
+                    text: model[_parentMode.textRole]
+                    font.weight: _parentMode.currentIndex === index ? Font.DemiBold : Font.Normal
+                    highlighted: false
+                    hoverEnabled: true
+
+                    background: Rectangle {
+                        color: (_parentMode.highlightedIndex === index || parent.hovered)
+                                ? _parentMode.Universal.listMediumColor
+                                : "transparent"
+                    }
+                }
+
                 onActivated: (index) => {
                     modeHierarchy.setParent(name, currentValue)
                 }
