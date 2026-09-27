@@ -918,6 +918,12 @@ def _zip_map_name(names: list[str]) -> str:
     return ""
 
 
+def _export_dir() -> Path:
+    path = _install_root() / "export"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def _outside_maps(path: Path) -> bool:
     try:
         path.resolve().relative_to(_maps_dir().resolve())
@@ -1194,12 +1200,13 @@ class HardwareProfile(QtCore.QObject):
     def defaultPath(self, device_name: str) -> str:
         return str(self._file_for(device_name))
 
+    @QtCore.Slot(result=str)
+    def exportFolderUrl(self) -> str:
+        return _export_dir().as_uri()
+
     @QtCore.Slot(str, result=str)
     def defaultExportUrl(self, device_name: str) -> str:
-        root = Path.home() / "Documents"
-        if not root.is_dir():
-            root = Path.home()
-        path = root / f"{_slug(device_name)}_map.zip"
+        path = _export_dir() / f"{_slug(device_name)}_map.zip"
         return path.as_uri()
 
     @QtCore.Slot(result=str)

@@ -216,6 +216,7 @@ Window {
         fileMode: FileDialog.SaveFile
         defaultSuffix: "zip"
         nameFilters: ["Device packs (*.zip)"]
+        currentFolder: _hw.exportFolderUrl()
         onAccepted: {
             var dest = Helpers.fileDialogUrl(_save)
             var name = _exportDevice.currentText || ""
@@ -231,6 +232,7 @@ Window {
         title: "Open device pack"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Device packs (*.zip)"]
+        currentFolder: _hw.exportFolderUrl()
         onAccepted: {
             zipUrl = Helpers.fileDialogUrl(_pick)
             var info = _parse(_hw.peekPackZip(zipUrl))
@@ -403,7 +405,9 @@ Window {
                             enabled: (_exportDevice.currentText || "").length > 0 && exportSize.length > 0
                             onClicked: {
                                 var name = _exportDevice.currentText
+                                var folder = _hw.exportFolderUrl()
                                 var hint = _hw.defaultExportUrl(name)
+                                _save.currentFolder = folder
                                 if (hint && hint.length) {
                                     try { _save.selectedFile = hint } catch (e) {}
                                     try { _save.currentFile = hint } catch (e) {}
@@ -423,7 +427,10 @@ Window {
                     Button {
                         text: "Choose zip…"
                         focusPolicy: Qt.NoFocus
-                        onClicked: _pick.open()
+                        onClicked: {
+                            _pick.currentFolder = _hw.exportFolderUrl()
+                            _pick.open()
+                        }
                     }
                     Item { Layout.fillWidth: true }
                     Button { text: "Open all"; onClicked: setAll(true); enabled: sections.length > 0 }

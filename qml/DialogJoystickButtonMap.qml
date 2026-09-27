@@ -1405,12 +1405,14 @@ Window {
             }
         }
         var hint = _hw.defaultExportUrl(targetName)
+        _exportDialog.currentFolder = _hw.exportFolderUrl()
         _exportDialog.selectedFile = hint
         _exportDialog.open()
     }
 
     function openImport() {
         packError = ""
+        _importDialog.currentFolder = _hw.exportFolderUrl()
         _importDialog.open()
     }
 
