@@ -117,9 +117,11 @@ function topics() {
             "<p>Device information shows the name and the identifiers Windows reports for a device.</p>"
             + "<p>Tools → Device Information. Select the device. Use the identifiers when two devices look alike.</p>"),
         topic("Tools", "Auto Mapper",
-            "<p>Auto Mapper builds a starting 1:1 map. Check the input modules and the output modules, then choose the mode. Create 1:1 mappings copies each selected button, axis, and hat onto the same number on the output. The new wires are stored only in that mode.</p>"
-            + "<p>Combine onto Selected Outputs is off by default. The first checked input is wired to the first checked output, then the next, and an input with no output left is skipped. Turn it on to map the checked inputs onto the checked outputs. If there are more inputs than outputs, the output list starts over.</p>"
-            + "<p>Overwrite used inputs replaces wires that already exist on those controls in the selected mode. Off leaves those wires in place. Review the result in Configuration, then save the profile.</p>"),
+            "<p>Auto Mapper builds a starting map. It copies the selected buttons, axes, and hats from an input module onto the same numbers on an output module. It does not match devices by name. It uses the order shown in the lists. The first checked input is wired to the first checked output. The second input is wired to the second output.</p>"
+            + "<p>Choose the mode before you create the map. The new wires are stored only in that mode.</p>"
+            + "<p>Combine onto Selected Outputs is for when you check more inputs than outputs. The output list starts over. Three input modules and one output module means all three inputs are wired to that one output.</p>"
+            + "<p>Leave Combine onto Selected Outputs off when each input should have its own output. You check three input modules. You check two output modules. The first input is wired to the first output. The second input is wired to the second output. The third input has no output left, so it is skipped. No wires are created for that third input. Turn the switch on if that third input should still get a map. The output list starts over, and the third input is wired to the first output.</p>"
+            + "<p>Overwrite used inputs replaces wires that already exist on those controls in the selected mode. Leave it off, and those wires stay as they are.</p>"),
         topic("Tools", "Swap Devices",
             "<p>Swap Devices moves a profile’s bindings from one physical device to another of the same kind.</p>"
             + "<p>Tools → Swap Devices. Choose the device that is in the profile and the device that should take its place. Save the profile afterward.</p>"),
