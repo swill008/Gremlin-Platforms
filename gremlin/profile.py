@@ -590,8 +590,14 @@ class Profile:
             fpath: path to the XML file to parse
         """
         # Parse file into an XML document.
-        tree = ElementTree.parse(str(fpath))
+        from gremlin.ui.live_debug import trace
+        try:
+            tree = ElementTree.parse(str(fpath))
+        except Exception:
+            trace("READ", "Profile", "from_xml", fpath, "error")
+            raise
         root = tree.getroot()
+        trace("READ", "Profile", "from_xml", fpath, "ok")
 
         version = int(root.get("version", "0"))
         if version != Profile.current_version:
@@ -654,6 +660,8 @@ class Profile:
         dom_xml = minidom.parseString(ugly_xml)
         with codecs.open(str(fpath), "w", "utf-8-sig") as out:
             out.write(dom_xml.toprettyxml(indent="    "))
+        from gremlin.ui.live_debug import trace
+        trace("SAVE", "Profile", "to_xml", fpath, "ok")
 
     def get_input_count(
         self,

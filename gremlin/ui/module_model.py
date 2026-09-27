@@ -19,6 +19,7 @@ from gremlin import (
 from gremlin.signal import signal
 from gremlin.types import InputType, PropertyType
 from gremlin import keyboard as gremlin_keyboard
+from gremlin.ui.live_debug import trace
 from gremlin.ui.hardware_profile import (
     HardwareProfile,
     _maps_dir,
@@ -636,8 +637,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
                     loaded = json.loads(path.read_text(encoding="utf-8"))
                     if isinstance(loaded, dict):
                         doc = loaded
+                    trace("READ", "Output Configuration", "viewConfigJson", path, "ok")
                 except (OSError, json.JSONDecodeError):
                     doc = {}
+                    trace("READ", "Output Configuration", "viewConfigJson", path, "error")
+            else:
+                trace("READ", "Output Configuration", "viewConfigJson", path, "missing")
         view = dict(_DEFAULT_VIEW)
         view["meters"] = list(_DEFAULT_VIEW["meters"])
         raw = doc.get("view")
@@ -661,8 +666,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if path.is_file():
             try:
                 doc = json.loads(path.read_text(encoding="utf-8"))
+                trace("READ", "Output Configuration", "saveViewConfig", path, "ok")
             except (OSError, json.JSONDecodeError):
                 doc = {}
+                trace("READ", "Output Configuration", "saveViewConfig", path, "error")
         view = dict(_DEFAULT_VIEW)
         view["meters"] = list(_DEFAULT_VIEW["meters"])
         raw = doc.get("view")
@@ -677,8 +684,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
         try:
             path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
             written = json.loads(path.read_text(encoding="utf-8"))
+            trace("SAVE", "Output Configuration", "saveViewConfig", path, "ok")
         except (OSError, json.JSONDecodeError) as exc:
             _plog("save view failed", path=str(path), error=exc)
+            trace("SAVE", "Output Configuration", "saveViewConfig", path, "error")
             return False
         if not isinstance(written.get("view"), dict):
             _plog("save view mismatch", path=str(path))
@@ -694,7 +703,16 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=str)
     def catalogConfigJson(self, device_name: str, guid: str) -> str:
+        path = module_json_path(device_name, guid_for_module(device_name, guid)) if device_name else None
         doc = _load_module_doc(device_name, guid_for_module(device_name, guid)) if device_name else {}
+        if path is not None:
+            trace(
+                "READ",
+                "Input Configuration",
+                "catalogConfigJson",
+                path,
+                "ok" if path.is_file() else "missing",
+            )
         catalog = dict(_DEFAULT_CATALOG)
         raw = (doc or {}).get("catalog")
         if isinstance(raw, dict):
@@ -749,8 +767,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if path.is_file():
             try:
                 doc = json.loads(path.read_text(encoding="utf-8"))
+                trace("READ", "Input Configuration", "saveCatalogConfig", path, "ok")
             except (OSError, json.JSONDecodeError):
                 doc = {}
+                trace("READ", "Input Configuration", "saveCatalogConfig", path, "error")
         catalog = dict(_DEFAULT_CATALOG)
         raw = doc.get("catalog")
         if isinstance(raw, dict):
@@ -764,8 +784,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
         try:
             path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
             written = json.loads(path.read_text(encoding="utf-8"))
+            trace("SAVE", "Input Configuration", "saveCatalogConfig", path, "ok")
         except (OSError, json.JSONDecodeError) as exc:
             _plog("save catalog failed", path=str(path), error=exc)
+            trace("SAVE", "Input Configuration", "saveCatalogConfig", path, "error")
             return False
         if not isinstance(written.get("catalog"), dict):
             _plog("save catalog mismatch", path=str(path))
@@ -1933,8 +1955,10 @@ class DriverInputModel(QtCore.QAbstractListModel):
         if path.is_file():
             try:
                 doc = json.loads(path.read_text(encoding="utf-8"))
+                trace("READ", "Configure Module", "saveClaim", path, "ok")
             except (OSError, json.JSONDecodeError):
                 doc = {}
+                trace("READ", "Configure Module", "saveClaim", path, "error")
         buttons = [int(r["hwId"]) for r in self._rows if r["kind"] == "button" and r["claimed"]]
         axes = [int(r["hwId"]) for r in self._rows if r["kind"] == "axis" and r["claimed"]]
         hats = [int(r["hwId"]) for r in self._rows if r["kind"] == "hat" and r["claimed"]]
@@ -1983,8 +2007,10 @@ class DriverInputModel(QtCore.QAbstractListModel):
         try:
             path.write_text(text, encoding="utf-8")
             written = json.loads(path.read_text(encoding="utf-8"))
+            trace("SAVE", "Configure Module", "saveClaim", path, "ok")
         except (OSError, json.JSONDecodeError) as exc:
             _plog("save claim failed", path=str(path), error=exc)
+            trace("SAVE", "Configure Module", "saveClaim", path, "error")
             return False
         got = written.get("claim") if isinstance(written.get("claim"), dict) else {}
         if [int(n) for n in (got.get("buttons") or [])] != buttons:

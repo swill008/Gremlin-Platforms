@@ -16,6 +16,7 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin.signal import signal
+from gremlin.ui.live_debug import trace
 from gremlin.ui.util import to_local_path
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -525,6 +526,7 @@ def undo_last_import() -> str:
         else:
             _replace_file(dest, previous)
             note = "The previous module file was put back."
+            trace("SAVE", "Configure Module", "undo_last_import", dest, "ok")
     except OSError:
         return "Undo failed. The previous module file could not be put back."
     _import_undo = None
@@ -550,7 +552,9 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
     try:
         doc = json.loads(src.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
+        trace("READ", "Configure Module", "import_module_file", src, "error")
         return "That file could not be read."
+    trace("READ", "Configure Module", "import_module_file", src, "ok")
     if not isinstance(doc, dict) or doc.get("kind") != "control.hardware":
         return "That file is not a module file."
     target = "dest" if str(direction or "").strip().lower() == "dest" else "source"
@@ -574,6 +578,7 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
             previous_bytes = dest.read_bytes()
             previous = json.loads(previous_bytes.decode("utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError):
+            trace("READ", "Configure Module", "import_module_file", dest, "error")
             return "The current file could not be read, so it was not replaced."
         if isinstance(previous, dict):
             previous_image = str(previous.get("image") or "")
@@ -591,7 +596,9 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
     try:
         _replace_file(dest, (json.dumps(payload, indent=2) + "\n").encode("utf-8"))
     except OSError:
+        trace("SAVE", "Configure Module", "import_module_file", dest, "error")
         return "The module file could not be written."
+    trace("SAVE", "Configure Module", "import_module_file", dest, "ok")
     claim = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
     friendly = claim.get("friendly") if isinstance(claim.get("friendly"), dict) else {}
     stamp = _archive_stamp()
@@ -710,6 +717,7 @@ def delete_module_file(device_name: str, guid: str) -> str:
     path = _maps_dir() / f"{slug}.json"
     if path.is_file():
         path.unlink()
+        trace("SAVE", "Configure Module", "delete_module_file", path, "removed")
     data = _binding_store()
     changed = False
     if key and _plain_slug(str(data.get(key, ""))) == slug:
@@ -742,18 +750,12 @@ def _pack_file_name(device_name: str) -> str:
 
 
 def _deleted_pack_path(device_name: str) -> Path:
-    folder = _deleted_dir()
+    """One folder per Windows device name. Every pack uses the agreed stamp."""
     base = _pack_file_name(device_name)
-    path = folder / f"{base}.zip"
-    if not path.exists():
-        return path
-    stamp = datetime.now().strftime("%Y-%m-%d %H%M")
-    path = folder / f"{base} {stamp}.zip"
-    number = 2
-    while path.exists():
-        path = folder / f"{base} {stamp} {number}.zip"
-        number += 1
-    return path
+    folder = _deleted_dir() / base
+    folder.mkdir(parents=True, exist_ok=True)
+    stamp = _archive_stamp()
+    return folder / f"{base}.{stamp}.zip"
 
 
 def _zip_readable(path: Path) -> bool:
@@ -900,12 +902,15 @@ def _delete_own_module_files(device_name: str) -> str:
         path = _maps_dir() / f"{slug}.json"
         if path.is_file():
             path.unlink()
+            trace("SAVE", "Delete Device", "_delete_own_module_files", path, "removed")
         folder = _maps_dir() / slug
         if folder.is_dir():
             shutil.rmtree(folder)
+            trace("SAVE", "Delete Device", "_delete_own_module_files", folder, "removed")
         for extra in _maps_dir().glob(f"{slug}_photo.*"):
             if extra.is_file():
                 extra.unlink()
+                trace("SAVE", "Delete Device", "_delete_own_module_files", extra, "removed")
     except OSError as exc:
         return str(exc)
     return ""
@@ -935,7 +940,9 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
         try:
             dest.write_bytes(data)
         except OSError as exc:
+            trace("SAVE", "Delete Device", "delete_device", dest, "error")
             return json.dumps({"ok": False, "error": f"The pack could not be written. {exc}"})
+        trace("SAVE", "Delete Device", "delete_device", dest, "ok")
         if not _zip_readable(dest):
             try:
                 dest.unlink()
@@ -1605,7 +1612,9 @@ class HardwareProfile(QtCore.QObject):
         try:
             dest.write_bytes(data)
         except Exception as exc:
+            trace("SAVE", "Device Pack", "exportPack", dest, "error")
             return json.dumps({"ok": False, "error": str(exc)})
+        trace("SAVE", "Device Pack", "exportPack", dest, "ok")
         return json.dumps({
             "ok": True,
             "path": str(dest),
@@ -1693,8 +1702,10 @@ class HardwareProfile(QtCore.QObject):
         self.pathChanged.emit()
         if path.is_file():
             self._text = path.read_text(encoding="utf-8")
+            trace("READ", "Button Map", "load", path, "ok")
         else:
             self._text = ""
+            trace("READ", "Button Map", "load", path, "missing")
         persist_log(
             f"Persist map load name={name!r} guid={self._device_guid!r} path={path} bytes={len(self._text)}"
         )
@@ -1739,6 +1750,7 @@ class HardwareProfile(QtCore.QObject):
             payload["direction"] = "dest"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        trace("SAVE", "Button Map", "save", path, "ok")
         kept = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
         persist_log(
             f"Persist map save name={name!r} guid={self._device_guid!r} path={path} "
@@ -1773,6 +1785,7 @@ class HardwareProfile(QtCore.QObject):
         payload["ui"] = incoming.get("ui", payload.get("ui") or {})
         payload.pop("worldRev", None)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        trace("SAVE", "Button Map", "saveUi", path, "ok")
         persist_log(f"Persist map ui name={name!r} guid={self._device_guid!r} path={path}")
         self._path = str(path)
         self._text = path.read_text(encoding="utf-8")
@@ -1841,6 +1854,7 @@ class HardwareProfile(QtCore.QObject):
         except OSError:
             dest = folder / f"photo_{src.stem}{ext}"
             self._copy_file(src, dest)
+        trace("SAVE", "Button Map", "copyImage", dest, "ok")
         rel = f"qml/maps/{slug}/{dest.name}"
         # Record the picture on this device's own file only. A shared module
         # binding must not change every other card.
@@ -1853,6 +1867,7 @@ class HardwareProfile(QtCore.QObject):
             if isinstance(loaded, dict):
                 loaded["image"] = rel
                 path.write_text(json.dumps(loaded, indent=2) + "\n", encoding="utf-8")
+                trace("SAVE", "Button Map", "copyImage", path, "ok")
         persist_log(f"Persist photo name={name!r} guid={self._device_guid!r} path={path} image={rel!r}")
         self._path = str(path)
         self.pathChanged.emit()
@@ -1867,6 +1882,7 @@ class HardwareProfile(QtCore.QObject):
         for p in folder.glob("photo.*"):
             try:
                 p.unlink()
+                trace("SAVE", "Button Map", "clearImage", p, "removed")
             except OSError:
                 return False
         for ext in _IMAGE_EXT:
@@ -1874,6 +1890,7 @@ class HardwareProfile(QtCore.QObject):
             if p.is_file():
                 try:
                     p.unlink()
+                    trace("SAVE", "Button Map", "clearImage", p, "removed")
                 except OSError:
                     return False
         self.imageChanged.emit()

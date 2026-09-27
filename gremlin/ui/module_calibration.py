@@ -15,6 +15,7 @@ import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.device_initialization import physical_devices
 from gremlin.ui.hardware_profile import _maps_dir
+from gremlin.ui.live_debug import trace
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -122,6 +123,7 @@ def write_axis(slug: str, axis_id: int, data: tuple[int, int, int, int, bool]) -
     if row is None:
         return False
     doc = _load(row["path"])
+    trace("READ", "Calibration", "write_axis", row["path"], "ok")
     calibration = dict(doc.get("calibration") or {})
     calibration[str(int(axis_id))] = [
         int(data[0]),
@@ -134,7 +136,9 @@ def write_axis(slug: str, axis_id: int, data: tuple[int, int, int, int, bool]) -
     try:
         row["path"].write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
     except OSError:
+        trace("SAVE", "Calibration", "write_axis", row["path"], "error")
         return False
+    trace("SAVE", "Calibration", "write_axis", row["path"], "ok")
     return True
 
 

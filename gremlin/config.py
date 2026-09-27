@@ -18,6 +18,7 @@ from gremlin import (
     util,
 )
 from gremlin.types import PropertyType
+from gremlin.ui.live_debug import trace
 
 _config_file_path = os.path.join(util.userprofile_path(), "configuration.json")
 
@@ -67,6 +68,13 @@ class Configuration(metaclass=common.SingletonMetaclass):
                     pass
         if not load_successful:
             self._data = {}
+        trace(
+            "READ",
+            "Program Settings",
+            "load",
+            _config_file_path,
+            "ok" if load_successful else "missing",
+        )
 
         self._data = {}
         for section, sec_data in json_data.items():
@@ -108,6 +116,7 @@ class Configuration(metaclass=common.SingletonMetaclass):
         with open(_config_file_path, "w") as hdl:
             encoder = json.JSONEncoder(sort_keys=True, indent=4)
             hdl.write(encoder.encode(json_data))
+        trace("SAVE", "Program Settings", "save", _config_file_path, "ok")
 
     def register(
         self,

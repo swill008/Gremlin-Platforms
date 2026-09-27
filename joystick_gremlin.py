@@ -63,6 +63,7 @@ import gremlin.ui.osc_device_model  # noqa: F401
 import gremlin.ui.device_names  # noqa: F401
 import gremlin.ui.hidhide  # noqa: F401
 import gremlin.ui.module_model  # noqa: F401
+import gremlin.ui.live_debug  # noqa: F401
 import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
 import gremlin.ui.module_pairing  # noqa: F401
 import gremlin.ui.shell_option  # noqa: F401
@@ -625,6 +626,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         super().__init__(qt_argv)
 
         configure_loggers()
+        gremlin.ui.live_debug.start()
         self.syslog = logging.getLogger("system")
         register_config_options()
         gremlin.ui.log_option.apply_log_level()

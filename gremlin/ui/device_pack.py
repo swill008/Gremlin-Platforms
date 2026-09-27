@@ -16,6 +16,7 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
 
+from gremlin.ui.live_debug import trace
 from gremlin.ui.hardware_profile import (
     _IMAGE_EXT,
     _claim_summary,
@@ -1037,7 +1038,9 @@ def _write_pictures(slug: str, files: dict[str, bytes], chosen: set[str], doc: d
         if dest.is_file():
             backup = _unique_archive(f"{slug}_{dest.stem}")
             _replace_file(backup.with_suffix(dest.suffix), dest.read_bytes())
+            trace("SAVE", "Device Pack", "_write_pictures", backup, "ok")
         dest.write_bytes(data)
+        trace("SAVE", "Device Pack", "_write_pictures", dest, "ok")
         written[arc] = dest.name
     photo = Path(str(doc.get("image") or "")).name
     if photo in written:
@@ -1061,7 +1064,9 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         return {"ok": False, "error": "Choose the device this pack is for."}
     loaded = _read_zip(path)
     if isinstance(loaded, str):
+        trace("READ", "Device Pack", "apply_zip", path, "error")
         return {"ok": False, "error": loaded}
+    trace("READ", "Device Pack", "apply_zip", path, "ok")
     doc = loaded["doc"]
     label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
     exported = str(label.get("exportedName") or doc.get("device") or "").strip()
@@ -1094,11 +1099,13 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
             backup = _unique_archive(dest.stem)
             try:
                 _replace_file(backup, previous)
+                trace("SAVE", "Device Pack", "apply_zip", backup, "ok")
             except OSError:
                 return {"ok": False, "error": "The previous file could not be saved, so nothing was replaced."}
             backup_name = backup.name
         try:
             _replace_file(dest, (json.dumps(merged, indent=2) + "\n").encode("utf-8"))
+            trace("SAVE", "Device Pack", "apply_zip", dest, "ok")
         except OSError:
             return {"ok": False, "error": "The module file could not be written."}
         notes.append(f"Saved {dest.name} for {target}.")
@@ -1132,13 +1139,16 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         _write_pictures(dest.stem, loaded["files"], chosen, merged)
         previous = dest.read_bytes() if dest.is_file() else None
         if previous is not None:
+            archive = _unique_archive(dest.stem)
             try:
-                _replace_file(_unique_archive(dest.stem), previous)
+                _replace_file(archive, previous)
+                trace("SAVE", "Device Pack", "apply_zip", archive, "ok")
             except OSError:
                 notes.append(f"The previous file for {out_name} could not be saved, so it was not changed.")
                 continue
         try:
             _replace_file(dest, (json.dumps(merged, indent=2) + "\n").encode("utf-8"))
+            trace("SAVE", "Device Pack", "apply_zip", dest, "ok")
         except OSError:
             notes.append(f"The file for {out_name} could not be written.")
             continue

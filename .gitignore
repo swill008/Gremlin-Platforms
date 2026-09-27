@@ -14,6 +14,7 @@ __pycache__
 
 # Logfiles
 dill_debug.log
+/qml/livedebug/
 
 # Development folders
 /build

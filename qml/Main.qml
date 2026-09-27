@@ -736,6 +736,17 @@ ApplicationWindow {
         }
 
         Menu {
+            title: qsTr("Debug")
+
+            MenuItem {
+                text: qsTr("Live Log Reader")
+                onTriggered: () => {
+                    Helpers.createComponent("DialogLiveLog.qml")
+                }
+            }
+        }
+
+        Menu {
             title: qsTr("Help")
 
             MenuItem {

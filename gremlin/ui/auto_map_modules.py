@@ -11,6 +11,7 @@ from gremlin import event_handler
 from gremlin.signal import signal
 import gremlin.ui.type_aliases as ta
 from gremlin.ui.hardware_profile import _maps_dir, _slug
+from gremlin.ui.live_debug import trace
 from gremlin.ui.module_model import _claim_from_doc
 from gremlin.ui.output_modules import _resolve_vjoy_id
 
@@ -128,8 +129,10 @@ def merge_claim_into_output(dest: dict, claim: dict) -> dict:
     try:
         path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
     except OSError:
+        trace("SAVE", "Auto Mapper", "merge_claim_into_output", path, "error")
         dest["claim"] = merged
         return merged
+    trace("SAVE", "Auto Mapper", "merge_claim_into_output", path, "ok")
     dest["doc"] = doc
     dest["claim"] = merged
     return merged
