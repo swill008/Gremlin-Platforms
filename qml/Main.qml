@@ -870,6 +870,14 @@ ApplicationWindow {
                     delay: 500
                 }
             }
+
+            Button {
+                text: "Manage Modes"
+                Layout.rightMargin: 10
+                onClicked: () => {
+                    Helpers.createComponent("DialogManageModes.qml")
+                }
+            }
         }
     }
 
