@@ -1079,59 +1079,78 @@ ApplicationWindow {
             }
         }
 
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
             visible: uiState && uiState.currentRoom === "configuration"
-            ColumnLayout {
+            spacing: 0
+
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: 12
-                Layout.topMargin: 8
-                spacing: 2
-                Label {
-                    id: _configTitle
-                    text: (configDirection === "dest" ? "Output Module View — " : "Configuration — ")
-                          + (configTitleName.length ? configTitleName : "device")
-                    font.pixelSize: 16
-                    font.bold: true
-                }
-                Label {
-                    id: _destBound
-                    visible: configDirection === "dest"
-                    text: "Bound to: [Not bound]"
-                    color: "#A1A1AA"
-                    font.pixelSize: 12
-                    wrapMode: Text.WordWrap
-                    Layout.fillWidth: true
-                    Layout.rightMargin: 12
-                }
-                Label {
-                    visible: configDirection === "dest"
-                    text: "View only — driven by input module mappings."
-                    color: "#A1A1AA"
-                    font.pixelSize: 12
-                }
-            }
-            Button {
-                visible: configDirection === "dest"
-                text: outputViewPanel ? "Hide Display Options" : "Edit Display Options"
-                onClicked: {
-                    outputViewPanel = !outputViewPanel
-                    rememberDisplayPanel()
-                }
-            }
-            Button {
-                visible: configDirection !== "dest"
-                text: catalogPanel ? "Hide Display Options" : "Edit Display Options"
-                onClicked: {
-                    catalogPanel = !catalogPanel
-                    rememberDisplayPanel()
-                }
-            }
-            Button {
-                visible: configDirection !== "dest"
-                text: "Close"
+                Layout.leftMargin: 16
                 Layout.rightMargin: 12
-                onClicked: closeWorkRoom()
+                Layout.topMargin: 16
+                Layout.bottomMargin: 14
+                spacing: 12
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+                    Label {
+                        text: configDirection === "dest" ? "Output Module View" : "Configuration"
+                        color: "#A1A1AA"
+                        font.pixelSize: 12
+                    }
+                    Label {
+                        id: _configTitle
+                        text: configTitleName.length ? configTitleName : "device"
+                        font.pixelSize: 22
+                        font.bold: true
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                    Label {
+                        id: _destBound
+                        visible: configDirection === "dest"
+                        text: "Bound to: [Not bound]"
+                        color: "#A1A1AA"
+                        font.pixelSize: 12
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+                    Label {
+                        visible: configDirection === "dest"
+                        text: "View only — driven by input module mappings."
+                        color: "#A1A1AA"
+                        font.pixelSize: 12
+                    }
+                }
+                Button {
+                    visible: configDirection === "dest"
+                    text: outputViewPanel ? "Hide Display Options" : "Edit Display Options"
+                    onClicked: {
+                        outputViewPanel = !outputViewPanel
+                        rememberDisplayPanel()
+                    }
+                }
+                Button {
+                    visible: configDirection !== "dest"
+                    text: catalogPanel ? "Hide Display Options" : "Edit Display Options"
+                    onClicked: {
+                        catalogPanel = !catalogPanel
+                        rememberDisplayPanel()
+                    }
+                }
+                Button {
+                    visible: configDirection !== "dest"
+                    text: "Close"
+                    onClicked: closeWorkRoom()
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: "#3F3F46"
             }
         }
 
