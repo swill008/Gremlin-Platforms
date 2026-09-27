@@ -86,8 +86,17 @@ Window {
                 clip: true
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                 ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
-                onMovementEnded: {
-                    _win._follow = height <= 0 || (contentY + height >= contentHeight - 16)
+            }
+
+            Connections {
+                target: _view.contentItem
+                ignoreUnknownSignals: true
+                function onMovementEnded() {
+                    var flick = _view.contentItem
+                    if (!flick)
+                        return
+                    _win._follow = flick.height <= 0
+                            || (flick.contentY + flick.height >= flick.contentHeight - 16)
                 }
             }
         }
