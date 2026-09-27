@@ -147,14 +147,12 @@ class ConfigGroupModel(QtCore.QAbstractListModel):
         return self.roles
 
     def _combined_groups(self) -> list[str]:
-        return list(
-            sorted(
-                set(
-                    self._config.groups(self._section_name)
-                    + self._option.groups(self._section_name)
-                )
-            )
+        names = set(
+            self._config.groups(self._section_name)
+            + self._option.groups(self._section_name)
         )
+        order = {"general": 0, "files": 1, "input-names": 2}
+        return sorted(names, key=lambda name: (order.get(name, 50), name))
 
 
 @ta.QmlElement

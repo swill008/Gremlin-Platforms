@@ -19,6 +19,7 @@ from xml.etree import ElementTree
 from gremlin.ui.live_debug import trace
 from gremlin.ui.hardware_profile import (
     _IMAGE_EXT,
+    _asset_ref,
     _claim_summary,
     _collapsed_name,
     _doc_direction,
@@ -1044,7 +1045,7 @@ def _write_pictures(slug: str, files: dict[str, bytes], chosen: set[str], doc: d
         written[arc] = dest.name
     photo = Path(str(doc.get("image") or "")).name
     if photo in written:
-        doc["image"] = f"qml/maps/{slug}/{written[photo]}"
+        doc["image"] = _asset_ref(slug, written[photo])
     elif "pic:" + photo not in chosen:
         pass
     else:
@@ -1054,7 +1055,7 @@ def _write_pictures(slug: str, files: dict[str, bytes], chosen: set[str], doc: d
             continue
         key = Path(str(node.get("src") or "")).name
         if key in written:
-            node["src"] = f"qml/maps/{slug}/{written[key]}"
+            node["src"] = _asset_ref(slug, written[key])
     return written
 
 

@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import os
-import sys
 import threading
 from pathlib import Path
 
@@ -21,12 +20,10 @@ QML_IMPORT_MAJOR_VERSION = 1
 _LOCK = threading.Lock()
 
 
-def _install_root() -> Path:
-    return Path(os.path.normcase(os.path.dirname(os.path.abspath(sys.argv[0]))))
-
-
 def log_path() -> Path:
-    return _install_root() / "qml" / "livedebug" / "logs" / "logs.txt"
+    from gremlin.util import logs_dir
+
+    return logs_dir() / "logs.txt"
 
 
 def start() -> None:

@@ -516,6 +516,7 @@ ApplicationWindow {
         defaultSuffix: "xml"
         fileMode: FileDialog.SaveFile
         nameFilters: ["Profile files (*.xml)"]
+        currentFolder: backend.profilesFolderUrl()
 
         onAccepted: () => {
             if (!backend) {
@@ -543,6 +544,7 @@ ApplicationWindow {
         defaultSuffix: "xml"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Profile files (*.xml)"]
+        currentFolder: backend.profilesFolderUrl()
 
         onAccepted: () => {
             if (backend) {

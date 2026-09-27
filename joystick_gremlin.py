@@ -37,7 +37,7 @@ os.environ["QT_QUICK_CONTROLS_STYLE"] = "Universal"
 
 import gremlin.util
 
-sys.path.insert(0, gremlin.util.userprofile_path())
+sys.path.insert(0, gremlin.util.data_folder())
 gremlin.util.setup_userprofile()
 
 import gremlin.audio_player
@@ -326,7 +326,7 @@ def _command_line_process_ids() -> set[int]:
 
 def _lock_owner_pid() -> int | None:
     lock = QtCore.QLockFile(
-        os.path.join(gremlin.util.userprofile_path(), "gremlin.lock")
+        os.path.join(gremlin.util.data_folder(), "gremlin.lock")
     )
     try:
         owner_pid, _host, _app = lock.lockInfo()
@@ -406,7 +406,7 @@ def _confirm_second_instance(
 
 def acquire_instance_lock() -> QtCore.QLockFile | None:
     lock = QtCore.QLockFile(
-        os.path.join(gremlin.util.userprofile_path(), "gremlin.lock")
+        os.path.join(gremlin.util.data_folder(), "gremlin.lock")
     )
     lock.setStaleLockTime(30000)
     if lock.tryLock(100):
@@ -450,6 +450,20 @@ def register_config_options() -> None:
         "global", "general", "plugin-directory", PropertyType.Path, "",
         "Directory containing additional action plugins", {"is_folder": True}, True,
     )
+    cfg.register(
+        "global", "files", "data-folder", PropertyType.Path,
+        gremlin.util.userprofile_path(),
+        "Device files, logs, scripts, and the profile dialog use this folder. "
+        "The program creates the folders inside it.",
+        {
+            "is_folder": True,
+            "allow_reset": True,
+            "show_children": True,
+            "default_path": gremlin.util.userprofile_path(),
+        },
+        True,
+    )
+    gremlin.util.ensure_data_folders()
     cfg.register(
         "action", "general", "action-priorities", PropertyType.List, [],
         "Priority order of the actions", {}, True,
@@ -569,17 +583,17 @@ def register_config_options() -> None:
 def configure_loggers() -> None:
     configure_logger({
         "name": "system", "level": logging.WARNING,
-        "logfile": os.path.join(gremlin.util.userprofile_path(), "system.log"),
+        "logfile": os.path.join(gremlin.util.logs_dir(), "system.log"),
         "format": "%(asctime)s %(levelname)10s %(message)s", "mode": "rotate",
     })
     configure_logger({
         "name": "user", "level": logging.WARNING,
-        "logfile": os.path.join(gremlin.util.userprofile_path(), "user.log"),
+        "logfile": os.path.join(gremlin.util.logs_dir(), "user.log"),
         "format": "%(asctime)s %(message)s", "mode": "rotate",
     })
     configure_logger({
         "name": "event", "level": logging.WARNING,
-        "logfile": os.path.join(gremlin.util.userprofile_path(), "event.log"),
+        "logfile": os.path.join(gremlin.util.logs_dir(), "event.log"),
         "format": "%(asctime)s,%(levelname)s,%(message)s", "mode": "session",
     })
 

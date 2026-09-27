@@ -440,6 +440,14 @@ class Backend(QtCore.QObject):
         self.saveNoted.emit(str(text or ""))
 
     @QtCore.Slot(result=str)
+    def profilesFolderUrl(self) -> str:
+        return util.profiles_dir().as_uri()
+
+    @QtCore.Slot(result=str)
+    def scriptsFolderUrl(self) -> str:
+        return util.scripts_dir().as_uri()
+
+    @QtCore.Slot(result=str)
     def profilePath(self) -> str:
         path = self.profile.fpath
         return "" if path is None else str(path)

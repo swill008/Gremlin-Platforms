@@ -51,6 +51,7 @@ Item {
         id: _fileDialog
         nameFilters: ["Profile files (*.xml)"]
         title: "Select a File"
+        currentFolder: backend.profilesFolderUrl()
         onAccepted: () =>{
             _profileFilename.text = selectedFile.toString().substring("file:///".length)
         }

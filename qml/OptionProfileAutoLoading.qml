@@ -22,6 +22,7 @@ Item {
 
         nameFilters: ["Profile files (*.xml)"]
         title: "Select a File"
+        currentFolder: backend.profilesFolderUrl()
 
         onAccepted: () => {
             associatedField.text =

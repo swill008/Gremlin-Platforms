@@ -1990,7 +1990,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         if folder.is_dir():
             photos = sorted(p for p in folder.glob("photo.*") if p.is_file())
             if photos:
-                doc["image"] = f"qml/maps/{slug}/{photos[-1].name}"
+                doc["image"] = f"{slug}/{photos[-1].name}"
         path.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(doc, indent=2) + "\n"
         _plog(

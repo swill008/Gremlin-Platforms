@@ -128,6 +128,32 @@ ColumnLayout {
                 title: name
                 explanation: description
 
+                function _folderRoot() {
+                    var raw = String(model.value || "")
+                    if (!raw || raw === ".")
+                        return String(properties["default_path"] || "")
+                    return raw
+                }
+
+                function _child(folderName) {
+                    var root = _folderRoot()
+                    if (!root)
+                        return folderName
+                    var slash = root.indexOf("/") >= 0 && root.indexOf("\\") < 0 ? "/" : "\\"
+                    if (root.endsWith("/") || root.endsWith("\\"))
+                        return root + folderName
+                    return root + slash + folderName
+                }
+
+                function _folderUrl(path) {
+                    var text = String(path || "").replace(/\\/g, "/")
+                    if (!text || text === ".")
+                        return ""
+                    if (text.startsWith("//"))
+                        return "file:" + text
+                    return "file:///" + text
+                }
+
                 RowLayout {
                     JGTextField {
                         id: _pathVariable
@@ -140,6 +166,9 @@ ColumnLayout {
                         text: "Select"
                         onClicked: () => {
                             if (properties["is_folder"]) {
+                                var start = _folderUrl(_folderRoot())
+                                if (start)
+                                    _pathFolderDialog.currentFolder = start
                                 _pathFolderDialog.associatedField = _pathVariable
                                 _pathFolderDialog.open()
                             } else {
@@ -147,6 +176,36 @@ ColumnLayout {
                                 _pathVariableFileDialog.open()
                             }
                         }
+                    }
+                    Button {
+                        visible: properties["allow_reset"] === true
+                        text: "Reset"
+                        onClicked: () => {
+                            var path = String(properties["default_path"] || "")
+                            _pathVariable.text = path
+                            model.value = path
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    visible: properties["show_children"] === true
+                    spacing: 2
+
+                    JGText {
+                        text: "Modules: " + _child("modules")
+                        font.pointSize: 10
+                        opacity: 0.75
+                    }
+                    JGText {
+                        text: "Logs: " + _child("logs")
+                        font.pointSize: 10
+                        opacity: 0.75
+                    }
+                    JGText {
+                        text: "Profiles open in: " + _child("profiles")
+                        font.pointSize: 10
+                        opacity: 0.75
                     }
                 }
 

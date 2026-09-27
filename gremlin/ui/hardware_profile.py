@@ -59,9 +59,22 @@ def _install_root() -> Path:
 
 
 def _maps_dir() -> Path:
-    path = _install_root() / "qml" / "maps"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    from gremlin.util import modules_dir
+
+    return modules_dir()
+
+
+def _asset_ref(slug: str, name: str) -> str:
+    """Picture path stored in a device file, relative to the modules folder."""
+    return f"{slug}/{name}"
+
+
+def _module_relative(stored: str) -> str:
+    text = stored.replace("\\", "/").lstrip("/")
+    marker = "qml/maps/"
+    if text.lower().startswith(marker):
+        return text[len(marker):]
+    return text
 
 
 def _plain_slug(device_name: str) -> str:
@@ -1196,9 +1209,9 @@ def _zip_map_name(names: list[str]) -> str:
 
 
 def _export_dir() -> Path:
-    path = _install_root() / "export"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    from gremlin.util import export_dir
+
+    return export_dir()
 
 
 def _outside_maps(path: Path) -> bool:
@@ -1422,6 +1435,10 @@ class HardwareProfile(QtCore.QObject):
             return p if p.is_file() else None
         p = Path(s)
         if not p.is_absolute():
+            rel = _module_relative(s)
+            in_modules = _maps_dir() / rel
+            if in_modules.is_file():
+                return in_modules
             p = _install_root() / s
         if p.is_file():
             return p
@@ -1452,7 +1469,7 @@ class HardwareProfile(QtCore.QObject):
         else:
             dest = folder / f"photo{ext}"
             self._copy_file(src, dest)
-            payload["image"] = f"qml/maps/{slug}/{dest.name}"
+            payload["image"] = _asset_ref(slug, dest.name)
         for node in payload.get("nodes") or []:
             if not isinstance(node, dict):
                 continue
@@ -1469,7 +1486,7 @@ class HardwareProfile(QtCore.QObject):
                     dest = folder / f"{dest.stem}_{n}{dest.suffix}"
                     n += 1
             self._copy_file(ov, dest)
-            node["src"] = f"qml/maps/{slug}/{dest.name}"
+            node["src"] = _asset_ref(slug, dest.name)
             node.pop("srcUrl", None)
         return payload
 
@@ -1809,7 +1826,7 @@ class HardwareProfile(QtCore.QObject):
             n += 1
         self._copy_file(src, dest)
         self.imageChanged.emit()
-        return f"qml/maps/{self._profile_dir(device_name).name}/{dest.name}"
+        return _asset_ref(self._profile_dir(device_name).name, dest.name)
 
     def _local_image(self, source_url: str) -> Path | None:
         raw = str(source_url or "").strip().split("?")[0].split("#")[0]
@@ -1855,7 +1872,7 @@ class HardwareProfile(QtCore.QObject):
             dest = folder / f"photo_{src.stem}{ext}"
             self._copy_file(src, dest)
         trace("SAVE", "Button Map", "copyImage", dest, "ok")
-        rel = f"qml/maps/{slug}/{dest.name}"
+        rel = _asset_ref(slug, dest.name)
         # Record the picture on this device's own file only. A shared module
         # binding must not change every other card.
         path = _maps_dir() / f"{slug}.json"

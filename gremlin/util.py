@@ -857,6 +857,86 @@ def userprofile_path() -> str:
     return str((Path(os.getenv("userprofile")) / "Joystick Gremlin").resolve())
 
 
+def _configured_data_folder() -> str:
+    """The data folder chosen in Options, or nothing when it is still the default."""
+    try:
+        from gremlin.config import Configuration
+
+        cfg = Configuration()
+        if not cfg.exists("global", "files", "data-folder"):
+            return ""
+        raw = cfg.value("global", "files", "data-folder")
+    except Exception:
+        return ""
+    text = str(raw or "").strip()
+    if not text or text == ".":
+        return ""
+    return text
+
+
+def data_folder() -> str:
+    """Folder that holds user files. The default is the Joystick Gremlin profile folder.
+
+    configuration.json stays in the profile folder so this setting can be found.
+    """
+    chosen = _configured_data_folder()
+    if chosen:
+        path = Path(chosen)
+        if path.is_absolute():
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                path = None
+            if path is not None and path.is_dir():
+                return str(path.resolve())
+    root = Path(userprofile_path())
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    return str(root)
+
+
+def _child_dir(name: str) -> Path:
+    path = Path(data_folder()) / name
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def modules_dir() -> Path:
+    """Device files, pictures, and imported copies."""
+    return _child_dir("modules")
+
+
+def logs_dir() -> Path:
+    """Live log and the diagnostic logs."""
+    return _child_dir("logs")
+
+
+def profiles_dir() -> Path:
+    """Folder the profile dialogs open in."""
+    return _child_dir("profiles")
+
+
+def scripts_dir() -> Path:
+    """User scripts."""
+    return _child_dir("scripts")
+
+
+def export_dir() -> Path:
+    """Device packs saved from the program."""
+    return _child_dir("export")
+
+
+def ensure_data_folders() -> None:
+    """Create the data folder and the folders inside it."""
+    modules_dir()
+    logs_dir()
+    profiles_dir()
+    scripts_dir()
+    export_dir()
+
+
 def resource_path(relative_path: str) -> str:
     """Get absolute path to resource, handling development and pyinstaller
     based usage.

@@ -55,7 +55,7 @@ def _resolve_path(script_path: Path) -> Path:
     scripts directory."""
     if script_path.is_absolute():
         return script_path
-    return Path(util.resource_path("user_scripts")) / script_path
+    return util.scripts_dir() / script_path
 
 
 def _current_script_id() -> uuid.UUID | None:

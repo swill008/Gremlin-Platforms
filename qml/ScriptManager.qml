@@ -27,6 +27,7 @@ Item {
         defaultSuffix: "py"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Script files (*.py)"]
+        currentFolder: backend.scriptsFolderUrl()
 
         onAccepted: function()
         {
