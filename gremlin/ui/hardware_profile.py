@@ -77,11 +77,6 @@ def _plain_slug(device_name: str) -> str:
 
 
 def _slug(device_name: str) -> str:
-    raw = (device_name or "device").strip().lower()
-    if "gladiator" in raw and "ot" not in raw and ("evo r" in raw):
-        return "vkb_evo_r"
-    if "gladiator" in raw and "ot" not in raw and ("evo l" in raw):
-        return "vkb_evo_l"
     return _plain_slug(device_name) or "device"
 
 
