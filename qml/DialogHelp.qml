@@ -60,6 +60,7 @@ Window {
                     color: "#E4E4E7"
                     font.pixelSize: 18
                     font.bold: true
+                    font.underline: true
                     leftPadding: 8
                     topPadding: 14
                     bottomPadding: 6
