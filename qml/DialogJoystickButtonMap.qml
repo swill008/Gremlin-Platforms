@@ -1751,10 +1751,6 @@ Window {
                 }
                 MenuSeparator {}
                 MenuItem {
-                    text: "Export map…"
-                    onTriggered: openExport()
-                }
-                MenuItem {
                     text: "Export PDF…"
                     onTriggered: _exportPdfDialog.open()
                 }
@@ -1765,10 +1761,6 @@ Window {
                 MenuItem {
                     text: "Export JPG…"
                     onTriggered: _exportJpgDialog.open()
-                }
-                MenuItem {
-                    text: "Import map…"
-                    onTriggered: openImport()
                 }
                 MenuSeparator {}
                 MenuItem {

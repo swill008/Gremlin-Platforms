@@ -318,16 +318,6 @@ Window {
         RowLayout {
             Layout.fillWidth: true
             Button {
-                text: "Import devices…"
-                focusPolicy: Qt.NoFocus
-                onClicked: Helpers.createComponent("DialogImportDevices.qml")
-            }
-            Button {
-                text: "Export devices…"
-                focusPolicy: Qt.NoFocus
-                onClicked: Helpers.createComponent("DialogExportDevices.qml", {"deviceName": deviceName})
-            }
-            Button {
                 text: "Module file"
                 focusPolicy: Qt.NoFocus
                 onClicked: {

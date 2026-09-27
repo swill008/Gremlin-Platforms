@@ -770,6 +770,162 @@ def _explicit_ids(claim: dict, key: str) -> list[int]:
     return sorted(set(ids))
 
 
+def _guid_text(value: object) -> str:
+    raw = getattr(value, "uuid", value)
+    text = str(raw or "").strip()
+    if text.lower() in ("", "none"):
+        return ""
+    return text
+
+
+def _collapsed_name(value: str) -> str:
+    return " ".join(str(value or "").split()).lower()
+
+
+def _name_direction(name: str) -> str:
+    return "dest" if _slug(name).startswith("vjoy") else "source"
+
+
+def _doc_direction(doc: dict, exported_name: str) -> str:
+    raw = str(doc.get("direction") or "").strip().lower()
+    if raw in ("source", "dest"):
+        return raw
+    return _name_direction(exported_name)
+
+
+def _read_json_dict(path: Path) -> dict | None:
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def _claim_summary(doc: dict) -> dict:
+    claim = doc.get("claim") if isinstance(doc.get("claim"), dict) else {}
+    nodes = [node for node in (doc.get("nodes") or []) if isinstance(node, dict)]
+    image = str(doc.get("image") or "").strip()
+    return {
+        "buttons": len(_explicit_ids(claim, "buttons")),
+        "axes": len(_explicit_ids(claim, "axes")),
+        "hats": len(_explicit_ids(claim, "hats")),
+        "nodes": len(nodes),
+        "hasPhoto": bool(image),
+        "hasMap": bool(nodes),
+    }
+
+
+def _known_pack_devices() -> list[dict]:
+    """Connected devices, devices this profile has seen, and saved module files."""
+    rows: dict[str, dict] = {}
+
+    def touch(name: str, guid: str = "", connected: bool = False) -> None:
+        label = " ".join(str(name or "").split())
+        key = label.lower()
+        if not key:
+            return
+        slug = _slug(label)
+        path = _maps_dir() / f"{slug}.json"
+        row = rows.get(key)
+        if row is None:
+            rows[key] = {
+                "name": label,
+                "guid": guid,
+                "connected": bool(connected),
+                "hasFile": path.is_file(),
+                "fileName": f"{slug}.json",
+            }
+            return
+        if guid and not row["guid"]:
+            row["guid"] = guid
+        if connected:
+            row["connected"] = True
+        if path.is_file():
+            row["hasFile"] = True
+
+    for dev in _live_devices():
+        touch(
+            str(getattr(dev, "name", "") or ""),
+            _guid_text(getattr(dev, "device_guid", "")),
+            True,
+        )
+    try:
+        from gremlin.shared_state import current_profile
+        profile = current_profile
+        if profile is not None:
+            for info in profile.device_database.devices.values():
+                touch(str(info.name or ""), _guid_text(info.device_uuid), False)
+    except Exception:
+        pass
+    for path in sorted(_maps_dir().glob("*.json")):
+        doc = _read_json_dict(path)
+        if not doc or doc.get("kind") != "control.hardware":
+            continue
+        touch(str(doc.get("device") or "").strip() or path.stem, "", False)
+    return sorted(rows.values(), key=lambda row: row["name"].lower())
+
+
+def _match_pack_device(name: str) -> dict | None:
+    want = _collapsed_name(name)
+    if not want:
+        return None
+    for row in _known_pack_devices():
+        if _collapsed_name(row["name"]) == want:
+            return row
+    return None
+
+
+def _suggest_pack_name(exported: str, devices: list[dict] | None = None) -> str:
+    want = _collapsed_name(exported)
+    if not want:
+        return ""
+    hits = [
+        row["name"]
+        for row in (devices if devices is not None else _known_pack_devices())
+        if _collapsed_name(row["name"]) == want
+    ]
+    if len(hits) == 1:
+        return hits[0]
+    return ""
+
+
+def _target_direction(name: str) -> str:
+    if _name_direction(name) == "dest":
+        return "dest"
+    path = _maps_dir() / f"{_slug(name)}.json"
+    doc = _read_json_dict(path) if path.is_file() else None
+    if doc and str(doc.get("direction") or "").strip().lower() == "dest":
+        return "dest"
+    return "source"
+
+
+def _unique_archive(stem: str) -> Path:
+    stamp = _archive_stamp()
+    path = _archive_path(stem, stamp)
+    number = 2
+    while path.exists():
+        path = _maps_dir() / "imported" / f"{stem}.{stamp}_{number}.json"
+        number += 1
+    return path
+
+
+def _zip_map_name(names: list[str]) -> str:
+    if "map.json" in names:
+        return "map.json"
+    for name in names:
+        if name.lower().endswith(".json") and name.count("/") == 0:
+            return name
+    return ""
+
+
+def _outside_maps(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(_maps_dir().resolve())
+    except ValueError:
+        return True
+    return False
+
+
 def _device_input_ids(guid: str) -> tuple[list[int], list[int], list[int]]:
     buttons: list[int] = []
     axes: list[int] = []
@@ -1040,8 +1196,346 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def defaultExportUrl(self, device_name: str) -> str:
-        path = _maps_dir() / f"{_slug(device_name)}_map.zip"
+        root = Path.home() / "Documents"
+        if not root.is_dir():
+            root = Path.home()
+        path = root / f"{_slug(device_name)}_map.zip"
         return path.as_uri()
+
+    @QtCore.Slot(result=str)
+    def packDevices(self) -> str:
+        return json.dumps({"ok": True, "devices": _known_pack_devices()})
+
+    @QtCore.Slot(str, result=str)
+    def packTarget(self, device_name: str) -> str:
+        name = " ".join(str(device_name or "").split())
+        match = _match_pack_device(name)
+        slug = _slug(name) if name else ""
+        path = _maps_dir() / f"{slug}.json" if slug else None
+        guid = str(match["guid"]) if match and match.get("guid") else ""
+        return json.dumps({
+            "ok": True,
+            "name": name,
+            "guid": guid,
+            "connected": bool(match and match.get("connected")),
+            "hasFile": bool(path and path.is_file()),
+            "fileName": f"{slug}.json" if slug else "",
+        })
+
+    def _build_pack(self, device_name: str) -> tuple[dict, list[tuple[Path, str]]] | str:
+        name = " ".join(str(device_name or "").split())
+        if not name:
+            return "Choose a device."
+        path = self._file_for(name)
+        doc = _read_json_dict(path) if path.is_file() else None
+        if not doc:
+            return "This device has no module file yet."
+        packed = json.loads(json.dumps(doc))
+        packed.pop("boundGuidLocal", None)
+        packed.pop("boundName", None)
+        match = _match_pack_device(name)
+        guid = str(match["guid"]) if match and match.get("guid") else ""
+        packed["device"] = name
+        packed["pack"] = {"exportedName": name, "exportedGuid": guid}
+        files: list[tuple[Path, str]] = []
+        used: set[str] = set()
+
+        def take(stored: str) -> str:
+            found = self._resolve_existing(stored)
+            if not found or not found.is_file():
+                return ""
+            arc = _safe_name(found.name, "photo" + found.suffix.lower())
+            if arc in used:
+                stem, ext = Path(arc).stem, Path(arc).suffix
+                number = 1
+                while f"{stem}_{number}{ext}" in used:
+                    number += 1
+                arc = f"{stem}_{number}{ext}"
+            used.add(arc)
+            files.append((found, arc))
+            return arc
+
+        image = str(packed.get("image") or "")
+        if image:
+            arc = take(image)
+            if arc:
+                packed["image"] = arc
+            else:
+                packed.pop("image", None)
+        for node in packed.get("nodes") or []:
+            if not isinstance(node, dict) or node.get("shape") != "image":
+                continue
+            arc = take(str(node.get("src") or ""))
+            if arc:
+                node["src"] = arc
+            node.pop("srcUrl", None)
+        return packed, files
+
+    @QtCore.Slot(str, result=str)
+    def peekPackDevice(self, device_name: str) -> str:
+        name = " ".join(str(device_name or "").split())
+        path = self._file_for(name) if name else Path()
+        doc = _read_json_dict(path) if name and path.is_file() else None
+        if not doc:
+            return json.dumps({
+                "ok": False,
+                "error": "This device has no module file yet.",
+                "device": name,
+                "fileName": path.name if name else "",
+            })
+        summary = _claim_summary(doc)
+        match = _match_pack_device(name)
+        photo = self._resolve_existing(str(doc.get("image") or ""))
+        return json.dumps({
+            "ok": True,
+            "device": name,
+            "guid": str(match["guid"]) if match and match.get("guid") else "",
+            "fileName": path.name,
+            "hasPhoto": bool(photo and photo.is_file()),
+            "hasMap": summary["hasMap"],
+            "buttons": summary["buttons"],
+            "axes": summary["axes"],
+            "hats": summary["hats"],
+            "wires": False,
+        })
+
+    @QtCore.Slot(str, result=str)
+    def peekPackZip(self, zip_url: str) -> str:
+        try:
+            src = to_local_path(zip_url)
+        except Exception:
+            return json.dumps({"ok": False, "error": "Cannot read that file."})
+        if not src or not src.is_file():
+            return json.dumps({"ok": False, "error": "File not found."})
+        try:
+            with zipfile.ZipFile(src, "r") as zf:
+                json_name = _zip_map_name(zf.namelist())
+                if not json_name:
+                    return json.dumps({"ok": False, "error": "No map.json in this zip."})
+                doc = json.loads(zf.read(json_name).decode("utf-8"))
+        except zipfile.BadZipFile:
+            return json.dumps({"ok": False, "error": "Not a valid zip."})
+        except Exception as exc:
+            return json.dumps({"ok": False, "error": str(exc)})
+        if not isinstance(doc, dict):
+            return json.dumps({"ok": False, "error": "No map.json in this zip."})
+        label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
+        exported = str(label.get("exportedName") or doc.get("device") or "").strip()
+        if not exported:
+            return json.dumps({"ok": False, "error": "This pack has no device name."})
+        summary = _claim_summary(doc)
+        devices = _known_pack_devices()
+        suggested = _suggest_pack_name(exported, devices)
+        return json.dumps({
+            "ok": True,
+            "exportedName": exported,
+            "exportedGuid": str(label.get("exportedGuid") or ""),
+            "suggestedName": suggested,
+            "hasPhoto": summary["hasPhoto"],
+            "hasMap": summary["hasMap"],
+            "buttons": summary["buttons"],
+            "axes": summary["axes"],
+            "hats": summary["hats"],
+            "wires": False,
+            "direction": _doc_direction(doc, exported),
+        })
+
+    @QtCore.Slot(str, str, result=str)
+    def exportPack(self, device_name: str, dest_url: str) -> str:
+        built = self._build_pack(device_name)
+        if isinstance(built, str):
+            return json.dumps({"ok": False, "error": built})
+        packed, files = built
+        try:
+            dest = to_local_path(dest_url)
+        except Exception:
+            return json.dumps({"ok": False, "error": "Cannot write that path."})
+        if not dest or not str(dest).strip() or dest.name in ("", ".zip"):
+            return json.dumps({"ok": False, "error": "Cannot write that path."})
+        if dest.suffix.lower() != ".zip":
+            dest = dest.with_suffix(".zip")
+        if not _outside_maps(dest):
+            return json.dumps({
+                "ok": False,
+                "error": "Save the pack outside the module folder.",
+            })
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with zipfile.ZipFile(dest, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                zf.writestr("map.json", json.dumps(packed, indent=2) + "\n")
+                for src, arc in files:
+                    zf.write(src, arc)
+        except Exception as exc:
+            return json.dumps({"ok": False, "error": str(exc)})
+        return json.dumps({
+            "ok": True,
+            "path": str(dest),
+            "device": packed.get("device") or device_name,
+        })
+
+    @QtCore.Slot(str, str, result=str)
+    def importPack(self, zip_url: str, target_name: str) -> str:
+        target = " ".join(str(target_name or "").split())
+        if not target:
+            return json.dumps({"ok": False, "error": "Choose the device this pack is for."})
+        try:
+            src = to_local_path(zip_url)
+        except Exception:
+            return json.dumps({"ok": False, "error": "Cannot read that file."})
+        if not src or not src.is_file():
+            return json.dumps({"ok": False, "error": "File not found."})
+        try:
+            with zipfile.ZipFile(src, "r") as zf:
+                names = zf.namelist()
+                json_name = _zip_map_name(names)
+                if not json_name:
+                    return json.dumps({"ok": False, "error": "No map.json in this zip."})
+                payload = json.loads(zf.read(json_name).decode("utf-8"))
+                if not isinstance(payload, dict):
+                    return json.dumps({"ok": False, "error": "No map.json in this zip."})
+                label = payload.get("pack") if isinstance(payload.get("pack"), dict) else {}
+                exported = str(label.get("exportedName") or payload.get("device") or "").strip()
+                members = {}
+                for member in names:
+                    if member.endswith("/") or member == json_name:
+                        continue
+                    base = Path(member).name
+                    if not base or Path(base).suffix.lower() not in _IMAGE_EXT:
+                        continue
+                    members[base] = zf.read(member)
+        except zipfile.BadZipFile:
+            return json.dumps({"ok": False, "error": "Not a valid zip."})
+        except Exception as exc:
+            return json.dumps({"ok": False, "error": str(exc)})
+        if not exported:
+            return json.dumps({"ok": False, "error": "This pack has no device name."})
+        if _doc_direction(payload, exported) != _target_direction(target):
+            if _doc_direction(payload, exported) == "dest":
+                return json.dumps({"ok": False, "error": "A vJoy pack cannot be copied onto a stick."})
+            return json.dumps({"ok": False, "error": "A stick pack cannot be copied onto a vJoy."})
+        slug = _slug(target)
+        folder = _maps_dir() / slug
+        folder.mkdir(parents=True, exist_ok=True)
+        written: dict[str, str] = {}
+        for base, data in members.items():
+            dest_image = folder / _safe_name(base, base)
+            if dest_image.is_file():
+                previous_image = _unique_archive(f"{slug}_{dest_image.stem}")
+                try:
+                    _replace_file(previous_image.with_suffix(dest_image.suffix), dest_image.read_bytes())
+                except OSError:
+                    return json.dumps({
+                        "ok": False,
+                        "error": "The current picture could not be saved, so nothing was replaced.",
+                    })
+            try:
+                dest_image.write_bytes(data)
+            except OSError:
+                return json.dumps({"ok": False, "error": "The picture could not be written."})
+            written[base] = dest_image.name
+        photo_key = Path(str(payload.get("image") or "")).name
+        if photo_key in written:
+            payload["image"] = f"qml/maps/{slug}/{written[photo_key]}"
+        elif payload.get("image"):
+            payload.pop("image", None)
+        for node in payload.get("nodes") or []:
+            if not isinstance(node, dict):
+                continue
+            key = Path(str(node.get("src") or "")).name
+            if key in written:
+                node["src"] = f"qml/maps/{slug}/{written[key]}"
+            node.pop("srcUrl", None)
+        payload.pop("pack", None)
+        payload["kind"] = "control.hardware"
+        payload["device"] = target
+        match = _match_pack_device(target)
+        guid = str(match["guid"]) if match and match.get("guid") else ""
+        if guid:
+            payload["boundName"] = target
+            payload["boundGuidLocal"] = guid
+        else:
+            payload.pop("boundGuidLocal", None)
+            payload.pop("boundName", None)
+        dest = _maps_dir() / f"{slug}.json"
+        previous = dest.read_bytes() if dest.is_file() else None
+        backup_name = ""
+        if previous is not None:
+            backup = _unique_archive(slug)
+            try:
+                _replace_file(backup, previous)
+            except OSError:
+                return json.dumps({
+                    "ok": False,
+                    "error": "The previous file could not be saved, so nothing was replaced.",
+                })
+            backup_name = backup.name
+        try:
+            _replace_file(dest, (json.dumps(payload, indent=2) + "\n").encode("utf-8"))
+        except OSError:
+            return json.dumps({"ok": False, "error": "The module file could not be written."})
+        _clear_device_binding(target, guid)
+        self._path = str(dest)
+        self._text = dest.read_text(encoding="utf-8")
+        self.pathChanged.emit()
+        self.documentChanged.emit()
+        self.imageChanged.emit()
+        signal.configChanged.emit()
+        summary = _claim_summary(payload)
+        lines = [
+            f"Saved {dest.name} for {target}.",
+            (
+                f"Replaced the previous file. It was saved as {backup_name}."
+                if backup_name
+                else "A new file was created. Nothing was replaced."
+            ),
+            _copied_sentence(summary["buttons"], summary["axes"], summary["hats"], 0),
+            "A picture was included." if summary["hasPhoto"] else "No picture was in the pack.",
+            "The button map was included." if summary["hasMap"] else "No button map was in the pack.",
+            "This pack does not include wires.",
+            f"Exported as {exported}.",
+        ]
+        if guid:
+            lines.append("The file uses the id of the device you picked.")
+        else:
+            lines.append("No device id matched this name. The file was saved under the name you typed.")
+        return json.dumps({
+            "ok": True,
+            "device": target,
+            "fileName": dest.name,
+            "replaced": bool(backup_name),
+            "backup": backup_name,
+            "report": "\n".join(lines),
+        })
+
+    @QtCore.Slot(str, str, result=str)
+    def exportMap(self, device_name: str, dest_url: str) -> str:
+        return self.exportPack(device_name, dest_url)
+
+    @QtCore.Slot(str, result=str)
+    def importMap(self, zip_url: str) -> str:
+        try:
+            src = to_local_path(zip_url)
+        except Exception:
+            return json.dumps({"ok": False, "error": "Cannot read that file."})
+        if not src or not src.is_file():
+            return json.dumps({"ok": False, "error": "File not found."})
+        try:
+            with zipfile.ZipFile(src, "r") as zf:
+                json_name = _zip_map_name(zf.namelist())
+                if not json_name:
+                    return json.dumps({"ok": False, "error": "No map.json in this zip."})
+                doc = json.loads(zf.read(json_name).decode("utf-8"))
+        except zipfile.BadZipFile:
+            return json.dumps({"ok": False, "error": "Not a valid zip."})
+        except Exception as exc:
+            return json.dumps({"ok": False, "error": str(exc)})
+        if not isinstance(doc, dict):
+            return json.dumps({"ok": False, "error": "No map.json in this zip."})
+        label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
+        exported = str(label.get("exportedName") or doc.get("device") or "").strip()
+        if not exported:
+            return json.dumps({"ok": False, "error": "This pack has no device name."})
+        return self.importPack(zip_url, exported)
 
     @QtCore.Slot(str, result="QVariant")
     def chips(self, guid: str):
@@ -1354,9 +1848,8 @@ class HardwareProfile(QtCore.QObject):
                     self._peek_photo = str(tmp)
                     photo_url = tmp.as_uri()
                 else:
-                    stock = _stock_photo()
-                    photo_url = stock.as_uri() if stock.is_file() else ""
-                    fallback = True
+                    photo_url = ""
+                    fallback = False
                 return json.dumps({
                     "ok": True,
                     "device": device,
@@ -1365,131 +1858,6 @@ class HardwareProfile(QtCore.QObject):
                     "plates": self._plate_count(doc),
                     "fallback": fallback,
                 })
-        except zipfile.BadZipFile:
-            return json.dumps({"ok": False, "error": "Not a valid zip."})
-        except Exception as exc:
-            return json.dumps({"ok": False, "error": str(exc)})
-
-    @QtCore.Slot(str, str, result=str)
-    def exportMap(self, device_name: str, dest_url: str) -> str:
-        name = device_name or self._device_name
-        if not name:
-            return json.dumps({"ok": False, "error": "Select a Status card first."})
-        path = self._file_for(name)
-        if not path.is_file():
-            return json.dumps({"ok": False, "error": "Save the module first."})
-        try:
-            dest = to_local_path(dest_url)
-        except Exception:
-            return json.dumps({"ok": False, "error": "Cannot write that path."})
-        if not dest or not str(dest).strip() or dest.name in ("", ".zip"):
-            return json.dumps({"ok": False, "error": "Cannot write that path."})
-        if dest.suffix.lower() != ".zip":
-            dest = dest.with_suffix(".zip")
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            return json.dumps({"ok": False, "error": "Profile JSON is not valid."})
-        payload = self._pack_assets(name, payload)
-        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        persist_log(f"Persist export rewrite name={name!r} guid={self._device_guid!r} path={path}")
-        packed = json.loads(json.dumps(payload))
-        packed.pop("boundGuidLocal", None)
-        files = []
-        photo = self._resolve_existing(str(packed.get("image") or ""))
-        if photo and photo.is_file():
-            files.append((photo, photo.name if photo.name.startswith("photo") else "photo" + photo.suffix.lower()))
-            packed["image"] = files[-1][1]
-        for node in packed.get("nodes") or []:
-            if not isinstance(node, dict) or node.get("shape") != "image":
-                continue
-            ov = self._resolve_existing(str(node.get("src") or ""))
-            if not ov or not ov.is_file():
-                continue
-            arc = _safe_name(ov.name, "overlay.png")
-            used = {a for _, a in files}
-            if arc in used:
-                n = 1
-                stem, ext = Path(arc).stem, Path(arc).suffix
-                while f"{stem}_{n}{ext}" in used:
-                    n += 1
-                arc = f"{stem}_{n}{ext}"
-            files.append((ov, arc))
-            node["src"] = arc
-            node.pop("srcUrl", None)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with zipfile.ZipFile(dest, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                zf.writestr("map.json", json.dumps(packed, indent=2) + "\n")
-                for src, arc in files:
-                    zf.write(src, arc)
-        except Exception as exc:
-            return json.dumps({"ok": False, "error": str(exc)})
-        return json.dumps({"ok": True, "path": str(dest), "device": name})
-
-    @QtCore.Slot(str, result=str)
-    def importMap(self, zip_url: str) -> str:
-        try:
-            src = to_local_path(zip_url)
-        except Exception:
-            return json.dumps({"ok": False, "error": "Cannot read that file."})
-        if not src or not src.is_file():
-            return json.dumps({"ok": False, "error": "File not found."})
-        try:
-            with zipfile.ZipFile(src, "r") as zf:
-                names = zf.namelist()
-                json_name = "map.json" if "map.json" in names else next(
-                    (n for n in names if n.lower().endswith(".json") and n.count("/") == 0),
-                    "",
-                )
-                if not json_name:
-                    return json.dumps({"ok": False, "error": "No map.json in this zip."})
-                payload = json.loads(zf.read(json_name).decode("utf-8"))
-                device = str(payload.get("device") or "").strip()
-                if not device:
-                    return json.dumps({"ok": False, "error": "Zip has no device name."})
-                slug = _slug(device)
-                folder = self._profile_dir(device)
-                extracted = {}
-                for member in names:
-                    if member.endswith("/") or member == json_name:
-                        continue
-                    base = Path(member).name
-                    if not base or Path(base).suffix.lower() not in _IMAGE_EXT:
-                        continue
-                    dest = folder / _safe_name(base, base)
-                    dest.write_bytes(zf.read(member))
-                    extracted[base] = dest
-                    extracted[member] = dest
-                photo_key = Path(str(payload.get("image") or "photo.jpg")).name
-                if photo_key in extracted:
-                    payload["image"] = f"qml/maps/{slug}/{extracted[photo_key].name}"
-                for node in payload.get("nodes") or []:
-                    if not isinstance(node, dict):
-                        continue
-                    rel = str(node.get("src") or "")
-                    key = Path(rel).name
-                    if key in extracted:
-                        node["src"] = f"qml/maps/{slug}/{extracted[key].name}"
-                    node.pop("srcUrl", None)
-                payload["kind"] = "control.hardware"
-                payload["device"] = device
-                payload["space"] = "world"
-                payload["page"] = 32000
-                payload["pageW"] = 32000
-                payload["pageH"] = 18000
-                payload["photoWell"] = 0.75
-                payload.pop("worldRev", None)
-                payload["photo"] = _photo_pose(payload.get("photo"))
-                out = self._file_for(device)
-                out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-                self._path = str(out)
-                self._text = out.read_text(encoding="utf-8")
-                self.pathChanged.emit()
-                self.documentChanged.emit()
-                self.imageChanged.emit()
-                signal.configChanged.emit()
-                return json.dumps({"ok": True, "device": device, "slug": slug})
         except zipfile.BadZipFile:
             return json.dumps({"ok": False, "error": "Not a valid zip."})
         except Exception as exc:

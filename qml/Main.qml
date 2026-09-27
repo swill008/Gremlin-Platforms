@@ -277,14 +277,6 @@ ApplicationWindow {
         configureWin.requestActivate()
     }
 
-    function openExportDevices() {
-        Helpers.createComponent("DialogExportDevices.qml", {
-            "deviceName": (_statusLastCard && moduleFileName(_statusLastCard))
-                          ? moduleFileName(_statusLastCard)
-                          : moduleFileName(_moduleModel.focusedCardMap())
-        })
-    }
-
     function openHiddenDevices() {
         Helpers.createComponent("DialogHiddenDevices.qml", {
             "moduleModel": _moduleModel
@@ -713,12 +705,8 @@ ApplicationWindow {
                 onTriggered: () => { openConfigureModule("dest") }
             }
             MenuItem {
-                text: qsTr("Import devices…")
-                onTriggered: () => { Helpers.createComponent("DialogImportDevices.qml") }
-            }
-            MenuItem {
-                text: qsTr("Export devices…")
-                onTriggered: () => { openExportDevices() }
+                text: qsTr("Device Pack")
+                onTriggered: () => { Helpers.createComponent("DialogDevicePack.qml") }
             }
             MenuSeparator {}
             MenuItem {
