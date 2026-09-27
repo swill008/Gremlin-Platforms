@@ -64,7 +64,7 @@ Window {
             onClicked: () => {
                 let validNames = modeHierarchy.modeStringList()
 
-                _textInput.title = "Add new mode"
+                _textInput.heading = "Add new mode"
                 _textInput.text = "New mode"
                 _textInput.validator = function(value)
                 {
@@ -105,7 +105,7 @@ Window {
                 onClicked: () => {
                     let validNames = modeHierarchy.modeStringList()
 
-                    _textInput.title = "Rename existing mode"
+                    _textInput.heading = "Rename existing mode"
                     _textInput.text = name
                     _textInput.callback = function(value) {
                         modeHierarchy.renameMode(name, value)

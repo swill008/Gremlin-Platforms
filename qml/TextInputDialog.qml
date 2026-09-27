@@ -18,10 +18,11 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     padding: 10
     width: 320
-    height: 56
+    height: heading.length > 0 ? 86 : 56
 
     signal accepted(string value)
     property string text : "New text"
+    property string heading: ""
     property string lastAccepted: ""
     property var validator: function(value) { return true }
     property bool clearOnClick: true
@@ -59,45 +60,56 @@ Popup {
         }
     }
 
-    contentItem: RowLayout {
-        spacing: 8
+    contentItem: ColumnLayout {
+        spacing: 6
 
-        JGTextField {
-            id: _input
-
+        Label {
+            visible: _root.heading.length > 0
+            text: _root.heading
             Layout.fillWidth: true
-            focus: true
+        }
 
-            TapHandler {
-                onTapped: {
-                    if (_root.clearOnClick && !_root._clearedOnClick) {
-                        _input.text = ""
-                        _root._clearedOnClick = true
-                        _input.forceActiveFocus()
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            JGTextField {
+                id: _input
+
+                Layout.fillWidth: true
+                focus: true
+
+                TapHandler {
+                    onTapped: {
+                        if (_root.clearOnClick && !_root._clearedOnClick) {
+                            _input.text = ""
+                            _root._clearedOnClick = true
+                            _input.forceActiveFocus()
+                        }
                     }
+                }
+
+                Keys.onReturnPressed: _button.click()
+                Keys.onEnterPressed: _button.click()
+
+                onTextEdited: () => {
+                    let isValid = _root.validator(text)
+                    _input.outlineOverride = isValid ? null : Style.error
+                    _button.enabled = isValid
                 }
             }
 
-            Keys.onReturnPressed: _button.click()
-            Keys.onEnterPressed: _button.click()
+            Button {
+                id: _button
 
-            onTextEdited: () => {
-                let isValid = _root.validator(text)
-                _input.outlineOverride = isValid ? null : Style.error
-                _button.enabled = isValid
-            }
-        }
+                text: "Ok"
 
-        Button {
-            id: _button
-
-            text: "Ok"
-
-            onClicked: () => {
-                _root.lastAccepted = _input.text
-                _root._committed = true
-                _root.accepted(_input.text)
-                _root.close()
+                onClicked: () => {
+                    _root.lastAccepted = _input.text
+                    _root._committed = true
+                    _root.accepted(_input.text)
+                    _root.close()
+                }
             }
         }
     }
