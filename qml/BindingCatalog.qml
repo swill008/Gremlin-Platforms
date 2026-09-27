@@ -126,6 +126,8 @@ Item {
     property string colorEditor: "#0F2744"
     property string colorEditorBorder: "#3B82F6"
     property string colorEditorAccent: "#3B82F6"
+    property string colorScreen: "#00000000"
+    property string screenImage: ""
     property string _colorTarget: "parent"
     property string toastText: "Display Options Saved"
 
@@ -241,8 +243,17 @@ Item {
             else if (_colorTarget === "editorBorder") colorEditorBorder = c
             else if (_colorTarget === "editorAccent") colorEditorAccent = c
             else if (_colorTarget === "group") colorGroup = c
+            else if (_colorTarget === "screen") colorScreen = c
             else colorParent = c
         }
+    }
+
+    FileDialog {
+        id: _screenImageDlg
+        title: "Screen background"
+        nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp *.webp)"]
+        fileMode: FileDialog.OpenFile
+        onAccepted: screenImage = selectedFile.toString()
     }
 
     function catalogPayload() {
@@ -329,7 +340,9 @@ Item {
             colorSelectBorder: colorSelectBorder,
             colorEditor: colorEditor,
             colorEditorBorder: colorEditorBorder,
-            colorEditorAccent: colorEditorAccent
+            colorEditorAccent: colorEditorAccent,
+            colorScreen: colorScreen,
+            screenImage: screenImage
         }
     }
 
@@ -417,6 +430,8 @@ Item {
         colorEditor = "#0F2744"
         colorEditorBorder = "#3B82F6"
         colorEditorAccent = "#3B82F6"
+        colorScreen = "#00000000"
+        screenImage = ""
     }
 
     function numVal(v, d) {
@@ -562,6 +577,8 @@ Item {
         colorEditor = v.colorEditor || "#0F2744"
         colorEditorBorder = v.colorEditorBorder || "#3B82F6"
         colorEditorAccent = v.colorEditorAccent || v.colorEditorBorder || "#3B82F6"
+        colorScreen = v.colorScreen || "#00000000"
+        screenImage = v.screenImage || ""
     }
 
     property string savedCatalog: ""
@@ -1028,9 +1045,25 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        ColumnLayout {
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
+            Rectangle {
+                anchors.fill: parent
+                visible: _root.colorScreen !== "#00000000"
+                color: _root.colorScreen
+            }
+            Image {
+                anchors.fill: parent
+                visible: _root.screenImage.length > 0
+                source: _root.screenImage
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+            }
+
+            ColumnLayout {
+            anchors.fill: parent
             spacing: 6
 
             RowLayout {
@@ -1336,6 +1369,7 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 text: "This window only shows what the input module passes.\nRight-click the card → Configure input module, press the controls to claim, then Save module."
             }
+            }
         }
 
         Rectangle {
@@ -1475,6 +1509,59 @@ Item {
                         ColumnLayout {
                             spacing: 4
                             Layout.fillWidth: true
+                            SectionHead { title: "SCREEN" }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: "Color"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+                                Button {
+                                    Layout.fillWidth: true
+                                    text: colorScreen === "#00000000" ? "None" : "Choose…"
+                                    onClicked: {
+                                        _colorTarget = "screen"
+                                        _colorDlg.selectedColor = colorScreen === "#00000000" ? "#111113" : colorScreen
+                                        _colorDlg.open()
+                                    }
+                                    background: Rectangle {
+                                        color: colorScreen === "#00000000" ? "#27272A" : colorScreen
+                                        border.color: "#3F3F46"
+                                        border.width: 1
+                                        radius: 3
+                                    }
+                                    contentItem: Label {
+                                        text: parent.text
+                                        color: "#F4F4F5"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                                Button {
+                                    text: "Clear"
+                                    enabled: colorScreen !== "#00000000"
+                                    onClicked: colorScreen = "#00000000"
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: "Image"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+                                Button {
+                                    Layout.fillWidth: true
+                                    text: screenImage.length ? "Change…" : "Choose…"
+                                    onClicked: _screenImageDlg.open()
+                                }
+                                Button {
+                                    text: "Clear"
+                                    enabled: screenImage.length > 0
+                                    onClicked: screenImage = ""
+                                }
+                            }
+                            Label {
+                                visible: screenImage.length > 0
+                                text: "The image covers the color."
+                                color: "#A1A1AA"
+                                font.pixelSize: 11
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
                             SectionHead { title: "LIST" }
                             RowLayout {
                                 Label { text: "Between"; color: "#E4E4E7"; Layout.fillWidth: true }
