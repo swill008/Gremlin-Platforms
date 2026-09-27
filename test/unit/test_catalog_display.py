@@ -68,14 +68,16 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "id: _savedToast" in text
     assert "interval: 2000" in text
     assert "CloseOnPressOutside" in text
-    assert 'title: "GROUP"' in text
-    assert 'text: "Between"' in text
-    assert 'text: "Inside"' in text
+    assert 'title: "Group"' in text
+    assert 'text: "Space between groups"' in text
+    assert 'text: "Space inside the group"' in text
     assert "def leafRun" in Path(__file__).resolve().parents[2].joinpath("gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
-    assert 'title: "PARENT ROW"' in text
-    assert 'title: "CHILD ROW"' in text
-    assert 'title: "COLORS"' in text
-    assert 'title: "EDITOR"' in text
+    assert 'title: "Parent row"' in text
+    assert 'title: "Child row"' in text
+    assert 'title: "Selection"' in text
+    assert 'title: "Text"' in text
+    assert 'title: "Shown"' in text
+    assert 'title: "Editor"' in text
     assert 'text: "Show accent bar"' in text
     assert 'text: "Gap below row"' in text
     assert "function editorX(total)" in text
@@ -83,8 +85,8 @@ def test_assignment_summary_counts_destinations() -> None:
     assert 'text: "Show LED dots"' in text
     assert 'text: "Left"' in text
     assert 'text: "Right"' in text
-    assert 'model: ["Box", "Sides"]' in text
-    assert 'model: ["left", "center", "right"]' in text
+    assert 'model: ["Same on all sides", "Each side"]' in text
+    assert '"value": "center"' in text
     assert "ColorDialog" in text
     assert "signal closePanel()" in text
 

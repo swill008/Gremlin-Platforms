@@ -348,44 +348,52 @@ Item {
     }
 
     property bool openScreen: false
+    property bool openShown: false
     property bool openList: false
     property bool openGroup: false
     property bool openParent: false
     property bool openChild: false
+    property bool openText: false
+    property bool openSelection: false
     property bool openEditor: false
-    property bool openColors: false
 
     function sectionState() {
         return {
             "screen": openScreen,
+            "shown": openShown,
             "list": openList,
             "group": openGroup,
             "parent": openParent,
             "child": openChild,
-            "editor": openEditor,
-            "colors": openColors
+            "text": openText,
+            "selection": openSelection,
+            "editor": openEditor
         }
     }
 
     function applySections(raw) {
         var s = raw || {}
         openScreen = !!s.screen
+        openShown = !!s.shown
         openList = !!s.list
         openGroup = !!s.group
         openParent = !!s.parent
         openChild = !!s.child
+        openText = !!s.text
+        openSelection = !!s.selection
         openEditor = !!s.editor
-        openColors = !!s.colors
     }
 
     function setAllSections(open) {
         openScreen = open
+        openShown = open
         openList = open
         openGroup = open
         openParent = open
         openChild = open
+        openText = open
+        openSelection = open
         openEditor = open
-        openColors = open
     }
 
     function applyDefaults() {
@@ -1014,17 +1022,32 @@ Item {
         spacing: 4
 
         RowLayout {
-            Label { text: "Align"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+            Label { text: "Alignment"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
             ComboBox {
                 id: _alignPick
                 Layout.fillWidth: true
-                model: ["left", "center", "right"]
+                textRole: "label"
+                model: [
+                    { "label": "Left", "value": "left" },
+                    { "label": "Center", "value": "center" },
+                    { "label": "Right", "value": "right" }
+                ]
                 function pick(value) {
-                    var i = indexOfValue(value)
-                    return i < 0 ? 0 : i
+                    if (value === "center")
+                        return 1
+                    if (value === "right")
+                        return 2
+                    return 0
+                }
+                function stored() {
+                    if (currentIndex === 1)
+                        return "center"
+                    if (currentIndex === 2)
+                        return "right"
+                    return "left"
                 }
                 Component.onCompleted: currentIndex = pick(align)
-                onActivated: edited(currentText, fromLeft, fromRight, widthPct)
+                onActivated: edited(stored(), fromLeft, fromRight, widthPct)
             }
         }
         RowLayout {
@@ -1061,11 +1084,11 @@ Item {
             ComboBox {
                 id: _shapePick
                 Layout.fillWidth: true
-                model: ["Box", "Sides"]
+                model: ["Same on all sides", "Each side"]
                 function pick(value) { return value === "sides" ? 1 : 0 }
                 Component.onCompleted: currentIndex = pick(shape)
                 onActivated: {
-                    if (currentText === "Box")
+                    if (currentIndex === 0)
                         edited("box", size, size, size, size, size)
                     else
                         edited("sides", size, size, size, size, size)
@@ -1104,7 +1127,13 @@ Item {
         property color swatch: "#111111"
         property string target: ""
         Layout.fillWidth: true
-        Label { text: label; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+        Label {
+            text: label
+            color: "#E4E4E7"
+            wrapMode: Text.WordWrap
+            Layout.preferredWidth: 150
+            Layout.maximumWidth: 160
+        }
         Button {
             Layout.fillWidth: true
             text: "Choose…"
@@ -1586,12 +1615,12 @@ Item {
                         spacing: 12
 
                         FoldSection {
-                            title: "SCREEN"
+                            title: "Screen"
                             open: openScreen
                             onToggled: (v) => { openScreen = v }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Color"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+                                Label { text: "Background"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
                                 Button {
                                     Layout.fillWidth: true
                                     text: colorScreen === "#00000000" ? "None" : "Choose…"
@@ -1643,11 +1672,25 @@ Item {
                             }
                         }
                         FoldSection {
-                            title: "LIST"
+                            title: "Shown"
+                            open: openShown
+                            onToggled: (v) => { openShown = v }
+                            FlagBox { text: "Show child rows"; source: showChildren; onUserSet: (v) => { showChildren = v } }
+                            FlagBox { text: "Show live bars"; source: showLiveBars; onUserSet: (v) => { showLiveBars = v } }
+                            ColorPick { label: "Live bar"; swatch: colorLive; target: "live" }
+                            FlagBox { text: "Show LED dots"; source: showLeds; onUserSet: (v) => { showLeds = v } }
+                            FlagBox { text: "Show summary"; source: showSummary; onUserSet: (v) => { showSummary = v } }
+                            RowLayout {
+                                Label { text: "Summary size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 9; to: 20; source: summaryFont; onUserSet: (v) => { summaryFont = v; }}
+                            }
+                        }
+                        FoldSection {
+                            title: "List"
                             open: openList
                             onToggled: (v) => { openList = v }
                             RowLayout {
-                                Label { text: "Between"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Space between groups"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: groupBetween; onUserSet: (v) => { groupBetween = v; }}
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
@@ -1667,22 +1710,13 @@ Item {
                                     listPadLeft = padLeft
                                 }
                             }
-                            FlagBox { text: "Show child rows"; source: showChildren; onUserSet: (v) => { showChildren = v } }
-                            FlagBox { text: "Show live bars"; source: showLiveBars; onUserSet: (v) => { showLiveBars = v } }
-                            FlagBox { text: "Show LED dots"; source: showLeds; onUserSet: (v) => { showLeds = v } }
-                            FlagBox { text: "Show summary"; source: showSummary; onUserSet: (v) => { showSummary = v } }
-                            RowLayout {
-                                Label { text: "Summary size"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                TrackSpin { from: 9; to: 20; source: summaryFont; onUserSet: (v) => { summaryFont = v; }}
-                            }
                         }
-
                         FoldSection {
-                            title: "GROUP"
+                            title: "Group"
                             open: openGroup
                             onToggled: (v) => { openGroup = v }
                             RowLayout {
-                                Label { text: "Inside"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Space inside the group"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: groupInside; onUserSet: (v) => { groupInside = v; }}
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
@@ -1720,18 +1754,13 @@ Item {
                             }
                             ColorPick { label: "Color"; swatch: colorGroup; target: "group" }
                         }
-
                         FoldSection {
-                            title: "PARENT ROW"
+                            title: "Parent row"
                             open: openParent
                             onToggled: (v) => { openParent = v }
                             RowLayout {
                                 Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 36; to: 80; source: parentHeight; onUserSet: (v) => { parentHeight = v; }}
-                            }
-                            RowLayout {
-                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                TrackSpin { from: 0; to: 16; source: rowRadius; onUserSet: (v) => { rowRadius = v; }}
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
                             PadFields {
@@ -1763,28 +1792,30 @@ Item {
                                 }
                             }
                             RowLayout {
-                                Label { text: "Text size"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                TrackSpin { from: 10; to: 22; source: parentFont; onUserSet: (v) => { parentFont = v; }}
+                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 16; source: rowRadius; onUserSet: (v) => { rowRadius = v; }}
                             }
-                            FlagBox { text: "Bold names"; source: parentBold; onUserSet: (v) => { parentBold = v } }
                             RowLayout {
-                                Label { text: "Name column"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Name width"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 80; to: 360; stepSize: 10; source: nameColW; onUserSet: (v) => { nameColW = v; }}
                             }
-                            ColorPick { label: "Color"; swatch: colorParent; target: "parent" }
+                            ColorPick { label: "Row color"; swatch: colorParent; target: "parent" }
+                            ColorPick { label: "Line around the row"; swatch: colorBorder; target: "border" }
+                            Label {
+                                text: "The child row uses this line too."
+                                color: "#A1A1AA"
+                                font.pixelSize: 11
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
                         }
-
                         FoldSection {
-                            title: "CHILD ROW"
+                            title: "Child row"
                             open: openChild
                             onToggled: (v) => { openChild = v }
                             RowLayout {
                                 Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 24; to: 60; source: childHeight; onUserSet: (v) => { childHeight = v; }}
-                            }
-                            RowLayout {
-                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                TrackSpin { from: 0; to: 16; source: childRadius; onUserSet: (v) => { childRadius = v; }}
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
                             PadFields {
@@ -1816,18 +1847,40 @@ Item {
                                 }
                             }
                             RowLayout {
-                                Label { text: "Text size"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                TrackSpin { from: 9; to: 20; source: childFont; onUserSet: (v) => { childFont = v; }}
+                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 16; source: childRadius; onUserSet: (v) => { childRadius = v; }}
                             }
                             RowLayout {
-                                Label { text: "Name column"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Name width"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 80; to: 360; stepSize: 10; source: childNameColW; onUserSet: (v) => { childNameColW = v; }}
                             }
-                            ColorPick { label: "Color"; swatch: colorChild; target: "child" }
+                            ColorPick { label: "Row color"; swatch: colorChild; target: "child" }
                         }
-
                         FoldSection {
-                            title: "EDITOR"
+                            title: "Text"
+                            open: openText
+                            onToggled: (v) => { openText = v }
+                            RowLayout {
+                                Label { text: "Parent text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 10; to: 22; source: parentFont; onUserSet: (v) => { parentFont = v; }}
+                            }
+                            FlagBox { text: "Bold names"; source: parentBold; onUserSet: (v) => { parentBold = v } }
+                            RowLayout {
+                                Label { text: "Child text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 9; to: 20; source: childFont; onUserSet: (v) => { childFont = v; }}
+                            }
+                            ColorPick { label: "Text color"; swatch: colorText; target: "text" }
+                            ColorPick { label: "Muted text"; swatch: colorMuted; target: "muted" }
+                        }
+                        FoldSection {
+                            title: "Selection"
+                            open: openSelection
+                            onToggled: (v) => { openSelection = v }
+                            ColorPick { label: "Fill of a selected row"; swatch: colorSelected; target: "selected" }
+                            ColorPick { label: "Line around a selected row"; swatch: colorSelectBorder; target: "selectBorder" }
+                        }
+                        FoldSection {
+                            title: "Editor"
                             open: openEditor
                             onToggled: (v) => { openEditor = v }
                             AlignFields {
@@ -1877,20 +1930,8 @@ Item {
                             }
                             FlagBox { text: "Show accent bar"; source: showEditorAccent; onUserSet: (v) => { showEditorAccent = v } }
                             ColorPick { label: "Fill"; swatch: colorEditor; target: "editor" }
-                            ColorPick { label: "Edge"; swatch: colorEditorBorder; target: "editorBorder" }
-                            ColorPick { label: "Accent"; swatch: colorEditorAccent; target: "editorAccent" }
-                        }
-
-                        FoldSection {
-                            title: "COLORS"
-                            open: openColors
-                            onToggled: (v) => { openColors = v }
-                            ColorPick { label: "Selected fill"; swatch: colorSelected; target: "selected" }
-                            ColorPick { label: "Text"; swatch: colorText; target: "text" }
-                            ColorPick { label: "Muted text"; swatch: colorMuted; target: "muted" }
-                            ColorPick { label: "Live bar"; swatch: colorLive; target: "live" }
-                            ColorPick { label: "Border"; swatch: colorBorder; target: "border" }
-                            ColorPick { label: "Select border"; swatch: colorSelectBorder; target: "selectBorder" }
+                            ColorPick { label: "Border"; swatch: colorEditorBorder; target: "editorBorder" }
+                            ColorPick { label: "Accent bar"; swatch: colorEditorAccent; target: "editorAccent" }
                         }
 
                     }
