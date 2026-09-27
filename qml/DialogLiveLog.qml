@@ -44,10 +44,12 @@ Window {
         function onTextChanged() {
             var at = _view.cursorPosition
             _view.text = _log.text
-            if (_win._follow)
+            if (_win._follow) {
                 _view.cursorPosition = _view.length
-            else
+                Qt.callLater(_flick.scrollToEnd)
+            } else {
                 _view.cursorPosition = Math.min(at, _view.length)
+            }
         }
     }
 
@@ -72,31 +74,69 @@ Window {
             border.color: "#3F3F46"
             radius: 3
 
-            TextArea {
-                id: _view
+            Flickable {
+                id: _flick
                 anchors.fill: parent
-                anchors.margins: 8
-                readOnly: true
-                selectByMouse: true
-                wrapMode: TextEdit.NoWrap
-                color: "#E4E4E7"
-                font.family: "Consolas"
-                font.pixelSize: 13
-                background: null
+                anchors.margins: 2
                 clip: true
-                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
-            }
+                boundsBehavior: Flickable.StopAtBounds
+                flickableDirection: Flickable.HorizontalAndVerticalFlick
+                contentWidth: _view.width
+                contentHeight: _view.height
 
-            Connections {
-                target: _view.contentItem
-                ignoreUnknownSignals: true
-                function onMovementEnded() {
-                    var flick = _view.contentItem
-                    if (!flick)
-                        return
-                    _win._follow = flick.height <= 0
-                            || (flick.contentY + flick.height >= flick.contentHeight - 16)
+                function scrollToEnd() {
+                    contentY = Math.max(0, contentHeight - height)
+                }
+
+                onMovementEnded: {
+                    _win._follow = height <= 0
+                            || (contentY + height >= contentHeight - 16)
+                }
+
+                TextEdit {
+                    id: _view
+                    width: Math.max(_flick.width - 14, contentWidth + 16)
+                    height: Math.max(_flick.height - 14, contentHeight + 16)
+                    leftPadding: 8
+                    topPadding: 8
+                    rightPadding: 8
+                    bottomPadding: 8
+                    readOnly: true
+                    selectByMouse: true
+                    wrapMode: TextEdit.NoWrap
+                    color: "#E4E4E7"
+                    selectionColor: "#3F3F46"
+                    selectedTextColor: "#E4E4E7"
+                    font.family: "Consolas"
+                    font.pixelSize: 13
+                    textFormat: TextEdit.PlainText
+                }
+
+                ScrollBar.vertical: ScrollBar {
+                    id: _vbar
+                    policy: ScrollBar.AlwaysOn
+                    contentItem: Rectangle {
+                        implicitWidth: 8
+                        radius: 4
+                        color: _vbar.pressed ? "#E4E4E7" : "#71717A"
+                    }
+                    background: Rectangle {
+                        implicitWidth: 12
+                        color: "#27272A"
+                    }
+                }
+                ScrollBar.horizontal: ScrollBar {
+                    id: _hbar
+                    policy: ScrollBar.AlwaysOn
+                    contentItem: Rectangle {
+                        implicitHeight: 8
+                        radius: 4
+                        color: _hbar.pressed ? "#E4E4E7" : "#71717A"
+                    }
+                    background: Rectangle {
+                        implicitHeight: 12
+                        color: "#27272A"
+                    }
                 }
             }
         }
