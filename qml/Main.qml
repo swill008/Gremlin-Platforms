@@ -812,6 +812,35 @@ ApplicationWindow {
                 textRole: "name"
                 valueRole: "name"
 
+                background: Rectangle {
+                    implicitWidth: 120
+                    implicitHeight: 32
+                    border.width: 1
+                    border.color: _modeSelector.down || _modeSelector.hovered
+                            ? _modeSelector.Universal.baseMediumColor
+                            : _modeSelector.Universal.baseMediumLowColor
+                    color: _modeSelector.down
+                            ? _modeSelector.Universal.listMediumColor
+                            : _modeSelector.Universal.altMediumLowColor
+                }
+
+                delegate: ItemDelegate {
+                    required property var model
+                    required property int index
+
+                    width: ListView.view ? ListView.view.width : implicitWidth
+                    text: model[_modeSelector.textRole]
+                    font.weight: _modeSelector.currentIndex === index ? Font.DemiBold : Font.Normal
+                    highlighted: false
+                    hoverEnabled: true
+
+                    background: Rectangle {
+                        color: (_modeSelector.highlightedIndex === index || parent.hovered)
+                                ? _modeSelector.Universal.listMediumColor
+                                : "transparent"
+                    }
+                }
+
                 onActivated: () => {
                     if (uiState) {
                         uiState.setCurrentMode(currentText)
