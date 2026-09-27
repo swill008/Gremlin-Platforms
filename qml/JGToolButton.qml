@@ -25,7 +25,7 @@ ToolButton {
         Label {
             visible: caption.length > 0
             text: caption
-            font.pixelSize: 9
+            font.pixelSize: 18
             horizontalAlignment: Text.AlignHCenter
             width: parent.width
         }
