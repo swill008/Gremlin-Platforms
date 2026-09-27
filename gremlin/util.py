@@ -9,6 +9,7 @@ import logging
 import math
 import os
 import re
+import shutil
 import sys
 import threading
 import time
@@ -928,6 +929,42 @@ def export_dir() -> Path:
     return _child_dir("export")
 
 
+def copy_legacy_modules() -> None:
+    """Copy device files from the old qml/maps folder. Existing files are kept."""
+    source = Path(resource_path("qml/maps"))
+    dest = modules_dir()
+    try:
+        if not source.is_dir() or source.resolve() == dest.resolve():
+            return
+    except OSError:
+        return
+    copied = 0
+    for path in source.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            rel = path.relative_to(source)
+        except ValueError:
+            continue
+        target = dest / rel
+        if target.exists():
+            continue
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
+            copied += 1
+        except OSError:
+            continue
+    if not copied:
+        return
+    try:
+        from gremlin.ui.live_debug import trace
+
+        trace("SAVE", "Data Folder", "copy_legacy_modules", dest, f"copied {copied}")
+    except Exception:
+        return
+
+
 def ensure_data_folders() -> None:
     """Create the data folder and the folders inside it."""
     modules_dir()
@@ -935,6 +972,7 @@ def ensure_data_folders() -> None:
     profiles_dir()
     scripts_dir()
     export_dir()
+    copy_legacy_modules()
 
 
 def resource_path(relative_path: str) -> str:
