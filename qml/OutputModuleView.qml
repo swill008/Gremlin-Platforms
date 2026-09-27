@@ -63,6 +63,51 @@ Item {
         onClicked: userSet(checked)
     }
 
+    component FoldSection: ColumnLayout {
+        id: fold
+        property string title: ""
+        property bool open: false
+        signal toggled(bool value)
+        default property alias body: _body.data
+        Layout.fillWidth: true
+        spacing: 4
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: 26
+            color: "#27272A"
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 6
+                Label {
+                    text: fold.open ? "\u25BC" : "\u25B6"
+                    color: "#E4E4E7"
+                    font.pixelSize: 10
+                }
+                Label {
+                    text: fold.title
+                    color: "#E4E4E7"
+                    font.pixelSize: 11
+                    font.bold: true
+                    Layout.fillWidth: true
+                }
+            }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: fold.toggled(!fold.open)
+            }
+        }
+        ColumnLayout {
+            id: _body
+            visible: fold.open
+            Layout.fillWidth: true
+            spacing: 4
+        }
+    }
+
     component ChoiceMenu: ComboBox {
         property var choices: []
         property string current: ""
@@ -272,8 +317,46 @@ Item {
             "colorMeter": colorMeter,
             "colorPress": colorPress,
             "colorScreen": colorScreen,
-            "screenImage": screenImage
+            "screenImage": screenImage,
+            "sections": sectionState()
         }
+    }
+
+    property bool openScreen: false
+    property bool openLayout: false
+    property bool openPads: false
+    property bool openMeters: false
+    property bool openButtons: false
+    property bool openColors: false
+
+    function sectionState() {
+        return {
+            "screen": openScreen,
+            "layout": openLayout,
+            "pads": openPads,
+            "meters": openMeters,
+            "buttons": openButtons,
+            "colors": openColors
+        }
+    }
+
+    function applySections(raw) {
+        var s = raw || {}
+        openScreen = !!s.screen
+        openLayout = !!s.layout
+        openPads = !!s.pads
+        openMeters = !!s.meters
+        openButtons = !!s.buttons
+        openColors = !!s.colors
+    }
+
+    function setAllSections(open) {
+        openScreen = open
+        openLayout = open
+        openPads = open
+        openMeters = open
+        openButtons = open
+        openColors = open
     }
 
     function applyViewValues(v) {
@@ -303,6 +386,7 @@ Item {
         colorPress = v.colorPress || "#22C55E"
         colorScreen = v.colorScreen || "#00000000"
         screenImage = v.screenImage || ""
+        applySections(v.sections)
     }
 
     function loadView() {
@@ -401,6 +485,7 @@ Item {
         colorPress = "#22C55E"
         colorScreen = "#00000000"
         screenImage = ""
+        setAllSections(false)
         toastText = "Options have been reset"
         _savedToast.open()
     }
@@ -711,6 +796,12 @@ Item {
                         onClicked: _root.requestClose()
                     }
                 }
+                RowLayout {
+                    spacing: 8
+                    Button { text: "Open all"; onClicked: setAllSections(true) }
+                    Button { text: "Close all"; onClicked: setAllSections(false) }
+                    Item { Layout.fillWidth: true }
+                }
 
                 ScrollView {
                     Layout.fillWidth: true
@@ -720,23 +811,10 @@ Item {
                         width: 330
                         spacing: 12
 
-                        ColumnLayout {
-                            spacing: 4
-                            Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "SCREEN"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
+                        FoldSection {
+                            title: "SCREEN"
+                            open: openScreen
+                            onToggled: (v) => { openScreen = v }
                             RowLayout {
                                 Layout.fillWidth: true
                                 Label { text: "Color"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
@@ -791,45 +869,19 @@ Item {
                             }
                         }
 
-                        ColumnLayout {
-                            spacing: 4
-                            Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "LAYOUT"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
+                        FoldSection {
+                            title: "LAYOUT"
+                            open: openLayout
+                            onToggled: (v) => { openLayout = v }
                             FlagBox { text: "Show pads"; source: showPads; onUserSet: (v) => { showPads = v } }
                             FlagBox { text: "Show hats"; source: showHats; onUserSet: (v) => { showHats = v } }
                             FlagBox { text: "Show meters"; source: showMeters; onUserSet: (v) => { showMeters = v } }
                         }
 
-                        ColumnLayout {
-                            spacing: 4
-                            Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "PADS"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
+                        FoldSection {
+                            title: "PADS"
+                            open: openPads
+                            onToggled: (v) => { openPads = v }
                             Label {
                                 visible: !showPads
                                 text: "Pads hidden"
@@ -861,23 +913,10 @@ Item {
                             }
                         }
 
-                        ColumnLayout {
-                            spacing: 4
-                            Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "METERS"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
+                        FoldSection {
+                            title: "METERS"
+                            open: openMeters
+                            onToggled: (v) => { openMeters = v }
                             ChoiceMenu {
                                 enabled: showMeters
                                 current: meterStyle
@@ -924,23 +963,10 @@ Item {
                             }
                         }
 
-                        ColumnLayout {
-                            spacing: 4
-                            Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "BUTTONS"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
+                        FoldSection {
+                            title: "BUTTONS"
+                            open: openButtons
+                            onToggled: (v) => { openButtons = v }
                             ChoiceMenu {
                                 current: buttonStyle
                                 choices: [
@@ -967,23 +993,10 @@ Item {
                             }
                         }
 
-                        ColumnLayout {
-                            spacing: 4
-                            Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "COLORS"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
+                        FoldSection {
+                            title: "COLORS"
+                            open: openColors
+                            onToggled: (v) => { openColors = v }
                         RowLayout {
                             Label { text: "Live"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
                             Button {

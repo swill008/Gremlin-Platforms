@@ -60,6 +60,8 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "def assignment_summary" in py
     text = _QML.read_text(encoding="utf-8")
     assert 'text: "Input Configuration — Display"' in text
+    assert 'text: "Open all"' in text
+    assert 'text: "Close all"' in text
     assert "Layout.preferredWidth: 360" in text
     assert 'text: "Save with module"' in text
     assert "onClicked: resetCatalog()" in text
