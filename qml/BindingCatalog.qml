@@ -840,7 +840,8 @@ Item {
         editable: true
         Component.onCompleted: value = source
         onSourceChanged: if (value !== source) value = source
-        onUserSet: (v) => { userSet(v); }}
+        onValueModified: userSet(value)
+    }
 
     component FlagBox: CheckBox {
         property bool source: false
