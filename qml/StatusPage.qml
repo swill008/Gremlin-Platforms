@@ -21,6 +21,7 @@ Item {
     }
 
     property var model: null
+    readonly property bool splitOn: model && model.splitMode !== "none"
     property string pinSlug: ""
     property bool hoverPeek: true
     property var _liveCards: []
@@ -487,8 +488,8 @@ Item {
         SplitView {
             id: _splitView
             Layout.fillWidth: true
-            Layout.fillHeight: visible
-            visible: _page.model && _page.model.splitMode !== "none"
+            Layout.fillHeight: _page.splitOn
+            visible: _page.splitOn
             orientation: (_page.model && _page.model.splitMode === "horizontal") ? Qt.Vertical : Qt.Horizontal
             handle: Rectangle { implicitWidth: 8; implicitHeight: 8; color: "#52525B" }
 
@@ -556,8 +557,8 @@ Item {
         StatusPane {
             id: _allPane
             Layout.fillWidth: true
-            Layout.fillHeight: visible
-            visible: !_page.model || _page.model.splitMode === "none"
+            Layout.fillHeight: !_page.splitOn
+            visible: !_page.splitOn
             title: ""
             direction: ""
         }
