@@ -23,6 +23,13 @@ Window {
 
     title: "Xbox Viewer"
 
+    ToolWindowMemory {
+        host: _xboxViewer
+        name: "xbox-viewer"
+        defaultWidth: 1200
+        defaultHeight: 800
+    }
+
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
