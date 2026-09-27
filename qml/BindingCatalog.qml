@@ -448,7 +448,6 @@ Item {
 
     function refreshCopySources() {
         _copySources.clear()
-        _copySources.append({"label": "Copy from", "name": "", "guid": ""})
         if (!moduleModel || !moduleModel.otherSourceCatalogs)
             return
         var rows = []
@@ -1703,23 +1702,50 @@ Item {
 
                 RowLayout {
                     Button { text: "Reset"; onClicked: resetCatalog() }
-                    ComboBox {
-                        id: _copyFrom
-                        model: _copySources
-                        textRole: "label"
-                        implicitWidth: 200
-                        onActivated: {
-                            if (currentIndex <= 0)
-                                return
-                            var row = _copySources.get(currentIndex)
-                            copyCatalogFrom(row.name, row.guid)
-                            currentIndex = 0
+                    Button {
+                        id: _copyButton
+                        text: "Copy from…"
+                        onClicked: {
+                            refreshCopySources()
+                            _copyMenu.popup(_copyButton, 0, _copyButton.height)
                         }
                     }
                     Item { Layout.fillWidth: true }
                     Button { text: "Save with module"; highlighted: true; onClicked: saveCatalog() }
                 }
             }
+        }
+    }
+
+    Menu {
+        id: _copyMenu
+        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+        width: 360
+
+        MenuItem {
+            text: "Replace this panel with the display settings from"
+            enabled: false
+            width: 360
+        }
+        MenuItem {
+            text: "No other input module"
+            enabled: false
+            visible: _copySources.count === 0
+            height: visible ? implicitHeight : 0
+            width: 360
+        }
+        Instantiator {
+            model: _copySources
+            delegate: MenuItem {
+                required property string label
+                required property string name
+                required property string guid
+                text: label
+                width: 360
+                onTriggered: _root.copyCatalogFrom(name, guid)
+            }
+            onObjectAdded: (index, object) => _copyMenu.insertItem(_copyMenu.count, object)
+            onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
         }
     }
 
