@@ -6,168 +6,144 @@
 function topics() {
     return [
         topic("Start", "Overview",
-            "Joystick Gremlin reads your physical controllers and runs the actions in the loaded profile. A game or another program then sees the result, usually through vJoy, a logical device, or an Xbox controller.",
-            "Open a profile, or start from the devices on the Home screen. Add actions in Configuration. Turn Joystick Gremlin on with Toggle when you want those actions to run. Turn it off when you want the sticks left alone."),
-        topic("Start", "Turning Joystick Gremlin on",
-            "Toggle is the switch that makes the loaded profile live. While it is off, the profile is only edited. While it is on, inputs run their actions.",
-            "Use the Toggle button on the toolbar, or the same control on the Home screen. The button uses the accent color while Joystick Gremlin is on. Turn it off before you change hardware or close a game if you want the physical devices visible again."),
+            "<p>Joystick Gremlin reads your physical controllers and runs the actions in the loaded profile. A game or another program then sees the result, usually through vJoy, a logical device, or an Xbox controller.</p>"
+            + "<p>Start from Home, or open a profile with File → Load Profile. Open Configuration for a device and use Add Action on an input. Turn Joystick Gremlin on with Toggle when those actions should run. Turn it off when the physical devices should be left alone.</p>"),
+        topic("Start", "What is saved where",
+            "<p>Four stores are kept separate. Saving one does not save the others.</p>"
+            + "<p><b>Profile.</b> Modes, bindings, and actions. File → Save Profile writes this file. File → Save Profile As writes a new one. Closing the program asks when the profile has changes that are not saved.</p>"
+            + "<p><b>Module file.</b> One file for each device. It holds the device picture, the configuration list’s look, and an output device’s look. The input module chooses which file that device uses. Button Map, Configure input module, and Configure output module write this file. Display options are written only when you press Save with module.</p>"
+            + "<p><b>Program settings.</b> Options, the Home layout, window sizes, and HiDHide choices. These are kept for the program, not inside one profile.</p>"
+            + "<p><b>Calibration.</b> The center and the ends of an axis. Save on that axis writes it. Closing Calibration, or choosing another device, asks when an axis is not saved.</p>"),
+        topic("Start", "Toggle",
+            "<p>Toggle makes the loaded profile live. While it is off, you are only editing. While it is on, inputs run their actions.</p>"
+            + "<p>Use Toggle on the toolbar. It uses the accent color while Joystick Gremlin is on. Turn it off before you change hardware, or before you close a game, if you want the physical devices visible again.</p>"),
         topic("Start", "Profiles",
-            "A profile is the file that stores modes, device bindings, and actions.",
-            "File → Load Profile opens a profile. File → Recent lists profiles you have opened. File → Save Profile writes the current file. File → Save Profile As writes a new file. File → Exit closes the program. Options can also load a profile when a chosen program starts."),
-        topic("Home", "Home screen",
-            "Home lists the input devices on the left and the output devices on the right. Each card is one device.",
-            "View → Home, or the Home toolbar button, returns here. Select a device to work on it. View → Home split changes the layout: None, Vertical (input beside output), or Horizontal (input above output). The choice is kept."),
+            "<p>A profile stores modes and the actions bound to each device.</p>"
+            + "<p>File → New Profile starts an empty profile. File → Load Profile opens one. File → Recent lists profiles you have opened. File → Save Profile writes the current file. A successful save says “Saved to the profile.” Options can also open a profile when a chosen program starts. File → Exit closes Joystick Gremlin.</p>"),
+        topic("Home", "Home",
+            "<p>Home lists input devices and output devices. Each card is one device.</p>"
+            + "<p>View → Home, or Home on the toolbar, returns here. Select a card to work on that device. Right-click a card for Button Map and the other actions for that device.</p>"
+            + "<p>View → Home layout sets the arrangement: Single list, Side by side, or Stacked. The choice is kept.</p>"),
         topic("Home", "Control display",
-            "The control display is the extra view of a device’s inputs. It can stay open while you work.",
-            "View → Control Display pins the display for the device you are focused on. Open it again to change that pin. The program remembers that you left it open."),
-        topic("Configuration", "Configuration editor",
-            "Configuration is where one physical input gets its actions. The action sits on that input’s row. It is not a separate editor floating away from the button.",
-            "View → Configuration opens the editor for the focused device. Pick an input. Right-click its row and choose Add, then choose an action. The new action appears under that input. Click the action to open its settings. Right-click and choose Delete to remove it. Containers such as Chain, Condition, and Tempo can hold another action inside them, so one input can do one thing and then another."),
+            "<p>Control display is the extra live view of a device’s inputs. It can stay open while you work.</p>"
+            + "<p>View → Control Display pins it for the device you are focused on. Choose it again to change that pin. The program remembers that you left it open.</p>"),
+        topic("Home", "Hidden devices",
+            "<p>Hidden devices removes a card from Home. It does not hide the device from Windows or from other programs. Use HiDHide for that.</p>"
+            + "<p>View → Hidden devices. Turn a device off to take its card off Home. Turn it on to put the card back.</p>"),
+        topic("Configuration", "Actions",
+            "<p>Configuration is where one physical input gets its actions. The actions are stored in the profile. They are written to disk when you save the profile.</p>"
+            + "<p>View → Configuration opens the focused device. Add Action on an input opens the editor for that input. Build the action, then press OK. The action appears under that input. Delete removes it. Close pane after OK closes the editor when OK succeeds.</p>"
+            + "<p>Leaving an input that has changes asks you to save or discard them. Save here means keep the action in the profile. It does not replace File → Save Profile.</p>"
+            + "<p>Tools → Action Editor opens the same actions in a window. Opened from the menu, it can show the whole device. Opened for one input, it shows that input only.</p>"),
+        topic("Configuration", "Containers",
+            "<p>Some actions hold other actions. Chain runs the next action in a list on each press, then starts over. Condition runs its action only when the condition is true. Tempo uses one action for a short press and another for a long press. Double Tap uses one action for a single press and another for a quick second press. Smart Toggle turns a momentary press into on, then off.</p>"
+            + "<p>Add the container first, then add the actions it should run. A hat can use Hat as Buttons so each direction is its own button. Unmapped directions do nothing.</p>"),
         topic("Configuration", "Display options",
-            "Display options change how this device’s configuration list looks. They do not change the actions. The look is stored in that device’s module file. Whether the panel is open is stored with the program, separately for each device.",
-            "Edit Display Options opens the panel. Changes show immediately, but they stay on the screen until Save with module. Save writes this device’s module file. Reset returns the built-in look and still needs Save if you want that kept. Hide Display Options, Close, or opening another device asks when there are unsaved changes. Save keeps them. Discard returns to the last save. The first visit opens the panel. After that, the program restores whether you left it open or closed."),
-        topic("Configuration", "Undo and redo",
-            "The configuration editor keeps a history of action edits.",
-            "Use Undo and Redo on the editor. Undo steps back through added, removed, and changed actions. Redo puts the step back. History covers the actions in the editor, not every other window."),
+            "<p>Display options change how this device’s configuration list looks. They do not change the actions. The look is stored in that device’s module file. Whether the panel is open is stored with the program, separately for each device.</p>"
+            + "<p>Edit Display Options opens the panel. Changes show immediately and stay on the screen until Save with module. A successful save says “Saved to the module file.” Reset returns the built-in look and still needs Save with module if you want that kept.</p>"
+            + "<p>Hide Display Options, Close, or opening another device asks when there are unsaved changes. Save writes the module file. Discard returns to the last save. The first visit opens the panel. After that, the program restores whether you left it open or closed.</p>"
+            + "<p>An output device has its own display options for pads, hats, meters, and buttons. Those are saved the same way, into that device’s module file.</p>"),
         topic("Actions", "Map to Keyboard",
-            "Sends one or more keyboard keys when the input fires.",
-            "Add it to a button, hat direction, or axis. Choose the key. Set whether the key is held while the input is held or tapped once."),
+            "<p>Sends one or more keyboard keys when the input fires.</p>"
+            + "<p>Choose the key, and whether the key is held while the input is held or tapped once.</p>"),
         topic("Actions", "Map to Mouse",
-            "Moves the mouse, clicks a mouse button, or turns the wheel.",
-            "Add it to the input that should drive the mouse. Choose button, motion, or wheel, then the amount."),
+            "<p>Moves the mouse, clicks a mouse button, or turns the wheel.</p>"
+            + "<p>Choose button, motion, or wheel, then the amount.</p>"),
         topic("Actions", "Map to vJoy",
-            "Sends the input to a vJoy axis, button, or hat. vJoy must already be installed. This program does not ship vJoy.",
-            "Add it to the physical input. Choose the vJoy device and the output. Axes can be remapped. Buttons follow the physical press."),
+            "<p>Sends the input to a vJoy axis, button, or hat. vJoy must already be installed. This program does not ship vJoy.</p>"
+            + "<p>Choose the vJoy device and the output. Axes can be scaled. Buttons follow the physical press. Use the vJoy Viewer to watch the result.</p>"),
         topic("Actions", "Map to Logical Device",
-            "Sends the input to a logical output device created in this program.",
-            "Add it to the input. Choose the logical device and the control on it."),
+            "<p>Sends the input to a logical output device created in this program.</p>"
+            + "<p>Choose the logical device and the control on it.</p>"),
         topic("Actions", "Map to Xbox",
-            "Sends the input to a virtual Xbox controller. That output needs its own driver. This program does not ship that driver.",
-            "Add it to the input. Choose the Xbox control. Use the Xbox Pairing-Viewer to confirm the output."),
+            "<p>Sends the input to a virtual Xbox controller. That output needs its own driver. This program does not ship that driver.</p>"
+            + "<p>Choose the Xbox control. Use the Xbox Viewer to confirm the output while Joystick Gremlin is on.</p>"),
         topic("Actions", "Macro",
-            "Plays a recorded or built sequence of keys, buttons, mouse moves, and pauses.",
-            "Add it, then record or insert steps. Set whether a new press waits, interrupts, or is ignored while the macro is still running."),
+            "<p>Plays a sequence of keys, buttons, mouse moves, and pauses.</p>"
+            + "<p>Record or insert the steps. Set whether a new press waits, interrupts, or is ignored while the macro is still running.</p>"),
         topic("Actions", "Response Curve",
-            "Changes how an axis travels from one end to the other. The curve can be straight, bent, or inverted.",
-            "Add it to an axis. Drag the curve or invert it. The output is what later actions and the mapped device see."),
+            "<p>Changes how an axis travels from one end to the other. The curve can be straight, bent, or inverted.</p>"
+            + "<p>Add it to an axis. Edit the curve. Later actions and the mapped device see the curved output.</p>"),
         topic("Actions", "Split Axis",
-            "Turns one axis into two ranges, usually the two directions of a throttle or a split stick.",
-            "Add it to the axis. Set the center and which side goes to which output."),
+            "<p>Turns one axis into two ranges, usually the two directions of a throttle or a split stick.</p>"
+            + "<p>Set the center, and which side goes to which output.</p>"),
         topic("Actions", "Merge Axis",
-            "Combines two inputs into one axis.",
-            "Add it and choose the two sources and how they are combined."),
+            "<p>Combines two inputs into one axis.</p>"
+            + "<p>Choose the two sources and how they are combined.</p>"),
         topic("Actions", "Axis Delta",
-            "Nudges an axis by a step instead of jumping to an absolute position. Useful when a button should trim an axis.",
-            "Add it to a button. Choose the axis and the size of each step."),
+            "<p>Nudges an axis by a step instead of jumping to an absolute position. Use it when a button should trim an axis.</p>"
+            + "<p>Choose the axis and the size of each step.</p>"),
         topic("Actions", "Dual Axis Deadzone",
-            "Applies one deadzone to a pair of axes, such as a stick’s X and Y, so a small circular or square center is ignored.",
-            "Add it to the pair. Set the deadzone size and shape."),
-        topic("Actions", "Hat as Buttons",
-            "Treats each hat direction as its own button.",
-            "Add it to a hat. Bind the directions you want. Unmapped directions do nothing."),
+            "<p>Applies one deadzone to a pair of axes, such as a stick’s X and Y, so a small circular or square center is ignored.</p>"
+            + "<p>Set the size and the shape.</p>"),
         topic("Actions", "Change Mode",
-            "Switches the active mode while the input is held, or switches and stays.",
-            "Add it to a button. Choose the mode. Modes are created in Tools → Manage Modes."),
+            "<p>Switches the active mode while the input is held, or switches and stays.</p>"
+            + "<p>Choose the mode. Modes are created in Tools → Manage Modes. Only the current mode’s actions run.</p>"),
         topic("Actions", "Load Profile",
-            "Loads another profile when the input fires.",
-            "Add it to a button. Choose the profile file."),
+            "<p>Loads another profile when the input fires.</p>"
+            + "<p>Choose the profile file.</p>"),
         topic("Actions", "Pause and Resume",
-            "Pauses Joystick Gremlin, resumes it, or toggles that state from a button.",
-            "Add it to a button and choose pause, resume, or toggle."),
+            "<p>Pauses Joystick Gremlin, resumes it, or toggles that state from a button.</p>"
+            + "<p>Choose pause, resume, or toggle.</p>"),
         topic("Actions", "Play Sound",
-            "Plays a sound file when the input fires.",
-            "Add it and choose the file."),
+            "<p>Plays a sound file when the input fires.</p>"
+            + "<p>Choose the file.</p>"),
         topic("Actions", "Text to Speech",
-            "Speaks a sentence when the input fires.",
-            "Add it and type the sentence. The voice is chosen in Options."),
+            "<p>Speaks a sentence when the input fires.</p>"
+            + "<p>Type the sentence. The voice is chosen in Options.</p>"),
         topic("Actions", "Run Command",
-            "Starts a program or command when the input fires.",
-            "Add it and choose the program. The program runs on your machine with your own permissions."),
+            "<p>Starts a program or command when the input fires.</p>"
+            + "<p>Choose the program. It runs on your machine with your own permissions.</p>"),
         topic("Actions", "Description",
-            "Stores a note on the input. It does not change the output.",
-            "Add it and type the note so you can remember what the binding is for."),
-        topic("Actions", "Smart Toggle",
-            "Turns a momentary input into a toggle. Press once for on, press again for off.",
-            "Add it to a button and put the action it should toggle inside it or after it, as the editor shows."),
-        topic("Actions", "Double Tap",
-            "Runs one action for a single press and another for a quick second press.",
-            "Add it to a button. Set the time that still counts as a double press, then fill both actions."),
-        topic("Actions", "Tempo",
-            "Runs one action for a short press and another for a long press.",
-            "Add it to a button. Set how long a press must be held to count as long. Fill the short action and the long action."),
-        topic("Actions", "Chain",
-            "Runs the next action in a list each time the input fires, then starts over.",
-            "Add it, then add the actions in the order you want them. Each press advances one step."),
-        topic("Actions", "Condition",
-            "Runs its action only when the condition is true.",
-            "Add it, set the condition, then add the action that should run when the condition passes."),
+            "<p>Stores a note on the input. It does not change the output.</p>"
+            + "<p>Type the note so you can remember what the binding is for.</p>"),
         topic("Actions", "Reference",
-            "Points at another action so you do not have to rebuild it.",
-            "Add it and choose the action it should follow."),
+            "<p>Points at another action so you do not have to rebuild it.</p>"
+            + "<p>Choose the action it should follow.</p>"),
         topic("Modes", "Modes",
-            "A mode is a set of bindings. Only the current mode’s actions run. The same button can do different work in another mode.",
-            "Tools → Manage Modes creates, renames, and removes modes. Change Mode switches to one of them from a button. The mode shown in the editor is the one you are editing."),
+            "<p>A mode is a set of bindings. Only the current mode’s actions run. The same button can do different work in another mode.</p>"
+            + "<p>Tools → Manage Modes creates, renames, and removes modes. Change Mode switches to one of them from a button. The mode shown in the editor is the one you are editing. Save the profile to keep the modes.</p>"),
         topic("Tools", "Button Map",
-            "Button Map is a picture of a stick with a chip on each control. Moving a chip changes the picture, not the action bound to that control. The live map uses the same layout, and a press still lights the matching chip.",
-            "Tools → Joystick Button Map, or View → Button Map. File → Edit Mapping starts an edit. Drag chips from the pool onto the photo. Drag a chip to move it, and drag its dot to move the contact. File → Save writes the map. File → Cancel drops the edit. Right-click a chip to rename it, change its shape, or set its colors. Scroll to zoom. Drag with the middle button to pan. F1 in that window opens the editor’s own help."),
-        topic("Tools", "vJoy Pairing-Viewer",
-            "Shows physical inputs beside the vJoy device they are mapped to, so you can see the pair update live.",
-            "Tools → vJoy Pairing-Viewer, or the toolbar button. Leave it open while you move the stick."),
-        topic("Tools", "Xbox Pairing-Viewer",
-            "Shows the virtual Xbox control that an input is driving.",
-            "Tools → Xbox Pairing-Viewer. Use it while Map to Xbox is in the profile and Joystick Gremlin is on."),
-        topic("Tools", "Device Viewer",
-            "Shows the live value of every control on a device.",
-            "Tools → Device Viewer, or View → Device Viewer. Select the device and move it."),
+            "<p>Button Map is a picture of one device, with a chip on each control. Moving a chip changes the picture, not the action bound to that control. The same layout is used live, and a press still lights the matching chip.</p>"
+            + "<p>Tools → Button Map opens a blank map. Choose the device from the menu. Right-click a device card and choose Button Map to open that device. File → Edit Mapping starts an edit. Drag chips from the pool onto the photo. Drag a chip to move it, and drag its dot to move the contact. Scroll to zoom. Drag with the middle button to pan.</p>"
+            + "<p>File → Save writes the layout to that device’s module file. A successful save says “Saved to the module file.” File → Cancel drops the edit. Closing the window asks when the edit is not saved. Right-click a chip to rename it, change its shape, or set its colors. F1 in that window opens the editor’s own help. Undo and Redo in that window apply to the picture only.</p>"),
+        topic("Tools", "Viewers",
+            "<p>The viewers show live values. They do not change the profile.</p>"
+            + "<p>Tools → Device Viewer shows every control on a device. Tools → vJoy Viewer shows the vJoy device an input is driving. Tools → Xbox Viewer shows the virtual Xbox control. The same viewers are on the toolbar. Leave one open while you move the stick.</p>"),
         topic("Tools", "Calibration",
-            "Sets the center and the ends of an axis so the full travel is used.",
-            "Tools → Calibration. Choose the device and the axis. Move the axis through its range, then save."),
-        topic("Tools", "Device Information",
-            "Shows the name and identifiers Windows reports for a device.",
-            "Tools → Device Information. Select the device. Use the identifiers when two devices look alike."),
+            "<p>Calibration sets the center and the ends of an axis so the full travel is used. It is stored with the program, not in the profile.</p>"
+            + "<p>Tools → Calibration. Choose the device. Move the axis, or type the values. The axis shows Not saved until you press its save button. A successful save says “Saved to calibration.” Closing the window, or choosing another device, asks when an axis is not saved. Save writes it. Discard returns to the last saved calibration.</p>"),
+        topic("Tools", "Device information",
+            "<p>Device information shows the name and the identifiers Windows reports for a device.</p>"
+            + "<p>Tools → Device Information. Select the device. Use the identifiers when two devices look alike.</p>"),
         topic("Tools", "Auto Mapper",
-            "Builds a starting map from a physical device to an output device.",
-            "Tools → Auto Mapper. Choose the source and the target. Review the result in Configuration before you rely on it."),
+            "<p>Auto Mapper builds a starting set of actions from a physical device to an output device.</p>"
+            + "<p>Tools → Auto Mapper. Choose the source and the target. Review the result in Configuration before you rely on it, then save the profile.</p>"),
         topic("Tools", "Swap Devices",
-            "Moves a profile’s bindings from one physical device to another of the same kind.",
-            "Tools → Swap Devices. Choose the device that is in the profile and the device that should take its place."),
-        topic("Tools", "Input and output modules",
-            "A module is the picture and the definition used for a device. Input modules are physical devices. Output modules are vJoy and other outputs.",
-            "Tools → Configure input module edits an input. Tools → Configure output module edits an output. The picture set here is the one Hardware Hide uses until you choose a different picture for that device."),
-        topic("Tools", "Import and export devices",
-            "Copies device definitions in or out so a layout can move to another profile or another machine.",
-            "Tools → Import devices reads a file. Tools → Export devices writes the selected device."),
-        topic("View", "Hidden devices",
-            "Hides a device card from the Home screen. This does not hide the device from Windows or from other programs.",
-            "View → Hidden devices. Turn a device off to take it off the Home screen. Turn it on to put the card back."),
-        topic("Tools", "Hardware Hide",
-            "Hardware Hide talks to an installed HiDHide driver. This program does not install HiDHide. While Gremlin control is off, opening this window does not change HiDHide. The first run leaves the driver as it already is.",
-            "Tools → Hardware Hide. The top row shows whether the driver was found, its version, Gremlin control, and Get HiDHide. Get HiDHide opens the download page. The next row is HiDHide Enabled, Gaming devices only, and Test. Test opens the Windows game-controller panel.",
-            "Gremlin control is off until you turn it on. Off means Joystick Gremlin will not write to HiDHide at startup or at exit. On means the saved device list, program list, Allow or Block choice, and HiDHide Enabled switch are written and left in place when you exit. HiDHide Enabled, the device selectors, and Allow list / Block list stay inactive until Gremlin control is on.",
-            "HiDHide Enabled on means HiDHide enforces the device list and the program list. Off means the driver is installed but it is not hiding anything. Gaming devices only limits the list to game controllers. Turn it off and use Refresh to look at a wider list.",
-            "Each device row can use the picture from its input or output module. Change image or Add image replaces that picture for this list only, and the replacement is kept. The selector adds or removes that device from the hide list. A device that is actually hidden is dimmed, and HIDDEN is drawn across the row. The bar between the devices and the programs is kept, and so is the window size.",
-            "Allow list means only the programs in the list can see the hidden controllers. Block list means the programs in the list cannot see them. Joystick Gremlin can still see the devices in both modes. Add Program adds an executable. Remove takes it off the list. The list is kept. Debug log prints HiDHide driver calls for this run. It starts off each launch."),
-        topic("View", "Scripts",
-            "Scripts are extra logic stored with the profile.",
-            "View → Scripts opens the script page. Edit the script there and save the profile."),
-        topic("View", "Profile settings",
-            "Profile settings are options stored in the profile rather than for the whole program.",
-            "View → Profile Settings opens that page. Change the settings, then save the profile."),
+            "<p>Swap Devices moves a profile’s bindings from one physical device to another of the same kind.</p>"
+            + "<p>Tools → Swap Devices. Choose the device that is in the profile and the device that should take its place. Save the profile afterward.</p>"),
+        topic("Tools", "Modules",
+            "<p>A module file is the picture and the saved look for one device. Input modules are physical devices. Output modules are vJoy and the other outputs. The input module chooses the file. Button Map and both display-option panels use that same file.</p>"
+            + "<p>Tools → Configure input module edits an input. Tools → Configure output module edits an output. Module file opens the file controls: the files in the current folder, Browse for File, and Delete. Checks, names, and the picture ask before the window closes if they are not saved. A successful save says “Saved to the module file.”</p>"
+            + "<p>The picture set here is the one HiDHide uses until you choose a different picture for that device in HiDHide. Tools → Import devices reads a device file. Tools → Export devices writes the selected device.</p>"),
+        topic("Tools", "HiDHide",
+            "<p>HiDHide hides selected controllers from other programs. Joystick Gremlin does not install the driver. Tools → HiDHide opens the window. Get HiDHide opens the download page. Test opens the Windows game-controller panel so you can see whether a controller is still visible.</p>"
+            + "<p>The top row shows whether the driver was found, its version, and Gremlin control. Gremlin control starts off. While it is off, this window does not change the driver. Turn it on to let Joystick Gremlin apply the device list, the program list, Allow list or Block list, and HiDHide Enabled. Those choices are kept, and they are written to the driver while Gremlin control is on. They stay when you exit.</p>"
+            + "<p>HiDHide Enabled means the driver enforces both lists. Off means the driver is installed but it is not hiding anything. Gaming devices only limits the list to game controllers. Turn it off and press Refresh to look at a wider list.</p>"
+            + "<p>A device can use the picture from its module. Change image or Add image replaces that picture for this list only, and the replacement is kept. The selector adds or removes that device. A device that is actually hidden is dimmed, and HIDDEN is drawn across the row.</p>"
+            + "<p>Allow list means only the programs in the list can see the hidden controllers. Block list means the programs in the list cannot see them. Joystick Gremlin can still see the devices in both modes. Add Program adds an executable. Remove takes it off the list. The window size, and the bar between the devices and the programs, are kept.</p>"),
         topic("Tools", "Options",
-            "Options are program settings. They are not stored inside one profile.",
-            "Tools → Options. Action sequence ordering sets the order actions run. Highlight scope and highlight speed control how a live press is shown. Log level sets how much is written to the log. OSC input host, OSC output host, and OSC auto-release set the OSC connection and how long an OSC input stays down. Profile auto-loading opens a profile when a chosen program starts. Status cards resets the Home card sizes. Text to Speech chooses the voice used by the Text to Speech action.")
+            "<p>Options are program settings. They are not stored inside one profile.</p>"
+            + "<p>Tools → Options. Action sequence ordering sets the order actions run. Highlight scope and highlight speed control how a live press is shown. Log level sets how much is written to the log. OSC input host, OSC output host, and OSC auto-release set the OSC connection and how long an OSC input stays down. Profile auto-loading opens a profile when a chosen program starts. Status cards resets the Home card sizes. Text to Speech chooses the voice used by the Text to Speech action.</p>"),
+        topic("View", "Scripts",
+            "<p>Scripts are extra logic stored with the profile.</p>"
+            + "<p>View → Scripts opens the script page. Edit the script there, then save the profile.</p>"),
+        topic("View", "Profile settings",
+            "<p>Profile settings are options stored in the profile rather than for the whole program.</p>"
+            + "<p>View → Profile Settings opens that page. Change the settings, then save the profile.</p>")
     ]
 }
 
-function topic(section, title, what, how, extra, extra2, extra3, extra4) {
-    var parts = ["<b>What it is</b><br>" + what, "<b>How to use it</b><br>" + how]
-    if (extra)
-        parts.push(extra)
-    if (extra2)
-        parts.push(extra2)
-    if (extra3)
-        parts.push(extra3)
-    if (extra4)
-        parts.push(extra4)
-    return { "section": section, "title": title, "body": parts.join("<br><br>") }
+function topic(section, title, body) {
+    return { "section": section, "title": title, "body": body }
 }
