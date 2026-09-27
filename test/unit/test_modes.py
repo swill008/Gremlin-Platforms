@@ -99,6 +99,25 @@ class TestModeHierarchy:
         assert mh.find_mode("Default").parent.value == "Second"
         assert mh.find_mode("Default").parent == mh.find_mode("Second")
 
+    def test_first_mode_is_alphabetical_parentless(self) -> None:
+        p = Profile()
+        mh = p.modes
+        mh.add_mode("Zeta")
+        mh.add_mode("Alpha")
+        assert mh.first_mode == "Alpha"
+        mh.set_parent("Alpha", "Default")
+        assert mh.first_mode == "Default"
+
+    def test_startup_mode_follows_rename_and_delete(self) -> None:
+        p = Profile()
+        mh = p.modes
+        mh.add_mode("Combat")
+        p.settings.startup_mode = "Combat"
+        mh.rename_mode("Combat", "Fight")
+        assert p.settings.startup_mode == "Fight"
+        mh.delete_mode("Fight")
+        assert p.settings.startup_mode == "Use Heuristic"
+
     def test_complex_modifications(self, xml_dir: pathlib.Path) -> None:
         p = Profile()
         p.from_xml(str(xml_dir / _PROFILE_REALISTIC))

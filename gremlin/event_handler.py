@@ -539,6 +539,26 @@ class EventHandler(QtCore.QObject):
             self.callbacks[device_guid][mode][event] = []
         self.callbacks[device_guid][mode][event].append(self._install_plugins(callback))
 
+    def rename_mode(self, old_name: str, new_name: str) -> None:
+        """Move callbacks registered for a mode onto its new name."""
+        if old_name == new_name:
+            return
+        for device_cb in self.callbacks.values():
+            if old_name not in device_cb:
+                continue
+            moved = device_cb.pop(old_name)
+            current = device_cb.get(new_name)
+            if current is None:
+                device_cb[new_name] = moved
+                continue
+            for event, callbacks in moved.items():
+                current.setdefault(event, []).extend(callbacks)
+
+    def drop_mode(self, name: str) -> None:
+        """Remove callbacks registered for a deleted mode."""
+        for device_cb in self.callbacks.values():
+            device_cb.pop(name, None)
+
     def build_event_lookup(self, mode_list: list[tree.TreeNode]) -> None:
         """Builds the lookup table linking events to callbacks.
 

@@ -102,7 +102,7 @@ function topics() {
             + "<p>Choose the action it should follow.</p>"),
         topic("Modes", "Modes",
             "<p>A mode is a set of bindings. Only the current mode’s actions run. The same button can do different work in another mode.</p>"
-            + "<p>Tools → Manage Modes creates, renames, and removes modes. Change Mode switches to one of them from a button. The mode shown in the editor is the one you are editing. Save the profile to keep the modes.</p>"),
+            + "<p>Tools → Manage Modes creates, renames, and removes modes. The mode box in the toolbar is the one you are editing. Executing mode, at the bottom, is the one that runs. Change Mode switches that running mode from a button. Profile Settings chooses the mode used when the program is turned on. Use Heuristic picks the first mode, in alphabetical order, that has no parent. Last Active picks the mode this profile was running the last time it was on. Save the profile to keep the modes.</p>"),
         topic("Tools", "Button Map",
             "<p>Button Map is a picture of one device, with a chip on each control. Moving a chip changes the picture, not the action bound to that control. The same layout is used live, and a press still lights the matching chip.</p>"
             + "<p>Tools → Button Map opens a blank map. Choose the device from the menu. Right-click a device card and choose Button Map to open that device. File → Edit Mapping starts an edit. Drag chips from the pool onto the photo. Drag a chip to move it, and drag its dot to move the contact. Scroll to zoom. Drag with the middle button to pan.</p>"

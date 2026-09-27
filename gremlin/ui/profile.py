@@ -832,6 +832,13 @@ class ModeHierarchyModel(QtCore.QObject):
     def current_modes(self) -> gremlin.profile.ModeHierarchy:
         return shared_state.current_profile.modes
 
+    def _follow_editor(self, old_name: str, new_name: str) -> None:
+        from gremlin.ui.backend import Backend
+
+        state = Backend().ui_state
+        if state.currentMode == old_name and new_name:
+            state.setCurrentMode(new_name)
+
     @QtCore.Slot(str)
     def newMode(self, name: str) -> None:
         if not self.current_modes.mode_exists(name):
@@ -843,12 +850,20 @@ class ModeHierarchyModel(QtCore.QObject):
     def renameMode(self, old_name: str, new_name: str) -> None:
         if old_name != new_name and new_name not in self.modeStringList():
             self.current_modes.rename_mode(old_name, new_name)
+            from gremlin.mode_manager import ModeManager
+
+            ModeManager().rename_mode(old_name, new_name)
+            self._follow_editor(old_name, new_name)
             self.modesChanged.emit()
             signal.modesChanged.emit()
 
     @QtCore.Slot(str)
     def deleteMode(self, name: str) -> None:
         self.current_modes.delete_mode(name)
+        from gremlin.mode_manager import ModeManager
+
+        ModeManager().drop_mode(name)
+        self._follow_editor(name, self.current_modes.first_mode)
         self.modesChanged.emit()
         signal.modesChanged.emit()
 

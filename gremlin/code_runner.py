@@ -276,6 +276,25 @@ class CallbackObject:
         return [value]
 
 
+def resolve_start_mode(active_profile: profile.Profile) -> str:
+    """Returns the mode a profile should start in.
+
+    A named startup mode is used as itself. Last Active uses the mode this
+    profile was running the last time it was on, when that mode still exists.
+    Use Heuristic uses the alphabetically first mode that has no parent.
+    """
+    mode_names = active_profile.modes.mode_names()
+    startup_mode = active_profile.settings.startup_mode
+    if startup_mode in mode_names:
+        return startup_mode
+    if startup_mode == "Last Active" and active_profile.fpath is not None:
+        stored = Configuration().value("global", "internal", "last-mode-per-profile")
+        last_mode = dict(stored).get(str(active_profile.fpath))
+        if last_mode in mode_names:
+            return last_mode
+    return active_profile.modes.first_mode
+
+
 class CodeRunner:
     """Runs the actual profile code."""
 
@@ -296,9 +315,7 @@ class CodeRunner:
         self._reset_state()
 
         settings = self._profile.settings
-        if settings.startup_mode is not None:
-            if settings.startup_mode in self._profile.modes.mode_names():
-                start_mode = settings.startup_mode
+        start_mode = resolve_start_mode(self._profile)
 
         macro.MacroManager().default_delay = settings.macro_default_delay
         syslog = logging.getLogger("system")

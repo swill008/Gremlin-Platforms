@@ -97,16 +97,76 @@ class ModeManager(QtCore.QObject):
 
     def reset(self) -> None:
         self._mode_stack = [Mode(shared_state.current_profile.modes.first_mode, None)]
-        self._config.set("global", "internal", "last-mode", self.current.name)
 
     def _exists(self, mode: Mode) -> bool:
         return mode in self._mode_stack
 
+    def _store_last_mode(self) -> None:
+        profile = shared_state.current_profile
+        if profile is None or profile.fpath is None:
+            return
+        last_mode = next(
+            (mode for mode in reversed(self._mode_stack) if not mode.is_temporary),
+            None,
+        )
+        if last_mode is None:
+            return
+        config = Configuration()
+        stored = dict(config.value("global", "internal", "last-mode-per-profile"))
+        stored[str(profile.fpath)] = last_mode.name
+        config.set("global", "internal", "last-mode-per-profile", stored)
+
+    def _rewrite_stored_name(self, old_name: str, new_name: str | None) -> None:
+        profile = shared_state.current_profile
+        if profile is None or profile.fpath is None:
+            return
+        config = Configuration()
+        stored = dict(config.value("global", "internal", "last-mode-per-profile"))
+        key = str(profile.fpath)
+        if stored.get(key) != old_name:
+            return
+        if new_name:
+            stored[key] = new_name
+        else:
+            stored.pop(key, None)
+        config.set("global", "internal", "last-mode-per-profile", stored)
+
     def _update_mode(self) -> None:
-        self._config.set("global", "internal", "last-mode", self.current.name)
+        self._store_last_mode()
         self.mode_changed.emit(self.current.name)
         if self._config.value("global", "general", "refresh-axis-on-mode-change"):
             RefreshPhysicalInputs.refresh_axes()
+
+    def rename_mode(self, old_name: str, new_name: str) -> None:
+        """Keep the running stack and the saved last mode on a renamed mode."""
+        if old_name == new_name:
+            return
+        current_changed = self.current.name == old_name
+        for mode in self._mode_stack:
+            if mode.name == old_name:
+                mode._name = new_name
+            if mode.previous == old_name:
+                mode.previous = new_name
+        self._rewrite_stored_name(old_name, new_name)
+        if current_changed:
+            self._update_mode()
+        from gremlin.event_handler import EventHandler
+
+        EventHandler().rename_mode(old_name, new_name)
+
+    def drop_mode(self, name: str) -> None:
+        """Remove a deleted mode from the running stack."""
+        current_changed = self.current.name == name
+        self._mode_stack = [mode for mode in self._mode_stack if mode.name != name]
+        if len(self._mode_stack) == 0:
+            fallback = shared_state.current_profile.modes.first_mode
+            self._mode_stack = [Mode(fallback, None)]
+        self._rewrite_stored_name(name, None)
+        if current_changed:
+            self._update_mode()
+        from gremlin.event_handler import EventHandler
+
+        EventHandler().drop_mode(name)
 
     def cycle(self, sequence: ModeSequence) -> None:
         self.switch_to(Mode(sequence.next(), self.current.name))

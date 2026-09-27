@@ -31,6 +31,7 @@ _required_properties = {
     PropertyType.Selection: {"valid_options": list},
     PropertyType.HatDirection: {},
     PropertyType.Path: {"is_folder": bool},
+    PropertyType.Dict: {},
 }
 
 

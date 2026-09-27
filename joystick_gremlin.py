@@ -424,6 +424,10 @@ def register_config_options() -> None:
         "Name of the last active mode", {},
     )
     cfg.register(
+        "global", "internal", "last-mode-per-profile", PropertyType.Dict, {},
+        "Last active mode for each profile path", {},
+    )
+    cfg.register(
         "global", "internal", "last-profile", PropertyType.String, "",
         "Most recently used profile", {},
     )

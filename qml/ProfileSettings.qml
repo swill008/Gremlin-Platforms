@@ -63,10 +63,7 @@ Item {
                     UIText {
                         Layout.fillWidth: true
 
-                        text: "Selection defines what mode Gremlin should start " +
-                            "in when the profile is activated. \"Use Heuristic\" " +
-                            "lets Gremlin decide, otherwise the selected mode is " +
-                            "used."
+                        text: "Use Heuristic starts in the first mode, in alphabetical order, that has no parent. Last Active starts in the mode this profile was using the last time it ran. Choosing a mode by name always starts in that mode."
                     }
                 }
 

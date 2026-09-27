@@ -1037,12 +1037,15 @@ class ModeHierarchy:
 
     @property
     def first_mode(self) -> str:
-        """Returns the name of the first mode.
+        """Returns the alphabetically first mode without a parent.
 
         Returns:
             Name of the first mode
         """
-        return self._hierarchy.children[0].value
+        roots = [child.value for child in self._hierarchy.children]
+        if len(roots) == 0:
+            return "Default"
+        return min(roots)
 
     def mode_names(self) -> list[str]:
         """Returns a list containing the names of all modes.
@@ -1132,6 +1135,9 @@ class ModeHierarchy:
                 x for x in input_items if x.mode != mode_name
             ]
 
+        if self._profile.settings.startup_mode == mode_name:
+            self._profile.settings.startup_mode = "Use Heuristic"
+
     def rename_mode(self, old_name: str, new_name: str) -> None:
         """Changes the name of an existing mode.
 
@@ -1162,6 +1168,9 @@ class ModeHierarchy:
         # Find all actions associated to the old mode name
         for action in self._actions_with_mode(old_name):
             action.mode = new_name
+
+        if self._profile.settings.startup_mode == old_name:
+            self._profile.settings.startup_mode = new_name
 
     def set_parent(self, mode_name: str, parent_name: str | None) -> None:
         """Sets the parent of the specified mode.

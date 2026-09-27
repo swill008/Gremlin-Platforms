@@ -808,13 +808,24 @@ ApplicationWindow {
                 Layout.preferredWidth: 200
                 Layout.rightMargin: 10
 
-                model: ModeListModel {}
+                model: ModeListModel { id: _modeList }
                 textRole: "name"
                 valueRole: "name"
 
                 onActivated: () => {
                     if (uiState) {
                         uiState.setCurrentMode(currentText)
+                    }
+                }
+
+                Connections {
+                    target: _modeList
+                    function onModelReset() {
+                        if (!uiState)
+                            return
+                        var index = _modeSelector.find(uiState.currentMode)
+                        if (index >= 0)
+                            _modeSelector.currentIndex = index
                     }
                 }
 

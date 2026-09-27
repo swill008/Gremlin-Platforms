@@ -311,6 +311,7 @@ _type_lookup = {
     PropertyType.Point2D: Point2D,
     PropertyType.ScriptVariableType: ScriptVariableType,
     PropertyType.Path: Path,
+    PropertyType.Dict: dict,
 }
 
 _element_parsers = {
