@@ -1942,7 +1942,7 @@ Item {
                     Button {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 44
-                        text: "Reset All\nSettings"
+                        text: "Reset View\nto Default"
                         onClicked: resetCatalog()
                         contentItem: Text {
                             text: parent.text
@@ -1962,7 +1962,7 @@ Item {
                         id: _copyButton
                         Layout.fillWidth: true
                         Layout.preferredHeight: 44
-                        text: "Copy Settings\nfrom…"
+                        text: "Copy View\nfrom…"
                         onClicked: {
                             refreshCopySources()
                             _copyMenu.popup(_copyButton, 0, _copyButton.height)
@@ -1978,7 +1978,7 @@ Item {
                     Button {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 44
-                        text: "Save\nSettings"
+                        text: "Save View\nSettings"
                         highlighted: true
                         onClicked: saveCatalog()
                         contentItem: Text {

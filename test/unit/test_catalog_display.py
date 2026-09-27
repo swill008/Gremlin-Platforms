@@ -63,10 +63,10 @@ def test_assignment_summary_counts_destinations() -> None:
     assert 'text: "Open all"' in text
     assert 'text: "Close all"' in text
     assert "Layout.preferredWidth: 360" in text
-    assert 'text: "Save\\nSettings"' in text
+    assert 'text: "Save View\\nSettings"' in text
     assert "onClicked: resetCatalog()" in text
-    assert 'text: "Reset All\\nSettings"' in text
-    assert 'text: "Copy Settings\\nfrom…"' in text
+    assert 'text: "Reset View\\nto Default"' in text
+    assert 'text: "Copy View\\nfrom…"' in text
     assert "id: _savedToast" in text
     assert "interval: 2000" in text
     assert "CloseOnPressOutside" in text
