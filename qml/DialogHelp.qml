@@ -16,7 +16,7 @@ Window {
     height: 640
     minimumWidth: 720
     minimumHeight: 480
-    title: qsTr("Joystick Gremlin Help")
+    title: qsTr("User Guide")
     color: Style.background
     Universal.theme: Style.theme
 
