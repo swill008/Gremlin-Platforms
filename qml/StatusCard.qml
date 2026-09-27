@@ -60,6 +60,7 @@ Rectangle {
     signal sizeChanged(int w, int h)
     signal resetSize()
     signal clearSettings()
+    signal deleteDevice()
     signal unstackCard()
     signal unstackAllCards()
     signal shiftToggled()
@@ -460,5 +461,19 @@ Rectangle {
         MenuItem { text: "Hide device"; onTriggered: _card.ignoreDevice() }
         MenuSeparator {}
         MenuItem { text: "Clear module settings"; onTriggered: _card.clearSettings() }
+        MenuSeparator {}
+        MenuItem {
+            id: _deleteDeviceItem
+            text: "Delete Device"
+            onTriggered: _card.deleteDevice()
+            contentItem: Label {
+                text: _deleteDeviceItem.text
+                color: "#F87171"
+                font.bold: true
+                leftPadding: 12
+                rightPadding: 12
+                verticalAlignment: Text.AlignVCenter
+            }
+        }
     }
 }

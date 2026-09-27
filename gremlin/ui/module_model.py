@@ -25,6 +25,8 @@ from gremlin.ui.hardware_profile import (
     _slug,
     bind_module_file,
     delete_module_file,
+    delete_device,
+    delete_preview,
     foreign_module_file,
     guid_for_module,
     import_module_file,
@@ -56,6 +58,7 @@ _CFG_SPLIT = "split-mode"
 _CFG_SPLIT_RATIO = "split-ratio"
 _CFG_STACKS = "card-stacks"
 _CFG_SIZES = "card-sizes"
+_CFG_KEPT_STUBS = "kept-stubs"
 
 
 def _ensure_display_options() -> None:
@@ -100,6 +103,12 @@ def _ensure_display_options() -> None:
     )
     _reg(_CFG_STACKS, PropertyType.String, "", "Status card stacks (slug+slug|slug).")
     _reg(_CFG_SIZES, PropertyType.String, "", "Status card sizes (slug=WxH).")
+    _reg(
+        _CFG_KEPT_STUBS,
+        PropertyType.String,
+        "",
+        "Devices kept visible as stubs after Delete Device.",
+    )
 
 
 def _write_status(name: str, value) -> None:
@@ -115,6 +124,41 @@ def _hidden_slugs() -> set[str]:
     _ensure_display_options()
     raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_HIDDEN) or "")
     return {p.strip() for p in raw.split(",") if p.strip()}
+
+
+def _kept_stubs() -> set[str]:
+    _ensure_display_options()
+    raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_KEPT_STUBS) or "")
+    return {p.strip() for p in raw.split(",") if p.strip()}
+
+
+def _set_kept_stubs(slugs: set[str]) -> None:
+    _write_status(_CFG_KEPT_STUBS, ",".join(sorted(slugs)))
+
+
+def _remember_stub(slug: str) -> None:
+    if not slug:
+        return
+    kept = _kept_stubs()
+    if slug in kept:
+        return
+    kept.add(slug)
+    _set_kept_stubs(kept)
+
+
+def _release_kept_stub(slug: str) -> None:
+    kept = _kept_stubs()
+    if slug not in kept:
+        return
+    kept.discard(slug)
+    _set_kept_stubs(kept)
+
+
+def _show_unconfigured(slug: str, saved: bool, show_stubs: bool) -> bool:
+    if saved:
+        _release_kept_stub(slug)
+        return True
+    return show_stubs or slug in _kept_stubs()
 
 
 def _set_hidden(slugs: set[str]) -> None:
@@ -1235,6 +1279,27 @@ class ModuleListModel(QtCore.QAbstractListModel):
         return self.importModuleFile(guid, device_name, source_url, "source")
 
     @QtCore.Slot(str, str, result=str)
+    def deletePreview(self, device_name: str, guid: str) -> str:
+        return delete_preview(device_name, guid)
+
+    @QtCore.Slot(str, str, bool, result=str)
+    def deleteDevice(self, device_name: str, guid: str, save_copy: bool) -> str:
+        raw = delete_device(device_name, guid, bool(save_copy))
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            return raw
+        if data.get("ok"):
+            slug = _slug(device_name)
+            if data.get("stub"):
+                _remember_stub(slug)
+            self.clearCardSettings(slug)
+            if self._focus == slug:
+                self._focus = ""
+            self._reload()
+        return raw
+
+    @QtCore.Slot(str, str, result=str)
     def deleteModuleFile(self, guid: str, device_name: str) -> str:
         message = delete_module_file(device_name, guid)
         if not message:
@@ -1346,7 +1411,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             if slug in hidden:
                 continue
             saved = module_exists(name)
-            if not saved and not show_stubs:
+            if not _show_unconfigured(slug, saved, show_stubs):
                 continue
             row = ModuleRow()
             row.slug = slug
@@ -1381,7 +1446,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             if slug in hidden:
                 return
             saved = module_exists(name)
-            if not saved and not show_stubs and direction == "source":
+            if not _show_unconfigured(slug, saved, show_stubs) and direction == "source":
                 return
             row = ModuleRow()
             row.slug = slug

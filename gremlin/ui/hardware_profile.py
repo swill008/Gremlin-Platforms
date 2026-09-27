@@ -723,6 +723,329 @@ def delete_module_file(device_name: str, guid: str) -> str:
     return ""
 
 
+def _deleted_dir() -> Path:
+    path = _install_root() / "deleted devices"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _pack_file_name(device_name: str) -> str:
+    raw = " ".join(str(device_name or "").split()) or "device"
+    cleaned = []
+    for ch in raw:
+        if ch in '<>:"/\\|?*' or ord(ch) < 32:
+            cleaned.append(" ")
+        else:
+            cleaned.append(ch)
+    name = " ".join("".join(cleaned).split()).strip(" .")
+    return name or "device"
+
+
+def _deleted_pack_path(device_name: str) -> Path:
+    folder = _deleted_dir()
+    base = _pack_file_name(device_name)
+    path = folder / f"{base}.zip"
+    if not path.exists():
+        return path
+    stamp = datetime.now().strftime("%Y-%m-%d %H%M")
+    path = folder / f"{base} {stamp}.zip"
+    number = 2
+    while path.exists():
+        path = folder / f"{base} {stamp} {number}.zip"
+        number += 1
+    return path
+
+
+def _zip_readable(path: Path) -> bool:
+    try:
+        with zipfile.ZipFile(path, "r") as zf:
+            if "map.json" not in zf.namelist():
+                return False
+            doc = json.loads(zf.read("map.json").decode("utf-8"))
+        return isinstance(doc, dict)
+    except Exception:
+        return False
+
+
+def _active_module_path(device_name: str, guid: str) -> Path:
+    slug = resolve_module_slug(device_name, guid_for_module(device_name, guid))
+    return _maps_dir() / f"{(slug or _slug(device_name))}.json"
+
+
+def _own_file_shared(device_name: str, guid: str) -> bool:
+    own = _slug(device_name)
+    if not (_maps_dir() / f"{own}.json").is_file():
+        return False
+    key = _norm_guid(guid) or _guid_for_name(device_name)
+    others = _users_of_slug(own) - ({key} if key else set())
+    others.discard(_name_key(device_name))
+    return bool(others)
+
+
+def _device_stays_listed(device_name: str) -> bool:
+    wanted = " ".join(str(device_name or "").split()).lower()
+    if wanted in {"keyboard", "osc", "xbox 360 controller", "logical device"}:
+        return True
+    if wanted.startswith("vjoy "):
+        return True
+    try:
+        from gremlin import device_initialization
+
+        for dev in list(device_initialization.physical_devices() or []):
+            if str(getattr(dev, "name", "") or "").strip().lower() == wanted:
+                return True
+        for dev in list(device_initialization.vjoy_devices() or []):
+            label = f"vjoy {getattr(dev, 'vjoy_id', '')}".strip().lower()
+            if label == wanted:
+                return True
+    except Exception:
+        return False
+    return False
+
+
+def delete_preview(device_name: str, guid: str) -> str:
+    name = " ".join(str(device_name or "").split())
+    path = _active_module_path(name, guid)
+    return json.dumps({
+        "name": name,
+        "canPack": path.is_file(),
+        "shared": _own_file_shared(name, guid),
+        "foreign": bool(foreign_module_file(name, guid)),
+        "listed": _device_stays_listed(name),
+    })
+
+
+def _child_actions(action) -> list:
+    getter = getattr(action, "get_actions", None)
+    if not callable(getter):
+        return []
+    try:
+        buckets = getter()
+    except Exception:
+        return []
+    if not isinstance(buckets, (list, tuple)):
+        return []
+    found = []
+    for bucket in buckets:
+        if isinstance(bucket, (list, tuple)):
+            found.extend(bucket)
+    return [child for child in found if child is not None]
+
+
+def _drop_binding_tree(profile, binding) -> None:
+    root = getattr(binding, "root_action", None)
+    if root is None or not profile.library.has_action(getattr(root, "id", None)):
+        return
+    try:
+        profile.library.remove_unused(root, True)
+    except Exception:
+        pass
+
+
+def _drop_inputs(profile, uid) -> None:
+    items = list(profile.inputs.pop(uid, []) or [])
+    for item in items:
+        for binding in list(getattr(item, "action_sequences", None) or []):
+            _drop_binding_tree(profile, binding)
+
+
+def _matches_output(action, kind: str, number: int) -> bool:
+    if kind == "vjoy":
+        try:
+            return int(getattr(action, "vjoy_device_id")) == int(number)
+        except (TypeError, ValueError, AttributeError):
+            return False
+    if kind == "xbox":
+        return getattr(action, "xbox_device_id", None) is not None
+    return False
+
+
+def _drop_output_targets(profile, device_name: str) -> None:
+    name = " ".join(str(device_name or "").split())
+    lower = name.lower()
+    if lower.startswith("vjoy "):
+        digits = "".join(ch for ch in name if ch.isdigit())
+        if not digits:
+            return
+        kind, number = "vjoy", int(digits)
+    elif "xbox" in lower:
+        kind, number = "xbox", 0
+    else:
+        return
+    for items in list(profile.inputs.values()):
+        for item in list(items):
+            sequences = list(getattr(item, "action_sequences", None) or [])
+            for binding in sequences:
+                root = getattr(binding, "root_action", None)
+                if root is None:
+                    continue
+                pending = _child_actions(root)
+                seen = {id(root)}
+                while pending:
+                    action = pending.pop()
+                    if action is None or id(action) in seen:
+                        continue
+                    seen.add(id(action))
+                    if _matches_output(action, kind, number):
+                        try:
+                            profile.remove_action(action, binding)
+                        except Exception:
+                            pass
+                        continue
+                    pending.extend(_child_actions(action))
+                if not _child_actions(root):
+                    item.remove_item_binding(binding)
+                    _drop_binding_tree(profile, binding)
+
+
+def _prune_empty_inputs(profile) -> None:
+    empty = []
+    for key, items in list(profile.inputs.items()):
+        kept = [item for item in items if getattr(item, "action_sequences", None)]
+        if kept:
+            profile.inputs[key] = kept
+        else:
+            empty.append(key)
+    for key in empty:
+        profile.inputs.pop(key, None)
+
+
+def _save_profile_wires(device_name: str, guid: str) -> str:
+    from gremlin.shared_state import current_profile
+    from gremlin.ui.input_pairing import _guid
+
+    profile = current_profile
+    if profile is None:
+        return ""
+    text = str(guid or "").strip() or _guid_for_name(device_name)
+    uid = _guid(text)
+    if uid is not None:
+        _drop_inputs(profile, uid)
+    if _target_direction(device_name) == "dest":
+        _drop_output_targets(profile, device_name)
+    _prune_empty_inputs(profile)
+    path = getattr(profile, "fpath", None)
+    if path:
+        try:
+            profile.to_xml(path)
+        except Exception as exc:
+            signal.profileChanged.emit()
+            return (
+                "The profile could not be saved, so the module file was kept. "
+                "Reload the profile to bring the wires back. "
+                f"{exc}"
+            )
+    signal.profileChanged.emit()
+    return ""
+
+
+def _clear_device_binding_keys(device_name: str, guid: str) -> None:
+    data = _binding_store()
+    key = _norm_guid(guid) or _guid_for_name(device_name)
+    name_key = _name_key(device_name)
+    changed = False
+    if key and key in data:
+        data.pop(key, None)
+        changed = True
+    if name_key and name_key in data:
+        data.pop(name_key, None)
+        changed = True
+    if changed:
+        _write_bindings(data)
+
+
+def _delete_own_module_files(device_name: str) -> str:
+    slug = _slug(device_name)
+    try:
+        path = _maps_dir() / f"{slug}.json"
+        if path.is_file():
+            path.unlink()
+        folder = _maps_dir() / slug
+        if folder.is_dir():
+            shutil.rmtree(folder)
+        for extra in _maps_dir().glob(f"{slug}_photo.*"):
+            if extra.is_file():
+                extra.unlink()
+    except OSError as exc:
+        return str(exc)
+    return ""
+
+
+def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
+    """Archive this device when asked, then remove its live module and wires."""
+    from gremlin.shared_state import current_profile
+
+    name = " ".join(str(device_name or "").split())
+    if not name:
+        return json.dumps({"ok": False, "error": "Choose a device."})
+    pack_path = ""
+    if save_copy:
+        if not _active_module_path(name, guid).is_file():
+            return json.dumps({
+                "ok": False,
+                "error": "This device has no module file, so a pack cannot be saved.",
+            })
+        from gremlin.ui.device_pack import assemble
+
+        built = assemble(name, HardwareProfile()._resolve_existing)
+        if isinstance(built, str):
+            return json.dumps({"ok": False, "error": built})
+        data, _info = built
+        dest = _deleted_pack_path(name)
+        try:
+            dest.write_bytes(data)
+        except OSError as exc:
+            return json.dumps({"ok": False, "error": f"The pack could not be written. {exc}"})
+        if not _zip_readable(dest):
+            try:
+                dest.unlink()
+            except OSError:
+                pass
+            return json.dumps({
+                "ok": False,
+                "error": "The pack could not be read back, so the device was not deleted.",
+            })
+        pack_path = str(dest)
+    wire_error = _save_profile_wires(name, guid)
+    if wire_error:
+        if pack_path:
+            try:
+                Path(pack_path).unlink()
+            except OSError:
+                pass
+        return json.dumps({"ok": False, "error": wire_error})
+    shared = _own_file_shared(name, guid)
+    file_error = ""
+    if not shared:
+        file_error = _delete_own_module_files(name)
+    _clear_device_binding_keys(name, guid)
+    own_left = (_maps_dir() / f"{_slug(name)}.json").is_file()
+    profile = current_profile
+    if profile is None:
+        saved = True
+    else:
+        saved = bool(getattr(profile, "fpath", None))
+    if file_error and own_left:
+        return json.dumps({
+            "ok": False,
+            "error": (
+                "The wires were removed, but the module file could not be deleted. "
+                f"{file_error}"
+            ),
+            "packPath": pack_path,
+        })
+    listed = _device_stays_listed(name)
+    return json.dumps({
+        "ok": True,
+        "name": name,
+        "packPath": pack_path,
+        "keptFile": bool(shared and own_left),
+        "stub": listed and not own_left,
+        "listed": listed,
+        "profileSaved": saved,
+    })
+
+
 def maps_folder_url() -> str:
     return _maps_dir().as_uri()
 

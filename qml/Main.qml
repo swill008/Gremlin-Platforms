@@ -310,6 +310,18 @@ ApplicationWindow {
         leaveDisplayThen(function() { closeWorkRoomNow() })
     }
 
+    function closeDeletedDevice(card) {
+        var name = card ? String(card.rawName || card.name || "").trim() : ""
+        var guid = card ? String(card.guid || "") : ""
+        if (name && (configTitleName === name || (uiState && String(uiState.currentDevice || "") === guid)))
+            closeWorkRoomNow()
+        var map = buttonMapWindow()
+        if (map && (String(map.targetName || "") === name || String(map.targetGuid || "") === guid))
+            map.close()
+        if (configureWin && (String(configureWin.deviceName || "") === name || String(configureWin.deviceGuid || "") === guid))
+            configureWin.close()
+    }
+
     function requestNewProfile() {
         _newProfileDialog.open()
     }
@@ -1118,6 +1130,9 @@ ApplicationWindow {
             }
             onIgnoreDevice: function(card) {
                 _moduleModel.ignoreSlug(card.slug)
+            }
+            onDeviceDeleted: function(card) {
+                closeDeletedDevice(card)
             }
         }
 

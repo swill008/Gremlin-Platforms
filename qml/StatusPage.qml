@@ -64,6 +64,7 @@ Item {
     signal openDeviceInformation(var card)
     signal assignHardware(var card)
     signal ignoreDevice(var card)
+    signal deviceDeleted(var card)
 
     property int pileRev: 0
 
@@ -356,6 +357,110 @@ Item {
         model.moveSlugBefore(slug, before)
     }
 
+    function askDelete(card) {
+        if (!card || !model)
+            return
+        var raw = String(card.rawName || card.cardName || card.name || "")
+        var preview = {}
+        try {
+            preview = JSON.parse(model.deletePreview(raw, card.guid || ""))
+        } catch (err) {
+            preview = {}
+        }
+        _deleteCard = card
+        _deleteName = String(preview.name || raw)
+        _deleteCanPack = !!preview.canPack
+        _deleteShared = !!preview.shared
+        _deleteForeign = !!preview.foreign
+        _deleteListed = preview.listed !== false
+        _deleteSaveCopy = _deleteCanPack
+        _saveCopyBox.checked = _deleteCanPack
+        _explainAdvance = false
+        _explainDialog.open()
+    }
+
+    function explainBody() {
+        var lines = ["Delete " + _deleteName + "."]
+        if (_deleteForeign)
+            lines.push("This device is using another device's file. That file stays. This device's wires are removed.")
+        if (_deleteShared)
+            lines.push("Another device uses this module file, so the file stays. This device's wires are removed. The card stays.")
+        else if (!_deleteForeign)
+            lines.push("This removes the module file, its pictures, and the wires in every mode. The card's size and stack are cleared.")
+        if (!_deleteShared && _deleteListed)
+            lines.push("The Windows device stays, and a stub card remains.")
+        else if (!_deleteListed)
+            lines.push("This device is not connected, so no card will remain.")
+        if (!_deleteCanPack)
+            lines.push("This device has no module file, so a pack cannot be saved.")
+        return lines.join("\n\n")
+    }
+
+    function confirmBody() {
+        var line = "Really delete " + _deleteName + "?"
+        if (_deleteSaveCopy)
+            line += " A pack will be written to deleted devices first."
+        else
+            line += " No copy will be saved."
+        if (_deleteShared)
+            line += " The module file stays."
+        else if (_deleteListed)
+            line += " A stub card will remain."
+        else
+            line += " No card will remain."
+        return line
+    }
+
+    function runDelete() {
+        if (!model || !_deleteCard)
+            return
+        var raw = String(_deleteCard.rawName || _deleteCard.cardName || _deleteCard.name || "")
+        var guid = String(_deleteCard.guid || "")
+        var card = _deleteCard
+        var rawResult = model.deleteDevice(raw, guid, _deleteSaveCopy)
+        var result = {}
+        try {
+            result = JSON.parse(rawResult)
+        } catch (err) {
+            result = { ok: false, error: "The delete could not be read." }
+        }
+        if (!result.ok) {
+            _doneTitle = "Delete stopped"
+            _doneMessage = String(result.error || "The device was not deleted.")
+            _doneDialog.open()
+            return
+        }
+        var done = "Deleted " + String(result.name || _deleteName) + "."
+        if (result.packPath)
+            done += " A copy was saved to " + result.packPath + "."
+        else
+            done += " No copy was saved."
+        if (result.keptFile)
+            done += " The module file was kept because another device uses it."
+        else if (result.stub)
+            done += " A stub card remains."
+        else
+            done += " No card remains."
+        if (result.profileSaved === false)
+            done += " Save the profile to keep the wire removal."
+        _doneTitle = "Device deleted"
+        _doneMessage = done
+        _doneDialog.open()
+        deviceDeleted(card)
+    }
+
+    property var _deleteCard: null
+    property string _deleteName: ""
+    property bool _deleteCanPack: false
+    property bool _deleteShared: false
+    property bool _deleteForeign: false
+    property bool _deleteListed: true
+    property bool _deleteSaveCopy: true
+    property bool _explainAdvance: false
+    property bool _confirmAdvance: false
+    property string _doneTitle: ""
+    property string _doneMessage: ""
+
     function bindCard(card) {
         _page.registerCard(card)
         card.hoverPeek = _page.hoverPeek
@@ -396,6 +501,7 @@ Item {
             if (model)
                 model.clearCardSettings(card.slug)
         })
+        card.onDeleteDevice.connect(function() { _page.askDelete(card) })
         card.onUnstackCard.connect(function() {
             if (model)
                 model.unstackSlug(card.slug)
@@ -840,6 +946,176 @@ Item {
         }
         function onFocusChanged() {
             Qt.callLater(_page.refreshCards)
+        }
+    }
+
+    Popup {
+        id: _explainDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        focus: true
+        padding: 16
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        onClosed: {
+            if (!_explainAdvance)
+                return
+            _explainAdvance = false
+            _confirmAdvance = false
+            _confirmDialog.open()
+        }
+
+        background: Rectangle {
+            color: Style.background
+            border.color: Style.accent
+            border.width: 1
+            radius: 4
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: "Delete Device"
+                font.bold: true
+                font.pixelSize: 16
+                Layout.preferredWidth: 440
+            }
+            Label {
+                text: _page.explainBody()
+                wrapMode: Text.WordWrap
+                Layout.preferredWidth: 440
+                Layout.fillWidth: true
+            }
+            CheckBox {
+                id: _saveCopyBox
+                text: "Save a copy in deleted devices"
+                enabled: _page._deleteCanPack
+                onToggled: _page._deleteSaveCopy = checked
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+                Button {
+                    text: "Cancel"
+                    onClicked: _explainDialog.close()
+                }
+                Button {
+                    text: "Continue"
+                    highlighted: true
+                    onClicked: {
+                        _explainAdvance = true
+                        _explainDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
+    Popup {
+        id: _confirmDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        focus: true
+        padding: 16
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        onClosed: {
+            if (!_confirmAdvance)
+                return
+            _confirmAdvance = false
+            _page.runDelete()
+        }
+
+        background: Rectangle {
+            color: Style.background
+            border.color: "#DC2626"
+            border.width: 1
+            radius: 4
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: "Really delete this device?"
+                font.bold: true
+                font.pixelSize: 16
+                color: "#F87171"
+                Layout.preferredWidth: 440
+            }
+            Label {
+                text: _page.confirmBody()
+                wrapMode: Text.WordWrap
+                Layout.preferredWidth: 440
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+                Button {
+                    text: "Cancel"
+                    onClicked: _confirmDialog.close()
+                }
+                Button {
+                    text: "Delete"
+                    onClicked: {
+                        _confirmAdvance = true
+                        _confirmDialog.close()
+                    }
+                    contentItem: Label {
+                        text: "Delete"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: parent.hovered ? "#B91C1C" : "#DC2626"
+                        radius: 4
+                    }
+                }
+            }
+        }
+    }
+
+    Popup {
+        id: _doneDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        focus: true
+        padding: 16
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            color: Style.background
+            border.color: _doneTitle === "Delete stopped" ? "#DC2626" : Style.accent
+            border.width: 1
+            radius: 4
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: _page._doneTitle
+                font.bold: true
+                font.pixelSize: 16
+                Layout.preferredWidth: 440
+            }
+            Label {
+                text: _page._doneMessage
+                wrapMode: Text.WordWrap
+                Layout.preferredWidth: 440
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                Button {
+                    text: "OK"
+                    highlighted: true
+                    onClicked: _doneDialog.close()
+                }
+            }
         }
     }
 
