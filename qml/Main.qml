@@ -782,9 +782,11 @@ ApplicationWindow {
 
         RowLayout {
             anchors.fill: parent
+            anchors.leftMargin: _homeButton.rightPadding + spacing + _toggleButton.sideSlack
             spacing: 8
 
             JGToolButton {
+                id: _homeButton
                 text: "\uF425"
                 caption: "Home"
                 color: (!uiState || uiState.currentRoom === "status") ? Style.accent : Style.foreground
@@ -793,6 +795,7 @@ ApplicationWindow {
                 onClicked: () => { closeWorkRoom() }
             }
             JGToolButton {
+                id: _toggleButton
                 text: "\uF448"
                 caption: "Toggle"
                 color: backend && backend.gremlinActive ? Style.accent : Style.foreground

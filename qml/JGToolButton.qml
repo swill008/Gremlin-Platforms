@@ -11,6 +11,7 @@ ToolButton {
     property alias color: _icon.color
     property alias tooltip: _tooltip.text
     property string caption: ""
+    readonly property real sideSlack: Math.max(0, (_face.implicitWidth - _icon.implicitWidth) / 2)
 
     leftPadding: 10
     rightPadding: 10
