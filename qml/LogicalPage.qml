@@ -606,11 +606,14 @@ Item {
         }
     }
 
-    component MoveGroupItem: MenuItem {
-        property string groupName: ""
-        onTriggered: {
-            _layout.setSelection([_root._menuKey])
-            _layout.moveSelected(groupName)
+    Component {
+        id: _moveItem
+        MenuItem {
+            property string groupName: ""
+            onTriggered: {
+                _layout.setSelection([_root._menuKey])
+                _layout.moveSelected(groupName)
+            }
         }
     }
 
@@ -684,7 +687,7 @@ Item {
                     takeItem(0).destroy()
                 var rows = _layout.groups
                 for (var i = 0; i < rows.length; ++i) {
-                    var item = MoveGroupItem.createObject(_moveMenu, {
+                    var item = _moveItem.createObject(_moveMenu, {
                         "text": rows[i].title,
                         "groupName": rows[i].name
                     })
