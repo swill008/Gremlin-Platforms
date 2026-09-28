@@ -1,0 +1,17 @@
+READ | Live Log | start | c:\users\stacie\joystick gremlin\logs\logs.txt | cleared
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+READ | Profile | from_xml | c:\users\stacie\joystick gremlin\profiles\test profile gremlin platforms.xml | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
