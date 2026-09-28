@@ -577,7 +577,7 @@ Item {
                 _hardwareKey = _menuKey
                 _hardwareTitle.text = _menuTitle
                 _search.text = ""
-                _hardware.folded = ({})
+                _hardware.opened = ({})
                 _loadHardware()
                 _hardware.open()
             }
@@ -641,16 +641,16 @@ Item {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         background: Rectangle { color: "#18181B"; border.color: "#3F3F46" }
         property var devices: []
-        property var folded: ({})
+        property var opened: ({})
         function deviceOpen(name) {
             if (_search.text.length)
                 return true
-            return folded[name] !== true
+            return opened[name] === true
         }
         function toggleDevice(name) {
-            var next = Object.assign({}, folded)
-            next[name] = deviceOpen(name)
-            folded = next
+            var next = Object.assign({}, opened)
+            next[name] = opened[name] !== true
+            opened = next
         }
         ColumnLayout {
             anchors.fill: parent
