@@ -553,11 +553,142 @@ Item {
     }
 
 
+    component MenuCountRow: Item {
+        id: row
+        required property string label
+        required property string kind
+        property bool rowHover: false
+        property alias countBox: _step
+        implicitWidth: 236
+        implicitHeight: 34
+
+        Rectangle {
+            anchors.fill: parent
+            color: !row.enabled ? "transparent"
+                 : row.rowHover ? Universal.listLowColor
+                 : "transparent"
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 8
+            spacing: 8
+
+            Label {
+                text: row.label
+                color: row.enabled ? Universal.baseHighColor : Universal.baseLowColor
+                Layout.fillWidth: true
+                verticalAlignment: Text.AlignVCenter
+                MouseArea {
+                    id: _word
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: row.enabled
+                    onContainsMouseChanged: row.rowHover = containsMouse || _step.hovered
+                    onClicked: _pageMenu.addCounted(row.kind, _step)
+                }
+            }
+
+            SpinBox {
+                id: _step
+                from: 1
+                to: 180
+                value: 1
+                editable: true
+                enabled: row.enabled
+                hoverEnabled: true
+                implicitWidth: 84
+                implicitHeight: 26
+                leftPadding: 16
+                rightPadding: 16
+                spacing: 0
+                onHoveredChanged: row.rowHover = hovered || _word.containsMouse
+                background: Item {}
+                contentItem: TextInput {
+                    text: _step.displayText
+                    font: _step.font
+                    color: _step.enabled ? Universal.baseHighColor : Universal.baseLowColor
+                    horizontalAlignment: Qt.AlignHCenter
+                    verticalAlignment: Qt.AlignVCenter
+                    readOnly: !_step.editable
+                    validator: _step.validator
+                    selectByMouse: true
+                    clip: true
+                    onAccepted: _pageMenu.addCounted(row.kind, _step)
+                }
+                up.indicator: Label {
+                    x: _step.mirrored ? 0 : _step.width - width
+                    width: 16
+                    height: _step.height
+                    text: "›"
+                    color: _step.enabled && _step.value < _step.to ? Universal.baseHighColor : Universal.baseLowColor
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                down.indicator: Label {
+                    x: _step.mirrored ? _step.width - width : 0
+                    width: 16
+                    height: _step.height
+                    text: "‹"
+                    color: _step.enabled && _step.value > _step.from ? Universal.baseHighColor : Universal.baseLowColor
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+        }
+    }
+
     Menu {
         id: _pageMenu
-        MenuItem { text: "Add Button"; enabled: !_root.editorLocked; onTriggered: _layout.addOne("button") }
-        MenuItem { text: "Add Axis"; enabled: !_root.editorLocked; onTriggered: _layout.addOne("axis") }
-        MenuItem { text: "Add Hat"; enabled: !_root.editorLocked; onTriggered: _layout.addOne("hat") }
+        width: 236
+        popupType: Popup.Item
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        function showCount(box, n) {
+            box.value = n
+            if (box.contentItem)
+                box.contentItem.text = box.textFromValue(n, box.locale)
+        }
+
+        function addCounted(kind, box) {
+            if (_root.editorLocked || !box)
+                return
+            var shown = box.contentItem ? box.contentItem.text : box.displayText
+            var n = box.valueFromText(shown, box.locale)
+            if (isNaN(n))
+                n = box.value
+            n = Math.max(box.from, Math.min(box.to, n))
+            _layout.addMany(kind, n, "", "")
+            showCount(box, 1)
+        }
+
+        function resetCounts() {
+            showCount(_addButtonRow.countBox, 1)
+            showCount(_addAxisRow.countBox, 1)
+            showCount(_addHatRow.countBox, 1)
+        }
+
+        onOpened: resetCounts()
+
+        MenuCountRow {
+            id: _addButtonRow
+            label: "Add Button"
+            kind: "button"
+            enabled: !_root.editorLocked
+        }
+        MenuCountRow {
+            id: _addAxisRow
+            label: "Add Axis"
+            kind: "axis"
+            enabled: !_root.editorLocked
+        }
+        MenuCountRow {
+            id: _addHatRow
+            label: "Add Hat"
+            kind: "hat"
+            enabled: !_root.editorLocked
+        }
     }
     Menu {
         id: _parentMenu
