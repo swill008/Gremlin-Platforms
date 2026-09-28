@@ -15,9 +15,6 @@ Item {
     id: _root
 
     property string mode: "Default"
-    property bool editorOpen: false
-    property string dock: "float"
-    property int editorWidth: 420
     property int paneWidth: 560
     property bool actionOpen: false
     property string paneKey: ""
@@ -47,9 +44,6 @@ Item {
     function _saveDock() {
         if (!_ready)
             return
-        _place.setLogicalDock(dock)
-        _place.setLogicalOpen(editorOpen)
-        _place.setLogicalWidth(editorWidth)
         _place.setLogicalValue("parentHeight", String(parentHeight))
         _place.setActionPaneWidth(paneWidth)
         _place.setClosePaneAfterOk(closeAfterOk)
@@ -117,9 +111,6 @@ Item {
     WindowPlacement { id: _place }
 
     Component.onCompleted: {
-        dock = _place.logicalDock()
-        editorOpen = _place.logicalOpen()
-        editorWidth = _place.logicalWidth()
         paneWidth = _place.actionPaneWidth()
         closeAfterOk = _place.closePaneAfterOk()
         var h = parseInt(_place.logicalValue("parentHeight"))
@@ -127,18 +118,8 @@ Item {
             parentHeight = h
         _layout.setMode(mode)
         _ready = true
-        _placeForm()
     }
 
-    onDockChanged: {
-        _saveDock()
-        _placeForm()
-    }
-    onEditorOpenChanged: {
-        _saveDock()
-        _placeForm()
-    }
-    onEditorWidthChanged: _saveDock()
     onPaneWidthChanged: _saveDock()
     onCloseAfterOkChanged: _saveDock()
     onParentHeightChanged: _saveDock()
@@ -147,38 +128,6 @@ Item {
     RowLayout {
         anchors.fill: parent
         spacing: 0
-
-        Item {
-            id: _leftHost
-            visible: _root.editorOpen && _root.dock === "left"
-            Layout.preferredWidth: visible ? _root.editorWidth : 0
-            Layout.minimumWidth: visible ? 280 : 0
-            Layout.fillHeight: true
-        }
-        Rectangle {
-            visible: _leftHost.visible
-            Layout.preferredWidth: 6
-            Layout.fillHeight: true
-            color: _leftGrip.containsMouse ? "#3B82F6" : "#3F3F46"
-            MouseArea {
-                id: _leftGrip
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.SplitHCursor
-                property int originW: 420
-                property real originX: 0
-                onPressed: (mouse) => {
-                    originW = _root.editorWidth
-                    originX = mapToItem(_root, mouse.x, mouse.y).x
-                }
-                onPositionChanged: (mouse) => {
-                    if (!pressed)
-                        return
-                    var x = mapToItem(_root, mouse.x, mouse.y).x
-                    _root.editorWidth = Math.max(280, Math.min(900, originW + (x - originX)))
-                }
-            }
-        }
 
         ColumnLayout {
             Layout.fillWidth: true
@@ -190,26 +139,48 @@ Item {
                 Layout.fillWidth: true
                 Layout.margins: 8
                 Button {
-                    text: _root.editorOpen ? "Hide Organize" : "Organize"
-                    onClicked: _root.editorOpen = !_root.editorOpen
-                }
-                Button {
                     text: _root.showPanel ? "Hide Editor" : "Show Editor"
                     onClicked: _root.showPanel = !_root.showPanel
-                }
-                ComboBox {
-                    id: _dockBox
-                    model: ["Float", "Left", "Right"]
-                    currentIndex: _root.dock === "left" ? 1 : (_root.dock === "right" ? 2 : 0)
-                    onActivated: {
-                        var sides = ["float", "left", "right"]
-                        _root.dock = sides[currentIndex]
-                    }
                 }
                 Item { Layout.fillWidth: true }
                 Label {
                     text: _root.editorLocked ? "Running" : ""
                     color: "#A1A1AA"
+                }
+            }
+
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 8
+                Layout.rightMargin: 8
+                spacing: 8
+                Label { text: "Find"; color: "#A1A1AA" }
+                TextField {
+                    id: _findText
+                    Layout.fillWidth: true
+                    placeholderText: "System name, your name, or group"
+                    color: "#E4E4E7"
+                    onTextChanged: _root._applyFind()
+                }
+                ComboBox {
+                    id: _findType
+                    model: ["All types", "Buttons", "Axes", "Hats"]
+                    onActivated: _root._applyFind()
+                }
+                CheckBox { id: _findUngrouped; text: "Ungrouped"; onClicked: _root._applyFind() }
+                CheckBox { id: _findNoWriter; text: "No hardware writer"; onClicked: _root._applyFind() }
+                CheckBox { id: _findNoAction; text: "No actions in this mode"; onClicked: _root._applyFind() }
+                Button {
+                    text: "Clear"
+                    onClicked: {
+                        _findText.text = ""
+                        _findType.currentIndex = 0
+                        _findUngrouped.checked = false
+                        _findNoWriter.checked = false
+                        _findNoAction.checked = false
+                        _root._applyFind()
+                    }
                 }
             }
 
@@ -251,7 +222,7 @@ Item {
                         z: -1
                         anchors.fill: parent
                         acceptedButtons: Qt.RightButton
-                        onClicked: _pageMenu.popup()
+                        onClicked: _root._openLayoutMenu(false, false)
                     }
 
                     delegate: Rectangle {
@@ -378,20 +349,24 @@ Item {
                         MouseArea {
                             z: 1
                             anchors.fill: parent
-                            anchors.leftMargin: 52
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             propagateComposedEvents: true
+                            onPressed: (mouse) => {
+                                if (mouse.button === Qt.LeftButton && mouse.x < 52) {
+                                    mouse.accepted = false
+                                }
+                            }
                             onClicked: (mouse) => {
                                 if (mouse.button === Qt.RightButton) {
-                                    if (rowKind === "group" && groupName.length > 0) {
-                                        _groupName = groupName
-                                        _groupMenu.popup()
-                                    } else if (rowKind === "parent") {
-                                        _menuKey = key
-                                        _menuTitle = title
-                                        _parentMenu.popup()
-                                    } else if (rowKind === "group") {
-                                        _pageMenu.popup()
+                                    if (rowKind === "parent") {
+                                        _root._menuKey = key
+                                        _root._menuTitle = title
+                                        _root._openLayoutMenu(true, false)
+                                    } else if (rowKind === "group" && groupName.length > 0) {
+                                        _root._groupName = groupName
+                                        _root._openLayoutMenu(false, true)
+                                    } else {
+                                        _root._openLayoutMenu(false, false)
                                     }
                                     return
                                 }
@@ -480,100 +455,67 @@ Item {
             }
         }
 
-        Rectangle {
-            visible: _root.editorOpen && _root.dock === "right"
-            Layout.preferredWidth: 6
-            Layout.fillHeight: true
-            color: _rightGrip.containsMouse ? "#3B82F6" : "#3F3F46"
-            MouseArea {
-                id: _rightGrip
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.SplitHCursor
-                property int originW: 420
-                property real originX: 0
-                onPressed: (mouse) => {
-                    originW = _root.editorWidth
-                    originX = mapToItem(_root, mouse.x, mouse.y).x
-                }
-                onPositionChanged: (mouse) => {
-                    if (!pressed)
-                        return
-                    var x = mapToItem(_root, mouse.x, mouse.y).x
-                    _root.editorWidth = Math.max(280, Math.min(900, originW - (x - originX)))
-                }
-            }
-        }
-
-        Item {
-            id: _rightHost
-            visible: _root.editorOpen && _root.dock === "right"
-            Layout.preferredWidth: visible ? _root.editorWidth : 0
-            Layout.minimumWidth: visible ? 280 : 0
-            Layout.fillHeight: true
-        }
     }
 
-    Item { id: _floatHost; visible: false }
-
-    Window {
-        id: _float
-        width: 440
-        height: 760
-        title: "Logical layout"
-        visible: _root.editorOpen && _root.dock === "float"
-        Universal.theme: Style.theme
-        color: Style.background
-        Item { id: _floatBody; anchors.fill: parent }
-        onClosing: (close) => {
-            close.accepted = false
-            _root.editorOpen = false
-        }
-    }
-
-    LogicalLayoutForm {
-        id: _form
-        layout: _layout
-        locked: _root.editorLocked
-        onCloseRequested: _root.editorOpen = false
-    }
 
     property string _dragFrom: ""
     property string _menuKey: ""
     property string _menuTitle: ""
     property string _groupName: ""
     property string _hardwareKey: ""
+    property bool _menuOnRow: false
+    property bool _menuOnGroup: false
 
-    function _placeForm() {
-        var host = _root.dock === "float" ? _floatBody : (_root.dock === "left" ? _leftHost : _rightHost)
-        if (_form.parent !== host)
-            _form.parent = host
-        _form.anchors.fill = host
-        _form.visible = _root.editorOpen
+    function _applyFind() {
+        var types = ["all", "button", "axis", "hat"]
+        _layout.setFilter(
+            _findText.text,
+            types[_findType.currentIndex],
+            _findUngrouped.checked,
+            _findNoWriter.checked,
+            _findNoAction.checked
+        )
     }
 
+    function _openLayoutMenu(onRow, onGroup) {
+        _menuOnRow = onRow
+        _menuOnGroup = onGroup
+        _pageMenu.popup()
+    }
 
     component MenuCountRow: Item {
         id: row
         required property string label
         required property string kind
+        property int count: 1
         property bool rowHover: false
-        property alias countBox: _step
-        implicitWidth: 236
+        implicitWidth: 300
         implicitHeight: 34
+
+        function parsed() {
+            var n = parseInt(_field.text)
+            if (isNaN(n))
+                n = row.count
+            return Math.max(1, Math.min(180, n))
+        }
+
+        function setCount(n) {
+            count = n
+            _field.text = String(n)
+        }
 
         Rectangle {
             anchors.fill: parent
-            color: !row.enabled ? "transparent"
-                 : row.rowHover ? Universal.listLowColor
-                 : "transparent"
+            color: !row.enabled ? "transparent" : (row.rowHover ? Universal.listLowColor : "transparent")
         }
+
+        HoverHandler { onHoveredChanged: row.rowHover = hovered }
 
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 12
-            anchors.rightMargin: 8
-            spacing: 8
+            anchors.rightMargin: 12
+            spacing: 4
 
             Label {
                 text: row.label
@@ -581,121 +523,139 @@ Item {
                 Layout.fillWidth: true
                 verticalAlignment: Text.AlignVCenter
                 MouseArea {
-                    id: _word
                     anchors.fill: parent
-                    hoverEnabled: true
                     enabled: row.enabled
-                    onContainsMouseChanged: row.rowHover = containsMouse || _step.hovered
-                    onClicked: _pageMenu.addCounted(row.kind, _step)
+                    onClicked: _pageMenu.addCounted(row.kind, row)
                 }
             }
-
-            SpinBox {
-                id: _step
-                from: 1
-                to: 180
-                value: 1
-                editable: true
+            Label {
+                text: "‹"
+                color: row.enabled && row.parsed() > 1 ? Universal.baseHighColor : Universal.baseLowColor
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    enabled: row.enabled && row.parsed() > 1
+                    onClicked: row.setCount(row.parsed() - 1)
+                }
+            }
+            TextField {
+                id: _field
+                implicitWidth: 44
+                padding: 0
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                color: row.enabled ? Universal.baseHighColor : Universal.baseLowColor
                 enabled: row.enabled
-                hoverEnabled: true
-                implicitWidth: 84
-                implicitHeight: 26
-                leftPadding: 16
-                rightPadding: 16
-                spacing: 0
-                onHoveredChanged: row.rowHover = hovered || _word.containsMouse
+                selectByMouse: true
+                validator: IntValidator { bottom: 1; top: 180 }
                 background: Item {}
-                Component.onCompleted: {
-                    if (contentItem)
-                        contentItem.accepted.connect(function() { _pageMenu.addCounted(row.kind, _step) })
-                }
-                up.indicator: Label {
-                    x: _step.mirrored ? 0 : _step.width - width
-                    width: 16
-                    height: _step.height
-                    text: "›"
-                    color: _step.enabled && _step.value < _step.to ? Universal.baseHighColor : Universal.baseLowColor
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                down.indicator: Label {
-                    x: _step.mirrored ? _step.width - width : 0
-                    width: 16
-                    height: _step.height
-                    text: "‹"
-                    color: _step.enabled && _step.value > _step.from ? Universal.baseHighColor : Universal.baseLowColor
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+                Component.onCompleted: text = "1"
+                onAccepted: _pageMenu.addCounted(row.kind, row)
+            }
+            Label {
+                text: "›"
+                color: row.enabled && row.parsed() < 180 ? Universal.baseHighColor : Universal.baseLowColor
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    enabled: row.enabled && row.parsed() < 180
+                    onClicked: row.setCount(row.parsed() + 1)
                 }
             }
+        }
+    }
+
+    component MenuFieldRow: Item {
+        id: fieldRow
+        property bool rowHover: false
+        implicitWidth: 300
+        implicitHeight: 34
+
+        Rectangle {
+            anchors.fill: parent
+            color: fieldRow.rowHover ? Universal.listLowColor : "transparent"
+        }
+        HoverHandler { onHoveredChanged: fieldRow.rowHover = hovered }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            spacing: 8
+            Label {
+                text: "New group"
+                color: _root.editorLocked ? Universal.baseLowColor : Universal.baseHighColor
+            }
+            TextField {
+                id: _newGroupField
+                Layout.fillWidth: true
+                padding: 2
+                placeholderText: "Name, then Enter"
+                color: Universal.baseHighColor
+                enabled: !_root.editorLocked
+                selectByMouse: true
+                background: Item {}
+                onAccepted: {
+                    var name = text.trim()
+                    if (name.length) {
+                        _layout.addGroup(name)
+                        text = ""
+                    }
+                }
+            }
+        }
+    }
+
+    component MoveGroupItem: MenuItem {
+        property string groupName: ""
+        onTriggered: {
+            _layout.setSelection([_root._menuKey])
+            _layout.moveSelected(groupName)
         }
     }
 
     Menu {
         id: _pageMenu
-        width: 236
+        width: 300
         popupType: Popup.Item
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-        function showCount(box, n) {
-            box.value = n
-        }
-
-        function addCounted(kind, box) {
-            if (_root.editorLocked || !box)
+        function addCounted(kind, row) {
+            if (_root.editorLocked || !row)
                 return
-            var n = box.valueFromText(box.displayText, box.locale)
-            if (isNaN(n))
-                n = box.value
-            n = Math.max(box.from, Math.min(box.to, n))
-            _layout.addMany(kind, n, "", "")
-            showCount(box, 1)
+            _layout.addMany(kind, row.parsed(), "", "")
+            row.setCount(1)
         }
 
         function resetCounts() {
-            showCount(_addButtonRow.countBox, 1)
-            showCount(_addAxisRow.countBox, 1)
-            showCount(_addHatRow.countBox, 1)
+            _addButtonRow.setCount(1)
+            _addAxisRow.setCount(1)
+            _addHatRow.setCount(1)
         }
 
         onOpened: resetCounts()
 
-        MenuCountRow {
-            id: _addButtonRow
-            label: "Add Button"
-            kind: "button"
-            enabled: !_root.editorLocked
-        }
-        MenuCountRow {
-            id: _addAxisRow
-            label: "Add Axis"
-            kind: "axis"
-            enabled: !_root.editorLocked
-        }
-        MenuCountRow {
-            id: _addHatRow
-            label: "Add Hat"
-            kind: "hat"
-            enabled: !_root.editorLocked
-        }
-    }
-    Menu {
-        id: _parentMenu
+        MenuCountRow { id: _addButtonRow; label: "Add Button"; kind: "button"; enabled: !_root.editorLocked }
+        MenuCountRow { id: _addAxisRow; label: "Add Axis"; kind: "axis"; enabled: !_root.editorLocked }
+        MenuCountRow { id: _addHatRow; label: "Add Hat"; kind: "hat"; enabled: !_root.editorLocked }
+
+        MenuSeparator {}
+
         MenuItem {
             text: "Add Action"
-            enabled: !_root.editorLocked
+            enabled: _root._menuOnRow && !_root.editorLocked
             onTriggered: {
-                var seq = _layout.addAction(_menuKey)
+                var seq = _layout.addAction(_root._menuKey)
                 if (seq >= 0)
-                    _root._openPane(_menuKey, seq, _menuTitle)
+                    _root._openPane(_root._menuKey, seq, _root._menuTitle)
             }
         }
         MenuItem {
             text: "Assign hardware"
-            enabled: !_root.editorLocked
+            enabled: _root._menuOnRow && !_root.editorLocked
             onTriggered: {
-                _hardwareKey = _menuKey
-                _hardwareTitle.text = _menuTitle
+                _hardwareKey = _root._menuKey
+                _hardwareTitle.text = _root._menuTitle
                 _search.text = ""
                 _hardware.moduleOpen = ({})
                 _loadHardware()
@@ -704,32 +664,97 @@ Item {
         }
         MenuItem {
             text: "Rename"
-            enabled: !_root.editorLocked
+            enabled: _root._menuOnRow && !_root.editorLocked
             onTriggered: {
                 _nameField.text = ""
                 _nameDialog.open()
             }
         }
         MenuItem {
-            text: "Delete"
-            enabled: !_root.editorLocked
-            onTriggered: _layout.deleteParents([_menuKey])
+            text: "Clear name"
+            enabled: _root._menuOnRow && !_root.editorLocked
+            onTriggered: _layout.setUserName(_root._menuKey, "")
         }
-    }
-    Menu {
-        id: _groupMenu
+        Menu {
+            id: _moveMenu
+            title: "Move to group"
+            enabled: _root._menuOnRow && !_root.editorLocked
+            onAboutToShow: {
+                while (count > 0)
+                    takeItem(0).destroy()
+                var rows = _layout.groups
+                for (var i = 0; i < rows.length; ++i) {
+                    var item = MoveGroupItem.createObject(_moveMenu, {
+                        "text": rows[i].title,
+                        "groupName": rows[i].name
+                    })
+                    if (item)
+                        addItem(item)
+                }
+            }
+        }
         MenuItem {
-            text: "Rename"
-            enabled: !_root.editorLocked
+            text: "Delete"
+            enabled: _root._menuOnRow && !_root.editorLocked
+            onTriggered: _layout.deleteParents([_root._menuKey])
+        }
+
+        MenuSeparator {}
+
+        MenuFieldRow { enabled: !_root.editorLocked }
+        MenuItem {
+            text: "Move group up"
+            enabled: _root._menuOnGroup && !_root.editorLocked
+            onTriggered: _layout.moveGroupUp(_root._groupName)
+        }
+        MenuItem {
+            text: "Move group down"
+            enabled: _root._menuOnGroup && !_root.editorLocked
+            onTriggered: _layout.moveGroupDown(_root._groupName)
+        }
+        MenuItem {
+            text: "Rename group"
+            enabled: _root._menuOnGroup && !_root.editorLocked
             onTriggered: {
-                _groupField.text = _groupName
+                _groupField.text = _root._groupName
                 _groupDialog.open()
             }
         }
         MenuItem {
             text: "Delete group"
+            enabled: _root._menuOnGroup && !_root.editorLocked
+            onTriggered: _layout.removeGroup(_root._groupName)
+        }
+
+        MenuSeparator {}
+
+        MenuItem {
+            text: "Order by system name"
             enabled: !_root.editorLocked
-            onTriggered: _layout.removeGroup(_groupName)
+            onTriggered: _layout.sortBySystem()
+        }
+        MenuItem {
+            text: "Order by your name"
+            enabled: !_root.editorLocked
+            onTriggered: _layout.sortByName()
+        }
+        MenuItem {
+            text: "Order group names A to Z"
+            enabled: !_root.editorLocked
+            onTriggered: _layout.sortGroupNames()
+        }
+
+        MenuSeparator {}
+
+        MenuItem {
+            text: "Undo"
+            enabled: !_root.editorLocked && _layout.canUndo
+            onTriggered: _layout.undo()
+        }
+        MenuItem {
+            text: "Redo"
+            enabled: !_root.editorLocked && _layout.canRedo
+            onTriggered: _layout.redo()
         }
     }
 
