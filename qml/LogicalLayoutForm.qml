@@ -9,7 +9,10 @@ Item {
     id: _root
 
     property var layout
+    property bool locked: false
     signal closeRequested()
+
+    readonly property bool canEdit: layout && !locked
 
     function _groupTitles() {
         if (!layout)
@@ -44,12 +47,12 @@ Item {
             }
             Button {
                 text: "Undo"
-                enabled: layout && layout.canUndo
+                enabled: canEdit && layout.canUndo
                 onClicked: layout.undo()
             }
             Button {
                 text: "Redo"
-                enabled: layout && layout.canRedo
+                enabled: canEdit && layout.canRedo
                 onClicked: layout.redo()
             }
             Button {
@@ -100,8 +103,9 @@ Item {
             text: "Add"
             Layout.fillWidth: true
             highlighted: true
+            enabled: canEdit
             onClicked: {
-                if (!layout)
+                if (!canEdit)
                     return
                 var kinds = ["button", "axis", "hat"]
                 layout.addMany(kinds[_addType.currentIndex], _addCount.value, _addGroup.text, _addName.text)
@@ -119,8 +123,9 @@ Item {
             }
             Button {
                 text: "New group"
+                enabled: canEdit
                 onClicked: {
-                    if (layout && _newGroup.text.trim().length) {
+                    if (canEdit && _newGroup.text.trim().length) {
                         layout.addGroup(_newGroup.text)
                         _newGroup.text = ""
                     }
@@ -152,7 +157,20 @@ Item {
                     Label { text: modelData.summary; color: "#A1A1AA"; font.pixelSize: 11 }
                     Button {
                         visible: modelData.name.length > 0
+                        text: "Up"
+                        enabled: canEdit
+                        onClicked: layout.moveGroupUp(modelData.name)
+                    }
+                    Button {
+                        visible: modelData.name.length > 0
+                        text: "Down"
+                        enabled: canEdit
+                        onClicked: layout.moveGroupDown(modelData.name)
+                    }
+                    Button {
+                        visible: modelData.name.length > 0
                         text: "Rename"
+                        enabled: canEdit
                         onClicked: {
                             _renameField.text = modelData.name
                             _renameGroup = modelData.name
@@ -162,6 +180,7 @@ Item {
                     Button {
                         visible: modelData.name.length > 0
                         text: "Delete"
+                        enabled: canEdit
                         onClicked: layout.removeGroup(modelData.name)
                     }
                 }
@@ -183,12 +202,12 @@ Item {
             }
             Button {
                 text: "Set name"
-                enabled: layout && layout.selectionCount > 0
+                enabled: canEdit && layout.selectionCount > 0
                 onClicked: layout.setSelectedName(_selName.text)
             }
             Button {
                 text: "Clear"
-                enabled: layout && layout.selectionCount > 0
+                enabled: canEdit && layout.selectionCount > 0
                 onClicked: {
                     _selName.text = ""
                     layout.setSelectedName("")
@@ -203,7 +222,7 @@ Item {
             }
             Button {
                 text: "Move to group"
-                enabled: layout && layout.selectionCount > 0
+                enabled: canEdit && layout.selectionCount > 0
                 onClicked: {
                     var title = _moveGroup.currentText
                     layout.moveSelected(title === "Ungrouped" ? "" : title)
@@ -212,14 +231,14 @@ Item {
         }
         Button {
             text: "Delete rows"
-            enabled: layout && layout.selectionCount > 0
+            enabled: canEdit && layout.selectionCount > 0
             onClicked: layout.deleteParents(layout.selectionKeys())
         }
 
         Label { text: "Order"; color: "#A1A1AA"; font.bold: true }
-        Button { text: "Order by system name"; Layout.fillWidth: true; onClicked: layout.sortBySystem() }
-        Button { text: "Order by your name"; Layout.fillWidth: true; onClicked: layout.sortByName() }
-        Button { text: "Order group names A to Z"; Layout.fillWidth: true; onClicked: layout.sortGroupNames() }
+        Button { text: "Order by system name"; Layout.fillWidth: true; enabled: canEdit; onClicked: layout.sortBySystem() }
+        Button { text: "Order by your name"; Layout.fillWidth: true; enabled: canEdit; onClicked: layout.sortByName() }
+        Button { text: "Order group names A to Z"; Layout.fillWidth: true; enabled: canEdit; onClicked: layout.sortGroupNames() }
 
         Label { text: "Find"; color: "#A1A1AA"; font.bold: true }
         TextField {
@@ -279,7 +298,7 @@ Item {
             color: "#E4E4E7"
         }
         onAccepted: {
-            if (layout)
+            if (canEdit)
                 layout.renameGroup(_root._renameGroup, _renameField.text)
         }
     }
