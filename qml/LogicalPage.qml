@@ -3,10 +3,12 @@
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Universal
 import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.Device
+import Gremlin.Style
 import Gremlin.UI
 
 Item {
@@ -520,6 +522,8 @@ Item {
         height: 760
         title: "Logical layout"
         visible: _root.editorOpen && _root.dock === "float"
+        Universal.theme: Style.theme
+        color: Style.background
         Item { id: _floatBody; anchors.fill: parent }
         onClosing: (close) => {
             close.accepted = false
@@ -573,6 +577,7 @@ Item {
                 _hardwareKey = _menuKey
                 _hardwareTitle.text = _menuTitle
                 _search.text = ""
+                _hardware.folded = ({})
                 _loadHardware()
                 _hardware.open()
             }
@@ -636,6 +641,17 @@ Item {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         background: Rectangle { color: "#18181B"; border.color: "#3F3F46" }
         property var devices: []
+        property var folded: ({})
+        function deviceOpen(name) {
+            if (_search.text.length)
+                return true
+            return folded[name] !== true
+        }
+        function toggleDevice(name) {
+            var next = Object.assign({}, folded)
+            next[name] = deviceOpen(name)
+            folded = next
+        }
         ColumnLayout {
             anchors.fill: parent
             Label { id: _hardwareTitle; color: "#E4E4E7"; font.bold: true; font.pixelSize: 16 }
@@ -649,7 +665,7 @@ Item {
             Flickable {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                contentHeight: _hwCol.implicitHeight
+                contentHeight: _hwCol.childrenRect.height
                 clip: true
                 Column {
                     id: _hwCol
@@ -663,6 +679,15 @@ Item {
                             spacing: 2
                             RowLayout {
                                 width: parent.width
+                                Label {
+                                    text: _hardware.deviceOpen(modelData.name) ? "▾" : "▸"
+                                    color: "#A1A1AA"
+                                    font.pixelSize: 14
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: _hardware.toggleDevice(modelData.name)
+                                    }
+                                }
                                 CheckBox {
                                     checkState: _deviceState(modelData.controls)
                                     tristate: true
@@ -675,10 +700,19 @@ Item {
                                         _setDevice(controls, on !== controls.length)
                                     }
                                 }
-                                Label { text: modelData.name; color: "#E4E4E7"; font.bold: true; Layout.fillWidth: true }
+                                Label {
+                                    text: modelData.name
+                                    color: "#E4E4E7"
+                                    font.bold: true
+                                    Layout.fillWidth: true
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: _hardware.toggleDevice(modelData.name)
+                                    }
+                                }
                             }
                             Repeater {
-                                model: modelData.controls
+                                model: _hardware.deviceOpen(modelData.name) ? modelData.controls : []
                                 delegate: CheckBox {
                                     required property var modelData
                                     text: modelData.label
