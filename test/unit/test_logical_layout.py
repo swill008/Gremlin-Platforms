@@ -145,3 +145,18 @@ def test_old_profile_label_becomes_user_name(tmp_path) -> None:
     assert button.system_name == "Button 1"
     assert button.second_name == "Trigger"
     assert button.group == ""
+
+
+def test_claimed_ids_are_sorted_and_unique() -> None:
+    from gremlin.ui.logical_layout import _claimed_ids
+
+    assert _claimed_ids({"buttons": [3, 1, 1, "2"]}, "button") == [1, 2, 3]
+    assert _claimed_ids({"axes": []}, "axis") == []
+    assert _claimed_ids({"hats": ["nope"]}, "hat") == []
+
+
+def test_named_vjoy_cannot_be_a_source_module() -> None:
+    from gremlin.ui.logical_layout import _module_direction
+
+    assert _module_direction({"direction": "source"}, "vJoy 1") == "dest"
+    assert _module_direction({"direction": "source"}, "VKBsim Gladiator EVO R") == "source"
