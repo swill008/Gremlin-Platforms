@@ -923,6 +923,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(float)
     def setSplitRatio(self, ratio: float) -> None:
         value = min(0.8, max(0.2, float(ratio)))
+        if abs(value - self.splitRatio) < 0.001:
+            return
         try:
             _ensure_display_options()
             _write_status(_CFG_SPLIT_RATIO, value)

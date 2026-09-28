@@ -640,15 +640,13 @@ Item {
                 onTriggered: _splitView.saveRatio()
             }
 
-            onWidthChanged: applyRatio()
-            onHeightChanged: applyRatio()
+            onWidthChanged: if (visible) applyRatio()
+            onHeightChanged: if (visible) applyRatio()
             onVisibleChanged: {
                 if (visible)
                     Qt.callLater(applyRatio)
-                else
-                    saveRatio()
             }
-            onResizingChanged: if (!resizing) saveRatio()
+            onResizingChanged: if (!resizing && visible) saveRatio()
 
             StatusPane {
                 id: _inputPane
