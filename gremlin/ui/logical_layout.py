@@ -13,6 +13,15 @@ from gremlin import device_initialization, keyboard, shared_state
 from gremlin.base_classes import AbstractActionData
 from gremlin.error import GremlinError
 from gremlin.logical_device import LogicalDevice
+from gremlin.ui.hardware_profile import _doc_direction, _name_direction
+from gremlin.ui.module_model import (
+    KEYBOARD_GUID,
+    LOGICAL_GUID,
+    OSC_GUID,
+    _claim_from_doc,
+    _load_module_doc,
+    module_exists,
+)
 from gremlin.plugin_manager import PluginManager
 from gremlin.profile import InputItem
 from gremlin.signal import signal
@@ -38,6 +47,82 @@ _KIND_WORD = {
     InputType.JoystickAxis: "axis",
     InputType.JoystickHat: "hat",
 }
+
+
+def _norm_guid(value) -> str:
+    text = str(value or "").strip().strip("{}").lower()
+    return text
+
+
+def _module_direction(doc: dict, name: str) -> str:
+    if _name_direction(name) == "dest":
+        return "dest"
+    return _doc_direction(doc or {}, name)
+
+
+def _friendly(claim: dict, kind: str, hid: int) -> str:
+    names = claim.get("friendly") or {}
+    return str(names.get(f"{kind}:{int(hid)}") or "")
+
+
+def _assign_input_modules() -> list[dict]:
+    """Saved source input modules. Logical Device is never a writer source."""
+    rows: list[dict] = []
+    seen: set[str] = set()
+    logical = _norm_guid(LOGICAL_GUID)
+
+    def add(name: str, guid: str, bus: str) -> None:
+        key = _norm_guid(guid) or name.lower()
+        if key in seen or key == logical:
+            return
+        if not module_exists(name):
+            return
+        doc = _load_module_doc(name, guid)
+        if _module_direction(doc, name) == "dest" and bus != "vjoy-input":
+            return
+        seen.add(key)
+        rows.append(
+            {
+                "name": name,
+                "guid": guid,
+                "bus": bus,
+                "claim": _claim_from_doc(doc),
+            }
+        )
+
+    for dev in device_initialization.physical_devices():
+        add(dev.name, str(dev.device_guid.uuid), "hid")
+    add("Keyboard", KEYBOARD_GUID, "keyboard")
+    add("OSC", OSC_GUID, "osc")
+    vjoy_as_input = {}
+    if shared_state.current_profile:
+        vjoy_as_input = dict(shared_state.current_profile.settings.vjoy_as_input or {})
+    for vdev in device_initialization.vjoy_devices():
+        if not vjoy_as_input.get(vdev.vjoy_id, False):
+            continue
+        add(f"vJoy {vdev.vjoy_id}", str(vdev.device_guid.uuid), "vjoy-input")
+    rows.sort(key=lambda row: row["name"].lower())
+    return rows
+
+
+def _claimed_ids(claim: dict, kind: str) -> list[int]:
+    if kind == "button":
+        values = claim.get("buttons") or []
+    elif kind == "axis":
+        values = claim.get("axes") or []
+    elif kind == "hat":
+        values = claim.get("hats") or []
+    else:
+        values = claim.get("keys") or []
+    out: list[int] = []
+    for raw in values:
+        try:
+            out.append(int(raw))
+        except (TypeError, ValueError):
+            continue
+    return sorted(set(out))
+
+
 
 
 def _kind_word(kind: InputType) -> str:
@@ -892,47 +977,53 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             return []
         logical_kind, logical_id = parsed
         needle = (search or "").strip().lower()
+        word = _KIND_WORD.get(logical_kind, "button")
         devices = []
-        for device in device_initialization.input_devices():
-            if device.device_guid.uuid == self._logical.device_guid:
-                continue
+        for module in _assign_input_modules():
+            claim = module["claim"]
             controls = []
-            if logical_kind == InputType.JoystickButton:
-                pairs = [(InputType.JoystickButton, "button", i) for i in range(1, device.button_count + 1)]
-            elif logical_kind == InputType.JoystickAxis:
-                pairs = [(InputType.JoystickAxis, "axis", i) for i in range(1, device.axis_count + 1)]
+            if module["bus"] == "keyboard":
+                if logical_kind != InputType.JoystickButton:
+                    continue
+                saved = set(_claimed_ids(claim, "key"))
+                for key in keyboard.g_name_to_key.values():
+                    hid = (int(key.scan_code) & 0xFFFF) | ((1 if key.is_extended else 0) << 16)
+                    if saved and hid not in saved and int(key.scan_code) not in saved:
+                        continue
+                    if not saved:
+                        continue
+                    label = _friendly(claim, "key", hid) or key.name
+                    if needle and needle not in label.lower() and needle not in module["name"].lower():
+                        continue
+                    src_id = (key.scan_code, key.is_extended)
+                    controls.append(
+                        {
+                            "key": self._control_key(str(keyboard_guid()), "key", key.scan_code, 1 if key.is_extended else 0),
+                            "label": label,
+                            "on": self._linked_now(logical_kind, logical_id, keyboard_guid(), InputType.Keyboard, src_id),
+                        }
+                    )
+                controls.sort(key=lambda row: row["label"].lower())
             else:
-                pairs = [(InputType.JoystickHat, "hat", i) for i in range(1, device.hat_count + 1)]
-            for src_type, word, number in pairs:
-                label = f"{word.capitalize()} {number}"
-                if needle and needle not in label.lower() and needle not in device.name.lower():
-                    continue
-                controls.append(
-                    {
-                        "key": self._control_key(str(device.device_guid.uuid), word, number, 0),
-                        "label": label,
-                        "on": self._linked_now(logical_kind, logical_id, device.device_guid.uuid, src_type, number),
-                    }
-                )
-            if controls:
-                devices.append({"name": device.name, "controls": controls})
-        if logical_kind == InputType.JoystickButton:
-            keys = []
-            for key in keyboard.g_name_to_key.values():
-                label = key.name
-                if needle and needle not in label.lower() and needle not in "keyboard":
-                    continue
-                src_id = (key.scan_code, key.is_extended)
-                keys.append(
-                    {
-                        "key": self._control_key(str(keyboard_guid()), "key", key.scan_code, 1 if key.is_extended else 0),
-                        "label": label,
-                        "on": self._linked_now(logical_kind, logical_id, keyboard_guid(), InputType.Keyboard, src_id),
-                    }
-                )
-            keys.sort(key=lambda row: row["label"].lower())
-            if keys:
-                devices.append({"name": "Keyboard", "controls": keys})
+                src_type = logical_kind
+                for number in _claimed_ids(claim, word):
+                    label = _friendly(claim, word, number) or f"{word.capitalize()} {number}"
+                    if needle and needle not in label.lower() and needle not in module["name"].lower():
+                        continue
+                    guid = module["guid"]
+                    try:
+                        guid_obj = uuid.UUID(str(guid))
+                    except ValueError:
+                        guid_obj = guid
+                    controls.append(
+                        {
+                            "key": self._control_key(str(guid), word, number, 0),
+                            "label": label,
+                            "on": self._linked_now(logical_kind, logical_id, guid_obj, src_type, number),
+                        }
+                    )
+            if controls or not needle:
+                devices.append({"name": module["name"], "controls": controls})
         return devices
 
     @QtCore.Slot(str, "QStringList", bool)
