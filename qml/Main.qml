@@ -137,6 +137,11 @@ ApplicationWindow {
     function openLogicalDevice() {
         if (uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical")
             return
+        // Home has no unsaved device pane. Do not wait on hidden leave dialogs.
+        if (!uiState || uiState.currentRoom !== "configuration") {
+            openLogicalDeviceNow()
+            return
+        }
         leaveDisplayThen(function() { openLogicalDeviceNow() })
     }
 
@@ -739,6 +744,10 @@ ApplicationWindow {
             Menu {
                 title: qsTr("Mapping")
 
+                MenuItem {
+                    text: qsTr("Logical Device")
+                    onTriggered: () => { openLogicalDevice() }
+                }
                 MenuItem {
                     text: qsTr("Button Map")
                     onTriggered: () => { openBlankButtonMap() }
