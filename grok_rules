@@ -7,8 +7,9 @@ Any change to rules is written here. Do not keep a second unofficial list.
 2. Any patches generated or cleanup necessary Grok is required to fix/patch themself. Do not ask the user unless Grok is unable to do so.
 3. Plan first. No code until the user gives explicit confirmation.
    3.1 Confirmation is one of: go, ok go, code it, implement, land it, push it.
-   3.2 Thoughts, analysis, options, “what would you do”, and screenshots are not confirmation. Answer those with a plan only.
+   3.2 Thoughts, analysis, options, recommendations, “what would you do”, and screenshots are not confirmation. Answer those with a plan only.
    3.3 Do not start a patch, PUT, or commit until that confirmation is in the same turn or the immediately preceding turn for that exact change.
+   3.4 Plan every feature and every path with the user. Do not pick a path and start it on your own.
 4. Announce every git push.
 5. Branch: only Xbox_integration_ViGEmClient_dll for Xbox work. Optimization line stays on R15-OSC-Optimization. Do not mix Xbox commits onto Optimization unless you say merge.
 6. Do not touch feature/osc-streamdeck unless you say so.
@@ -18,6 +19,9 @@ Any change to rules is written here. Do not keep a second unofficial list.
    poetry run python joystick_gremlin.py
    from E:\Users\Stacie\Documents\GitHub\JoystickGremlin_
 10. Merge to “the program” only after you test.
+    10.1 Every coded change is tested before you call it done. A GitHub PUT is not a test.
+    10.2 Run `poetry run python joystick_gremlin.py` from E:\Users\Stacie\Documents\GitHub\JoystickGremlin_ when the change is UI, and run the unit tests that cover the change.
+    10.3 Report what ran and what it proved. If the environment cannot run it, say so and do not claim it was tested.
 11. Portable zip only, not a Program Files installer.
 12. Do not reintroduce custom dill.dll loaders.
 13. Do not commit ViGEmClient.dll to the repo from here (you already pushed it; that was your call).
@@ -69,6 +73,7 @@ Any change to rules is written here. Do not keep a second unofficial list.
     axis 4 Z slider
 25. Button Map editor: Edit on the map window. Save writes control.hardware JSON to qml/maps/<device>.json (EVO R: qml/maps/vkb_evo_r.json). That JSON is live runtime truth for chips, hotspots, spines, and image. Cancel drops the session. qml/vkb_evo_r_face_map.md is the measured JPEG inventory and hardware lock, not live layout.
 26. No hacks. Follow Qt / QML / Gremlin best practice. If a fix needs a workaround (height: 0 to hide menu rows, hover-open by hand, screenshot math, dummy objects), stop and warn before coding. Propose the supported API first. Only ship a workaround if the user accepts it after that warning.
+    26.1 Do not invent a new feature, UI, or data shape to get past a problem. Ask first.
 
 27. Rewrite design notes live in a separate repo, not in JoystickGremlin_ source:
     https://github.com/swill008/Gremlin-Rewrite-Features
@@ -85,3 +90,11 @@ Any change to rules is written here. Do not keep a second unofficial list.
     27.10 docs/08-map-and-print.md — Button Map window and later PDF.
     Put new shell/IA decisions in that repo. Do not dump design markdown into qml/.
     Local mirror: artifacts/Gremlin-Rewrite-Features/ (project folder).
+
+28. Session lock — how Grok works with Stacie (2026-09-28)
+    28.1 Do not code without explicit direction. Same confirmation words as 3.1.
+    28.2 Plan all features and paths with the user. Do not act on your own without that guidance.
+    28.3 Always test your changes. See 10.1–10.3.
+    28.4 Recommend improvements or alternative suggestions when they are useful. A recommendation is not a build order.
+    28.5 Do not create workarounds or invent new things without explicit approval of that specific thing. See 26 and 26.1.
+    28.6 Always code with best practice in mind. Qt / QML / Gremlin patterns already in the tree. See 26.
