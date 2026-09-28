@@ -264,6 +264,7 @@ Item {
                         required property bool inverted
                         required property int sequenceIndex
                         required property int indent
+                        required property bool canInvert
 
                         readonly property bool shown: _root._rowVisible(rowKind, groupKey, parentKey)
                         width: _list.width - 16
@@ -310,8 +311,8 @@ Item {
                                     preventStealing: true
                                     onPressed: _root._dragFrom = key
                                     onReleased: (mouse) => {
-                                        var pos = mapToItem(_list, mouse.x, mouse.y)
-                                        var hit = _list.indexAt(pos.x, pos.y + _list.contentY)
+                                        var pos = mapToItem(_list.contentItem, mouse.x, mouse.y)
+                                        var hit = _list.indexAt(pos.x, pos.y)
                                         if (hit >= 0)
                                             _layout.moveRow(_root._dragFrom, _layout.keyAt(hit))
                                         _root._dragFrom = ""
@@ -339,14 +340,16 @@ Item {
                                 }
                             }
                             ComboBox {
-                                visible: rowKind === "writer" && axisMode.length > 0
+                                visible: writerId.length > 0 && axisMode.length > 0
+                                enabled: !_root.editorLocked
                                 model: ["absolute", "relative"]
                                 currentIndex: axisMode === "relative" ? 1 : 0
                                 Layout.preferredWidth: 110
                                 onActivated: _layout.setAxisMode(writerId, currentText)
                             }
                             SpinBox {
-                                visible: rowKind === "writer" && axisMode.length > 0
+                                visible: writerId.length > 0 && axisMode.length > 0
+                                enabled: !_root.editorLocked
                                 from: -500
                                 to: 500
                                 stepSize: 10
@@ -356,7 +359,8 @@ Item {
                                 onValueModified: _layout.setAxisScale(writerId, value / 100.0)
                             }
                             CheckBox {
-                                visible: rowKind === "writer" && systemName.indexOf("Button") === 0
+                                visible: writerId.length > 0 && canInvert
+                                enabled: !_root.editorLocked
                                 text: "Invert"
                                 checked: inverted
                                 onClicked: _layout.setInverted(writerId, checked)
@@ -520,6 +524,7 @@ Item {
     LogicalLayoutForm {
         id: _form
         layout: _layout
+        locked: _root.editorLocked
         onCloseRequested: _root.editorOpen = false
     }
 
@@ -551,7 +556,11 @@ Item {
         MenuItem {
             text: "Add Action"
             enabled: !_root.editorLocked
-            onTriggered: _root._openPane(_menuKey, -1, _menuTitle)
+            onTriggered: {
+                var seq = _layout.addAction(_menuKey)
+                if (seq >= 0)
+                    _root._openPane(_menuKey, seq, _menuTitle)
+            }
         }
         MenuItem {
             text: "Assign hardware"
