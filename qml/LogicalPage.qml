@@ -605,17 +605,9 @@ Item {
                 spacing: 0
                 onHoveredChanged: row.rowHover = hovered || _word.containsMouse
                 background: Item {}
-                contentItem: TextInput {
-                    text: _step.displayText
-                    font: _step.font
-                    color: _step.enabled ? Universal.baseHighColor : Universal.baseLowColor
-                    horizontalAlignment: Qt.AlignHCenter
-                    verticalAlignment: Qt.AlignVCenter
-                    readOnly: !_step.editable
-                    validator: _step.validator
-                    selectByMouse: true
-                    clip: true
-                    onAccepted: _pageMenu.addCounted(row.kind, _step)
+                Component.onCompleted: {
+                    if (contentItem)
+                        contentItem.accepted.connect(function() { _pageMenu.addCounted(row.kind, _step) })
                 }
                 up.indicator: Label {
                     x: _step.mirrored ? 0 : _step.width - width
@@ -647,15 +639,12 @@ Item {
 
         function showCount(box, n) {
             box.value = n
-            if (box.contentItem)
-                box.contentItem.text = box.textFromValue(n, box.locale)
         }
 
         function addCounted(kind, box) {
             if (_root.editorLocked || !box)
                 return
-            var shown = box.contentItem ? box.contentItem.text : box.displayText
-            var n = box.valueFromText(shown, box.locale)
+            var n = box.valueFromText(box.displayText, box.locale)
             if (isNaN(n))
                 n = box.value
             n = Math.max(box.from, Math.min(box.to, n))
