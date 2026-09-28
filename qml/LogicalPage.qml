@@ -58,7 +58,7 @@ Item {
     function _toggleOpen(key) {
         var next = Object.assign({}, _opened)
         next[key] = !next[key]
-        _opened = next
+        _moduleOpen = next
     }
 
     function _toggleGroup(key) {
@@ -577,7 +577,7 @@ Item {
                 _hardwareKey = _menuKey
                 _hardwareTitle.text = _menuTitle
                 _search.text = ""
-                _hardware.opened = ({})
+                _hardware.moduleOpen = ({})
                 _loadHardware()
                 _hardware.open()
             }
@@ -641,16 +641,16 @@ Item {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         background: Rectangle { color: "#18181B"; border.color: "#3F3F46" }
         property var devices: []
-        property var opened: ({})
+        property var moduleOpen: ({})
         function deviceOpen(name) {
             if (_search.text.length)
                 return true
-            return opened[name] === true
+            return moduleOpen[name] === true
         }
         function toggleDevice(name) {
-            var next = Object.assign({}, opened)
-            next[name] = opened[name] !== true
-            opened = next
+            var next = Object.assign({}, moduleOpen)
+            next[name] = moduleOpen[name] !== true
+            moduleOpen = next
         }
         ColumnLayout {
             anchors.fill: parent
