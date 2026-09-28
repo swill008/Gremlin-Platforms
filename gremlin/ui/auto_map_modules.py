@@ -10,7 +10,7 @@ from PySide6 import QtCore
 from gremlin import event_handler
 from gremlin.signal import signal
 import gremlin.ui.type_aliases as ta
-from gremlin.ui.hardware_profile import _maps_dir, _slug
+from gremlin.ui.hardware_profile import _maps_dir, _slug, resolve_module_slug
 from gremlin.ui.live_debug import trace
 from gremlin.ui.module_model import _claim_from_doc
 from gremlin.ui.output_modules import _resolve_vjoy_id
@@ -67,6 +67,61 @@ def _scan_modules() -> list[dict]:
     return rows
 
 
+def _display_key(name: str) -> str:
+    return " ".join(str(name or "").casefold().split())
+
+
+def _guid_key(value: object) -> str:
+    return str(value or "").strip().strip("{}").replace("-", "").lower()
+
+
+def _same_device(left: dict, right: dict) -> bool:
+    name = _display_key(left.get("name") or "")
+    if name and name == _display_key(right.get("name") or ""):
+        return True
+    guid = _guid_key(left.get("guid"))
+    return bool(guid and guid == _guid_key(right.get("guid")))
+
+
+def _choose_input(group: list[dict]) -> dict:
+    """Keep the file the input module is bound to. Do not delete the others."""
+    for row in group:
+        wanted = resolve_module_slug(row["name"], row.get("guid") or "")
+        if wanted and wanted == row["slug"]:
+            return row
+    for row in group:
+        if row["slug"] == _slug(row["name"]):
+            return row
+    return group[0]
+
+
+def _collapse_inputs(rows: list[dict]) -> list[dict]:
+    parent = list(range(len(rows)))
+
+    def find(index: int) -> int:
+        while parent[index] != index:
+            parent[index] = parent[parent[index]]
+            index = parent[index]
+        return index
+
+    def union(left: int, right: int) -> None:
+        root_left = find(left)
+        root_right = find(right)
+        if root_left != root_right:
+            parent[root_right] = root_left
+
+    for left in range(len(rows)):
+        for right in range(left + 1, len(rows)):
+            if _same_device(rows[left], rows[right]):
+                union(left, right)
+    groups: dict[int, list[dict]] = {}
+    for index, row in enumerate(rows):
+        groups.setdefault(find(index), []).append(row)
+    kept = [_choose_input(group) for group in groups.values()]
+    kept.sort(key=lambda row: str(row["name"]).lower())
+    return kept
+
+
 def input_modules() -> list[dict]:
     rows = []
     for row in _scan_modules():
@@ -76,8 +131,7 @@ def input_modules() -> list[dict]:
         if not (claim.get("buttons") or claim.get("axes") or claim.get("hats")):
             continue
         rows.append(row)
-    rows.sort(key=lambda row: str(row["name"]).lower())
-    return rows
+    return _collapse_inputs(rows)
 
 
 def output_modules() -> list[dict]:
