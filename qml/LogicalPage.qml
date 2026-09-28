@@ -606,17 +606,6 @@ Item {
         }
     }
 
-    Component {
-        id: _moveItem
-        MenuItem {
-            property string groupName: ""
-            onTriggered: {
-                _layout.setSelection([_root._menuKey])
-                _layout.moveSelected(groupName)
-            }
-        }
-    }
-
     Menu {
         id: _pageMenu
         width: 300
@@ -682,18 +671,18 @@ Item {
             id: _moveMenu
             title: "Move to group"
             enabled: _root._menuOnRow && !_root.editorLocked
-            onAboutToShow: {
-                while (count > 0)
-                    takeItem(0).destroy()
-                var rows = _layout.groups
-                for (var i = 0; i < rows.length; ++i) {
-                    var item = _moveItem.createObject(_moveMenu, {
-                        "text": rows[i].title,
-                        "groupName": rows[i].name
-                    })
-                    if (item)
-                        addItem(item)
+            Instantiator {
+                model: _layout.groups
+                delegate: MenuItem {
+                    required property var modelData
+                    text: modelData.title
+                    onTriggered: {
+                        _layout.setSelection([_root._menuKey])
+                        _layout.moveSelected(modelData.name)
+                    }
                 }
+                onObjectAdded: (index, object) => _moveMenu.insertItem(index, object)
+                onObjectRemoved: (index, object) => _moveMenu.removeItem(object)
             }
         }
         MenuItem {
