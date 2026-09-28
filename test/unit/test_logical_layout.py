@@ -160,3 +160,35 @@ def test_named_vjoy_cannot_be_a_source_module() -> None:
 
     assert _module_direction({"direction": "source"}, "vJoy 1") == "dest"
     assert _module_direction({"direction": "source"}, "VKBsim Gladiator EVO R") == "source"
+
+
+def test_ok_on_one_sequence_keeps_the_pane_on_that_sequence(qapp) -> None:
+    from gremlin import shared_state
+    from gremlin.ui.logical_layout import LogicalLayoutModel
+
+    profile = Profile()
+    shared_state.current_profile = profile
+    try:
+        logical = LogicalDevice()
+        logical.create(InputType.JoystickButton)
+        real = profile.get_input_item(
+            logical.device_guid,
+            InputType.JoystickButton,
+            1,
+            "Default",
+            create_if_missing=True,
+        )
+        real.add_item_binding()
+        real.add_item_binding()
+        model = LogicalLayoutModel()
+        model.beginPane("parent:button:1", 0)
+        assert len(model._pane_shadow.action_sequences) == 1
+        model._pane_shadow.add_item_binding()
+        assert model.paneDirty()
+        model.commitPane()
+        assert len(real.action_sequences) == 2
+        assert len(model._pane_shadow.action_sequences) == 1
+        assert model._pane_whole is False
+        model.deleteLater()
+    finally:
+        shared_state.current_profile = None
