@@ -87,6 +87,7 @@ def _matches(item, search: str, type_filter: str) -> bool:
     return search.lower() in hay
 
 
+@ta.QmlElement
 class LogicalLayoutModel(QtCore.QAbstractListModel):
     """Rows for the logical page: group headers, parents, writers, and actions."""
 
@@ -106,6 +107,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 13: QtCore.QByteArray(b"inverted"),
         QtCore.Qt.ItemDataRole.UserRole + 14: QtCore.QByteArray(b"sequenceIndex"),
         QtCore.Qt.ItemDataRole.UserRole + 15: QtCore.QByteArray(b"indent"),
+        QtCore.Qt.ItemDataRole.UserRole + 16: QtCore.QByteArray(b"canInvert"),
     }
 
     revisionChanged = QtCore.Signal()
@@ -410,6 +412,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     "inverted": bool(getattr(action, "button_inverted", False)),
                     "sequenceIndex": -1,
                     "indent": 1,
+                    "canInvert": item.type == InputType.JoystickButton,
                 }
             )
         return rows
@@ -446,6 +449,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     "inverted": False,
                     "sequenceIndex": index,
                     "indent": 1,
+                    "canInvert": False,
                 }
             )
         return rows
@@ -506,6 +510,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     "inverted": False,
                     "sequenceIndex": -1,
                     "indent": 0,
+                    "canInvert": False,
                 }
             )
             shown = cached if filtering else [
@@ -520,28 +525,28 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 buckets[entry[0].type].append(entry)
             for kind in _TYPE_ORDER:
                 for item, writers, children in buckets[kind]:
+                    lead = writers[0] if writers else None
                     rows.append(
                         {
                             "rowKind": "parent",
                             "key": _parent_key(item.type, item.id),
                             "title": item.row_title,
-                            "subtitle": writers[0]["title"] if len(writers) == 1 else (
-                                f"Written by {len(writers)}" if writers else ""
-                            ),
+                            "subtitle": lead["title"] if lead else "",
                             "parentKey": _parent_key(item.type, item.id),
                             "groupKey": _group_key(item.group),
                             "groupName": item.group or "",
                             "systemName": item.system_name,
                             "userName": item.second_name,
-                            "writerId": "",
-                            "axisMode": "",
-                            "axisScale": 1.0,
-                            "inverted": False,
+                            "writerId": lead["writerId"] if lead else "",
+                            "axisMode": lead["axisMode"] if lead else "",
+                            "axisScale": lead["axisScale"] if lead else 1.0,
+                            "inverted": lead["inverted"] if lead else False,
                             "sequenceIndex": -1,
                             "indent": 1,
+                            "canInvert": bool(lead) and item.type == InputType.JoystickButton,
                         }
                     )
-                    rows.extend(writers)
+                    rows.extend(writers[1:])
                     rows.extend(children)
         self._rows = rows
         alive = {row["key"] for row in rows}
@@ -588,6 +593,27 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             return []
 
         self._apply(fn)
+
+    @QtCore.Slot(str, result=int)
+    def addAction(self, parent_key: str) -> int:
+        """Append one action sequence on the parent in the current mode."""
+        spec = self._spec(parent_key)
+        if spec is None:
+            return -1
+        profile, item, real = spec
+        if real is None:
+            real = profile.get_input_item(
+                self._logical.device_guid,
+                item.type,
+                item.id,
+                self._mode,
+                create_if_missing=True,
+            )
+        if real is None:
+            return -1
+        real.add_item_binding()
+        self._rebuild()
+        return len(real.action_sequences) - 1
 
     @QtCore.Slot(str, int, str, str)
     def addMany(self, type_name: str, count: int, group: str, user_name: str) -> None:
@@ -747,6 +773,38 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
     def sortGroupNames(self) -> None:
         def fn():
             self._logical.sort_groups()
+            return []
+
+        self._apply(fn)
+
+    @QtCore.Slot(str)
+    def moveGroupUp(self, name: str) -> None:
+        names = self._logical.group_names()
+        if name not in names:
+            return
+        index = names.index(name)
+        if index == 0:
+            return
+        before = names[index - 1]
+
+        def fn():
+            self._logical.move_group_before(name, before)
+            return []
+
+        self._apply(fn)
+
+    @QtCore.Slot(str)
+    def moveGroupDown(self, name: str) -> None:
+        names = self._logical.group_names()
+        if name not in names:
+            return
+        index = names.index(name)
+        if index >= len(names) - 1:
+            return
+        before = names[index + 2] if index + 2 < len(names) else ""
+
+        def fn():
+            self._logical.move_group_before(name, before or None)
             return []
 
         self._apply(fn)
