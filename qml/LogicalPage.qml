@@ -52,7 +52,7 @@ Item {
     function _toggleOpen(key) {
         var next = Object.assign({}, _opened)
         next[key] = !next[key]
-        _moduleOpen = next
+        _opened = next
     }
 
     function _toggleGroup(key) {
