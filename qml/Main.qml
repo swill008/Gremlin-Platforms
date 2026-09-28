@@ -123,6 +123,23 @@ ApplicationWindow {
         return card.rawName || card.name || ""
     }
 
+    function openLogicalDeviceNow() {
+        if (!uiState)
+            return
+        _panelReady = false
+        configTitleName = "Logical Device"
+        configDirection = "logical"
+        uiState.setCurrentDevice("f0af472f-8e17-493b-a1eb-7333ee8543f2")
+        uiState.setCurrentTab("logical")
+        uiState.setCurrentRoom("configuration")
+    }
+
+    function openLogicalDevice() {
+        if (uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical")
+            return
+        leaveDisplayThen(function() { openLogicalDeviceNow() })
+    }
+
     function openConfigurationNow(card) {
         if (!uiState || !card)
             return
@@ -837,6 +854,15 @@ ApplicationWindow {
             }
 
             JGToolButton {
+                text: "\uF2D6"
+                caption: "Logical Device"
+                color: (uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical") ? Style.accent : Style.foreground
+                tooltip: qsTr("Open the Logical Device configuration")
+
+                onClicked: () => { openLogicalDevice() }
+            }
+
+            JGToolButton {
                 text: "\uF4CA"
                 tooltip: qsTr("Toggle Device Viewer")
                 caption: "Device"
@@ -1189,14 +1215,21 @@ ApplicationWindow {
                             font.bold: true
                         }
                         Label {
-                            visible: configDirection !== "dest"
+                            visible: configDirection !== "dest" && configDirection !== "logical"
                             text: "Input Configuration"
+                            font.pixelSize: 22
+                            font.bold: true
+                        }
+                        Label {
+                            visible: configDirection === "logical"
+                            text: "Logical Device"
                             font.pixelSize: 22
                             font.bold: true
                         }
                         IconButton {
                             text: "\uF284"
                             font.pixelSize: 18
+                            visible: configDirection === "source" || configDirection === "dest"
                             enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
                             onClicked: configDirection === "dest" ? _root.cycleOutput(-1) : _root.cycleConfiguration(-1)
@@ -1206,6 +1239,7 @@ ApplicationWindow {
                         IconButton {
                             text: "\uF285"
                             font.pixelSize: 18
+                            visible: configDirection === "source" || configDirection === "dest"
                             enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
                             onClicked: configDirection === "dest" ? _root.cycleOutput(1) : _root.cycleConfiguration(1)
@@ -1214,6 +1248,7 @@ ApplicationWindow {
                         }
                         Label {
                             id: _configTitle
+                            visible: configDirection !== "logical"
                             text: configTitleName.length ? configTitleName : "device"
                             font.pixelSize: 22
                             font.bold: true
@@ -1246,7 +1281,7 @@ ApplicationWindow {
                     }
                 }
                 Button {
-                    visible: configDirection !== "dest"
+                    visible: configDirection !== "dest" && configDirection !== "logical"
                     text: catalogPanel ? "Hide Editor" : "Show Editor"
                     onClicked: {
                         catalogPanel = !catalogPanel
@@ -1425,7 +1460,9 @@ ApplicationWindow {
                 id: _logicalDeviceList
 
                 visible: uiState && uiState.currentTab === "logical"
-                SplitView.minimumWidth: 400
+                SplitView.minimumWidth: 360
+                SplitView.preferredWidth: 420
+                SplitView.fillHeight: true
 
                 onInputIdentifierChanged: () => {
                     if (uiState) {
