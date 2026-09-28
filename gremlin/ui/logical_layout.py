@@ -1178,17 +1178,23 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._replace_sequences(real, shadow)
             self._pane_seq = -1
             self._pane_whole = True
+            only = None
             index = 0
         else:
             index = _attach_binding(real, shadow, self._pane_seq)
             self._pane_seq = index
+            self._pane_whole = False
+            only = index
         shadow.action_sequences.clear()
-        self._show_saved(real)
+        self._show_saved(real, only)
         self._rebuild()
         return index
 
-    def _show_saved(self, real: InputItem) -> None:
-        """Keep the pane on a fresh copy of what OK just wrote."""
+    def _show_saved(self, real: InputItem, only_index: int | None = None) -> None:
+        """Keep the pane on a fresh copy of what OK just wrote.
+
+        One open action stays that action. The whole control reloads every sequence.
+        """
         profile = self._profile()
         if profile is None or real is None:
             return
@@ -1197,7 +1203,10 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         draft.input_type = real.input_type
         draft.input_id = real.input_id
         draft.mode = real.mode
-        for binding in real.action_sequences:
+        bindings = list(real.action_sequences)
+        if only_index is not None and 0 <= only_index < len(bindings):
+            bindings = [bindings[only_index]]
+        for binding in bindings:
             _clone_binding(binding, draft)
         from gremlin.ui.profile import InputItemModel
 
