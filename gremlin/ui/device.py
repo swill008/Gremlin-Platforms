@@ -695,7 +695,7 @@ class LogicalDeviceSelectorModel(QtCore.QAbstractListModel):
         input = self._logical.inputs_of_type(self._valid_types)[index.row()]
         match cast(str, self.roles[role]):
             case "label":
-                return input.label
+                return input.choice_label
             case "id":
                 return input.id
             case "type":

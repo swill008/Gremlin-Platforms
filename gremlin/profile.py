@@ -810,20 +810,49 @@ class Profile:
 
     def _logical_devices_from_xml(self, root_node: ElementTree.Element) -> None:
         logical = LogicalDevice()
+        logical.reset()
+        groups = []
+        for node in root_node.findall("./logical-device/groups/group"):
+            name = (node.text or "").strip()
+            if name and name not in groups:
+                groups.append(name)
+        logical.set_groups(groups)
         for node in root_node.findall("./logical-device/input"):
-            logical.create(
-                read_subelement(node, "input-type"),
-                read_subelement(node, "input-id"),
-                read_subelement(node, "label"),
-            )
+            kind = read_subelement(node, "input-type")
+            input_id = read_subelement(node, "input-id")
+            label = read_subelement(node, "label")
+            user_node = node.find("user-label")
+            group_node = node.find("group")
+            user_label = (user_node.text or "").strip() if user_node is not None and user_node.text else ""
+            group = (group_node.text or "").strip() if group_node is not None and group_node.text else ""
+            system = f"{InputType.to_string(kind).capitalize()} {input_id}"
+            if not user_label and label != system:
+                user_label = label
+            logical.create(kind, input_id, label, user_label=user_label, group=group)
 
     def _logical_devices_to_xml(self) -> ElementTree.Element:
         node = ElementTree.Element("logical-device")
-        for input in LogicalDevice().inputs_of_type():
+        logical = LogicalDevice()
+        if logical.group_names():
+            groups = ElementTree.Element("groups")
+            for name in logical.group_names():
+                entry = ElementTree.Element("group")
+                entry.text = name
+                groups.append(entry)
+            node.append(groups)
+        for item in logical.ordered():
             input_node = ElementTree.Element("input")
-            input_node.append(create_subelement_node("input-type", input.type))
-            input_node.append(create_subelement_node("input-id", input.id))
-            input_node.append(create_subelement_node("label", input.label))
+            input_node.append(create_subelement_node("input-type", item.type))
+            input_node.append(create_subelement_node("input-id", item.id))
+            input_node.append(create_subelement_node("label", item.label))
+            if item.user_label:
+                user = ElementTree.Element("user-label")
+                user.text = item.user_label
+                input_node.append(user)
+            if item.group:
+                folder = ElementTree.Element("group")
+                folder.text = item.group
+                input_node.append(folder)
             node.append(input_node)
         return node
 

@@ -42,6 +42,8 @@ class LogicalDevice(metaclass=SingletonMetaclass):
             self._label = label
             self._id = id
             self._value = None
+            self.user_label = ""
+            self.group = ""
 
         def update(self, value: float | bool | HatDirection) -> None:
             self._value = value
@@ -49,6 +51,37 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         @property
         def label(self) -> str:
             return self._label
+
+        @property
+        def system_name(self) -> str:
+            """The name the system assigned. It does not change when the user renames the row."""
+            kind = InputType.to_string(self.type).capitalize()
+            return f"{kind} {self.id}"
+
+        @property
+        def second_name(self) -> str:
+            """The user's name. Empty means the row shows only the system name."""
+            text = (self.user_label or "").strip()
+            if text and text != self.system_name:
+                return text
+            return ""
+
+        @property
+        def row_title(self) -> str:
+            second = self.second_name
+            if second:
+                return f"{self.system_name}   {second}"
+            return self.system_name
+
+        @property
+        def choice_label(self) -> str:
+            second = self.second_name
+            if second:
+                return f"{self.system_name} — {second}"
+            return self.system_name
+
+        def key(self) -> str:
+            return f"{InputType.to_string(self.type)}:{self.id}"
 
         @property
         def id(self) -> int:
@@ -104,6 +137,8 @@ class LogicalDevice(metaclass=SingletonMetaclass):
     def __init__(self) -> None:
         self._inputs = {}
         self._label_lookup = {}
+        self._groups: list[str] = []
+        self._order: list[LogicalDevice.Input.Identifier] = []
 
     def __getitem__(self, identifier_or_label: Input.Identifier | str) -> Input:
         return self._inputs[self._resolve_to_identifier(identifier_or_label)]
@@ -130,6 +165,8 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         type: InputType,
         input_id: int | None = None,
         label: str | None = None,
+        user_label: str = "",
+        group: str = "",
     ) -> Input:
         """Creates a new input instance of the given type.
 
@@ -161,14 +198,22 @@ class LogicalDevice(metaclass=SingletonMetaclass):
 
         # Create input store information and return it.
         new_input = do_create[type](label, input_id)
+        new_input.user_label = (user_label or "").strip()
+        new_input.group = (group or "").strip()
+        if new_input.group and new_input.group not in self._groups:
+            self._groups.append(new_input.group)
         self._inputs[new_input.identifier] = new_input
         self._label_lookup[label] = new_input.identifier
+        if new_input.identifier not in self._order:
+            self._order.append(new_input.identifier)
         return new_input
 
     def reset(self) -> None:
         """Resets the IO system to contain no entries."""
         self._inputs = {}
         self._label_lookup = {}
+        self._groups = []
+        self._order = []
 
     def set_label(self, old_label: str, new_label: str) -> None:
         """Changes the label of an existing input instance.
@@ -199,6 +244,7 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         input = self[identifier_or_label]
         del self._inputs[input.identifier]
         del self._label_lookup[input.label]
+        self._order = [ident for ident in self._order if ident != input.identifier]
         del input
 
     def labels_of_type(self, type_list: list[InputType] = []) -> list[str]:
@@ -292,6 +338,185 @@ class LogicalDevice(metaclass=SingletonMetaclass):
             LogicalDevice.Hat,
             self[LogicalDevice.Input.Identifier(InputType.JoystickHat, index)],
         )
+
+    def ordered(self) -> list[Input]:
+        """Parents in the saved order. This is not the system-name sort."""
+        seen: set[LogicalDevice.Input.Identifier] = set()
+        rows: list[LogicalDevice.Input] = []
+        for ident in self._order:
+            item = self._inputs.get(ident)
+            if item is None or ident in seen:
+                continue
+            rows.append(item)
+            seen.add(ident)
+        for ident, item in self._inputs.items():
+            if ident not in seen:
+                rows.append(item)
+        return rows
+
+    def set_groups(self, names: list[str]) -> None:
+        self._groups = []
+        for name in names:
+            text = (name or "").strip()
+            if text and text not in self._groups:
+                self._groups.append(text)
+
+    def group_names(self) -> list[str]:
+        return list(self._groups)
+
+    def ensure_group(self, name: str) -> str:
+        text = (name or "").strip()
+        if text and text not in self._groups:
+            self._groups.append(text)
+        return text
+
+    def create_many(
+        self,
+        type: InputType,
+        count: int,
+        group: str = "",
+        user_label: str = "",
+    ) -> list[Input]:
+        """Create up to 128 parents. A group name is the folder, not a copy on every row."""
+        total = max(0, min(128, int(count)))
+        folder = self.ensure_group(group)
+        made: list[LogicalDevice.Input] = []
+        for _ in range(total):
+            made.append(self.create(type, user_label=user_label, group=folder))
+        return made
+
+    def set_user_label(self, identifier_or_label: Input.Identifier | str, text: str) -> None:
+        item = self[identifier_or_label]
+        cleaned = (text or "").strip()
+        if cleaned == item.system_name:
+            cleaned = ""
+        item.user_label = cleaned
+
+    def set_member_group(self, identifier_or_label: Input.Identifier | str, group: str) -> None:
+        item = self[identifier_or_label]
+        item.group = self.ensure_group(group)
+
+    def rename_group(self, old_name: str, new_name: str) -> None:
+        old = (old_name or "").strip()
+        new = (new_name or "").strip()
+        if not old or old not in self._groups:
+            raise GremlinError(f"No group named '{old_name}' exists")
+        if not new:
+            raise GremlinError("A group needs a name")
+        if new != old and new in self._groups:
+            raise GremlinError(f"A group named '{new}' already exists")
+        self._groups = [new if name == old else name for name in self._groups]
+        for item in self._inputs.values():
+            if item.group == old:
+                item.group = new
+
+    def delete_group(self, name: str) -> None:
+        """Remove the folder. The parents stay, in Ungrouped."""
+        text = (name or "").strip()
+        self._groups = [entry for entry in self._groups if entry != text]
+        for item in self._inputs.values():
+            if item.group == text:
+                item.group = ""
+
+    def place(
+        self,
+        identifier_or_label: Input.Identifier | str,
+        group: str,
+        before: Input.Identifier | None = None,
+    ) -> None:
+        item = self[identifier_or_label]
+        item.group = self.ensure_group(group)
+        ident = item.identifier
+        self._order = [entry for entry in self._order if entry != ident]
+        if before is not None and before in self._order and before != ident:
+            self._order.insert(self._order.index(before), ident)
+        else:
+            self._order.append(ident)
+
+    def move_group_before(self, name: str, before: str | None) -> None:
+        text = (name or "").strip()
+        if text not in self._groups:
+            return
+        self._groups = [entry for entry in self._groups if entry != text]
+        if before and before in self._groups:
+            self._groups.insert(self._groups.index(before), text)
+        else:
+            self._groups.append(text)
+
+    def sort_within(self, key_name: str) -> None:
+        """Reorder parents inside each group without mixing buttons, axes, and hats."""
+        types = (
+            InputType.JoystickButton,
+            InputType.JoystickAxis,
+            InputType.JoystickHat,
+        )
+        folders = [""] + list(self._groups)
+        new_order: list[LogicalDevice.Input.Identifier] = []
+        for folder in folders:
+            for kind in types:
+                bucket = [
+                    item
+                    for item in self.ordered()
+                    if (item.group or "") == folder and item.type == kind
+                ]
+                if key_name == "user":
+                    bucket.sort(key=lambda item: ((item.second_name or item.system_name).lower(), item.id))
+                else:
+                    bucket.sort(key=lambda item: item.id)
+                new_order.extend(item.identifier for item in bucket)
+        self._order = new_order
+
+    def sort_groups(self) -> None:
+        self._groups.sort(key=lambda name: name.lower())
+
+    def memento(self) -> dict:
+        return {
+            "groups": list(self._groups),
+            "inputs": [
+                {
+                    "type": item.type,
+                    "id": item.id,
+                    "label": item.label,
+                    "user": item.user_label,
+                    "group": item.group,
+                }
+                for item in self.ordered()
+            ],
+        }
+
+    def restore(self, memo: dict) -> None:
+        wanted = {
+            (entry["type"], int(entry["id"])): entry for entry in memo.get("inputs", [])
+        }
+        for item in list(self.ordered()):
+            if (item.type, item.id) not in wanted:
+                self.delete(item.identifier)
+        ordered_inputs = []
+        for entry in memo.get("inputs", []):
+            ident = self.Input.Identifier(entry["type"], int(entry["id"]))
+            if not self.exists(ident):
+                self.create(
+                    entry["type"],
+                    int(entry["id"]),
+                    entry["label"],
+                    user_label=entry.get("user", ""),
+                    group=entry.get("group", ""),
+                )
+            item = self[ident]
+            item.user_label = entry.get("user", "") or ""
+            item.group = entry.get("group", "") or ""
+            if item.label != entry["label"]:
+                try:
+                    self.set_label(item.label, entry["label"])
+                except GremlinError:
+                    pass
+                item = self[ident]
+            ordered_inputs.append(item.identifier)
+        self.set_groups(list(memo.get("groups", [])))
+        for item in self._inputs.values():
+            if item.group and item.group not in self._groups:
+                self._groups.append(item.group)
+        self._order = ordered_inputs
 
     def _lowest_available_id(self, type: InputType) -> int:
         """Returns the next lowest available id for the specified input type.

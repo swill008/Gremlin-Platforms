@@ -1,0 +1,286 @@
+// -*- coding: utf-8; -*-
+// SPDX-License-Identifier: GPL-3.0-only
+
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+Item {
+    id: _root
+
+    property var layout
+    signal closeRequested()
+
+    function _groupTitles() {
+        if (!layout)
+            return ["Ungrouped"]
+        var rows = layout.groups
+        var titles = []
+        for (var i = 0; i < rows.length; ++i)
+            titles.push(rows[i].title)
+        return titles
+    }
+
+    Flickable {
+        id: _flick
+        anchors.fill: parent
+        contentWidth: width
+        contentHeight: _col.implicitHeight
+        clip: true
+        ScrollBar.vertical: ScrollBar { }
+
+    ColumnLayout {
+        id: _col
+        width: _flick.width
+        spacing: 8
+
+        RowLayout {
+            Label {
+                text: "Layout"
+                color: "#E4E4E7"
+                font.bold: true
+                font.pixelSize: 16
+                Layout.fillWidth: true
+            }
+            Button {
+                text: "Undo"
+                enabled: layout && layout.canUndo
+                onClicked: layout.undo()
+            }
+            Button {
+                text: "Redo"
+                enabled: layout && layout.canRedo
+                onClicked: layout.redo()
+            }
+            Button {
+                text: "×"
+                implicitWidth: 28
+                onClicked: _root.closeRequested()
+            }
+        }
+
+        Label { text: "Add rows"; color: "#A1A1AA"; font.bold: true }
+        RowLayout {
+            Label { text: "Type"; color: "#E4E4E7" }
+            ComboBox {
+                id: _addType
+                Layout.fillWidth: true
+                model: ["Button", "Axis", "Hat"]
+            }
+        }
+        RowLayout {
+            Label { text: "Count"; color: "#E4E4E7" }
+            SpinBox {
+                id: _addCount
+                from: 1
+                to: 128
+                value: 1
+                editable: true
+            }
+        }
+        RowLayout {
+            Label { text: "Group"; color: "#E4E4E7" }
+            TextField {
+                id: _addGroup
+                Layout.fillWidth: true
+                placeholderText: "Ungrouped, or a group name"
+                color: "#E4E4E7"
+            }
+        }
+        RowLayout {
+            Label { text: "Name"; color: "#E4E4E7" }
+            TextField {
+                id: _addName
+                Layout.fillWidth: true
+                placeholderText: "Optional name for each new row"
+                color: "#E4E4E7"
+            }
+        }
+        Button {
+            text: "Add"
+            Layout.fillWidth: true
+            highlighted: true
+            onClicked: {
+                if (!layout)
+                    return
+                var kinds = ["button", "axis", "hat"]
+                layout.addMany(kinds[_addType.currentIndex], _addCount.value, _addGroup.text, _addName.text)
+                _addCount.value = 1
+            }
+        }
+
+        Label { text: "Groups"; color: "#A1A1AA"; font.bold: true }
+        RowLayout {
+            TextField {
+                id: _newGroup
+                Layout.fillWidth: true
+                placeholderText: "New group name"
+                color: "#E4E4E7"
+            }
+            Button {
+                text: "New group"
+                onClicked: {
+                    if (layout && _newGroup.text.trim().length) {
+                        layout.addGroup(_newGroup.text)
+                        _newGroup.text = ""
+                    }
+                }
+            }
+        }
+        ListView {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 140
+            clip: true
+            model: layout ? layout.groups : []
+            spacing: 4
+            delegate: Rectangle {
+                width: ListView.view.width
+                height: 36
+                color: "#27272A"
+                radius: 3
+                required property var modelData
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    Label {
+                        text: modelData.title
+                        color: "#E4E4E7"
+                        font.bold: true
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                    }
+                    Label { text: modelData.summary; color: "#A1A1AA"; font.pixelSize: 11 }
+                    Button {
+                        visible: modelData.name.length > 0
+                        text: "Rename"
+                        onClicked: {
+                            _renameField.text = modelData.name
+                            _renameGroup = modelData.name
+                            _rename.open()
+                        }
+                    }
+                    Button {
+                        visible: modelData.name.length > 0
+                        text: "Delete"
+                        onClicked: layout.removeGroup(modelData.name)
+                    }
+                }
+            }
+        }
+
+        Label { text: "Selected rows"; color: "#A1A1AA"; font.bold: true }
+        Label {
+            text: layout ? layout.selectionLabel : ""
+            color: "#E4E4E7"
+            Layout.fillWidth: true
+        }
+        RowLayout {
+            TextField {
+                id: _selName
+                Layout.fillWidth: true
+                placeholderText: "Your name"
+                color: "#E4E4E7"
+            }
+            Button {
+                text: "Set name"
+                enabled: layout && layout.selectionCount > 0
+                onClicked: layout.setSelectedName(_selName.text)
+            }
+            Button {
+                text: "Clear"
+                enabled: layout && layout.selectionCount > 0
+                onClicked: {
+                    _selName.text = ""
+                    layout.setSelectedName("")
+                }
+            }
+        }
+        RowLayout {
+            ComboBox {
+                id: _moveGroup
+                Layout.fillWidth: true
+                model: _root._groupTitles()
+            }
+            Button {
+                text: "Move to group"
+                enabled: layout && layout.selectionCount > 0
+                onClicked: {
+                    var title = _moveGroup.currentText
+                    layout.moveSelected(title === "Ungrouped" ? "" : title)
+                }
+            }
+        }
+        Button {
+            text: "Delete rows"
+            enabled: layout && layout.selectionCount > 0
+            onClicked: layout.deleteParents(layout.selectionKeys())
+        }
+
+        Label { text: "Order"; color: "#A1A1AA"; font.bold: true }
+        Button { text: "Order by system name"; Layout.fillWidth: true; onClicked: layout.sortBySystem() }
+        Button { text: "Order by your name"; Layout.fillWidth: true; onClicked: layout.sortByName() }
+        Button { text: "Order group names A to Z"; Layout.fillWidth: true; onClicked: layout.sortGroupNames() }
+
+        Label { text: "Find"; color: "#A1A1AA"; font.bold: true }
+        TextField {
+            id: _search
+            Layout.fillWidth: true
+            placeholderText: "System name, your name, or group"
+            color: "#E4E4E7"
+            onTextChanged: _applyFilter()
+        }
+        ComboBox {
+            id: _findType
+            Layout.fillWidth: true
+            model: ["All types", "Buttons", "Axes", "Hats"]
+            onActivated: _applyFilter()
+        }
+        CheckBox { id: _findUngrouped; text: "Ungrouped"; onClicked: _applyFilter() }
+        CheckBox { id: _findNoWriter; text: "No hardware writer"; onClicked: _applyFilter() }
+        CheckBox { id: _findNoAction; text: "No actions in this mode"; onClicked: _applyFilter() }
+        Button {
+            text: "Clear filter"
+            Layout.fillWidth: true
+            onClicked: {
+                _search.text = ""
+                _findType.currentIndex = 0
+                _findUngrouped.checked = false
+                _findNoWriter.checked = false
+                _findNoAction.checked = false
+                _applyFilter()
+            }
+        }
+        Item { Layout.preferredHeight: 12 }
+    }
+    }
+
+    function _applyFilter() {
+        if (!layout)
+            return
+        var types = ["all", "button", "axis", "hat"]
+        layout.setFilter(
+            _search.text,
+            types[_findType.currentIndex],
+            _findUngrouped.checked,
+            _findNoWriter.checked,
+            _findNoAction.checked
+        )
+    }
+
+    property string _renameGroup: ""
+    Dialog {
+        id: _rename
+        title: "Rename group"
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        TextField {
+            id: _renameField
+            width: 240
+            color: "#E4E4E7"
+        }
+        onAccepted: {
+            if (layout)
+                layout.renameGroup(_root._renameGroup, _renameField.text)
+        }
+    }
+}

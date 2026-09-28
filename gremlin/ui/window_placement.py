@@ -27,6 +27,7 @@ KEY_DISPLAY_PANELS = "display-panels"
 KEY_CLOSE_PANE = "close-pane-after-ok"
 KEY_PANE_W = "action-pane-width"
 KEY_TOOLS = "tool-windows"
+KEY_LOGICAL = "logical-layout"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
@@ -48,6 +49,7 @@ def _ensure() -> Configuration:
         (KEY_CLOSE_PANE, PropertyType.Bool, False),
         (KEY_PANE_W, PropertyType.Int, 560),
         (KEY_TOOLS, PropertyType.String, "{}"),
+        (KEY_LOGICAL, PropertyType.String, "{}"),
     )
     for name, data_type, initial in specs:
         props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
@@ -317,3 +319,62 @@ class WindowPlacement(QtCore.QObject):
     @QtCore.Slot(str, str, bool)
     def setDisplayPanelOpen(self, kind: str, device_id: str, open_panel: bool) -> None:
         set_display_panel_open(kind, device_id, open_panel)
+
+    def _logical(self) -> dict:
+        cfg = _ensure()
+        raw = cfg.value(SECTION, GROUP, KEY_LOGICAL) or "{}"
+        try:
+            data = json.loads(str(raw))
+        except json.JSONDecodeError:
+            data = {}
+        return data if isinstance(data, dict) else {}
+
+    def _save_logical(self, data: dict) -> None:
+        cfg = _ensure()
+        cfg.set(SECTION, GROUP, KEY_LOGICAL, json.dumps(data, sort_keys=True))
+
+    @QtCore.Slot(result=str)
+    def logicalDock(self) -> str:
+        dock = str(self._logical().get("dock", "float") or "float")
+        return dock if dock in ("float", "left", "right") else "float"
+
+    @QtCore.Slot(str)
+    def setLogicalDock(self, dock: str) -> None:
+        data = self._logical()
+        data["dock"] = dock if dock in ("float", "left", "right") else "float"
+        self._save_logical(data)
+
+    @QtCore.Slot(result=bool)
+    def logicalOpen(self) -> bool:
+        return bool(self._logical().get("open", False))
+
+    @QtCore.Slot(bool)
+    def setLogicalOpen(self, open_editor: bool) -> None:
+        data = self._logical()
+        data["open"] = bool(open_editor)
+        self._save_logical(data)
+
+    @QtCore.Slot(result=int)
+    def logicalWidth(self) -> int:
+        try:
+            width = int(self._logical().get("width", 420))
+        except (TypeError, ValueError):
+            width = 420
+        return max(280, min(900, width))
+
+    @QtCore.Slot(int)
+    def setLogicalWidth(self, width: int) -> None:
+        data = self._logical()
+        data["width"] = max(280, min(900, int(width)))
+        self._save_logical(data)
+
+    @QtCore.Slot(str, result=str)
+    def logicalValue(self, key: str) -> str:
+        value = self._logical().get(key, "")
+        return "" if value is None else str(value)
+
+    @QtCore.Slot(str, str)
+    def setLogicalValue(self, key: str, value: str) -> None:
+        data = self._logical()
+        data[str(key)] = value
+        self._save_logical(data)

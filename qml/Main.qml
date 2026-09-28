@@ -1039,7 +1039,7 @@ ApplicationWindow {
                 return
             }
             _deviceModel.setMode(uiState.currentMode)
-            _logicalDeviceList.device.setMode(uiState.currentMode)
+            _logicalPage.setMode(uiState.currentMode)
             _oscDeviceList.device.setMode(uiState.currentMode)
             _modeSelector.currentIndex = _modeSelector.find(uiState.currentMode)
         }
@@ -1421,12 +1421,21 @@ ApplicationWindow {
             onLeaveCancelled: _root.cancelDisplayLeave()
         }
 
+        LogicalPage {
+            id: _logicalPage
+
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            visible: uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical"
+        }
+
         SplitView {
             id: _splitView
 
             Layout.fillHeight: true
             Layout.fillWidth: true
             visible: uiState && uiState.currentRoom === "configuration"
+                     && uiState.currentTab !== "logical"
                      && !(_root.configDirection === "dest" && uiState.currentTab !== "xbox")
 
             clip: true
