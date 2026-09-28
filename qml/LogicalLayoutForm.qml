@@ -3,7 +3,10 @@
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Universal
 import QtQuick.Layouts
+
+import Gremlin.Style
 
 Item {
     id: _root
@@ -13,6 +16,12 @@ Item {
     signal closeRequested()
 
     readonly property bool canEdit: layout && !locked
+    Universal.theme: Style.theme
+
+    Rectangle {
+        anchors.fill: parent
+        color: Style.background
+    }
 
     function _groupTitles() {
         if (!layout)
