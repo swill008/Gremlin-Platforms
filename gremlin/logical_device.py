@@ -377,8 +377,8 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         group: str = "",
         user_label: str = "",
     ) -> list[Input]:
-        """Create up to 128 parents. A group name is the folder, not a copy on every row."""
-        total = max(0, min(128, int(count)))
+        """Create up to 180 parents. A group name is the folder, not a copy on every row."""
+        total = max(0, min(180, int(count)))
         folder = self.ensure_group(group)
         made: list[LogicalDevice.Input] = []
         for _ in range(total):
