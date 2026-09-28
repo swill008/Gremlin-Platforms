@@ -97,3 +97,51 @@ def test_profile_saves_group_name_and_user_name(tmp_path) -> None:
     assert button.second_name == "Trigger"
     assert button.group == "Device 2"
     assert button.label == "Button 1"
+
+
+def test_two_rows_can_share_a_user_name() -> None:
+    logical = LogicalDevice()
+    made = logical.create_many(InputType.JoystickButton, 2)
+    logical.set_user_label(made[0].identifier, "Fire")
+    logical.set_user_label(made[1].identifier, "Fire")
+    assert made[0].second_name == "Fire"
+    assert made[1].second_name == "Fire"
+    assert made[0].system_name == "Button 1"
+    assert made[1].system_name == "Button 2"
+
+
+def test_create_one_starts_ungrouped() -> None:
+    logical = LogicalDevice()
+    item = logical.create(InputType.JoystickAxis)
+    assert item.group == ""
+    assert item.second_name == ""
+    assert item.system_name == "Axis 1"
+
+
+def test_move_group_up_and_down() -> None:
+    logical = LogicalDevice()
+    logical.ensure_group("A")
+    logical.ensure_group("B")
+    logical.ensure_group("C")
+    logical.move_group_before("C", "A")
+    assert logical.group_names() == ["C", "A", "B"]
+    logical.move_group_before("C", None)
+    assert logical.group_names() == ["A", "B", "C"]
+    logical.move_group_before("B", "A")
+    assert logical.group_names() == ["B", "A", "C"]
+
+
+def test_old_profile_label_becomes_user_name(tmp_path) -> None:
+    profile = Profile()
+    logical = LogicalDevice()
+    logical.create(InputType.JoystickButton, 1, "Trigger")
+    path = tmp_path / "old.xml"
+    profile.to_xml(path)
+    LogicalDevice().reset()
+    again = Profile()
+    again.from_xml(path)
+    restored = LogicalDevice()
+    button = restored.button(1)
+    assert button.system_name == "Button 1"
+    assert button.second_name == "Trigger"
+    assert button.group == ""
