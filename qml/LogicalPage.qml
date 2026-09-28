@@ -128,8 +128,14 @@ Item {
         _placeForm()
     }
 
-    onDockChanged: _saveDock()
-    onEditorOpenChanged: _saveDock()
+    onDockChanged: {
+        _saveDock()
+        _placeForm()
+    }
+    onEditorOpenChanged: {
+        _saveDock()
+        _placeForm()
+    }
     onEditorWidthChanged: _saveDock()
     onPaneWidthChanged: _saveDock()
     onCloseAfterOkChanged: _saveDock()
@@ -542,8 +548,6 @@ Item {
         _form.visible = _root.editorOpen
     }
 
-    onDockChanged: _placeForm()
-    onEditorOpenChanged: _placeForm()
 
     Menu {
         id: _pageMenu
