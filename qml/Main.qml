@@ -659,76 +659,87 @@ ApplicationWindow {
         Menu {
             title: qsTr("Tools")
 
-            MenuItem {
-                text: qsTr("Manage Modes")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogManageModes.qml")
+            Menu {
+                title: qsTr("Viewers")
+
+                MenuItem {
+                    text: qsTr("vJoy Viewer")
+                    onTriggered: () => {
+                        Helpers.toggleComponent("DialogInputViewer.qml")
+                    }
+                }
+                MenuItem {
+                    text: qsTr("Xbox Viewer")
+                    onTriggered: () => {
+                        Helpers.toggleComponent("DialogXboxViewer.qml")
+                    }
+                }
+                MenuItem {
+                    text: qsTr("Device Viewer")
+                    onTriggered: () => { Helpers.toggleComponent("DialogDeviceViewer.qml") }
                 }
             }
-            MenuItem {
-                text: qsTr("vJoy Viewer")
-                onTriggered: () => {
-                    Helpers.toggleComponent("DialogInputViewer.qml")
+            Menu {
+                title: qsTr("Device setup")
+
+                MenuItem {
+                    text: qsTr("Calibration")
+                    onTriggered: () => {
+                        Helpers.createComponent("DialogCalibration.qml")
+                    }
+                }
+                MenuItem {
+                    text: qsTr("HiDHide")
+                    onTriggered: () => {
+                        Helpers.createComponent("DialogHardwareHide.qml")
+                    }
+                }
+                MenuItem {
+                    text: qsTr("Configure input module")
+                    onTriggered: () => { openConfigureModule("source") }
+                }
+                MenuItem {
+                    text: qsTr("Configure output module")
+                    onTriggered: () => { openConfigureModule("dest") }
+                }
+                MenuItem {
+                    text: qsTr("Device Information")
+                    onTriggered: () => {
+                        Helpers.createComponent("DialogDeviceInformation.qml")
+                    }
+                }
+                MenuItem {
+                    text: qsTr("Swap Devices")
+                    onTriggered: () => {
+                        Helpers.createComponent("DialogSwapDevices.qml")
+                    }
+                }
+                MenuItem {
+                    text: qsTr("Device Pack")
+                    onTriggered: () => { Helpers.createComponent("DialogDevicePack.qml") }
                 }
             }
-            MenuItem {
-                text: qsTr("Xbox Viewer")
-                onTriggered: () => {
-                    Helpers.toggleComponent("DialogXboxViewer.qml")
+            Menu {
+                title: qsTr("Mapping")
+
+                MenuItem {
+                    text: qsTr("Button Map")
+                    onTriggered: () => { openBlankButtonMap() }
                 }
-            }
-            MenuItem {
-                text: qsTr("Device Viewer")
-                onTriggered: () => { Helpers.toggleComponent("DialogDeviceViewer.qml") }
-            }
-            MenuItem {
-                text: qsTr("Button Map")
-                onTriggered: () => { openBlankButtonMap() }
-            }
-            MenuItem {
-                text: qsTr("Calibration")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogCalibration.qml")
+                MenuItem {
+                    text: qsTr("Auto Mapper")
+                    onTriggered: () => {
+                        Helpers.createComponent("DialogAutoMapper.qml")
+                    }
                 }
-            }
-            MenuItem {
-                text: qsTr("Device Information")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogDeviceInformation.qml")
+                MenuItem {
+                    text: qsTr("Manage Modes")
+                    onTriggered: () => {
+                        Helpers.createComponent("DialogManageModes.qml")
+                    }
                 }
             }
             MenuSeparator {}
-            MenuItem {
-                text: qsTr("Auto Mapper")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogAutoMapper.qml")
-                }
-            }
-            MenuItem {
-                text: qsTr("Swap Devices")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogSwapDevices.qml")
-                }
-            }
-            MenuItem {
-                text: qsTr("Configure input module")
-                onTriggered: () => { openConfigureModule("source") }
-            }
-            MenuItem {
-                text: qsTr("Configure output module")
-                onTriggered: () => { openConfigureModule("dest") }
-            }
-            MenuItem {
-                text: qsTr("Device Pack")
-                onTriggered: () => { Helpers.createComponent("DialogDevicePack.qml") }
-            }
-            MenuSeparator {}
-            MenuItem {
-                text: qsTr("HiDHide")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogHardwareHide.qml")
-                }
-            }
             MenuItem {
                 text: qsTr("Options")
                 onTriggered: () => {

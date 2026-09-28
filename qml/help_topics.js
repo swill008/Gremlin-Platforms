@@ -87,7 +87,7 @@ function topics() {
             + "<p>Set the size and the shape.</p>"),
         topic("Actions", "Change Mode",
             "<p>Switches the active mode while the input is held, or switches and stays.</p>"
-            + "<p>Choose the mode. Modes are created in Tools → Manage Modes. Only the current mode’s actions run.</p>"),
+            + "<p>Choose the mode. Modes are created in Tools → Mapping → Manage Modes. Only the current mode’s actions run.</p>"),
         topic("Actions", "Load Profile",
             "<p>Loads another profile when the input fires.</p>"
             + "<p>Choose the profile file.</p>"),
@@ -111,20 +111,20 @@ function topics() {
             + "<p>Choose the action it should follow.</p>"),
         topic("Modes", "Modes",
             "<p>A mode is a set of bindings. Only the current mode’s actions run. The same button can do different work in another mode.</p>"
-            + "<p>Tools → Manage Modes creates, renames, and removes modes. Configuring mode, in the toolbar, chooses which map you are editing. Executing mode, at the bottom, chooses which map runs. Change Mode switches that running mode from a button. Profile Settings chooses the mode used when the program is turned on. Use Heuristic picks the first mode, in alphabetical order, that has no parent. Last Active picks the mode this profile was running the last time it was on. Save the profile to keep the modes.</p>"),
+            + "<p>Tools → Mapping → Manage Modes creates, renames, and removes modes. Configuring mode, in the toolbar, chooses which map you are editing. Executing mode, at the bottom, chooses which map runs. Change Mode switches that running mode from a button. Profile Settings chooses the mode used when the program is turned on. Use Heuristic picks the first mode, in alphabetical order, that has no parent. Last Active picks the mode this profile was running the last time it was on. Save the profile to keep the modes.</p>"),
         topic("Tools", "Button Map",
             "<p>Button Map is a picture of one device, with a chip on each control. Moving a chip changes the picture, not the action bound to that control. The same layout is used live, and a press still lights the matching chip.</p>"
-            + "<p>Tools → Button Map opens a blank map. Choose the device from the menu. Right-click a device card and choose Button Map to open that device. File → Edit Mapping starts an edit. Drag chips from the pool onto the photo. Drag a chip to move it, and drag its dot to move the contact. Scroll to zoom. Drag with the middle button to pan.</p>"
+            + "<p>Tools → Mapping → Button Map opens a blank map. Choose the device from the menu. Right-click a device card and choose Button Map to open that device. File → Edit Mapping starts an edit. Drag chips from the pool onto the photo. Drag a chip to move it, and drag its dot to move the contact. Scroll to zoom. Drag with the middle button to pan.</p>"
             + "<p>File → Save writes the layout to that device’s module file. A successful save says “Saved to the module file.” File → Cancel drops the edit. Closing the window asks when the edit is not saved. Right-click a chip to rename it, change its shape, or set its colors. F1 in that window opens the editor’s own help. Undo and Redo in that window apply to the picture only.</p>"),
         topic("Tools", "Viewers",
             "<p>The viewers show live values. They do not change the profile.</p>"
-            + "<p>Tools → Device Viewer shows every control on a device. Tools → vJoy Viewer shows the vJoy device an input is driving. Tools → Xbox Viewer shows the virtual Xbox control. The same viewers are on the toolbar. Leave one open while you move the stick.</p>"),
+            + "<p>Tools → Viewers → Device Viewer shows every control on a device. Tools → Viewers → vJoy Viewer shows the vJoy device an input is driving. Tools → Viewers → Xbox Viewer shows the virtual Xbox control. The same viewers are on the toolbar. Leave one open while you move the stick.</p>"),
         topic("Tools", "Calibration",
             "<p>Calibration sets the center and the ends of an axis so the full travel is used. It is stored in that input module’s file, not in the profile.</p>"
-            + "<p>Tools → Calibration, or right-click an input module and choose Calibration. Choose the input module. Move the axis, or type the values. The axis shows Not saved until you press its save button. A successful save says “Saved to the module file.” Closing the window, or choosing another input module, asks when an axis is not saved. Save writes it. Discard returns to the last saved calibration. While that module is in use, the saved curve is applied to the live stick before any action sees it.</p>"),
+            + "<p>Tools → Device setup → Calibration, or right-click an input module and choose Calibration. Choose the input module. Move the axis, or type the values. The axis shows Not saved until you press its save button. A successful save says “Saved to the module file.” Closing the window, or choosing another input module, asks when an axis is not saved. Save writes it. Discard returns to the last saved calibration. While that module is in use, the saved curve is applied to the live stick before any action sees it.</p>"),
         topic("Tools", "Device information",
             "<p>Device information shows the name and the identifiers Windows reports for a device.</p>"
-            + "<p>Tools → Device Information. Select the device. Use the identifiers when two devices look alike.</p>"),
+            + "<p>Tools → Device setup → Device Information. Select the device. Use the identifiers when two devices look alike.</p>"),
         topic("Tools", "Auto Mapper",
             "<p>Auto Mapper builds a starting map. It copies the selected buttons, axes, and hats from an input module onto the same numbers on an output module. It does not match devices by name. It uses the order shown in the lists. The first checked input is wired to the first checked output. The second input is wired to the second output.</p>"
             + "<p>Choose the mode before you create the map. The new wires are stored only in that mode.</p>"
@@ -133,13 +133,13 @@ function topics() {
             + "<p>Overwrite used inputs replaces wires that already exist on those controls in the selected mode. Leave it off, and those wires stay as they are.</p>"),
         topic("Tools", "Swap Devices",
             "<p>Swap Devices moves a profile’s bindings from one physical device to another of the same kind.</p>"
-            + "<p>Tools → Swap Devices. Choose the device that is in the profile and the device that should take its place. Save the profile afterward.</p>"),
+            + "<p>Tools → Device setup → Swap Devices. Choose the device that is in the profile and the device that should take its place. Save the profile afterward.</p>"),
         topic("Tools", "Modules",
             "<p>A module file is the picture and the saved look for one device. Input modules are physical devices. Output modules are vJoy and the other outputs. The input module chooses the file. Button Map and both display-option panels use that same file.</p>"
-            + "<p>Tools → Configure input module edits an input. Tools → Configure output module edits an output. Module file opens the file controls: the files in the current folder, Browse for File, and Delete. Checks, names, and the picture ask before the window closes if they are not saved. A successful save says “Saved to the module file.”</p>"
+            + "<p>Tools → Device setup → Configure input module edits an input. Tools → Device setup → Configure output module edits an output. Module file opens the file controls: the files in the current folder, Browse for File, and Delete. Checks, names, and the picture ask before the window closes if they are not saved. A successful save says “Saved to the module file.”</p>"
             + "<p>The picture set here is the one HiDHide uses until you choose a different picture for that device in HiDHide. Tools → Import devices reads a device file. Tools → Export devices writes the selected device.</p>"),
         topic("Tools", "HiDHide",
-            "<p>HiDHide hides selected controllers from other programs. Gremlin-Platforms does not install the driver. Tools → HiDHide opens the window. Get HiDHide opens the download page. Test HiDHide opens the Windows game-controller panel so you can see whether a controller is still visible.</p>"
+            "<p>HiDHide hides selected controllers from other programs. Gremlin-Platforms does not install the driver. Tools → Device setup → HiDHide opens the window. Get HiDHide opens the download page. Test HiDHide opens the Windows game-controller panel so you can see whether a controller is still visible.</p>"
             + "<p>A new install leaves the driver alone. Gremlin control, HiDHide Enabled, Automatically Start, and Gaming devices only all start off. Each switch is saved on its own. Allow list is the starting program choice. No device starts checked, and the program list starts empty.</p>"
             + "<p>The top row shows whether the driver was found, its version, Get HiDHide, and Test HiDHide. The next row is Gremlin control, HiDHide Enabled, and Automatically Start. Gremlin control lets this program write the device list, the program list, Allow list or Block list, and HiDHide Enabled. HiDHide Enabled means the driver enforces both lists. Off means the driver is not hiding anything. Automatically Start turns Gremlin control and HiDHide Enabled on each time this program starts, and writes the saved lists.</p>"
             + "<p>Gaming devices only sits above the device list. On limits that list to game controllers. Off shows the wider list. A device can use the picture from its module. Change image or Add image replaces that picture for this list only, and the replacement is kept. The selector adds or removes that device. A device that is actually hidden is dimmed, and HIDDEN is drawn across the row.</p>"
