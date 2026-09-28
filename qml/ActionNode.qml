@@ -98,7 +98,7 @@ Item {
         Drag.supportedActions: Qt.MoveAction
         Drag.proposedAction: Qt.MoveAction
         Drag.mimeData: {
-            "text/plain": _root.action ? _root.action.sequenceIndex : "",
+            "text/plain": _root.action ? _root.action.sequenceIndex.toString() : "",
             "type": "action",
             "root": _root.action ? _root.action.rootActionId : ""
         }
