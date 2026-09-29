@@ -350,8 +350,8 @@ Item {
                                         visible: _nameHover.hovered && rowKind === "parent" && userName.length > 0
                                         delay: 400
                                         text: systemName
-                                        x: _nameHover.point.position.x + 16
-                                        y: _nameHover.point.position.y + 16
+                                        x: _nameHover.point.position.x + 28
+                                        y: _nameHover.point.position.y + 32
                                     }
                                 }
                                 Label {
