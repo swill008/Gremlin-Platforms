@@ -98,6 +98,8 @@ Item {
                 width: contentWidth > 500 ? 500 : contentWidth + 20
                 visible: _hoverHandler.hovered
                 delay: 500
+                x: _hoverHandler.point.position.x - width / 2
+                y: _hoverHandler.point.position.y - height - 8
             }
 
             HoverHandler {
