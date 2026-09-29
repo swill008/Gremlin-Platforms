@@ -768,7 +768,7 @@ Item {
                             return
                         }
                         if (mouse.button === Qt.RightButton) {
-                            _emptyMenu.popup()
+                            _page.popupEmptyMenu(p.x, p.y)
                             return
                         }
                         if (!(mouse.modifiers & Qt.ShiftModifier))
@@ -938,6 +938,18 @@ Item {
                 font.bold: true
             }
         }
+    }
+
+    function popupEmptyMenu(pageX, pageY) {
+        Qt.callLater(function() {
+            var w = Math.max(_emptyMenu.implicitWidth, _emptyMenu.width)
+            var h = Math.max(_emptyMenu.implicitHeight, _emptyMenu.height)
+            if (w <= 0)
+                w = 160
+            if (h <= 0)
+                h = 36
+            _emptyMenu.popup(pageX - w / 2, pageY - h - 8)
+        })
     }
 
     Menu {
