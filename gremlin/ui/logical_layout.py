@@ -838,6 +838,62 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
 
         self._apply(fn_before)
 
+    def _next_in_group(self, item):
+        seen = False
+        group = item.group or ""
+        for entry in self._logical.ordered():
+            if entry.identifier == item.identifier:
+                seen = True
+                continue
+            if seen and (entry.group or "") == group:
+                return entry.identifier
+        return None
+
+    @QtCore.Slot(str, str, str)
+    def moveParent(self, source: str, target: str, method: str) -> None:
+        """Move one parent before, after, or into the drop target.
+
+        Dropping on a group appends to that group. Dropping on a parent
+        uses the same before/after correction as an action sequence: the
+        source is removed first, then inserted relative to the target.
+        """
+        if not str(source).startswith("parent:") or source == target:
+            return
+        item = self._item_for(source)
+        if item is None:
+            return
+        if str(target).startswith("group:"):
+            group = str(target)[len("group:") :]
+
+            def fn_into():
+                self._logical.place(item.identifier, group)
+                return []
+
+            self._apply(fn_into)
+            return
+        other = self._item_for(target)
+        if other is None:
+            return
+        before = other.identifier if method != "after" else self._next_in_group(other)
+        if before == item.identifier:
+            return
+        if (
+            method == "after"
+            and before is None
+            and (item.group or "") == (other.group or "")
+            and self._next_in_group(item) is None
+        ):
+            return
+
+        def fn_at():
+            if before is None:
+                self._logical.place(item.identifier, other.group)
+            else:
+                self._logical.place(item.identifier, other.group, before)
+            return []
+
+        self._apply(fn_at)
+
     @QtCore.Slot()
     def sortBySystem(self) -> None:
         def fn():
