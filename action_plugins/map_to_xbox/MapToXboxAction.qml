@@ -33,6 +33,7 @@ Item {
         ComboBox {
             id: _target
             Layout.fillWidth: true
+            Layout.minimumWidth: 60
             textRole: "label"
             valueRole: "value"
             model: _root.action.targetChoices
