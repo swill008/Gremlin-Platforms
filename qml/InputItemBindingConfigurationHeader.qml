@@ -16,7 +16,8 @@ Item {
     property InputItemModel inputItemModel
     property bool hideControlSetup: false
     property bool catalogSequence: false
-    property MouseArea dragHandleArea: _grip
+    readonly property bool showTreat: !hideControlSetup && _behavior.hasChoice
+    property MouseArea dragHandleArea: showTreat ? _gripTop : _gripName
 
     implicitHeight: _layout.implicitHeight
 
@@ -26,15 +27,16 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
 
-        // Default header components visible with every input.
+        // Treat as has its own line so the name line can be narrower.
+        // A button or a key has no Treat as, so that line is not shown.
         RowLayout {
-            id: _generalHeader
+            id: _treatRow
 
+            visible: _root.showTreat
             Layout.fillWidth: true
+            spacing: 6
 
             IconButton {
-                id: _handle
-
                 visible: !_root.catalogSequence
 
                 font.pixelSize: 24
@@ -42,7 +44,7 @@ Item {
                 text: bsi.icons.verticalDrag
 
                 MouseArea {
-                    id: _grip
+                    id: _gripTop
 
                     anchors.fill: parent
                     preventStealing: true
@@ -63,10 +65,44 @@ Item {
             InputBehavior {
                 id: _behavior
 
-                visible: !_root.hideControlSetup && hasChoice
+                visible: _root.showTreat
                 Layout.preferredWidth: visible ? implicitWidth : 0
                 Layout.maximumWidth: visible ? implicitWidth : 0
                 inputBinding: _root.inputBinding
+            }
+        }
+
+        RowLayout {
+            id: _generalHeader
+
+            Layout.fillWidth: true
+
+            IconButton {
+                visible: !_root.catalogSequence && !_root.showTreat
+                Layout.preferredWidth: visible ? implicitWidth : 0
+                Layout.maximumWidth: visible ? implicitWidth : 0
+
+                font.pixelSize: 24
+                horizontalPadding: -5
+                text: bsi.icons.verticalDrag
+
+                MouseArea {
+                    id: _gripName
+
+                    anchors.fill: parent
+                    preventStealing: true
+                    hoverEnabled: true
+                    cursorShape: Qt.OpenHandCursor
+                    drag.target: _payload
+                    drag.axis: Drag.XAndYAxis
+                    drag.threshold: 4
+
+                    onPressed: (mouse) => {
+                        var pos = mapToItem(_root, mouse.x, mouse.y)
+                        _payload.x = pos.x
+                        _payload.y = pos.y
+                    }
+                }
             }
 
             JGTextField {
@@ -201,7 +237,7 @@ Item {
         width: 1
         height: 1
 
-        Drag.active: _grip.drag.active && _root.inputBinding && _root.inputBinding.rootAction
+        Drag.active: (_gripTop.drag.active || _gripName.drag.active) && _root.inputBinding && _root.inputBinding.rootAction
         Drag.dragType: Drag.Automatic
         Drag.supportedActions: Qt.MoveAction
         Drag.proposedAction: Qt.MoveAction
