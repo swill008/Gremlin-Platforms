@@ -192,3 +192,24 @@ def test_ok_on_one_sequence_keeps_the_pane_on_that_sequence(qapp) -> None:
         model.deleteLater()
     finally:
         shared_state.current_profile = None
+
+
+def test_group_as_moves_every_selected_row(qapp) -> None:
+    from gremlin import shared_state
+    from gremlin.ui.logical_layout import LogicalLayoutModel
+
+    profile = Profile()
+    shared_state.current_profile = profile
+    try:
+        logical = LogicalDevice()
+        logical.create(InputType.JoystickButton)
+        logical.create(InputType.JoystickButton)
+        model = LogicalLayoutModel()
+        model.setSelection(["parent:button:1", "parent:button:2"])
+        model.moveSelected("Stick")
+        assert logical.button(1).group == "Stick"
+        assert logical.button(2).group == "Stick"
+        assert logical.group_names() == ["Stick"]
+        model.deleteLater()
+    finally:
+        shared_state.current_profile = None
