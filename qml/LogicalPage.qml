@@ -22,7 +22,6 @@ Item {
     property bool closeAfterOk: false
     property int parentHeight: 44
     property int childHeight: 32
-    property bool showPanel: false
     property bool _ready: false
     property var _opened: ({})
     property var _collapsed: ({})
@@ -137,23 +136,9 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.margins: 8
-                Button {
-                    text: _root.showPanel ? "Hide Editor" : "Show Editor"
-                    onClicked: _root.showPanel = !_root.showPanel
-                }
-                Item { Layout.fillWidth: true }
-                Label {
-                    text: _root.editorLocked ? "Running" : ""
-                    color: "#A1A1AA"
-                }
-            }
-
-
-            RowLayout {
-                Layout.fillWidth: true
                 Layout.leftMargin: 8
                 Layout.rightMargin: 8
+                Layout.topMargin: 8
                 spacing: 8
                 Label { text: "Find"; color: "#A1A1AA" }
                 TextField {
@@ -182,31 +167,16 @@ Item {
                         _root._applyFind()
                     }
                 }
+                Label {
+                    text: _root.editorLocked ? "Running" : ""
+                    color: "#A1A1AA"
+                }
             }
 
             RowLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 0
-
-                Rectangle {
-                    visible: _root.showPanel
-                    Layout.preferredWidth: visible ? 240 : 0
-                    Layout.fillHeight: true
-                    color: "#18181B"
-                    border.color: "#3F3F46"
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        Label { text: "Display Editor"; color: "#E4E4E7"; font.bold: true }
-                        Label { text: "Saved for this page only."; color: "#A1A1AA"; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                        RowLayout {
-                            Label { text: "Row height"; color: "#E4E4E7"; Layout.fillWidth: true }
-                            SpinBox { from: 32; to: 80; value: _root.parentHeight; onValueModified: _root.parentHeight = value }
-                        }
-                        Item { Layout.fillHeight: true }
-                    }
-                }
 
                 ListView {
                     id: _list
@@ -614,6 +584,87 @@ Item {
         }
     }
 
+    component MenuHeightRow: Item {
+        id: heightRow
+        property bool rowHover: false
+        implicitWidth: 300
+        implicitHeight: 34
+
+        function parsed() {
+            var n = parseInt(_field.text)
+            if (isNaN(n))
+                n = _root.parentHeight
+            return Math.max(32, Math.min(80, n))
+        }
+
+        function showHeight(n) {
+            _field.text = String(n)
+        }
+
+        function applyHeight() {
+            var n = parsed()
+            _root.parentHeight = n
+            showHeight(n)
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: heightRow.rowHover ? Universal.listLowColor : "transparent"
+        }
+        HoverHandler { onHoveredChanged: heightRow.rowHover = hovered }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            spacing: 4
+            Label {
+                text: "Row height"
+                color: Universal.baseHighColor
+                Layout.fillWidth: true
+            }
+            Label {
+                text: "‹"
+                color: heightRow.parsed() > 32 ? Universal.baseHighColor : Universal.baseLowColor
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    enabled: heightRow.parsed() > 32
+                    onClicked: {
+                        _root.parentHeight = heightRow.parsed() - 1
+                        heightRow.showHeight(_root.parentHeight)
+                    }
+                }
+            }
+            TextField {
+                id: _field
+                implicitWidth: 44
+                padding: 0
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                color: Universal.baseHighColor
+                selectByMouse: true
+                validator: IntValidator { bottom: 32; top: 80 }
+                background: Item {}
+                Component.onCompleted: text = String(_root.parentHeight)
+                onAccepted: heightRow.applyHeight()
+            }
+            Label {
+                text: "›"
+                color: heightRow.parsed() < 80 ? Universal.baseHighColor : Universal.baseLowColor
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    enabled: heightRow.parsed() < 80
+                    onClicked: {
+                        _root.parentHeight = heightRow.parsed() + 1
+                        heightRow.showHeight(_root.parentHeight)
+                    }
+                }
+            }
+        }
+    }
+
     Menu {
         id: _pageMenu
         width: 300
@@ -633,7 +684,10 @@ Item {
             _addHatRow.setCount(1)
         }
 
-        onOpened: resetCounts()
+        onOpened: {
+            resetCounts()
+            _rowHeightRow.showHeight(_root.parentHeight)
+        }
 
         MenuCountRow { id: _addButtonRow; label: "Add Button"; kind: "button"; enabled: !_root.editorLocked }
         MenuCountRow { id: _addAxisRow; label: "Add Axis"; kind: "axis"; enabled: !_root.editorLocked }
@@ -764,6 +818,10 @@ Item {
             enabled: !_root.editorLocked && _layout.canRedo
             onTriggered: _layout.redo()
         }
+
+        MenuSeparator {}
+
+        MenuHeightRow { id: _rowHeightRow }
     }
 
     TextInputDialog {
