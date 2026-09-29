@@ -280,9 +280,11 @@ ColumnLayout {
                                     }
 
                                     HoverHandler { id: _hwHover }
-                                    ToolTip.visible: _hwHover.hovered
-                                    ToolTip.delay: 200
-                                    ToolTip.text: "Input " + label
+                                    PointerTip {
+                                        text: "Input " + label
+                                        delay: 200
+                                        show: true
+                                    }
                                 }
 
                                 Rectangle {
@@ -304,9 +306,11 @@ ColumnLayout {
                                     }
 
                                     HoverHandler { id: _vjHover }
-                                    ToolTip.visible: _vjHover.hovered
-                                    ToolTip.delay: 200
-                                    ToolTip.text: destClaimed ? vjoyLabel : "Dest not claimed"
+                                    PointerTip {
+                                        text: destClaimed ? vjoyLabel : "Dest not claimed"
+                                        delay: 200
+                                        show: true
+                                    }
                                 }
                             }
                         }
