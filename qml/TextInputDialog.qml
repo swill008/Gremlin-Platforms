@@ -18,7 +18,7 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     padding: 10
     width: 320
-    height: heading.length > 0 ? 86 : 56
+    height: (heading.length > 0 ? 86 : 56) + (showOption ? 28 : 0)
 
     signal accepted(string value)
     property string text : "New text"
@@ -28,6 +28,9 @@ Popup {
     property bool clearOnClick: true
     property bool _clearedOnClick: false
     property bool _committed: false
+    property bool showOption: false
+    property string optionText: ""
+    property bool optionChecked: false
 
     function seedText() {
         if (_root.text && _root.text.length > 0) {
@@ -47,6 +50,7 @@ Popup {
         _committed = false
         _clearedOnClick = false
         _input.text = seedText()
+        _option.checked = optionChecked
         _input.forceActiveFocus()
         if (!clearOnClick) {
             _input.selectAll()
@@ -111,6 +115,14 @@ Popup {
                     _root.close()
                 }
             }
+        }
+
+        CheckBox {
+            id: _option
+            visible: _root.showOption
+            text: _root.optionText
+            Layout.fillWidth: true
+            onClicked: _root.optionChecked = checked
         }
     }
 }
