@@ -63,13 +63,10 @@ Item {
             InputBehavior {
                 id: _behavior
 
-                visible: !_root.hideControlSetup
+                visible: !_root.hideControlSetup && hasChoice
+                Layout.preferredWidth: visible ? implicitWidth : 0
+                Layout.maximumWidth: visible ? implicitWidth : 0
                 inputBinding: _root.inputBinding
-            }
-
-            Item {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
             }
 
             JGTextField {
