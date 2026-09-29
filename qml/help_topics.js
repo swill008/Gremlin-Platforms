@@ -12,7 +12,7 @@ function topics() {
             "<p>Three stores are kept separate. Saving one does not save the others.</p>"
             + "<p><b>Profile.</b> Modes, bindings, and actions. File → Save Profile writes this file. File → Save Profile As writes a new one. Closing the program asks when the profile has changes that are not saved.</p>"
             + "<p><b>Module file.</b> One file for each device. It holds the device picture, the configuration list’s look, an output device’s look, and the calibration for an input stick. The input module chooses which file that device uses. Button Map, Configure input module, Configure output module, and Calibration write this file. The display look is written only when you press Save View Settings on that panel.</p>"
-            + "<p><b>Program settings.</b> Options, the Home layout, window sizes, and HiDHide choices. These are kept for the program, not inside one profile.</p>"
+            + "<p><b>Program settings.</b> Options, the Home layout, window sizes, and HiDHide choices. These are kept for the program, not inside one profile. The Logical Device display look is kept here too, for that page, when you press Save View Settings on its display editor.</p>"
             + "<p>After a save, the bottom of the window names the file. That line is after Executing mode. It names the profile, the module file, the display look, the output look, or the calibration, depending on which save you used.</p>"),
         topic("Start", "Toggle",
             "<p>Toggle makes the loaded profile live. While it is off, you are only editing. While it is on, inputs run their actions.</p>"
@@ -52,6 +52,48 @@ function topics() {
             + "<p><b>Selection.</b> Sets the row you have selected. Fill of a selected row is its background. Line around a selected row replaces the normal outline while that row is selected.</p>"
             + "<p><b>Editor.</b> Sets the action editor that opens beside a control. Alignment, padding, and the gap below the row place it. Corner radius, border width, and the border color draw its edge. Show accent bar adds a bar on the side. Accent width and Accent bar set that bar.</p>"
             + "<p>An output device uses Output Module View — Display Editor. That panel has its own options for pads, hats, meters, and buttons. Reset View to Default, Copy View from…, and Save View Settings work the same way. The look is stored in that device’s module file.</p>"),
+
+        topic("Logical Device", "Logical Device",
+            "<p>The Logical Device page is one device you build in the profile. A physical control can be mapped to a button, axis, or hat on this page. That logical control then has its own actions, in the same way a physical input does.</p>"
+            + "<p>Open it with Logical Device on the toolbar. Help → Logical Device opens this guide on this section. Configuring mode, at the top right, chooses the mode you are editing. The buttons, axes, hats, and groups stay when you change mode. The actions on a control belong to the selected mode.</p>"
+            + "<p>The system name is fixed. A button is always Button 1, an axis is Axis 1, and a hat is Hat 1. The number is the identity. A wire uses the type and the number, not a name you type.</p>"),
+        topic("Logical Device", "Names",
+            "<p>Right-click a hardware row and choose Rename to give it a second name. The name starts empty. The row then shows the system name and the name you typed. Hide system name, on that same prompt, shows only the name you typed. The system name is still the identity. Point at the name, and the system name appears, only when a second name is set.</p>"
+            + "<p>Clear name removes the second name. It appears in the menu only when the row has one. The system name shows again. Two rows may use the same second name. That does not join them.</p>"),
+        topic("Logical Device", "Groups",
+            "<p>A group is a folder. A control belongs to one group. The list shows a header for each group, with the name and the counts. The controls sit under that header. Ungrouped has a header too. It cannot be renamed, moved, or deleted.</p>"
+            + "<p>The caret on a header appears only when the group has rows under it. Click the caret to fold the group. The header stays. Click it again to show the rows.</p>"
+            + "<p>Shift-click hardware rows to select more than one. Right-click one of them and use Group as. Type a name and press Enter. Those rows move into that group. If you do this to one row that is already in a named group, the program asks before it moves the row.</p>"
+            + "<p>Move to group sends the selection to a group that already exists. New group creates an empty group. On a named group, Move group up and Move group down change its place. Rename group changes its name. Delete group does not delete the controls. They go to Ungrouped.</p>"),
+        topic("Logical Device", "Adding controls",
+            "<p>Right-click the list. Add Button, Add Axis, and Add Hat each have a count. It starts at 1. Type a number, or use the arrows. The highest count is 180. Press Enter, or click the words, to add that many. They are created in Ungrouped and take the next free numbers of that type. The menu stays open until you click away.</p>"),
+        topic("Logical Device", "The menu",
+            "<p>The right-click menu shows only the actions that apply to what you clicked. It does not grey out the rest.</p>"
+            + "<p>On empty space the menu has Add Button, Add Axis, Add Hat, New group, Order by system name, Order by your name, Order group names A to Z, and Display. Undo and Redo appear only when there is a change to undo or redo.</p>"
+            + "<p>On a hardware row, those stay, and the row actions appear: Add Action, Assign hardware, Rename, Group as, Move to group, and Delete. Clear name appears only when that row has a second name. Delete removes the control and every hardware link that points at it.</p>"
+            + "<p>On a named group, the group actions appear: Move group up, Move group down, Rename group, and Delete group.</p>"
+            + "<p>While Toggle is on, the edit actions are hidden. Display stays.</p>"),
+        topic("Logical Device", "Assign hardware",
+            "<p>Assign hardware opens its own window for the hardware row you clicked. It lists input devices. Search limits that list. The window already shows only the same kind of control: buttons for a button, axes for an axis, and hats for a hat. The keyboard is included. The logical device is not. A vJoy device is included only while its Settings switch is Input.</p>"
+            + "<p>Each control has a checkbox. The device row checks or clears every control under it. A check adds Map to Logical Device on that physical control. It does not remove that control’s other actions. The logical row then shows Written by, with the device and the control. An axis also shows absolute or relative, and a scale. A button shows Invert. Unchecking removes only that one link.</p>"),
+        topic("Logical Device", "Actions",
+            "<p>Add Action adds one action for the current mode and opens the action editor beside the list. It is the same sequence editor used on a physical input. Press OK to keep the action in the profile. That does not replace File → Save Profile. Close pane after OK closes the editor when OK succeeds. The close mark asks when the editor has changes that are not saved.</p>"
+            + "<p>The caret on a hardware row appears only when a list opens under it: an action, or a second Written by line. The first Written by line is already on the row, so it does not add a caret. Click the caret to show or hide that list. An action row has nothing under it, so it has no caret. Click an action row to open it in the editor.</p>"),
+        topic("Logical Device", "Find, order, and moving",
+            "<p>Find limits the list. Type a system name, your name, or a group name. All types can be limited to Buttons, Axes, or Hats. Ungrouped shows only rows in Ungrouped. No hardware writer shows rows with no physical control mapped to them. No actions in this mode shows rows with no action in the current mode. Clear turns the filters off. A hidden row is not deleted.</p>"
+            + "<p>Order by system name sorts the controls inside each group by number, with buttons, then axes, then hats. Order by your name sorts by the second name, and uses the system name when there is no second name. Order group names A to Z sorts the named groups. Ungrouped stays first.</p>"
+            + "<p>The grey box at the left of a hardware row or a group header is the drag handle. The type icon sits to the right of that box. Drag a control onto another control. Drop on the top half to place it before that control, or on the bottom half to place it after. Drop on a group header to put it in that group. Drag a group header to move that group.</p>"),
+        topic("Logical Device", "Display",
+            "<p>Display, at the bottom of the right-click menu, opens Logical Device — Display Editor on the right. It changes how this page looks. It does not change the controls or the actions. The sections start closed. Open one heading, or use Open all and Close all.</p>"
+            + "<p>Changes show immediately. They are kept only when you press Save View Settings. A save says “Saved for this page.” The look is stored with the program, for this page. It is not in the profile and not in a module file.</p>"
+            + "<p>Reset View to Default is the red button. It returns the built-in look, which is the look this page opened with. It does not save. The close mark asks when there are unsaved changes. Save writes them. Discard returns to the last save.</p>"
+            + "<p><b>Shown.</b> Show child rows lists the actions under a control. Show written by lists the physical control on the row. Written-by size sets the size of that line.</p>"
+            + "<p><b>List.</b> Space between rows is the gap between every row. Padding is the space around the list. Same on all sides uses one size. Each side sets top, right, bottom, and left.</p>"
+            + "<p><b>Group.</b> Space inside the group is the gap under each row in the group. Padding, corner radius, and color change the group header.</p>"
+            + "<p><b>Parent row.</b> Height is the hardware row. Padding, corner radius, and row color change that row.</p>"
+            + "<p><b>Child row.</b> Height is an action row, or an extra Written by row. Indent past parent is how far that row sits to the right of the hardware row. Padding, corner radius, and row color are its own.</p>"
+            + "<p><b>Text.</b> Parent text size and Bold names change the hardware name. Group text size changes the header. Child text size changes the rows under a control. Text color is the main words. Muted text is the quieter line, such as Written by and the group counts.</p>"
+            + "<p><b>Selection.</b> Fill of a selected row is its background. Line around a selected row is its outline while it is selected.</p>"),
         topic("Actions", "Map to Keyboard",
             "<p>Sends one or more keyboard keys when the input fires.</p>"
             + "<p>Choose the key, and whether the key is held while the input is held or tapped once.</p>"),
