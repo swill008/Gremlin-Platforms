@@ -354,6 +354,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     countChanged = QtCore.Signal()
     filtersChanged = QtCore.Signal()
     paneModelChanged = QtCore.Signal()
+    parkEmptyChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -362,6 +363,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._dest_filter = "all"
         self._rows: list[dict] = []
         self._dest_choices: list[str] = ["All devices"]
+        self._park_empty = False
         signal.profileChanged.connect(self.reload)
         self._claimed.countChanged.connect(self.reload)
         self._pane_model = None
@@ -506,21 +508,40 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                     "All devices",
                     "",
                 ):
-                    unmapped.append(
-                        {
-                            "rowKind": "unmapped",
-                            "name": name,
-                            "summary": "",
-                            "typeLabel": "",
-                            "destLabel": "Not bound",
-                            "kind": kind,
-                            "hwId": hw,
-                            "deviceIndex": didx,
-                            "bindingCount": 0,
-                            "indent": 0,
-                            "sequenceIndex": -1,
-                        }
-                    )
+                    if self._park_empty:
+                        unmapped.append(
+                            {
+                                "rowKind": "unmapped",
+                                "name": name,
+                                "summary": "",
+                                "typeLabel": "",
+                                "destLabel": "Not bound",
+                                "kind": kind,
+                                "hwId": hw,
+                                "deviceIndex": didx,
+                                "bindingCount": 0,
+                                "indent": 0,
+                                "sequenceIndex": -1,
+                                "simple": True,
+                            }
+                        )
+                    else:
+                        self._rows.append(
+                            {
+                                "rowKind": "group",
+                                "name": name,
+                                "summary": "Not bound",
+                                "typeLabel": "",
+                                "destLabel": "Not bound",
+                                "kind": kind,
+                                "hwId": hw,
+                                "deviceIndex": didx,
+                                "bindingCount": 0,
+                                "indent": 0,
+                                "sequenceIndex": -1,
+                                "simple": True,
+                            }
+                        )
                 continue
             if not shown:
                 continue
@@ -1156,6 +1177,18 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     def paneModel(self):
         return self._pane_model
 
+
+    def _get_park_empty(self) -> bool:
+        return self._park_empty
+
+    def _set_park_empty(self, value: bool) -> None:
+        flag = bool(value)
+        if flag == self._park_empty:
+            return
+        self._park_empty = flag
+        self.reload()
+        self.parkEmptyChanged.emit()
+
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     deviceName = QtCore.Property(
         str, fget=_get_device_name, fset=_set_device_name, notify=deviceNameChanged
@@ -1165,6 +1198,9 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     )
     destFilter = QtCore.Property(
         str, fget=_get_dest_filter, fset=_set_dest_filter, notify=filtersChanged
+    )
+    parkEmptyInUnmapped = QtCore.Property(
+        bool, fget=_get_park_empty, fset=_set_park_empty, notify=parkEmptyChanged
     )
 
     @QtCore.Property("QStringList", notify=filtersChanged)
