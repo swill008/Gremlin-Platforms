@@ -739,12 +739,24 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str)
     def setUserName(self, key: str, name: str) -> None:
+        self.setRowLabel(key, name, False)
+
+    @QtCore.Slot(str, result=bool)
+    def hidesSystem(self, key: str) -> bool:
+        item = self._item_for(key)
+        return bool(item is not None and item.hide_system and item.second_name)
+
+    @QtCore.Slot(str, str, bool)
+    def setRowLabel(self, key: str, name: str, hide_system: bool) -> None:
         item = self._item_for(key)
         if item is None:
             return
 
         def fn():
             self._logical.set_user_label(item.identifier, name)
+            current = self._item_for(key)
+            if current is not None:
+                current.hide_system = bool(hide_system) and bool(current.second_name)
             return []
 
         self._apply(fn)
