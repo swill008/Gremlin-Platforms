@@ -582,6 +582,14 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Item { Layout.fillWidth: true }
+            CheckBox {
+                text: "Compact view"
+                checked: !!(_page.model && _page.model.compactView)
+                onToggled: {
+                    if (_page.model)
+                        _page.model.setCompactView(checked)
+                }
+            }
             Label { text: "Split"; color: "#A1A1AA"; font.pixelSize: 11 }
             ComboBox {
                 id: _split
@@ -856,6 +864,7 @@ Item {
                                     y: index * 14
                                     stackIndex: index
                                     stacked: _pile.members.length > 1
+                                    compactView: !!(_page.model && _page.model.compactView)
                                     width: _pile.cardW
                                     height: Math.max(_pile.cardH > 0 ? _pile.cardH : 0, implicitHeight)
                                     stretchPhoto: _pile.cardH >= 140
