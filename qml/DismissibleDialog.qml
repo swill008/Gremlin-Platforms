@@ -45,6 +45,20 @@ Popup {
         open()
     }
 
+    function confirm(title, message, acceptLabel) {
+        _mode = "confirm"
+        _choice = ""
+        _resultOk = false
+        titleText = title
+        messageText = message ? String(message) : ""
+        confirmText = acceptLabel && String(acceptLabel).length ? String(acceptLabel) : "OK"
+        discardText = ""
+        cancelText = "Cancel"
+        destructive = false
+        holdOpen = true
+        open()
+    }
+
     function announce(ok, message) {
         _mode = "result"
         _resultOk = !!ok
