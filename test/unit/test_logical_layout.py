@@ -213,3 +213,29 @@ def test_group_as_moves_every_selected_row(qapp) -> None:
         model.deleteLater()
     finally:
         shared_state.current_profile = None
+
+
+def test_drag_places_a_button_before_after_and_into_a_group(qapp) -> None:
+    from gremlin import shared_state
+    from gremlin.ui.logical_layout import LogicalLayoutModel
+
+    profile = Profile()
+    shared_state.current_profile = profile
+    try:
+        logical = LogicalDevice()
+        logical.create(InputType.JoystickButton)
+        logical.create(InputType.JoystickButton)
+        logical.create(InputType.JoystickButton)
+        model = LogicalLayoutModel()
+        model.moveParent("parent:button:2", "group:Stick", "into")
+        model.moveParent("parent:button:3", "group:Stick", "into")
+        model.moveParent("parent:button:1", "parent:button:3", "before")
+        assert logical.button(1).group == "Stick"
+        order = [item.id for item in logical.ordered() if item.group == "Stick"]
+        assert order == [2, 1, 3]
+        model.moveParent("parent:button:1", "parent:button:3", "after")
+        order = [item.id for item in logical.ordered() if item.group == "Stick"]
+        assert order == [2, 3, 1]
+        model.deleteLater()
+    finally:
+        shared_state.current_profile = None
