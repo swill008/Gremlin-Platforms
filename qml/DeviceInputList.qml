@@ -92,9 +92,17 @@ Item {
         if (_inputList.currentIndex !== row) {
             _inputList.currentIndex = row
         }
-        Qt.callLater(function() {
-            _inputList.positionViewAtIndex(row, ListView.Contain)
-        })
+        var win = Window.window
+        if (win && win.deferListScroll)
+            win.deferListScroll(_root, row)
+        else
+            scrollRowNow(row)
+    }
+
+    function scrollRowNow(row) {
+        if (row < 0)
+            return
+        _inputList.positionViewAtIndex(row, ListView.Contain)
     }
 
     Connections {
