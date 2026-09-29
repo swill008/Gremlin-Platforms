@@ -338,6 +338,8 @@ Item {
                                 text: (rowKind === "group" ? _root._collapsed[groupKey] : !_root._opened[key]) ? "▸" : "▾"
                                 color: _root.colorText
                                 font.pixelSize: _root.caretSize
+                                Layout.alignment: Qt.AlignVCenter
+                                Layout.preferredWidth: visible ? implicitWidth : 0
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: {
@@ -350,11 +352,13 @@ Item {
                             }
                             Rectangle {
                                 visible: rowKind === "parent" || rowKind === "group"
-                                width: _root.gripWidth
-                                height: _root.gripHeight
+                                implicitWidth: _root.gripWidth
+                                implicitHeight: _root.gripHeight
+                                Layout.preferredWidth: visible ? _root.gripWidth : 0
+                                Layout.preferredHeight: _root.gripHeight
+                                Layout.alignment: Qt.AlignVCenter
                                 radius: 2
                                 color: _root.colorGrip
-                                z: 2
                                 MouseArea {
                                     id: _grip
                                     anchors.fill: parent
