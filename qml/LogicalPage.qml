@@ -109,6 +109,12 @@ Item {
         _place.setClosePaneAfterOk(closeAfterOk)
     }
 
+    function _saveDisplayOpen() {
+        if (!_ready)
+            return
+        _place.setDisplayPanelOpen("logical", "page", displayOpen)
+    }
+
     function _toggleOpen(key) {
         var next = Object.assign({}, _opened)
         next[key] = !next[key]
@@ -186,12 +192,14 @@ Item {
         paneWidth = _place.actionPaneWidth()
         closeAfterOk = _place.closePaneAfterOk()
         reloadDisplay()
+        displayOpen = _place.displayPanelOpen("logical", "page")
         _layout.setMode(mode)
         _ready = true
     }
 
     onPaneWidthChanged: _saveDock()
     onCloseAfterOkChanged: _saveDock()
+    onDisplayOpenChanged: _saveDisplayOpen()
     onModeChanged: _layout.setMode(mode)
 
     RowLayout {
@@ -236,6 +244,10 @@ Item {
                         _findNoAction.checked = false
                         _root._applyFind()
                     }
+                }
+                Button {
+                    text: _root.displayOpen ? "Hide Editor" : "Show Editor"
+                    onClicked: _root.displayOpen = !_root.displayOpen
                 }
                 Label {
                     text: _root.editorLocked ? "Running" : ""
