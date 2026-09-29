@@ -833,7 +833,7 @@ Item {
                                     return Math.max(1, _page.ghostH)
                                 var compact = _page.model && _page.model.compactView
                                 var c = _memberCards.itemAt(0)
-                                var need = (c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : (compact ? 0 : 260)
+                                var need = (c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : (compact ? 120 : 260)
                                 var h = Math.max(cardH >= 140 ? cardH : 0, need) + extra
                                 if (showGhost)
                                     h = Math.max(h, _page.ghostH)
