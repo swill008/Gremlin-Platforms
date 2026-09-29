@@ -532,9 +532,14 @@ Item {
         fillAxisPick()
     }
 
-    Component.onCompleted: { loadView(); rebuild() }
-    onGuidChanged: Qt.callLater(function() { loadView(); rebuild() })
-    onDeviceNameChanged: Qt.callLater(function() { loadView(); rebuild() })
+    function reloadView() {
+        loadView()
+        rebuild()
+    }
+
+    Component.onCompleted: reloadView()
+    onGuidChanged: reloadView()
+    onDeviceNameChanged: reloadView()
 
     component CrossPad: Rectangle {
         id: pad
