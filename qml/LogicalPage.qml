@@ -362,6 +362,8 @@ Item {
                                         _root._menuKey = key
                                         _root._menuTitle = title
                                         _root._menuUser = userName
+                                        if (_root._picked.indexOf(key) < 0)
+                                            _root._select(key, false)
                                         _root._openLayoutMenu(true, false)
                                     } else if (rowKind === "group" && groupName.length > 0) {
                                         _root._groupName = groupName
@@ -567,17 +569,20 @@ Item {
         }
     }
 
-    component MenuFieldRow: Item {
-        id: fieldRow
+    component MenuNameRow: Item {
+        id: nameRow
+        required property string label
+        property bool closeWhenNamed: false
         property bool rowHover: false
+        signal named(string value)
         implicitWidth: 300
         implicitHeight: 34
 
         Rectangle {
             anchors.fill: parent
-            color: fieldRow.rowHover ? Universal.listLowColor : "transparent"
+            color: !nameRow.enabled ? "transparent" : (nameRow.rowHover ? Universal.listLowColor : "transparent")
         }
-        HoverHandler { onHoveredChanged: fieldRow.rowHover = hovered }
+        HoverHandler { onHoveredChanged: nameRow.rowHover = hovered }
 
         RowLayout {
             anchors.fill: parent
@@ -585,24 +590,25 @@ Item {
             anchors.rightMargin: 12
             spacing: 8
             Label {
-                text: "New group"
-                color: _root.editorLocked ? Universal.baseLowColor : Universal.baseHighColor
+                text: nameRow.label
+                color: nameRow.enabled ? Universal.baseHighColor : Universal.baseLowColor
             }
             TextField {
-                id: _newGroupField
                 Layout.fillWidth: true
                 padding: 2
                 placeholderText: "Name, then Enter"
-                color: Universal.baseHighColor
-                enabled: !_root.editorLocked
+                color: nameRow.enabled ? Universal.baseHighColor : Universal.baseLowColor
+                enabled: nameRow.enabled
                 selectByMouse: true
                 background: Item {}
                 onAccepted: {
                     var name = text.trim()
-                    if (name.length) {
-                        _layout.addGroup(name)
-                        text = ""
-                    }
+                    if (!name.length || !nameRow.enabled)
+                        return
+                    text = ""
+                    nameRow.named(name)
+                    if (nameRow.closeWhenNamed)
+                        _pageMenu.close()
                 }
             }
         }
@@ -670,6 +676,12 @@ Item {
             enabled: _root._menuOnRow && !_root.editorLocked
             onTriggered: _layout.setUserName(_root._menuKey, "")
         }
+        MenuNameRow {
+            label: "Group as"
+            enabled: _root._menuOnRow && !_root.editorLocked
+            closeWhenNamed: true
+            onNamed: (name) => _layout.moveSelected(name)
+        }
         Menu {
             id: _moveMenu
             title: "Move to group"
@@ -679,10 +691,7 @@ Item {
                 delegate: MenuItem {
                     required property var modelData
                     text: modelData.title
-                    onTriggered: {
-                        _layout.setSelection([_root._menuKey])
-                        _layout.moveSelected(modelData.name)
-                    }
+                    onTriggered: _layout.moveSelected(modelData.name)
                 }
                 onObjectAdded: (index, object) => _moveMenu.insertItem(index, object)
                 onObjectRemoved: (index, object) => _moveMenu.removeItem(object)
@@ -696,7 +705,11 @@ Item {
 
         MenuSeparator {}
 
-        MenuFieldRow { enabled: !_root.editorLocked }
+        MenuNameRow {
+            label: "New group"
+            enabled: !_root.editorLocked
+            onNamed: (name) => _layout.addGroup(name)
+        }
         MenuItem {
             text: "Move group up"
             enabled: _root._menuOnGroup && !_root.editorLocked
