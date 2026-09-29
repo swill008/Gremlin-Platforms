@@ -315,7 +315,9 @@ class CodeRunner:
         self._reset_state()
 
         settings = self._profile.settings
-        start_mode = resolve_start_mode(self._profile)
+        names = self._profile.modes.mode_names()
+        if str(start_mode or "") not in names:
+            start_mode = resolve_start_mode(self._profile)
 
         macro.MacroManager().default_delay = settings.macro_default_delay
         syslog = logging.getLogger("system")
