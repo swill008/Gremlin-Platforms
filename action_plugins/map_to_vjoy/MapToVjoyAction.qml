@@ -27,6 +27,8 @@ Item {
         anchors.right: parent.right
 
         VJoySelector {
+            Layout.fillWidth: true
+            Layout.minimumWidth: 160
             validTypes: [_root.action.actionBehavior]
 
             // Propagate internal changes to the external interface.
@@ -94,7 +96,6 @@ Item {
         // UI for a button input
         Loader {
             active: _root.action.vjoyInputType == "button"
-            Layout.fillWidth: true
 
             sourceComponent: Row {
                 Switch {
