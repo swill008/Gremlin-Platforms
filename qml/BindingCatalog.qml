@@ -216,7 +216,7 @@ Item {
         }
     }
 
-    onClaimDeviceNameChanged: Qt.callLater(loadCatalog)
+    onClaimDeviceNameChanged: loadCatalog()
 
     DeviceLiveState {
         id: _liveState
