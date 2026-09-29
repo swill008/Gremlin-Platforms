@@ -390,6 +390,7 @@ _DEFAULT_CATALOG = {
     "groupPadBottom": 48,
     "groupPadLeft": 48,
     "parkEmptyInUnmapped": False,
+    "unmappedGap": 48,
     "colorParent": "#111113",
     "colorChild": "#111113",
     "colorSelected": "#27272A",
