@@ -193,6 +193,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 14: QtCore.QByteArray(b"sequenceIndex"),
         QtCore.Qt.ItemDataRole.UserRole + 15: QtCore.QByteArray(b"indent"),
         QtCore.Qt.ItemDataRole.UserRole + 16: QtCore.QByteArray(b"canInvert"),
+        QtCore.Qt.ItemDataRole.UserRole + 17: QtCore.QByteArray(b"childCount"),
+        QtCore.Qt.ItemDataRole.UserRole + 18: QtCore.QByteArray(b"extraWriters"),
     }
 
     revisionChanged = QtCore.Signal()
@@ -498,6 +500,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     "sequenceIndex": -1,
                     "indent": 1,
                     "canInvert": item.type == InputType.JoystickButton,
+                    "childCount": 0,
+                    "extraWriters": 0,
                 }
             )
         return rows
@@ -535,6 +539,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     "sequenceIndex": index,
                     "indent": 1,
                     "canInvert": False,
+                    "childCount": 0,
+                    "extraWriters": 0,
                 }
             )
         return rows
@@ -596,6 +602,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     "sequenceIndex": -1,
                     "indent": 0,
                     "canInvert": False,
+                    "childCount": len(visible),
+                    "extraWriters": 0,
                 }
             )
             shown = cached if filtering else [
@@ -629,6 +637,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                             "sequenceIndex": -1,
                             "indent": 1,
                             "canInvert": bool(lead) and item.type == InputType.JoystickButton,
+                            "childCount": len(children),
+                            "extraWriters": max(0, len(writers) - 1),
                         }
                     )
                     rows.extend(writers[1:])
