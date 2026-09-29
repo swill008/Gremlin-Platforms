@@ -1544,11 +1544,7 @@ ApplicationWindow {
                 claimDeviceName: configTitleName
                 isOutput: _root.configDirection === "dest"
                 showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel
-                parkEmptyInUnmapped: _root.parkEmptyInUnmapped
-                onParkEmptyInUnmappedChanged: {
-                    if (_root.parkEmptyInUnmapped !== parkEmptyInUnmapped)
-                        _root.parkEmptyInUnmapped = parkEmptyInUnmapped
-                }
+                onParkEmptyInUnmappedChanged: _root.parkEmptyInUnmapped = parkEmptyInUnmapped
                 onClosePanel: {
                     if (_root.configDirection === "dest")
                         _root.outputViewPanel = false
