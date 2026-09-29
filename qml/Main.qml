@@ -44,6 +44,7 @@ ApplicationWindow {
 
     property string pinSlug: ""
     property string configTitleName: ""
+    onConfigTitleNameChanged: syncOutputView()
     property string configDirection: ""
     property int sourceModuleCount: 0
     property int destModuleCount: 0
@@ -174,6 +175,14 @@ ApplicationWindow {
 
     function outputPane() {
         return _outputLoader.item
+    }
+
+    function syncOutputView() {
+        var view = _outputLoader.item
+        if (!view)
+            return
+        view.guid = uiState ? uiState.currentDevice : ""
+        view.deviceName = configTitleName
     }
 
     function logicalPane() {
@@ -1059,6 +1068,9 @@ ApplicationWindow {
     Connections {
         target: uiState
 
+        function onDeviceChanged() {
+            syncOutputView()
+        }
         function onModeChanged() {
             if (!uiState) {
                 return
@@ -1454,9 +1466,8 @@ ApplicationWindow {
                     && _root.configDirection === "dest"
                     && uiState.currentTab !== "xbox"
             visible: active
+            onLoaded: _root.syncOutputView()
             sourceComponent: OutputModuleView {
-                guid: uiState ? uiState.currentDevice : ""
-                deviceName: configTitleName
                 moduleModel: _moduleModel
                 showPanel: _root.outputViewPanel
                 onClosePanel: {
