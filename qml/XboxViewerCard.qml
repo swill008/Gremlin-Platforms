@@ -199,9 +199,11 @@ ColumnLayout {
                                         font.pointSize: 8
                                     }
                                     HoverHandler { id: _hwHover }
-                                    ToolTip.visible: _hwHover.hovered
-                                    ToolTip.delay: 200
-                                    ToolTip.text: "Hardware " + label
+                                    PointerTip {
+                                        text: "Hardware " + label
+                                        delay: 200
+                                        show: true
+                                    }
                                 }
                                 Rectangle { width: 1; height: parent.height; color: Style.medColor }
                                 Rectangle {
@@ -214,9 +216,11 @@ ColumnLayout {
                                         font.pointSize: 8
                                     }
                                     HoverHandler { id: _xbHover }
-                                    ToolTip.visible: _xbHover.hovered
-                                    ToolTip.delay: 200
-                                    ToolTip.text: xboxLabel
+                                    PointerTip {
+                                        text: xboxLabel
+                                        delay: 200
+                                        show: true
+                                    }
                                 }
                             }
                         }
