@@ -730,15 +730,15 @@ Item {
                             onToggled: (v) => { _root.openHandles = v }
                             RowLayout {
                                 Label { text: "Caret size"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                TrackSpin { from: 12; to: 24; source: _root.caretSize; onUserSet: (v) => { _root.caretSize = v } }
+                                TrackSpin { from: 12; to: 36; source: _root.caretSize; onUserSet: (v) => { _root.caretSize = v } }
                             }
                             RowLayout {
                                 Label { text: "Pad width"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                TrackSpin { from: 4; to: 24; source: _root.gripWidth; onUserSet: (v) => { _root.gripWidth = v } }
+                                TrackSpin { from: 4; to: 36; source: _root.gripWidth; onUserSet: (v) => { _root.gripWidth = v } }
                             }
                             RowLayout {
                                 Label { text: "Pad height"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                TrackSpin { from: 8; to: 28; source: _root.gripHeight; onUserSet: (v) => { _root.gripHeight = v } }
+                                TrackSpin { from: 8; to: 42; source: _root.gripHeight; onUserSet: (v) => { _root.gripHeight = v } }
                             }
                             ColorPick { label: "Pad color"; swatch: _root.colorGrip; target: "grip" }
                         }
