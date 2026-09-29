@@ -27,8 +27,23 @@ Window {
         defaultHeight: 640
     }
 
+    property string initialSection: ""
     property var _topics: HelpTopics.topics()
     property int _index: 0
+
+    function _showSection(name) {
+        if (!name)
+            return
+        for (var i = 0; i < _topics.length; ++i) {
+            if (_topics[i].section === name) {
+                _index = i
+                return
+            }
+        }
+    }
+
+    Component.onCompleted: _showSection(initialSection)
+    onInitialSectionChanged: _showSection(initialSection)
 
     RowLayout {
         anchors.fill: parent
