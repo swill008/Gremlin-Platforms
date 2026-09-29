@@ -6384,8 +6384,8 @@ Item {
         text: _ed.hoverHwLabel
         delay: 400
         timeout: 4000
-        x: _ed.hoverTipX + 14
-        y: _ed.hoverTipY + 16
+        x: _ed.hoverTipX - width / 2
+        y: _ed.hoverTipY - height - 8
     }
 
     TextEdit {
