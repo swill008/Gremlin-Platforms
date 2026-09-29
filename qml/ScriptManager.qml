@@ -121,11 +121,11 @@ Item {
 
             ToolTip {
                 text: _path.text
-                // Set an upper width of the tooltip to force word wrap on
-                // long texts.
                 width: contentWidth > 500 ? 500 : contentWidth + 20
                 visible: _hoverPath.hovered
                 delay: 500
+                x: _hoverPath.point.position.x - width / 2
+                y: _hoverPath.point.position.y - height - 8
             }
 
             HoverHandler {
@@ -147,6 +147,8 @@ Item {
             elide: Text.ElideMiddle
 
             ToolTip {
+                x: _hoverName.point.position.x - width / 2
+                y: _hoverName.point.position.y - height - 8
                 text: _name.text
                 // Set an upper width of the tooltip to force word wrap on
                 // long texts.
