@@ -816,6 +816,8 @@ Item {
                             }
                             property int cardH: {
                                 _page.pileRev
+                                if (_page.model && _page.model.compactView)
+                                    return 0
                                 var saved = _page.model ? _page.model.cardHeight(modelData) : 0
                                 return saved >= 140 ? saved : 0
                             }
