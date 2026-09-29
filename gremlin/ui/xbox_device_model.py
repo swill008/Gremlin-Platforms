@@ -52,10 +52,11 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
         self._pad_id = 1
         self._rows = list(XboxTarget)
         signal.profileChanged.connect(self.reload)
-        signal.inputItemChanged.connect(lambda *_: self.reload())
+        signal.inputItemChanged.connect(self.reload)
 
     @QtCore.Slot()
-    def reload(self) -> None:
+    @QtCore.Slot(int)
+    def reload(self, _index: int = 0) -> None:
         self.beginResetModel()
         self.endResetModel()
         self.statusChanged.emit()
