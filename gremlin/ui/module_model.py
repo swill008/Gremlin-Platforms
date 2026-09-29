@@ -57,6 +57,7 @@ _CFG_HIDDEN = "hidden-slugs"
 _CFG_ORDER = "card-order"
 _CFG_SHOW_STUBS = "show-stubs"
 _CFG_SPLIT = "split-mode"
+_CFG_COMPACT = "compact-view"
 _CFG_SPLIT_RATIO = "split-ratio"
 _CFG_STACKS = "card-stacks"
 _CFG_SIZES = "card-sizes"
@@ -90,6 +91,12 @@ def _ensure_display_options() -> None:
         "Show stub cards for detected hardware with no saved module.",
     )
     _reg(_CFG_ORDER, PropertyType.String, "", "Status card order (comma separated slugs).")
+    _reg(
+        _CFG_COMPACT,
+        PropertyType.Bool,
+        False,
+        "Status compact cards: text only, no photo.",
+    )
     _reg(
         _CFG_SPLIT,
         PropertyType.String,
@@ -891,6 +898,28 @@ class ModuleListModel(QtCore.QAbstractListModel):
         _ensure_display_options()
         packed = "|".join("+".join(g) for g in groups if len(g) > 1)
         _write_status(_CFG_STACKS, packed)
+
+    @QtCore.Property(bool, notify=panesChanged)
+    def compactView(self) -> bool:
+        try:
+            _ensure_display_options()
+            return bool(
+                config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_COMPACT)
+            )
+        except Exception:
+            return False
+
+    @QtCore.Slot(bool)
+    def setCompactView(self, compact: bool) -> None:
+        flag = bool(compact)
+        if flag == self.compactView:
+            return
+        try:
+            _ensure_display_options()
+            _write_status(_CFG_COMPACT, flag)
+        except Exception:
+            return
+        self.panesChanged.emit()
 
     @QtCore.Property(str, notify=panesChanged)
     def splitMode(self) -> str:
