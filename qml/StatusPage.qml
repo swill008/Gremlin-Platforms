@@ -780,7 +780,7 @@ Item {
                 Flow {
                     id: _flow
                     width: _flick.width
-                    spacing: 16
+                    spacing: (_page.model && _page.model.compactView) ? 8 : 16
 
                     Repeater {
                         id: _piles
@@ -806,13 +806,17 @@ Item {
                             }
                             property int cardW: {
                                 _page.pileRev
-                                var saved = _page.model ? _page.model.cardWidth(modelData) : 0
-                                if (saved >= 220)
-                                    return saved
+                                var compact = _page.model && _page.model.compactView
+                                if (!compact) {
+                                    var saved = _page.model ? _page.model.cardWidth(modelData) : 0
+                                    if (saved >= 220)
+                                        return saved
+                                }
                                 var avail = _flow.width
+                                var want = compact ? 240 : 280
                                 if (avail < 40)
-                                    return 280
-                                return Math.min(280, avail)
+                                    return want
+                                return Math.min(want, avail)
                             }
                             property int cardH: {
                                 _page.pileRev
@@ -827,8 +831,9 @@ Item {
                             height: {
                                 if (isDragHome)
                                     return Math.max(1, _page.ghostH)
+                                var compact = _page.model && _page.model.compactView
                                 var c = _memberCards.itemAt(0)
-                                var need = (c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : 260
+                                var need = (c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : (compact ? 0 : 260)
                                 var h = Math.max(cardH >= 140 ? cardH : 0, need) + extra
                                 if (showGhost)
                                     h = Math.max(h, _page.ghostH)
