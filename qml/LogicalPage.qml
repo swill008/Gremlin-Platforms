@@ -361,6 +361,7 @@ Item {
                                     if (rowKind === "parent") {
                                         _root._menuKey = key
                                         _root._menuTitle = title
+                                        _root._menuUser = userName
                                         _root._openLayoutMenu(true, false)
                                     } else if (rowKind === "group" && groupName.length > 0) {
                                         _root._groupName = groupName
@@ -461,6 +462,7 @@ Item {
     property string _dragFrom: ""
     property string _menuKey: ""
     property string _menuTitle: ""
+    property string _menuUser: ""
     property string _groupName: ""
     property string _hardwareKey: ""
     property bool _menuOnRow: false
@@ -658,8 +660,9 @@ Item {
             text: "Rename"
             enabled: _root._menuOnRow && !_root.editorLocked
             onTriggered: {
-                _nameField.text = ""
-                _nameDialog.open()
+                _nameDialog.lastAccepted = _root._menuUser
+                _nameDialog.text = _root._menuUser
+                _nameDialog.visible = true
             }
         }
         MenuItem {
@@ -708,8 +711,8 @@ Item {
             text: "Rename group"
             enabled: _root._menuOnGroup && !_root.editorLocked
             onTriggered: {
-                _groupField.text = _root._groupName
-                _groupDialog.open()
+                _groupDialog.text = _root._groupName
+                _groupDialog.visible = true
             }
         }
         MenuItem {
@@ -750,21 +753,28 @@ Item {
         }
     }
 
-    Dialog {
+    TextInputDialog {
         id: _nameDialog
-        title: "Your name"
-        modal: true
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        TextField { id: _nameField; placeholderText: "Leave empty to use the system name"; width: 280 }
-        onAccepted: _layout.setUserName(_menuKey, _nameField.text)
+        visible: false
+        width: 320
+        clearOnClick: false
+        heading: "Your name"
+        onAccepted: (value) => {
+            _layout.setUserName(_root._menuKey, value)
+            visible = false
+        }
     }
-    Dialog {
+    TextInputDialog {
         id: _groupDialog
-        title: "Rename group"
-        modal: true
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        TextField { id: _groupField; width: 280 }
-        onAccepted: _layout.renameGroup(_groupName, _groupField.text)
+        visible: false
+        width: 320
+        clearOnClick: false
+        heading: "Rename group"
+        validator: function(value) { return value.trim().length > 0 }
+        onAccepted: (value) => {
+            _layout.renameGroup(_root._groupName, value.trim())
+            visible = false
+        }
     }
 
     Popup {
