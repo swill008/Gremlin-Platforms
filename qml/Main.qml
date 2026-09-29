@@ -626,9 +626,11 @@ ApplicationWindow {
                     model: backend ? backend.recentProfiles : []
                     delegate: MenuItem {
                         text: fileNameOf(modelData)
-                        ToolTip.visible: hovered
-                        ToolTip.text: modelData
-                        ToolTip.delay: 400
+                        PointerTip {
+                            text: modelData
+                            delay: 400
+                            show: true
+                        }
                         onTriggered: () => {
                             if (backend) {
                                 backend.loadProfile(modelData)
@@ -985,8 +987,7 @@ ApplicationWindow {
                     }
                 }
 
-                ToolTip {
-                    visible: parent.hovered
+                PointerTip {
                     text: qsTr("Mode. This is the map you are editing and the map that runs.")
                     delay: 500
                 }
@@ -1042,8 +1043,11 @@ ApplicationWindow {
                 HoverHandler {
                     id: _savedHover
                 }
-                ToolTip.visible: _savedHover.hovered && text.length > 0
-                ToolTip.text: text
+                PointerTip {
+                    text: text
+                    delay: 400
+                    show: text.length > 0
+                }
             }
         }
     }
@@ -1276,8 +1280,11 @@ ApplicationWindow {
                             enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
                             onClicked: configDirection === "dest" ? _root.cycleOutput(-1) : _root.cycleConfiguration(-1)
-                            ToolTip.visible: hovered
-                            ToolTip.text: configDirection === "dest" ? "Previous output module" : "Previous input module"
+                            PointerTip {
+                                text: configDirection === "dest" ? "Previous output module" : "Previous input module"
+                                delay: 400
+                                show: true
+                            }
                         }
                         IconButton {
                             text: "\uF285"
@@ -1286,8 +1293,11 @@ ApplicationWindow {
                             enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
                             onClicked: configDirection === "dest" ? _root.cycleOutput(1) : _root.cycleConfiguration(1)
-                            ToolTip.visible: hovered
-                            ToolTip.text: configDirection === "dest" ? "Next output module" : "Next input module"
+                            PointerTip {
+                                text: configDirection === "dest" ? "Next output module" : "Next input module"
+                                delay: 400
+                                show: true
+                            }
                         }
                         Label {
                             id: _configTitle
@@ -1333,8 +1343,11 @@ ApplicationWindow {
                         if (catalog)
                             catalog.parkEmptyInUnmapped = checked
                     }
-                    ToolTip.visible: hovered
-                    ToolTip.text: "When checked, a control with no actions is listed under Unmapped."
+                    PointerTip {
+                        text: "When checked, a control with no actions is listed under Unmapped."
+                        delay: 400
+                        show: true
+                    }
                 }
                 Button {
                     visible: configDirection !== "dest" && configDirection !== "logical"
