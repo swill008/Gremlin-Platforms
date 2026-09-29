@@ -75,7 +75,7 @@ Item {
         Loader {
             id: _deviceLoader
 
-            Layout.minimumWidth: 150
+            Layout.minimumWidth: 72
             Layout.fillWidth: true
 
             sourceComponent: _root.useCompact ? _compactVariant : _baseVariant
@@ -90,7 +90,7 @@ Item {
         Loader {
             id: _inputLoader
 
-            Layout.minimumWidth: 150
+            Layout.minimumWidth: 72
             Layout.fillWidth: true
 
             sourceComponent: _root.useCompact ? _compactVariant : _baseVariant
