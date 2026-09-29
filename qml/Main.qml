@@ -49,6 +49,7 @@ ApplicationWindow {
     property int destModuleCount: 0
     property bool outputViewPanel: true
     property bool catalogPanel: true
+    property bool parkEmptyInUnmapped: false
     property bool _panelReady: false
     property string _panelDevice: ""
 
@@ -1309,6 +1310,19 @@ ApplicationWindow {
                         rememberDisplayPanel()
                     }
                 }
+                CheckBox {
+                    visible: configDirection !== "dest" && configDirection !== "logical"
+                    text: "Move empty to Unmapped"
+                    checked: _root.parkEmptyInUnmapped
+                    onToggled: {
+                        _root.parkEmptyInUnmapped = checked
+                        var catalog = catalogPane()
+                        if (catalog)
+                            catalog.saveParkEmpty(checked)
+                    }
+                    ToolTip.visible: hovered
+                    ToolTip.text: "When checked, a control with no actions is listed under Unmapped."
+                }
                 Button {
                     visible: configDirection !== "dest" && configDirection !== "logical"
                     text: catalogPanel ? "Hide Editor" : "Show Editor"
@@ -1530,6 +1544,11 @@ ApplicationWindow {
                 claimDeviceName: configTitleName
                 isOutput: _root.configDirection === "dest"
                 showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel
+                parkEmptyInUnmapped: _root.parkEmptyInUnmapped
+                onParkEmptyInUnmappedChanged: {
+                    if (_root.parkEmptyInUnmapped !== parkEmptyInUnmapped)
+                        _root.parkEmptyInUnmapped = parkEmptyInUnmapped
+                }
                 onClosePanel: {
                     if (_root.configDirection === "dest")
                         _root.outputViewPanel = false
