@@ -52,9 +52,16 @@ ToolButton {
         }
     }
 
+    HoverHandler {
+        id: _tipHover
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+    }
+
     ToolTip {
         id: _tooltip
-        visible: _button.hovered
+        visible: _tipHover.hovered && text.length > 0
         delay: 500
+        x: _tipHover.point.position.x - width / 2
+        y: _tipHover.point.position.y - height - 8
     }
 }
