@@ -170,9 +170,10 @@ Rectangle {
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             HoverHandler { id: _boundHover }
-            ToolTip.visible: _boundHover.hovered && target.length > 0
-            ToolTip.text: target
-            ToolTip.delay: 400
+            PointerTip {
+                text: target
+                show: target.length > 0
+            }
         }
 
         Label {
@@ -183,9 +184,10 @@ Rectangle {
             Layout.fillWidth: true
 
             HoverHandler { id: _lastHover }
-            ToolTip.visible: _lastHover.hovered && lastHardware.length > 0
-            ToolTip.text: lastHardware
-            ToolTip.delay: 400
+            PointerTip {
+                text: lastHardware
+                show: lastHardware.length > 0
+            }
         }
     }
 
@@ -294,9 +296,7 @@ Rectangle {
             cursorShape: Qt.PointingHandCursor
             onClicked: _card.ignoreDevice()
         }
-        ToolTip.visible: _hideHover.hovered
-        ToolTip.text: "Hide device"
-        ToolTip.delay: 400
+        PointerTip { text: "Hide device" }
     }
 
     Button {
