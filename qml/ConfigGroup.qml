@@ -255,13 +255,8 @@ ColumnLayout {
 
                     onTextEdited: () => { model.value = text }
 
-                    ToolTip {
+                    PointerTip {
                         text: parent.text
-
-                        width: contentWidth > 500 ? 500 : contentWidth + 20
-
-                        visible: parent.hovered
-                        delay: 500
                     }
                 }
             }
