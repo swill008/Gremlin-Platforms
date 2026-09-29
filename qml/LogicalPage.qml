@@ -863,6 +863,9 @@ Item {
             onTriggered: {
                 _nameDialog.lastAccepted = _root._menuUser
                 _nameDialog.text = _root._menuUser
+                _nameDialog.showOption = true
+                _nameDialog.optionText = "Hide system name"
+                _nameDialog.optionChecked = _layout.hidesSystem(_root._menuKey)
                 _nameDialog.visible = true
             }
         }
@@ -972,7 +975,7 @@ Item {
         clearOnClick: false
         heading: "Your name"
         onAccepted: (value) => {
-            _layout.setUserName(_root._menuKey, value)
+            _layout.setRowLabel(_root._menuKey, value, optionChecked)
             visible = false
         }
     }
