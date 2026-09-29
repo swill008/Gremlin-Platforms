@@ -11,14 +11,17 @@ Item {
     id: _root
 
     property InputItemBindingModel inputBinding
+    readonly property bool hasChoice: inputBinding
+        && inputBinding.inputType !== "button"
+        && inputBinding.inputType !== "key"
 
-    implicitWidth: _content.width
-    implicitHeight: _content.height
+    implicitWidth: hasChoice ? _content.implicitWidth : 0
+    implicitHeight: hasChoice ? _content.implicitHeight : 0
 
     RowLayout {
         id: _content
 
-        visible: !["button", "key"].includes(_root.inputBinding.inputType)
+        visible: _root.hasChoice
 
         Label {
             leftPadding: 20
