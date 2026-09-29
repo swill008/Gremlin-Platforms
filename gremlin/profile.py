@@ -825,10 +825,16 @@ class Profile:
             group_node = node.find("group")
             user_label = (user_node.text or "").strip() if user_node is not None and user_node.text else ""
             group = (group_node.text or "").strip() if group_node is not None and group_node.text else ""
+            hide_node = node.find("hide-system")
+            hide_system = (
+                hide_node is not None
+                and (hide_node.text or "").strip().lower() in ("1", "true", "yes")
+            )
             system = f"{InputType.to_string(kind).capitalize()} {input_id}"
             if not user_label and label != system:
                 user_label = label
-            logical.create(kind, input_id, label, user_label=user_label, group=group)
+            made = logical.create(kind, input_id, label, user_label=user_label, group=group)
+            made.hide_system = hide_system and bool(made.second_name)
 
     def _logical_devices_to_xml(self) -> ElementTree.Element:
         node = ElementTree.Element("logical-device")
@@ -853,6 +859,10 @@ class Profile:
                 folder = ElementTree.Element("group")
                 folder.text = item.group
                 input_node.append(folder)
+            if item.hide_system:
+                hidden = ElementTree.Element("hide-system")
+                hidden.text = "true"
+                input_node.append(hidden)
             node.append(input_node)
         return node
 
