@@ -946,7 +946,8 @@ Item {
         property bool rowHover: false
         property bool enabled: true
         implicitWidth: 300
-        implicitHeight: 34
+        implicitHeight: visible ? 34 : 0
+        height: implicitHeight
 
         function parsed() {
             var n = parseInt(_field.text)
@@ -1029,7 +1030,8 @@ Item {
         property bool enabled: true
         signal named(string value)
         implicitWidth: 300
-        implicitHeight: 34
+        implicitHeight: visible ? 34 : 0
+        height: implicitHeight
 
         Rectangle {
             anchors.fill: parent
@@ -1092,11 +1094,12 @@ Item {
         MenuCountRow { id: _addAxisRow; label: "Add Axis"; kind: "axis"; visible: !_root.editorLocked }
         MenuCountRow { id: _addHatRow; label: "Add Hat"; kind: "hat"; visible: !_root.editorLocked }
 
-        MenuSeparator { visible: _root._menuOnRow && !_root.editorLocked }
+        MenuSeparator { visible: _root._menuOnRow && !_root.editorLocked; height: visible ? implicitHeight : 0 }
 
         MenuItem {
             text: "Add Action"
             visible: _root._menuOnRow && !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: {
                 var seq = _layout.addAction(_root._menuKey)
                 if (seq >= 0)
@@ -1106,6 +1109,7 @@ Item {
         MenuItem {
             text: "Assign hardware"
             visible: _root._menuOnRow && !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: {
                 _hardwareKey = _root._menuKey
                 _hardwareTitle.text = _root._menuTitle
@@ -1118,6 +1122,7 @@ Item {
         MenuItem {
             text: "Rename"
             visible: _root._menuOnRow && !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: {
                 _nameDialog.lastAccepted = _root._menuUser
                 _nameDialog.text = _root._menuUser
@@ -1130,6 +1135,7 @@ Item {
         MenuItem {
             text: "Clear name"
             visible: _root._menuOnRow && !_root.editorLocked && _root._menuUser.length > 0
+            height: visible ? implicitHeight : 0
             onTriggered: _layout.setUserName(_root._menuKey, "")
         }
         MenuNameRow {
@@ -1138,28 +1144,29 @@ Item {
             closeWhenNamed: true
             onNamed: (name) => _root._groupAs(name)
         }
-        Menu {
-            id: _moveMenu
-            title: "Move to group"
+        MenuItem {
+            id: _moveItem
+            text: "Move to group"
             visible: _root._menuOnRow && !_root.editorLocked
-            Instantiator {
-                model: _layout.groups
-                delegate: MenuItem {
-                    required property var modelData
-                    text: modelData.title
-                    onTriggered: _layout.moveSelected(modelData.name)
-                }
-                onObjectAdded: (index, object) => _moveMenu.insertItem(index, object)
-                onObjectRemoved: (index, object) => _moveMenu.removeItem(object)
+            height: visible ? implicitHeight : 0
+            indicator: Label {
+                text: "\u203A"
+                color: "#E4E4E7"
+                font.pixelSize: 16
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                anchors.rightMargin: 12
             }
+            onTriggered: _moveMenu.popup(_moveItem, _moveItem.width, 0)
         }
         MenuItem {
             text: "Delete"
             visible: _root._menuOnRow && !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: _layout.deleteParents([_root._menuKey])
         }
 
-        MenuSeparator { visible: !_root.editorLocked }
+        MenuSeparator { visible: !_root.editorLocked; height: visible ? implicitHeight : 0 }
 
         MenuNameRow {
             label: "New group"
@@ -1169,16 +1176,19 @@ Item {
         MenuItem {
             text: "Move group up"
             visible: _root._menuOnGroup && !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: _layout.moveGroupUp(_root._groupName)
         }
         MenuItem {
             text: "Move group down"
             visible: _root._menuOnGroup && !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: _layout.moveGroupDown(_root._groupName)
         }
         MenuItem {
             text: "Rename group"
             visible: _root._menuOnGroup && !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: {
                 _groupDialog.text = _root._groupName
                 _groupDialog.visible = true
@@ -1187,45 +1197,69 @@ Item {
         MenuItem {
             text: "Delete group"
             visible: _root._menuOnGroup && !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: _layout.removeGroup(_root._groupName)
         }
 
-        MenuSeparator { visible: !_root.editorLocked }
+        MenuSeparator { visible: !_root.editorLocked; height: visible ? implicitHeight : 0 }
 
         MenuItem {
             text: "Order by system name"
             visible: !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: _layout.sortBySystem()
         }
         MenuItem {
             text: "Order by your name"
             visible: !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: _layout.sortByName()
         }
         MenuItem {
             text: "Order group names A to Z"
             visible: !_root.editorLocked
+            height: visible ? implicitHeight : 0
             onTriggered: _layout.sortGroupNames()
         }
 
-        MenuSeparator { visible: !_root.editorLocked && (_layout.canUndo || _layout.canRedo) }
+        MenuSeparator { visible: !_root.editorLocked && (_layout.canUndo || _layout.canRedo); height: visible ? implicitHeight : 0 }
 
         MenuItem {
             text: "Undo"
             visible: !_root.editorLocked && _layout.canUndo
+            height: visible ? implicitHeight : 0
             onTriggered: _layout.undo()
         }
         MenuItem {
             text: "Redo"
             visible: !_root.editorLocked && _layout.canRedo
+            height: visible ? implicitHeight : 0
             onTriggered: _layout.redo()
         }
 
-        MenuSeparator { visible: !_root.editorLocked }
+        MenuSeparator { visible: !_root.editorLocked; height: visible ? implicitHeight : 0 }
 
         MenuItem {
             text: "Display"
             onTriggered: _root.displayOpen = true
+        }
+    }
+
+
+    Menu {
+        id: _moveMenu
+        Instantiator {
+            model: _layout.groups
+            delegate: MenuItem {
+                required property var modelData
+                text: modelData.title
+                onTriggered: {
+                    _layout.moveSelected(modelData.name)
+                    _pageMenu.close()
+                }
+            }
+            onObjectAdded: (index, object) => _moveMenu.insertItem(index, object)
+            onObjectRemoved: (index, object) => _moveMenu.removeItem(object)
         }
     }
 
