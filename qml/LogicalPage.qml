@@ -254,12 +254,30 @@ Item {
                                 color: "#52525B"
                                 z: 2
                                 MouseArea {
+                                    id: _grip
                                     anchors.fill: parent
                                     anchors.margins: -6
-                                    cursorShape: Qt.SizeAllCursor
+                                    enabled: !_root.editorLocked
+                                    cursorShape: rowKind === "parent" ? Qt.OpenHandCursor : Qt.SizeAllCursor
                                     preventStealing: true
-                                    onPressed: _root._dragFrom = key
+                                    drag.target: rowKind === "parent" ? _payload : null
+                                    drag.axis: Drag.XAndYAxis
+                                    drag.threshold: 4
+                                    onPressed: (mouse) => {
+                                        if (rowKind !== "parent") {
+                                            _root._dragFrom = key
+                                            return
+                                        }
+                                        var pos = mapToItem(_row, mouse.x, mouse.y)
+                                        _payload.x = pos.x
+                                        _payload.y = pos.y
+                                        _row.grabToImage(function(result) {
+                                            _payload.Drag.imageSource = result.url
+                                        })
+                                    }
                                     onReleased: (mouse) => {
+                                        if (rowKind === "parent")
+                                            return
                                         var pos = mapToItem(_list.contentItem, mouse.x, mouse.y)
                                         var hit = _list.indexAt(pos.x, pos.y)
                                         if (hit >= 0)
@@ -314,6 +332,64 @@ Item {
                                 checked: inverted
                                 onClicked: _layout.setInverted(writerId, checked)
                             }
+                        }
+
+                        DropArea {
+                            id: _drop
+                            anchors.fill: parent
+                            z: 4
+                            enabled: !_root.editorLocked && (rowKind === "parent" || rowKind === "group")
+                            keys: ["application/x-gremlin-logical"]
+                            property bool placeBefore: true
+                            onPositionChanged: (drag) => {
+                                var source = drag.getDataAsString("application/x-gremlin-logical")
+                                if (!source || source === key || source.indexOf("parent:") !== 0) {
+                                    _insertLine.visible = false
+                                    return
+                                }
+                                if (rowKind === "group") {
+                                    placeBefore = false
+                                    _insertLine.y = Math.max(0, height - 2)
+                                } else {
+                                    placeBefore = drag.y < height / 2
+                                    _insertLine.y = placeBefore ? 0 : Math.max(0, height - 2)
+                                }
+                                _insertLine.visible = true
+                            }
+                            onExited: _insertLine.visible = false
+                            onDropped: (drop) => {
+                                _insertLine.visible = false
+                                var source = drop.getDataAsString("application/x-gremlin-logical")
+                                if (!source || source === key)
+                                    return
+                                if (rowKind === "group")
+                                    _layout.moveParent(source, key, "into")
+                                else
+                                    _layout.moveParent(source, key, placeBefore ? "before" : "after")
+                                drop.accept(Qt.MoveAction)
+                            }
+                            Rectangle {
+                                id: _insertLine
+                                visible: false
+                                z: 6
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                height: 2
+                                color: "#3B82F6"
+                            }
+                        }
+
+                        Item {
+                            id: _payload
+                            width: 1
+                            height: 1
+                            Drag.active: _grip.drag.active && rowKind === "parent" && !_root.editorLocked
+                            Drag.dragType: Drag.Automatic
+                            Drag.supportedActions: Qt.MoveAction
+                            Drag.proposedAction: Qt.MoveAction
+                            Drag.hotSpot.x: 12
+                            Drag.hotSpot.y: 12
+                            Drag.mimeData: { "application/x-gremlin-logical": key }
                         }
 
                         MouseArea {
