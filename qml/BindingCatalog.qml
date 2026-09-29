@@ -652,11 +652,6 @@ Item {
         return savedCatalog.length > 0 && JSON.stringify(catalogPayload()) !== savedCatalog
     }
 
-    function saveParkEmpty(value) {
-        parkEmptyInUnmapped = !!value
-        saveCatalog()
-    }
-
     function saveCatalog() {
         var ok = false
         if (moduleModel && claimDeviceName.length)
