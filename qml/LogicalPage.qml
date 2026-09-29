@@ -70,8 +70,10 @@ Item {
     property string colorSelectBorder: "#3F3F46"
     property string colorBorder: "#3F3F46"
     property int caretSize: 18
+    property string colorCaret: "#E4E4E7"
     property int gripWidth: 8
     property int gripHeight: 18
+    property int gripRadius: 2
     property string colorGrip: "#52525B"
     property string _colorTarget: "parent"
     property string toastText: "Display Options Saved"
@@ -342,7 +344,7 @@ Item {
                             Label {
                                 visible: _root._hasList(rowKind, childCount, extraWriters)
                                 text: (rowKind === "group" ? _root._collapsed[groupKey] : !_root._opened[key]) ? "▸" : "▾"
-                                color: _root.colorText
+                                color: _root.colorCaret
                                 font.pixelSize: _root.caretSize
                                 Layout.alignment: Qt.AlignVCenter
                                 Layout.preferredWidth: visible ? implicitWidth : 0
@@ -363,7 +365,7 @@ Item {
                                 Layout.preferredWidth: visible ? _root.gripWidth : 0
                                 Layout.preferredHeight: visible ? _root.gripHeight : 0
                                 Layout.alignment: Qt.AlignVCenter
-                                radius: 2
+                                radius: _root.gripRadius
                                 color: _root.colorGrip
                                 MouseArea {
                                     id: _grip
@@ -742,6 +744,7 @@ Item {
                                 Label { text: "Caret size"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 12; to: 36; source: _root.caretSize; onUserSet: (v) => { _root.caretSize = v } }
                             }
+                            ColorPick { label: "Caret color"; swatch: _root.colorCaret; target: "caret" }
                             RowLayout {
                                 Label { text: "Pad width"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 4; to: 36; source: _root.gripWidth; onUserSet: (v) => { _root.gripWidth = v } }
@@ -751,6 +754,10 @@ Item {
                                 TrackSpin { from: 8; to: 42; source: _root.gripHeight; onUserSet: (v) => { _root.gripHeight = v } }
                             }
                             ColorPick { label: "Pad color"; swatch: _root.colorGrip; target: "grip" }
+                            RowLayout {
+                                Label { text: "Pad corner"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 16; source: _root.gripRadius; onUserSet: (v) => { _root.gripRadius = v } }
+                            }
                         }
                         FoldSection {
                             title: "List"
@@ -1714,8 +1721,10 @@ Item {
             "colorSelectBorder": colorSelectBorder,
             "colorBorder": colorBorder,
             "caretSize": caretSize,
+            "colorCaret": colorCaret,
             "gripWidth": gripWidth,
             "gripHeight": gripHeight,
+            "gripRadius": gripRadius,
             "colorGrip": colorGrip
         }
     }
@@ -1771,8 +1780,10 @@ Item {
         colorSelectBorder = v.colorSelectBorder || "#3F3F46"
         colorBorder = v.colorBorder || "#3F3F46"
         caretSize = numVal(v.caretSize, 18)
+        colorCaret = v.colorCaret || "#E4E4E7"
         gripWidth = numVal(v.gripWidth, 8)
         gripHeight = numVal(v.gripHeight, 18)
+        gripRadius = numVal(v.gripRadius, 2)
         colorGrip = v.colorGrip || "#52525B"
     }
 
@@ -1825,8 +1836,10 @@ Item {
         colorSelectBorder = "#3F3F46"
         colorBorder = "#3F3F46"
         caretSize = 18
+        colorCaret = "#E4E4E7"
         gripWidth = 8
         gripHeight = 18
+        gripRadius = 2
         colorGrip = "#52525B"
         setAllSections(false)
     }
@@ -1901,6 +1914,7 @@ Item {
             else if (_colorTarget === "border") colorBorder = c
             else if (_colorTarget === "group") colorGroup = c
             else if (_colorTarget === "grip") colorGrip = c
+            else if (_colorTarget === "caret") colorCaret = c
             else colorParent = c
         }
     }
