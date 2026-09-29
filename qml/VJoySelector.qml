@@ -75,8 +75,10 @@ Item {
         Loader {
             id: _deviceLoader
 
-            Layout.minimumWidth: 72
-            Layout.fillWidth: true
+            visible: _vjoy && _vjoy.hasValidVJoyDevices
+            Layout.minimumWidth: visible ? 72 : 0
+            Layout.fillWidth: visible
+            Layout.preferredWidth: visible ? -1 : 0
 
             sourceComponent: _root.useCompact ? _compactVariant : _baseVariant
 
@@ -90,8 +92,10 @@ Item {
         Loader {
             id: _inputLoader
 
-            Layout.minimumWidth: 72
-            Layout.fillWidth: true
+            visible: _vjoy && _vjoy.hasValidVJoyDevices && _vjoy.inputChoices.length > 0
+            Layout.minimumWidth: visible ? 72 : 0
+            Layout.fillWidth: visible
+            Layout.preferredWidth: visible ? -1 : 0
 
             sourceComponent: _root.useCompact ? _compactVariant : _baseVariant
 
@@ -101,13 +105,14 @@ Item {
             }
         }
 
-        HorizontalDivider {}
+        HorizontalDivider { visible: _vjoy && _vjoy.hasValidVJoyDevices }
 
         Label {
             visible: _vjoy && !_vjoy.hasValidVJoyDevices
+            Layout.fillWidth: true
 
-            text: "No output modules available."
-            color: Style.error
+            text: "No output module claimed"
+            color: "#A1A1AA"
         }
 
         Label {
