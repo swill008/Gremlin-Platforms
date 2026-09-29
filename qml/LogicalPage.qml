@@ -944,7 +944,6 @@ Item {
         required property string kind
         property int count: 1
         property bool rowHover: false
-        property bool enabled: true
         implicitWidth: 300
         implicitHeight: visible ? 34 : 0
         height: implicitHeight
@@ -1027,7 +1026,6 @@ Item {
         required property string label
         property bool closeWhenNamed: false
         property bool rowHover: false
-        property bool enabled: true
         signal named(string value)
         implicitWidth: 300
         implicitHeight: visible ? 34 : 0
