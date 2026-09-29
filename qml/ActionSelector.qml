@@ -15,8 +15,8 @@ Item {
     property ActionModel actionNode
     property var callback: null
 
-    implicitHeight: _content.height
-    implicitWidth: _button.width + _combobox.width + 13
+    implicitHeight: _content.implicitHeight
+    implicitWidth: 200
 
     Connections {
         target: actionNode
@@ -33,13 +33,11 @@ Item {
     RowLayout {
         id: _content
 
-        anchors.left: parent.left
-        anchors.right: parent.right
+        anchors.fill: parent
 
         Button {
             id: _button
 
-            Layout.leftMargin: 8
             text: "Add Action"
 
             onClicked: {
@@ -50,7 +48,9 @@ Item {
         ComboBox {
             id: _combobox
 
-            implicitContentWidthPolicy: ComboBox.WidestText
+            Layout.fillWidth: true
+            Layout.minimumWidth: 72
+            popup.width: Math.max(width, 240)
         }
     }
 }
