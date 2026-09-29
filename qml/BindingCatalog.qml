@@ -355,6 +355,7 @@ Item {
     property bool openScreen: false
     property bool openShown: false
     property bool openList: false
+    property bool openUnmapped: false
     property bool openGroup: false
     property bool openParent: false
     property bool openChild: false
@@ -367,6 +368,7 @@ Item {
             "screen": openScreen,
             "shown": openShown,
             "list": openList,
+            "unmapped": openUnmapped,
             "group": openGroup,
             "parent": openParent,
             "child": openChild,
@@ -381,6 +383,7 @@ Item {
         openScreen = !!s.screen
         openShown = !!s.shown
         openList = !!s.list
+        openUnmapped = !!s.unmapped
         openGroup = !!s.group
         openParent = !!s.parent
         openChild = !!s.child
@@ -393,6 +396,7 @@ Item {
         openScreen = open
         openShown = open
         openList = open
+        openUnmapped = open
         openGroup = open
         openParent = open
         openChild = open
@@ -1716,10 +1720,6 @@ Item {
                                 Label { text: "Space between groups"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: groupBetween; onUserSet: (v) => { groupBetween = v; }}
                             }
-                            RowLayout {
-                                Label { text: "Space before Unmapped"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                TrackSpin { from: 0; to: 80; source: unmappedGap; onUserSet: (v) => { unmappedGap = v; }}
-                            }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
                             PadFields {
                                 shape: listPadShape
@@ -1736,6 +1736,15 @@ Item {
                                     listPadBottom = padBottom
                                     listPadLeft = padLeft
                                 }
+                            }
+                        }
+                        FoldSection {
+                            title: "Unmapped Row"
+                            open: openUnmapped
+                            onToggled: (v) => { openUnmapped = v }
+                            RowLayout {
+                                Label { text: "Space before Unmapped"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 80; source: unmappedGap; onUserSet: (v) => { unmappedGap = v; }}
                             }
                         }
                         FoldSection {
