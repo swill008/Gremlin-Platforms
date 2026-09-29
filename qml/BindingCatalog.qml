@@ -7,6 +7,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Universal
 import QtQuick.Layouts
 import QtQuick.Dialogs
+import QtQuick.Window
 
 import Gremlin.Config
 import Gremlin.Device
@@ -776,26 +777,33 @@ Item {
     function revealRow(row) {
         if (row < 0)
             return
-        Qt.callLater(function() {
-            if (row >= _list.count)
-                return
-            var item = _list.itemAtIndex(row)
-            if (!item) {
-                _list.positionViewAtIndex(row, ListView.Contain)
-                return
-            }
-            var top = item.y - _list.contentY
-            var viewH = _list.height
-            if (viewH <= 0)
-                return
-            if (item.height >= viewH) {
-                if (top < -1 || top > 1)
-                    _list.positionViewAtIndex(row, ListView.Beginning)
-                return
-            }
-            if (top < 0 || top + item.height > viewH)
-                _list.positionViewAtIndex(row, ListView.Contain)
-        })
+        var win = Window.window
+        if (win && win.revealCatalogRow) {
+            win.revealCatalogRow(row)
+            return
+        }
+        revealRowNow(row)
+    }
+
+    function revealRowNow(row) {
+        if (row < 0 || row >= _list.count)
+            return
+        var item = _list.itemAtIndex(row)
+        if (!item) {
+            _list.positionViewAtIndex(row, ListView.Contain)
+            return
+        }
+        var top = item.y - _list.contentY
+        var viewH = _list.height
+        if (viewH <= 0)
+            return
+        if (item.height >= viewH) {
+            if (top < -1 || top > 1)
+                _list.positionViewAtIndex(row, ListView.Beginning)
+            return
+        }
+        if (top < 0 || top + item.height > viewH)
+            _list.positionViewAtIndex(row, ListView.Contain)
     }
 
     function showHid(hid) {
