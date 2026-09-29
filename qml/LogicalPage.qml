@@ -452,7 +452,7 @@ Item {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 Layout.alignment: Qt.AlignVCenter
-                                spacing: 0
+                                spacing: 2
                                 Label {
                                     text: title
                                     color: _root.colorText
@@ -476,6 +476,7 @@ Item {
                                     font.pixelSize: _root.summaryFont
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
+                                    Layout.bottomMargin: visible ? 4 : 0
                                 }
                             }
                             ComboBox {
