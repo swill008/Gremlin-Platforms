@@ -346,9 +346,13 @@ Item {
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                     HoverHandler { id: _nameHover }
-                                    ToolTip.visible: _nameHover.hovered && rowKind === "parent" && userName.length > 0
-                                    ToolTip.delay: 400
-                                    ToolTip.text: systemName
+                                    ToolTip {
+                                        visible: _nameHover.hovered && rowKind === "parent" && userName.length > 0
+                                        delay: 400
+                                        text: systemName
+                                        x: _nameHover.point.position.x + 16
+                                        y: _nameHover.point.position.y + 16
+                                    }
                                 }
                                 Label {
                                     visible: subtitle.length > 0 && rowKind !== "writer"
