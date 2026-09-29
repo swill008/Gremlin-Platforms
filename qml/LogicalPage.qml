@@ -351,7 +351,7 @@ Item {
                                         delay: 400
                                         text: systemName
                                         x: _nameHover.point.position.x - width / 2
-                                        y: _nameHover.point.position.y - height - 16
+                                        y: _nameHover.point.position.y - height - 8
                                     }
                                 }
                                 Label {
