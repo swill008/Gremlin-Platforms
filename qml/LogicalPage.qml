@@ -286,6 +286,55 @@ Item {
                                     }
                                 }
                             }
+                            Item {
+                                visible: rowKind === "parent"
+                                Layout.preferredWidth: visible ? 16 : 0
+                                Layout.preferredHeight: 16
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Rectangle {
+                                    visible: key.indexOf(":button:") >= 0
+                                    anchors.centerIn: parent
+                                    width: 14
+                                    height: 14
+                                    radius: 7
+                                    color: "transparent"
+                                    border.color: "#E4E4E7"
+                                    border.width: 2
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 6
+                                        height: 6
+                                        radius: 3
+                                        color: "#E4E4E7"
+                                    }
+                                }
+                                Item {
+                                    visible: key.indexOf(":axis:") >= 0
+                                    anchors.fill: parent
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 2
+                                        height: 14
+                                        color: "#E4E4E7"
+                                    }
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 8
+                                        height: 6
+                                        radius: 2
+                                        color: "#E4E4E7"
+                                    }
+                                }
+                                Item {
+                                    visible: key.indexOf(":hat:") >= 0
+                                    anchors.fill: parent
+                                    Rectangle { width: 4; height: 4; radius: 1; color: "#E4E4E7"; anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top }
+                                    Rectangle { width: 4; height: 4; radius: 1; color: "#E4E4E7"; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom }
+                                    Rectangle { width: 4; height: 4; radius: 1; color: "#E4E4E7"; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left }
+                                    Rectangle { width: 4; height: 4; radius: 1; color: "#E4E4E7"; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right }
+                                }
+                            }
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 0
