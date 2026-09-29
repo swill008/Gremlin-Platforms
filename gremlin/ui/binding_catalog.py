@@ -363,7 +363,6 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._rows: list[dict] = []
         self._dest_choices: list[str] = ["All devices"]
         signal.profileChanged.connect(self.reload)
-        signal.configChanged.connect(self.reload)
         self._claimed.countChanged.connect(self.reload)
         self._pane_model = None
         self._pane_shadow: InputItem | None = None
