@@ -2302,14 +2302,16 @@ Window {
                                             color: lit ? "#BBF7D0" : "#E4E4E7"
                                             font.pixelSize: 11
                                         }
-                                        ToolTip.visible: !_buttonMap.poolDrag && _poolChipHover.containsMouse
-                                        ToolTip.delay: 400
-                                        ToolTip.timeout: 4000
-                                        ToolTip.text: {
-                                            var e = _ed()
-                                            if (!e || !modelData)
-                                                return ""
-                                            return e.hardwareLabel(modelData.kind, modelData.hwId)
+                                        PointerTip {
+                                            delay: 400
+                                            show: !_buttonMap.poolDrag && _poolChipHover.containsMouse
+                                            timeout: 4000
+                                            text: {
+                                                var e = _ed()
+                                                if (!e || !modelData)
+                                                    return ""
+                                                return e.hardwareLabel(modelData.kind, modelData.hwId)
+                                            }
                                         }
                                         MouseArea {
                                             id: _poolChipHover
