@@ -265,8 +265,8 @@ Button {
         visible: _hover.hovered && actionSequenceDisplayMode === "Full" && _actionTruncated
         delay: 400
 
-        x: _hover.point.position.x + 16
-        y: _hover.point.position.y + 16
+        x: _hover.point.position.x - width / 2
+        y: _hover.point.position.y - height - 8
 
         contentItem: Image {
             source: _actionSequenceFull.item ? _actionSequenceFull.item.source : ""
