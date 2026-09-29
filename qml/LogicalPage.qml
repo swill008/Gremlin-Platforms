@@ -116,6 +116,16 @@ Item {
         _collapsed = next
     }
 
+    function _hasList(kind, childCount, extraWriters) {
+        if (kind === "group")
+            return childCount > 0
+        if (kind !== "parent" || !showChildren)
+            return false
+        if (childCount > 0)
+            return true
+        return showSummary && extraWriters > 0
+    }
+
     function _rowVisible(kind, groupKey, parentKey) {
         if (kind !== "group" && _collapsed[groupKey])
             return false
@@ -273,6 +283,8 @@ Item {
                         required property int sequenceIndex
                         required property int indent
                         required property bool canInvert
+                        required property int childCount
+                        required property int extraWriters
 
                         readonly property bool shown: _root._rowVisible(rowKind, groupKey, parentKey)
                         width: _list.width - 16
@@ -305,7 +317,7 @@ Item {
                             spacing: 6
 
                             Label {
-                                visible: rowKind === "group" || rowKind === "parent"
+                                visible: _root._hasList(rowKind, childCount, extraWriters)
                                 text: (rowKind === "group" ? _root._collapsed[groupKey] : !_root._opened[key]) ? "▸" : "▾"
                                 color: _root.colorText
                                 MouseArea {
