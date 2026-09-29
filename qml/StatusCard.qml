@@ -39,6 +39,7 @@ Rectangle {
     property bool selected: false
     property bool canStackSelected: false
     property bool stretchPhoto: false
+    property bool compactView: false
     z: stackIndex + (lifting || resizing ? 100 : 0)
 
     signal cardFocused()
@@ -81,16 +82,20 @@ Rectangle {
 
         Item {
             id: _photoWell
+            visible: !_card.compactView
             Layout.fillWidth: true
-            Layout.fillHeight: stretchPhoto
-            Layout.minimumHeight: 72
+            Layout.fillHeight: stretchPhoto && !_card.compactView
+            Layout.minimumHeight: _card.compactView ? 0 : 72
             Layout.preferredHeight: {
+                if (_card.compactView)
+                    return 0
                 if (_photo.status === Image.Ready && _photo.implicitWidth > 0) {
                     var ratio = _photo.implicitHeight / _photo.implicitWidth
                     return Math.round(Math.min(280, Math.max(96, width * ratio)))
                 }
                 return 120
             }
+            Layout.maximumHeight: _card.compactView ? 0 : 100000
 
             Rectangle {
                 anchors.fill: parent
@@ -295,7 +300,7 @@ Rectangle {
     }
 
     Button {
-        visible: _card.direction === "dest"
+        visible: _card.direction === "dest" && !_card.compactView
         z: 32
         anchors.left: parent.left
         anchors.right: parent.right
