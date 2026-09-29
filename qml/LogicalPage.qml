@@ -6,6 +6,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Universal
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.Dialogs
 
 import Gremlin.Device
 import Gremlin.Style
@@ -22,6 +23,62 @@ Item {
     property bool closeAfterOk: false
     property int parentHeight: 44
     property int childHeight: 32
+    property bool displayOpen: false
+    property int rowSpacing: 4
+    property int groupInside: 0
+    property string listPadShape: "sides"
+    property int listPad: 0
+    property int listPadTop: 0
+    property int listPadRight: 0
+    property int listPadBottom: 0
+    property int listPadLeft: 0
+    property string groupPadShape: "sides"
+    property int groupPad: 0
+    property int groupPadTop: 0
+    property int groupPadRight: 8
+    property int groupPadBottom: 0
+    property int groupPadLeft: 8
+    property int groupRadius: 3
+    property string colorGroup: "#27272A"
+    property string parentPadShape: "sides"
+    property int parentPad: 0
+    property int parentPadTop: 0
+    property int parentPadRight: 8
+    property int parentPadBottom: 0
+    property int parentPadLeft: 24
+    property int parentRadius: 3
+    property string colorParent: "#18181B"
+    property int childIndent: 32
+    property string childPadShape: "sides"
+    property int childPad: 0
+    property int childPadTop: 0
+    property int childPadRight: 8
+    property int childPadBottom: 0
+    property int childPadLeft: 0
+    property int childRadius: 3
+    property string colorChild: "#18181B"
+    property bool showChildren: true
+    property bool showSummary: true
+    property int summaryFont: 11
+    property int parentFont: 13
+    property int groupFont: 15
+    property int childFont: 13
+    property bool parentBold: true
+    property string colorText: "#E4E4E7"
+    property string colorMuted: "#A1A1AA"
+    property string colorSelected: "#1E3A5F"
+    property string colorSelectBorder: "#3F3F46"
+    property string colorBorder: "#3F3F46"
+    property string _colorTarget: "parent"
+    property string toastText: "Display Options Saved"
+    property string savedDisplay: ""
+    property bool openShown: false
+    property bool openList: false
+    property bool openGroup: false
+    property bool openParent: false
+    property bool openChild: false
+    property bool openText: false
+    property bool openSelection: false
     property bool _ready: false
     property var _opened: ({})
     property var _collapsed: ({})
@@ -43,7 +100,6 @@ Item {
     function _saveDock() {
         if (!_ready)
             return
-        _place.setLogicalValue("parentHeight", String(parentHeight))
         _place.setActionPaneWidth(paneWidth)
         _place.setClosePaneAfterOk(closeAfterOk)
     }
@@ -63,8 +119,10 @@ Item {
     function _rowVisible(kind, groupKey, parentKey) {
         if (kind !== "group" && _collapsed[groupKey])
             return false
+        if (kind === "writer" && !showSummary)
+            return false
         if (kind === "writer" || kind === "child")
-            return !!_opened[parentKey]
+            return showChildren && !!_opened[parentKey]
         return true
     }
 
@@ -112,16 +170,13 @@ Item {
     Component.onCompleted: {
         paneWidth = _place.actionPaneWidth()
         closeAfterOk = _place.closePaneAfterOk()
-        var h = parseInt(_place.logicalValue("parentHeight"))
-        if (!isNaN(h) && h >= 32)
-            parentHeight = h
+        reloadDisplay()
         _layout.setMode(mode)
         _ready = true
     }
 
     onPaneWidthChanged: _saveDock()
     onCloseAfterOkChanged: _saveDock()
-    onParentHeightChanged: _saveDock()
     onModeChanged: _layout.setMode(mode)
 
     RowLayout {
@@ -182,8 +237,12 @@ Item {
                     id: _list
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.leftMargin: _root.padEdge(_root.listPadShape, _root.listPad, _root.listPadLeft)
+                    Layout.rightMargin: _root.padEdge(_root.listPadShape, _root.listPad, _root.listPadRight)
+                    Layout.topMargin: _root.padEdge(_root.listPadShape, _root.listPad, _root.listPadTop)
+                    Layout.bottomMargin: _root.padEdge(_root.listPadShape, _root.listPad, _root.listPadBottom)
                     clip: true
-                    spacing: 4
+                    spacing: _root.rowSpacing
                     model: _layout
                     boundsBehavior: Flickable.StopAtBounds
                     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
@@ -217,25 +276,38 @@ Item {
 
                         readonly property bool shown: _root._rowVisible(rowKind, groupKey, parentKey)
                         width: _list.width - 16
+                        readonly property int rowGap: rowKind === "group" ? 0 : _root.groupInside
+                        readonly property int rowBody: rowKind === "group" ? 40 : (rowKind === "parent" ? _root.parentHeight : _root.childHeight)
                         height: shown ? implicitHeight : 0
                         visible: shown
                         clip: true
-                        implicitHeight: rowKind === "group" ? 40 : (rowKind === "parent" ? _root.parentHeight : _root.childHeight)
-                        color: _root._picked.indexOf(key) >= 0 ? "#1E3A5F" : (rowKind === "group" ? "#27272A" : "#18181B")
-                        border.color: "#3F3F46"
-                        border.width: 1
-                        radius: 3
+                        implicitHeight: rowBody + rowGap
+                        color: "transparent"
+                        border.width: 0
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            height: _row.rowBody
+                            color: _root._picked.indexOf(key) >= 0 ? _root.colorSelected : (rowKind === "group" ? _root.colorGroup : (rowKind === "parent" ? _root.colorParent : _root.colorChild))
+                            border.color: _root._picked.indexOf(key) >= 0 ? _root.colorSelectBorder : _root.colorBorder
+                            border.width: 1
+                            radius: rowKind === "group" ? _root.groupRadius : (rowKind === "parent" ? _root.parentRadius : _root.childRadius)
+                        }
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: (indent > 0 && rowKind === "parent" ? 24 : (indent > 0 ? 56 : 8))
-                            anchors.rightMargin: 8
+                            anchors.leftMargin: _root.rowLeft(rowKind)
+                            anchors.rightMargin: _root.rowRight(rowKind)
+                            anchors.topMargin: _root.rowTop(rowKind)
+                            anchors.bottomMargin: _root.rowBottom(rowKind) + _row.rowGap
                             spacing: 6
 
                             Label {
                                 visible: rowKind === "group" || rowKind === "parent"
                                 text: (rowKind === "group" ? _root._collapsed[groupKey] : !_root._opened[key]) ? "▸" : "▾"
-                                color: "#E4E4E7"
+                                color: _root.colorText
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: {
@@ -299,14 +371,14 @@ Item {
                                     height: 14
                                     radius: 7
                                     color: "transparent"
-                                    border.color: "#E4E4E7"
+                                    border.color: _root.colorText
                                     border.width: 2
                                     Rectangle {
                                         anchors.centerIn: parent
                                         width: 6
                                         height: 6
                                         radius: 3
-                                        color: "#E4E4E7"
+                                        color: _root.colorText
                                     }
                                 }
                                 Item {
@@ -316,23 +388,23 @@ Item {
                                         anchors.centerIn: parent
                                         width: 2
                                         height: 14
-                                        color: "#E4E4E7"
+                                        color: _root.colorText
                                     }
                                     Rectangle {
                                         anchors.centerIn: parent
                                         width: 8
                                         height: 6
                                         radius: 2
-                                        color: "#E4E4E7"
+                                        color: _root.colorText
                                     }
                                 }
                                 Item {
                                     visible: key.indexOf(":hat:") >= 0
                                     anchors.fill: parent
-                                    Rectangle { width: 4; height: 4; radius: 1; color: "#E4E4E7"; anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top }
-                                    Rectangle { width: 4; height: 4; radius: 1; color: "#E4E4E7"; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom }
-                                    Rectangle { width: 4; height: 4; radius: 1; color: "#E4E4E7"; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left }
-                                    Rectangle { width: 4; height: 4; radius: 1; color: "#E4E4E7"; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right }
+                                    Rectangle { width: 4; height: 4; radius: 1; color: _root.colorText; anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top }
+                                    Rectangle { width: 4; height: 4; radius: 1; color: _root.colorText; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom }
+                                    Rectangle { width: 4; height: 4; radius: 1; color: _root.colorText; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left }
+                                    Rectangle { width: 4; height: 4; radius: 1; color: _root.colorText; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right }
                                 }
                             }
                             ColumnLayout {
@@ -340,9 +412,9 @@ Item {
                                 spacing: 0
                                 Label {
                                     text: title
-                                    color: "#E4E4E7"
-                                    font.bold: rowKind !== "child"
-                                    font.pixelSize: rowKind === "group" ? 15 : 13
+                                    color: _root.colorText
+                                    font.bold: rowKind === "child" ? false : _root.parentBold
+                                    font.pixelSize: rowKind === "group" ? _root.groupFont : (rowKind === "parent" ? _root.parentFont : _root.childFont)
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                     HoverHandler { id: _nameHover }
@@ -355,10 +427,10 @@ Item {
                                     }
                                 }
                                 Label {
-                                    visible: subtitle.length > 0 && rowKind !== "writer"
+                                    visible: _root.showSummary && subtitle.length > 0 && rowKind !== "writer"
                                     text: subtitle
-                                    color: "#A1A1AA"
-                                    font.pixelSize: 11
+                                    color: _root.colorMuted
+                                    font.pixelSize: _root.summaryFont
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -394,6 +466,7 @@ Item {
                         DropArea {
                             id: _drop
                             anchors.fill: parent
+                            anchors.bottomMargin: _row.rowGap
                             z: 4
                             enabled: !_root.editorLocked && (rowKind === "parent" || rowKind === "group")
                             keys: ["application/x-gremlin-logical"]
@@ -452,6 +525,7 @@ Item {
                         MouseArea {
                             z: 1
                             anchors.fill: parent
+                            anchors.bottomMargin: _row.rowGap
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             propagateComposedEvents: true
                             onPressed: (mouse) => {
@@ -556,6 +630,252 @@ Item {
                             _layout.commitPane()
                             if (_root.closeAfterOk)
                                 _root._finishClose()
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            visible: _root.displayOpen
+            Layout.preferredWidth: 360
+            Layout.maximumWidth: 360
+            Layout.fillHeight: true
+            color: "#18181B"
+            border.color: "#3F3F46"
+            border.width: 1
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 8
+
+                RowLayout {
+                    Label {
+                        text: "Logical Device — Display Editor"
+                        color: "#E4E4E7"
+                        font.bold: true
+                        font.pixelSize: 13
+                        Layout.fillWidth: true
+                    }
+                    Button {
+                        text: "×"
+                        implicitWidth: 28
+                        onClicked: _root.requestCloseDisplay()
+                    }
+                }
+                RowLayout {
+                    spacing: 8
+                    Button { text: "Open all"; onClicked: _root.setAllSections(true) }
+                    Button { text: "Close all"; onClicked: _root.setAllSections(false) }
+                    Item { Layout.fillWidth: true }
+                }
+
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    ColumnLayout {
+                        width: 330
+                        spacing: 12
+
+                        FoldSection {
+                            title: "Shown"
+                            open: _root.openShown
+                            onToggled: (v) => { _root.openShown = v }
+                            FlagBox { text: "Show child rows"; source: _root.showChildren; onUserSet: (v) => { _root.showChildren = v } }
+                            FlagBox { text: "Show written by"; source: _root.showSummary; onUserSet: (v) => { _root.showSummary = v } }
+                            RowLayout {
+                                Label { text: "Written-by size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 9; to: 20; source: _root.summaryFont; onUserSet: (v) => { _root.summaryFont = v } }
+                            }
+                        }
+                        FoldSection {
+                            title: "List"
+                            open: _root.openList
+                            onToggled: (v) => { _root.openList = v }
+                            RowLayout {
+                                Label { text: "Space between rows"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 48; source: _root.rowSpacing; onUserSet: (v) => { _root.rowSpacing = v } }
+                            }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            PadFields {
+                                shape: _root.listPadShape
+                                size: _root.listPad
+                                padTop: _root.listPadTop
+                                padRight: _root.listPadRight
+                                padBottom: _root.listPadBottom
+                                padLeft: _root.listPadLeft
+                                onEdited: (shape, size, padTop, padRight, padBottom, padLeft) => {
+                                    _root.listPadShape = shape
+                                    _root.listPad = size
+                                    _root.listPadTop = padTop
+                                    _root.listPadRight = padRight
+                                    _root.listPadBottom = padBottom
+                                    _root.listPadLeft = padLeft
+                                }
+                            }
+                        }
+                        FoldSection {
+                            title: "Group"
+                            open: _root.openGroup
+                            onToggled: (v) => { _root.openGroup = v }
+                            RowLayout {
+                                Label { text: "Space inside the group"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 48; source: _root.groupInside; onUserSet: (v) => { _root.groupInside = v } }
+                            }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            PadFields {
+                                shape: _root.groupPadShape
+                                size: _root.groupPad
+                                padTop: _root.groupPadTop
+                                padRight: _root.groupPadRight
+                                padBottom: _root.groupPadBottom
+                                padLeft: _root.groupPadLeft
+                                onEdited: (shape, size, padTop, padRight, padBottom, padLeft) => {
+                                    _root.groupPadShape = shape
+                                    _root.groupPad = size
+                                    _root.groupPadTop = padTop
+                                    _root.groupPadRight = padRight
+                                    _root.groupPadBottom = padBottom
+                                    _root.groupPadLeft = padLeft
+                                }
+                            }
+                            RowLayout {
+                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 16; source: _root.groupRadius; onUserSet: (v) => { _root.groupRadius = v } }
+                            }
+                            ColorPick { label: "Color"; swatch: _root.colorGroup; target: "group" }
+                        }
+                        FoldSection {
+                            title: "Parent row"
+                            open: _root.openParent
+                            onToggled: (v) => { _root.openParent = v }
+                            RowLayout {
+                                Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 32; to: 80; source: _root.parentHeight; onUserSet: (v) => { _root.parentHeight = v } }
+                            }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            PadFields {
+                                shape: _root.parentPadShape
+                                size: _root.parentPad
+                                padTop: _root.parentPadTop
+                                padRight: _root.parentPadRight
+                                padBottom: _root.parentPadBottom
+                                padLeft: _root.parentPadLeft
+                                onEdited: (shape, size, padTop, padRight, padBottom, padLeft) => {
+                                    _root.parentPadShape = shape
+                                    _root.parentPad = size
+                                    _root.parentPadTop = padTop
+                                    _root.parentPadRight = padRight
+                                    _root.parentPadBottom = padBottom
+                                    _root.parentPadLeft = padLeft
+                                }
+                            }
+                            RowLayout {
+                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 16; source: _root.parentRadius; onUserSet: (v) => { _root.parentRadius = v } }
+                            }
+                            ColorPick { label: "Row color"; swatch: _root.colorParent; target: "parent" }
+                        }
+                        FoldSection {
+                            title: "Child row"
+                            open: _root.openChild
+                            onToggled: (v) => { _root.openChild = v }
+                            RowLayout {
+                                Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 24; to: 80; source: _root.childHeight; onUserSet: (v) => { _root.childHeight = v } }
+                            }
+                            RowLayout {
+                                Label { text: "Indent past parent"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 160; source: _root.childIndent; onUserSet: (v) => { _root.childIndent = v } }
+                            }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            PadFields {
+                                shape: _root.childPadShape
+                                size: _root.childPad
+                                padTop: _root.childPadTop
+                                padRight: _root.childPadRight
+                                padBottom: _root.childPadBottom
+                                padLeft: _root.childPadLeft
+                                onEdited: (shape, size, padTop, padRight, padBottom, padLeft) => {
+                                    _root.childPadShape = shape
+                                    _root.childPad = size
+                                    _root.childPadTop = padTop
+                                    _root.childPadRight = padRight
+                                    _root.childPadBottom = padBottom
+                                    _root.childPadLeft = padLeft
+                                }
+                            }
+                            RowLayout {
+                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 16; source: _root.childRadius; onUserSet: (v) => { _root.childRadius = v } }
+                            }
+                            ColorPick { label: "Row color"; swatch: _root.colorChild; target: "child" }
+                        }
+                        FoldSection {
+                            title: "Text"
+                            open: _root.openText
+                            onToggled: (v) => { _root.openText = v }
+                            RowLayout {
+                                Label { text: "Parent text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 10; to: 22; source: _root.parentFont; onUserSet: (v) => { _root.parentFont = v } }
+                            }
+                            RowLayout {
+                                Label { text: "Group text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 10; to: 22; source: _root.groupFont; onUserSet: (v) => { _root.groupFont = v } }
+                            }
+                            FlagBox { text: "Bold names"; source: _root.parentBold; onUserSet: (v) => { _root.parentBold = v } }
+                            RowLayout {
+                                Label { text: "Child text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 9; to: 20; source: _root.childFont; onUserSet: (v) => { _root.childFont = v } }
+                            }
+                            ColorPick { label: "Text color"; swatch: _root.colorText; target: "text" }
+                            ColorPick { label: "Muted text"; swatch: _root.colorMuted; target: "muted" }
+                        }
+                        FoldSection {
+                            title: "Selection"
+                            open: _root.openSelection
+                            onToggled: (v) => { _root.openSelection = v }
+                            ColorPick { label: "Fill of a selected row"; swatch: _root.colorSelected; target: "selected" }
+                            ColorPick { label: "Line around a selected row"; swatch: _root.colorSelectBorder; target: "selectBorder" }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    spacing: 6
+                    Button {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        text: "Reset View\nto Default"
+                        onClicked: _root.resetDisplay()
+                        contentItem: Text {
+                            text: parent.text
+                            color: "#FFFFFF"
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        background: Rectangle {
+                            implicitHeight: 44
+                            color: parent.down ? "#991B1B" : (parent.hovered ? "#EF4444" : "#DC2626")
+                            border.width: 1
+                            border.color: parent.hovered ? "#FCA5A5" : "#B91C1C"
+                        }
+                    }
+                    Button {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        text: "Save View\nSettings"
+                        highlighted: true
+                        onClicked: _root.saveDisplay()
+                        contentItem: Text {
+                            text: parent.text
+                            color: "#FFFFFF"
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                         }
                     }
                 }
@@ -733,87 +1053,6 @@ Item {
         }
     }
 
-    component MenuHeightRow: Item {
-        id: heightRow
-        property bool rowHover: false
-        implicitWidth: 300
-        implicitHeight: 34
-
-        function parsed() {
-            var n = parseInt(_field.text)
-            if (isNaN(n))
-                n = _root.parentHeight
-            return Math.max(32, Math.min(80, n))
-        }
-
-        function showHeight(n) {
-            _field.text = String(n)
-        }
-
-        function applyHeight() {
-            var n = parsed()
-            _root.parentHeight = n
-            showHeight(n)
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            color: heightRow.rowHover ? Universal.listLowColor : "transparent"
-        }
-        HoverHandler { onHoveredChanged: heightRow.rowHover = hovered }
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            spacing: 4
-            Label {
-                text: "Row height"
-                color: Universal.baseHighColor
-                Layout.fillWidth: true
-            }
-            Label {
-                text: "‹"
-                color: heightRow.parsed() > 32 ? Universal.baseHighColor : Universal.baseLowColor
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -4
-                    enabled: heightRow.parsed() > 32
-                    onClicked: {
-                        _root.parentHeight = heightRow.parsed() - 1
-                        heightRow.showHeight(_root.parentHeight)
-                    }
-                }
-            }
-            TextField {
-                id: _field
-                implicitWidth: 44
-                padding: 0
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                color: Universal.baseHighColor
-                selectByMouse: true
-                validator: IntValidator { bottom: 32; top: 80 }
-                background: Item {}
-                Component.onCompleted: text = String(_root.parentHeight)
-                onAccepted: heightRow.applyHeight()
-            }
-            Label {
-                text: "›"
-                color: heightRow.parsed() < 80 ? Universal.baseHighColor : Universal.baseLowColor
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -4
-                    enabled: heightRow.parsed() < 80
-                    onClicked: {
-                        _root.parentHeight = heightRow.parsed() + 1
-                        heightRow.showHeight(_root.parentHeight)
-                    }
-                }
-            }
-        }
-    }
-
     Menu {
         id: _pageMenu
         width: 300
@@ -833,10 +1072,7 @@ Item {
             _addHatRow.setCount(1)
         }
 
-        onOpened: {
-            resetCounts()
-            _rowHeightRow.showHeight(_root.parentHeight)
-        }
+        onOpened: resetCounts()
 
         MenuCountRow { id: _addButtonRow; label: "Add Button"; kind: "button"; enabled: !_root.editorLocked }
         MenuCountRow { id: _addAxisRow; label: "Add Axis"; kind: "axis"; enabled: !_root.editorLocked }
@@ -973,7 +1209,10 @@ Item {
 
         MenuSeparator {}
 
-        MenuHeightRow { id: _rowHeightRow }
+        MenuItem {
+            text: "Display"
+            onTriggered: _root.displayOpen = true
+        }
     }
 
     TextInputDialog {
@@ -1147,4 +1386,454 @@ Item {
             _finishClose()
         }
     }
+
+
+    component FoldSection: ColumnLayout {
+        id: fold
+        property string title: ""
+        property bool open: false
+        signal toggled(bool value)
+        default property alias body: _body.data
+        Layout.fillWidth: true
+        spacing: 4
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: 26
+            color: "#27272A"
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 6
+                Label {
+                    text: fold.open ? "\u25BC" : "\u25B6"
+                    color: "#E4E4E7"
+                    font.pixelSize: 10
+                }
+                Label {
+                    text: fold.title
+                    color: "#E4E4E7"
+                    font.pixelSize: 11
+                    font.bold: true
+                    Layout.fillWidth: true
+                }
+            }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: fold.toggled(!fold.open)
+            }
+        }
+        ColumnLayout {
+            id: _body
+            visible: fold.open
+            Layout.fillWidth: true
+            spacing: 4
+        }
+    }
+
+    component TrackSpin: SpinBox {
+        property int source: 0
+        signal userSet(int value)
+        editable: true
+        Component.onCompleted: value = source
+        onSourceChanged: if (value !== source) value = source
+        onValueModified: userSet(value)
+    }
+
+    component FlagBox: CheckBox {
+        property bool source: false
+        signal userSet(bool value)
+        Component.onCompleted: checked = source
+        onSourceChanged: if (!pressed) checked = source
+        onClicked: userSet(checked)
+    }
+
+    component PadFields: ColumnLayout {
+        property string shape: "box"
+        property int size: 8
+        property int padTop: 0
+        property int padRight: 8
+        property int padBottom: 0
+        property int padLeft: 8
+        signal edited(string shape, int size, int padTop, int padRight, int padBottom, int padLeft)
+        onShapeChanged: if (_shapePick) _shapePick.currentIndex = _shapePick.pick(shape)
+        Layout.fillWidth: true
+        spacing: 4
+
+        RowLayout {
+            Label { text: "Shape"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+            ComboBox {
+                id: _shapePick
+                Layout.fillWidth: true
+                model: ["Same on all sides", "Each side"]
+                function pick(value) { return value === "sides" ? 1 : 0 }
+                Component.onCompleted: currentIndex = pick(shape)
+                onActivated: {
+                    if (currentIndex === 0)
+                        edited("box", size, size, size, size, size)
+                    else
+                        edited("sides", size, padTop, padRight, padBottom, padLeft)
+                }
+            }
+        }
+        RowLayout {
+            visible: shape !== "sides"
+            Label { text: "Size"; color: "#E4E4E7"; Layout.fillWidth: true }
+            TrackSpin { from: 0; to: 48; source: size; onUserSet: (v) => { edited("box", v, v, v, v, v) } }
+        }
+        RowLayout {
+            visible: shape === "sides"
+            Label { text: "Top"; color: "#E4E4E7"; Layout.fillWidth: true }
+            TrackSpin { from: 0; to: 48; source: padTop; onUserSet: (v) => { edited("sides", size, v, padRight, padBottom, padLeft) } }
+        }
+        RowLayout {
+            visible: shape === "sides"
+            Label { text: "Right"; color: "#E4E4E7"; Layout.fillWidth: true }
+            TrackSpin { from: 0; to: 48; source: padRight; onUserSet: (v) => { edited("sides", size, padTop, v, padBottom, padLeft) } }
+        }
+        RowLayout {
+            visible: shape === "sides"
+            Label { text: "Bottom"; color: "#E4E4E7"; Layout.fillWidth: true }
+            TrackSpin { from: 0; to: 48; source: padBottom; onUserSet: (v) => { edited("sides", size, padTop, padRight, v, padLeft) } }
+        }
+        RowLayout {
+            visible: shape === "sides"
+            Label { text: "Left"; color: "#E4E4E7"; Layout.fillWidth: true }
+            TrackSpin { from: 0; to: 48; source: padLeft; onUserSet: (v) => { edited("sides", size, padTop, padRight, padBottom, v) } }
+        }
+    }
+
+    component ColorPick: RowLayout {
+        property string label: ""
+        property color swatch: "#18181B"
+        property string target: ""
+        Layout.fillWidth: true
+        Label {
+            text: label
+            color: "#E4E4E7"
+            wrapMode: Text.WordWrap
+            Layout.preferredWidth: 150
+            Layout.maximumWidth: 160
+        }
+        Button {
+            Layout.fillWidth: true
+            text: "Choose\u2026"
+            onClicked: { _root._colorTarget = target; _colorDlg.selectedColor = swatch; _colorDlg.open() }
+            background: Rectangle { color: swatch; border.color: "#3F3F46"; border.width: 1; radius: 3 }
+            contentItem: Label { text: parent.text; color: "#F4F4F5"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        }
+    }
+
+    function padEdge(shape, size, side) {
+        return shape === "box" ? size : side
+    }
+
+    function rowLeft(kind) {
+        if (kind === "group")
+            return padEdge(groupPadShape, groupPad, groupPadLeft)
+        var parentLeft = padEdge(parentPadShape, parentPad, parentPadLeft)
+        if (kind === "parent")
+            return parentLeft
+        return parentLeft + childIndent + padEdge(childPadShape, childPad, childPadLeft)
+    }
+
+    function rowRight(kind) {
+        if (kind === "group")
+            return padEdge(groupPadShape, groupPad, groupPadRight)
+        if (kind === "parent")
+            return padEdge(parentPadShape, parentPad, parentPadRight)
+        return padEdge(childPadShape, childPad, childPadRight)
+    }
+
+    function rowTop(kind) {
+        if (kind === "group")
+            return padEdge(groupPadShape, groupPad, groupPadTop)
+        if (kind === "parent")
+            return padEdge(parentPadShape, parentPad, parentPadTop)
+        return padEdge(childPadShape, childPad, childPadTop)
+    }
+
+    function rowBottom(kind) {
+        if (kind === "group")
+            return padEdge(groupPadShape, groupPad, groupPadBottom)
+        if (kind === "parent")
+            return padEdge(parentPadShape, parentPad, parentPadBottom)
+        return padEdge(childPadShape, childPad, childPadBottom)
+    }
+
+    function numVal(v, d) {
+        var n = Number(v)
+        return (v === undefined || v === null || v === "" || isNaN(n)) ? d : n
+    }
+
+    function displayPayload() {
+        return {
+            "rowSpacing": rowSpacing,
+            "groupInside": groupInside,
+            "listPadShape": listPadShape,
+            "listPad": listPad,
+            "listPadTop": listPadTop,
+            "listPadRight": listPadRight,
+            "listPadBottom": listPadBottom,
+            "listPadLeft": listPadLeft,
+            "groupPadShape": groupPadShape,
+            "groupPad": groupPad,
+            "groupPadTop": groupPadTop,
+            "groupPadRight": groupPadRight,
+            "groupPadBottom": groupPadBottom,
+            "groupPadLeft": groupPadLeft,
+            "groupRadius": groupRadius,
+            "colorGroup": colorGroup,
+            "parentHeight": parentHeight,
+            "parentPadShape": parentPadShape,
+            "parentPad": parentPad,
+            "parentPadTop": parentPadTop,
+            "parentPadRight": parentPadRight,
+            "parentPadBottom": parentPadBottom,
+            "parentPadLeft": parentPadLeft,
+            "parentRadius": parentRadius,
+            "colorParent": colorParent,
+            "childHeight": childHeight,
+            "childIndent": childIndent,
+            "childPadShape": childPadShape,
+            "childPad": childPad,
+            "childPadTop": childPadTop,
+            "childPadRight": childPadRight,
+            "childPadBottom": childPadBottom,
+            "childPadLeft": childPadLeft,
+            "childRadius": childRadius,
+            "colorChild": colorChild,
+            "showChildren": showChildren,
+            "showSummary": showSummary,
+            "summaryFont": summaryFont,
+            "parentFont": parentFont,
+            "groupFont": groupFont,
+            "childFont": childFont,
+            "parentBold": parentBold,
+            "colorText": colorText,
+            "colorMuted": colorMuted,
+            "colorSelected": colorSelected,
+            "colorSelectBorder": colorSelectBorder,
+            "colorBorder": colorBorder
+        }
+    }
+
+    function applyDisplay(v) {
+        if (!v)
+            return
+        rowSpacing = numVal(v.rowSpacing, 4)
+        groupInside = numVal(v.groupInside, 0)
+        listPadShape = v.listPadShape || "sides"
+        listPad = numVal(v.listPad, 0)
+        listPadTop = numVal(v.listPadTop, 0)
+        listPadRight = numVal(v.listPadRight, 0)
+        listPadBottom = numVal(v.listPadBottom, 0)
+        listPadLeft = numVal(v.listPadLeft, 0)
+        groupPadShape = v.groupPadShape || "sides"
+        groupPad = numVal(v.groupPad, 0)
+        groupPadTop = numVal(v.groupPadTop, 0)
+        groupPadRight = numVal(v.groupPadRight, 8)
+        groupPadBottom = numVal(v.groupPadBottom, 0)
+        groupPadLeft = numVal(v.groupPadLeft, 8)
+        groupRadius = numVal(v.groupRadius, 3)
+        colorGroup = v.colorGroup || "#27272A"
+        parentHeight = numVal(v.parentHeight, 44)
+        parentPadShape = v.parentPadShape || "sides"
+        parentPad = numVal(v.parentPad, 0)
+        parentPadTop = numVal(v.parentPadTop, 0)
+        parentPadRight = numVal(v.parentPadRight, 8)
+        parentPadBottom = numVal(v.parentPadBottom, 0)
+        parentPadLeft = numVal(v.parentPadLeft, 24)
+        parentRadius = numVal(v.parentRadius, 3)
+        colorParent = v.colorParent || "#18181B"
+        childHeight = numVal(v.childHeight, 32)
+        childIndent = numVal(v.childIndent, 32)
+        childPadShape = v.childPadShape || "sides"
+        childPad = numVal(v.childPad, 0)
+        childPadTop = numVal(v.childPadTop, 0)
+        childPadRight = numVal(v.childPadRight, 8)
+        childPadBottom = numVal(v.childPadBottom, 0)
+        childPadLeft = numVal(v.childPadLeft, 0)
+        childRadius = numVal(v.childRadius, 3)
+        colorChild = v.colorChild || "#18181B"
+        showChildren = v.showChildren !== false
+        showSummary = v.showSummary !== false
+        summaryFont = numVal(v.summaryFont, 11)
+        parentFont = numVal(v.parentFont, 13)
+        groupFont = numVal(v.groupFont, 15)
+        childFont = numVal(v.childFont, 13)
+        parentBold = v.parentBold !== false
+        colorText = v.colorText || "#E4E4E7"
+        colorMuted = v.colorMuted || "#A1A1AA"
+        colorSelected = v.colorSelected || "#1E3A5F"
+        colorSelectBorder = v.colorSelectBorder || "#3F3F46"
+        colorBorder = v.colorBorder || "#3F3F46"
+    }
+
+    function applyDisplayDefaults() {
+        rowSpacing = 4
+        groupInside = 0
+        listPadShape = "sides"
+        listPad = 0
+        listPadTop = 0
+        listPadRight = 0
+        listPadBottom = 0
+        listPadLeft = 0
+        groupPadShape = "sides"
+        groupPad = 0
+        groupPadTop = 0
+        groupPadRight = 8
+        groupPadBottom = 0
+        groupPadLeft = 8
+        groupRadius = 3
+        colorGroup = "#27272A"
+        parentHeight = 44
+        parentPadShape = "sides"
+        parentPad = 0
+        parentPadTop = 0
+        parentPadRight = 8
+        parentPadBottom = 0
+        parentPadLeft = 24
+        parentRadius = 3
+        colorParent = "#18181B"
+        childHeight = 32
+        childIndent = 32
+        childPadShape = "sides"
+        childPad = 0
+        childPadTop = 0
+        childPadRight = 8
+        childPadBottom = 0
+        childPadLeft = 0
+        childRadius = 3
+        colorChild = "#18181B"
+        showChildren = true
+        showSummary = true
+        summaryFont = 11
+        parentFont = 13
+        groupFont = 15
+        childFont = 13
+        parentBold = true
+        colorText = "#E4E4E7"
+        colorMuted = "#A1A1AA"
+        colorSelected = "#1E3A5F"
+        colorSelectBorder = "#3F3F46"
+        colorBorder = "#3F3F46"
+        setAllSections(false)
+    }
+
+    function setAllSections(v) {
+        openShown = v
+        openList = v
+        openGroup = v
+        openParent = v
+        openChild = v
+        openText = v
+        openSelection = v
+    }
+
+    function rememberDisplay() {
+        savedDisplay = JSON.stringify(displayPayload())
+    }
+
+    function displayDirty() {
+        return savedDisplay.length > 0 && JSON.stringify(displayPayload()) !== savedDisplay
+    }
+
+    function reloadDisplay() {
+        var raw = _place.logicalValue("display")
+        if (!raw.length) {
+            applyDisplayDefaults()
+            var h = parseInt(_place.logicalValue("parentHeight"))
+            if (!isNaN(h) && h >= 32 && h <= 80)
+                parentHeight = h
+        } else {
+            try {
+                applyDisplay(JSON.parse(raw))
+            } catch (e) {
+                applyDisplayDefaults()
+            }
+        }
+        rememberDisplay()
+    }
+
+    function saveDisplay() {
+        _place.setLogicalValue("display", JSON.stringify(displayPayload()))
+        rememberDisplay()
+        toastText = "Saved for this page."
+        _savedToast.open()
+    }
+
+    function resetDisplay() {
+        applyDisplayDefaults()
+        toastText = "Options have been reset"
+        _savedToast.open()
+    }
+
+    function requestCloseDisplay() {
+        if (!displayDirty()) {
+            displayOpen = false
+            return
+        }
+        _displayGate.ask("Display options are not saved. Close this panel and they will be lost.")
+    }
+
+    ColorDialog {
+        id: _colorDlg
+        title: "Choose color"
+        onAccepted: {
+            var c = selectedColor.toString()
+            if (_colorTarget === "child") colorChild = c
+            else if (_colorTarget === "selected") colorSelected = c
+            else if (_colorTarget === "text") colorText = c
+            else if (_colorTarget === "muted") colorMuted = c
+            else if (_colorTarget === "selectBorder") colorSelectBorder = c
+            else if (_colorTarget === "border") colorBorder = c
+            else if (_colorTarget === "group") colorGroup = c
+            else colorParent = c
+        }
+    }
+
+    DismissibleDialog {
+        id: _displayGate
+        onSaveChosen: {
+            saveDisplay()
+            displayOpen = false
+        }
+        onDiscardChosen: {
+            reloadDisplay()
+            displayOpen = false
+        }
+    }
+
+    Popup {
+        id: _savedToast
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        dim: true
+        Overlay.modal: Rectangle { color: "#66000000" }
+        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+        padding: 18
+        background: Rectangle {
+            color: "#27272A"
+            border.color: "#52525B"
+            radius: 6
+        }
+        contentItem: Label {
+            text: toastText
+            color: "#F4F4F5"
+            font.pixelSize: 14
+            horizontalAlignment: Text.AlignHCenter
+        }
+        Timer {
+            id: _savedTimer
+            interval: 1400
+            onTriggered: _savedToast.close()
+        }
+        onOpened: _savedTimer.restart()
+        onClosed: _savedTimer.stop()
+    }
+
 }
