@@ -273,7 +273,7 @@ Item {
                     Layout.topMargin: _root.padEdge(_root.listPadShape, _root.listPad, _root.listPadTop)
                     Layout.bottomMargin: _root.padEdge(_root.listPadShape, _root.listPad, _root.listPadBottom)
                     clip: true
-                    spacing: _root.rowSpacing
+                    spacing: 0
                     model: _layout
                     boundsBehavior: Flickable.StopAtBounds
                     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
@@ -317,7 +317,7 @@ Item {
                         height: shown ? implicitHeight : 0
                         visible: shown
                         clip: true
-                        implicitHeight: rowBody + rowGap
+                        implicitHeight: shown ? (rowBody + rowGap + _root.rowSpacing) : 0
                         color: "transparent"
                         border.width: 0
 
