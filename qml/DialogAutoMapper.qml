@@ -212,15 +212,12 @@ Window {
                 text: bsi.icons.help
                 font.pixelSize: 24
 
-                ToolTip {
-                    width: 480
+                PointerTip {
                     text: "See Help, then Tools, then Mapping, then Auto Mapper, for the full Help Guide. The intent of this tool is to build a starting 1:1 mapping.\n\n"
                         + "Mode selection defaults to the default mode, change this if required for another mode.\n\n"
                         + "This tool does not match devices by name. It uses the order shown in the lists. The first checked input is wired to the first checked output. The second input is wired to the second output.\n\n"
                         + "Overwrite used inputs: Replaces wires that already exist on those controls in the selected mode. Leave it off, and those wires stay as they are.\n\n"
                         + "Combine onto Selected Outputs: This should stay off when each input should have its own output. Turn it on when you check more inputs than outputs."
-
-                    visible: parent.hovered
                     delay: 500
                 }
             }
