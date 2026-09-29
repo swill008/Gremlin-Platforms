@@ -51,7 +51,7 @@ Window {
             Layout.rightMargin: 12
             wrapMode: Text.WordWrap
             color: "#E4E4E7"
-            text: "Configuring mode is the map you are editing. Executing mode is the map that runs. Modes are stored in the profile."
+            text: "The mode list is the map you edit and the map that runs. Modes are stored in the profile."
         }
 
         JGListView  {
