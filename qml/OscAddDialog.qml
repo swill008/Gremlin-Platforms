@@ -241,9 +241,11 @@ Popup {
             CheckBox {
                 id: _bulkCapture
                 text: "Bulk capture"
-                ToolTip.visible: hovered
-                ToolTip.delay: 400
-                ToolTip.text: "Bulk capture mode is intended for simple devices such as the Stream Deck to capture manual button presses."
+                PointerTip {
+                    text: "Bulk capture mode is intended for simple devices such as the Stream Deck to capture manual button presses."
+                    delay: 400
+                    show: true
+                }
                 onCheckedChanged: {
                     if (!checked && deviceModel && deviceModel.listening) {
                         deviceModel.cancelListen()
