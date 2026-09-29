@@ -63,6 +63,8 @@ Item {
     property int parentFont: 13
     property int groupFont: 15
     property int childFont: 13
+    property int targetFont: 11
+    property string colorActionTarget: "#A1A1AA"
     property bool parentBold: true
     property string colorText: "#E4E4E7"
     property string colorMuted: "#A1A1AA"
@@ -472,8 +474,8 @@ Item {
                                 Label {
                                     visible: _root.showSummary && subtitle.length > 0 && rowKind !== "writer"
                                     text: subtitle
-                                    color: _root.colorMuted
-                                    font.pixelSize: _root.summaryFont
+                                    color: rowKind === "child" ? _root.colorActionTarget : _root.colorMuted
+                                    font.pixelSize: rowKind === "child" ? _root.targetFont : _root.summaryFont
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                     Layout.bottomMargin: visible ? 4 : 0
@@ -730,7 +732,7 @@ Item {
                             title: "Shown"
                             open: _root.openShown
                             onToggled: (v) => { _root.openShown = v }
-                            FlagBox { text: "Show child rows"; source: _root.showChildren; onUserSet: (v) => { _root.showChildren = v } }
+                            FlagBox { text: "Show action rows"; source: _root.showChildren; onUserSet: (v) => { _root.showChildren = v } }
                             FlagBox { text: "Show written by"; source: _root.showSummary; onUserSet: (v) => { _root.showSummary = v } }
                             RowLayout {
                                 Label { text: "Written-by size"; color: "#E4E4E7"; Layout.fillWidth: true }
@@ -849,7 +851,7 @@ Item {
                             ColorPick { label: "Row color"; swatch: _root.colorParent; target: "parent" }
                         }
                         FoldSection {
-                            title: "Child row"
+                            title: "Action row"
                             open: _root.openChild
                             onToggled: (v) => { _root.openChild = v }
                             RowLayout {
@@ -897,11 +899,16 @@ Item {
                             }
                             FlagBox { text: "Bold names"; source: _root.parentBold; onUserSet: (v) => { _root.parentBold = v } }
                             RowLayout {
-                                Label { text: "Child text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Action name size"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 9; to: 20; source: _root.childFont; onUserSet: (v) => { _root.childFont = v } }
+                            }
+                            RowLayout {
+                                Label { text: "Action target size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 9; to: 20; source: _root.targetFont; onUserSet: (v) => { _root.targetFont = v } }
                             }
                             ColorPick { label: "Text color"; swatch: _root.colorText; target: "text" }
                             ColorPick { label: "Muted text"; swatch: _root.colorMuted; target: "muted" }
+                            ColorPick { label: "Action target"; swatch: _root.colorActionTarget; target: "actionTarget" }
                         }
                         FoldSection {
                             title: "Selection"
@@ -1715,6 +1722,8 @@ Item {
             "parentFont": parentFont,
             "groupFont": groupFont,
             "childFont": childFont,
+            "targetFont": targetFont,
+            "colorActionTarget": colorActionTarget,
             "parentBold": parentBold,
             "colorText": colorText,
             "colorMuted": colorMuted,
@@ -1774,6 +1783,8 @@ Item {
         parentFont = numVal(v.parentFont, 13)
         groupFont = numVal(v.groupFont, 15)
         childFont = numVal(v.childFont, 13)
+        targetFont = numVal(v.targetFont, 11)
+        colorActionTarget = v.colorActionTarget || "#A1A1AA"
         parentBold = v.parentBold !== false
         colorText = v.colorText || "#E4E4E7"
         colorMuted = v.colorMuted || "#A1A1AA"
@@ -1830,6 +1841,8 @@ Item {
         parentFont = 13
         groupFont = 15
         childFont = 13
+        targetFont = 11
+        colorActionTarget = "#A1A1AA"
         parentBold = true
         colorText = "#E4E4E7"
         colorMuted = "#A1A1AA"
@@ -1911,6 +1924,7 @@ Item {
             else if (_colorTarget === "selected") colorSelected = c
             else if (_colorTarget === "text") colorText = c
             else if (_colorTarget === "muted") colorMuted = c
+            else if (_colorTarget === "actionTarget") colorActionTarget = c
             else if (_colorTarget === "selectBorder") colorSelectBorder = c
             else if (_colorTarget === "border") colorBorder = c
             else if (_colorTarget === "group") colorGroup = c
