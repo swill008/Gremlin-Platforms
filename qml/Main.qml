@@ -1318,7 +1318,7 @@ ApplicationWindow {
                         _root.parkEmptyInUnmapped = checked
                         var catalog = catalogPane()
                         if (catalog)
-                            catalog.saveParkEmpty(checked)
+                            catalog.parkEmptyInUnmapped = checked
                     }
                     ToolTip.visible: hovered
                     ToolTip.text: "When checked, a control with no actions is listed under Unmapped."
