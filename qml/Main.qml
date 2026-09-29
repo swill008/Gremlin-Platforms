@@ -953,9 +953,10 @@ ApplicationWindow {
                 }
 
                 onActivated: () => {
-                    if (uiState) {
+                    if (backend)
+                        backend.selectMode(currentText)
+                    else if (uiState)
                         uiState.setCurrentMode(currentText)
-                    }
                 }
 
                 Connections {
@@ -977,7 +978,7 @@ ApplicationWindow {
 
                 ToolTip {
                     visible: parent.hovered
-                    text: qsTr("Configuring mode. This is the map you are editing. It does not change Executing mode.")
+                    text: qsTr("Mode. This is the map you are editing and the map that runs.")
                     delay: 500
                 }
             }
