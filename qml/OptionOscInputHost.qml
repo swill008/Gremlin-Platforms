@@ -49,8 +49,11 @@ Item {
             Layout.preferredWidth: 36
             Layout.preferredHeight: _combo.height
             text: "\u21bb"
-            ToolTip.visible: hovered
-            ToolTip.text: "Rescan this PC's IP addresses"
+            PointerTip {
+                text: "Rescan this PC's IP addresses"
+                delay: 400
+                show: true
+            }
             onClicked: () => { _model.refresh() }
         }
 
