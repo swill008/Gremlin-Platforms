@@ -791,7 +791,13 @@ ApplicationWindow {
             MenuItem {
                 text: qsTr("User Guide")
                 onTriggered: () => {
-                    Helpers.createComponent("DialogHelp.qml")
+                    Helpers.createComponent("DialogHelp.qml", { "initialSection": "" })
+                }
+            }
+            MenuItem {
+                text: qsTr("Logical Device")
+                onTriggered: () => {
+                    Helpers.createComponent("DialogHelp.qml", { "initialSection": "Logical Device" })
                 }
             }
             MenuItem {
