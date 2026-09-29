@@ -44,7 +44,10 @@ ApplicationWindow {
 
     property string pinSlug: ""
     property string configTitleName: ""
-    onConfigTitleNameChanged: syncOutputView()
+    onConfigTitleNameChanged: {
+        syncOutputView()
+        syncCatalogView()
+    }
     property string configDirection: ""
     property int sourceModuleCount: 0
     property int destModuleCount: 0
@@ -183,6 +186,15 @@ ApplicationWindow {
             return
         view.guid = uiState ? uiState.currentDevice : ""
         view.deviceName = configTitleName
+    }
+
+    function syncCatalogView() {
+        var split = _configSplitLoader.item
+        if (!split || !split.catalog)
+            return
+        if (configDirection === "logical" || (uiState && uiState.currentTab === "logical"))
+            return
+        split.catalog.claimDeviceName = configTitleName
     }
 
     function logicalPane() {
@@ -1516,6 +1528,7 @@ ApplicationWindow {
                     && !(_root.configDirection === "dest" && uiState.currentTab !== "xbox")
             visible: active
             sourceComponent: _configSplitComp
+            onLoaded: _root.syncCatalogView()
         }
 
         ScriptManager {
@@ -1566,7 +1579,6 @@ ApplicationWindow {
 
                 device: _deviceModel
                 moduleModel: _moduleModel
-                claimDeviceName: configTitleName
                 isOutput: _root.configDirection === "dest"
                 showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel
                 onParkEmptyInUnmappedChanged: _root.parkEmptyInUnmapped = parkEmptyInUnmapped
