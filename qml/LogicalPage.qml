@@ -332,6 +332,7 @@ Item {
                                         _root._menuKey = key
                                         _root._menuTitle = title
                                         _root._menuUser = userName
+                                        _root._menuGroup = groupName
                                         if (_root._picked.indexOf(key) < 0)
                                             _root._select(key, false)
                                         _root._openLayoutMenu(true, false)
@@ -435,6 +436,8 @@ Item {
     property string _menuKey: ""
     property string _menuTitle: ""
     property string _menuUser: ""
+    property string _menuGroup: ""
+    property string _pendingGroup: ""
     property string _groupName: ""
     property string _hardwareKey: ""
     property bool _menuOnRow: false
@@ -455,6 +458,19 @@ Item {
         _menuOnRow = onRow
         _menuOnGroup = onGroup
         _pageMenu.popup()
+    }
+
+    function _groupAs(name) {
+        if (_picked.length === 1 && _menuGroup.length > 0 && _menuGroup !== name) {
+            _pendingGroup = name
+            _moveWarn.confirm(
+                "Already in a group",
+                _menuTitle + " is already in " + _menuGroup + ". Move it to " + name + "?",
+                "Move"
+            )
+            return
+        }
+        _layout.moveSelected(name)
     }
 
     component MenuCountRow: Item {
@@ -734,7 +750,7 @@ Item {
             label: "Group as"
             enabled: _root._menuOnRow && !_root.editorLocked
             closeWhenNamed: true
-            onNamed: (name) => _layout.moveSelected(name)
+            onNamed: (name) => _root._groupAs(name)
         }
         Menu {
             id: _moveMenu
@@ -972,6 +988,16 @@ Item {
 
     function _loadHardware() {
         _hardware.devices = _layout.hardware(_hardwareKey, _search.text)
+    }
+
+    DismissibleDialog {
+        id: _moveWarn
+        onConfirmed: {
+            if (_root._pendingGroup.length)
+                _layout.moveSelected(_root._pendingGroup)
+            _root._pendingGroup = ""
+        }
+        onCancelled: _root._pendingGroup = ""
     }
 
     DismissibleDialog {
