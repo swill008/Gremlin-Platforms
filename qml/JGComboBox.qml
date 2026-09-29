@@ -19,13 +19,18 @@ ComboBox {
         highlighted: _combobox.highlightedIndex === index
         hoverEnabled: _combobox.hoverEnabled
 
+        HoverHandler {
+            id: _rowHover
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        }
+
         ToolTip {
             text: parent.text
-            // Set an upper width of the tooltip to force word
-            // wrap on texts.
             width: contentWidth > 500 ? 500 : contentWidth + 20
-            visible: parent.hovered && _combobox.enableTooltips
+            visible: _rowHover.hovered && _combobox.enableTooltips
             delay: 500
+            x: _rowHover.point.position.x - width / 2
+            y: _rowHover.point.position.y - height - 8
         }
     }
 
@@ -36,6 +41,8 @@ ComboBox {
         width: contentWidth > 500 ? 500 : contentWidth + 20
         visible: _hoverHandler.hovered && enableTooltips
         delay: 500
+        x: _hoverHandler.point.position.x - width / 2
+        y: _hoverHandler.point.position.y - height - 8
     }
 
     HoverHandler {
