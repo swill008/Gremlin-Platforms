@@ -154,7 +154,7 @@ Item {
             JGTextField {
                 id: _headerLabel
 
-                Layout.minimumWidth: 150
+                Layout.minimumWidth: 72
                 Layout.fillWidth: true
 
                 text: _root.action ? _root.action.actionLabel : ""
