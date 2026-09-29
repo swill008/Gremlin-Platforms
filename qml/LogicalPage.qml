@@ -228,7 +228,7 @@ Item {
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: (indent > 0 && rowKind === "parent" ? 24 : (indent > 0 ? 40 : 8))
+                            anchors.leftMargin: (indent > 0 && rowKind === "parent" ? 24 : (indent > 0 ? 56 : 8))
                             anchors.rightMargin: 8
                             spacing: 6
 
