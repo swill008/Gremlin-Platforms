@@ -52,11 +52,11 @@ Item {
     property int groupRight: 0
     property int groupWidthPct: 100
     property string groupPadShape: "box"
-    property int groupPad: 0
-    property int groupPadTop: 0
-    property int groupPadRight: 0
-    property int groupPadBottom: 0
-    property int groupPadLeft: 0
+    property int groupPad: 48
+    property int groupPadTop: 48
+    property int groupPadRight: 48
+    property int groupPadBottom: 48
+    property int groupPadLeft: 48
     property int groupRadius: 0
     property string colorGroup: "#00000000"
     property int parentHeight: 50
@@ -406,11 +406,11 @@ Item {
         groupRight = 0
         groupWidthPct = 100
         groupPadShape = "box"
-        groupPad = 0
-        groupPadTop = 0
-        groupPadRight = 0
-        groupPadBottom = 0
-        groupPadLeft = 0
+        groupPad = 48
+        groupPadTop = 48
+        groupPadRight = 48
+        groupPadBottom = 48
+        groupPadLeft = 48
         groupRadius = 0
         colorGroup = "#00000000"
         parentHeight = 50
@@ -550,11 +550,11 @@ Item {
         groupRight = edgeOr(v.groupRight, 0)
         groupWidthPct = edgeOr(v.groupWidthPct, 100)
         groupPadShape = v.groupPadShape || "box"
-        groupPad = edgeOr(v.groupPad, 0)
-        groupPadTop = edgeOr(v.groupPadTop, 0)
-        groupPadRight = edgeOr(v.groupPadRight, 0)
-        groupPadBottom = edgeOr(v.groupPadBottom, 0)
-        groupPadLeft = edgeOr(v.groupPadLeft, 0)
+        groupPad = edgeOr(v.groupPad, 48)
+        groupPadTop = edgeOr(v.groupPadTop, 48)
+        groupPadRight = edgeOr(v.groupPadRight, 48)
+        groupPadBottom = edgeOr(v.groupPadBottom, 48)
+        groupPadLeft = edgeOr(v.groupPadLeft, 48)
         groupRadius = edgeOr(v.groupRadius, 0)
         colorGroup = v.colorGroup || "#00000000"
         parentHeight = numVal(v.parentHeight, 50)
@@ -1102,27 +1102,27 @@ Item {
         RowLayout {
             visible: shape !== "sides"
             Label { text: "Size"; color: "#E4E4E7"; Layout.fillWidth: true }
-            TrackSpin { from: 0; to: 48; source: size; onUserSet: (v) => { edited("box", v, v, v, v, v); }}
+            TrackSpin { from: 0; to: 80; source: size; onUserSet: (v) => { edited("box", v, v, v, v, v); }}
         }
         RowLayout {
             visible: shape === "sides"
             Label { text: "Top"; color: "#E4E4E7"; Layout.fillWidth: true }
-            TrackSpin { from: 0; to: 48; source: padTop; onUserSet: (v) => { edited("sides", size, v, padRight, padBottom, padLeft); }}
+            TrackSpin { from: 0; to: 80; source: padTop; onUserSet: (v) => { edited("sides", size, v, padRight, padBottom, padLeft); }}
         }
         RowLayout {
             visible: shape === "sides"
             Label { text: "Right"; color: "#E4E4E7"; Layout.fillWidth: true }
-            TrackSpin { from: 0; to: 48; source: padRight; onUserSet: (v) => { edited("sides", size, padTop, v, padBottom, padLeft); }}
+            TrackSpin { from: 0; to: 80; source: padRight; onUserSet: (v) => { edited("sides", size, padTop, v, padBottom, padLeft); }}
         }
         RowLayout {
             visible: shape === "sides"
             Label { text: "Bottom"; color: "#E4E4E7"; Layout.fillWidth: true }
-            TrackSpin { from: 0; to: 48; source: padBottom; onUserSet: (v) => { edited("sides", size, padTop, padRight, v, padLeft); }}
+            TrackSpin { from: 0; to: 80; source: padBottom; onUserSet: (v) => { edited("sides", size, padTop, padRight, v, padLeft); }}
         }
         RowLayout {
             visible: shape === "sides"
             Label { text: "Left"; color: "#E4E4E7"; Layout.fillWidth: true }
-            TrackSpin { from: 0; to: 48; source: padLeft; onUserSet: (v) => { edited("sides", size, padTop, padRight, padBottom, v); }}
+            TrackSpin { from: 0; to: 80; source: padLeft; onUserSet: (v) => { edited("sides", size, padTop, padRight, padBottom, v); }}
         }
     }
 
