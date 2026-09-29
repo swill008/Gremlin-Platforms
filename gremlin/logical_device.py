@@ -44,6 +44,7 @@ class LogicalDevice(metaclass=SingletonMetaclass):
             self._value = None
             self.user_label = ""
             self.group = ""
+            self.hide_system = False
 
         def update(self, value: float | bool | HatDirection) -> None:
             self._value = value
@@ -69,6 +70,8 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         @property
         def row_title(self) -> str:
             second = self.second_name
+            if second and self.hide_system:
+                return second
             if second:
                 return f"{self.system_name}   {second}"
             return self.system_name
@@ -76,6 +79,8 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         @property
         def choice_label(self) -> str:
             second = self.second_name
+            if second and self.hide_system:
+                return second
             if second:
                 return f"{self.system_name} — {second}"
             return self.system_name
@@ -391,6 +396,8 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         if cleaned == item.system_name:
             cleaned = ""
         item.user_label = cleaned
+        if not item.second_name:
+            item.hide_system = False
 
     def set_member_group(self, identifier_or_label: Input.Identifier | str, group: str) -> None:
         item = self[identifier_or_label]
@@ -479,6 +486,7 @@ class LogicalDevice(metaclass=SingletonMetaclass):
                     "label": item.label,
                     "user": item.user_label,
                     "group": item.group,
+                    "hide": bool(item.hide_system),
                 }
                 for item in self.ordered()
             ],
@@ -505,6 +513,7 @@ class LogicalDevice(metaclass=SingletonMetaclass):
             item = self[ident]
             item.user_label = entry.get("user", "") or ""
             item.group = entry.get("group", "") or ""
+            item.hide_system = bool(entry.get("hide", False)) and bool(item.second_name)
             if item.label != entry["label"]:
                 try:
                     self.set_label(item.label, entry["label"])
