@@ -48,6 +48,7 @@ Item {
     property int rowSpacing: 4
     property int groupBetween: 4
     property int groupInside: 4
+    property int unmappedGap: 48
     property string groupAlign: "left"
     property int groupLeft: 0
     property int groupRight: 0
@@ -264,6 +265,7 @@ Item {
             rowSpacing: groupBetween,
             groupBetween: groupBetween,
             groupInside: groupInside,
+            unmappedGap: unmappedGap,
             groupAlign: groupAlign,
             groupLeft: groupLeft,
             groupRight: groupRight,
@@ -404,6 +406,7 @@ Item {
         rowSpacing = 4
         groupBetween = 4
         groupInside = 4
+        unmappedGap = 48
         groupAlign = "left"
         groupLeft = 0
         groupRight = 0
@@ -549,6 +552,7 @@ Item {
         rowSpacing = numVal(v.rowSpacing, 4)
         groupBetween = edgeOr(v.groupBetween, rowSpacing)
         groupInside = edgeOr(v.groupInside, rowSpacing)
+        unmappedGap = edgeOr(v.unmappedGap, 48)
         groupAlign = v.groupAlign || "left"
         groupLeft = edgeOr(v.groupLeft, 0)
         groupRight = edgeOr(v.groupRight, 0)
@@ -1311,6 +1315,8 @@ Item {
                             return 0
                         if (isLeaf)
                             return _root.groupInside
+                        if (rowKind === "unmapped-header")
+                            return index > 0 ? _root.unmappedGap : 0
                         if (index > 0)
                             return _root.groupBetween + gPadT
                         return gPadT
@@ -1714,6 +1720,10 @@ Item {
                             RowLayout {
                                 Label { text: "Space between groups"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: groupBetween; onUserSet: (v) => { groupBetween = v; }}
+                            }
+                            RowLayout {
+                                Label { text: "Space before Unmapped"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 80; source: unmappedGap; onUserSet: (v) => { unmappedGap = v; }}
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
                             PadFields {
