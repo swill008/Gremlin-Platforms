@@ -89,7 +89,8 @@ Item {
             }
 
             ActionSelector {
-                Layout.alignment: Qt.AlignRight
+                Layout.fillWidth: true
+                Layout.minimumWidth: 180
 
                 actionNode: _root.inputBinding.rootAction
                 callback: (x) => { actionNode.appendAction(x, "children") }
