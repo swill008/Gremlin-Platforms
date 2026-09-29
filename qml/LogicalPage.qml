@@ -306,7 +306,10 @@ Item {
                         readonly property bool shown: _root._rowVisible(rowKind, groupKey, parentKey)
                         width: _list.width - 16
                         readonly property int rowGap: rowKind === "group" ? 0 : _root.groupInside
-                        readonly property int rowBody: rowKind === "group" ? 40 : (rowKind === "parent" ? _root.parentHeight : _root.childHeight)
+                        readonly property int rowMin: rowKind === "group" ? 40 : (rowKind === "parent" ? _root.parentHeight : _root.childHeight)
+                        readonly property int rowPadY: _root.rowTop(rowKind) + _root.rowBottom(rowKind)
+                        readonly property int rowNeed: _line.implicitHeight + rowPadY
+                        readonly property int rowBody: Math.max(rowMin, rowNeed)
                         height: shown ? implicitHeight : 0
                         visible: shown
                         clip: true
@@ -326,11 +329,14 @@ Item {
                         }
 
                         RowLayout {
-                            anchors.fill: parent
+                            id: _line
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
                             anchors.leftMargin: _root.rowLeft(rowKind)
                             anchors.rightMargin: _root.rowRight(rowKind)
                             anchors.topMargin: _root.rowTop(rowKind)
-                            anchors.bottomMargin: _root.rowBottom(rowKind) + _row.rowGap
+                            height: Math.max(implicitHeight, _row.rowMin - _row.rowPadY)
                             spacing: 6
 
                             Label {
@@ -352,10 +358,10 @@ Item {
                             }
                             Rectangle {
                                 visible: rowKind === "parent" || rowKind === "group"
-                                implicitWidth: _root.gripWidth
-                                implicitHeight: _root.gripHeight
+                                implicitWidth: visible ? _root.gripWidth : 0
+                                implicitHeight: visible ? _root.gripHeight : 0
                                 Layout.preferredWidth: visible ? _root.gripWidth : 0
-                                Layout.preferredHeight: _root.gripHeight
+                                Layout.preferredHeight: visible ? _root.gripHeight : 0
                                 Layout.alignment: Qt.AlignVCenter
                                 radius: 2
                                 color: _root.colorGrip
@@ -443,6 +449,7 @@ Item {
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter
                                 spacing: 0
                                 Label {
                                     text: title
@@ -472,6 +479,7 @@ Item {
                             ComboBox {
                                 visible: writerId.length > 0 && axisMode.length > 0
                                 enabled: !_root.editorLocked
+                                Layout.alignment: Qt.AlignVCenter
                                 model: ["absolute", "relative"]
                                 currentIndex: axisMode === "relative" ? 1 : 0
                                 Layout.preferredWidth: 110
@@ -480,6 +488,7 @@ Item {
                             SpinBox {
                                 visible: writerId.length > 0 && axisMode.length > 0
                                 enabled: !_root.editorLocked
+                                Layout.alignment: Qt.AlignVCenter
                                 from: -500
                                 to: 500
                                 stepSize: 10
@@ -491,6 +500,7 @@ Item {
                             CheckBox {
                                 visible: writerId.length > 0 && canInvert
                                 enabled: !_root.editorLocked
+                                Layout.alignment: Qt.AlignVCenter
                                 text: "Invert"
                                 checked: inverted
                                 onClicked: _layout.setInverted(writerId, checked)
