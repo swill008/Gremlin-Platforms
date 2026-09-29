@@ -38,6 +38,7 @@ Item {
     property int revealOnceRow: -1
     property int revealTries: 0
     property bool showPanel: false
+    property bool parkEmptyInUnmapped: false
     signal closePanel()
     signal advancedRequested(int hid)
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
@@ -135,6 +136,7 @@ Item {
         id: _catalog
         guid: device ? device.guid : ""
         deviceName: _root.claimDeviceName
+        parkEmptyInUnmapped: _root.parkEmptyInUnmapped
     }
 
     ListModel { id: _copySources }
@@ -343,6 +345,7 @@ Item {
             colorEditorAccent: colorEditorAccent,
             colorScreen: colorScreen,
             screenImage: screenImage,
+            parkEmptyInUnmapped: parkEmptyInUnmapped,
             sections: sectionState()
         }
     }
@@ -482,6 +485,7 @@ Item {
         colorEditorAccent = "#3B82F6"
         colorScreen = "#00000000"
         screenImage = ""
+        parkEmptyInUnmapped = false
         setAllSections(false)
     }
 
@@ -630,6 +634,7 @@ Item {
         colorEditorAccent = v.colorEditorAccent || v.colorEditorBorder || "#3B82F6"
         colorScreen = v.colorScreen || "#00000000"
         screenImage = v.screenImage || ""
+        parkEmptyInUnmapped = v.parkEmptyInUnmapped === true
         applySections(v.sections)
     }
 
@@ -641,6 +646,11 @@ Item {
 
     function hasUnsaved() {
         return savedCatalog.length > 0 && JSON.stringify(catalogPayload()) !== savedCatalog
+    }
+
+    function saveParkEmpty(value) {
+        parkEmptyInUnmapped = !!value
+        saveCatalog()
     }
 
     function saveCatalog() {
