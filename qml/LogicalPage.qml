@@ -69,10 +69,15 @@ Item {
     property string colorSelected: "#1E3A5F"
     property string colorSelectBorder: "#3F3F46"
     property string colorBorder: "#3F3F46"
+    property int caretSize: 18
+    property int gripWidth: 8
+    property int gripHeight: 18
+    property string colorGrip: "#52525B"
     property string _colorTarget: "parent"
     property string toastText: "Display Options Saved"
     property string savedDisplay: ""
     property bool openShown: false
+    property bool openHandles: false
     property bool openList: false
     property bool openGroup: false
     property bool openParent: false
@@ -320,6 +325,7 @@ Item {
                                 visible: _root._hasList(rowKind, childCount, extraWriters)
                                 text: (rowKind === "group" ? _root._collapsed[groupKey] : !_root._opened[key]) ? "▸" : "▾"
                                 color: _root.colorText
+                                font.pixelSize: _root.caretSize
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: {
@@ -332,10 +338,10 @@ Item {
                             }
                             Rectangle {
                                 visible: rowKind === "parent" || rowKind === "group"
-                                width: 8
-                                height: 18
+                                width: _root.gripWidth
+                                height: _root.gripHeight
                                 radius: 2
-                                color: "#52525B"
+                                color: _root.colorGrip
                                 z: 2
                                 MouseArea {
                                     id: _grip
@@ -701,6 +707,24 @@ Item {
                                 Label { text: "Written-by size"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 9; to: 20; source: _root.summaryFont; onUserSet: (v) => { _root.summaryFont = v } }
                             }
+                        }
+                        FoldSection {
+                            title: "Handles"
+                            open: _root.openHandles
+                            onToggled: (v) => { _root.openHandles = v }
+                            RowLayout {
+                                Label { text: "Caret size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 12; to: 24; source: _root.caretSize; onUserSet: (v) => { _root.caretSize = v } }
+                            }
+                            RowLayout {
+                                Label { text: "Pad width"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 4; to: 24; source: _root.gripWidth; onUserSet: (v) => { _root.gripWidth = v } }
+                            }
+                            RowLayout {
+                                Label { text: "Pad height"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 8; to: 28; source: _root.gripHeight; onUserSet: (v) => { _root.gripHeight = v } }
+                            }
+                            ColorPick { label: "Pad color"; swatch: _root.colorGrip; target: "grip" }
                         }
                         FoldSection {
                             title: "List"
@@ -1662,7 +1686,11 @@ Item {
             "colorMuted": colorMuted,
             "colorSelected": colorSelected,
             "colorSelectBorder": colorSelectBorder,
-            "colorBorder": colorBorder
+            "colorBorder": colorBorder,
+            "caretSize": caretSize,
+            "gripWidth": gripWidth,
+            "gripHeight": gripHeight,
+            "colorGrip": colorGrip
         }
     }
 
@@ -1716,6 +1744,10 @@ Item {
         colorSelected = v.colorSelected || "#1E3A5F"
         colorSelectBorder = v.colorSelectBorder || "#3F3F46"
         colorBorder = v.colorBorder || "#3F3F46"
+        caretSize = numVal(v.caretSize, 18)
+        gripWidth = numVal(v.gripWidth, 8)
+        gripHeight = numVal(v.gripHeight, 18)
+        colorGrip = v.colorGrip || "#52525B"
     }
 
     function applyDisplayDefaults() {
@@ -1766,11 +1798,16 @@ Item {
         colorSelected = "#1E3A5F"
         colorSelectBorder = "#3F3F46"
         colorBorder = "#3F3F46"
+        caretSize = 18
+        gripWidth = 8
+        gripHeight = 18
+        colorGrip = "#52525B"
         setAllSections(false)
     }
 
     function setAllSections(v) {
         openShown = v
+        openHandles = v
         openList = v
         openGroup = v
         openParent = v
@@ -1837,6 +1874,7 @@ Item {
             else if (_colorTarget === "selectBorder") colorSelectBorder = c
             else if (_colorTarget === "border") colorBorder = c
             else if (_colorTarget === "group") colorGroup = c
+            else if (_colorTarget === "grip") colorGrip = c
             else colorParent = c
         }
     }
