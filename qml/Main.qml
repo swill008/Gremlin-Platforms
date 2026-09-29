@@ -197,6 +197,23 @@ ApplicationWindow {
         split.catalog.claimDeviceName = configTitleName
     }
 
+    function revealCatalogRow(row) {
+        Qt.callLater(function() {
+            var split = _configSplitLoader.item
+            if (!split || !split.catalog)
+                return
+            split.catalog.revealRowNow(row)
+        })
+    }
+
+    function deferListScroll(list, row) {
+        Qt.callLater(function() {
+            if (!_configSplitLoader.item || !list)
+                return
+            list.scrollRowNow(row)
+        })
+    }
+
     function logicalPane() {
         return _logicalLoader.item
     }
