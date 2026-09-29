@@ -239,3 +239,30 @@ def test_drag_places_a_button_before_after_and_into_a_group(qapp) -> None:
         model.deleteLater()
     finally:
         shared_state.current_profile = None
+
+
+def test_hide_system_name_shows_only_the_typed_name() -> None:
+    logical = LogicalDevice()
+    item = logical.create(InputType.JoystickButton)
+    logical.set_user_label(item.identifier, "Trigger")
+    item.hide_system = True
+    assert item.row_title == "Trigger"
+    logical.set_user_label(item.identifier, "")
+    assert item.hide_system is False
+    assert item.row_title == "Button 1"
+
+
+def test_hide_system_name_is_saved(tmp_path) -> None:
+    profile = Profile()
+    logical = LogicalDevice()
+    item = logical.create(InputType.JoystickButton)
+    logical.set_user_label(item.identifier, "Trigger")
+    item.hide_system = True
+    path = tmp_path / "hide.xml"
+    profile.to_xml(path)
+    LogicalDevice().reset()
+    Profile().from_xml(path)
+    restored = LogicalDevice().button(1)
+    assert restored.second_name == "Trigger"
+    assert restored.hide_system is True
+    assert restored.row_title == "Trigger"
