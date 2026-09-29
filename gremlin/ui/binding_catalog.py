@@ -221,7 +221,14 @@ def summarize_action(action) -> tuple[str, str]:
         dest = str(getattr(button, "name", None) or button or mode or "Mouse")
     elif tag == "map-to-xbox":
         target = getattr(action, "xbox_target", None)
-        dest = str(getattr(target, "value", None) or target or "Xbox")
+        raw = getattr(target, "value", None)
+        if raw is None:
+            raw = target
+        try:
+            from vigem.xbox import XboxTarget
+            dest = str(XboxTarget.from_string(str(raw or "")).label)
+        except Exception:
+            dest = str(getattr(target, "label", None) or raw or "Xbox")
     elif tag == "map-to-logical-device":
         dest = str(getattr(action, "action_label", None) or "Logical device")
     elif tag == "macro":
