@@ -1188,13 +1188,21 @@ Item {
                     }
                 }
                 Label { text: "Destination"; color: colorMuted }
+                OutputModuleDevices { id: _destModules }
                 ComboBox {
                     id: _destBox
-                    Layout.fillWidth: true
+                    visible: _destModules.hasValidVJoyDevices
+                    Layout.fillWidth: visible
                     model: _catalog.destChoices
                     onActivated: {
                         _catalog.destFilter = currentText === "All devices" ? "all" : currentText
                     }
+                }
+                Label {
+                    visible: !_destModules.hasValidVJoyDevices
+                    Layout.fillWidth: true
+                    text: "No output module claimed"
+                    color: colorMuted
                 }
             }
 
