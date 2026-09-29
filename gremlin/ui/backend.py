@@ -201,7 +201,7 @@ class Backend(QtCore.QObject):
         self.process_monitor.start()
         self.joystick_change_monitor = device_helpers.JoystickInputSignificant()
         mm = mode_manager.ModeManager()
-        mm.mode_changed.connect(self._emit_change)
+        mm.mode_changed.connect(self._on_mode_changed)
         self.profileChanged.connect(mm.reset)
         self.profileChanged.connect(
             lambda: self.ui_state.setCurrentMode(mm.current.name)
@@ -271,6 +271,20 @@ class Backend(QtCore.QObject):
     def _emit_change(self) -> None:
         self.propertyChanged.emit()
 
+    def _on_mode_changed(self, name: str) -> None:
+        self.ui_state.setCurrentMode(str(name or ""))
+        self.propertyChanged.emit()
+
+    @QtCore.Slot(str)
+    def selectMode(self, mode_name: str) -> None:
+        name = str(mode_name or "")
+        if name not in self.profile.modes.mode_names():
+            return
+        self.ui_state.setCurrentMode(name)
+        mm = mode_manager.ModeManager()
+        if mm.current.name != name:
+            mm.switch_to(mode_manager.Mode(name, mm.current.name))
+
     @QtCore.Slot()
     def emitConfigChanged(self) -> None:
         signal.configChanged.emit()
@@ -338,7 +352,7 @@ class Backend(QtCore.QObject):
     def activate_gremlin(self, activate: bool) -> None:
         if activate:
             shared_state.set_suspend_input_highlighting(True)
-            self.runner.start(self.profile, self.profile.modes.first_mode)
+            self.runner.start(self.profile, self.ui_state.currentMode)
         else:
             self.runner.stop()
             if self.config.value("global", "general", "input-highlighting"):
