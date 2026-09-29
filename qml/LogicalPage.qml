@@ -345,6 +345,10 @@ Item {
                                     font.pixelSize: rowKind === "group" ? 15 : 13
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
+                                    HoverHandler { id: _nameHover }
+                                    ToolTip.visible: _nameHover.hovered && rowKind === "parent" && userName.length > 0
+                                    ToolTip.delay: 400
+                                    ToolTip.text: systemName
                                 }
                                 Label {
                                     visible: subtitle.length > 0 && rowKind !== "writer"
