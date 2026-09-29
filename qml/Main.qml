@@ -167,13 +167,27 @@ ApplicationWindow {
         continueDisplayLeave()
     }
 
+    function catalogPane() {
+        return _configSplitLoader.item ? _configSplitLoader.item.catalog : null
+    }
+
+    function outputPane() {
+        return _outputLoader.item
+    }
+
+    function logicalPane() {
+        return _logicalLoader.item
+    }
+
     function continueDisplayLeave() {
-        if (_deviceInputList && _deviceInputList.hasUnsaved && _deviceInputList.hasUnsaved()) {
-            _deviceInputList.requestLeave()
+        var catalog = catalogPane()
+        if (catalog && catalog.hasUnsaved && catalog.hasUnsaved()) {
+            catalog.requestLeave()
             return
         }
-        if (_outputModuleView && _outputModuleView.hasUnsaved && _outputModuleView.hasUnsaved()) {
-            _outputModuleView.requestLeave()
+        var output = outputPane()
+        if (output && output.hasUnsaved && output.hasUnsaved()) {
+            output.requestLeave()
             return
         }
         var next = _afterDisplayLeave
@@ -791,13 +805,7 @@ ApplicationWindow {
             MenuItem {
                 text: qsTr("User Guide")
                 onTriggered: () => {
-                    Helpers.createComponent("DialogHelp.qml", { "initialSection": "" })
-                }
-            }
-            MenuItem {
-                text: qsTr("Logical Device")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogHelp.qml", { "initialSection": "Logical Device" })
+                    Helpers.createComponent("DialogHelp.qml")
                 }
             }
             MenuItem {
@@ -1054,8 +1062,12 @@ ApplicationWindow {
                 return
             }
             _deviceModel.setMode(uiState.currentMode)
-            _logicalPage.setMode(uiState.currentMode)
-            _oscDeviceList.device.setMode(uiState.currentMode)
+            var logi = logicalPane()
+            if (logi)
+                logi.setMode(uiState.currentMode)
+            var split = _configSplitLoader.item
+            if (split && split.oscList && split.oscList.device)
+                split.oscList.device.setMode(uiState.currentMode)
             _modeSelector.currentIndex = _modeSelector.find(uiState.currentMode)
         }
         function onTabChanged() {
@@ -1104,14 +1116,16 @@ ApplicationWindow {
 
     onClosing: (close) => {
         _windowPlacement.save(_root)
-        if (_outputModuleView && _outputModuleView.hasUnsaved && _outputModuleView.hasUnsaved()) {
+        var output = outputPane()
+        if (output && output.hasUnsaved && output.hasUnsaved()) {
             close.accepted = false
-            _outputModuleView.requestClose()
+            output.requestClose()
             return
         }
-        if (_deviceInputList && _deviceInputList.hasUnsaved && _deviceInputList.hasUnsaved()) {
+        var catalog = catalogPane()
+        if (catalog && catalog.hasUnsaved && catalog.hasUnsaved()) {
             close.accepted = false
-            _deviceInputList.requestClose()
+            catalog.requestClose()
             return
         }
         if (backend && backend.profileContainsUnsavedChanges) {
@@ -1416,42 +1430,89 @@ ApplicationWindow {
             }
         }
 
-        OutputModuleView {
-            id: _outputModuleView
+        Loader {
+            id: _outputLoader
 
             Layout.fillHeight: true
             Layout.fillWidth: true
-            visible: uiState && uiState.currentRoom === "configuration"
-                     && _root.configDirection === "dest"
-                     && uiState.currentTab !== "xbox"
-            guid: uiState ? uiState.currentDevice : ""
-            deviceName: configTitleName
-            moduleModel: _moduleModel
-            showPanel: _root.outputViewPanel
-            onClosePanel: {
-                _root.outputViewPanel = false
-                _root.rememberDisplayPanel()
+            active: uiState && uiState.currentRoom === "configuration"
+                    && _root.configDirection === "dest"
+                    && uiState.currentTab !== "xbox"
+            visible: active
+            sourceComponent: OutputModuleView {
+                guid: uiState ? uiState.currentDevice : ""
+                deviceName: configTitleName
+                moduleModel: _moduleModel
+                showPanel: _root.outputViewPanel
+                onClosePanel: {
+                    _root.outputViewPanel = false
+                    _root.rememberDisplayPanel()
+                }
+                onLeaveResolved: _root.continueDisplayLeave()
+                onLeaveCancelled: _root.cancelDisplayLeave()
             }
-            onLeaveResolved: _root.continueDisplayLeave()
-            onLeaveCancelled: _root.cancelDisplayLeave()
         }
 
-        LogicalPage {
-            id: _logicalPage
+        Loader {
+            id: _logicalLoader
 
             Layout.fillHeight: true
             Layout.fillWidth: true
-            visible: uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical"
+            active: uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical"
+            visible: active
+            source: "LogicalPage.qml"
+            onLoaded: {
+                if (uiState)
+                    item.setMode(uiState.currentMode)
+            }
         }
+
+        Loader {
+            id: _configSplitLoader
+
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            active: uiState && uiState.currentRoom === "configuration"
+                    && uiState.currentTab !== "logical"
+                    && !(_root.configDirection === "dest" && uiState.currentTab !== "xbox")
+            visible: active
+            sourceComponent: _configSplitComp
+        }
+
+        ScriptManager {
+            id: _scriptManager
+
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.verticalStretchFactor: 10
+
+            visible: uiState && uiState.currentRoom === "scripts"
+
+            scriptListModel: backend ? backend.scriptListModel : null
+        }
+
+        ProfileSettings {
+            id: _profileSettings
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.verticalStretchFactor: 10
+
+            visible: uiState && uiState.currentRoom === "settings"
+
+            settingsModel: ProfileSettingsModel {}
+        }
+    }
+
+
+    Component {
+        id: _configSplitComp
 
         SplitView {
             id: _splitView
 
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            visible: uiState && uiState.currentRoom === "configuration"
-                     && uiState.currentTab !== "logical"
-                     && !(_root.configDirection === "dest" && uiState.currentTab !== "xbox")
+            property alias catalog: _deviceInputList
+            property alias oscList: _oscDeviceList
 
             clip: true
             orientation: (uiState && uiState.currentTab === "physical") ? Qt.Vertical : Qt.Horizontal
@@ -1542,30 +1603,6 @@ ApplicationWindow {
                 SplitView.fillHeight: true
                 SplitView.minimumWidth: 900
             }
-        }
-
-        ScriptManager {
-            id: _scriptManager
-
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.verticalStretchFactor: 10
-
-            visible: uiState && uiState.currentRoom === "scripts"
-
-            scriptListModel: backend ? backend.scriptListModel : null
-        }
-
-        ProfileSettings {
-            id: _profileSettings
-
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.verticalStretchFactor: 10
-
-            visible: uiState && uiState.currentRoom === "settings"
-
-            settingsModel: ProfileSettingsModel {}
         }
     }
 
