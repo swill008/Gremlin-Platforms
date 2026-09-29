@@ -285,10 +285,18 @@ Window {
                     spacing: 6
                     boundsBehavior: Flickable.StopAtBounds
                     model: _hh.deviceCount
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AlwaysOn
+                        width: 10
+                        contentItem: Rectangle {
+                            implicitWidth: 8
+                            radius: 3
+                            color: parent.pressed ? "#E4E4E7" : (parent.hovered ? "#A1A1AA" : "#52525B")
+                        }
+                    }
                     delegate: Rectangle {
                         required property int index
-                        width: ListView.view.width
+                        width: ListView.view.width - 12
                         height: 56
                         radius: 3
                         color: "#111113"
@@ -442,10 +450,18 @@ Window {
                     spacing: 6
                     boundsBehavior: Flickable.StopAtBounds
                     model: _hh.gameCount
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AlwaysOn
+                        width: 10
+                        contentItem: Rectangle {
+                            implicitWidth: 8
+                            radius: 3
+                            color: parent.pressed ? "#E4E4E7" : (parent.hovered ? "#A1A1AA" : "#52525B")
+                        }
+                    }
                     delegate: Rectangle {
                         required property int index
-                        width: ListView.view.width
+                        width: ListView.view.width - 12
                         height: 44
                         radius: 3
                         color: "#111113"
