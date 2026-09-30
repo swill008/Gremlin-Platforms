@@ -518,6 +518,23 @@ def to_local_path(path_or_url) -> Path:
     return Path(text)
 
 
+def updated_recent_profiles(recent: list[str], path: Path, limit: int) -> list[str]:
+    """Returns the recent profile list with the given path moved to the front.
+
+    Args:
+        recent: current list of recently used profile paths
+        path: path of the profile that was just used
+        limit: maximum number of entries to keep
+
+    Returns:
+        New list of recently used profile paths, most recent first
+    """
+    new_path = path.resolve()
+    # WindowsPath equality ignores case and separator differences.
+    remaining = [entry for entry in recent if Path(entry).resolve() != new_path]
+    return [str(new_path), *remaining][:limit]
+
+
 def save_image_as_pdf(image: QtGui.QImage, path: Path) -> bool:
     """Writes image to path as a one-page PDF sized to the image.
 

@@ -409,7 +409,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | F-01b | FAIL (minor) | After New Profile (and after Save As) the "Configuring mode" box is blank until opened; the list holds "Default". |
 | F-02 | PASS | Load from the profiles folder; title, bindings and mode restored. |
 | F-02b | FAIL | Ctrl+O with unsaved changes gives no warning (S-05 confirmed). |
-| F-03 | FAIL | File > Recent is always empty; `recent-profiles` is never written (S-04 confirmed). |
+| F-03 | FIXED | File > Recent is always empty; `recent-profiles` is never written (S-04 confirmed). |
 | F-04b | PASS | Ctrl+S on a new profile opens Save As in the profiles folder; "Saved" popup; footer line. |
 | F-06a | PASS | Exit with unsaved profile shows Save / Discard / Cancel; Cancel stays. |
 | F-06b | PASS | Discard quits cleanly. |
@@ -662,7 +662,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 4. OPT-P01, OPT-P07, OPT-A01b: Options list edits (profile entries, remove, reorder) are not saved; in-place config mutation.
 5. ~~AE-XML-NONE~~ fixed (empty text loads as "").
 6. ~~LP-29~~ fixed (Delete acts on the selection).
-7. F-03: Recent profiles never written.
+7. ~~F-03~~ fixed (R16 recent-profiles code restored).
 8. ~~H-19g-b~~ fixed bc4ebe27: backups go to the data folder; Deleted devices folder picker in Options.
 9. ~~HH-00b~~ fixed (HiDHide splitter).
 10. BM-X1 / S-22: map pack Export/Import unreachable, but listed in Help.

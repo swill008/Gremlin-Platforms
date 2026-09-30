@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import uuid
+from pathlib import Path
 
 from PySide6 import (
     QtCore,
@@ -42,11 +43,17 @@ from gremlin.ui.hardware_profile import persist_log
 from gremlin.ui.profile import InputItemModel
 from gremlin.ui.script import ScriptListModel
 from gremlin.ui import ui_scale_option
-from gremlin.ui.util import save_image_as_pdf, to_local_path
+from gremlin.ui.util import (
+    save_image_as_pdf,
+    to_local_path,
+    updated_recent_profiles,
+)
 import gremlin.ui.hardware_profile  # noqa: F401
 
 QML_IMPORT_NAME = "Gremlin.UI"
 QML_IMPORT_MAJOR_VERSION = 1
+
+_max_recent_profiles = 5
 
 
 @ta.QmlElement
@@ -455,7 +462,7 @@ class Backend(QtCore.QObject):
             if not os.path.isfile(str(self.profile.fpath)):
                 persist_log(f"Persist profile save failed path={path!r} reason='file missing after write'")
                 return False
-            self.config.set("global", "internal", "last-profile", str(path))
+            self._record_profile_use(path)
             self.windowTitleChanged.emit()
             persist_log(f"Persist profile save ok path={path}")
             return True
@@ -494,8 +501,8 @@ class Backend(QtCore.QObject):
     @QtCore.Slot(str)
     def loadProfile(self, fpath: str) -> None:
         local_path = to_local_path(fpath)
-        self._load_profile(str(local_path))
-        self.config.set("global", "internal", "last-profile", str(local_path))
+        if self._load_profile(str(local_path)):
+            self._record_profile_use(local_path)
         self.profileChanged.emit()
         signal.reloadCurrentInputItem.emit()
 
@@ -517,10 +524,29 @@ class Backend(QtCore.QObject):
             return str(self.profile.fpath)
         return ""
 
-    def _load_profile(self, fpath: str) -> None:
+    def _record_profile_use(self, path: Path) -> None:
+        """Records the given profile as the most recently used one.
+
+        Args:
+            path: file path of the profile that was loaded or saved
+        """
+        self.config.set("global", "internal", "last-profile", str(path))
+        self.config.set(
+            "global",
+            "internal",
+            "recent-profiles",
+            updated_recent_profiles(
+                self.config.value("global", "internal", "recent-profiles"),
+                path,
+                _max_recent_profiles,
+            ),
+        )
+        self.recentProfilesChanged.emit()
+
+    def _load_profile(self, fpath: str) -> bool:
         if not os.path.isfile(fpath):
             display_error(f"Unable to load profile '{fpath}', no such file.")
-            return
+            return False
         self.activate_gremlin(False)
         try:
             LogicalDevice().reset()
@@ -537,6 +563,9 @@ class Backend(QtCore.QObject):
         except (KeyError, TypeError) as e:
             logging.getLogger("system").exception(f"Invalid profile content:\n{e}")
             self.newProfile()
+            return False
         except error.ProfileError as e:
             self.newProfile()
             display_error(f"Failed to load the profile {fpath}.", str(e))
+            return False
+        return True
