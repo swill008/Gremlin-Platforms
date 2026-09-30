@@ -49,4 +49,5 @@ jobs:
             Requires vJoy already installed.
             Unsigned build — SmartScreen may warn on first run.
           files: dist/Gremlin-Platforms-R1-1.0.0.zip
+          overwrite_files: true
           token: ${{ secrets.GITHUB_TOKEN }}
