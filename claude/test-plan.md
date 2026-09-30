@@ -643,3 +643,30 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | HH-08 | PASS / NOTE | Change image opens a "Device image" picker (images filter); cancelled. It starts in the repo's `user_scripts` folder, left over from another dialog. |
 | HH-04..06, HH-05b, HH-09..12 | DEFERRED [U] | Change the real driver. |
 | stderr | PASS | No QML errors. |
+
+## Batch 15: Build, code checks only (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| B-SPEC-DLL | PASS | Spec bundles vJoyInterface.dll, dill.dll, ViGEmClient.dll; datas include gfx, qml, theme, device_db.json, version.json and every action_plugins file. |
+| B-SPEC-IMPORTS | SUSPECT | `action_plugins.axis_delta` and `action_plugins.run_command` are not in `hidden_imports` (all other plugins are). Their .py files ship as data and load via importlib, so they may still work. Check in the exe: Axis Delta (axis input) and Run Command (button) in Add Action. |
+| B-01..04 | DEFERRED | Need the 76.6 MB release zip downloaded (your permission) or a local pyinstaller build. The current R1 zip predates the "Gremlin Platforms" data folder change. |
+
+## Failure summary, ranked (2026-09-30)
+
+Data loss or broken feature first. IDs point to the batch rows above.
+
+1. AE-MOUSE: the Map to Mouse editor does not load (duplicate `autoExclusive` line). One-line fix.
+2. AM-08: fatal error dialog after closing the Auto Mapper.
+3. LP-57, CAL-09, W-03, F-02b: unsaved work is lost or not prompted for (Logical pane, Calibration close, app close after Discard, Load).
+4. OPT-P01, OPT-P07, OPT-A01b: Options list edits (profile entries, remove, reorder) are not saved; in-place config mutation.
+5. AE-XML-NONE: empty text fields reload as "None" (Description, Run Command, Text to Speech); also in R16.
+6. LP-29: multi-select Delete deletes only one row.
+7. F-03: Recent profiles never written.
+8. H-19g-b: "deleted devices" backup written to the install folder.
+9. HH-00b: HiDHide splitter not restored.
+10. BM-X1 / S-22: map pack Export/Import unreachable, but listed in Help.
+11. H-03-dest, H-19d, H-17, H-13, OV-08b, XV-01b: Home and viewer behavior.
+12. B-SPEC-IMPORTS (suspect): axis_delta / run_command missing from spec hidden imports.
+13. Minor/cosmetic: F-01b, HD-01b, PS-06, MENU-CLIP, IC-01b, IC-17b, C-06, LP-24b, S-05b, OPT-X1b, OPT-U01b, OPT-F08b, CAL-05b, MM-01b, AE-XML-CHAIN, AE-NARROW, HH-08 note.
+14. Back burner: XB-IMG / XV-IMG (#9).
