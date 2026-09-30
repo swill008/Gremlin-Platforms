@@ -18,7 +18,7 @@ def test_nxt_interfaces_share_usb_parent_group():
     ):
         keys = {hh._group_key(k, 0x231D, None) for k in NXT}
     assert len(keys) == 1, keys
-    assert next(iter(keys)).startswith("usb:")
+    assert next(iter(keys)) == "base:" + PARENT.upper()
 
 
 def test_different_usb_parents_stay_apart():

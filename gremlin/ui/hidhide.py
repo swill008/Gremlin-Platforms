@@ -1327,7 +1327,8 @@ def _container_id(instance: str) -> str:
 def _base_container_path(instance: str) -> str:
     """HidHide BaseContainerDeviceInstancePath."""
     cid = _container_id(instance)
-    if cid in (GUID_NULL, GUID_CONTAINER_ID_SYSTEM):
+    # HidHide treats an unreadable container id as GUID_NULL: the device stands alone.
+    if not cid or cid in (GUID_NULL, GUID_CONTAINER_ID_SYSTEM):
         return ""
     it = instance
     for _ in range(12):
