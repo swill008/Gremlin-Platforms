@@ -151,7 +151,7 @@ def restore_window(window: QtGui.QWindow) -> None:
     screen = _target_screen(saved)
     if screen is None:
         return
-    fitted = _centered(saved.size(), screen)
+    fitted = _centered(saved.size().expandedTo(window.minimumSize()), screen)
     window.setVisibility(QtGui.QWindow.Visibility.Windowed)
     window.setGeometry(fitted)
     if cfg.value(SECTION, GROUP, KEY_MAX):
@@ -199,8 +199,9 @@ def restore_tool(window: QtGui.QWindow, name: str, default_w: int, default_h: in
         height = int(entry.get("h", default_h))
     except (TypeError, ValueError):
         width, height = int(default_w), int(default_h)
-    width = max(200, width)
-    height = max(160, height)
+    minimum = window.minimumSize()
+    width = max(200, width, minimum.width())
+    height = max(160, height, minimum.height())
     app = QtGui.QGuiApplication.instance()
     saved = None
     try:
