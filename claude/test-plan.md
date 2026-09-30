@@ -613,3 +613,19 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | AM-08 | FAIL | Closing the Auto Mapper after creating mappings shows "A fatal error occurred: RuntimeError: Signal source has been deleted" (reproduced twice; the app keeps running). |
 | DP-02 | PASS | Device Pack opens alone: device preview, pack size, Export… |
 | DP-03..13, SW-01..03, HLP topics, DI-01 | NOT RUN | Remaining dialog detail. |
+
+## Batch 12: Action editors (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| AE-BTN | PASS | All 19 button actions added to NXT Button 1 in one pane; each editor drew its controls. |
+| AE-AXIS | PASS | All axis actions added to X Axis (Response Curve, Axis Delta, Condition, Dual Axis Deadzone, Merge Axis, Split Axis, Map to Xbox). The deadzone/curve warning icon explains itself on hover. |
+| AE-MOUSE | FAIL | Map to Mouse shows only its title row. The editor does not load: "MapToMouseAction.qml:193:17 / 202:17: Property value set multiple times". Each radio button sets `autoExclusive: false` twice (added by b4c70f9e). A scan of every QML file found no other duplicate property. |
+| AE-XBOX-TRIG | PASS | Map to Xbox → Left Trigger shows the new Full axis / Upper half picker (#23d). |
+| AE-HAT | NOT RUN (UI) | The NXT has no hat. Hat as Buttons is covered by the save/load test below. |
+| AE-NARROW | NOTE | At this window size some right-hand controls are cut off (Double Tap's Add button, Condition's "Add Con…", Response Curve deadzone boxes overlap). |
+| AE-XML | NEW TEST | `test_action_xml_round_trip.py` saves and reloads every action plugin for each input type it supports (42 pass, 15 skipped because a new action is not valid until set up). |
+| AE-XML-NONE | FAIL (also in R16) | An empty text field reloads as the word "None": Description, Run Command (executable/arguments), Text to Speech. `_property_from_string[String]` is `str`, so `str(None)`. The next save writes "None". Marked xfail. |
+| AE-XML-CHAIN | FAIL (minor) | A new Chain's empty "Sequence 0" is gone after save and reload. Marked xfail. |
+| AE-LABEL | PASS | A blank action label stays blank after save and reload. |
+| AE-SET-ALL | DEFERRED | Setting every control and reloading in the app needs Save on the sandbox profile plus physical input for Record buttons. |
