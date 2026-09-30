@@ -620,12 +620,12 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 |---|---|---|
 | AE-BTN | PASS | All 19 button actions added to NXT Button 1 in one pane; each editor drew its controls. |
 | AE-AXIS | PASS | All axis actions added to X Axis (Response Curve, Axis Delta, Condition, Dual Axis Deadzone, Merge Axis, Split Axis, Map to Xbox). The deadzone/curve warning icon explains itself on hover. |
-| AE-MOUSE | FAIL | Map to Mouse shows only its title row. The editor does not load: "MapToMouseAction.qml:193:17 / 202:17: Property value set multiple times". Each radio button sets `autoExclusive: false` twice (added by b4c70f9e). A scan of every QML file found no other duplicate property. |
+| AE-MOUSE | FIXED (20722eed) | Map to Mouse shows only its title row. The editor does not load: "MapToMouseAction.qml:193:17 / 202:17: Property value set multiple times". Each radio button sets `autoExclusive: false` twice (added by b4c70f9e). A scan of every QML file found no other duplicate property. |
 | AE-XBOX-TRIG | PASS | Map to Xbox → Left Trigger shows the new Full axis / Upper half picker (#23d). |
 | AE-HAT | NOT RUN (UI) | The NXT has no hat. Hat as Buttons is covered by the save/load test below. |
 | AE-NARROW | NOTE | At this window size some right-hand controls are cut off (Double Tap's Add button, Condition's "Add Con…", Response Curve deadzone boxes overlap). |
 | AE-XML | NEW TEST | `test_action_xml_round_trip.py` saves and reloads every action plugin for each input type it supports (42 pass, 15 skipped because a new action is not valid until set up). |
-| AE-XML-NONE | FAIL (also in R16) | An empty text field reloads as the word "None": Description, Run Command (executable/arguments), Text to Speech. `_property_from_string[String]` is `str`, so `str(None)`. The next save writes "None". Marked xfail. |
+| AE-XML-NONE | FIXED | An empty text field reloads as the word "None": Description, Run Command (executable/arguments), Text to Speech. `_property_from_string[String]` is `str`, so `str(None)`. The next save writes "None". Marked xfail. |
 | AE-XML-CHAIN | FAIL (minor) | A new Chain's empty "Sequence 0" is gone after save and reload. Marked xfail. |
 | AE-LABEL | PASS | A blank action label stays blank after save and reload. |
 | AE-SET-ALL | DEFERRED | Setting every control and reloading in the app needs Save on the sandbox profile plus physical input for Record buttons. |
@@ -656,11 +656,11 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 
 Data loss or broken feature first. IDs point to the batch rows above.
 
-1. AE-MOUSE: the Map to Mouse editor does not load (duplicate `autoExclusive` line). One-line fix.
+1. ~~AE-MOUSE~~ fixed 20722eed. Also fixed: radio buttons could be clicked off (#33, 154ed217).
 2. AM-08: fatal error dialog after closing the Auto Mapper.
 3. LP-57, CAL-09, W-03, F-02b: unsaved work is lost or not prompted for (Logical pane, Calibration close, app close after Discard, Load).
 4. OPT-P01, OPT-P07, OPT-A01b: Options list edits (profile entries, remove, reorder) are not saved; in-place config mutation.
-5. AE-XML-NONE: empty text fields reload as "None" (Description, Run Command, Text to Speech); also in R16.
+5. ~~AE-XML-NONE~~ fixed (empty text loads as "").
 6. LP-29: multi-select Delete deletes only one row.
 7. F-03: Recent profiles never written.
 8. H-19g-b: "deleted devices" backup written to the install folder.

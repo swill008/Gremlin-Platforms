@@ -225,7 +225,8 @@ def safe_format(
 # Mapping between property types and the function converting the string
 # representation into the correct data type
 _property_from_string = {
-    PropertyType.String: str,
+    # An empty <value /> has no text; it loads as "", not "None".
+    PropertyType.String: lambda x: "" if x is None else x,
     PropertyType.Int: int,
     PropertyType.Float: float,
     PropertyType.Bool: lambda x: parse_bool(x, False),
@@ -233,7 +234,7 @@ _property_from_string = {
     PropertyType.AxisMode: lambda x: AxisMode.to_enum(x),
     PropertyType.HatDirection: lambda x: HatDirection.to_enum(x),
     PropertyType.UUID: lambda x: uuid.UUID(x),
-    PropertyType.Selection: str,
+    PropertyType.Selection: lambda x: "" if x is None else x,
     PropertyType.ActionActivationMode: lambda x: ActionActivationMode.to_enum(x),
     PropertyType.Point2D: lambda x: Point2D.from_string(x),
     PropertyType.Path: Path,

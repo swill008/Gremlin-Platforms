@@ -17,9 +17,7 @@ from gremlin.types import InputType
 
 _PLUGIN_DIR = pathlib.Path(__file__).resolve().parents[2] / "action_plugins"
 
-# Known failures from the test plan. An empty string reloads as "None".
-_EMPTY_TEXT_BECOMES_NONE = {"DescriptionData", "RunCommandData", "TextToSpeechData"}
-# The empty first sequence is not written back after a reload.
+# Known failure from the test plan: the empty first sequence is dropped on reload.
 _EMPTY_SEQUENCE_DROPPED = {"ChainData"}
 
 
@@ -44,10 +42,6 @@ def _action_classes() -> list[type[AbstractActionData]]:
 
 def _case(cls: type[AbstractActionData], input_type: InputType) -> pytest.param:
     marks = []
-    if cls.__name__ in _EMPTY_TEXT_BECOMES_NONE:
-        marks.append(
-            pytest.mark.xfail(reason="empty text reloads as 'None'", strict=True)
-        )
     if cls.__name__ in _EMPTY_SEQUENCE_DROPPED:
         marks.append(pytest.mark.xfail(reason="empty sequence dropped", strict=True))
     return pytest.param(

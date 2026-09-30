@@ -231,3 +231,15 @@ def test_property_to_string(
     property_string: str,
 ) -> None:
     assert gremlin.util.property_to_string(property, property_value) == property_string
+
+
+@pytest.mark.parametrize(
+    "property_type",
+    [gremlin.types.PropertyType.String, gremlin.types.PropertyType.Selection],
+)
+def test_read_empty_text_property(property_type: gremlin.types.PropertyType) -> None:
+    # An empty <value /> has no text; it must load as "", not "None".
+    node = ElementTree.Element("action")
+    node.append(gremlin.util.create_property_node("text", "", property_type))
+    node = ElementTree.fromstring(ElementTree.tostring(node))
+    assert gremlin.util.read_property(node, "text", property_type) == ""
