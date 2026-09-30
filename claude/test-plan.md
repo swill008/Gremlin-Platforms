@@ -394,3 +394,47 @@ Tool windows and editors:
 - S-36 HiDHide photo file names change every run and leave orphans. hidhide.py:1771 (already on the back burner)
 - S-37 Button Map _groupMenu / _leadMenu are dead code. DialogJoystickButtonMap.qml:1276
 - S-38 HiDHide "Automatically Start" and Options "Hidhide on start" are the same setting (two controls).
+
+---
+
+# Results
+
+Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
+
+## Batch 1: Main window (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| F-01 | PASS | Confirm dialog; Cancel keeps profile; Create gives a blank profile. |
+| F-01b | FAIL (minor) | After New Profile (and after Save As) the "Configuring mode" box is blank until opened; the list holds "Default". |
+| F-02 | PASS | Load from the profiles folder; title, bindings and mode restored. |
+| F-02b | FAIL | Ctrl+O with unsaved changes gives no warning (S-05 confirmed). |
+| F-03 | FAIL | File > Recent is always empty; `recent-profiles` is never written (S-04 confirmed). |
+| F-04b | PASS | Ctrl+S on a new profile opens Save As in the profiles folder; "Saved" popup; footer line. |
+| F-06a | PASS | Exit with unsaved profile shows Save / Discard / Cancel; Cancel stays. |
+| F-06b | PASS | Discard quits cleanly. |
+| KB-01 | PASS | Ctrl+N, Ctrl+O, Ctrl+S. |
+| V-01, V-02 | PASS | Home; Configuration opens the last clicked card. |
+| V-03 | DEFERRED to batch 2 | Needs Compact view off. |
+| V-04..06 | PASS | Single list / Side by side / Stacked. The Split box uses other names (None / Vertical / Horizontal). |
+| V-07, HD-01, HD-02 | PASS | Hidden devices, Unhide, Unhide all ("No hidden devices."). |
+| HD-01b | FAIL (harmless) | stderr on Unhide: `DialogHiddenDevices.qml:58 ReferenceError: _win is not defined` (the row is destroyed while its click runs). |
+| V-08, V-09 | PASS | Scripts room; Profile Settings room. |
+| PS-06 | FAIL (cosmetic) | Typos confirmed: "aninput", "devicethe", "a vJoy devices are" (S-19). |
+| T-01..T-15 | PASS | Every Tools item opens its window (Viewers x3, Device setup x7, Mapping x4, Options). |
+| D-01 | PASS | Live Log Reader shows the log (new Gremlin Platforms paths). |
+| H-01, H-02 | PASS | User Guide; About text. Link not clicked (opens the browser). |
+| TB-03 | PASS | vJoy Viewer toggles open and closed. |
+| TB-04, TB-07 | PASS (open) | Close-toggle uses the same code as TB-03. |
+| TB-05, TB-06, TB-08, TB-10 | PASS | Button Map, Logical Device (icon accent), Options, Manage Modes. |
+| TB-02 | DEFERRED | Runner on/off drives real vJoy output. |
+| TB-09 | DEFERRED to batch 11 | Needs a second mode (Manage Modes batch). |
+| TB-11 | PASS | Width cannot go below 1346 px. |
+| SB-03 | PASS | Footer saved-line. |
+| W-02 | PASS | New profile title is "Gremlin-Platforms R1" (S-06 ruled out). |
+| W-03 | FAIL | Close with unsaved catalog display: after Discard only the panel closes; the app stays open and never asks about the unsaved profile (S-07 confirmed). |
+| W-12 | PASS | Dialogs readable in the dark theme. |
+| LP-20 | PASS | Add Button from the empty-area menu. |
+| NOTE | not a bug | The Add Button menu stays open after adding; an Undo line appears, and a stray click on it undid the add. |
+| XB-IMG | FAIL (back burner #9) | stderr: `qml/images/xbox360_two_panel.jpg` missing (removed in "moved user data"). Xbox Viewer has no picture. |
+| DP-LOOP | NOTE | stderr: `DialogDevicePack.qml:381 recursive rearrange` layout warning when Device Pack opens. |
