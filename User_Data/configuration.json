@@ -484,12 +484,6 @@
                 "properties": {},
                 "value": "False"
             },
-            "dark-mode": {
-                "data_type": "bool",
-                "expose": true,
-                "properties": {},
-                "value": "True"
-            },
             "device-change-behavior": {
                 "data_type": "selection",
                 "expose": true,
@@ -501,24 +495,6 @@
                     ]
                 },
                 "value": "Reload"
-            },
-            "input-highlight-scope": {
-                "data_type": "string",
-                "expose": false,
-                "properties": {},
-                "value": "This tab"
-            },
-            "input-highlight-speed": {
-                "data_type": "string",
-                "expose": false,
-                "properties": {},
-                "value": "Slow"
-            },
-            "input-highlighting": {
-                "data_type": "bool",
-                "expose": true,
-                "properties": {},
-                "value": "True"
             },
             "log-level": {
                 "data_type": "string",
@@ -785,6 +761,34 @@
                 "expose": true,
                 "properties": {},
                 "value": "False"
+            }
+        }
+    },
+    "ui": {
+        "general": {
+            "dark-mode": {
+                "data_type": "bool",
+                "expose": true,
+                "properties": {},
+                "value": "True"
+            },
+            "input-highlight-scope": {
+                "data_type": "string",
+                "expose": false,
+                "properties": {},
+                "value": "This tab"
+            },
+            "input-highlight-speed": {
+                "data_type": "string",
+                "expose": false,
+                "properties": {},
+                "value": "Slow"
+            },
+            "input-highlighting": {
+                "data_type": "bool",
+                "expose": true,
+                "properties": {},
+                "value": "True"
             }
         }
     }
