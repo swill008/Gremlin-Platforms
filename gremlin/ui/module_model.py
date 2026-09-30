@@ -67,7 +67,7 @@ _CFG_KEPT_STUBS = "kept-stubs"
 def _ensure_display_options() -> None:
     cfg = config.Configuration()
 
-    def _reg(name, dtype, initial, desc, props=None) -> None:
+    def _reg(name, dtype, initial, desc, props=None, expose: bool = True) -> None:
         try:
             cfg.register(
                 _CFG_SECTION,
@@ -77,20 +77,20 @@ def _ensure_display_options() -> None:
                 initial,
                 desc,
                 props or {},
-                True,
+                expose,
             )
         except Exception as exc:
             import logging
             logging.getLogger("system").warning("status option %s: %s", name, exc)
 
-    _reg(_CFG_HIDDEN, PropertyType.String, "", "Ignored Status card slugs (comma separated).")
+    _reg(_CFG_HIDDEN, PropertyType.String, "", "Ignored Status card slugs (comma separated).", expose=False)
     _reg(
         _CFG_SHOW_STUBS,
         PropertyType.Bool,
         True,
         "Show stub cards for detected hardware with no saved module.",
     )
-    _reg(_CFG_ORDER, PropertyType.String, "", "Status card order (comma separated slugs).")
+    _reg(_CFG_ORDER, PropertyType.String, "", "Status card order (comma separated slugs).", expose=False)
     _reg(
         _CFG_COMPACT,
         PropertyType.Bool,
@@ -102,6 +102,7 @@ def _ensure_display_options() -> None:
         PropertyType.String,
         "none",
         "Status split: none, vertical, or horizontal.",
+        expose=False,
     )
     _reg(
         _CFG_SPLIT_RATIO,
@@ -109,14 +110,16 @@ def _ensure_display_options() -> None:
         0.5,
         "Status splitter position (0.2–0.8).",
         {"min": 0.2, "max": 0.8},
+        expose=False,
     )
-    _reg(_CFG_STACKS, PropertyType.String, "", "Status card stacks (slug+slug|slug).")
-    _reg(_CFG_SIZES, PropertyType.String, "", "Status card sizes (slug=WxH).")
+    _reg(_CFG_STACKS, PropertyType.String, "", "Status card stacks (slug+slug|slug).", expose=False)
+    _reg(_CFG_SIZES, PropertyType.String, "", "Status card sizes (slug=WxH).", expose=False)
     _reg(
         _CFG_KEPT_STUBS,
         PropertyType.String,
         "",
         "Devices kept visible as stubs after Delete Device.",
+        expose=False,
     )
 
 
