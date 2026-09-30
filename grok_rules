@@ -74,6 +74,7 @@ Any change to rules is written here. Do not keep a second unofficial list.
 25. Button Map editor: Edit on the map window. Save writes control.hardware JSON to qml/maps/<device>.json (EVO R: qml/maps/vkb_evo_r.json). That JSON is live runtime truth for chips, hotspots, spines, and image. Cancel drops the session. qml/vkb_evo_r_face_map.md is the measured JPEG inventory and hardware lock, not live layout.
 26. No hacks. Follow Qt / QML / Gremlin best practice. If a fix needs a workaround (height: 0 to hide menu rows, hover-open by hand, screenshot math, dummy objects), stop and warn before coding. Propose the supported API first. Only ship a workaround if the user accepts it after that warning.
     26.1 Do not invent a new feature, UI, or data shape to get past a problem. Ask first.
+    26.2 Do not add a one-time copy, fallback, or compatibility path on your own. That includes copying an old setting into a new key, reading the old key if the new one is missing, or leaving the old key in place. Ask first. The user decides whether old data is kept, edited by hand, or dropped.
 
 27. Rewrite design notes live in a separate repo, not in JoystickGremlin_ source:
     https://github.com/swill008/Gremlin-Rewrite-Features
@@ -99,3 +100,4 @@ Any change to rules is written here. Do not keep a second unofficial list.
     28.5 Do not create workarounds or invent new things without explicit approval of that specific thing. See 26 and 26.1.
     28.6 Always code with best practice in mind. Qt / QML / Gremlin patterns already in the tree. See 26.
     28.7 Lead every reply with the recommendation first. Alternatives after that, only if they change the outcome.
+    28.8 One-time copy, fallback, and compatibility choices are asked first. Do not add them as part of an options or settings move. See 26.2.

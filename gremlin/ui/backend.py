@@ -217,7 +217,7 @@ class Backend(QtCore.QObject):
 
     def _highlight_input(self, event: event_handler.Event) -> None:
         if (
-            not self.config.value("global", "general", "input-highlighting")
+            not self.config.value("ui", "general", "input-highlighting")
             or shared_state.suspend_input_highlighting()
         ):
             return
@@ -355,7 +355,7 @@ class Backend(QtCore.QObject):
             self.runner.start(self.profile, self.ui_state.currentMode)
         else:
             self.runner.stop()
-            if self.config.value("global", "general", "input-highlighting"):
+            if self.config.value("ui", "general", "input-highlighting"):
                 shared_state.set_suspend_input_highlighting(False)
         self.activityChanged.emit()
 
@@ -415,7 +415,7 @@ class Backend(QtCore.QObject):
 
     @QtCore.Property(bool, notify=propertyChanged)
     def useDarkMode(self) -> bool:
-        return self.config.value("global", "general", "dark-mode")
+        return self.config.value("ui", "general", "dark-mode")
 
     @QtCore.Property(type=list, notify=recentProfilesChanged)
     def recentProfiles(self) -> list[str]:

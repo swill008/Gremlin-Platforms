@@ -29,6 +29,7 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 SECTION_DISPLAY_NAMES = {
     "global": "Global",
+    "ui": "User Interface (UI)",
     "action": "Action",
     "profile": "Profile",
     "osc": "OSC Connection",
@@ -81,16 +82,18 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
             match name:
                 case "global":
                     return 0
-                case "action":
+                case "ui":
                     return 1
-                case "profile":
+                case "action":
                     return 2
-                case "osc":
+                case "profile":
                     return 3
-                case "display":
+                case "osc":
                     return 4
-                case "control-display":
+                case "display":
                     return 5
+                case "control-display":
+                    return 6
                 case "automap":
                     return 6
                 case _:

@@ -19,7 +19,7 @@ from typing import Any
 
 
 def _windows_scaling_disabled() -> bool:
-    """Read the Global option before Qt loads. Default is Windows scaling on."""
+    """Read the User Interface option before Qt loads. Default is Windows scaling on."""
     root = os.environ.get("USERPROFILE") or os.environ.get("userprofile")
     if not root:
         return False
@@ -27,7 +27,7 @@ def _windows_scaling_disabled() -> bool:
     try:
         with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
-        raw = data["global"]["general"]["disable-windows-scaling"]["value"]
+        raw = data["ui"]["general"]["disable-windows-scaling"]["value"]
     except (OSError, json.JSONDecodeError, KeyError, TypeError):
         return False
     return str(raw).strip().lower() in ("1", "true", "yes")
@@ -496,7 +496,7 @@ def register_config_options() -> None:
         {"valid_options": ["Disable", "Ignore", "Reload"]}, True,
     )
     cfg.register(
-        "global", "general", "dark-mode", PropertyType.Bool, False,
+        "ui", "general", "dark-mode", PropertyType.Bool, False,
         "Use the dark mode UI.", {}, True,
     )
     cfg.register(
@@ -525,7 +525,7 @@ def register_config_options() -> None:
         {}, True,
     )
     cfg.register(
-        "global", "general", "input-highlighting", PropertyType.Bool, True,
+        "ui", "general", "input-highlighting", PropertyType.Bool, True,
         "Select the input in the UI by using an input on the physical device. "
         "Selects only inputs if the active tab matches the device.", {}, True,
     )

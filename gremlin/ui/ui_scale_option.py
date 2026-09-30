@@ -12,7 +12,7 @@ import gremlin.ui.type_aliases as ta
 QML_IMPORT_NAME = "Gremlin.Config"
 QML_IMPORT_MAJOR_VERSION = 1
 
-SCALE_SECTION = "global"
+SCALE_SECTION = "ui"
 SCALE_GROUP = "general"
 SCALE_NAME = "ui-scale"
 SCALE_MIN = 70

@@ -13,7 +13,7 @@ import gremlin.ui.type_aliases as ta
 QML_IMPORT_NAME = "Gremlin.Config"
 QML_IMPORT_MAJOR_VERSION = 1
 
-SECTION = "global"
+SECTION = "ui"
 GROUP = "general"
 NAME = "input-highlight-speed"
 SCOPE_NAME = "input-highlight-scope"
