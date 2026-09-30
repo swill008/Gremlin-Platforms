@@ -438,3 +438,26 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | NOTE | not a bug | The Add Button menu stays open after adding; an Undo line appears, and a stray click on it undid the add. |
 | XB-IMG | FAIL (back burner #9) | stderr: `qml/images/xbox360_two_panel.jpg` missing (removed in "moved user data"). Xbox Viewer has no picture. |
 | DP-LOOP | NOTE | stderr: `DialogDevicePack.qml:381 recursive rearrange` layout warning when Device Pack opens. |
+
+## Batch 2: Home (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| H-20 | PASS | Compact view off shows photos; persists across restart. |
+| H-07, H-08 | PASS | Output View button on output cards; hover shows the "Control Display" overlay. |
+| H-13 / V-03 | FAIL (minor) | Pin from the card menu: the card does not show "pinned" and the menu still says "Pin" until another click refreshes the page. stderr: `Overwriting binding on StatusPage::pinSlug at Main.qml:1247` (the handler assigns the page's pinSlug and breaks its binding to Main). Pins are not saved across restart (by design). |
+| H-06 | PASS | Card x hides the device. |
+| H-24 | PASS | Empty-area right-click > Unhide all devices. |
+| H-04 | PASS | Drag reorder with ghost and slot; order persists across restart. |
+| H-05 | PASS | Corner-grip resize. |
+| H-19d | FAIL | Reset size: the card keeps its enlarged drawing while the flow reflows as normal size, so the next card is drawn on top of it. Stays wrong until a reflow (stacking) or restart. |
+| H-10..H-12 | PASS | Open Configuration, Button Map (title names the card), Configure input module (targets the card). |
+| H-14..H-16, H-18 | PASS | Auto Mapper, Device Viewer, vJoy Viewer, Device Information open. |
+| H-17 | FAIL | Calibration from the NXT card opens with EVO OT L selected; NXT is in the list but not preselected. |
+| H-19 | PASS / NOTE | "Assign hardware…" opens a window titled "Swap Devices" (name mismatch). |
+| H-19a | PASS / NOTE | Stack selected cards works; the right-clicked card (NXT) is not the one on top. |
+| H-19c | PASS | Unstack all. |
+| H-19g | PASS | Delete Device: three steps (explain with "Save a copy", red confirm, result); card becomes a stub. |
+| H-19g-b | FAIL | The "deleted devices" backup is written next to the program (`_install_root()`, hardware_profile.py:747), not in the user data folder. From source that is the repo; in the exe it is the program folder. Date in the file name reads `2026-30-SEP`. |
+| MENU-CLIP | FAIL (minor) | A card menu opened low on the page is cut off at the window bottom (Delete Device half hidden). |
+| MENU-ESC | NOTE | Escape does not close the card menu. |
