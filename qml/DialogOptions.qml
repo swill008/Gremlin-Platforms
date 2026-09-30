@@ -44,7 +44,6 @@ ApplicationWindow {
         id: _root
 
         anchors.fill: parent
-        anchors.rightMargin: Style.dp(32)
         anchors.bottomMargin: Style.dp(58)
 
         // Shows the list of all option sections.
