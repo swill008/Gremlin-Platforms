@@ -177,6 +177,15 @@ Item {
         actionOpen = true
     }
 
+    function _openNewPane(key, title) {
+        if (editorLocked)
+            return
+        _layout.beginNewAction(key)
+        paneKey = key
+        paneTitle = title
+        actionOpen = true
+    }
+
     function _closePane() {
         if (_layout.paneDirty()) {
             _leave.ask("The action editor has changes that are not saved.")
@@ -597,6 +606,10 @@ Item {
                                     } else if (rowKind === "group" && groupName.length > 0) {
                                         _root._groupName = groupName
                                         _root._openLayoutMenu(false, true)
+                                    } else if (rowKind === "child" && !_root.editorLocked) {
+                                        _root._actionParent = parentKey
+                                        _root._actionSeq = sequenceIndex
+                                        _actionMenu.popup()
                                     } else {
                                         _root._openLayoutMenu(false, false)
                                     }
@@ -973,6 +986,9 @@ Item {
     property string _groupName: ""
     property string _hardwareKey: ""
     property bool _menuOnRow: false
+    // Action row under the right-click menu.
+    property string _actionParent: ""
+    property int _actionSeq: -1
     property bool _menuOnGroup: false
 
     function _applyFind() {
@@ -1135,6 +1151,23 @@ Item {
     }
 
     Menu {
+        id: _actionMenu
+        width: Style.dp(300)
+        popupType: Popup.Item
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        MenuItem {
+            text: "Delete"
+            onTriggered: {
+                // The pane may be editing the input this action belongs to.
+                if (_root.actionOpen && _root.paneKey === _root._actionParent)
+                    _root._finishClose()
+                _layout.deleteAction(_root._actionParent, _root._actionSeq)
+            }
+        }
+    }
+
+    Menu {
         id: _pageMenu
         width: Style.dp(300)
         popupType: Popup.Item
@@ -1166,9 +1199,7 @@ Item {
             visible: _root._menuOnRow && !_root.editorLocked
             height: visible ? implicitHeight : 0
             onTriggered: {
-                var seq = _layout.addAction(_root._menuKey)
-                if (seq >= 0)
-                    _root._openPane(_root._menuKey, seq, _root._menuTitle)
+                _root._openNewPane(_root._menuKey, _root._menuTitle)
             }
         }
         MenuItem {
@@ -1292,12 +1323,14 @@ Item {
         MenuItem {
             text: "Undo"
             visible: !_root.editorLocked && _layout.canUndo
+            enabled: !_root.actionOpen
             height: visible ? implicitHeight : 0
             onTriggered: _layout.undo()
         }
         MenuItem {
             text: "Redo"
             visible: !_root.editorLocked && _layout.canRedo
+            enabled: !_root.actionOpen
             height: visible ? implicitHeight : 0
             onTriggered: _layout.redo()
         }

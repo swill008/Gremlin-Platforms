@@ -223,6 +223,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._pane_key = ""
         self._pane_base = ""
         self._pane_whole = False
+        self._pane_new = False
         signal.logicalDeviceModified.connect(self._on_external)
         signal.profileChanged.connect(self._on_external)
         self._rebuild()
@@ -260,6 +261,10 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             if op == "drop-item":
                 self._restore_item(entry["item"])
                 continue
+            if op in ("add-seq", "drop-seq"):
+                # Undo of an add and redo of a delete take the sequence out.
+                self._play_sequence(entry, remove=(op == "add-seq") == reverse)
+                continue
             if reverse and op == "add":
                 self._remove_link(entry)
             elif reverse and op == "remove":
@@ -268,6 +273,18 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 self._add_link(entry)
             elif not reverse and op == "remove":
                 self._remove_link(entry)
+
+    def _play_sequence(self, entry: dict, remove: bool) -> None:
+        item = entry["item"]
+        binding = entry["binding"]
+        if remove:
+            item.remove_item_binding(binding)
+            return
+        if binding in item.action_sequences:
+            return
+        binding.input_item = item
+        index = min(int(entry["index"]), len(item.action_sequences))
+        item.action_sequences.insert(index, binding)
 
     @QtCore.Slot()
     def undo(self) -> None:
@@ -689,26 +706,24 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
 
         self._apply(fn)
 
-    @QtCore.Slot(str, result=int)
-    def addAction(self, parent_key: str) -> int:
-        """Append one action sequence on the parent in the current mode."""
+    @QtCore.Slot(str, int, result=bool)
+    def deleteAction(self, parent_key: str, sequence_index: int) -> bool:
+        """Remove one action sequence from the parent in the current mode."""
         spec = self._spec(parent_key)
         if spec is None:
-            return -1
-        profile, item, real = spec
-        if real is None:
-            real = profile.get_input_item(
-                self._logical.device_guid,
-                item.type,
-                item.id,
-                self._mode,
-                create_if_missing=True,
-            )
-        if real is None:
-            return -1
-        real.add_item_binding()
-        self._rebuild()
-        return len(real.action_sequences) - 1
+            return False
+        _profile, _item, real = spec
+        index = int(sequence_index)
+        if real is None or not 0 <= index < len(real.action_sequences):
+            return False
+        binding = real.action_sequences[index]
+
+        def fn():
+            real.remove_item_binding(binding)
+            return [{"op": "drop-seq", "item": real, "binding": binding, "index": index}]
+
+        self._apply(fn)
+        return True
 
     @QtCore.Slot(str, int, str, str)
     def addMany(self, type_name: str, count: int, group: str, user_name: str) -> None:
@@ -1178,12 +1193,19 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, int, result=int)
     def beginPane(self, parent_key: str, sequence_index: int) -> int:
+        return self._begin_pane(parent_key, int(sequence_index), False)
+
+    @QtCore.Slot(str, result=int)
+    def beginNewAction(self, parent_key: str) -> int:
+        """Open the pane on a blank action. Nothing is written until OK."""
+        return self._begin_pane(parent_key, -1, True)
+
+    def _begin_pane(self, parent_key: str, seq: int, new: bool) -> int:
         self.endPane()
         spec = self._spec(parent_key)
         if spec is None:
             return 0
         profile, item, real = spec
-        seq = int(sequence_index)
         if seq >= 0 and (real is None or seq >= len(real.action_sequences)):
             return 0
         shadow = InputItem(profile.library)
@@ -1192,7 +1214,9 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         shadow.input_id = item.id
         shadow.mode = self._mode
         whole = False
-        if seq < 0 and real is not None and real.action_sequences:
+        if new:
+            shadow.add_item_binding()
+        elif seq < 0 and real is not None and real.action_sequences:
             for binding in real.action_sequences:
                 _clone_binding(binding, shadow)
             whole = True
@@ -1207,6 +1231,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._pane_seq = seq
         self._pane_key = parent_key
         self._pane_whole = whole
+        self._pane_new = new
         self._pane_base = _fingerprint_item(shadow)
         self._pane_model = InputItemModel(shadow, 0, self)
         self.paneModelChanged.emit()
@@ -1231,6 +1256,16 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 continue
             real.library.remove_unused(binding.root_action)
 
+    def _append_sequence(self, real: InputItem, shadow: InputItem) -> int:
+        binding = shadow.action_sequences[0]
+
+        def fn():
+            index = _attach_binding(real, shadow, -1)
+            return [{"op": "add-seq", "item": real, "binding": binding, "index": index}]
+
+        self._apply(fn)
+        return real.action_sequences.index(binding)
+
     @QtCore.Slot(result=int)
     def commitPane(self) -> int:
         shadow = self._pane_shadow
@@ -1252,7 +1287,13 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._pane_real = real
         if real is None:
             return -1
-        if self._pane_whole or self._pane_seq < 0:
+        if self._pane_new:
+            index = self._append_sequence(real, shadow)
+            self._pane_new = False
+            self._pane_seq = index
+            self._pane_whole = False
+            only = index
+        elif self._pane_whole or self._pane_seq < 0:
             self._replace_sequences(real, shadow)
             self._pane_seq = -1
             self._pane_whole = True
@@ -1312,6 +1353,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._pane_key = ""
         self._pane_base = ""
         self._pane_whole = False
+        self._pane_new = False
         self._clear_pane()
 
     @QtCore.Property(QtCore.QObject, notify=paneModelChanged)

@@ -266,3 +266,92 @@ def test_hide_system_name_is_saved(tmp_path) -> None:
     assert restored.second_name == "Trigger"
     assert restored.hide_system is True
     assert restored.row_title == "Trigger"
+
+
+def _button_one(profile: Profile):
+    logical = LogicalDevice()
+    logical.create(InputType.JoystickButton)
+    return logical, lambda: profile.get_input_item(
+        logical.device_guid, InputType.JoystickButton, 1, "Default",
+        create_if_missing=False,
+    )
+
+
+def test_add_action_then_cancel_writes_nothing(qapp) -> None:
+    from gremlin import shared_state
+    from gremlin.ui.logical_layout import LogicalLayoutModel
+
+    profile = Profile()
+    shared_state.current_profile = profile
+    try:
+        _logical, real = _button_one(profile)
+        model = LogicalLayoutModel()
+        model.beginNewAction("parent:button:1")
+        model._pane_shadow.add_item_binding()
+        assert model.paneDirty()
+        model.discardPane()
+        model.endPane()
+        item = real()
+        assert item is None or item.action_sequences == []
+        model.deleteLater()
+    finally:
+        shared_state.current_profile = None
+
+
+def test_new_action_is_appended_on_ok_and_undoable(qapp) -> None:
+    from gremlin import shared_state
+    from gremlin.ui.logical_layout import LogicalLayoutModel
+
+    profile = Profile()
+    shared_state.current_profile = profile
+    try:
+        _logical, real = _button_one(profile)
+        existing = profile.get_input_item(
+            LogicalDevice().device_guid, InputType.JoystickButton, 1, "Default",
+            create_if_missing=True,
+        ).add_item_binding()
+        model = LogicalLayoutModel()
+        model.beginNewAction("parent:button:1")
+        # The new action edits one blank sequence, not the existing one.
+        assert len(model._pane_shadow.action_sequences) == 1
+        model._pane_shadow.add_item_binding()
+        index = model.commitPane()
+        assert index == 1
+        assert len(real().action_sequences) == 2
+        assert real().action_sequences[0] is existing
+        model.endPane()
+        model.undo()
+        assert real().action_sequences == [existing]
+        model.redo()
+        assert len(real().action_sequences) == 2
+        model.deleteLater()
+    finally:
+        shared_state.current_profile = None
+
+
+def test_delete_one_action_and_undo_puts_it_back(qapp) -> None:
+    from gremlin import shared_state
+    from gremlin.ui.logical_layout import LogicalLayoutModel
+
+    profile = Profile()
+    shared_state.current_profile = profile
+    try:
+        _logical, real = _button_one(profile)
+        item = profile.get_input_item(
+            LogicalDevice().device_guid, InputType.JoystickButton, 1, "Default",
+            create_if_missing=True,
+        )
+        first = item.add_item_binding()
+        second = item.add_item_binding()
+        third = item.add_item_binding()
+        model = LogicalLayoutModel()
+        assert model.deleteAction("parent:button:1", 1)
+        assert real().action_sequences == [first, third]
+        model.undo()
+        assert real().action_sequences == [first, second, third]
+        model.redo()
+        assert real().action_sequences == [first, third]
+        assert not model.deleteAction("parent:button:1", 5)
+        model.deleteLater()
+    finally:
+        shared_state.current_profile = None
