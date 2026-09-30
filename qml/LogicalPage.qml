@@ -50,6 +50,7 @@ Item {
     property int parentPadLeft: 24
     property int parentRadius: 3
     property string colorParent: "#18181B"
+    property int parentIndent: 16
     property int childIndent: 32
     property string childPadShape: "sides"
     property int childPad: 0
@@ -336,6 +337,7 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.top: parent.top
+                            anchors.leftMargin: _root.rowIndent(rowKind)
                             height: _row.rowBody
                             color: _root._picked.indexOf(key) >= 0 ? _root.colorSelected : (rowKind === "group" ? _root.colorGroup : (rowKind === "parent" ? _root.colorParent : _root.colorChild))
                             border.color: _root._picked.indexOf(key) >= 0 ? _root.colorSelectBorder : _root.colorBorder
@@ -348,7 +350,7 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            anchors.leftMargin: _root.rowLeft(rowKind)
+                            anchors.leftMargin: _root.rowIndent(rowKind) + _root.rowLeft(rowKind)
                             anchors.rightMargin: _root.rowRight(rowKind)
                             anchors.topMargin: _root.rowTop(rowKind)
                             height: Math.max(implicitHeight, _row.rowMin - _row.rowPadY)
@@ -841,6 +843,10 @@ Item {
                             RowLayout {
                                 Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 32; to: 80; source: _root.parentHeight; onUserSet: (v) => { _root.parentHeight = v } }
+                            }
+                            RowLayout {
+                                Label { text: "Indent inside group"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                TrackSpin { from: 0; to: 160; source: _root.parentIndent; onUserSet: (v) => { _root.parentIndent = v } }
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                             PadFields {
@@ -1693,13 +1699,23 @@ Item {
         return Style.dp(padEdge(shape, size, side))
     }
 
+    // How far a row's box starts from the list's left edge.
+    function rowIndent(kind) {
+        if (kind === "group")
+            return 0
+        if (kind === "parent")
+            return Style.dp(parentIndent)
+        return Style.dp(parentIndent + childIndent)
+    }
+
+    // Text inset inside the row's box. Action text lines up with its parent's text.
     function rowLeft(kind) {
         if (kind === "group")
             return padPx(groupPadShape, groupPad, groupPadLeft)
         var parentLeft = padPx(parentPadShape, parentPad, parentPadLeft)
         if (kind === "parent")
             return parentLeft
-        return parentLeft + Style.dp(childIndent) + padPx(childPadShape, childPad, childPadLeft)
+        return parentLeft + padPx(childPadShape, childPad, childPadLeft)
     }
 
     function rowRight(kind) {
@@ -1758,6 +1774,7 @@ Item {
             "parentPadLeft": parentPadLeft,
             "parentRadius": parentRadius,
             "colorParent": colorParent,
+            "parentIndent": parentIndent,
             "childHeight": childHeight,
             "childIndent": childIndent,
             "childPadShape": childPadShape,
@@ -1819,6 +1836,7 @@ Item {
         parentPadLeft = numVal(v.parentPadLeft, 24)
         parentRadius = numVal(v.parentRadius, 3)
         colorParent = v.colorParent || "#18181B"
+        parentIndent = numVal(v.parentIndent, 16)
         childHeight = numVal(v.childHeight, 32)
         childIndent = numVal(v.childIndent, 32)
         childPadShape = v.childPadShape || "sides"
@@ -1877,6 +1895,7 @@ Item {
         parentPadLeft = 24
         parentRadius = 3
         colorParent = "#18181B"
+        parentIndent = 16
         childHeight = 32
         childIndent = 32
         childPadShape = "sides"
