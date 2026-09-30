@@ -539,3 +539,23 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | PS-06 | FAIL (cosmetic) | Typos (see batch 1). |
 | PS-02 | NOT RUN | Macro Default Delay. |
 | PS-03, PS-04 | DEFERRED | vJoy Input/Output switch and initial values need Gremlin active. |
+
+## Batch 7: Options (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| OPT-X1 | PASS | Selection combos save and load (Device change behavior Reload → Ignore survives reopen). S-27 ruled out. |
+| OPT-X1b | FAIL (minor) | When a combo list opens, it highlights the first entry (Disable), not the current value. |
+| OPT-X2 | PASS / NOTE | "action-priorities" is simply not shown (no blank row). S-26 ruled out. |
+| OPT-A01 | NOTE | Action list includes "Root" (internal) and "Map to Xbox" sits last, out of order; group headers show raw names ("Axis-Delta", "Change-Mode"). |
+| OPT-A01b | FAIL (suspected, code) | `move()` reorders the live config list in place, so `set()` sees no change and never writes the file; reordering may not survive a restart. |
+| OPT-U06 | PASS | UI scale slider is disabled while Windows scaling is on. |
+| OPT-U01 | PASS | Dark mode off/on applies immediately. |
+| OPT-U01b | FAIL | Light mode is only partial: Logical Device rows and editor stay dark on a white page; group headers light-on-light; Home cards stay dark. Many colours are fixed for dark mode. |
+| OPT-F | PASS | Files rows all point inside the data folder; Select opens a folder picker at the current folder; Reset keeps the default. |
+| OPT-F08b | FAIL (minor) | stderr after Reset: `Overwriting binding on JGTextField::text at ConfigGroup.qml:188`; the field stops following later changes. |
+| OPT-P01 | FAIL | New Entry shows a row, but the entry is never written to configuration.json (the list is edited in place, so `set()` sees no change). It is lost on restart. |
+| OPT-P04 | PASS | Select Executable lists running programs; Cancel closes. |
+| OPT-P07 | FAIL | The row's × does not remove the entry; no error logged. |
+| OPT-G.., OPT-O.., OPT-D.., OPT-C.., OPT-M.. | NOT RUN | Remaining switches (same widget as the tested ones). |
+| OPT-U02 | PASS (earlier) | Windows scaling restart popup was tested when it was built. |
