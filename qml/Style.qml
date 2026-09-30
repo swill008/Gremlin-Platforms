@@ -31,4 +31,19 @@ Item {
     // Various shared dimensions.
     property int tooltipMaxWidth: 500
     property int tooltipDelayMs: 500
+
+    property int uiScale: 100
+
+    function setUiScale(value) {
+        var n = Math.round(Number(value))
+        if (isNaN(n))
+            n = 100
+        if (n < 70)
+            n = 70
+        if (n > 200)
+            n = 200
+        if (n === uiScale)
+            return
+        uiScale = n
+    }
 }
