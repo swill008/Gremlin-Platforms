@@ -306,19 +306,15 @@ class Backend(QtCore.QObject):
         audio_player.AudioPlayer().refresh()
 
     def check_for_updates(self) -> None:
-        def parse_version(value: str) -> list[int]:
-            return [int(x) for x in value.split(".")]
-
         if self.config.value("global", "general", "check-for-updates"):
             version_string = util.latest_gremlin_version()
             if version_string is None:
                 return
-            version = parse_version(version_string)
-            last_version = parse_version(
-                self.config.value("global", "internal", "last-known-version")
-            )
-            if last_version < version:
-                version_string = ".".join(str(x) for x in version)
+            if util.should_announce_version(
+                version_string,
+                util.get_code_version(),
+                self.config.value("global", "internal", "last-known-version"),
+            ):
                 signal.showNotification.emit(
                     "New version available",
                     f"A newer version of Gremlin-Platforms, {version_string} "
