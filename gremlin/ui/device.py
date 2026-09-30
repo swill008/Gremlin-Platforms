@@ -1741,8 +1741,8 @@ class AxisCalibration(QtCore.QAbstractListModel):
 
 
 Configuration().register(
-    "global",
-    "input-names",
+    "ui",
+    "general",
     "display-mode",
     PropertyType.Selection,
     "Numerical and Label",
