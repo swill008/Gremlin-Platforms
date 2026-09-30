@@ -525,3 +525,17 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | LP-57 | FAIL | Leaving the page (Home) with an unsaved action pane edit gives no warning and the edit is silently discarded (S-08 confirmed). |
 | LP-16..18, LP-23, LP-27..28, LP-30, LP-38, LP-50..56 | NOT RUN / earlier | Group as, Move to group, pane and display editor were tested with #21 and #26. |
 | stderr | PASS | No QML errors. |
+
+## Batch 6: Scripts and Profile Settings (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| S-02 | PASS | Add Script: dialog opens in the data scripts folder (.py filter); a full path is accepted. |
+| S-04 | PASS | Gear shows every variable type of example.py; unset ones marked red. |
+| S-03 | PASS | Pencil renames the instance ("Instance A"). |
+| S-05 | PASS / NOTE | Trash removes at once (no confirm, S-14). |
+| S-05b | FAIL (minor) | After removing the script, the variables panel still shows its variables. |
+| PS-01 | PASS | Startup Mode lists Use Heuristic / Last Active / Default / Test Mode; "Last Active" is saved to the profile XML. |
+| PS-06 | FAIL (cosmetic) | Typos (see batch 1). |
+| PS-02 | NOT RUN | Macro Default Delay. |
+| PS-03, PS-04 | DEFERRED | vJoy Input/Output switch and initial values need Gremlin active. |
