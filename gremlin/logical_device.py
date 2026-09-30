@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import collections
+import re
 import time
 from typing import cast
 
@@ -23,6 +24,19 @@ from gremlin.types import (
 def _same_group(first: str, second: str) -> bool:
     """True when two group names differ only in capitals or spacing."""
     return " ".join(first.split()).casefold() == " ".join(second.split()).casefold()
+
+
+_DIGITS = re.compile(r'(\d+)')
+
+
+def _natural_key(text: str) -> tuple[tuple[str | int, ...], str]:
+    # From R16 (58499ab9): numbers sort by value, so Button 2 comes before Button 10.
+    parts = _DIGITS.split(text)
+    key = tuple(
+        int(part) if index % 2 else part.casefold()
+        for index, part in enumerate(parts)
+    )
+    return key, text
 
 
 class LogicalDevice(metaclass=SingletonMetaclass):
@@ -288,7 +302,10 @@ class LogicalDevice(metaclass=SingletonMetaclass):
             ]
         return [
             e
-            for e in sorted(self._inputs.values(), key=lambda x: (x.type.name, x.label))
+            for e in sorted(
+                self._inputs.values(),
+                key=lambda x: (x.type.name, _natural_key(x.label)),
+            )
             if e.type in type_list
         ]
 
@@ -486,14 +503,19 @@ class LogicalDevice(metaclass=SingletonMetaclass):
                     if (item.group or "") == folder and item.type == kind
                 ]
                 if key_name == "user":
-                    bucket.sort(key=lambda item: ((item.second_name or item.system_name).lower(), item.id))
+                    bucket.sort(
+                        key=lambda item: (
+                            _natural_key(item.second_name or item.system_name),
+                            item.id,
+                        )
+                    )
                 else:
                     bucket.sort(key=lambda item: item.id)
                 new_order.extend(item.identifier for item in bucket)
         self._order = new_order
 
     def sort_groups(self) -> None:
-        self._groups.sort(key=lambda name: name.lower())
+        self._groups.sort(key=_natural_key)
 
     def memento(self) -> dict:
         return {

@@ -145,3 +145,45 @@ def test_create_many_caps_at_180() -> None:
     assert made[0].group == ""
     assert made[0].system_name == "Button 1"
     assert made[179].system_name == "Button 180"
+
+
+def test_labels_sorted_naturally() -> None:
+    # Same check as R16's test for 58499ab9.
+    logical = LogicalDevice()
+
+    for _ in range(11):
+        logical.create(InputType.JoystickButton)
+    logical.set_label("Button 3", "Throttle 10")
+    logical.set_label("Button 4", "Throttle 2")
+
+    assert logical.labels_of_type([InputType.JoystickButton]) == [
+        "Button 1",
+        "Button 2",
+        "Button 5",
+        "Button 6",
+        "Button 7",
+        "Button 8",
+        "Button 9",
+        "Button 10",
+        "Button 11",
+        "Throttle 2",
+        "Throttle 10",
+    ]
+
+
+def test_page_sorts_are_natural() -> None:
+    logical = LogicalDevice()
+    made = logical.create_many(InputType.JoystickButton, 3)
+    logical.set_user_label(made[0].identifier, "Throttle 10")
+    logical.set_user_label(made[1].identifier, "Throttle 2")
+    logical.set_user_label(made[2].identifier, "throttle 1")
+    logical.sort_within("user")
+    assert [item.second_name for item in logical.ordered()] == [
+        "throttle 1",
+        "Throttle 2",
+        "Throttle 10",
+    ]
+
+    logical.set_groups(["test 10", "Test 2", "test 1"])
+    logical.sort_groups()
+    assert logical.group_names() == ["test 1", "Test 2", "test 10"]
