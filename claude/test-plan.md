@@ -599,3 +599,17 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | S-31 | NOT VERIFIED | The window closed after saving through the Cancel prompt (expected); the plain Save module button was not tried separately. |
 | CAL-07, CAL-08, CAL-10, CFGM-02b | DEFERRED | Need a physical stick. |
 | CFGM-04a..f | NOT RUN | Module file dialog (import, browse, delete file). |
+
+## Batch 11: Other dialogs (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| MM-01 | PASS | Add Mode: duplicate "Test Mode" refused (red border, OK disabled); "Flight" added and sorted. |
+| MM-01b | FAIL (minor) | "test mode" (a case look-alike of "Test Mode") is accepted, unlike group names. |
+| TB-09 | PASS | Configuring mode → Flight; footer "Executing mode: Flight". |
+| MM-04 | PASS / NOTE | Deleting the current mode (no confirm, S-14) falls back to Default in the box and the footer. |
+| AM-05 | PASS | Create 1:1 mappings: "Created 36 mappings, retained 0 previous bindings."; boxes clear afterwards (S-32 ruled out). |
+| AM-03 | NOTE | "Overwrite used inputs" is on by default, so existing bindings are replaced without warning. |
+| AM-08 | FAIL | Closing the Auto Mapper after creating mappings shows "A fatal error occurred: RuntimeError: Signal source has been deleted" (reproduced twice; the app keeps running). |
+| DP-02 | PASS | Device Pack opens alone: device preview, pack size, Export… |
+| DP-03..13, SW-01..03, HLP topics, DI-01 | NOT RUN | Remaining dialog detail. |
