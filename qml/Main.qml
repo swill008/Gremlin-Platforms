@@ -530,7 +530,7 @@ ApplicationWindow {
     ErrorDialog {
         id: _errorDialog
 
-        title: "A fatal error ocurred"
+        title: "A fatal error occurred"
     }
 
     MessageDialog {

@@ -1005,7 +1005,26 @@ Item {
     function _openLayoutMenu(onRow, onGroup) {
         _menuOnRow = onRow
         _menuOnGroup = onGroup
+        _showMoveMenu(onRow && !editorLocked)
         _pageMenu.popup()
+    }
+
+    // A submenu cannot be hidden like an item, so it is taken out and put back
+    // just before Delete.
+    function _showMoveMenu(show) {
+        var at = -1
+        var before = -1
+        for (var i = 0; i < _pageMenu.count; ++i) {
+            var item = _pageMenu.itemAt(i)
+            if (item && item.subMenu === _moveMenu)
+                at = i
+            if (item === _deleteRowItem)
+                before = i
+        }
+        if (show && at < 0 && before >= 0)
+            _pageMenu.insertMenu(before, _moveMenu)
+        else if (!show && at >= 0)
+            _pageMenu.takeMenu(at)
     }
 
     // Same rule as the model: group names ignore capitals and spacing.
@@ -1246,22 +1265,27 @@ Item {
             closeWhenNamed: true
             onNamed: (name) => _root._groupAs(name)
         }
-        MenuItem {
-            id: _moveItem
-            text: "Move to group"
-            visible: _root._menuOnRow && !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            indicator: Label {
-                text: "\u203A"
-                color: "#E4E4E7"
-                font.pixelSize: Style.dp(16)
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.right: parent.right
-                anchors.rightMargin: Style.dp(12)
+        // A real submenu, so it opens on hover. _showMoveMenu() adds or removes it.
+        Menu {
+            id: _moveMenu
+            title: "Move to group"
+            popupType: Popup.Item
+            // Same pattern as File > Recent in Main.qml.
+            Repeater {
+                model: _layout.groups
+                delegate: MenuItem {
+                    required property var modelData
+                    text: modelData.title
+                    onTriggered: {
+                        // Move after the menus have closed; the move rebuilds this list.
+                        var name = modelData.name
+                        Qt.callLater(() => _layout.moveSelected(name))
+                    }
+                }
             }
-            onTriggered: _moveMenu.popup(_moveItem, _moveItem.width, 0)
         }
         MenuItem {
+            id: _deleteRowItem
             text: "Delete"
             visible: _root._menuOnRow && !_root.editorLocked
             height: visible ? implicitHeight : 0
@@ -1349,23 +1373,6 @@ Item {
         }
     }
 
-
-    Menu {
-        id: _moveMenu
-        Instantiator {
-            model: _layout.groups
-            delegate: MenuItem {
-                required property var modelData
-                text: modelData.title
-                onTriggered: {
-                    _layout.moveSelected(modelData.name)
-                    _pageMenu.close()
-                }
-            }
-            onObjectAdded: (index, object) => _moveMenu.insertItem(index, object)
-            onObjectRemoved: (index, object) => _moveMenu.removeItem(object)
-        }
-    }
 
     TextInputDialog {
         id: _nameDialog

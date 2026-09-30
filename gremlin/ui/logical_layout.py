@@ -752,7 +752,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         try:
             self._apply(fn)
         except GremlinError as exc:
-            signal.showError.emit(str(exc), "")
+            signal.showNotification.emit("Rename group", str(exc))
 
     @QtCore.Slot(str)
     def removeGroup(self, name: str) -> None:
