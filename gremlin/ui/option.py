@@ -21,8 +21,6 @@ from gremlin.error import (
     MissingImplementationError,
 )
 from gremlin.signal import signal
-import gremlin.ui.ui_scale_option  # noqa: F401
-import gremlin.ui.windows_scale_option  # noqa: F401
 from gremlin.tts import TTSManager
 from gremlin.types import PropertyType
 
@@ -571,3 +569,6 @@ MetaConfigOption().register(
     "Voices available for use with Text to Speech actions.",
     TTSVoiceSelectionModel,
 )
+
+import gremlin.ui.ui_scale_option  # noqa: F401
+import gremlin.ui.windows_scale_option  # noqa: F401
