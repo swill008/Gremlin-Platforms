@@ -377,19 +377,19 @@
         "status": {
             "card-order": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "vkbsim_gladiator_evo_ot_l,vkbsim_gladiator_evo_r,vkbsim_nxt_sem_thq_fsm_ga,vjoy_1,vjoy_2,vjoy_3,xbox"
             },
             "card-sizes": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "vjoy_1=332x368,vjoy_2=332x369,vjoy_3=332x368,xbox=240x140,vkbsim_nxt_sem_thq_fsm_ga=280x401,osc=280x397,keyboard=280x398,vkbsim_gladiator_evo_ot_l=240x140"
             },
             "card-stacks": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": ""
             },
@@ -401,19 +401,19 @@
             },
             "hidden-slugs": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "keyboard,osc"
             },
             "kept-stubs": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": ""
             },
             "last-keep-after-release": {
                 "data_type": "bool",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "True"
             },
@@ -425,13 +425,13 @@
             },
             "split-mode": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "none"
             },
             "split-ratio": {
                 "data_type": "float",
-                "expose": true,
+                "expose": false,
                 "properties": {
                     "max": 0.8,
                     "min": 0.2
@@ -527,20 +527,6 @@
                 "expose": true,
                 "properties": {},
                 "value": "True"
-            }
-        },
-        "input-names": {
-            "display-mode": {
-                "data_type": "selection",
-                "expose": true,
-                "properties": {
-                    "valid_options": [
-                        "Numerical",
-                        "Numerical and Label",
-                        "Label"
-                    ]
-                },
-                "value": "Numerical and Label"
             }
         },
         "internal": {
@@ -771,6 +757,18 @@
                 "expose": true,
                 "properties": {},
                 "value": "True"
+            },
+            "display-mode": {
+                "data_type": "selection",
+                "expose": true,
+                "properties": {
+                    "valid_options": [
+                        "Numerical",
+                        "Numerical and Label",
+                        "Label"
+                    ]
+                },
+                "value": "Numerical and Label"
             },
             "input-highlight-scope": {
                 "data_type": "string",
