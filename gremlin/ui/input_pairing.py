@@ -148,6 +148,22 @@ def _device_name(guid: str) -> str:
     return hardware
 
 
+def device_label(guid: str) -> str:
+    """Name to show for a device. DILL only knows hardware, so the built-in
+    devices are named here; _device_name stays for module file lookups."""
+    from gremlin.osc import OSC_DEVICE_UUID
+
+    uid = _guid(guid)
+    builtin = {
+        dill.UUID_LogicalDevice: "Logical Device",
+        dill.UUID_Keyboard: "Keyboard",
+        OSC_DEVICE_UUID: "OSC",
+    }
+    if uid in builtin:
+        return builtin[uid]
+    return _device_name(guid)
+
+
 def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
     rows: list[dict] = []
     seen: set[int] = set()
@@ -306,7 +322,7 @@ class PairDeviceModel(QtCore.QAbstractListModel):
                 self._rows.append(
                     {
                         "guid": guid,
-                        "name": _device_name(guid),
+                        "name": device_label(guid),
                         "pairLabel": ", ".join(f"vJoy Device {vid}" for vid in targets),
                     }
                 )

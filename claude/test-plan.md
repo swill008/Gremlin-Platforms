@@ -579,7 +579,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 |---|---|---|
 | VJV-01..02 | PASS (earlier) | vJoy Viewer cards and chips (see #22: all 56 NXT chips numbered). |
 | XV-01 | PASS | Xbox Viewer lists the Map to Xbox source; "Activate Gremlin to plug the virtual pad and light this face." |
-| XV-01b | FAIL | The card title is the raw Logical Device ID "f0af472f-8e17-493b-a1eb-7333ee8543f2" instead of "Logical Device". |
+| XV-01b | FIXED (also Button Map device list) | The card title is the raw Logical Device ID "f0af472f-8e17-493b-a1eb-7333ee8543f2" instead of "Logical Device". |
 | XV-IMG | FAIL (back burner #9) | "Xbox face image missing". |
 | DV-01 | PASS (batch 1) | Device Viewer lists the devices. |
 | DV-05..07, VJV-03, XV-03 | DEFERRED | Need physical input / Gremlin active. |

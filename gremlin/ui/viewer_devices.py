@@ -92,7 +92,7 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
                 self._rows.append(
                     {
                         "guid": guid,
-                        "name": pairing._device_name(guid),
+                        "name": pairing.device_label(guid),
                         "pairLabel": ", ".join(f"vJoy Device {vid}" for vid in targets),
                         "mapped": True,
                     }
@@ -113,7 +113,7 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
             self._rows.append(
                 {
                     "guid": guid,
-                    "name": pairing._device_name(guid) if guid else name,
+                    "name": pairing.device_label(guid) if guid else name,
                     "pairLabel": "",
                     "mapped": False,
                 }

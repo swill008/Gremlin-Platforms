@@ -36,15 +36,9 @@ ApplicationWindow {
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
 
-    readonly property string oscGuid: "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
-
     XboxViewerDeviceModel { id: _devices }
 
     function pairTitle(guid, name) {
-        var key = String(guid || "").toLowerCase().replace(/[{}]/g, "")
-        if (key === oscGuid) {
-            return "OSC"
-        }
         return name && name.length ? name : guid
     }
 

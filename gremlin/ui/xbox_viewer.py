@@ -286,7 +286,7 @@ class XboxViewerDeviceModel(QtCore.QAbstractListModel):
                 self._rows.append(
                     {
                         "guid": guid,
-                        "name": pairing._device_name(guid),
+                        "name": pairing.device_label(guid),
                         "pairLabel": _pair_label(items),
                     }
                 )
