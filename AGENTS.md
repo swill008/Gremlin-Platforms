@@ -1,5 +1,8 @@
 # AGENTS.md - JoystickGremlin Developer Guide
 
+**Grok / project agents: read [`grok_rules.md`](grok_rules.md) first.** That file is the standing product contract (button-map editor, handoffs, pictures, parked work). This file is code style and architecture only.
+
+
 This file provides guidance for AI agents working on the JoystickGremlin codebase.
 
 
