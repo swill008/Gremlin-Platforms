@@ -270,8 +270,8 @@ class EventListener(QtCore.QObject):
                 mouse_hook.stop()
             except Exception:
                 pass
-        dill.DILL.set_device_change_callback(lambda x: None)
-        dill.DILL.set_input_event_callback(lambda x: None)
+        dill.DILL.set_device_change_callback(lambda *_: None)
+        dill.DILL.set_input_event_callback(lambda *_: None)
 
     def restart(self) -> None:
         """Restarts the event listener."""
