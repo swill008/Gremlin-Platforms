@@ -190,7 +190,6 @@ Item {
 
                 RadioButton {
                     autoExclusive: false
-                autoExclusive: false
                     text: "X Axis"
 
                     checked: _root.action.direction === 90
@@ -199,7 +198,6 @@ Item {
 
                 RadioButton {
                     autoExclusive: false
-                autoExclusive: false
                     text: "Y Axis"
 
                     checked: _root.action.direction === 0
