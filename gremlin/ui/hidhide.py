@@ -104,7 +104,7 @@ def _ensure_options() -> None:
             "[]",
             "Hardware Hide game whitelist (name + exe path).",
             {},
-            True,
+            False,
         )
         cfg.register(
             _CFG_SECTION,
@@ -114,7 +114,7 @@ def _ensure_options() -> None:
             "{}",
             "Hardware Hide device photos keyed by instance id.",
             {},
-            True,
+            False,
         )
         cfg.register(
             _CFG_SECTION,
@@ -124,7 +124,7 @@ def _ensure_options() -> None:
             "{}",
             "Hardware Hide device to input or output module.",
             {},
-            True,
+            False,
         )
         cfg.register(
             _CFG_SECTION,
@@ -134,7 +134,7 @@ def _ensure_options() -> None:
             "",
             "Hardware Hide program list mode: allow or block.",
             {},
-            True,
+            False,
         )
         cfg.register(
             _CFG_SECTION,
@@ -144,7 +144,7 @@ def _ensure_options() -> None:
             "",
             "Hardware Hide device instance ids that stay hidden.",
             {},
-            True,
+            False,
         )
         cfg.register(
             _CFG_SECTION,
@@ -154,7 +154,7 @@ def _ensure_options() -> None:
             "",
             "Hardware Hide enforcement: on or off.",
             {},
-            True,
+            False,
         )
         cfg.register(
             _CFG_SECTION,
@@ -164,15 +164,15 @@ def _ensure_options() -> None:
             "",
             "Set after the user saves HiDHide Enabled. Empty means leave the driver alone.",
             {},
-            True,
+            False,
         )
         cfg.register(
-            _CFG_SECTION,
-            _CFG_GROUP,
-            _CFG_START,
-            PropertyType.String,
-            "",
-            "Automatically Start turns Gremlin control and HiDHide Enabled on when the program starts.",
+            "global",
+            "general",
+            "hidhide-on-start",
+            PropertyType.Bool,
+            False,
+            "Turn HiDHide on when Gremlin starts.",
             {},
             True,
         )
@@ -184,7 +184,7 @@ def _ensure_options() -> None:
             "",
             "Limit the HiDHide device list to game controllers.",
             {},
-            True,
+            False,
         )
         cfg.register(
             _CFG_SECTION,
@@ -194,7 +194,7 @@ def _ensure_options() -> None:
             720,
             "Hardware Hide window width.",
             {"min": 480, "max": 8000},
-            True,
+            False,
         )
         cfg.register(
             _CFG_SECTION,
@@ -204,7 +204,7 @@ def _ensure_options() -> None:
             640,
             "Hardware Hide window height.",
             {"min": 360, "max": 8000},
-            True,
+            False,
         )
         cfg.register(
             _CFG_SECTION,
@@ -214,7 +214,7 @@ def _ensure_options() -> None:
             600,
             "Hardware Hide device list share of the splitter, in thousandths.",
             {"min": 150, "max": 850},
-            True,
+            False,
         )
     except Exception:
         pass
@@ -394,13 +394,13 @@ def _save_cloak(on: bool) -> None:
 
 def _start_enabled() -> bool:
     _ensure_options()
-    return str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_START) or "").strip().lower() == "on"
+    return bool(config.Configuration().value("global", "general", "hidhide-on-start"))
 
 
 def _save_start(on: bool) -> None:
     _ensure_options()
     try:
-        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_START, "on" if on else "off")
+        config.Configuration().set("global", "general", "hidhide-on-start", bool(on))
     except Exception:
         pass
 
