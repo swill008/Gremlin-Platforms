@@ -629,3 +629,17 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | AE-XML-CHAIN | FAIL (minor) | A new Chain's empty "Sequence 0" is gone after save and reload. Marked xfail. |
 | AE-LABEL | PASS | A blank action label stays blank after save and reload. |
 | AE-SET-ALL | DEFERRED | Setting every control and reloading in the app needs Save on the sandbox profile plus physical input for Record buttons. |
+
+## Batch 13: HiDHide, no driver changes (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| HH-00 | PASS | Opens from Tools → Device setup → HiDHide; window size and place kept after close/reopen. |
+| HH-00b | FAIL | The splitter is not restored. Dragged to show 5 rows, saved `split-ratio` 710; reopened showing 2 rows, and the reopen saved 332 over it. `DialogHardwareHide.qml:250/392` use the thousandths value as a pixel `preferredHeight`, and both panes have `fillHeight`. |
+| HH-01 | PASS | "HiDHide driver found 1.4.191.0", green dot. |
+| HH-02 | PASS | Test HiDHide opens Game Controllers (joy.cpl); closed by script. |
+| HH-03 | NOT RUN | Get HiDHide opens a web page (external). |
+| HH-07 | PASS | Gaming devices only: on = vJoy ×3 + both Gladiators (HIDDEN, real driver state); off = every HID device, sorted by name. |
+| HH-08 | PASS / NOTE | Change image opens a "Device image" picker (images filter); cancelled. It starts in the repo's `user_scripts` folder, left over from another dialog. |
+| HH-04..06, HH-05b, HH-09..12 | DEFERRED [U] | Change the real driver. |
+| stderr | PASS | No QML errors. |
