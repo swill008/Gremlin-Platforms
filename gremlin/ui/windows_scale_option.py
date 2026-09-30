@@ -57,6 +57,7 @@ MetaConfigOption().register(
     SECTION,
     GROUP,
     NAME,
-    "Disable Windows display scaling. Off uses Windows scaling. Takes effect on the next start.",
+    "Disable Windows display scaling and use the UI scale slider instead. "
+    "Takes effect on the next start.",
     WindowsScaleModel,
 )

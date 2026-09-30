@@ -28,22 +28,19 @@ Item {
     property int decimalsPrecise: 4
     property int decimalsStandard: 2
 
-    // Various shared dimensions.
-    property int tooltipMaxWidth: 500
-    property int tooltipDelayMs: 500
+    // UI scale in percent. It follows the Options slider when Windows scaling
+    // is disabled and stays at 100 otherwise.
+    readonly property int uiScale: backend ? backend.uiScale : 100
 
-    property int uiScale: 100
-
-    function setUiScale(value) {
-        var n = Math.round(Number(value))
-        if (isNaN(n))
-            n = 100
-        if (n < 70)
-            n = 70
-        if (n > 200)
-            n = 200
-        if (n === uiScale)
-            return
-        uiScale = n
+    // Converts a size given at 100% into pixels at the current UI scale.
+    function dp(x) {
+        return Math.round(x * uiScale / 100)
     }
+
+    // Program text size in pixels.
+    readonly property int fontSize: dp(15)
+
+    // Various shared dimensions.
+    property int tooltipMaxWidth: dp(500)
+    property int tooltipDelayMs: 500
 }

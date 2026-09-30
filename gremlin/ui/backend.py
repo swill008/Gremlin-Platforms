@@ -41,6 +41,7 @@ from gremlin.ui.device import InputIdentifier
 from gremlin.ui.hardware_profile import persist_log
 from gremlin.ui.profile import InputItemModel
 from gremlin.ui.script import ScriptListModel
+from gremlin.ui import ui_scale_option
 from gremlin.ui.util import to_local_path
 import gremlin.ui.hardware_profile  # noqa: F401
 
@@ -184,6 +185,7 @@ class Backend(QtCore.QObject):
     uiChanged = QtCore.Signal()
     quitRequested = QtCore.Signal()
     saveNoted = QtCore.Signal(str)
+    uiScaleChanged = QtCore.Signal()
 
     def __init__(
         self, engine: QtQml.QQmlApplicationEngine, parent: ta.OQO = None
@@ -213,6 +215,7 @@ class Backend(QtCore.QObject):
         )
         event_handler.EventListener().device_change_event.connect(self._device_change)
         event_handler.EventListener().joystick_event.connect(self._highlight_input)
+        signal.uiScaleChanged.connect(self.uiScaleChanged)
         self.profileChanged.emit()
 
     def _highlight_input(self, event: event_handler.Event) -> None:
@@ -416,6 +419,10 @@ class Backend(QtCore.QObject):
     @QtCore.Property(bool, notify=propertyChanged)
     def useDarkMode(self) -> bool:
         return self.config.value("ui", "general", "dark-mode")
+
+    @QtCore.Property(int, notify=uiScaleChanged)
+    def uiScale(self) -> int:
+        return ui_scale_option.active_scale()
 
     @QtCore.Property(type=list, notify=recentProfilesChanged)
     def recentProfiles(self) -> list[str]:

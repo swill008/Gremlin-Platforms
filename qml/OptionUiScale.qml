@@ -11,18 +11,19 @@ import Gremlin.Style
 Item {
     id: _root
     implicitHeight: _row.implicitHeight
-    implicitWidth: 480
+    implicitWidth: Style.dp(480)
 
     UiScaleModel { id: _model }
 
     RowLayout {
         id: _row
         anchors.fill: parent
-        spacing: 10
+        spacing: Style.dp(10)
 
         Slider {
             id: _slider
             Layout.fillWidth: true
+            enabled: _model ? _model.enabled : false
             from: _model ? _model.minimum : 70
             to: _model ? _model.maximum : 200
             stepSize: 5
@@ -34,19 +35,16 @@ Item {
             }
 
             function _commit() {
-                var next = Math.round(value)
                 if (_model)
-                    _model.setScale(next)
-                Style.setUiScale(next)
+                    _model.setScale(Math.round(value))
             }
         }
 
         Label {
             text: Math.round(_slider.value) + "%"
-            Layout.preferredWidth: 48
+            enabled: _slider.enabled
+            Layout.preferredWidth: Style.dp(48)
             horizontalAlignment: Text.AlignRight
         }
     }
-
-    Component.onCompleted: Style.setUiScale(_model ? _model.scale : 100)
 }

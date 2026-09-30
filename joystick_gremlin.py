@@ -77,6 +77,7 @@ import gremlin.ui.option
 import gremlin.ui.osc_option  # noqa: F401
 import gremlin.ui.log_option  # noqa: F401
 import gremlin.ui.tools
+import gremlin.ui.ui_scale_option
 import gremlin.ui.util
 import gremlin.osc
 import gremlin.ui.osc_device_model  # noqa: F401
@@ -517,12 +518,13 @@ def register_config_options() -> None:
     )
     cfg.register(
         "ui", "general", "ui-scale", PropertyType.Int, 100,
-        "Scale the program UI. The window resizes when the slider is released.",
+        "Scale the program UI when Windows scaling is disabled. "
+        "The UI resizes when the slider is released.",
         {"min": 70, "max": 200}, True,
     )
     cfg.register(
         "ui", "general", "disable-windows-scaling", PropertyType.Bool, False,
-        "Disable Windows display scaling. Off uses Windows scaling. "
+        "Disable Windows display scaling and use the UI scale slider instead. "
         "Takes effect on the next start.",
         {}, True,
     )
@@ -781,7 +783,9 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.setOrganizationName("H2IK")
         self.setOrganizationDomain("https://whitemagic.github.io/JoystickGremlin/")
         self.setApplicationName("Gremlin-Platforms R1")
-        self.setFont(QtGui.QFont("Segoe UI", 11))
+        font = QtGui.QFont("Segoe UI")
+        font.setPixelSize(gremlin.ui.ui_scale_option.dp(15))
+        self.setFont(font)
         if QtGui.QFontDatabase.addApplicationFont(":/BootstrapIcons") < 0:
             self.syslog.error("Failed to load BootstrapIcons")
 

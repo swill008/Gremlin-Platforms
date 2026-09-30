@@ -40,6 +40,8 @@ class Signal(QtCore.QObject):
 
     configChanged = QtCore.Signal()
 
+    uiScaleChanged = QtCore.Signal()
+
     showError = QtCore.Signal(str, str)
 
     showNotification = QtCore.Signal(str, str)

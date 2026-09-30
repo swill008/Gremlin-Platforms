@@ -3,9 +3,13 @@
 
 from __future__ import annotations
 
+import math
+import os
+
 from PySide6 import QtCore
 
 from gremlin.config import Configuration
+from gremlin.signal import signal
 from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
 import gremlin.ui.type_aliases as ta
 
@@ -35,6 +39,23 @@ def saved_scale() -> int:
     return SCALE_DEFAULT
 
 
+def windows_scaling_active() -> bool:
+    """Qt reads this once before it starts, so it holds for the whole run."""
+    return os.environ.get("QT_ENABLE_HIGHDPI_SCALING") != "0"
+
+
+def active_scale() -> int:
+    """UI scale in percent: the slider value when Windows scaling is off, else 100."""
+    if windows_scaling_active():
+        return SCALE_DEFAULT
+    return saved_scale()
+
+
+def dp(pixels: float) -> int:
+    """Pixels at the active UI scale, rounded like QML's Style.dp()."""
+    return math.floor(pixels * active_scale() / 100 + 0.5)
+
+
 @ta.QmlElement
 class UiScaleModel(QtCore.QObject, BaseMetaConfigOptionWidget):
     scaleChanged = QtCore.Signal()
@@ -53,6 +74,7 @@ class UiScaleModel(QtCore.QObject, BaseMetaConfigOptionWidget):
         if scale != current or not self._config.exists(SCALE_SECTION, SCALE_GROUP, SCALE_NAME):
             self._config.set(SCALE_SECTION, SCALE_GROUP, SCALE_NAME, scale)
         self.scaleChanged.emit()
+        signal.uiScaleChanged.emit()
 
     @QtCore.Slot(int)
     def setScale(self, value: int) -> None:
@@ -64,9 +86,13 @@ class UiScaleModel(QtCore.QObject, BaseMetaConfigOptionWidget):
     def _get_maximum(self) -> int:
         return SCALE_MAX
 
+    def _get_enabled(self) -> bool:
+        return not windows_scaling_active()
+
     scale = QtCore.Property(int, fget=_get_scale, fset=_set_scale, notify=scaleChanged)
     minimum = QtCore.Property(int, fget=_get_minimum, constant=True)
     maximum = QtCore.Property(int, fget=_get_maximum, constant=True)
+    enabled = QtCore.Property(bool, fget=_get_enabled, constant=True)
 
     def _qml_path(self) -> str:
         return "file:///" + QtCore.QFile("qml:OptionUiScale.qml").fileName()
@@ -76,6 +102,7 @@ MetaConfigOption().register(
     SCALE_SECTION,
     SCALE_GROUP,
     "ui-scale",
-    "Scale the program UI. The window resizes when the slider is released.",
+    "Scale the program UI when Windows scaling is disabled. "
+    "The UI resizes when the slider is released.",
     UiScaleModel,
 )
