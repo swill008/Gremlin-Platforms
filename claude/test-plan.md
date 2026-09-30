@@ -486,3 +486,20 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | IC-07 | DEFERRED | Live LEDs / bars need a physical press. |
 | C-05, C-07..C-10, IC-02, IC-12, IC-13, IC-15..IC-25 (each section in detail) | NOT RUN | Remaining catalog detail; the display mechanism is proven by Shown, Reset, Copy View and Save. |
 | stderr | PASS | No QML errors in this batch. |
+
+## Batch 4: Output Module View (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| H-03-dest | FAIL | Double-clicking an output card (vJoy 1) does nothing; the input card double-click works. The card menu "Output View" works. |
+| H-10-dest | PASS | Output card menu: Output View, Button Map, Configure output module, Auto Mapper, vJoy Viewer, Device Information, Reset size, Hide device, Clear module settings, Delete Device. |
+| OV-08b | FAIL | Default button grid is 12 columns with no wrap or scroll: with the Display Editor open only columns 1-5 show (6-12 hidden under the panel); with it hidden, 11-12 are cut at the edge. |
+| OV-08 | PASS | Columns = 5 shows all 29 buttons. |
+| OV-05 | PASS | Layout > Show pads off: the hat display takes the space; meters show axis labels. |
+| OV-11 | PASS / NOTE | Copy View from… lists vJoy 2, vJoy 3, Xbox 360 Controller and applies; no header line, unlike the catalog (S-17, cosmetic). |
+| OV-12 | PASS | Save View Settings: "Saved to the module file."; footer names modules\vjoy_1.json. |
+| C-02-dest | PASS | Arrows step vJoy 1 → vJoy 2 → vJoy 3 → Xbox 360 Controller. |
+| C-10 | PASS | Xbox output view: "ViGEmBus ready…", Pad picker, target list with bindings. |
+| OV-01 | DEFERRED | Live pads / meters need output while running. |
+| OV-02..04, OV-06, OV-07, OV-09, OV-10 | NOT RUN | Remaining section detail. |
+| stderr | PASS | No QML errors. |
