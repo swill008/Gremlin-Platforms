@@ -503,3 +503,25 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | OV-01 | DEFERRED | Live pads / meters need output while running. |
 | OV-02..04, OV-06, OV-07, OV-09, OV-10 | NOT RUN | Remaining section detail. |
 | stderr | PASS | No QML errors. |
+
+## Batch 5: Logical Device page (2026-09-30)
+
+Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier today.
+
+| ID | Result | Notes |
+|---|---|---|
+| LP-01 | PASS | Find "axis" shows only Axis 1. |
+| LP-03, LP-04 | PASS | "No actions in this mode" filter; Clear resets. |
+| LP-19 | PASS | Name hover shows the system name. |
+| LP-25 | PASS | Rename ("Your name", Hide system name option) → "Button 2  Rudder 10". |
+| LP-26 | PASS (present) | "Clear name" appears for a named row. |
+| LP-29 | FAIL | With 2 rows selected, Delete removes only the right-clicked row (S-15 confirmed); Group as / Move to group act on the whole selection. |
+| LP-40 | PASS | Ctrl+Z restored the deleted row and the deleted group. |
+| LP-35 | PASS | Move group up. |
+| LP-36 | PASS | Rename group to a look-alike ("TEST 21") refused: "A group named 'test 21' already exists". |
+| LP-37 | PASS / NOTE | Delete group moves its rows to Ungrouped; no confirmation (S-14). |
+| LP-24 | PASS | Assign hardware: search box, devices with tri-state boxes; ticking EVO R Button 5 adds "Written by VKBsim Gladiator EVO R · Button 5" with an Invert box. |
+| LP-24b | FAIL (minor) | The small expand arrow next to a device does not respond; clicking the device name does. |
+| LP-57 | FAIL | Leaving the page (Home) with an unsaved action pane edit gives no warning and the edit is silently discarded (S-08 confirmed). |
+| LP-16..18, LP-23, LP-27..28, LP-30, LP-38, LP-50..56 | NOT RUN / earlier | Group as, Move to group, pane and display editor were tested with #21 and #26. |
+| stderr | PASS | No QML errors. |
