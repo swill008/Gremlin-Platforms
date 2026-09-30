@@ -31,7 +31,7 @@ jobs:
       - name: Pack portable zip
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\joystick_gremlin\* -DestinationPath dist\Gremlin-Platforms-R1-1.0.0.zip
+          Compress-Archive -Path dist\gremlin_platforms\* -DestinationPath dist\Gremlin-Platforms-R1-1.0.0.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -44,7 +44,7 @@ jobs:
             Logical Device, Status compact view, HiDHide list scroll, mode sync, catalog and output page lifetime.
 
             Unzip anywhere (Documents, Desktop, etc). Do not put it in Program Files.
-            Run joystick_gremlin.exe from the unzipped folder.
+            Run gremlin_platforms.exe from the unzipped folder.
 
             Requires vJoy already installed.
             Unsigned build — SmartScreen may warn on first run.
