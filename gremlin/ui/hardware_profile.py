@@ -1744,7 +1744,6 @@ class HardwareProfile(QtCore.QObject):
         payload["pageW"] = 32000
         payload["pageH"] = 18000
         payload["photoWell"] = 0.75
-        payload.pop("worldRev", None)
         payload["photo"] = _photo_pose(payload.get("photo"))
         payload = self._pack_assets(name, payload)
         if path.is_file():
@@ -1800,7 +1799,6 @@ class HardwareProfile(QtCore.QObject):
         if not isinstance(payload, dict):
             return False
         payload["ui"] = incoming.get("ui", payload.get("ui") or {})
-        payload.pop("worldRev", None)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         trace("SAVE", "Button Map", "saveUi", path, "ok")
         persist_log(f"Persist map ui name={name!r} guid={self._device_guid!r} path={path}")
