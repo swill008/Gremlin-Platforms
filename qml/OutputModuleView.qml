@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Dialogs
 
@@ -70,26 +70,26 @@ Item {
         signal toggled(bool value)
         default property alias body: _body.data
         Layout.fillWidth: true
-        spacing: 4
+        spacing: Style.dp(4)
 
         Rectangle {
             Layout.fillWidth: true
-            height: 26
+            height: Style.dp(26)
             color: "#27272A"
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 8
-                anchors.rightMargin: 8
-                spacing: 6
+                anchors.leftMargin: Style.dp(8)
+                anchors.rightMargin: Style.dp(8)
+                spacing: Style.dp(6)
                 Label {
                     text: fold.open ? "\u25BC" : "\u25B6"
                     color: "#E4E4E7"
-                    font.pixelSize: 10
+                    font.pixelSize: Style.dp(10)
                 }
                 Label {
                     text: fold.title
                     color: "#E4E4E7"
-                    font.pixelSize: 11
+                    font.pixelSize: Style.dp(11)
                     font.bold: true
                     Layout.fillWidth: true
                 }
@@ -104,7 +104,7 @@ Item {
             id: _body
             visible: fold.open
             Layout.fillWidth: true
-            spacing: 4
+            spacing: Style.dp(4)
         }
     }
 
@@ -163,8 +163,8 @@ Item {
     readonly property bool padAOn: padsOn && (padAX > 0 || padAY > 0)
     readonly property bool padBOn: padsOn && (padBX > 0 || padBY > 0)
     readonly property bool metersOn: showMeters
-    readonly property int btnCellW: buttonSize === "small" ? 52 : (buttonSize === "large" ? 88 : 64)
-    readonly property int btnCellH: buttonSize === "small" ? 48 : (buttonSize === "large" ? 68 : 56)
+    readonly property int btnCellW: buttonSize === "small" ? Style.dp(52) : (buttonSize === "large" ? Style.dp(88) : Style.dp(64))
+    readonly property int btnCellH: buttonSize === "small" ? Style.dp(48) : (buttonSize === "large" ? Style.dp(68) : Style.dp(56))
 
     ModuleClaimedInputModel {
         id: _claimed
@@ -548,38 +548,38 @@ Item {
         property string label: ""
         color: Style.background
         border.color: Style.lowColor
-        border.width: 1
-        implicitWidth: 220
-        implicitHeight: 220
+        border.width: Style.dp(1)
+        implicitWidth: Style.dp(220)
+        implicitHeight: Style.dp(220)
 
         Rectangle {
-            width: parent.width - 24
-            height: 1
+            width: parent.width - Style.dp(24)
+            height: Style.dp(1)
             color: Style.lowColor
             anchors.centerIn: parent
         }
         Rectangle {
-            width: 1
-            height: parent.height - 24
+            width: Style.dp(1)
+            height: parent.height - Style.dp(24)
             color: Style.lowColor
             anchors.centerIn: parent
         }
         Rectangle {
-            width: 12
-            height: 12
-            radius: 6
+            width: Style.dp(12)
+            height: Style.dp(12)
+            radius: Style.dp(6)
             color: _root.colorLive
             visible: _root.showLive
-            x: parent.width / 2 + (pad.xVal * (parent.width / 2 - 16)) - width / 2
-            y: parent.height / 2 - (pad.yVal * (parent.height / 2 - 16)) - height / 2
+            x: parent.width / 2 + (pad.xVal * (parent.width / 2 - Style.dp(16))) - width / 2
+            y: parent.height / 2 - (pad.yVal * (parent.height / 2 - Style.dp(16))) - height / 2
         }
         Label {
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottomMargin: 6
+            anchors.bottomMargin: Style.dp(6)
             text: pad.label
             color: "#A1A1AA"
-            font.pixelSize: 12
+            font.pixelSize: Style.dp(12)
         }
     }
 
@@ -598,29 +598,29 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 16
+        anchors.margins: Style.dp(12)
+        spacing: Style.dp(16)
 
         ColumnLayout {
             visible: _root.padAOn || _root.padBOn || (_root.showHats && hatModel.count > 0)
-            Layout.preferredWidth: 228
-            Layout.maximumWidth: 228
+            Layout.preferredWidth: Style.dp(228)
+            Layout.maximumWidth: Style.dp(228)
             Layout.fillWidth: false
             Layout.fillHeight: true
             Layout.alignment: Qt.AlignTop
-            spacing: 12
+            spacing: Style.dp(12)
 
             CrossPad {
-                Layout.preferredWidth: 220
-                Layout.preferredHeight: 220
+                Layout.preferredWidth: Style.dp(220)
+                Layout.preferredHeight: Style.dp(220)
                 visible: _root.padAOn
                 label: "X / Y"
                 xVal: { var row = findAxis(padAX); return row ? liveVal(row.idx) : 0 }
                 yVal: { var row = findAxis(padAY); return row ? liveVal(row.idx) : 0 }
             }
             CrossPad {
-                Layout.preferredWidth: 220
-                Layout.preferredHeight: 220
+                Layout.preferredWidth: Style.dp(220)
+                Layout.preferredHeight: Style.dp(220)
                 visible: _root.padBOn
                 label: "Rx / Ry"
                 xVal: { var row = findAxis(padBX); return row ? liveVal(row.idx) : 0 }
@@ -633,8 +633,8 @@ Item {
                     required property int hw
                     required property string name
                     visible: _root.showHats
-                    Layout.preferredWidth: 160
-                    Layout.preferredHeight: 160
+                    Layout.preferredWidth: Style.dp(160)
+                    Layout.preferredHeight: Style.dp(160)
                     Layout.alignment: Qt.AlignHCenter
                     text: name.length ? name : ("Hat " + hw)
                     currentValue: {
@@ -653,7 +653,7 @@ Item {
             Layout.fillWidth: false
             Layout.fillHeight: true
             Layout.alignment: Qt.AlignTop
-            spacing: 10
+            spacing: Style.dp(10)
 
             Repeater {
                 model: axisModel
@@ -662,16 +662,16 @@ Item {
                     required property int hw
                     required property string name
                     visible: meterOn(hw)
-                    width: Math.max(48, _root.meterWidth + 26)
+                    width: Style.dp(Math.max(48, _root.meterWidth + 26))
                     height: parent.height
-                    spacing: 6
+                    spacing: Style.dp(6)
 
                     BetterProgressBar {
-                        width: _root.meterWidth
-                        height: parent.height - 44
+                        width: Style.dp(_root.meterWidth)
+                        height: parent.height - Style.dp(44)
                         anchors.horizontalCenter: parent.horizontalCenter
                         orientation: _root.meterStyle === "horizontal" ? BetterProgressBar.Orientation.Horizontal : BetterProgressBar.Orientation.Vertical
-                        barSize: _root.meterWidth
+                        barSize: Style.dp(_root.meterWidth)
                         fillColor: _root.colorMeter
                         from: -1
                         to: 1
@@ -682,14 +682,14 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         text: axisShort(hw, name)
                         color: "#E4E4E7"
-                        font.pixelSize: 12
+                        font.pixelSize: Style.dp(12)
                     }
                     Label {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         text: (liveVal(idx) >= 0 ? "+" : "") + liveVal(idx).toFixed(2)
                         color: "#A1A1AA"
-                        font.pixelSize: 10
+                        font.pixelSize: Style.dp(10)
                     }
                 }
             }
@@ -698,7 +698,7 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: 200
+            Layout.minimumWidth: Style.dp(200)
             clip: true
 
             Flickable {
@@ -713,8 +713,8 @@ Item {
                 GridLayout {
                     id: _btnGrid
                     columns: Math.max(1, _root.buttonColumns)
-                    columnSpacing: 6
-                    rowSpacing: 6
+                    columnSpacing: Style.dp(6)
+                    rowSpacing: Style.dp(6)
 
                     Repeater {
                         model: buttonModel
@@ -722,10 +722,10 @@ Item {
                     required property int idx
                     required property int hw
                     required property string name
-                    Layout.preferredWidth: Math.max(40, _root.buttonWidth)
+                    Layout.preferredWidth: Style.dp(Math.max(40, _root.buttonWidth))
                     Layout.preferredHeight: _root.btnCellH
-                    Layout.minimumWidth: Math.max(40, _root.buttonWidth)
-                    Layout.maximumWidth: Math.max(40, _root.buttonWidth)
+                    Layout.minimumWidth: Style.dp(Math.max(40, _root.buttonWidth))
+                    Layout.maximumWidth: Style.dp(Math.max(40, _root.buttonWidth))
                     Layout.minimumHeight: _root.btnCellH
                     Layout.maximumHeight: _root.btnCellH
                     Layout.fillWidth: false
@@ -738,17 +738,17 @@ Item {
                         return Qt.rgba(0.133, 0.773, 0.369, 0.45)
                     }
                     border.color: on ? _root.colorPress : Style.lowColor
-                    border.width: 1
-                    radius: 3
+                    border.width: Style.dp(1)
+                    radius: Style.dp(3)
 
                     Row {
                         anchors.centerIn: parent
-                        spacing: 6
+                        spacing: Style.dp(6)
                         Rectangle {
                             visible: _root.buttonStyle === "led"
-                            width: 10
-                            height: 10
-                            radius: 5
+                            width: Style.dp(10)
+                            height: Style.dp(10)
+                            radius: Style.dp(5)
                             color: on ? _root.colorPress : Style.lowColor
                             anchors.verticalCenter: parent.verticalCenter
                         }
@@ -757,14 +757,14 @@ Item {
                             Label {
                                 text: "Button"
                                 color: on ? "#F4F4F5" : "#A1A1AA"
-                                font.pixelSize: _root.buttonSize === "small" ? 9 : 11
+                                font.pixelSize: _root.buttonSize === "small" ? Style.dp(9) : Style.dp(11)
                                 horizontalAlignment: Text.AlignHCenter
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
                             Label {
                                 text: "" + hw
                                 color: on ? "#F4F4F5" : "#E4E4E7"
-                                font.pixelSize: _root.buttonSize === "small" ? 12 : 14
+                                font.pixelSize: _root.buttonSize === "small" ? Style.dp(12) : Style.dp(14)
                                 font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -779,34 +779,34 @@ Item {
 
         Rectangle {
             visible: _root.showPanel
-            Layout.preferredWidth: 360
-            Layout.maximumWidth: 360
+            Layout.preferredWidth: Style.dp(360)
+            Layout.maximumWidth: Style.dp(360)
             Layout.fillHeight: true
             color: "#18181B"
             border.color: "#3F3F46"
-            border.width: 1
+            border.width: Style.dp(1)
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 8
+                anchors.margins: Style.dp(10)
+                spacing: Style.dp(8)
 
                 RowLayout {
                     Label {
                         text: "Output Module View — Display Editor"
                         color: "#E4E4E7"
                         font.bold: true
-                        font.pixelSize: 13
+                        font.pixelSize: Style.dp(13)
                         Layout.fillWidth: true
                     }
                     Button {
                         text: "×"
-                        implicitWidth: 28
+                        implicitWidth: Style.dp(28)
                         onClicked: _root.requestClose()
                     }
                 }
                 RowLayout {
-                    spacing: 8
+                    spacing: Style.dp(8)
                     Button { text: "Open all"; onClicked: setAllSections(true) }
                     Button { text: "Close all"; onClicked: setAllSections(false) }
                     Item { Layout.fillWidth: true }
@@ -817,8 +817,8 @@ Item {
                     Layout.fillHeight: true
                     clip: true
                     ColumnLayout {
-                        width: 330
-                        spacing: 12
+                        width: Style.dp(330)
+                        spacing: Style.dp(12)
 
                         FoldSection {
                             title: "Screen"
@@ -826,7 +826,7 @@ Item {
                             onToggled: (v) => { openScreen = v }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Color"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+                                Label { text: "Color"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(110) }
                                 Button {
                                     Layout.fillWidth: true
                                     text: colorScreen === "#00000000" ? "None" : "Choose…"
@@ -838,8 +838,8 @@ Item {
                                     background: Rectangle {
                                         color: colorScreen === "#00000000" ? "#27272A" : colorScreen
                                         border.color: "#3F3F46"
-                                        border.width: 1
-                                        radius: 3
+                                        border.width: Style.dp(1)
+                                        radius: Style.dp(3)
                                     }
                                     contentItem: Label {
                                         text: parent.text
@@ -856,7 +856,7 @@ Item {
                             }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Image"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+                                Label { text: "Image"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(110) }
                                 Button {
                                     Layout.fillWidth: true
                                     text: screenImage.length ? "Change…" : "Choose…"
@@ -872,7 +872,7 @@ Item {
                                 visible: screenImage.length > 0
                                 text: "The image covers the color."
                                 color: "#A1A1AA"
-                                font.pixelSize: 11
+                                font.pixelSize: Style.dp(11)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -895,28 +895,28 @@ Item {
                                 visible: !showPads
                                 text: "Pads hidden"
                                 color: "#71717A"
-                                font.pixelSize: 11
+                                font.pixelSize: Style.dp(11)
                             }
                             ColumnLayout {
                                 visible: showPads
-                                spacing: 4
+                                spacing: Style.dp(4)
                                 Layout.fillWidth: true
-                                Label { text: "X / Y pad"; color: "#E4E4E7"; font.pixelSize: 11 }
+                                Label { text: "X / Y pad"; color: "#E4E4E7"; font.pixelSize: Style.dp(11) }
                                 RowLayout {
-                                    Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                                    Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: Style.dp(80) }
                                     AxisMenu { hw: padAX; onUserSet: (v) => { padAX = v } }
                                 }
                                 RowLayout {
-                                    Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                                    Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: Style.dp(80) }
                                     AxisMenu { hw: padAY; onUserSet: (v) => { padAY = v } }
                                 }
-                                Label { text: "Rx / Ry pad"; color: "#E4E4E7"; font.pixelSize: 11 }
+                                Label { text: "Rx / Ry pad"; color: "#E4E4E7"; font.pixelSize: Style.dp(11) }
                                 RowLayout {
-                                    Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                                    Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: Style.dp(80) }
                                     AxisMenu { hw: padBX; onUserSet: (v) => { padBX = v } }
                                 }
                                 RowLayout {
-                                    Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                                    Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: Style.dp(80) }
                                     AxisMenu { hw: padBY; onUserSet: (v) => { padBY = v } }
                                 }
                             }
@@ -943,12 +943,12 @@ Item {
                             Label {
                                 text: "Axes on bars"
                                 color: "#E4E4E7"
-                                font.pixelSize: 11
+                                font.pixelSize: Style.dp(11)
                             }
                             Label {
                                 text: "Uncheck an axis to hide its bar."
                                 color: "#A1A1AA"
-                                font.pixelSize: 11
+                                font.pixelSize: Style.dp(11)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -956,14 +956,14 @@ Item {
                                 enabled: showMeters
                                 columns: 2
                                 Layout.fillWidth: true
-                                columnSpacing: 8
+                                columnSpacing: Style.dp(8)
                                 rowSpacing: 0
                                 Repeater {
                                     model: axisModel
                                     delegate: FlagBox {
                                         required property int hw
                                         required property string name
-                                        Layout.preferredWidth: 155
+                                        Layout.preferredWidth: Style.dp(155)
                                         text: axisLabel(hw, name)
                                         source: meterOn(hw)
                                         onUserSet: (v) => toggleMeter(hw, v)
@@ -1007,7 +1007,7 @@ Item {
                             open: openColors
                             onToggled: (v) => { openColors = v }
                         RowLayout {
-                            Label { text: "Live"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+                            Label { text: "Live"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
                             Button {
                                 Layout.fillWidth: true
                                 text: "Choose…"
@@ -1015,8 +1015,8 @@ Item {
                                 background: Rectangle {
                                     color: colorLive
                                     border.color: "#3F3F46"
-                                    border.width: 1
-                                    radius: 3
+                                    border.width: Style.dp(1)
+                                    radius: Style.dp(3)
                                 }
                                 contentItem: Label {
                                     text: parent.text
@@ -1027,7 +1027,7 @@ Item {
                             }
                         }
                         RowLayout {
-                            Label { text: "Meter"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+                            Label { text: "Meter"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
                             Button {
                                 Layout.fillWidth: true
                                 text: "Choose…"
@@ -1035,8 +1035,8 @@ Item {
                                 background: Rectangle {
                                     color: colorMeter
                                     border.color: "#3F3F46"
-                                    border.width: 1
-                                    radius: 3
+                                    border.width: Style.dp(1)
+                                    radius: Style.dp(3)
                                 }
                                 contentItem: Label {
                                     text: parent.text
@@ -1047,7 +1047,7 @@ Item {
                             }
                         }
                         RowLayout {
-                            Label { text: "Press"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+                            Label { text: "Press"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
                             Button {
                                 Layout.fillWidth: true
                                 text: "Choose…"
@@ -1055,8 +1055,8 @@ Item {
                                 background: Rectangle {
                                     color: colorPress
                                     border.color: "#3F3F46"
-                                    border.width: 1
-                                    radius: 3
+                                    border.width: Style.dp(1)
+                                    radius: Style.dp(3)
                                 }
                                 contentItem: Label {
                                     text: parent.text
@@ -1071,30 +1071,30 @@ Item {
                 }
 
                 RowLayout {
-                    spacing: 6
+                    spacing: Style.dp(6)
                     Button {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 44
+                        Layout.preferredHeight: Style.dp(44)
                         text: "Reset View\nto Default"
                         onClicked: resetView()
                         contentItem: Text {
                             text: parent.text
                             color: "#FFFFFF"
-                            font.pixelSize: 12
+                            font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
-                            implicitHeight: 44
+                            implicitHeight: Style.dp(44)
                             color: parent.down ? "#991B1B" : (parent.hovered ? "#EF4444" : "#DC2626")
-                            border.width: 1
+                            border.width: Style.dp(1)
                             border.color: parent.hovered ? "#FCA5A5" : "#B91C1C"
                         }
                     }
                     Button {
                         id: _copyButton
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 44
+                        Layout.preferredHeight: Style.dp(44)
                         text: "Copy View\nfrom…"
                         onClicked: {
                             refreshCopySources()
@@ -1103,21 +1103,21 @@ Item {
                         contentItem: Text {
                             text: parent.text
                             color: "#F4F4F5"
-                            font.pixelSize: 12
+                            font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                     }
                     Button {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 44
+                        Layout.preferredHeight: Style.dp(44)
                         text: "Save View\nSettings"
                         highlighted: true
                         onClicked: saveView()
                         contentItem: Text {
                             text: parent.text
                             color: "#FFFFFF"
-                            font.pixelSize: 12
+                            font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
@@ -1130,7 +1130,7 @@ Item {
     Menu {
         id: _copyMenu
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        width: 360
+        width: Style.dp(360)
         Instantiator {
             model: _copySources
             delegate: MenuItem {
@@ -1138,7 +1138,7 @@ Item {
                 required property string name
                 required property string guid
                 text: label
-                width: 360
+                width: Style.dp(360)
                 onTriggered: _root.copyViewFrom(name, guid)
             }
             onObjectAdded: (index, object) => _copyMenu.insertItem(_copyMenu.count, object)
@@ -1184,16 +1184,16 @@ Item {
         dim: true
         Overlay.modal: Rectangle { color: "#66000000" }
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        padding: 18
+        padding: Style.dp(18)
         background: Rectangle {
             color: "#27272A"
             border.color: "#52525B"
-            radius: 6
+            radius: Style.dp(6)
         }
         contentItem: Label {
             text: toastText
             color: "#F4F4F5"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             horizontalAlignment: Text.AlignHCenter
         }
         Timer {

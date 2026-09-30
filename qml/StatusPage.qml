@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Device
@@ -35,14 +35,14 @@ Item {
     property string homeBefore: ""
     property string dragStackSlug: ""
     property string stackCandidate: ""
-    property int ghostW: 280
-    property int ghostH: 240
+    property int ghostW: 0
+    property int ghostH: 0
     property int pendingStackW: 0
     property int pendingStackH: 0
     property real dragOriginX: 0
     property real dragOriginY: 0
-    property real stackTravel: 120
-    property real insertTravel: 24
+    property real stackTravel: 0
+    property real insertTravel: Style.dp(24)
     property real floatX: 0
     property real floatY: 0
     property real grabOffX: 0
@@ -101,7 +101,7 @@ Item {
     function cardOnPage(card) {
         if (!card || !card.slug)
             return false
-        if (card.width < 32 || card.height < 32)
+        if (card.width < Style.dp(32) || card.height < Style.dp(32))
             return false
         var p = card
         while (p) {
@@ -244,7 +244,7 @@ Item {
         var before = ""
         for (var j = 0; j < slots.length; ++j) {
             var s = slots[j]
-            var sameRow = Math.abs(gy - s.y) < Math.max(120, s.h * 0.75)
+            var sameRow = Math.abs(gy - s.y) < Math.max(Style.dp(120), s.h * 0.75)
             if (!sameRow)
                 continue
             hit = true
@@ -284,7 +284,7 @@ Item {
         var mid = card.mapToItem(_page, card.width / 2, card.height / 2)
         dragOriginX = mid.x
         dragOriginY = mid.y
-        stackTravel = Math.max(110, Math.min(card.width, card.height) * 0.5)
+        stackTravel = Math.max(Style.dp(110), Math.min(card.width, card.height) * 0.5)
         dragDir = paneDir(card)
         dragName = card.cardName || ""
         dragPhoto = card.photo || ""
@@ -501,7 +501,7 @@ Item {
         card.dropAt.connect(function() { _page.handleDrop(card.slug) })
         card.onSizeChanged.connect(function(w, h) {
             if (model)
-                model.setPileSize(card.slug, w, h)
+                model.setPileSize(card.slug, Math.round(w * 100 / Style.uiScale), Math.round(h * 100 / Style.uiScale))
         })
         card.onResetSize.connect(function() {
             if (model)
@@ -576,8 +576,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 8
+        anchors.margins: Style.dp(12)
+        spacing: Style.dp(8)
 
         RowLayout {
             Layout.fillWidth: true
@@ -590,11 +590,11 @@ Item {
                         _page.model.setCompactView(checked)
                 }
             }
-            Label { text: "Split"; color: "#A1A1AA"; font.pixelSize: 11 }
+            Label { text: "Split"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
             ComboBox {
                 id: _split
                 model: ["None", "Vertical", "Horizontal"]
-                implicitWidth: 140
+                implicitWidth: Style.dp(140)
                 currentIndex: {
                     var mode = _page.model ? _page.model.splitMode : "none"
                     if (mode === "vertical") return 1
@@ -615,7 +615,7 @@ Item {
             Layout.fillHeight: _page.splitOn
             visible: _page.splitOn
             orientation: (_page.model && _page.model.splitMode === "horizontal") ? Qt.Vertical : Qt.Horizontal
-            handle: Rectangle { implicitWidth: 8; implicitHeight: 8; color: "#52525B" }
+            handle: Rectangle { implicitWidth: Style.dp(8); implicitHeight: Style.dp(8); color: "#52525B" }
 
             property bool applying: false
 
@@ -658,8 +658,8 @@ Item {
 
             StatusPane {
                 id: _inputPane
-                SplitView.minimumWidth: 180
-                SplitView.minimumHeight: 120
+                SplitView.minimumWidth: Style.dp(180)
+                SplitView.minimumHeight: Style.dp(120)
                 title: "Input modules"
                 direction: "source"
                 onWidthChanged: if (_splitView.visible && !_splitView.applying) _ratioSave.restart()
@@ -667,8 +667,8 @@ Item {
             }
             StatusPane {
                 id: _outputPane
-                SplitView.minimumWidth: 180
-                SplitView.minimumHeight: 120
+                SplitView.minimumWidth: Style.dp(180)
+                SplitView.minimumHeight: Style.dp(120)
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
                 title: "Output modules"
@@ -687,14 +687,14 @@ Item {
     }
 
     component SlotGhost: Rectangle {
-        radius: 4
+        radius: Style.dp(4)
         color: "#3318181B"
-        border.width: 2
+        border.width: Style.dp(2)
         border.color: "#A1A1AA"
 
         Image {
             anchors.fill: parent
-            anchors.margins: 10
+            anchors.margins: Style.dp(10)
             source: _page.dragPhoto
             fillMode: Image.PreserveAspectFit
             opacity: 0.4
@@ -706,10 +706,10 @@ Item {
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: 12
+            anchors.bottomMargin: Style.dp(12)
             text: _page.dragName
             color: "#E4E4E7"
-            font.pixelSize: 13
+            font.pixelSize: Style.dp(13)
             font.bold: true
             opacity: 0.8
         }
@@ -729,13 +729,13 @@ Item {
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 6
+            spacing: Style.dp(6)
 
             Label {
                 visible: _pane.title.length
                 text: _pane.title
                 color: "#E4E4E7"
-                font.pixelSize: 20
+                font.pixelSize: Style.dp(20)
                 font.bold: true
                 font.capitalization: Font.AllUppercase
             }
@@ -780,7 +780,7 @@ Item {
                 Flow {
                     id: _flow
                     width: _flick.width
-                    spacing: (_page.model && _page.model.compactView) ? 8 : 16
+                    spacing: (_page.model && _page.model.compactView) ? Style.dp(8) : Style.dp(16)
 
                     Repeater {
                         id: _piles
@@ -794,7 +794,7 @@ Item {
                         delegate: Item {
                             id: _pile
                             property var members: _page.model ? _page.model.pileMembers(modelData) : [modelData]
-                            property int extra: Math.max(0, members.length - 1) * 14
+                            property int extra: Math.max(0, members.length - 1) * Style.dp(14)
                             property bool dragging: false
                             property bool isDragHome: _page.dragSlug === modelData && members.length === 1
                             property bool showGhost: {
@@ -810,11 +810,11 @@ Item {
                                 if (!compact) {
                                     var saved = _page.model ? _page.model.cardWidth(modelData) : 0
                                     if (saved >= 220)
-                                        return saved
+                                        return Style.dp(saved)
                                 }
                                 var avail = _flow.width
-                                var want = compact ? 240 : 280
-                                if (avail < 40)
+                                var want = Style.dp(compact ? 240 : 280)
+                                if (avail < Style.dp(40))
                                     return want
                                 return Math.min(want, avail)
                             }
@@ -823,9 +823,9 @@ Item {
                                 if (_page.model && _page.model.compactView)
                                     return 0
                                 var saved = _page.model ? _page.model.cardHeight(modelData) : 0
-                                return saved >= 140 ? saved : 0
+                                return saved >= 140 ? Style.dp(saved) : 0
                             }
-                            property int ghostPad: showGhost ? _page.ghostW + 16 : 0
+                            property int ghostPad: showGhost ? _page.ghostW + Style.dp(16) : 0
 
                             width: isDragHome ? 0 : (cardW + extra + ghostPad)
                             height: {
@@ -833,8 +833,8 @@ Item {
                                     return Math.max(1, _page.ghostH)
                                 var compact = _page.model && _page.model.compactView
                                 var c = _memberCards.itemAt(0)
-                                var need = (c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : (compact ? 120 : 260)
-                                var h = Math.max(cardH >= 140 ? cardH : 0, need) + extra
+                                var need = (c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : Style.dp(compact ? 120 : 260)
+                                var h = Math.max(cardH >= Style.dp(140) ? cardH : 0, need) + extra
                                 if (showGhost)
                                     h = Math.max(h, _page.ghostH)
                                 return h
@@ -874,7 +874,7 @@ Item {
                                     compactView: !!(_page.model && _page.model.compactView)
                                     width: _pile.cardW
                                     height: Math.max(_pile.cardH > 0 ? _pile.cardH : 0, implicitHeight)
-                                    stretchPhoto: _pile.cardH >= 140
+                                    stretchPhoto: _pile.cardH >= Style.dp(140)
                                     dropStacking: false
                                     opacity: (_page.dragSlug === modelData || _page.dragSlug === slug) ? 0 : 1
                                     onLiftingChanged: {
@@ -913,14 +913,14 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            radius: 4
+            radius: Style.dp(4)
             color: "#18181B"
-            border.width: 2
+            border.width: Style.dp(2)
             border.color: "#E4E4E7"
 
             Image {
                 anchors.fill: parent
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
                 source: _page.dragPhoto
                 fillMode: Image.PreserveAspectFit
                 visible: _page.dragPhoto && _page.dragPhoto.length
@@ -931,10 +931,10 @@ Item {
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 12
+                anchors.bottomMargin: Style.dp(12)
                 text: _page.dragName
                 color: "#E4E4E7"
-                font.pixelSize: 13
+                font.pixelSize: Style.dp(13)
                 font.bold: true
             }
         }
@@ -945,10 +945,10 @@ Item {
             var w = Math.max(_emptyMenu.implicitWidth, _emptyMenu.width)
             var h = Math.max(_emptyMenu.implicitHeight, _emptyMenu.height)
             if (w <= 0)
-                w = 160
+                w = Style.dp(160)
             if (h <= 0)
-                h = 36
-            _emptyMenu.popup(pageX - w / 2, pageY - h - 8)
+                h = Style.dp(36)
+            _emptyMenu.popup(pageX - w / 2, pageY - h - Style.dp(8))
         })
     }
 
@@ -991,7 +991,7 @@ Item {
         anchors.centerIn: parent
         modal: true
         focus: true
-        padding: 16
+        padding: Style.dp(16)
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         onClosed: {
@@ -1005,22 +1005,22 @@ Item {
         background: Rectangle {
             color: Style.background
             border.color: Style.accent
-            border.width: 1
-            radius: 4
+            border.width: Style.dp(1)
+            radius: Style.dp(4)
         }
 
         contentItem: ColumnLayout {
-            spacing: 12
+            spacing: Style.dp(12)
             Label {
                 text: "Delete Device"
                 font.bold: true
-                font.pixelSize: 16
-                Layout.preferredWidth: 440
+                font.pixelSize: Style.dp(16)
+                Layout.preferredWidth: Style.dp(440)
             }
             Label {
                 text: _page.explainBody()
                 wrapMode: Text.WordWrap
-                Layout.preferredWidth: 440
+                Layout.preferredWidth: Style.dp(440)
                 Layout.fillWidth: true
             }
             CheckBox {
@@ -1031,7 +1031,7 @@ Item {
             }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
-                spacing: 8
+                spacing: Style.dp(8)
                 Button {
                     text: "Cancel"
                     onClicked: _explainDialog.close()
@@ -1054,7 +1054,7 @@ Item {
         anchors.centerIn: parent
         modal: true
         focus: true
-        padding: 16
+        padding: Style.dp(16)
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         onClosed: {
@@ -1067,28 +1067,28 @@ Item {
         background: Rectangle {
             color: Style.background
             border.color: "#DC2626"
-            border.width: 1
-            radius: 4
+            border.width: Style.dp(1)
+            radius: Style.dp(4)
         }
 
         contentItem: ColumnLayout {
-            spacing: 12
+            spacing: Style.dp(12)
             Label {
                 text: "Really delete this device?"
                 font.bold: true
-                font.pixelSize: 16
+                font.pixelSize: Style.dp(16)
                 color: "#F87171"
-                Layout.preferredWidth: 440
+                Layout.preferredWidth: Style.dp(440)
             }
             Label {
                 text: _page.confirmBody()
                 wrapMode: Text.WordWrap
-                Layout.preferredWidth: 440
+                Layout.preferredWidth: Style.dp(440)
                 Layout.fillWidth: true
             }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
-                spacing: 8
+                spacing: Style.dp(8)
                 Button {
                     text: "Cancel"
                     onClicked: _confirmDialog.close()
@@ -1107,7 +1107,7 @@ Item {
                     }
                     background: Rectangle {
                         color: parent.hovered ? "#B91C1C" : "#DC2626"
-                        radius: 4
+                        radius: Style.dp(4)
                     }
                 }
             }
@@ -1120,28 +1120,28 @@ Item {
         anchors.centerIn: parent
         modal: true
         focus: true
-        padding: 16
+        padding: Style.dp(16)
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         background: Rectangle {
             color: Style.background
             border.color: _doneTitle === "Delete stopped" ? "#DC2626" : Style.accent
-            border.width: 1
-            radius: 4
+            border.width: Style.dp(1)
+            radius: Style.dp(4)
         }
 
         contentItem: ColumnLayout {
-            spacing: 12
+            spacing: Style.dp(12)
             Label {
                 text: _page._doneTitle
                 font.bold: true
-                font.pixelSize: 16
-                Layout.preferredWidth: 440
+                font.pixelSize: Style.dp(16)
+                Layout.preferredWidth: Style.dp(440)
             }
             Label {
                 text: _page._doneMessage
                 wrapMode: Text.WordWrap
-                Layout.preferredWidth: 440
+                Layout.preferredWidth: Style.dp(440)
                 Layout.fillWidth: true
             }
             RowLayout {

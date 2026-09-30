@@ -65,7 +65,7 @@ def test_assignment_summary_counts_destinations() -> None:
     assert 'text: "Input Configuration — Display Editor"' in text
     assert 'text: "Open all"' in text
     assert 'text: "Close all"' in text
-    assert "Layout.preferredWidth: 360" in text
+    assert "Layout.preferredWidth: Style.dp(360)" in text
     assert 'text: "Save View\\nSettings"' in text
     assert "onClicked: resetCatalog()" in text
     assert 'text: "Reset View\\nto Default"' in text

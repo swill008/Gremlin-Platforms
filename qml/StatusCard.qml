@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Style
@@ -67,47 +67,47 @@ Rectangle {
     signal shiftToggled()
     signal stackSelectedCards()
 
-    implicitHeight: _body.implicitHeight + 20
-    radius: 4
+    implicitHeight: _body.implicitHeight + Style.dp(20)
+    radius: Style.dp(4)
     clip: true
     color: selected ? "#1F2A37" : "#18181B"
-    border.width: focused || selected || dropStacking ? 2 : 1
+    border.width: focused || selected || dropStacking ? Style.dp(2) : Style.dp(1)
     border.color: dropStacking ? "#22C55E" : (focused || selected ? "#E4E4E7" : "#3F3F46")
 
     ColumnLayout {
         id: _body
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 6
+        anchors.margins: Style.dp(10)
+        spacing: Style.dp(6)
 
         Item {
             id: _photoWell
             visible: !_card.compactView
             Layout.fillWidth: true
             Layout.fillHeight: stretchPhoto && !_card.compactView
-            Layout.minimumHeight: _card.compactView ? 0 : 72
+            Layout.minimumHeight: _card.compactView ? 0 : Style.dp(72)
             Layout.preferredHeight: {
                 if (_card.compactView)
                     return 0
                 if (_photo.status === Image.Ready && _photo.implicitWidth > 0) {
                     var ratio = _photo.implicitHeight / _photo.implicitWidth
-                    return Math.round(Math.min(280, Math.max(96, width * ratio)))
+                    return Math.round(Math.min(Style.dp(280), Math.max(Style.dp(96), width * ratio)))
                 }
-                return 120
+                return Style.dp(120)
             }
-            Layout.maximumHeight: _card.compactView ? 0 : 100000
+            Layout.maximumHeight: _card.compactView ? 0 : Style.dp(100000)
 
             Rectangle {
                 anchors.fill: parent
                 color: "#09090B"
                 border.color: "#3F3F46"
-                border.width: 1
-                radius: 2
+                border.width: Style.dp(1)
+                radius: Style.dp(2)
 
                 Image {
                     id: _photo
                     anchors.fill: parent
-                    anchors.margins: 2
+                    anchors.margins: Style.dp(2)
                     source: photo
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
@@ -122,7 +122,7 @@ Rectangle {
                     visible: !(photo && photo.length)
                     text: isStub ? "No module photo" : "No photo"
                     color: "#A1A1AA"
-                    font.pixelSize: 11
+                    font.pixelSize: Style.dp(11)
                 }
 
                 Rectangle {
@@ -133,7 +133,7 @@ Rectangle {
                         anchors.centerIn: parent
                         text: pinActive ? "Control Display pinned" : "Control Display"
                         color: "#BBF7D0"
-                        font.pixelSize: 11
+                        font.pixelSize: Style.dp(11)
                     }
                 }
             }
@@ -144,7 +144,7 @@ Rectangle {
         Label {
             text: cardName
             color: "#E4E4E7"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             font.bold: true
             elide: Text.ElideRight
             Layout.fillWidth: true
@@ -153,20 +153,20 @@ Rectangle {
         Label {
             text: status + " · " + bus
             color: "#A1A1AA"
-            font.pixelSize: 11
+            font.pixelSize: Style.dp(11)
         }
 
         Label {
             visible: isModule
             text: buttons + " buttons  " + axes + " axes  " + hats + " hats"
             color: "#E4E4E7"
-            font.pixelSize: 11
+            font.pixelSize: Style.dp(11)
         }
 
         Label {
             text: "Bound to: [" + (target.length ? target : "Not bound") + "]"
             color: "#A1A1AA"
-            font.pixelSize: 11
+            font.pixelSize: Style.dp(11)
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             HoverHandler { id: _boundHover }
@@ -179,7 +179,7 @@ Rectangle {
         Label {
             text: lastLine.length ? ("last: " + lastLine) : "last: —"
             color: "#E4E4E7"
-            font.pixelSize: 11
+            font.pixelSize: Style.dp(11)
             elide: Text.ElideRight
             Layout.fillWidth: true
 
@@ -274,20 +274,20 @@ Rectangle {
     Rectangle {
         anchors.top: parent.top
         anchors.right: parent.right
-        anchors.margins: 6
-        width: 20
-        height: 20
-        radius: 2
+        anchors.margins: Style.dp(6)
+        width: Style.dp(20)
+        height: Style.dp(20)
+        radius: Style.dp(2)
         z: 6
         color: _hideHover.hovered ? "#3F3F46" : "#00000000"
         border.color: "#3F3F46"
-        border.width: 1
+        border.width: Style.dp(1)
 
         Label {
             anchors.centerIn: parent
             text: "×"
             color: "#A1A1AA"
-            font.pixelSize: 12
+            font.pixelSize: Style.dp(12)
         }
         HoverHandler { id: _hideHover }
         MouseArea {
@@ -304,10 +304,10 @@ Rectangle {
         z: 32
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: 16
-        anchors.rightMargin: 16
-        y: _body.y + _photoWell.y + _photoWell.height - 34
-        height: 28
+        anchors.leftMargin: Style.dp(16)
+        anchors.rightMargin: Style.dp(16)
+        y: _body.y + _photoWell.y + _photoWell.height - Style.dp(34)
+        height: Style.dp(28)
         text: "Output View"
         onClicked: _card.openOutputView()
     }
@@ -318,11 +318,11 @@ Rectangle {
     MouseArea {
         id: _east
         z: 20
-        width: 10
+        width: Style.dp(10)
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.right: parent.right
-        anchors.bottomMargin: 16
+        anchors.bottomMargin: Style.dp(16)
         cursorShape: Qt.SizeHorCursor
         onPressed: function() { _card.resizing = true; _card.lifting = false }
         onCanceled: function() { _card.resizing = false }
@@ -338,11 +338,11 @@ Rectangle {
     MouseArea {
         id: _south
         z: 20
-        height: 10
+        height: Style.dp(10)
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.rightMargin: 16
+        anchors.rightMargin: Style.dp(16)
         cursorShape: Qt.SizeVerCursor
         onPressed: function() { _card.resizing = true; _card.lifting = false }
         onCanceled: function() { _card.resizing = false }
@@ -358,8 +358,8 @@ Rectangle {
     MouseArea {
         id: _corner
         z: 21
-        width: 18
-        height: 18
+        width: Style.dp(18)
+        height: Style.dp(18)
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         cursorShape: Qt.SizeFDiagCursor
@@ -378,9 +378,9 @@ Rectangle {
         Rectangle {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            anchors.margins: 3
-            width: 10
-            height: 10
+            anchors.margins: Style.dp(3)
+            width: Style.dp(10)
+            height: Style.dp(10)
             color: "#00000000"
             Canvas {
                 anchors.fill: parent
@@ -475,8 +475,8 @@ Rectangle {
                 text: _deleteDeviceItem.text
                 color: "#F87171"
                 font.bold: true
-                leftPadding: 12
-                rightPadding: 12
+                leftPadding: Style.dp(12)
+                rightPadding: Style.dp(12)
                 verticalAlignment: Text.AlignVCenter
             }
         }

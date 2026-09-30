@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 import QtQuick.Dialogs
@@ -16,7 +16,9 @@ Item {
     id: _root
 
     property string mode: "Default"
-    property int paneWidth: 560
+    // Action pane width at 100%. It is saved in these units.
+    property int paneUnits: 560
+    readonly property int paneWidth: Style.dp(paneUnits)
     property bool actionOpen: false
     property string paneKey: ""
     property string paneTitle: ""
@@ -109,7 +111,7 @@ Item {
     function _saveDock() {
         if (!_ready)
             return
-        _place.setActionPaneWidth(paneWidth)
+        _place.setActionPaneWidth(paneUnits)
         _place.setClosePaneAfterOk(closeAfterOk)
     }
 
@@ -193,7 +195,7 @@ Item {
     WindowPlacement { id: _place }
 
     Component.onCompleted: {
-        paneWidth = _place.actionPaneWidth()
+        paneUnits = _place.actionPaneWidth()
         closeAfterOk = _place.closePaneAfterOk()
         reloadDisplay()
         displayOpen = _place.displayPanelOpen("logical", "page")
@@ -201,7 +203,7 @@ Item {
         _ready = true
     }
 
-    onPaneWidthChanged: _saveDock()
+    onPaneUnitsChanged: _saveDock()
     onCloseAfterOkChanged: _saveDock()
     onDisplayOpenChanged: _saveDisplayOpen()
     onModeChanged: _layout.setMode(mode)
@@ -213,15 +215,15 @@ Item {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: 360
-            spacing: 6
+            Layout.minimumWidth: Style.dp(360)
+            spacing: Style.dp(6)
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: 8
-                Layout.rightMargin: 8
-                Layout.topMargin: 8
-                spacing: 8
+                Layout.leftMargin: Style.dp(8)
+                Layout.rightMargin: Style.dp(8)
+                Layout.topMargin: Style.dp(8)
+                spacing: Style.dp(8)
                 Label { text: "Find"; color: "#A1A1AA" }
                 TextField {
                     id: _findText
@@ -268,10 +270,10 @@ Item {
                     id: _list
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.leftMargin: _root.padEdge(_root.listPadShape, _root.listPad, _root.listPadLeft)
-                    Layout.rightMargin: _root.padEdge(_root.listPadShape, _root.listPad, _root.listPadRight)
-                    Layout.topMargin: _root.padEdge(_root.listPadShape, _root.listPad, _root.listPadTop)
-                    Layout.bottomMargin: _root.padEdge(_root.listPadShape, _root.listPad, _root.listPadBottom)
+                    Layout.leftMargin: _root.padPx(_root.listPadShape, _root.listPad, _root.listPadLeft)
+                    Layout.rightMargin: _root.padPx(_root.listPadShape, _root.listPad, _root.listPadRight)
+                    Layout.topMargin: _root.padPx(_root.listPadShape, _root.listPad, _root.listPadTop)
+                    Layout.bottomMargin: _root.padPx(_root.listPadShape, _root.listPad, _root.listPadBottom)
                     clip: true
                     spacing: 0
                     model: _layout
@@ -308,16 +310,16 @@ Item {
                         required property int extraWriters
 
                         readonly property bool shown: _root._rowVisible(rowKind, groupKey, parentKey)
-                        width: _list.width - 16
-                        readonly property int rowGap: rowKind === "group" ? 0 : _root.groupInside
-                        readonly property int rowMin: rowKind === "group" ? 40 : (rowKind === "parent" ? _root.parentHeight : _root.childHeight)
+                        width: _list.width - Style.dp(16)
+                        readonly property int rowGap: rowKind === "group" ? 0 : Style.dp(_root.groupInside)
+                        readonly property int rowMin: Style.dp(rowKind === "group" ? 40 : (rowKind === "parent" ? _root.parentHeight : _root.childHeight))
                         readonly property int rowPadY: _root.rowTop(rowKind) + _root.rowBottom(rowKind)
                         readonly property int rowNeed: _line.implicitHeight + rowPadY
                         readonly property int rowBody: Math.max(rowMin, rowNeed)
                         height: shown ? implicitHeight : 0
                         visible: shown
                         clip: true
-                        implicitHeight: shown ? (rowBody + rowGap + _root.rowSpacing) : 0
+                        implicitHeight: shown ? (rowBody + rowGap + Style.dp(_root.rowSpacing)) : 0
                         color: "transparent"
                         border.width: 0
 
@@ -328,8 +330,8 @@ Item {
                             height: _row.rowBody
                             color: _root._picked.indexOf(key) >= 0 ? _root.colorSelected : (rowKind === "group" ? _root.colorGroup : (rowKind === "parent" ? _root.colorParent : _root.colorChild))
                             border.color: _root._picked.indexOf(key) >= 0 ? _root.colorSelectBorder : _root.colorBorder
-                            border.width: 1
-                            radius: rowKind === "group" ? _root.groupRadius : (rowKind === "parent" ? _root.parentRadius : _root.childRadius)
+                            border.width: Style.dp(1)
+                            radius: Style.dp(rowKind === "group" ? _root.groupRadius : (rowKind === "parent" ? _root.parentRadius : _root.childRadius))
                         }
 
                         RowLayout {
@@ -341,13 +343,13 @@ Item {
                             anchors.rightMargin: _root.rowRight(rowKind)
                             anchors.topMargin: _root.rowTop(rowKind)
                             height: Math.max(implicitHeight, _row.rowMin - _row.rowPadY)
-                            spacing: 6
+                            spacing: Style.dp(6)
 
                             Label {
                                 visible: _root._hasList(rowKind, childCount, extraWriters)
                                 text: (rowKind === "group" ? _root._collapsed[groupKey] : !_root._opened[key]) ? "▸" : "▾"
                                 color: _root.colorCaret
-                                font.pixelSize: _root.caretSize
+                                font.pixelSize: Style.dp(_root.caretSize)
                                 Layout.alignment: Qt.AlignVCenter
                                 Layout.preferredWidth: visible ? implicitWidth : 0
                                 MouseArea {
@@ -362,23 +364,23 @@ Item {
                             }
                             Rectangle {
                                 visible: rowKind === "parent" || rowKind === "group"
-                                implicitWidth: visible ? _root.gripWidth : 0
-                                implicitHeight: visible ? _root.gripHeight : 0
-                                Layout.preferredWidth: visible ? _root.gripWidth : 0
-                                Layout.preferredHeight: visible ? _root.gripHeight : 0
+                                implicitWidth: visible ? Style.dp(_root.gripWidth) : 0
+                                implicitHeight: visible ? Style.dp(_root.gripHeight) : 0
+                                Layout.preferredWidth: visible ? Style.dp(_root.gripWidth) : 0
+                                Layout.preferredHeight: visible ? Style.dp(_root.gripHeight) : 0
                                 Layout.alignment: Qt.AlignVCenter
-                                radius: _root.gripRadius
+                                radius: Style.dp(_root.gripRadius)
                                 color: _root.colorGrip
                                 MouseArea {
                                     id: _grip
                                     anchors.fill: parent
-                                    anchors.margins: -6
+                                    anchors.margins: -Style.dp(6)
                                     enabled: !_root.editorLocked
                                     cursorShape: rowKind === "parent" ? Qt.OpenHandCursor : Qt.SizeAllCursor
                                     preventStealing: true
                                     drag.target: rowKind === "parent" ? _payload : null
                                     drag.axis: Drag.XAndYAxis
-                                    drag.threshold: 4
+                                    drag.threshold: Style.dp(4)
                                     onPressed: (mouse) => {
                                         if (rowKind !== "parent") {
                                             _root._dragFrom = key
@@ -404,24 +406,24 @@ Item {
                             }
                             Item {
                                 visible: rowKind === "parent"
-                                Layout.preferredWidth: visible ? 16 : 0
-                                Layout.preferredHeight: 16
+                                Layout.preferredWidth: visible ? Style.dp(16) : 0
+                                Layout.preferredHeight: Style.dp(16)
                                 Layout.alignment: Qt.AlignVCenter
 
                                 Rectangle {
                                     visible: key.indexOf(":button:") >= 0
                                     anchors.centerIn: parent
-                                    width: 14
-                                    height: 14
-                                    radius: 7
+                                    width: Style.dp(14)
+                                    height: Style.dp(14)
+                                    radius: Style.dp(7)
                                     color: "transparent"
                                     border.color: _root.colorText
-                                    border.width: 2
+                                    border.width: Style.dp(2)
                                     Rectangle {
                                         anchors.centerIn: parent
-                                        width: 6
-                                        height: 6
-                                        radius: 3
+                                        width: Style.dp(6)
+                                        height: Style.dp(6)
+                                        radius: Style.dp(3)
                                         color: _root.colorText
                                     }
                                 }
@@ -430,36 +432,36 @@ Item {
                                     anchors.fill: parent
                                     Rectangle {
                                         anchors.centerIn: parent
-                                        width: 2
-                                        height: 14
+                                        width: Style.dp(2)
+                                        height: Style.dp(14)
                                         color: _root.colorText
                                     }
                                     Rectangle {
                                         anchors.centerIn: parent
-                                        width: 8
-                                        height: 6
-                                        radius: 2
+                                        width: Style.dp(8)
+                                        height: Style.dp(6)
+                                        radius: Style.dp(2)
                                         color: _root.colorText
                                     }
                                 }
                                 Item {
                                     visible: key.indexOf(":hat:") >= 0
                                     anchors.fill: parent
-                                    Rectangle { width: 4; height: 4; radius: 1; color: _root.colorText; anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top }
-                                    Rectangle { width: 4; height: 4; radius: 1; color: _root.colorText; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom }
-                                    Rectangle { width: 4; height: 4; radius: 1; color: _root.colorText; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left }
-                                    Rectangle { width: 4; height: 4; radius: 1; color: _root.colorText; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right }
+                                    Rectangle { width: Style.dp(4); height: Style.dp(4); radius: Style.dp(1); color: _root.colorText; anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top }
+                                    Rectangle { width: Style.dp(4); height: Style.dp(4); radius: Style.dp(1); color: _root.colorText; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom }
+                                    Rectangle { width: Style.dp(4); height: Style.dp(4); radius: Style.dp(1); color: _root.colorText; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left }
+                                    Rectangle { width: Style.dp(4); height: Style.dp(4); radius: Style.dp(1); color: _root.colorText; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right }
                                 }
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 Layout.alignment: Qt.AlignVCenter
-                                spacing: 2
+                                spacing: Style.dp(2)
                                 Label {
                                     text: title
                                     color: _root.colorText
                                     font.bold: rowKind === "child" ? false : _root.parentBold
-                                    font.pixelSize: rowKind === "group" ? _root.groupFont : (rowKind === "parent" ? _root.parentFont : _root.childFont)
+                                    font.pixelSize: Style.dp(rowKind === "group" ? _root.groupFont : (rowKind === "parent" ? _root.parentFont : _root.childFont))
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                     HoverHandler { id: _nameHover }
@@ -468,17 +470,17 @@ Item {
                                         delay: 400
                                         text: systemName
                                         x: _nameHover.point.position.x - width / 2
-                                        y: _nameHover.point.position.y - height - 8
+                                        y: _nameHover.point.position.y - height - Style.dp(8)
                                     }
                                 }
                                 Label {
                                     visible: _root.showSummary && subtitle.length > 0 && rowKind !== "writer"
                                     text: subtitle
                                     color: rowKind === "child" ? _root.colorActionTarget : _root.colorMuted
-                                    font.pixelSize: rowKind === "child" ? _root.targetFont : _root.summaryFont
+                                    font.pixelSize: Style.dp(rowKind === "child" ? _root.targetFont : _root.summaryFont)
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
-                                    Layout.bottomMargin: visible ? 4 : 0
+                                    Layout.bottomMargin: visible ? Style.dp(4) : 0
                                 }
                             }
                             ComboBox {
@@ -487,7 +489,7 @@ Item {
                                 Layout.alignment: Qt.AlignVCenter
                                 model: ["absolute", "relative"]
                                 currentIndex: axisMode === "relative" ? 1 : 0
-                                Layout.preferredWidth: 110
+                                Layout.preferredWidth: Style.dp(110)
                                 onActivated: _layout.setAxisMode(writerId, currentText)
                             }
                             SpinBox {
@@ -499,7 +501,7 @@ Item {
                                 stepSize: 10
                                 value: Math.round(axisScale * 100)
                                 editable: true
-                                Layout.preferredWidth: 90
+                                Layout.preferredWidth: Style.dp(90)
                                 onValueModified: _layout.setAxisScale(writerId, value / 100.0)
                             }
                             CheckBox {
@@ -553,21 +555,21 @@ Item {
                                 z: 6
                                 anchors.left: parent.left
                                 anchors.right: parent.right
-                                height: 2
+                                height: Style.dp(2)
                                 color: "#3B82F6"
                             }
                         }
 
                         Item {
                             id: _payload
-                            width: 1
-                            height: 1
+                            width: Style.dp(1)
+                            height: Style.dp(1)
                             Drag.active: _grip.drag.active && rowKind === "parent" && !_root.editorLocked
                             Drag.dragType: Drag.Automatic
                             Drag.supportedActions: Qt.MoveAction
                             Drag.proposedAction: Qt.MoveAction
-                            Drag.hotSpot.x: 12
-                            Drag.hotSpot.y: 12
+                            Drag.hotSpot.x: Style.dp(12)
+                            Drag.hotSpot.y: Style.dp(12)
                             Drag.mimeData: { "application/x-gremlin-logical": key }
                         }
 
@@ -615,7 +617,7 @@ Item {
 
         Rectangle {
             visible: _root.actionOpen
-            Layout.preferredWidth: 6
+            Layout.preferredWidth: Style.dp(6)
             Layout.fillHeight: true
             color: _actGrip.containsMouse ? "#3B82F6" : "#3F3F46"
             MouseArea {
@@ -633,7 +635,7 @@ Item {
                     if (!pressed)
                         return
                     var x = mapToItem(_root, mouse.x, mouse.y).x
-                    _root.paneWidth = Math.max(420, Math.min(1600, originW - (x - originX)))
+                    _root.paneUnits = Math.round(Math.max(Style.dp(420), Math.min(Style.dp(1600), originW - (x - originX))) * 100 / Style.uiScale)
                 }
             }
         }
@@ -641,23 +643,23 @@ Item {
         Rectangle {
             visible: _root.actionOpen
             Layout.preferredWidth: _root.paneWidth
-            Layout.minimumWidth: visible ? 420 : 0
+            Layout.minimumWidth: visible ? Style.dp(420) : 0
             Layout.fillHeight: true
             color: "#18181B"
             border.color: "#3F3F46"
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
                 RowLayout {
                     Label {
                         text: _root.paneTitle.length ? _root.paneTitle : "Action Editor"
                         color: "#E4E4E7"
                         font.bold: true
-                        font.pixelSize: 16
+                        font.pixelSize: Style.dp(16)
                         Layout.fillWidth: true
                         elide: Text.ElideRight
                     }
-                    Button { text: "×"; implicitWidth: 28; onClicked: _root._closePane() }
+                    Button { text: "×"; implicitWidth: Style.dp(28); onClicked: _root._closePane() }
                 }
                 InputConfiguration {
                     Layout.fillWidth: true
@@ -687,34 +689,34 @@ Item {
 
         Rectangle {
             visible: _root.displayOpen
-            Layout.preferredWidth: 360
-            Layout.maximumWidth: 360
+            Layout.preferredWidth: Style.dp(360)
+            Layout.maximumWidth: Style.dp(360)
             Layout.fillHeight: true
             color: "#18181B"
             border.color: "#3F3F46"
-            border.width: 1
+            border.width: Style.dp(1)
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 8
+                anchors.margins: Style.dp(10)
+                spacing: Style.dp(8)
 
                 RowLayout {
                     Label {
                         text: "Logical Device — Display Editor"
                         color: "#E4E4E7"
                         font.bold: true
-                        font.pixelSize: 13
+                        font.pixelSize: Style.dp(13)
                         Layout.fillWidth: true
                     }
                     Button {
                         text: "×"
-                        implicitWidth: 28
+                        implicitWidth: Style.dp(28)
                         onClicked: _root.requestCloseDisplay()
                     }
                 }
                 RowLayout {
-                    spacing: 8
+                    spacing: Style.dp(8)
                     Button { text: "Open all"; onClicked: _root.setAllSections(true) }
                     Button { text: "Close all"; onClicked: _root.setAllSections(false) }
                     Item { Layout.fillWidth: true }
@@ -725,8 +727,8 @@ Item {
                     Layout.fillHeight: true
                     clip: true
                     ColumnLayout {
-                        width: 330
-                        spacing: 12
+                        width: Style.dp(330)
+                        spacing: Style.dp(12)
 
                         FoldSection {
                             title: "Shown"
@@ -770,7 +772,7 @@ Item {
                                 Label { text: "Space between rows"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: _root.rowSpacing; onUserSet: (v) => { _root.rowSpacing = v } }
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: _root.listPadShape
                                 size: _root.listPad
@@ -796,7 +798,7 @@ Item {
                                 Label { text: "Space inside the group"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: _root.groupInside; onUserSet: (v) => { _root.groupInside = v } }
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: _root.groupPadShape
                                 size: _root.groupPad
@@ -827,7 +829,7 @@ Item {
                                 Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 32; to: 80; source: _root.parentHeight; onUserSet: (v) => { _root.parentHeight = v } }
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: _root.parentPadShape
                                 size: _root.parentPad
@@ -862,7 +864,7 @@ Item {
                                 Label { text: "Indent past parent"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 160; source: _root.childIndent; onUserSet: (v) => { _root.childIndent = v } }
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: _root.childPadShape
                                 size: _root.childPad
@@ -921,36 +923,36 @@ Item {
                 }
 
                 RowLayout {
-                    spacing: 6
+                    spacing: Style.dp(6)
                     Button {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 44
+                        Layout.preferredHeight: Style.dp(44)
                         text: "Reset View\nto Default"
                         onClicked: _root.resetDisplay()
                         contentItem: Text {
                             text: parent.text
                             color: "#FFFFFF"
-                            font.pixelSize: 12
+                            font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
-                            implicitHeight: 44
+                            implicitHeight: Style.dp(44)
                             color: parent.down ? "#991B1B" : (parent.hovered ? "#EF4444" : "#DC2626")
-                            border.width: 1
+                            border.width: Style.dp(1)
                             border.color: parent.hovered ? "#FCA5A5" : "#B91C1C"
                         }
                     }
                     Button {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 44
+                        Layout.preferredHeight: Style.dp(44)
                         text: "Save View\nSettings"
                         highlighted: true
                         onClicked: _root.saveDisplay()
                         contentItem: Text {
                             text: parent.text
                             color: "#FFFFFF"
-                            font.pixelSize: 12
+                            font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
@@ -1009,8 +1011,8 @@ Item {
         required property string kind
         property int count: 1
         property bool rowHover: false
-        implicitWidth: 300
-        implicitHeight: visible ? 34 : 0
+        implicitWidth: Style.dp(300)
+        implicitHeight: visible ? Style.dp(34) : 0
         height: implicitHeight
 
         function parsed() {
@@ -1027,20 +1029,20 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: !row.enabled ? "transparent" : (row.rowHover ? Universal.listLowColor : "transparent")
+            color: !row.enabled ? "transparent" : (row.rowHover ? U.Universal.listLowColor : "transparent")
         }
 
         HoverHandler { onHoveredChanged: row.rowHover = hovered }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            spacing: 4
+            anchors.leftMargin: Style.dp(12)
+            anchors.rightMargin: Style.dp(12)
+            spacing: Style.dp(4)
 
             Label {
                 text: row.label
-                color: row.enabled ? Universal.baseHighColor : Universal.baseLowColor
+                color: row.enabled ? U.Universal.baseHighColor : U.Universal.baseLowColor
                 Layout.fillWidth: true
                 verticalAlignment: Text.AlignVCenter
                 MouseArea {
@@ -1051,21 +1053,21 @@ Item {
             }
             Label {
                 text: "‹"
-                color: row.enabled && row.parsed() > 1 ? Universal.baseHighColor : Universal.baseLowColor
+                color: row.enabled && row.parsed() > 1 ? U.Universal.baseHighColor : U.Universal.baseLowColor
                 MouseArea {
                     anchors.fill: parent
-                    anchors.margins: -4
+                    anchors.margins: -Style.dp(4)
                     enabled: row.enabled && row.parsed() > 1
                     onClicked: row.setCount(row.parsed() - 1)
                 }
             }
             TextField {
                 id: _field
-                implicitWidth: 44
+                implicitWidth: Style.dp(44)
                 padding: 0
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
-                color: row.enabled ? Universal.baseHighColor : Universal.baseLowColor
+                color: row.enabled ? U.Universal.baseHighColor : U.Universal.baseLowColor
                 enabled: row.enabled
                 selectByMouse: true
                 validator: IntValidator { bottom: 1; top: 180 }
@@ -1075,10 +1077,10 @@ Item {
             }
             Label {
                 text: "›"
-                color: row.enabled && row.parsed() < 180 ? Universal.baseHighColor : Universal.baseLowColor
+                color: row.enabled && row.parsed() < 180 ? U.Universal.baseHighColor : U.Universal.baseLowColor
                 MouseArea {
                     anchors.fill: parent
-                    anchors.margins: -4
+                    anchors.margins: -Style.dp(4)
                     enabled: row.enabled && row.parsed() < 180
                     onClicked: row.setCount(row.parsed() + 1)
                 }
@@ -1092,30 +1094,30 @@ Item {
         property bool closeWhenNamed: false
         property bool rowHover: false
         signal named(string value)
-        implicitWidth: 300
-        implicitHeight: visible ? 34 : 0
+        implicitWidth: Style.dp(300)
+        implicitHeight: visible ? Style.dp(34) : 0
         height: implicitHeight
 
         Rectangle {
             anchors.fill: parent
-            color: !nameRow.enabled ? "transparent" : (nameRow.rowHover ? Universal.listLowColor : "transparent")
+            color: !nameRow.enabled ? "transparent" : (nameRow.rowHover ? U.Universal.listLowColor : "transparent")
         }
         HoverHandler { onHoveredChanged: nameRow.rowHover = hovered }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            spacing: 8
+            anchors.leftMargin: Style.dp(12)
+            anchors.rightMargin: Style.dp(12)
+            spacing: Style.dp(8)
             Label {
                 text: nameRow.label
-                color: nameRow.enabled ? Universal.baseHighColor : Universal.baseLowColor
+                color: nameRow.enabled ? U.Universal.baseHighColor : U.Universal.baseLowColor
             }
             TextField {
                 Layout.fillWidth: true
-                padding: 2
+                padding: Style.dp(2)
                 placeholderText: "Name, then Enter"
-                color: nameRow.enabled ? Universal.baseHighColor : Universal.baseLowColor
+                color: nameRow.enabled ? U.Universal.baseHighColor : U.Universal.baseLowColor
                 enabled: nameRow.enabled
                 selectByMouse: true
                 background: Item {}
@@ -1134,7 +1136,7 @@ Item {
 
     Menu {
         id: _pageMenu
-        width: 300
+        width: Style.dp(300)
         popupType: Popup.Item
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
@@ -1215,10 +1217,10 @@ Item {
             indicator: Label {
                 text: "\u203A"
                 color: "#E4E4E7"
-                font.pixelSize: 16
+                font.pixelSize: Style.dp(16)
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
-                anchors.rightMargin: 12
+                anchors.rightMargin: Style.dp(12)
             }
             onTriggered: _moveMenu.popup(_moveItem, _moveItem.width, 0)
         }
@@ -1329,7 +1331,7 @@ Item {
     TextInputDialog {
         id: _nameDialog
         visible: false
-        width: 320
+        width: Style.dp(320)
         clearOnClick: false
         heading: "Your name"
         onAccepted: (value) => {
@@ -1340,7 +1342,7 @@ Item {
     TextInputDialog {
         id: _groupDialog
         visible: false
-        width: 320
+        width: Style.dp(320)
         clearOnClick: false
         heading: "Rename group"
         validator: function(value) { return value.trim().length > 0 }
@@ -1354,10 +1356,10 @@ Item {
         id: _hardware
         parent: Overlay.overlay
         modal: true
-        width: 520
-        height: 640
+        width: Style.dp(520)
+        height: Style.dp(640)
         anchors.centerIn: parent
-        padding: 12
+        padding: Style.dp(12)
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         background: Rectangle { color: "#18181B"; border.color: "#3F3F46" }
         property var devices: []
@@ -1374,7 +1376,7 @@ Item {
         }
         ColumnLayout {
             anchors.fill: parent
-            Label { id: _hardwareTitle; color: "#E4E4E7"; font.bold: true; font.pixelSize: 16 }
+            Label { id: _hardwareTitle; color: "#E4E4E7"; font.bold: true; font.pixelSize: Style.dp(16) }
             TextField {
                 id: _search
                 Layout.fillWidth: true
@@ -1390,19 +1392,19 @@ Item {
                 Column {
                     id: _hwCol
                     width: parent.width
-                    spacing: 8
+                    spacing: Style.dp(8)
                     Repeater {
                         model: _hardware.devices
                         delegate: Column {
                             width: _hwCol.width
                             required property var modelData
-                            spacing: 2
+                            spacing: Style.dp(2)
                             RowLayout {
                                 width: parent.width
                                 Label {
                                     text: _hardware.deviceOpen(modelData.name) ? "▾" : "▸"
                                     color: "#A1A1AA"
-                                    font.pixelSize: 14
+                                    font.pixelSize: Style.dp(14)
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: _hardware.toggleDevice(modelData.name)
@@ -1437,7 +1439,7 @@ Item {
                                     required property var modelData
                                     text: modelData.label
                                     checked: modelData.on
-                                    leftPadding: 28
+                                    leftPadding: Style.dp(28)
                                     onClicked: {
                                         _layout.setLinks(_hardwareKey, [modelData.key], checked)
                                         _loadHardware()
@@ -1506,26 +1508,26 @@ Item {
         signal toggled(bool value)
         default property alias body: _body.data
         Layout.fillWidth: true
-        spacing: 4
+        spacing: Style.dp(4)
 
         Rectangle {
             Layout.fillWidth: true
-            height: 26
+            height: Style.dp(26)
             color: "#27272A"
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 8
-                anchors.rightMargin: 8
-                spacing: 6
+                anchors.leftMargin: Style.dp(8)
+                anchors.rightMargin: Style.dp(8)
+                spacing: Style.dp(6)
                 Label {
                     text: fold.open ? "\u25BC" : "\u25B6"
                     color: "#E4E4E7"
-                    font.pixelSize: 10
+                    font.pixelSize: Style.dp(10)
                 }
                 Label {
                     text: fold.title
                     color: "#E4E4E7"
-                    font.pixelSize: 11
+                    font.pixelSize: Style.dp(11)
                     font.bold: true
                     Layout.fillWidth: true
                 }
@@ -1540,7 +1542,7 @@ Item {
             id: _body
             visible: fold.open
             Layout.fillWidth: true
-            spacing: 4
+            spacing: Style.dp(4)
         }
     }
 
@@ -1571,10 +1573,10 @@ Item {
         signal edited(string shape, int size, int padTop, int padRight, int padBottom, int padLeft)
         onShapeChanged: if (_shapePick) _shapePick.currentIndex = _shapePick.pick(shape)
         Layout.fillWidth: true
-        spacing: 4
+        spacing: Style.dp(4)
 
         RowLayout {
-            Label { text: "Shape"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+            Label { text: "Shape"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
             ComboBox {
                 id: _shapePick
                 Layout.fillWidth: true
@@ -1625,8 +1627,8 @@ Item {
             text: label
             color: "#E4E4E7"
             wrapMode: Text.WordWrap
-            Layout.preferredWidth: 150
-            Layout.maximumWidth: 160
+            Layout.preferredWidth: Style.dp(150)
+            Layout.maximumWidth: Style.dp(160)
         }
         Button {
             Layout.fillWidth: true
@@ -1641,37 +1643,41 @@ Item {
         return shape === "box" ? size : side
     }
 
+    function padPx(shape, size, side) {
+        return Style.dp(padEdge(shape, size, side))
+    }
+
     function rowLeft(kind) {
         if (kind === "group")
-            return padEdge(groupPadShape, groupPad, groupPadLeft)
-        var parentLeft = padEdge(parentPadShape, parentPad, parentPadLeft)
+            return padPx(groupPadShape, groupPad, groupPadLeft)
+        var parentLeft = padPx(parentPadShape, parentPad, parentPadLeft)
         if (kind === "parent")
             return parentLeft
-        return parentLeft + childIndent + padEdge(childPadShape, childPad, childPadLeft)
+        return parentLeft + Style.dp(childIndent) + padPx(childPadShape, childPad, childPadLeft)
     }
 
     function rowRight(kind) {
         if (kind === "group")
-            return padEdge(groupPadShape, groupPad, groupPadRight)
+            return padPx(groupPadShape, groupPad, groupPadRight)
         if (kind === "parent")
-            return padEdge(parentPadShape, parentPad, parentPadRight)
-        return padEdge(childPadShape, childPad, childPadRight)
+            return padPx(parentPadShape, parentPad, parentPadRight)
+        return padPx(childPadShape, childPad, childPadRight)
     }
 
     function rowTop(kind) {
         if (kind === "group")
-            return padEdge(groupPadShape, groupPad, groupPadTop)
+            return padPx(groupPadShape, groupPad, groupPadTop)
         if (kind === "parent")
-            return padEdge(parentPadShape, parentPad, parentPadTop)
-        return padEdge(childPadShape, childPad, childPadTop)
+            return padPx(parentPadShape, parentPad, parentPadTop)
+        return padPx(childPadShape, childPad, childPadTop)
     }
 
     function rowBottom(kind) {
         if (kind === "group")
-            return padEdge(groupPadShape, groupPad, groupPadBottom)
+            return padPx(groupPadShape, groupPad, groupPadBottom)
         if (kind === "parent")
-            return padEdge(parentPadShape, parentPad, parentPadBottom)
-        return padEdge(childPadShape, childPad, childPadBottom)
+            return padPx(parentPadShape, parentPad, parentPadBottom)
+        return padPx(childPadShape, childPad, childPadBottom)
     }
 
     function numVal(v, d) {
@@ -1954,16 +1960,16 @@ Item {
         dim: true
         Overlay.modal: Rectangle { color: "#66000000" }
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        padding: 18
+        padding: Style.dp(18)
         background: Rectangle {
             color: "#27272A"
             border.color: "#52525B"
-            radius: 6
+            radius: Style.dp(6)
         }
         contentItem: Label {
             text: toastText
             color: "#F4F4F5"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             horizontalAlignment: Text.AlignHCenter
         }
         Timer {

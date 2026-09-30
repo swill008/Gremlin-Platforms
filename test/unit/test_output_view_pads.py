@@ -92,7 +92,7 @@ def test_button_grid_uses_columns_and_width() -> None:
     text = _QML.read_text(encoding="utf-8")
     assert "GridView" not in text
     assert "columns: Math.max(1, _root.buttonColumns)" in text
-    assert "Layout.preferredWidth: Math.max(40, _root.buttonWidth)" in text
+    assert "Layout.preferredWidth: Style.dp(Math.max(40, _root.buttonWidth))" in text
 
 
 def test_vjoy_view_save_uses_that_devices_module_file() -> None:

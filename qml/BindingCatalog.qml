@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import QtQuick.Window
@@ -32,7 +32,9 @@ Item {
     property int paneSeq: -1
     property string paneName: ""
     property string paneSummary: ""
-    property int paneWidth: 560
+    // Action pane width at 100%. It is saved in these units.
+    property int paneUnits: 560
+    readonly property int paneWidth: Style.dp(paneUnits)
     property bool closeAfterOk: false
     property bool paneChoiceReady: false
     property var panePending: null
@@ -191,7 +193,7 @@ Item {
         closeAfterOk = _panePlacement.closePaneAfterOk()
         var saved = _panePlacement.actionPaneWidth()
         if (saved >= 420)
-            paneWidth = saved
+            paneUnits = saved
         paneChoiceReady = true
         if (uiState)
             _catalog.setMode(uiState.currentMode)
@@ -506,6 +508,10 @@ Item {
         return shape === "box" ? size : side
     }
 
+    function padPx(shape, size, side) {
+        return Style.dp(padEdge(shape, size, side))
+    }
+
     function edgeOr(v, fallback) {
         return v === undefined || v === null || v === "" ? fallback : numVal(v, fallback)
     }
@@ -763,7 +769,7 @@ Item {
             var row = revealOnceRow
             var item = row >= 0 ? _list.itemAtIndex(row) : null
             var editorOpen = item && _root.editingHid >= 0
-            var editorLaidOut = !item || !item.hostsEditor || item.height >= parentHeight + 80
+            var editorLaidOut = !item || !item.hostsEditor || item.height >= Style.dp(parentHeight + 80)
             if (editorOpen && !editorLaidOut && revealTries < 8) {
                 revealTries += 1
                 _revealTimer.restart()
@@ -847,14 +853,14 @@ Item {
         if (align === "center")
             return Math.max(0, Math.round((total - w) / 2))
         if (align === "right")
-            return Math.max(0, total - w - right)
-        return left
+            return Math.max(0, total - w - Style.dp(right))
+        return Style.dp(left)
     }
 
     function rowW(total, align, left, right, pct) {
         if (align === "center")
-            return Math.max(120, Math.round(total * pct / 100))
-        return Math.max(120, total - left - right)
+            return Math.max(Style.dp(120), Math.round(total * pct / 100))
+        return Math.max(Style.dp(120), total - Style.dp(left) - Style.dp(right))
     }
 
     function leafX(total) {
@@ -890,11 +896,11 @@ Item {
     }
 
     function clampPane(width) {
-        var reserved = 400
+        var reserved = Style.dp(400)
         if (showPanel)
-            reserved += 360
-        var maxW = Math.max(420, _root.width - reserved)
-        return Math.max(420, Math.min(maxW, Math.round(width)))
+            reserved += Style.dp(360)
+        var maxW = Math.max(Style.dp(420), _root.width - reserved)
+        return Math.max(Style.dp(420), Math.min(maxW, Math.round(width)))
     }
 
     function openAdvancedPane(hid) {
@@ -981,26 +987,26 @@ Item {
         signal toggled(bool value)
         default property alias body: _body.data
         Layout.fillWidth: true
-        spacing: 4
+        spacing: Style.dp(4)
 
         Rectangle {
             Layout.fillWidth: true
-            height: 26
+            height: Style.dp(26)
             color: "#27272A"
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 8
-                anchors.rightMargin: 8
-                spacing: 6
+                anchors.leftMargin: Style.dp(8)
+                anchors.rightMargin: Style.dp(8)
+                spacing: Style.dp(6)
                 Label {
                     text: fold.open ? "\u25BC" : "\u25B6"
                     color: "#E4E4E7"
-                    font.pixelSize: 10
+                    font.pixelSize: Style.dp(10)
                 }
                 Label {
                     text: fold.title
                     color: "#E4E4E7"
-                    font.pixelSize: 11
+                    font.pixelSize: Style.dp(11)
                     font.bold: true
                     Layout.fillWidth: true
                 }
@@ -1015,7 +1021,7 @@ Item {
             id: _body
             visible: fold.open
             Layout.fillWidth: true
-            spacing: 4
+            spacing: Style.dp(4)
         }
     }
 
@@ -1044,10 +1050,10 @@ Item {
         signal edited(string align, int fromLeft, int fromRight, int widthPct)
         onAlignChanged: if (_alignPick) _alignPick.currentIndex = _alignPick.pick(align)
         Layout.fillWidth: true
-        spacing: 4
+        spacing: Style.dp(4)
 
         RowLayout {
-            Label { text: "Alignment"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+            Label { text: "Alignment"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
             ComboBox {
                 id: _alignPick
                 Layout.fillWidth: true
@@ -1102,10 +1108,10 @@ Item {
         signal edited(string shape, int size, int padTop, int padRight, int padBottom, int padLeft)
         onShapeChanged: if (_shapePick) _shapePick.currentIndex = _shapePick.pick(shape)
         Layout.fillWidth: true
-        spacing: 4
+        spacing: Style.dp(4)
 
         RowLayout {
-            Label { text: "Shape"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+            Label { text: "Shape"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
             ComboBox {
                 id: _shapePick
                 Layout.fillWidth: true
@@ -1156,8 +1162,8 @@ Item {
             text: label
             color: "#E4E4E7"
             wrapMode: Text.WordWrap
-            Layout.preferredWidth: 150
-            Layout.maximumWidth: 160
+            Layout.preferredWidth: Style.dp(150)
+            Layout.maximumWidth: Style.dp(160)
         }
         Button {
             Layout.fillWidth: true
@@ -1191,17 +1197,17 @@ Item {
 
             ColumnLayout {
             anchors.fill: parent
-            spacing: 6
+            spacing: Style.dp(6)
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: padEdge(listPadShape, listPad, listPadLeft)
-                Layout.rightMargin: padEdge(listPadShape, listPad, listPadRight)
-                Layout.topMargin: 8
+                Layout.leftMargin: padPx(listPadShape, listPad, listPadLeft)
+                Layout.rightMargin: padPx(listPadShape, listPad, listPadRight)
+                Layout.topMargin: Style.dp(8)
                 Label { text: "Type"; color: colorMuted }
                 ComboBox {
                     id: _typeBox
-                    Layout.preferredWidth: 180
+                    Layout.preferredWidth: Style.dp(180)
                     model: ["All types", "Map to vJoy", "Map to keyboard", "Map to mouse", "Map to Xbox", "Macro", "Change mode", "Other", "Unmapped"]
                     onActivated: {
                         var tags = ["all", "vjoy", "keyboard", "mouse", "xbox", "macro", "mode", "other", "unmapped"]
@@ -1231,10 +1237,10 @@ Item {
                 id: _list
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.leftMargin: padEdge(listPadShape, listPad, listPadLeft)
-                Layout.rightMargin: padEdge(listPadShape, listPad, listPadRight)
-                Layout.topMargin: padEdge(listPadShape, listPad, listPadTop)
-                Layout.bottomMargin: padEdge(listPadShape, listPad, listPadBottom)
+                Layout.leftMargin: padPx(listPadShape, listPad, listPadLeft)
+                Layout.rightMargin: padPx(listPadShape, listPad, listPadRight)
+                Layout.topMargin: padPx(listPadShape, listPad, listPadTop)
+                Layout.bottomMargin: padPx(listPadShape, listPad, listPadBottom)
                 scrollbarAlwaysVisible: true
                 spacing: 0
                 highlightFollowsCurrentItem: false
@@ -1253,8 +1259,8 @@ Item {
                 property bool catalogIsOutput: _root.isOutput
                 property var live: _liveState
                 property var catalogModel: _catalog
-                property int parentH: _root.parentHeight
-                property int childH: _root.childHeight
+                property int parentH: Style.dp(_root.parentHeight)
+                property int childH: Style.dp(_root.childHeight)
                 property bool kidsOn: _root.showChildren
                 property int quickHid: _root.quickHid
                 property int quickSeq: _root.quickSeq
@@ -1264,20 +1270,20 @@ Item {
                 property bool barsOn: _root.showLiveBars
                 property bool ledsOn: _root.showLeds
                 property bool summaryOn: _root.showSummary
-                property int pFont: _root.parentFont
-                property int cFont: _root.childFont
-                property int sFont: _root.summaryFont
+                property int pFont: Style.dp(_root.parentFont)
+                property int cFont: Style.dp(_root.childFont)
+                property int sFont: Style.dp(_root.summaryFont)
                 property bool pBold: _root.parentBold
-                property int rowRad: _root.rowRadius
-                property int nameW: _root.nameColW
-                property int childNameW: _root.childNameColW
-                property int innerPad: _root.rowInnerPad
-                property int edIndent: _root.editorIndent
-                property int edPad: _root.editorPad
-                property int edGap: _root.editorGap
-                property int edRad: _root.editorRadius
-                property int edBorderW: _root.editorBorderW
-                property int edAccentW: _root.editorAccentW
+                property int rowRad: Style.dp(_root.rowRadius)
+                property int nameW: Style.dp(_root.nameColW)
+                property int childNameW: Style.dp(_root.childNameColW)
+                property int innerPad: Style.dp(_root.rowInnerPad)
+                property int edIndent: Style.dp(_root.editorIndent)
+                property int edPad: Style.dp(_root.editorPad)
+                property int edGap: Style.dp(_root.editorGap)
+                property int edRad: Style.dp(_root.editorRadius)
+                property int edBorderW: Style.dp(_root.editorBorderW)
+                property int edAccentW: Style.dp(_root.editorAccentW)
                 property bool edAccentOn: _root.showEditorAccent
                 property color cParent: _root.colorParent
                 property color cChild: _root.colorChild
@@ -1313,19 +1319,19 @@ Item {
                     readonly property bool groupStart: rowKind === "group" || rowKind === "unmapped"
                     readonly property int kidCount: groupStart ? lv.catalogModel.leafRun(index) : 0
                     readonly property int shownKids: lv.kidsOn ? kidCount : 0
-                    readonly property int gPadT: groupStart ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadTop) : 0
-                    readonly property int gPadB: groupStart ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadBottom) : 0
-                    readonly property int gPadL: (groupStart || isLeaf) ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadLeft) : 0
-                    readonly property int gPadR: (groupStart || isLeaf) ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadRight) : 0
+                    readonly property int gPadT: groupStart ? _root.padPx(_root.groupPadShape, _root.groupPad, _root.groupPadTop) : 0
+                    readonly property int gPadB: groupStart ? _root.padPx(_root.groupPadShape, _root.groupPad, _root.groupPadBottom) : 0
+                    readonly property int gPadL: (groupStart || isLeaf) ? _root.padPx(_root.groupPadShape, _root.groupPad, _root.groupPadLeft) : 0
+                    readonly property int gPadR: (groupStart || isLeaf) ? _root.padPx(_root.groupPadShape, _root.groupPad, _root.groupPadRight) : 0
                     readonly property int topGap: {
                         if (hideLeaf)
                             return 0
                         if (isLeaf)
-                            return _root.groupInside
+                            return Style.dp(_root.groupInside)
                         if (rowKind === "unmapped-header")
-                            return index > 0 ? _root.unmappedGap : 0
+                            return index > 0 ? Style.dp(_root.unmappedGap) : 0
                         if (index > 0)
-                            return _root.groupBetween + gPadT
+                            return Style.dp(_root.groupBetween) + gPadT
                         return gPadT
                     }
                     readonly property bool endOfCard: isLeaf && lv.catalogModel.lastLeaf(index)
@@ -1342,9 +1348,9 @@ Item {
                     readonly property int boxW: {
                         if (!(groupStart || isLeaf))
                             return width
-                        return Math.max(40, _root.groupW(width) - gPadL - gPadR)
+                        return Math.max(Style.dp(40), _root.groupW(width) - gPadL - gPadR)
                     }
-                    width: lv.width - 12
+                    width: lv.width - Style.dp(12)
                     readonly property bool isGroup: rowKind === "group" || rowKind === "unmapped"
                     readonly property bool expanded: isGroup && deviceIndex === lv.editingHid && deviceIndex >= 0
                     readonly property int bodyH: isLeaf ? lv.childH : lv.parentH
@@ -1363,10 +1369,10 @@ Item {
                         visible: groupStart && _root.colorGroup !== "#00000000" && _root.colorGroup !== "transparent"
                         z: -1
                         x: _root.groupX(_row.width)
-                        y: index > 0 ? _root.groupBetween : 0
+                        y: index > 0 ? Style.dp(_root.groupBetween) : 0
                         width: Math.max(0, _root.groupW(_row.width))
-                        height: gPadT + (groupStart ? bodyH : lv.parentH) + (shownKids * (_root.groupInside + lv.childH)) + gPadB
-                        radius: _root.groupRadius
+                        height: gPadT + (groupStart ? bodyH : lv.parentH) + (shownKids * (Style.dp(_root.groupInside) + lv.childH)) + gPadB
+                        radius: Style.dp(_root.groupRadius)
                         color: _root.colorGroup
                     }
 
@@ -1376,8 +1382,8 @@ Item {
                         x: boxX + (isLeaf ? _root.leafX(boxW) : _root.parentX(boxW))
                         width: isLeaf ? _root.leafW(boxW) : _root.parentW(boxW)
                         height: isLeaf ? lv.childH : bodyH
-                        radius: isLeaf ? _root.childRadius : lv.rowRad
-                        border.width: selected ? 2 : 1
+                        radius: isLeaf ? Style.dp(_root.childRadius) : lv.rowRad
+                        border.width: selected ? Style.dp(2) : Style.dp(1)
                         border.color: selected ? lv.cSelBorder : lv.cBorder
                         color: {
                             if (ledOn)
@@ -1393,8 +1399,8 @@ Item {
                             visible: lv.barsOn && axisRow && rowKind === "group"
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            y: lv.parentH - height - 1
-                            height: 5
+                            y: lv.parentH - height - Style.dp(1)
+                            height: Style.dp(5)
                             color: lv.cBorder
                             Rectangle {
                                 width: {
@@ -1408,7 +1414,7 @@ Item {
 
                         MouseArea {
                             anchors.fill: parent
-                            anchors.rightMargin: 64
+                            anchors.rightMargin: Style.dp(64)
                             enabled: deviceIndex >= 0
                             onClicked: {
                                 lv.currentIndex = index
@@ -1428,24 +1434,24 @@ Item {
                             anchors.top: parent.top
                             height: isLeaf ? parent.height : lv.parentH
                             anchors.leftMargin: isLeaf
-                                ? _root.padEdge(_root.childPadShape, _root.childPad, _root.childPadLeft)
-                                : _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadLeft)
+                                ? _root.padPx(_root.childPadShape, _root.childPad, _root.childPadLeft)
+                                : _root.padPx(_root.parentPadShape, _root.parentPad, _root.parentPadLeft)
                             anchors.rightMargin: isLeaf
-                                ? _root.padEdge(_root.childPadShape, _root.childPad, _root.childPadRight)
-                                : _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadRight)
+                                ? _root.padPx(_root.childPadShape, _root.childPad, _root.childPadRight)
+                                : _root.padPx(_root.parentPadShape, _root.parentPad, _root.parentPadRight)
                             anchors.topMargin: isLeaf
-                                ? _root.padEdge(_root.childPadShape, _root.childPad, _root.childPadTop)
-                                : _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadTop)
+                                ? _root.padPx(_root.childPadShape, _root.childPad, _root.childPadTop)
+                                : _root.padPx(_root.parentPadShape, _root.parentPad, _root.parentPadTop)
                             anchors.bottomMargin: isLeaf
-                                ? _root.padEdge(_root.childPadShape, _root.childPad, _root.childPadBottom)
-                                : _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadBottom)
-                            spacing: 8
+                                ? _root.padPx(_root.childPadShape, _root.childPad, _root.childPadBottom)
+                                : _root.padPx(_root.parentPadShape, _root.parentPad, _root.parentPadBottom)
+                            spacing: Style.dp(8)
 
                             Rectangle {
                                 visible: lv.ledsOn && (kind === "button" || kind === "hat")
-                                width: 10
-                                height: 10
-                                radius: 5
+                                width: Style.dp(10)
+                                height: Style.dp(10)
+                                radius: Style.dp(5)
                                 color: ledOn ? lv.cLive : lv.cBorder
                             }
 
@@ -1469,16 +1475,16 @@ Item {
                             Button {
                                 visible: isLeaf && !lv.catalogLocked
                                 text: "Delete"
-                                implicitWidth: 70
-                                implicitHeight: 28
+                                implicitWidth: Style.dp(70)
+                                implicitHeight: Style.dp(28)
                                 z: 2
                                 onClicked: lv.catalogModel.removeSequence(deviceIndex, sequenceIndex)
                             }
                             Button {
                                 visible: (rowKind === "group" || rowKind === "unmapped") && !lv.catalogLocked
                                 text: "Add Action"
-                                implicitWidth: 100
-                                implicitHeight: 28
+                                implicitWidth: Style.dp(100)
+                                implicitHeight: Style.dp(28)
                                 z: 2
                                 onClicked: lv.openAdvanced(deviceIndex)
                             }
@@ -1511,15 +1517,15 @@ Item {
 
         Rectangle {
             visible: _root.paneHid >= 0
-            Layout.preferredWidth: 6
+            Layout.preferredWidth: Style.dp(6)
             Layout.fillHeight: true
             color: _paneGrip.pressed || _paneGrip.containsMouse ? "#3B82F6" : "#3F3F46"
 
             MouseArea {
                 id: _paneGrip
                 anchors.fill: parent
-                anchors.leftMargin: -3
-                anchors.rightMargin: -3
+                anchors.leftMargin: -Style.dp(3)
+                anchors.rightMargin: -Style.dp(3)
                 hoverEnabled: true
                 cursorShape: Qt.SplitHCursor
                 preventStealing: true
@@ -1533,39 +1539,39 @@ Item {
                     if (!pressed)
                         return
                     var x = mapToItem(_root, mouse.x, mouse.y).x
-                    _root.paneWidth = _root.clampPane(originW - (x - originX))
+                    _root.paneUnits = Math.round(_root.clampPane(originW - (x - originX)) * 100 / Style.uiScale)
                 }
-                onReleased: _panePlacement.setActionPaneWidth(_root.paneWidth)
+                onReleased: _panePlacement.setActionPaneWidth(_root.paneUnits)
             }
         }
 
         Rectangle {
             visible: _root.paneHid >= 0
             Layout.preferredWidth: _root.paneWidth
-            Layout.minimumWidth: 420
+            Layout.minimumWidth: Style.dp(420)
             Layout.maximumWidth: _root.clampPane(_root.paneWidth)
             Layout.fillHeight: true
             color: "#18181B"
             border.color: "#3F3F46"
-            border.width: 1
+            border.width: Style.dp(1)
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 6
+                anchors.margins: Style.dp(10)
+                spacing: Style.dp(6)
 
                 RowLayout {
                     Label {
                         text: _root.paneName.length ? _root.paneName : "Action Editor"
                         color: "#E4E4E7"
                         font.bold: true
-                        font.pixelSize: 16
+                        font.pixelSize: Style.dp(16)
                         Layout.fillWidth: true
                         elide: Text.ElideRight
                     }
                     Button {
                         text: "×"
-                        implicitWidth: 28
+                        implicitWidth: Style.dp(28)
                         onClicked: _root.requestClosePane()
                     }
                 }
@@ -1573,7 +1579,7 @@ Item {
                     visible: _root.paneSummary.length > 0
                     text: _root.paneSummary
                     color: "#9AA4B2"
-                    font.pixelSize: 12
+                    font.pixelSize: Style.dp(12)
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
@@ -1598,7 +1604,7 @@ Item {
                     Item { Layout.fillWidth: true }
                     Button {
                         text: "OK"
-                        implicitWidth: 72
+                        implicitWidth: Style.dp(72)
                         highlighted: true
                         onClicked: _root.acceptPane()
                     }
@@ -1608,34 +1614,34 @@ Item {
 
         Rectangle {
             visible: _root.showPanel
-            Layout.preferredWidth: 360
-            Layout.maximumWidth: 360
+            Layout.preferredWidth: Style.dp(360)
+            Layout.maximumWidth: Style.dp(360)
             Layout.fillHeight: true
             color: "#18181B"
             border.color: "#3F3F46"
-            border.width: 1
+            border.width: Style.dp(1)
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 8
+                anchors.margins: Style.dp(10)
+                spacing: Style.dp(8)
 
                 RowLayout {
                     Label {
                         text: "Input Configuration — Display Editor"
                         color: "#E4E4E7"
                         font.bold: true
-                        font.pixelSize: 13
+                        font.pixelSize: Style.dp(13)
                         Layout.fillWidth: true
                     }
                     Button {
                         text: "×"
-                        implicitWidth: 28
+                        implicitWidth: Style.dp(28)
                         onClicked: _root.requestClose()
                     }
                 }
                 RowLayout {
-                    spacing: 8
+                    spacing: Style.dp(8)
                     Button { text: "Open all"; onClicked: setAllSections(true) }
                     Button { text: "Close all"; onClicked: setAllSections(false) }
                     Item { Layout.fillWidth: true }
@@ -1646,8 +1652,8 @@ Item {
                     Layout.fillHeight: true
                     clip: true
                     ColumnLayout {
-                        width: 330
-                        spacing: 12
+                        width: Style.dp(330)
+                        spacing: Style.dp(12)
 
                         FoldSection {
                             title: "Screen"
@@ -1655,7 +1661,7 @@ Item {
                             onToggled: (v) => { openScreen = v }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Background"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+                                Label { text: "Background"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(110) }
                                 Button {
                                     Layout.fillWidth: true
                                     text: colorScreen === "#00000000" ? "None" : "Choose…"
@@ -1667,8 +1673,8 @@ Item {
                                     background: Rectangle {
                                         color: colorScreen === "#00000000" ? "#27272A" : colorScreen
                                         border.color: "#3F3F46"
-                                        border.width: 1
-                                        radius: 3
+                                        border.width: Style.dp(1)
+                                        radius: Style.dp(3)
                                     }
                                     contentItem: Label {
                                         text: parent.text
@@ -1685,7 +1691,7 @@ Item {
                             }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Image"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+                                Label { text: "Image"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(110) }
                                 Button {
                                     Layout.fillWidth: true
                                     text: screenImage.length ? "Change…" : "Choose…"
@@ -1701,7 +1707,7 @@ Item {
                                 visible: screenImage.length > 0
                                 text: "The image covers the color."
                                 color: "#A1A1AA"
-                                font.pixelSize: 11
+                                font.pixelSize: Style.dp(11)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -1728,7 +1734,7 @@ Item {
                                 Label { text: "Space between groups"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: groupBetween; onUserSet: (v) => { groupBetween = v; }}
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: listPadShape
                                 size: listPad
@@ -1763,7 +1769,7 @@ Item {
                                 Label { text: "Space inside the group"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: groupInside; onUserSet: (v) => { groupInside = v; }}
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: groupPadShape
                                 size: groupPad
@@ -1806,7 +1812,7 @@ Item {
                                 Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 36; to: 80; source: parentHeight; onUserSet: (v) => { parentHeight = v; }}
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: parentPadShape
                                 size: parentPad
@@ -1848,7 +1854,7 @@ Item {
                             Label {
                                 text: "The child row uses this line too."
                                 color: "#A1A1AA"
-                                font.pixelSize: 11
+                                font.pixelSize: Style.dp(11)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
@@ -1861,7 +1867,7 @@ Item {
                                 Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 TrackSpin { from: 24; to: 60; source: childHeight; onUserSet: (v) => { childHeight = v; }}
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: childPadShape
                                 size: childPad
@@ -1939,7 +1945,7 @@ Item {
                                     editorWidthPct = widthPct
                                 }
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: editorPadShape
                                 size: editorPad
@@ -1982,30 +1988,30 @@ Item {
                 }
 
                 RowLayout {
-                    spacing: 6
+                    spacing: Style.dp(6)
                     Button {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 44
+                        Layout.preferredHeight: Style.dp(44)
                         text: "Reset View\nto Default"
                         onClicked: resetCatalog()
                         contentItem: Text {
                             text: parent.text
                             color: "#FFFFFF"
-                            font.pixelSize: 12
+                            font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
-                            implicitHeight: 44
+                            implicitHeight: Style.dp(44)
                             color: parent.down ? "#991B1B" : (parent.hovered ? "#EF4444" : "#DC2626")
-                            border.width: 1
+                            border.width: Style.dp(1)
                             border.color: parent.hovered ? "#FCA5A5" : "#B91C1C"
                         }
                     }
                     Button {
                         id: _copyButton
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 44
+                        Layout.preferredHeight: Style.dp(44)
                         text: "Copy View\nfrom…"
                         onClicked: {
                             refreshCopySources()
@@ -2014,21 +2020,21 @@ Item {
                         contentItem: Text {
                             text: parent.text
                             color: "#F4F4F5"
-                            font.pixelSize: 12
+                            font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                     }
                     Button {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 44
+                        Layout.preferredHeight: Style.dp(44)
                         text: "Save View\nSettings"
                         highlighted: true
                         onClicked: saveCatalog()
                         contentItem: Text {
                             text: parent.text
                             color: "#FFFFFF"
-                            font.pixelSize: 12
+                            font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
@@ -2041,19 +2047,19 @@ Item {
     Menu {
         id: _copyMenu
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        width: 360
+        width: Style.dp(360)
 
         MenuItem {
             text: "Replace this panel with the display settings from"
             enabled: false
-            width: 360
+            width: Style.dp(360)
         }
         MenuItem {
             text: "No other input module"
             enabled: false
             visible: _copySources.count === 0
             height: visible ? implicitHeight : 0
-            width: 360
+            width: Style.dp(360)
         }
         Instantiator {
             model: _copySources
@@ -2062,7 +2068,7 @@ Item {
                 required property string name
                 required property string guid
                 text: label
-                width: 360
+                width: Style.dp(360)
                 onTriggered: _root.copyCatalogFrom(name, guid)
             }
             onObjectAdded: (index, object) => _copyMenu.insertItem(_copyMenu.count, object)
@@ -2108,16 +2114,16 @@ Item {
         dim: true
         Overlay.modal: Rectangle { color: "#66000000" }
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        padding: 18
+        padding: Style.dp(18)
         background: Rectangle {
             color: "#27272A"
             border.color: "#52525B"
-            radius: 6
+            radius: Style.dp(6)
         }
         contentItem: Label {
             text: toastText
             color: "#F4F4F5"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             horizontalAlignment: Text.AlignHCenter
         }
         Timer {
