@@ -21,7 +21,6 @@ ApplicationWindow {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Style.dp(20)
-        anchors.bottomMargin: Style.dp(58)
 
         Label {
             Layout.fillWidth: true
@@ -52,12 +51,5 @@ ApplicationWindow {
 
             onClicked: () => { Qt.quit() }
         }
-    }
-
-
-    DebugFileLine {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
     }
 }

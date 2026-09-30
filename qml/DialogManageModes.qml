@@ -44,7 +44,6 @@ ApplicationWindow {
 
         anchors.fill: parent
         anchors.topMargin: Style.dp(10)
-        anchors.bottomMargin: Style.dp(58)
 
         Label {
             Layout.fillWidth: true
@@ -185,11 +184,5 @@ ApplicationWindow {
                 onClicked: () => { modeHierarchy.deleteMode(name) }
             }
         }
-    }
-
-    DebugFileLine {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
     }
 }

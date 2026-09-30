@@ -491,10 +491,6 @@ class Backend(QtCore.QObject):
         path = self.profile.fpath
         return "" if path is None else str(path)
 
-    @QtCore.Slot(result=str)
-    def configurationPath(self) -> str:
-        return str(config._config_file_path)
-
     @QtCore.Slot(str)
     def loadProfile(self, fpath: str) -> None:
         local_path = to_local_path(fpath)

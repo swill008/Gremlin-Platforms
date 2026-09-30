@@ -105,7 +105,6 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.bottomMargin: Style.dp(58)
         anchors.leftMargin: Style.dp(10)
 
         RowLayout {
@@ -419,11 +418,5 @@ ApplicationWindow {
             _calibrationDialog.finishLeave()
         }
         onCancelled: _calibrationDialog.pendingSlug = ""
-    }
-
-    DebugFileLine {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
     }
 }

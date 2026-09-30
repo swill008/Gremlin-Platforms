@@ -717,10 +717,4 @@ ApplicationWindow {
             visible: status.length > 0
         }
     }
-
-    DebugFileLine {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-    }
 }

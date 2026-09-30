@@ -113,7 +113,6 @@ ApplicationWindow {
         id: _root
 
         anchors.fill: parent
-        anchors.bottomMargin: Style.dp(58)
 
         ScrollView {
             id: _deviceScroll
@@ -261,11 +260,5 @@ ApplicationWindow {
                 }
             }
         }
-    }
-
-    DebugFileLine {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
     }
 }

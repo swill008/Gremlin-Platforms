@@ -1204,7 +1204,6 @@ ApplicationWindow {
         id: _columnLayout
 
         anchors.fill: parent
-        anchors.bottomMargin: Style.dp(58)
 
         property InputConfiguration inputConfigurationWidget
         property bool onStatus: !uiState || uiState.currentRoom === "status"
@@ -1687,12 +1686,5 @@ ApplicationWindow {
                 SplitView.minimumWidth: Style.dp(900)
             }
         }
-    }
-
-
-    DebugFileLine {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
     }
 }

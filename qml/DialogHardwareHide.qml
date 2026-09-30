@@ -91,7 +91,6 @@ ApplicationWindow {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Style.dp(16)
-        anchors.bottomMargin: Style.dp(58)
         spacing: Style.dp(10)
 
         Rectangle {
@@ -506,11 +505,5 @@ ApplicationWindow {
                 }
             }
         }
-    }
-
-    DebugFileLine {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
     }
 }

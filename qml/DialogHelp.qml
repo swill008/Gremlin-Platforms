@@ -50,7 +50,6 @@ ApplicationWindow {
     RowLayout {
         anchors.fill: parent
         anchors.margins: Style.dp(12)
-        anchors.bottomMargin: Style.dp(58)
         spacing: Style.dp(12)
 
         Rectangle {
@@ -138,11 +137,5 @@ ApplicationWindow {
                 }
             }
         }
-    }
-
-    DebugFileLine {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
     }
 }

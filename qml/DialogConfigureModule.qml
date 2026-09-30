@@ -26,7 +26,6 @@ ApplicationWindow {
     property string moduleFileMessage: ""
     property bool moduleFileError: false
     property string moduleFileNotice: ""
-    property string shownModulePath: ""
     property bool claimDirty: false
     property bool allowClose: false
     property string saveIntent: "close"
@@ -66,7 +65,6 @@ ApplicationWindow {
     function reloadModuleControls() {
         if (_hw.setDeviceGuid)
             _hw.setDeviceGuid(deviceGuid)
-        shownModulePath = _hw.defaultPath(deviceName)
         _driver.loadDevice(deviceGuid, deviceName)
         claimDirty = false
         var url = _hw.profilePhotoUrl(deviceName)
@@ -98,7 +96,6 @@ ApplicationWindow {
     Component.onCompleted: {
         if (_hw.setDeviceGuid)
             _hw.setDeviceGuid(deviceGuid)
-        shownModulePath = _hw.defaultPath(deviceName)
         _driver.loadDevice(deviceGuid, deviceName)
         claimDirty = false
         _win.photoUrl = _hw.profilePhotoUrl(deviceName)
@@ -562,12 +559,5 @@ ApplicationWindow {
                 _win.close()
             }
         }
-    }
-
-    DebugFileLine {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        moduleFile: shownModulePath
     }
 }
