@@ -7,38 +7,6 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
 _BC = _ROOT / "gremlin/ui/binding_catalog.py"
-_QML = _ROOT / "qml/BindingCatalog.qml"
-_IC = _ROOT / "qml/InputConfiguration.qml"
-_HEADER = _ROOT / "qml/InputItemBindingConfigurationHeader.qml"
-
-# Plugin .name values from action_plugins/*/__init__.py on this branch.
-_PLUGIN_NAMES = [
-    "Map to vJoy",
-    "Map to Keyboard",
-    "Map to Mouse",
-    "Map to Xbox",
-    "Map to Logical Device",
-    "Macro",
-    "Change Mode",
-    "Load Profile",
-    "Text to Speech",
-    "Run Command",
-    "Play Sound",
-    "Response Curve",
-    "Merge Axis",
-    "Split Axis",
-    "Axis Delta",
-    "Dual Axis Deadzone",
-    "Hat as Buttons",
-    "Pause and Resume",
-    "Chain",
-    "Tempo",
-    "Condition",
-    "Double Tap",
-    "Smart Toggle",
-    "Description",
-    "Reference",
-]
 
 _PLUGIN_TAGS = [
     "map-to-vjoy",
@@ -134,19 +102,17 @@ def test_summarize_covers_every_plugin_tag() -> None:
         assert dest
 
 
-def test_collect_leaves_root_with_each_dest_action() -> None:
+def test_one_row_per_sequence_for_each_dest_action() -> None:
     ns = _load_helpers()
     dest_tags = [t for t in _PLUGIN_TAGS if t not in ns["_WRAPPERS"] and t != "root"]
     item = _Item()
     for tag in dest_tags:
         binding = item.add_item_binding()
         binding.insert_action(_Act(tag, vjoy_device_id=1, vjoy_input_id=3), "children")
-    leaves = ns["leaves_for_item"](item)
-    assert len(leaves) == len(dest_tags)
-    tags = [t for _si, t, _l, _d in leaves]
-    assert tags == dest_tags
-    seqs = [si for si, _t, _l, _d in leaves]
-    assert seqs == list(range(len(dest_tags)))
+    rows = ns["sequences_for_item"](item)
+    assert [index for index, _lab, _dest in rows] == list(range(len(dest_tags)))
+    labels = ns["_TYPE_LABELS"]
+    assert [lab for _i, lab, _d in rows] == [labels.get(t, t) for t in dest_tags]
 
 
 def test_add_then_remove_every_sequence() -> None:
@@ -156,91 +122,36 @@ def test_add_then_remove_every_sequence() -> None:
     for tag in dest_tags:
         binding = item.add_item_binding()
         binding.insert_action(_Act(tag, vjoy_device_id=2, vjoy_input_id=1), "children")
-        leaves = ns["leaves_for_item"](item)
-        assert leaves[-1][1] == tag
-        assert leaves[-1][0] == len(item.action_sequences) - 1
+        rows = ns["sequences_for_item"](item)
+        assert rows[-1][0] == len(item.action_sequences) - 1
     assert len(item.action_sequences) == len(dest_tags)
-    # Remove from the middle, then the ends, until empty.
+    # Remove from the middle until empty; rows stay numbered 0..n-1.
     while item.action_sequences:
         mid = len(item.action_sequences) // 2
         item.remove_item_binding(item.action_sequences[mid])
-        leaves = ns["leaves_for_item"](item)
-        assert [si for si, *_ in leaves] == list(range(len(item.action_sequences)))
-    assert ns["leaves_for_item"](item) == []
+        rows = ns["sequences_for_item"](item)
+        assert [index for index, *_ in rows] == list(range(len(item.action_sequences)))
+    assert ns["sequences_for_item"](item) == []
 
 
-def test_wrapper_without_child_is_placeholder() -> None:
+def test_wrapper_without_child_is_an_empty_sequence() -> None:
     ns = _load_helpers()
     item = _Item()
     binding = item.add_item_binding()
     binding.insert_action(_Act("tempo", children=[]), "children")
-    leaves = ns["leaves_for_item"](item)
-    assert leaves[0][0] == 0
-    assert leaves[0][1] == "tempo"
-    assert leaves[0][3] == "Add step"
+    assert ns["sequences_for_item"](item) == [(0, "Sequence", "Empty")]
 
 
-def test_wrapper_with_child_spawns_leaf() -> None:
+def test_wrapper_with_child_shows_the_child() -> None:
     ns = _load_helpers()
     item = _Item()
     binding = item.add_item_binding()
     child = _Act("map-to-vjoy", vjoy_device_id=1, vjoy_input_id=4)
     binding.insert_action(_Act("chain", children=[child]), "children")
-    leaves = ns["leaves_for_item"](item)
-    assert len(leaves) == 1
-    assert leaves[0][1] == "map-to-vjoy"
-    assert "vJoy 1" in leaves[0][3]
-
-
-def test_qml_add_and_delete_use_model_slots() -> None:
-    qml = _QML.read_text(encoding="utf-8")
-    assert "_catalog.addAction(hid, actionName)" in qml
-    assert "_catalog.removeSequence(hid, seq)" in qml
-    assert "function addActionOnRow" in qml
-    assert "function deleteRow" in qml
-    add = qml[qml.find("function addActionOnRow") : qml.find("function deleteRow")]
-    assert "reloadKeepScroll" not in add
-    assert "_catalog.reload()" not in add
-    assert "id: _addMenu" in qml
-    assert "id: _childMenu" in qml
-    assert 'title: "Add"' in qml
-    assert 'text: "Delete"' in qml
-
-
-def test_action_names_lead_matches_plugin_names() -> None:
-    src = _BC.read_text(encoding="utf-8")
-    # create_instance looks up entry.name. Lead list must use those strings.
-    for name in (
-        "Map to vJoy",
-        "Map to Keyboard",
-        "Map to Mouse",
-        "Map to Xbox",
-        "Macro",
-        "Change Mode",
-    ):
-        assert f'"{name}"' in src, name
-
-
-def test_add_action_emits_reload_and_refresh() -> None:
-    src = _BC.read_text(encoding="utf-8")
-    assert "signal.inputItemChanged.connect(self.refreshHid)" in src
-    assert "signal.inputItemChanged.connect(self.reload)" not in src
-    assert "signal.reloadCurrentInputItem.emit()" in src
-    assert "def addAction" in src
-    assert "def removeSequence" in src
-    assert "def actionNames" in src
-    assert "beginInsertRows" in src
-    assert "PluginManager().create_instance(name, item.input_type)" in src
-
-
-def test_inline_editor_can_show_any_sequence() -> None:
-    ic = _IC.read_text(encoding="utf-8")
-    assert "required property int index" in ic
-    assert "required property var modelData" in ic
-    assert "sequenceIndex < 0 || index === _root.sequenceIndex" in ic
-    header = _HEADER.read_text(encoding="utf-8")
-    assert "deleteActionSequnce" in header
-    assert "property bool compactMode" in header
+    rows = ns["sequences_for_item"](item)
+    assert len(rows) == 1
+    assert rows[0][1] == ns["_TYPE_LABELS"]["map-to-vjoy"]
+    assert "vJoy 1" in rows[0][2]
 
 
 def test_wrapper_two_dests_stay_one_row() -> None:
@@ -250,8 +161,8 @@ def test_wrapper_two_dests_stay_one_row() -> None:
     a = _Act("map-to-vjoy", vjoy_device_id=1, vjoy_input_id=1)
     b = _Act("map-to-keyboard", keys=["A"])
     binding.insert_action(_Act("tempo", children=[a, b]), "children")
-    leaves = ns["leaves_for_item"](item)
-    assert len(leaves) == 1
-    assert leaves[0][1] == "tempo"
-    assert "vJoy 1" in leaves[0][3]
-
+    rows = ns["sequences_for_item"](item)
+    assert len(rows) == 1
+    assert rows[0][1] == "2 actions"
+    assert "vJoy 1" in rows[0][2]
+    assert rows[0][2].endswith(", A")

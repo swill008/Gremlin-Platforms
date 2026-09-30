@@ -141,7 +141,7 @@ def test_create_many_caps_at_180() -> None:
     logical = LogicalDevice()
     made = logical.create_many(InputType.JoystickButton, 181)
     assert len(made) == 180
-    assert logical.button_count() == 180
+    assert logical.button_count == 180
     assert made[0].group == ""
     assert made[0].system_name == "Button 1"
     assert made[179].system_name == "Button 180"

@@ -23,7 +23,8 @@ from test.unit.conftest import get_fake_device_guid
 
 @pytest.fixture(scope="module")
 def script_path() -> pathlib.Path:
-    return pathlib.Path("example.py")
+    # A bare name resolves to the user data scripts folder, so point at the bundled copy.
+    return pathlib.Path(__file__).resolve().parents[2] / "user_scripts" / "example.py"
 
 
 @pytest.fixture(scope="module")

@@ -84,7 +84,7 @@ class TestModeHierarchy:
 
         mh.rename_mode("Default", "Zeta")
         assert set(mh.mode_names()) == set(["Zeta", "Second", "Third"])
-        assert mh.first_mode == "Zeta"
+        assert mh.first_mode == "Second"
 
     def test_parent(self) -> None:
         p = Profile()

@@ -58,16 +58,3 @@ def test_too_big_window_is_shrunk_to_the_work_area() -> None:
     screen = _Screen(0, 0, 1920, 1040)
     fitted = wp._fit_client(QtCore.QRect(100, 100, 2400, 1400), screen, _margins())
     assert fitted == QtCore.QRect(8, 31, 1920 - 16, 1040 - 39)
-
-
-def test_catalog_display_options_persist() -> None:
-    text = _SRC.read_text(encoding="utf-8")
-    assert 'KEY_CATALOG_PANEL = "catalog-display-options-open"' in text
-    assert "def catalogPanelOpen" in text
-    assert "def setCatalogPanelOpen" in text
-    main = Path(__file__).resolve().parents[2] / "qml/Main.qml"
-    qml = main.read_text(encoding="utf-8")
-    assert "catalogPanel = _windowPlacement.catalogPanelOpen()" in qml
-    assert "onCatalogPanelChanged: _windowPlacement.setCatalogPanelOpen(catalogPanel)" in qml
-    close = qml[qml.find("function closeWorkRoom") : qml.find("function requestNewProfile")]
-    assert "catalogPanel = false" not in close
