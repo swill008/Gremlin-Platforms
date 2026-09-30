@@ -98,6 +98,20 @@ Item {
 
     readonly property bool editorLocked: backend && backend.gremlinActive
 
+    // Same rules as the Undo and Redo menu items. A focused text field keeps these keys.
+    readonly property bool _undoKeys: visible && !editorLocked && !actionOpen
+    Shortcut {
+        enabled: _root._undoKeys && _layout.canUndo
+        sequences: [StandardKey.Undo]
+        onActivated: _layout.undo()
+    }
+    // On Windows StandardKey.Redo is Ctrl+Y; Ctrl+Shift+Z is added so both work.
+    Shortcut {
+        enabled: _root._undoKeys && _layout.canRedo
+        sequences: [StandardKey.Redo, "Ctrl+Shift+Z"]
+        onActivated: _layout.redo()
+    }
+
     signal leaveResolved()
     signal leaveCancelled()
 
@@ -1362,14 +1376,14 @@ Item {
         MenuSeparator { visible: !_root.editorLocked && (_layout.canUndo || _layout.canRedo); height: visible ? implicitHeight : 0 }
 
         MenuItem {
-            text: "Undo"
+            text: "Undo  (Ctrl+Z)"
             visible: !_root.editorLocked && _layout.canUndo
             enabled: !_root.actionOpen
             height: visible ? implicitHeight : 0
             onTriggered: _layout.undo()
         }
         MenuItem {
-            text: "Redo"
+            text: "Redo  (Ctrl+Y)"
             visible: !_root.editorLocked && _layout.canRedo
             enabled: !_root.actionOpen
             height: visible ? implicitHeight : 0
