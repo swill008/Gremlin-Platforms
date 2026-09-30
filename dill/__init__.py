@@ -280,20 +280,6 @@ class DeviceSummary:
 C_EVENT_CALLBACK = ctypes.CFUNCTYPE(None, _JoystickInputData)
 C_DEVICE_CHANGE_CALLBACK = ctypes.CFUNCTYPE(None, _DeviceSummary, ctypes.c_uint8)
 
-
-def _dispatch_input_event(data: _JoystickInputData) -> None:
-    DILL.input_event_handler(data)
-
-
-def _dispatch_device_change(data: _DeviceSummary, action: int) -> None:
-    DILL.device_change_handler(data, action)
-
-
-# Registered once and never released. DILL's thread may still be inside a
-# callback while the Python handler is being replaced.
-_input_event_stub = C_EVENT_CALLBACK(_dispatch_input_event)
-_device_change_stub = C_DEVICE_CHANGE_CALLBACK(_dispatch_device_change)
-
 _dll_path = os.path.join(os.path.dirname(__file__), "dill.dll")
 if "_MEIPASS" in sys.__dict__:
     _dll_path = os.path.join(sys._MEIPASS, "dill.dll")
@@ -316,8 +302,10 @@ class DILL:
 
     _dll = ctypes.cdll.LoadLibrary(_dll_path)
     _dill_initialized = False
-    device_change_handler: Callable[..., None] = lambda *_: None
-    input_event_handler: Callable[..., None] = lambda *_: None
+    device_change_callback_fn = None
+    input_event_callback_fn = None
+    # Old C callbacks stay referenced so the DLL thread cannot enter a freed one.
+    _retired_callbacks: list = []
     api_functions = {
         "init": {"arguments": [], "returns": None},
         "set_input_event_callback": {"arguments": [C_EVENT_CALLBACK], "returns": None},
@@ -348,13 +336,17 @@ class DILL:
 
     @staticmethod
     def set_input_event_callback(callback: Callable[[InputEvent], None]) -> None:
-        DILL.input_event_handler = callback
-        DILL._dll.set_input_event_callback(_input_event_stub)
+        if DILL.input_event_callback_fn is not None:
+            DILL._retired_callbacks.append(DILL.input_event_callback_fn)
+        DILL.input_event_callback_fn = C_EVENT_CALLBACK(callback)
+        DILL._dll.set_input_event_callback(DILL.input_event_callback_fn)
 
     @staticmethod
     def set_device_change_callback(callback: Callable[[DeviceSummary], None]) -> None:
-        DILL.device_change_handler = callback
-        DILL._dll.set_device_change_callback(_device_change_stub)
+        if DILL.device_change_callback_fn is not None:
+            DILL._retired_callbacks.append(DILL.device_change_callback_fn)
+        DILL.device_change_callback_fn = C_DEVICE_CHANGE_CALLBACK(callback)
+        DILL._dll.set_device_change_callback(DILL.device_change_callback_fn)
 
     @staticmethod
     def get_device_count() -> int:
