@@ -27,7 +27,11 @@ def _windows_scaling_disabled() -> bool:
     try:
         with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
-        raw = data["global"]["general"]["disable-windows-scaling"]["value"]
+        raw = (
+            data.get("ui", {}).get("general", {}).get("disable-windows-scaling", {}).get("value")
+        )
+        if raw is None:
+            raw = data["global"]["general"]["disable-windows-scaling"]["value"]
     except (OSError, json.JSONDecodeError, KeyError, TypeError):
         return False
     return str(raw).strip().lower() in ("1", "true", "yes")
@@ -495,8 +499,10 @@ def register_config_options() -> None:
         "Action Gremlin takes when a joystick is connected or disconnected.",
         {"valid_options": ["Disable", "Ignore", "Reload"]}, True,
     )
+    if cfg.exists("global", "general", "dark-mode") and not cfg.exists("ui", "general", "dark-mode"):
+        cfg.set("ui", "general", "dark-mode", cfg.value("global", "general", "dark-mode"))
     cfg.register(
-        "global", "general", "dark-mode", PropertyType.Bool, False,
+        "ui", "general", "dark-mode", PropertyType.Bool, False,
         "Use the dark mode UI.", {}, True,
     )
     cfg.register(
@@ -524,8 +530,16 @@ def register_config_options() -> None:
         "Force an update of all axes by emitting axis events upon a mode change.",
         {}, True,
     )
+    if (
+        cfg.exists("global", "general", "input-highlighting")
+        and not cfg.exists("ui", "general", "input-highlighting")
+    ):
+        cfg.set(
+            "ui", "general", "input-highlighting",
+            cfg.value("global", "general", "input-highlighting"),
+        )
     cfg.register(
-        "global", "general", "input-highlighting", PropertyType.Bool, True,
+        "ui", "general", "input-highlighting", PropertyType.Bool, True,
         "Select the input in the UI by using an input on the physical device. "
         "Selects only inputs if the active tab matches the device.", {}, True,
     )
