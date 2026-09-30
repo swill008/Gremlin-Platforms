@@ -140,7 +140,57 @@ def _centered(size: QtCore.QSize, screen: QtGui.QScreen) -> QtCore.QRect:
     return QtCore.QRect(x, y, width, height)
 
 
+# Used before the window is shown, when Qt does not know the frame yet.
+_FRAME_FALLBACK = QtCore.QMargins(11, 45, 11, 11)
+
+
+def _frame_margins(window: QtGui.QWindow) -> QtCore.QMargins:
+    margins = window.frameMargins()
+    if margins.top() <= 0 and margins.left() <= 0:
+        return _FRAME_FALLBACK
+    return margins
+
+
+def _placed_screen(saved: QtCore.QRect) -> QtGui.QScreen | None:
+    """The screen that shows most of the saved window, or None when none does."""
+    for screen in _available_screens():
+        if _intersects_enough(saved, screen):
+            return screen
+    return None
+
+
+def _fit_client(
+    rect: QtCore.QRect, screen: QtGui.QScreen, margins: QtCore.QMargins
+) -> QtCore.QRect:
+    """Move the window in so its frame, title bar included, is inside the work area.
+
+    setGeometry places the client area; the title bar sits above it.
+    """
+    avail = screen.availableGeometry()
+    frame_w = rect.width() + margins.left() + margins.right()
+    frame_h = rect.height() + margins.top() + margins.bottom()
+    frame_w = min(frame_w, max(1, avail.width()))
+    frame_h = min(frame_h, max(1, avail.height()))
+    frame_x = rect.x() - margins.left()
+    frame_y = rect.y() - margins.top()
+    frame_x = min(max(frame_x, avail.x()), avail.x() + max(0, avail.width() - frame_w))
+    frame_y = min(max(frame_y, avail.y()), avail.y() + max(0, avail.height() - frame_h))
+    return QtCore.QRect(
+        frame_x + margins.left(),
+        frame_y + margins.top(),
+        max(1, frame_w - margins.left() - margins.right()),
+        max(1, frame_h - margins.top() - margins.bottom()),
+    )
+
+
+def _never_placed(saved: QtCore.QRect) -> bool:
+    return (saved.x(), saved.y(), saved.width(), saved.height()) == (
+        0, 0, DEFAULT_W, DEFAULT_H,
+    )
+
+
 def restore_window(window: QtGui.QWindow) -> None:
+    """Reopen where the window was left; center it when that spot is not usable."""
     cfg = _ensure()
     saved = QtCore.QRect(
         int(cfg.value(SECTION, GROUP, KEY_X)),
@@ -148,10 +198,16 @@ def restore_window(window: QtGui.QWindow) -> None:
         int(cfg.value(SECTION, GROUP, KEY_W) or DEFAULT_W),
         int(cfg.value(SECTION, GROUP, KEY_H) or DEFAULT_H),
     )
-    screen = _target_screen(saved)
-    if screen is None:
-        return
-    fitted = _centered(saved.size().expandedTo(window.minimumSize()), screen)
+    size = saved.size().expandedTo(window.minimumSize())
+    screen = None if _never_placed(saved) else _placed_screen(saved)
+    if screen is not None:
+        wanted = QtCore.QRect(saved.topLeft(), size)
+        fitted = _fit_client(wanted, screen, _frame_margins(window))
+    else:
+        screen = _screen_at(QtGui.QCursor.pos())
+        if screen is None:
+            return
+        fitted = _centered(size, screen)
     window.setVisibility(QtGui.QWindow.Visibility.Windowed)
     window.setGeometry(fitted)
     if cfg.value(SECTION, GROUP, KEY_MAX):
