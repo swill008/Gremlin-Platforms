@@ -465,9 +465,16 @@ def register_config_options() -> None:
         "global", "general", "check-for-updates", PropertyType.Bool, False,
         "Check for new Gremlin versions online upon start.", {}, True,
     )
+    plugins = str(Path(gremlin.util.data_folder()) / "plugins")
     cfg.register(
-        "global", "files", "plugin-directory", PropertyType.Path, "",
-        "Directory containing additional action plugins", {"is_folder": True}, True,
+        "global", "files", "plugin-directory", PropertyType.Path, plugins,
+        "Directory containing additional action plugins.",
+        {
+            "is_folder": True,
+            "allow_reset": True,
+            "default_path": plugins,
+        },
+        True,
     )
     cfg.register(
         "global", "files", "data-folder", PropertyType.Path,
@@ -779,9 +786,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         QtCore.QDir.addSearchPath("qml", gremlin.util.resource_path("qml/"))
 
         self.cfg = Configuration()
-        user_plugins_path = Path(
-            self.cfg.value("global", "files", "plugin-directory")
-        )
+        user_plugins_path = gremlin.util.plugins_dir()
         if user_plugins_path.is_dir():
             QtCore.QDir.addSearchPath("user_plugins", str(user_plugins_path))
 
