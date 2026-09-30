@@ -472,16 +472,27 @@ def register_config_options() -> None:
     cfg.register(
         "global", "files", "data-folder", PropertyType.Path,
         gremlin.util.userprofile_path(),
-        "Device files, logs, scripts, and the profile dialog use this folder. "
-        "The program creates the folders inside it.",
+        "Root folder for user files. configuration.json stays in the profile folder.",
         {
             "is_folder": True,
             "allow_reset": True,
-            "show_children": True,
             "default_path": gremlin.util.userprofile_path(),
         },
         True,
     )
+    for name, key, description in (
+        ("modules", "modules-folder", "Device files, pictures, and imported copies."),
+        ("logs", "logs-folder", "Live log and the diagnostic logs."),
+        ("profiles", "profiles-folder", "Folder the profile dialogs open in."),
+        ("scripts", "scripts-folder", "User scripts."),
+        ("export", "export-folder", "Device packs saved from the program."),
+    ):
+        default = str(Path(gremlin.util.data_folder()) / name)
+        cfg.register(
+            "global", "files", key, PropertyType.Path, default, description,
+            {"is_folder": True, "allow_reset": True, "default_path": default},
+            True,
+        )
     gremlin.util.ensure_data_folders()
     cfg.register(
         "action", "general", "action-priorities", PropertyType.List, [],
