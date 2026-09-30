@@ -91,6 +91,8 @@ import gremlin.osc
 import gremlin.ui.osc_device_model  # noqa: F401
 import gremlin.ui.device_names  # noqa: F401
 import gremlin.ui.hidhide  # noqa: F401
+import gremlin.ui.vjoy_status
+import gremlin.ui.window_placement
 import gremlin.ui.module_model  # noqa: F401
 import gremlin.ui.live_debug  # noqa: F401
 import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
@@ -631,6 +633,8 @@ def register_config_options() -> None:
     gremlin.ui.module_model._ensure_display_options()
     gremlin.ui.hardware_profile._binding_store()
     gremlin.ui.hidhide._ensure_options()
+    gremlin.ui.window_placement._ensure()
+    gremlin.ui.vjoy_status.register_options()
 
 
 def configure_loggers() -> None:

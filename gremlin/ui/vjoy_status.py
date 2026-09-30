@@ -30,25 +30,34 @@ class _PinHub(QtCore.QObject):
 HUB = _PinHub()
 
 
+_VJOY_DESCRIPTION = "vJoy device tabs shown in the main bar."
+_EXTRA_DESCRIPTION = "Keyboard, Logical, OSC, and Xbox tabs shown in the main bar."
+
+
 def _ensure(name: str, default: list, description: str) -> Configuration:
+    # Registering an existing entry keeps its saved value.
     cfg = Configuration()
-    if not cfg.exists(SECTION, GROUP, name):
-        cfg.register(
-            SECTION,
-            GROUP,
-            name,
-            PropertyType.List,
-            default,
-            description,
-            {},
-            False,
-        )
+    cfg.register(
+        SECTION,
+        GROUP,
+        name,
+        PropertyType.List,
+        default,
+        description,
+        {},
+        False,
+    )
     return cfg
+
+
+def register_options() -> None:
+    _ensure(VJOY_NAME, [], _VJOY_DESCRIPTION)
+    _ensure(EXTRA_NAME, list(EXTRA_DEFAULT), _EXTRA_DESCRIPTION)
 
 
 def _load_pins() -> set[int]:
     pins: set[int] = set()
-    raw = _ensure(VJOY_NAME, [], "vJoy device tabs shown in the main bar.").value(
+    raw = _ensure(VJOY_NAME, [], _VJOY_DESCRIPTION).value(
         SECTION, GROUP, VJOY_NAME
     ) or []
     for item in raw:
@@ -62,7 +71,7 @@ def _load_pins() -> set[int]:
 
 
 def _save_pins(pins: set[int]) -> None:
-    _ensure(VJOY_NAME, [], "vJoy device tabs shown in the main bar.").set(
+    _ensure(VJOY_NAME, [], _VJOY_DESCRIPTION).set(
         SECTION, GROUP, VJOY_NAME, sorted(pins)
     )
 
@@ -71,7 +80,7 @@ def _load_extra() -> set[str]:
     raw = _ensure(
         EXTRA_NAME,
         list(EXTRA_DEFAULT),
-        "Keyboard, Logical, OSC, and Xbox tabs shown in the main bar.",
+        _EXTRA_DESCRIPTION,
     ).value(SECTION, GROUP, EXTRA_NAME)
     if raw is None:
         return set(EXTRA_DEFAULT)
@@ -87,7 +96,7 @@ def _save_extra(extras: set[str]) -> None:
     _ensure(
         EXTRA_NAME,
         list(EXTRA_DEFAULT),
-        "Keyboard, Logical, OSC, and Xbox tabs shown in the main bar.",
+        _EXTRA_DESCRIPTION,
     ).set(SECTION, GROUP, EXTRA_NAME, sorted(extras))
 
 
