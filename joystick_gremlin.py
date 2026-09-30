@@ -19,7 +19,7 @@ from typing import Any
 
 
 def _windows_scaling_disabled() -> bool:
-    """Read the Global option before Qt loads. Default is Windows scaling on."""
+    """Read the User Interface option before Qt loads. Default is Windows scaling on."""
     root = os.environ.get("USERPROFILE") or os.environ.get("userprofile")
     if not root:
         return False
@@ -27,11 +27,7 @@ def _windows_scaling_disabled() -> bool:
     try:
         with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
-        raw = (
-            data.get("ui", {}).get("general", {}).get("disable-windows-scaling", {}).get("value")
-        )
-        if raw is None:
-            raw = data["global"]["general"]["disable-windows-scaling"]["value"]
+        raw = data["ui"]["general"]["disable-windows-scaling"]["value"]
     except (OSError, json.JSONDecodeError, KeyError, TypeError):
         return False
     return str(raw).strip().lower() in ("1", "true", "yes")
@@ -499,8 +495,6 @@ def register_config_options() -> None:
         "Action Gremlin takes when a joystick is connected or disconnected.",
         {"valid_options": ["Disable", "Ignore", "Reload"]}, True,
     )
-    if cfg.exists("global", "general", "dark-mode") and not cfg.exists("ui", "general", "dark-mode"):
-        cfg.set("ui", "general", "dark-mode", cfg.value("global", "general", "dark-mode"))
     cfg.register(
         "ui", "general", "dark-mode", PropertyType.Bool, False,
         "Use the dark mode UI.", {}, True,
@@ -530,14 +524,6 @@ def register_config_options() -> None:
         "Force an update of all axes by emitting axis events upon a mode change.",
         {}, True,
     )
-    if (
-        cfg.exists("global", "general", "input-highlighting")
-        and not cfg.exists("ui", "general", "input-highlighting")
-    ):
-        cfg.set(
-            "ui", "general", "input-highlighting",
-            cfg.value("global", "general", "input-highlighting"),
-        )
     cfg.register(
         "ui", "general", "input-highlighting", PropertyType.Bool, True,
         "Select the input in the UI by using an input on the physical device. "
