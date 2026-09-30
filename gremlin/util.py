@@ -849,13 +849,18 @@ def truncate(text: str, left_size: int, right_size: int) -> str:
     return f"{text[:left_size]}...{text[-right_size:]}"
 
 
+# Folder under %userprofile% for configuration.json and the default user data.
+# joystick_gremlin.py reads the same folder before Qt loads; keep the two in step.
+USER_DATA_FOLDER = "Gremlin Platforms"
+
+
 def userprofile_path() -> str:
-    """Returns the path to the user's profile folder, %userprofile%.
+    """Returns the Gremlin Platforms folder in the user's profile, %userprofile%.
 
     Returns:
-        Path to the user's profile folder
+        Path to %userprofile%/Gremlin Platforms
     """
-    return str((Path(os.getenv("userprofile")) / "Joystick Gremlin").resolve())
+    return str((Path(os.getenv("userprofile")) / USER_DATA_FOLDER).resolve())
 
 
 def _configured_data_folder() -> str:
