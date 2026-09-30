@@ -466,7 +466,7 @@ def register_config_options() -> None:
         "Check for new Gremlin versions online upon start.", {}, True,
     )
     cfg.register(
-        "global", "general", "plugin-directory", PropertyType.Path, "",
+        "global", "files", "plugin-directory", PropertyType.Path, "",
         "Directory containing additional action plugins", {"is_folder": True}, True,
     )
     cfg.register(
@@ -780,7 +780,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
 
         self.cfg = Configuration()
         user_plugins_path = Path(
-            self.cfg.value("global", "general", "plugin-directory")
+            self.cfg.value("global", "files", "plugin-directory")
         )
         if user_plugins_path.is_dir():
             QtCore.QDir.addSearchPath("user_plugins", str(user_plugins_path))
