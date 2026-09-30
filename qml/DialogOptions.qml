@@ -30,6 +30,31 @@ Window {
         defaultHeight: 700
     }
 
+    property real _appliedScale: 1
+
+    function applyUiScale() {
+        var s = Style.uiScale / 100
+        if (s < 0.7)
+            s = 0.7
+        if (s > 2)
+            s = 2
+        var ratio = s / _appliedScale
+        _appliedScale = s
+        contentItem.scale = s
+        contentItem.transformOrigin = Item.TopLeft
+        width = Math.round(width * ratio)
+        height = Math.round(height * ratio)
+    }
+
+    Connections {
+        target: Style
+        function onUiScaleChanged() {
+            _options.applyUiScale()
+        }
+    }
+
+    Component.onCompleted: applyUiScale()
+
     onClosing: () => {
         backend.emitConfigChanged()
     }
