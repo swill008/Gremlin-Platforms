@@ -505,6 +505,11 @@ def register_config_options() -> None:
         ("profiles", "profiles-folder", "Folder the profile dialogs open in."),
         ("scripts", "scripts-folder", "User scripts."),
         ("export", "export-folder", "Device packs saved from the program."),
+        (
+            "deleted devices",
+            "deleted-devices-folder",
+            "Backup packs saved by Delete Device.",
+        ),
     ):
         default = str(Path(gremlin.util.data_folder()) / name)
         cfg.register(

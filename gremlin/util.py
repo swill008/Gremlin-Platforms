@@ -882,7 +882,7 @@ def _configured_data_folder() -> str:
 
 
 def data_folder() -> str:
-    """Folder that holds user files. The default is the Joystick Gremlin profile folder.
+    """Folder that holds user files. The default is the Gremlin Platforms folder.
 
     configuration.json stays in the profile folder so this setting can be found.
     """
@@ -958,6 +958,11 @@ def export_dir() -> Path:
     return _child_dir("export")
 
 
+def deleted_devices_dir() -> Path:
+    """Backup packs saved by Delete Device."""
+    return _configured_child("deleted-devices-folder", "deleted devices")
+
+
 def copy_legacy_modules() -> None:
     """Copy device files from the old qml/maps folder. Existing files are kept."""
     source = Path(resource_path("qml/maps"))
@@ -1001,6 +1006,7 @@ def ensure_data_folders() -> None:
     profiles_dir()
     scripts_dir()
     export_dir()
+    deleted_devices_dir()
     plugins_dir()
     copy_legacy_modules()
 

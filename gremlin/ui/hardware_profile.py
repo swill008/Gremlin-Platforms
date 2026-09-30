@@ -745,9 +745,9 @@ def delete_module_file(device_name: str, guid: str) -> str:
 
 
 def _deleted_dir() -> Path:
-    path = _install_root() / "deleted devices"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    from gremlin.util import deleted_devices_dir
+
+    return deleted_devices_dir()
 
 
 def _pack_file_name(device_name: str) -> str:
