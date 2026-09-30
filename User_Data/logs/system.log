@@ -1,52 +1,3101 @@
-2026-09-27 17:49:38    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
-2026-09-27 17:49:38    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
-2026-09-27 18:13:22    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
-2026-09-27 18:54:38    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
-2026-09-27 19:12:36    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.
+2026-09-29 17:41:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:41:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:43:40    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'logical-layout')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
+2026-09-29 17:43:40    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'logical-layout')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
+2026-09-29 17:52:07    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.
+2026-09-29 17:52:36    WARNING First sequence device=87fdb100-a8f5-11f1-8003-444553540000 type=InputType.JoystickAxis id=1 mode=Default
+2026-09-29 17:52:36    WARNING Gremlin start: 204 UI sequences, 0 script callbacks, mode=Default
+2026-09-29 17:52:36      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:36      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:37      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:38      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:39      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:40      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:41      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:42      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:43      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:44      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 17:52:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 17:54:14    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'logical-layout')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
+2026-09-29 17:54:14    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING ViGEmClient.dll not found next to vigem/ or the app
+2026-09-29 18:01:04    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'logical-layout')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
+2026-09-29 18:01:04    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.
+2026-09-29 18:01:45    WARNING First sequence device=87fdb100-a8f5-11f1-8003-444553540000 type=InputType.JoystickAxis id=1 mode=Default
+2026-09-29 18:01:45    WARNING Gremlin start: 204 UI sequences, 0 script callbacks, mode=Default
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:45      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:46      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:47      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:48      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:49      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:50      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:51      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:52      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:53      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:54      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:55      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:56      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:57      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:58      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:01:59      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:00      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:01      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:02      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:03      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:04      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:05      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:06      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:07      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:08      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:09      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:10      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 2 input: 128 value: 
+NoneType: None
+2026-09-29 18:02:11      ERROR Invalid button index requested - vjoy: 3 input: 127 value: 
+NoneType: None
+2026-09-30 04:54:14      ERROR Loading action_plugins 'E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve' failed due to: unterminated triple-quoted string literal (detected at line 556) (spline.py, line 510).
+2026-09-30 04:54:14      ERROR Unhandled exception: Traceback (most recent call last):
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 807, in <module>
+    sys.exit(main())
+             ~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 789, in main
+    app = JoystickGremlinApp(sys.argv)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 678, in __init__
+    gremlin.plugin_manager.PluginManager()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\common.py", line 44, in __call__
+    cls._instances[cls] = super(SingletonMetaclass, cls).__call__(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        *args, **kwargs
+        ^^^^^^^^^^^^^^^
+    )
+    ^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 48, in __init__
+    self._discover_plugins(Path(util.resource_path("action_plugins")), True)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 209, in _discover_plugins
+    raise (e)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 179, in _discover_plugins
+    plugin = importlib.import_module(plugin_module_name)
+   File "C:\Users\Stacie\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "<frozen importlib._bootstrap>", line 1395, in _gcd_import
+   File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+   File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve\__init__.py", line 21, in <module>
+    from gremlin import (
+    ...<3 lines>...
+    )
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\spline.py", line 510
+     """
+     ^
+ SyntaxError: unterminated triple-quoted string literal (detected at line 556)
+
+2026-09-30 04:58:06      ERROR Loading action_plugins 'E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve' failed due to: unterminated triple-quoted string literal (detected at line 556) (spline.py, line 510).
+2026-09-30 04:58:06      ERROR Unhandled exception: Traceback (most recent call last):
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 807, in <module>
+    sys.exit(main())
+             ~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 789, in main
+    app = JoystickGremlinApp(sys.argv)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 678, in __init__
+    gremlin.plugin_manager.PluginManager()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\common.py", line 44, in __call__
+    cls._instances[cls] = super(SingletonMetaclass, cls).__call__(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        *args, **kwargs
+        ^^^^^^^^^^^^^^^
+    )
+    ^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 48, in __init__
+    self._discover_plugins(Path(util.resource_path("action_plugins")), True)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 209, in _discover_plugins
+    raise (e)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 179, in _discover_plugins
+    plugin = importlib.import_module(plugin_module_name)
+   File "C:\Users\Stacie\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "<frozen importlib._bootstrap>", line 1395, in _gcd_import
+   File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+   File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve\__init__.py", line 21, in <module>
+    from gremlin import (
+    ...<3 lines>...
+    )
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\spline.py", line 510
+     """
+     ^
+ SyntaxError: unterminated triple-quoted string literal (detected at line 556)
+
+2026-09-30 04:59:22      ERROR Loading action_plugins 'E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve' failed due to: unterminated triple-quoted string literal (detected at line 556) (spline.py, line 510).
+2026-09-30 04:59:22      ERROR Unhandled exception: Traceback (most recent call last):
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 807, in <module>
+    sys.exit(main())
+             ~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 789, in main
+    app = JoystickGremlinApp(sys.argv)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 678, in __init__
+    gremlin.plugin_manager.PluginManager()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\common.py", line 44, in __call__
+    cls._instances[cls] = super(SingletonMetaclass, cls).__call__(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        *args, **kwargs
+        ^^^^^^^^^^^^^^^
+    )
+    ^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 48, in __init__
+    self._discover_plugins(Path(util.resource_path("action_plugins")), True)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 209, in _discover_plugins
+    raise (e)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 179, in _discover_plugins
+    plugin = importlib.import_module(plugin_module_name)
+   File "C:\Users\Stacie\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "<frozen importlib._bootstrap>", line 1395, in _gcd_import
+   File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+   File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve\__init__.py", line 21, in <module>
+    from gremlin import (
+    ...<3 lines>...
+    )
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\spline.py", line 510
+     """
+     ^
+ SyntaxError: unterminated triple-quoted string literal (detected at line 556)
+
+2026-09-30 05:05:00      ERROR Loading action_plugins 'E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve' failed due to: unterminated triple-quoted string literal (detected at line 556) (spline.py, line 510).
+2026-09-30 05:05:00      ERROR Unhandled exception: Traceback (most recent call last):
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 808, in <module>
+    sys.exit(main())
+             ~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 790, in main
+    app = JoystickGremlinApp(sys.argv)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 679, in __init__
+    gremlin.plugin_manager.PluginManager()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\common.py", line 44, in __call__
+    cls._instances[cls] = super(SingletonMetaclass, cls).__call__(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        *args, **kwargs
+        ^^^^^^^^^^^^^^^
+    )
+    ^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 48, in __init__
+    self._discover_plugins(Path(util.resource_path("action_plugins")), True)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 209, in _discover_plugins
+    raise (e)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 179, in _discover_plugins
+    plugin = importlib.import_module(plugin_module_name)
+   File "C:\Users\Stacie\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "<frozen importlib._bootstrap>", line 1395, in _gcd_import
+   File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+   File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve\__init__.py", line 21, in <module>
+    from gremlin import (
+    ...<3 lines>...
+    )
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\spline.py", line 510
+     """
+     ^
+ SyntaxError: unterminated triple-quoted string literal (detected at line 556)
+
+2026-09-30 05:05:29      ERROR Loading action_plugins 'E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve' failed due to: unterminated triple-quoted string literal (detected at line 556) (spline.py, line 510).
+2026-09-30 05:05:29      ERROR Unhandled exception: Traceback (most recent call last):
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 808, in <module>
+    sys.exit(main())
+             ~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 790, in main
+    app = JoystickGremlinApp(sys.argv)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 679, in __init__
+    gremlin.plugin_manager.PluginManager()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\common.py", line 44, in __call__
+    cls._instances[cls] = super(SingletonMetaclass, cls).__call__(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        *args, **kwargs
+        ^^^^^^^^^^^^^^^
+    )
+    ^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 48, in __init__
+    self._discover_plugins(Path(util.resource_path("action_plugins")), True)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 209, in _discover_plugins
+    raise (e)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 179, in _discover_plugins
+    plugin = importlib.import_module(plugin_module_name)
+   File "C:\Users\Stacie\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "<frozen importlib._bootstrap>", line 1395, in _gcd_import
+   File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+   File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve\__init__.py", line 21, in <module>
+    from gremlin import (
+    ...<3 lines>...
+    )
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\spline.py", line 510
+     """
+     ^
+ SyntaxError: unterminated triple-quoted string literal (detected at line 556)
+
+2026-09-30 05:06:35      ERROR Loading action_plugins 'E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve' failed due to: unterminated triple-quoted string literal (detected at line 556) (spline.py, line 510).
+2026-09-30 05:06:35      ERROR Unhandled exception: Traceback (most recent call last):
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 805, in <module>
+    sys.exit(main())
+             ~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 787, in main
+    app = JoystickGremlinApp(sys.argv)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\joystick_gremlin.py", line 676, in __init__
+    gremlin.plugin_manager.PluginManager()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\common.py", line 44, in __call__
+    cls._instances[cls] = super(SingletonMetaclass, cls).__call__(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        *args, **kwargs
+        ^^^^^^^^^^^^^^^
+    )
+    ^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 48, in __init__
+    self._discover_plugins(Path(util.resource_path("action_plugins")), True)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 209, in _discover_plugins
+    raise (e)
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\plugin_manager.py", line 179, in _discover_plugins
+    plugin = importlib.import_module(plugin_module_name)
+   File "C:\Users\Stacie\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   File "<frozen importlib._bootstrap>", line 1395, in _gcd_import
+   File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+   File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\action_plugins\response_curve\__init__.py", line 21, in <module>
+    from gremlin import (
+    ...<3 lines>...
+    )
+   File "E:\Users\Stacie\Documents\GitHub\JoystickGremlin_\gremlin\spline.py", line 510
+     """
+     ^
+ SyntaxError: unterminated triple-quoted string literal (detected at line 556)
+
+2026-09-30 05:09:40    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'logical-layout')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
+2026-09-30 05:09:40    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'logical-layout')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
+2026-09-30 05:12:27    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('devices', 'display', 'extra-tabs')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('devices', 'display', 'vjoy-tabs')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'action-pane-width')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'button-map-menu-height')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'button-map-menu-width')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'close-pane-after-ok')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'display-panels')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'logical-layout')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'tool-windows')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'window-height')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'window-maximized')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'window-width')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'window-x')' has not been registered, purging.
+2026-09-30 05:24:06    WARNING Parameter '('global', 'internal', 'window-y')' has not been registered, purging.

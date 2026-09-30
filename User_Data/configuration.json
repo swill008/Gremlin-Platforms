@@ -353,7 +353,7 @@
                     "max": 850,
                     "min": 150
                 },
-                "value": "685"
+                "value": "488"
             },
             "start-enabled": {
                 "data_type": "string",
@@ -368,7 +368,7 @@
                     "max": 8000,
                     "min": 360
                 },
-                "value": "1206"
+                "value": "639"
             },
             "window-width": {
                 "data_type": "int",
@@ -377,7 +377,7 @@
                     "max": 8000,
                     "min": 480
                 },
-                "value": "720"
+                "value": "721"
             }
         },
         "status": {
@@ -385,13 +385,13 @@
                 "data_type": "string",
                 "expose": true,
                 "properties": {},
-                "value": "xbox,vjoy_1,vjoy_2,osc,vjoy_3,vkbsim_gladiator_evo_ot_l,vkbsim_gladiator_evo_r,vkbsim_nxt_sem_thq_fsm_ga,keyboard"
+                "value": "vkbsim_gladiator_evo_ot_l,vkbsim_gladiator_evo_r,vkbsim_nxt_sem_thq_fsm_ga,vjoy_1,vjoy_2,vjoy_3,xbox"
             },
             "card-sizes": {
                 "data_type": "string",
                 "expose": true,
                 "properties": {},
-                "value": "vjoy_1=332x368,vjoy_2=332x369,vjoy_3=332x368,xbox=332x317,vkbsim_nxt_sem_thq_fsm_ga=280x401,osc=280x397,keyboard=280x398"
+                "value": "vjoy_1=332x368,vjoy_2=332x369,vjoy_3=332x368,xbox=240x140,vkbsim_nxt_sem_thq_fsm_ga=280x401,osc=280x397,keyboard=280x398,vkbsim_gladiator_evo_ot_l=240x140"
             },
             "card-stacks": {
                 "data_type": "string",
@@ -399,11 +399,17 @@
                 "properties": {},
                 "value": ""
             },
+            "compact-view": {
+                "data_type": "bool",
+                "expose": true,
+                "properties": {},
+                "value": "True"
+            },
             "hidden-slugs": {
                 "data_type": "string",
                 "expose": true,
                 "properties": {},
-                "value": ""
+                "value": "keyboard,osc"
             },
             "kept-stubs": {
                 "data_type": "string",
@@ -427,7 +433,7 @@
                 "data_type": "string",
                 "expose": true,
                 "properties": {},
-                "value": "horizontal"
+                "value": "none"
             },
             "split-ratio": {
                 "data_type": "float",
@@ -436,7 +442,7 @@
                     "max": 0.8,
                     "min": 0.2
                 },
-                "value": "0.5739549839228296"
+                "value": "0.5210391511159899"
             }
         }
     },
@@ -618,6 +624,7 @@
                 "expose": false,
                 "properties": {},
                 "value": {
+                    "C:\\Users\\Stacie\\Joystick Gremlin\\profiles\\test profile Gremlin Platforms.xml": "Default",
                     "E:\\Users\\Stacie\\Desktop\\test R15-OSC Status.xml": "Test Mode"
                 }
             },
@@ -627,11 +634,17 @@
                 "properties": {},
                 "value": "C:\\Users\\Stacie\\Joystick Gremlin\\profiles\\test profile Gremlin Platforms.xml"
             },
+            "logical-layout": {
+                "data_type": "string",
+                "expose": false,
+                "properties": {},
+                "value": "{}"
+            },
             "module-file-bindings": {
                 "data_type": "string",
                 "expose": false,
                 "properties": {},
-                "value": "{\"name:vkbsim_nxt_sem_thq_fsm_ga\": \"vkbsim_nxt_sem_thq_fsm_ga\", \"87FDB100A8F511F18003444553540000\": \"vkbsim_nxt_sem_thq_fsm_ga\", \"03357CA0A6E311F18001444553540000\": \"vkbsim_gladiator_evo_r\", \"name:vkbsim_gladiator_evo_r\": \"vkbsim_gladiator_evo_r\", \"092E91F0A6E311F18002444553540000\": \"vkbsim_gladiator_evo_ot_l\", \"name:vkbsim_gladiator_evo_ot_l\": \"vkbsim_gladiator_evo_ot_l\"}"
+                "value": "{\"name:vkbsim_nxt_sem_thq_fsm_ga\": \"vkbsim_nxt_sem_thq_fsm_ga\", \"87FDB100A8F511F18003444553540000\": \"vkbsim_nxt_sem_thq_fsm_ga\", \"03357CA0A6E311F18001444553540000\": \"vkbsim_gladiator_evo_r\", \"name:vkbsim_gladiator_evo_r\": \"vkbsim_gladiator_evo_r\", \"092E91F0A6E311F18002444553540000\": \"vkbsim_gladiator_evo_ot_l\", \"name:vkbsim_gladiator_evo_ot_l\": \"vkbsim_gladiator_evo_ot_l\", \"CAA59390A6E011F1800E444553540000\": \"vjoy_1\", \"name:vjoy_1\": \"vjoy_1\"}"
             },
             "recent-profiles": {
                 "data_type": "list",
@@ -643,7 +656,7 @@
                 "data_type": "string",
                 "expose": false,
                 "properties": {},
-                "value": "{}"
+                "value": "{\"options\": {\"h\": 1020, \"max\": false, \"w\": 1200, \"x\": 648, \"y\": 235}}"
             },
             "window-height": {
                 "data_type": "int",

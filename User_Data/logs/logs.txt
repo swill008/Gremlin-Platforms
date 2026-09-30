@@ -13,5 +13,9 @@ SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.
 SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
 SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
 SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
 READ | Profile | from_xml | c:\users\stacie\joystick gremlin\profiles\test profile gremlin platforms.xml | ok
 SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Program Settings | save | c:\users\stacie\joystick gremlin\configuration.json | ok
+SAVE | Profile | to_xml | c:\users\stacie\appdata\local\temp\gremlin.xml | ok
