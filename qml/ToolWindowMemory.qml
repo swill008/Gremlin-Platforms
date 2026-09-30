@@ -4,13 +4,14 @@
 import QtQuick
 import QtQuick.Window
 import Gremlin.UI
+import Gremlin.Style
 
 Item {
     id: _mem
     property Window host: null
     property string name: ""
-    property int defaultWidth: 800
-    property int defaultHeight: 600
+    property int defaultWidth: Style.dp(800)
+    property int defaultHeight: Style.dp(600)
 
     WindowPlacement { id: _place }
 

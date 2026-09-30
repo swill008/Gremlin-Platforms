@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -14,21 +14,22 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _xboxViewer
 
+    // ToolWindowMemory sets the saved or default size when the window opens.
     width: 1200
     height: 800
-    minimumWidth: 800
-    minimumHeight: 500
+    minimumWidth: Style.dp(800)
+    minimumHeight: Style.dp(500)
 
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     title: "Xbox Viewer"
 
     ToolWindowMemory {
         host: _xboxViewer
         name: "xbox-viewer"
-        defaultWidth: 1200
-        defaultHeight: 800
+        defaultWidth: Style.dp(1200)
+        defaultHeight: Style.dp(800)
     }
 
     Shortcut { sequence: "Esc"; onActivated: {} }
@@ -56,8 +57,8 @@ ApplicationWindow {
     ScrollView {
         id: _dynamicScroll
         anchors.fill: parent
-        anchors.margins: 12
-        anchors.bottomMargin: 58
+        anchors.margins: Style.dp(12)
+        anchors.bottomMargin: Style.dp(58)
 
         Component.onCompleted: () => {
             _dynamicScroll.contentItem.boundsMovement = Flickable.StopAtBounds
@@ -66,8 +67,8 @@ ApplicationWindow {
 
         ColumnLayout {
             id: _stateDisplay
-            width: Math.max(_dynamicScroll.availableWidth, 760)
-            spacing: 8
+            width: Math.max(_dynamicScroll.availableWidth, Style.dp(760))
+            spacing: Style.dp(8)
 
             JGText {
                 visible: !_devices || _devices.count === 0

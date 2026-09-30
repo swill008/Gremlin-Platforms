@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
@@ -13,15 +13,15 @@ import Gremlin.Style
 ApplicationWindow {
     id: mainWindow
     font.pixelSize: Style.fontSize
-    width: 600
-    height: 300
+    width: Style.dp(600)
+    height: Style.dp(300)
     visible: true
     title: qsTr("Gremlin-Platforms R1")
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 20
-        anchors.bottomMargin: 58
+        anchors.margins: Style.dp(20)
+        anchors.bottomMargin: Style.dp(58)
 
         Label {
             Layout.fillWidth: true
@@ -29,7 +29,7 @@ ApplicationWindow {
             text: "An error occurred during startup:"
 
             font.bold: true
-            font.pixelSize: 16
+            font.pixelSize: Style.dp(16)
         }
 
         TextArea {
@@ -46,7 +46,7 @@ ApplicationWindow {
 
         Button {
             Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
-            Layout.preferredWidth: 100
+            Layout.preferredWidth: Style.dp(100)
 
             text: qsTr("Ok")
 

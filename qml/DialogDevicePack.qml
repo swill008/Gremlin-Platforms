@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
@@ -17,15 +17,15 @@ ApplicationWindow {
     id: _win
     width: 860
     height: 780
-    minimumWidth: 720
-    minimumHeight: 640
+    minimumWidth: Style.dp(720)
+    minimumHeight: Style.dp(640)
     title: "Device Pack"
 
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     property string mode: "export"
     property string zipUrl: ""
@@ -231,7 +231,11 @@ ApplicationWindow {
         _warn.open()
     }
 
-    Component.onCompleted: reloadDevices()
+    Component.onCompleted: {
+        width = Style.dp(860)
+        height = Style.dp(780)
+        reloadDevices()
+    }
 
     FileDialog {
         id: _save
@@ -284,11 +288,11 @@ ApplicationWindow {
         title: "Picture not included"
         modal: true
         anchors.centerIn: Overlay.overlay
-        width: 460
+        width: Style.dp(460)
         standardButtons: Dialog.NoButton
         background: Rectangle { color: "#18181B"; border.color: "#3F3F46"; radius: 4 }
         contentItem: ColumnLayout {
-            spacing: 12
+            spacing: Style.dp(12)
             Label {
                 id: _warnText
                 wrapMode: Text.WordWrap
@@ -328,13 +332,13 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 16
-        anchors.bottomMargin: 62
-        spacing: 10
+        anchors.margins: Style.dp(16)
+        anchors.bottomMargin: Style.dp(62)
+        spacing: Style.dp(10)
 
         Label {
             text: "Device Pack"
-            font.pixelSize: 22
+            font.pixelSize: Style.dp(22)
             font.bold: true
             color: Style.foreground
         }
@@ -365,7 +369,7 @@ ApplicationWindow {
             currentIndex: _pages.currentIndex
 
             ColumnLayout {
-                spacing: 10
+                spacing: Style.dp(10)
                 ComboBox {
                     id: _exportDevice
                     Layout.fillWidth: true
@@ -378,17 +382,17 @@ ApplicationWindow {
                     id: _exportRow
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    spacing: 28
+                    spacing: Style.dp(28)
                     Rectangle {
                         Layout.fillHeight: true
-                        Layout.preferredWidth: Math.min(_exportRow.height, 560)
-                        Layout.maximumWidth: 560
+                        Layout.preferredWidth: Math.min(_exportRow.height, Style.dp(560))
+                        Layout.maximumWidth: Style.dp(560)
                         color: "#18181B"
                         border.color: "#3F3F46"
-                        radius: 6
+                        radius: Style.dp(6)
                         Image {
                             anchors.fill: parent
-                            anchors.margins: 16
+                            anchors.margins: Style.dp(16)
                             source: exportPhoto
                             fillMode: Image.PreserveAspectFit
                             visible: exportPhoto.length > 0
@@ -398,18 +402,18 @@ ApplicationWindow {
                             visible: exportPhoto.length === 0
                             text: "No picture"
                             color: "#A1A1AA"
-                            font.pixelSize: 22
+                            font.pixelSize: Style.dp(22)
                         }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        spacing: 16
-                        Item { Layout.fillHeight: true; Layout.maximumHeight: 40 }
+                        spacing: Style.dp(16)
+                        Item { Layout.fillHeight: true; Layout.maximumHeight: Style.dp(40) }
                         Label {
                             text: exportName.length ? exportName : "No device"
                             color: Style.foreground
-                            font.pixelSize: 36
+                            font.pixelSize: Style.dp(36)
                             font.bold: true
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
@@ -417,14 +421,14 @@ ApplicationWindow {
                         Label {
                             text: exportSize.length ? ("Pack size: " + exportSize) : ""
                             color: "#E4E4E7"
-                            font.pixelSize: 24
+                            font.pixelSize: Style.dp(24)
                         }
                         Button {
                             text: "Export…"
                             focusPolicy: Qt.NoFocus
-                            font.pixelSize: 18
-                            implicitHeight: 44
-                            implicitWidth: 160
+                            font.pixelSize: Style.dp(18)
+                            implicitHeight: Style.dp(44)
+                            implicitWidth: Style.dp(160)
                             enabled: (_exportDevice.currentText || "").length > 0 && exportSize.length > 0
                             onClicked: {
                                 var name = _exportDevice.currentText
@@ -444,7 +448,7 @@ ApplicationWindow {
             }
 
             ColumnLayout {
-                spacing: 8
+                spacing: Style.dp(8)
                 RowLayout {
                     Layout.fillWidth: true
                     Button {
@@ -459,18 +463,18 @@ ApplicationWindow {
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 16
+                    spacing: Style.dp(16)
                     Rectangle {
-                        Layout.preferredWidth: 200
-                        Layout.preferredHeight: 200
+                        Layout.preferredWidth: Style.dp(200)
+                        Layout.preferredHeight: Style.dp(200)
                         Layout.alignment: Qt.AlignTop
                         color: "#18181B"
                         border.color: "#3F3F46"
-                        radius: 4
+                        radius: Style.dp(4)
                         visible: importPhoto.length > 0 && mode === "import"
                         Image {
                             anchors.fill: parent
-                            anchors.margins: 8
+                            anchors.margins: Style.dp(8)
                             source: importPhoto
                             fillMode: Image.PreserveAspectFit
                         }
@@ -480,7 +484,7 @@ ApplicationWindow {
                         Label {
                             text: importName.length ? importName : "No pack open"
                             color: Style.foreground
-                            font.pixelSize: 18
+                            font.pixelSize: Style.dp(18)
                             font.bold: true
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
@@ -513,7 +517,7 @@ ApplicationWindow {
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.leftMargin: 0
-                    spacing: 8
+                    spacing: Style.dp(8)
                     Button {
                         text: "Open all"
                         focusPolicy: Qt.NoFocus
@@ -536,7 +540,7 @@ ApplicationWindow {
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                     ColumnLayout {
                         width: _scroll.availableWidth
-                        spacing: 8
+                        spacing: Style.dp(8)
                         Repeater {
                             model: _win.sections
                             delegate: ColumnLayout {
@@ -544,36 +548,36 @@ ApplicationWindow {
                                 required property int index
                                 property string sectionKey: "s:" + (modelData.id || index)
                                 Layout.fillWidth: true
-                                spacing: 4
+                                spacing: Style.dp(4)
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    height: 32
+                                    height: Style.dp(32)
                                     color: "#27272A"
-                                    radius: 3
+                                    radius: Style.dp(3)
                                     RowLayout {
                                         anchors.fill: parent
-                                        anchors.leftMargin: 6
-                                        anchors.rightMargin: 8
-                                        spacing: 6
+                                        anchors.leftMargin: Style.dp(6)
+                                        anchors.rightMargin: Style.dp(8)
+                                        spacing: Style.dp(6)
                                         PackMark { section: modelData }
                                         Item {
                                             Layout.fillWidth: true
                                             Layout.fillHeight: true
                                             RowLayout {
                                                 anchors.fill: parent
-                                                spacing: 6
+                                                spacing: Style.dp(6)
                                                 Label {
                                                     text: {
                                                         var rev = _win.openRev
                                                         return _win.isFoldedOpen(sectionKey) ? "\u25BC" : "\u25B6"
                                                     }
                                                     color: "#E4E4E7"
-                                                    font.pixelSize: 10
+                                                    font.pixelSize: Style.dp(10)
                                                 }
                                                 Label {
                                                     text: modelData.title || ""
                                                     color: "#E4E4E7"
-                                                    font.pixelSize: 13
+                                                    font.pixelSize: Style.dp(13)
                                                     font.bold: true
                                                     Layout.fillWidth: true
                                                     elide: Text.ElideRight
@@ -593,8 +597,8 @@ ApplicationWindow {
                                         return _win.isFoldedOpen(sectionKey)
                                     }
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: 28
-                                    spacing: 4
+                                    Layout.leftMargin: Style.dp(28)
+                                    spacing: Style.dp(4)
                                     TextField {
                                         visible: modelData.kind === "output"
                                         Layout.fillWidth: true
@@ -611,18 +615,18 @@ ApplicationWindow {
                                             required property int index
                                             property string rowKey: "r:" + itemRows.sectionId + "/" + (modelData.id || index)
                                             Layout.fillWidth: true
-                                            spacing: 2
+                                            spacing: Style.dp(2)
                                             Rectangle {
                                                 Layout.fillWidth: true
-                                                height: 28
+                                                height: Style.dp(28)
                                                 color: "#18181B"
                                                 border.color: "#3F3F46"
-                                                radius: 3
+                                                radius: Style.dp(3)
                                                 RowLayout {
                                                     anchors.fill: parent
-                                                    anchors.leftMargin: 6
-                                                    anchors.rightMargin: 8
-                                                    spacing: 6
+                                                    anchors.leftMargin: Style.dp(6)
+                                                    anchors.rightMargin: Style.dp(8)
+                                                    spacing: Style.dp(6)
                                                     CheckBox {
                                                         checked: {
                                                             var rev = _win.tickRev
@@ -638,14 +642,14 @@ ApplicationWindow {
                                                         Layout.fillHeight: true
                                                         RowLayout {
                                                             anchors.fill: parent
-                                                            spacing: 6
+                                                            spacing: Style.dp(6)
                                                             Label {
                                                                 text: {
                                                                     var rev = _win.openRev
                                                                     return _win.isFoldedOpen(rowKey) ? "\u25BC" : "\u25B6"
                                                                 }
                                                                 color: "#A1A1AA"
-                                                                font.pixelSize: 10
+                                                                font.pixelSize: Style.dp(10)
                                                             }
                                                             Label {
                                                                 text: modelData.title || ""
@@ -668,13 +672,13 @@ ApplicationWindow {
                                                     return _win.isFoldedOpen(rowKey)
                                                 }
                                                 Layout.fillWidth: true
-                                                Layout.leftMargin: 28
-                                                spacing: 4
+                                                Layout.leftMargin: Style.dp(28)
+                                                spacing: Style.dp(4)
                                                 Image {
                                                     visible: modelData.kind === "image" && (modelData.url || "").length > 0
-                                                    Layout.preferredWidth: 480
-                                                    Layout.preferredHeight: 320
-                                                    Layout.maximumWidth: _scroll.availableWidth - 56
+                                                    Layout.preferredWidth: Style.dp(480)
+                                                    Layout.preferredHeight: Style.dp(320)
+                                                    Layout.maximumWidth: _scroll.availableWidth - Style.dp(56)
                                                     fillMode: Image.PreserveAspectFit
                                                     source: modelData.url || ""
                                                 }

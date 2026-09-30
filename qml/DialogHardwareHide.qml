@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
@@ -16,11 +16,11 @@ ApplicationWindow {
     id: _win
     width: 720
     height: 640
-    minimumWidth: 640
-    minimumHeight: 480
+    minimumWidth: Style.dp(640)
+    minimumHeight: Style.dp(480)
     title: "HiDHide"
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     HidHideModel {
         id: _hh
@@ -43,10 +43,8 @@ ApplicationWindow {
     Component.onCompleted: {
         var w = _hh.windowWidth
         var h = _hh.windowHeight
-        if (w >= 640)
-            width = w
-        if (h >= 480)
-            height = h
+        width = w >= 640 ? w : Style.dp(720)
+        height = h >= 480 ? h : Style.dp(640)
     }
     onWidthChanged: if (visible) _sizeSave.restart()
     onHeightChanged: if (visible) _sizeSave.restart()
@@ -92,14 +90,14 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 16
-        anchors.bottomMargin: 58
-        spacing: 10
+        anchors.margins: Style.dp(16)
+        anchors.bottomMargin: Style.dp(58)
+        spacing: Style.dp(10)
 
         Rectangle {
             Layout.fillWidth: true
-            implicitHeight: driverRow.implicitHeight + 20
-            radius: 3
+            implicitHeight: driverRow.implicitHeight + Style.dp(20)
+            radius: Style.dp(3)
             color: "#111113"
             border.color: "#3F3F46"
 
@@ -108,12 +106,12 @@ ApplicationWindow {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.margins: 10
-                spacing: 10
+                anchors.margins: Style.dp(10)
+                spacing: Style.dp(10)
                 Rectangle {
-                    width: 8
-                    height: 8
-                    radius: 4
+                    width: Style.dp(8)
+                    height: Style.dp(8)
+                    radius: Style.dp(4)
                     Layout.alignment: Qt.AlignVCenter
                     color: _hh.installed ? "#22C55E" : "#A1A1AA"
                 }
@@ -127,12 +125,12 @@ ApplicationWindow {
                     Label {
                         visible: _hh.driverVersion.length > 0
                         color: "#A1A1AA"
-                        font.pixelSize: 11
+                        font.pixelSize: Style.dp(11)
                         text: _hh.driverVersion
                     }
                 }
                 RowLayout {
-                    spacing: 4
+                    spacing: Style.dp(4)
                     Button {
                         text: "Get HiDHide"
                         onClicked: _hh.openDownload()
@@ -147,8 +145,8 @@ ApplicationWindow {
 
         Rectangle {
             Layout.fillWidth: true
-            implicitHeight: optionRow.implicitHeight + 20
-            radius: 3
+            implicitHeight: optionRow.implicitHeight + Style.dp(20)
+            radius: Style.dp(3)
             color: "#111113"
             border.color: "#3F3F46"
 
@@ -157,8 +155,8 @@ ApplicationWindow {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.margins: 10
-                spacing: 10
+                anchors.margins: Style.dp(10)
+                spacing: Style.dp(10)
                 Switch {
                     id: controlSwitch
                     enabled: _hh.installed
@@ -193,7 +191,7 @@ ApplicationWindow {
         Label {
             text: "HiDHide"
             color: "#E4E4E7"
-            font.pixelSize: 16
+            font.pixelSize: Style.dp(16)
             font.bold: true
         }
 
@@ -201,7 +199,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             color: "#A1A1AA"
-            font.pixelSize: 12
+            font.pixelSize: Style.dp(12)
             text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. Automatically Start turns Gremlin control and HiDHide Enabled on each time this program starts. This program does not install HiDHide. Click on Get HiDHide to download the program."
         }
 
@@ -210,7 +208,7 @@ ApplicationWindow {
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             color: "#A1A1AA"
-            font.pixelSize: 12
+            font.pixelSize: Style.dp(12)
             text: "Install HiDHide from the Nefarius releases page, then open this window again. Gremlin will not download or bundle that installer."
         }
 
@@ -234,14 +232,14 @@ ApplicationWindow {
                 _hh.saveSplitRatio(Math.round(_devicesPane.height * 1000 / height))
             }
             handle: Rectangle {
-                implicitWidth: 8
-                implicitHeight: 10
+                implicitWidth: Style.dp(8)
+                implicitHeight: Style.dp(10)
                 color: SplitHandle.pressed ? "#3F3F46" : (SplitHandle.hovered ? "#27272A" : "#18181B")
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 36
-                    height: 3
-                    radius: 1
+                    width: Style.dp(36)
+                    height: Style.dp(3)
+                    radius: Style.dp(1)
                     color: "#71717A"
                 }
             }
@@ -250,15 +248,15 @@ ApplicationWindow {
                 id: _devicesPane
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-                SplitView.preferredHeight: Math.max(96, _hh.splitRatio)
-                SplitView.minimumHeight: 96
-                spacing: 6
+                SplitView.preferredHeight: Math.max(Style.dp(96), _hh.splitRatio)
+                SplitView.minimumHeight: Style.dp(96)
+                spacing: Style.dp(6)
                 onHeightChanged: if (_win.visible) _splitSave.restart()
 
                 Label {
                     text: "DEVICES"
                     color: "#A1A1AA"
-                    font.pixelSize: 11
+                    font.pixelSize: Style.dp(11)
                     font.capitalization: Font.AllUppercase
                 }
 
@@ -267,7 +265,7 @@ ApplicationWindow {
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                     color: "#FCA5A5"
-                    font.pixelSize: 12
+                    font.pixelSize: Style.dp(12)
                     text: _hh.lastError
                 }
 
@@ -281,25 +279,25 @@ ApplicationWindow {
                     id: _devs
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.minimumHeight: 48
+                    Layout.minimumHeight: Style.dp(48)
                     clip: true
-                    spacing: 6
+                    spacing: Style.dp(6)
                     boundsBehavior: Flickable.StopAtBounds
                     model: _hh.deviceCount
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AlwaysOn
-                        width: 10
+                        width: Style.dp(10)
                         contentItem: Rectangle {
-                            implicitWidth: 8
-                            radius: 3
+                            implicitWidth: Style.dp(8)
+                            radius: Style.dp(3)
                             color: parent.pressed ? "#E4E4E7" : (parent.hovered ? "#A1A1AA" : "#52525B")
                         }
                     }
                     delegate: Rectangle {
                         required property int index
-                        width: ListView.view.width - 12
-                        height: 56
-                        radius: 3
+                        width: ListView.view.width - Style.dp(12)
+                        height: Style.dp(56)
+                        radius: Style.dp(3)
                         color: "#111113"
                         border.color: "#3F3F46"
                         property int _gen: _hh.generation
@@ -309,25 +307,25 @@ ApplicationWindow {
                         RowLayout {
                             z: 1
                             anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 8
+                            anchors.margins: Style.dp(8)
+                            spacing: Style.dp(8)
                             opacity: confirmed ? 0.55 : 1
                             Rectangle {
-                                width: 40
-                                height: 40
-                                radius: 3
+                                width: Style.dp(40)
+                                height: Style.dp(40)
+                                radius: Style.dp(3)
                                 color: "#09090B"
                                 border.color: "#3F3F46"
                                 Image {
                                     anchors.fill: parent
-                                    anchors.margins: 2
+                                    anchors.margins: Style.dp(2)
                                     source: row.photo || ""
                                     fillMode: Image.PreserveAspectFit
                                     visible: !!(row.photo)
                                     asynchronous: true
                                     cache: true
-                                    sourceSize.width: 80
-                                    sourceSize.height: 80
+                                    sourceSize.width: Style.dp(80)
+                                    sourceSize.height: Style.dp(80)
                                 }
                             }
                             ColumnLayout {
@@ -354,7 +352,7 @@ ApplicationWindow {
                                         return prefix + (row.instanceId || "")
                                     }
                                     color: confirmed ? "#71717A" : "#A1A1AA"
-                                    font.pixelSize: 11
+                                    font.pixelSize: Style.dp(11)
                                     elide: Text.ElideMiddle
                                     Layout.fillWidth: true
                                 }
@@ -382,7 +380,7 @@ ApplicationWindow {
                             z: 2
                             text: "HIDDEN"
                             font.bold: true
-                            font.pixelSize: 22
+                            font.pixelSize: Style.dp(22)
                             color: "#F4F4F5"
                         }
                     }
@@ -392,14 +390,14 @@ ApplicationWindow {
             ColumnLayout {
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-                SplitView.preferredHeight: Math.max(120, 1000 - _hh.splitRatio)
-                SplitView.minimumHeight: 120
-                spacing: 6
+                SplitView.preferredHeight: Math.max(Style.dp(120), 1000 - _hh.splitRatio)
+                SplitView.minimumHeight: Style.dp(120)
+                spacing: Style.dp(6)
 
                 Label {
                     text: "Programs that have been added to the Mask"
                     color: "#E4E4E7"
-                    font.pixelSize: 16
+                    font.pixelSize: Style.dp(16)
                     font.bold: true
                 }
 
@@ -411,7 +409,7 @@ ApplicationWindow {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 16
+                    spacing: Style.dp(16)
                     RadioButton {
                         id: allowList
                         autoExclusive: false
@@ -438,7 +436,7 @@ ApplicationWindow {
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                     color: "#A1A1AA"
-                    font.pixelSize: 12
+                    font.pixelSize: Style.dp(12)
                     text: "Allow list: only these programs can see the hidden controllers. Block list: these programs cannot see them. Gremlin-Platforms is allowed in both modes."
                 }
 
@@ -446,31 +444,31 @@ ApplicationWindow {
                     id: _games
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.minimumHeight: 48
+                    Layout.minimumHeight: Style.dp(48)
                     clip: true
-                    spacing: 6
+                    spacing: Style.dp(6)
                     boundsBehavior: Flickable.StopAtBounds
                     model: _hh.gameCount
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AlwaysOn
-                        width: 10
+                        width: Style.dp(10)
                         contentItem: Rectangle {
-                            implicitWidth: 8
-                            radius: 3
+                            implicitWidth: Style.dp(8)
+                            radius: Style.dp(3)
                             color: parent.pressed ? "#E4E4E7" : (parent.hovered ? "#A1A1AA" : "#52525B")
                         }
                     }
                     delegate: Rectangle {
                         required property int index
-                        width: ListView.view.width - 12
-                        height: 44
-                        radius: 3
+                        width: ListView.view.width - Style.dp(12)
+                        height: Style.dp(44)
+                        radius: Style.dp(3)
                         color: "#111113"
                         border.color: "#3F3F46"
                         property var row: _hh.gameAt(index)
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 8
+                            anchors.margins: Style.dp(8)
                             ColumnLayout {
                                 spacing: 0
                                 Layout.fillWidth: true
@@ -483,7 +481,7 @@ ApplicationWindow {
                                 Label {
                                     text: row.path
                                     color: "#A1A1AA"
-                                    font.pixelSize: 11
+                                    font.pixelSize: Style.dp(11)
                                     elide: Text.ElideMiddle
                                     Layout.fillWidth: true
                                 }
@@ -501,7 +499,7 @@ ApplicationWindow {
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                     color: "#A1A1AA"
-                    font.pixelSize: 12
+                    font.pixelSize: Style.dp(12)
                     text: _hh.inverseOn
                           ? "Add a program here to block it from the hidden controllers."
                           : "Add a program here to let it see the hidden controllers. Gremlin-Platforms can still see them."

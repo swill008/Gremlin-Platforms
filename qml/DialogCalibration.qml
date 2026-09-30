@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -14,13 +14,14 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _calibrationDialog
 
+    // ToolWindowMemory sets the saved or default size when the window opens.
     width: 850
     height: 600
-    minimumWidth: 850
-    minimumHeight: 600
+    minimumWidth: Style.dp(850)
+    minimumHeight: Style.dp(600)
 
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     title: "Calibration"
 
@@ -32,8 +33,8 @@ ApplicationWindow {
     ToolWindowMemory {
         host: _calibrationDialog
         name: "calibration"
-        defaultWidth: 850
-        defaultHeight: 600
+        defaultWidth: Style.dp(850)
+        defaultHeight: Style.dp(600)
     }
 
     function chooseModule(slug) {
@@ -104,14 +105,14 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.bottomMargin: 58
-        anchors.leftMargin: 10
+        anchors.bottomMargin: Style.dp(58)
+        anchors.leftMargin: Style.dp(10)
 
         RowLayout {
-            Layout.bottomMargin: 15
+            Layout.bottomMargin: Style.dp(15)
 
             Label {
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: Style.dp(150)
                 text: "Input module"
             }
 
@@ -153,7 +154,7 @@ ApplicationWindow {
             id: _axisView
 
             scrollbarAlwaysVisible: true
-            spacing: 10
+            spacing: Style.dp(10)
             Layout.fillWidth: true
             Layout.fillHeight: true
 
@@ -186,7 +187,7 @@ ApplicationWindow {
 
         // Display axis name and current raw value and axis type
         RowLayout {
-            Layout.rightMargin: 20
+            Layout.rightMargin: Style.dp(20)
 
             JGText {
                 Layout.fillWidth: true
@@ -196,27 +197,27 @@ ApplicationWindow {
             }
 
             JGText {
-                Layout.preferredWidth: 75
-                Layout.rightMargin: 5
+                Layout.preferredWidth: Style.dp(75)
+                Layout.rightMargin: Style.dp(5)
 
                 text: "Raw"
                 horizontalAlignment: Text.AlignRight
             }
 
             JGTextField {
-                Layout.preferredWidth: 100
+                Layout.preferredWidth: Style.dp(100)
 
                 text: rawValue
             }
 
             JGText {
-                Layout.preferredWidth: 100
+                Layout.preferredWidth: Style.dp(100)
 
                 text: "With center"
                 horizontalAlignment: Text.AlignRight
             }
             Switch {
-                Layout.preferredWidth: 100
+                Layout.preferredWidth: Style.dp(100)
 
                 text: checked ? "Yes" : "No"
                 checked: model.withCenter
@@ -229,7 +230,7 @@ ApplicationWindow {
 
         RowLayout {
 
-            Layout.rightMargin: 20
+            Layout.rightMargin: Style.dp(20)
 
             // Show live axis sliders and calibration values
             ColumnLayout {
@@ -238,7 +239,7 @@ ApplicationWindow {
                 BetterProgressBar {
                     id: _progressRaw
 
-                    Layout.preferredHeight: 30
+                    Layout.preferredHeight: Style.dp(30)
                     Layout.fillWidth: true
 
                     value: rawValue
@@ -248,7 +249,7 @@ ApplicationWindow {
                 BetterProgressBar {
                     id: _progressCalibrated
 
-                    Layout.preferredHeight: 30
+                    Layout.preferredHeight: Style.dp(30)
                     Layout.fillWidth: true
 
                     value: calibratedValue
@@ -309,7 +310,7 @@ ApplicationWindow {
 
             // Buttons to control calibration
             ColumnLayout {
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: Style.dp(150)
                 Layout.alignment: Qt.AlignBottom
 
                 RowLayout {
@@ -318,7 +319,7 @@ ApplicationWindow {
 
                         text: bsi.icons.reload
                         font.family: "bootstrap-icons"
-                        font.pixelSize: 20
+                        font.pixelSize: Style.dp(20)
                         font.bold: true
 
                         onClicked: () => _axisView.model.reset(index)
@@ -327,7 +328,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
 
                         text: bsi.icons.save
-                        font.pixelSize: 20
+                        font.pixelSize: Style.dp(20)
                         font.family: "bootstrap-icons"
                         font.bold: true
 
@@ -353,13 +354,13 @@ ApplicationWindow {
                     visible: unsavedChanges
                     text: "Not saved"
                     color: "#FBBF24"
-                    font.pixelSize: 11
+                    font.pixelSize: Style.dp(11)
                 }
 
                 Button {
                     id: _btnCenterCalibration
 
-                    Layout.preferredWidth: 150
+                    Layout.preferredWidth: Style.dp(150)
                     text: "Calibrate center"
                     visible: model.withCenter
 
@@ -375,7 +376,7 @@ ApplicationWindow {
                 Button {
                     id: _btnExtremaCalibration
 
-                    Layout.preferredWidth: 150
+                    Layout.preferredWidth: Style.dp(150)
                     text: "Calibrate extrema"
 
                     checkable: true
@@ -390,7 +391,7 @@ ApplicationWindow {
         // Spacer at the bottom to leave some empty space below the ListView
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 10
+            Layout.preferredHeight: Style.dp(10)
         }
     }
 

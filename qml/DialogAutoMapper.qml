@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -15,11 +15,11 @@ import Gremlin.Config
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
-    minimumWidth: 900
-    minimumHeight: 400
+    minimumWidth: Style.dp(900)
+    minimumHeight: Style.dp(400)
 
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     title: "Auto Mapper"
 
@@ -44,14 +44,14 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        anchors.bottomMargin: 58
+        anchors.margins: Style.dp(10)
+        anchors.bottomMargin: Style.dp(58)
 
         RowLayout {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.rightMargin: 10
+                Layout.rightMargin: Style.dp(10)
 
                 RowLayout {
                     Label {
@@ -59,7 +59,7 @@ ApplicationWindow {
                     }
 
                     LayoutHorizontalSpacer {
-                        Layout.preferredHeight: 1
+                        Layout.preferredHeight: Style.dp(1)
                         color: Style.accent
                     }
                 }
@@ -72,7 +72,7 @@ ApplicationWindow {
                     scrollbarAlwaysVisible: true
 
                     delegate: CheckBox {
-                        width: ListView.view.width - 10
+                        width: ListView.view.width - Style.dp(10)
 
                         text: model.name
                         checked: false
@@ -94,7 +94,7 @@ ApplicationWindow {
                     }
 
                     LayoutHorizontalSpacer {
-                        Layout.preferredHeight: 1
+                        Layout.preferredHeight: Style.dp(1)
                         color: Style.accent
                     }
                 }
@@ -107,7 +107,7 @@ ApplicationWindow {
                     scrollbarAlwaysVisible: true
 
                     delegate: CheckBox {
-                        width: ListView.view.width - 10
+                        width: ListView.view.width - Style.dp(10)
 
                         text: model.name
                         checked: false
@@ -133,15 +133,15 @@ ApplicationWindow {
                 textRole: "name"
 
                 background: Rectangle {
-                    implicitWidth: 120
-                    implicitHeight: 32
-                    border.width: 1
+                    implicitWidth: Style.dp(120)
+                    implicitHeight: Style.dp(32)
+                    border.width: Style.dp(1)
                     border.color: _modeSelector.down || _modeSelector.hovered
-                            ? _modeSelector.Universal.baseMediumColor
-                            : _modeSelector.Universal.baseMediumLowColor
+                            ? _modeSelector.U.Universal.baseMediumColor
+                            : _modeSelector.U.Universal.baseMediumLowColor
                     color: _modeSelector.down
-                            ? _modeSelector.Universal.listMediumColor
-                            : _modeSelector.Universal.altMediumLowColor
+                            ? _modeSelector.U.Universal.listMediumColor
+                            : _modeSelector.U.Universal.altMediumLowColor
                 }
 
                 delegate: ItemDelegate {
@@ -156,7 +156,7 @@ ApplicationWindow {
 
                     background: Rectangle {
                         color: (_modeSelector.highlightedIndex === index || parent.hovered)
-                                ? _modeSelector.Universal.listMediumColor
+                                ? _modeSelector.U.Universal.listMediumColor
                                 : "transparent"
                     }
                 }
@@ -180,7 +180,7 @@ ApplicationWindow {
         }
 
         RowLayout {
-            Layout.topMargin: 10
+            Layout.topMargin: Style.dp(10)
 
             Button {
                 text: "Create 1:1 mappings"
@@ -203,15 +203,15 @@ ApplicationWindow {
                 id: _statusMessage
 
                 Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
+                Layout.leftMargin: Style.dp(10)
+                Layout.rightMargin: Style.dp(10)
 
                 text: "Select an input module and an output module, then create 1:1 mappings."
             }
 
             IconButton {
                 text: bsi.icons.help
-                font.pixelSize: 24
+                font.pixelSize: Style.dp(24)
 
                 PointerTip {
                     text: "See Help, then Tools, then Mapping, then Auto Mapper, for the full Help Guide. The intent of this tool is to build a starting 1:1 mapping.\n\n"

@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Style
@@ -12,19 +12,20 @@ import Gremlin.UI
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
+    // ToolWindowMemory sets the saved or default size when the window opens.
     width: 960
     height: 640
-    minimumWidth: 720
-    minimumHeight: 480
+    minimumWidth: Style.dp(720)
+    minimumHeight: Style.dp(480)
     title: qsTr("Live Log Reader")
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     ToolWindowMemory {
         host: _win
         name: "liveLog"
-        defaultWidth: 960
-        defaultHeight: 640
+        defaultWidth: Style.dp(960)
+        defaultHeight: Style.dp(640)
     }
 
     LiveLog {
@@ -58,8 +59,8 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 8
+        anchors.margins: Style.dp(12)
+        spacing: Style.dp(8)
 
         Label {
             text: _log.path
@@ -73,12 +74,12 @@ ApplicationWindow {
             Layout.fillHeight: true
             color: "#111113"
             border.color: "#3F3F46"
-            radius: 3
+            radius: Style.dp(3)
 
             Flickable {
                 id: _flick
                 anchors.fill: parent
-                anchors.margins: 2
+                anchors.margins: Style.dp(2)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 flickableDirection: Flickable.HorizontalAndVerticalFlick
@@ -96,12 +97,12 @@ ApplicationWindow {
 
                 TextEdit {
                     id: _view
-                    width: Math.max(_flick.width - 14, contentWidth + 16)
-                    height: Math.max(_flick.height - 14, contentHeight + 16)
-                    leftPadding: 8
-                    topPadding: 8
-                    rightPadding: 8
-                    bottomPadding: 8
+                    width: Math.max(_flick.width - Style.dp(14), contentWidth + Style.dp(16))
+                    height: Math.max(_flick.height - Style.dp(14), contentHeight + Style.dp(16))
+                    leftPadding: Style.dp(8)
+                    topPadding: Style.dp(8)
+                    rightPadding: Style.dp(8)
+                    bottomPadding: Style.dp(8)
                     readOnly: true
                     selectByMouse: true
                     wrapMode: TextEdit.NoWrap
@@ -109,7 +110,7 @@ ApplicationWindow {
                     selectionColor: "#3F3F46"
                     selectedTextColor: "#E4E4E7"
                     font.family: "Consolas"
-                    font.pixelSize: 13
+                    font.pixelSize: Style.dp(13)
                     textFormat: TextEdit.PlainText
                 }
 
@@ -117,12 +118,12 @@ ApplicationWindow {
                     id: _vbar
                     policy: ScrollBar.AlwaysOn
                     contentItem: Rectangle {
-                        implicitWidth: 8
-                        radius: 4
+                        implicitWidth: Style.dp(8)
+                        radius: Style.dp(4)
                         color: _vbar.pressed ? "#E4E4E7" : "#71717A"
                     }
                     background: Rectangle {
-                        implicitWidth: 12
+                        implicitWidth: Style.dp(12)
                         color: "#27272A"
                     }
                 }
@@ -130,12 +131,12 @@ ApplicationWindow {
                     id: _hbar
                     policy: ScrollBar.AlwaysOn
                     contentItem: Rectangle {
-                        implicitHeight: 8
-                        radius: 4
+                        implicitHeight: Style.dp(8)
+                        radius: Style.dp(4)
                         color: _hbar.pressed ? "#E4E4E7" : "#71717A"
                     }
                     background: Rectangle {
-                        implicitHeight: 12
+                        implicitHeight: Style.dp(12)
                         color: "#27272A"
                     }
                 }

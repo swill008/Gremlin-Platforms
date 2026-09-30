@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -14,21 +14,22 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _deviceViewer
 
+    // ToolWindowMemory sets the saved or default size when the window opens.
     width: 1400
     height: 800
-    minimumWidth: 900
-    minimumHeight: 500
+    minimumWidth: Style.dp(900)
+    minimumHeight: Style.dp(500)
 
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     title: "Device Viewer"
 
     ToolWindowMemory {
         host: _deviceViewer
         name: "device-viewer"
-        defaultWidth: 1400
-        defaultHeight: 800
+        defaultWidth: Style.dp(1400)
+        defaultHeight: Style.dp(800)
     }
 
     Shortcut { sequence: "Esc"; onActivated: {} }
@@ -90,21 +91,21 @@ ApplicationWindow {
         visible: _deviceViewer.hardwareTip.length > 0
         modal: false
         focus: false
-        padding: 8
+        padding: Style.dp(8)
         closePolicy: Popup.NoAutoClose
         parent: Overlay.overlay
 
         background: Rectangle {
             color: Style.background
             border.color: Style.accent
-            border.width: 1
-            radius: 3
+            border.width: Style.dp(1)
+            radius: Style.dp(3)
         }
 
         contentItem: Label {
             text: _deviceViewer.hardwareTip
             color: Style.foreground
-            font.pointSize: 11
+            font.pixelSize: Style.dp(15)
         }
     }
 
@@ -112,19 +113,19 @@ ApplicationWindow {
         id: _root
 
         anchors.fill: parent
-        anchors.bottomMargin: 58
+        anchors.bottomMargin: Style.dp(58)
 
         ScrollView {
             id: _deviceScroll
             Layout.alignment: Qt.AlignTop
-            Layout.rightMargin: 10
-            Layout.minimumWidth: 360
-            Layout.preferredWidth: 420
-            Layout.maximumWidth: 560
+            Layout.rightMargin: Style.dp(10)
+            Layout.minimumWidth: Style.dp(360)
+            Layout.preferredWidth: Style.dp(420)
+            Layout.maximumWidth: Style.dp(560)
             Layout.fillHeight: true
 
             ColumnLayout {
-                width: Math.max(_deviceScroll.availableWidth, 360)
+                width: Math.max(_deviceScroll.availableWidth, Style.dp(360))
 
                 Repeater {
                     model: _deviceData
@@ -187,7 +188,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     text: shownName
                     color: Style.foreground
-                    font.pointSize: 12
+                    font.pixelSize: Style.dp(16)
                     font.family: "Segoe UI"
                     wrapMode: Text.WrapAnywhere
                     maximumLineCount: 3

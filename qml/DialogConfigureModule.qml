@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
@@ -73,13 +73,13 @@ ApplicationWindow {
         photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
     }
 
-    width: 980
-    height: 640
-    minimumWidth: 800
-    minimumHeight: 480
+    width: Style.dp(980)
+    height: Style.dp(640)
+    minimumWidth: Style.dp(800)
+    minimumHeight: Style.dp(480)
     title: direction === "dest" ? "Configure output module" : "Configure input module"
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
     flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowSystemMenuHint
     modality: Qt.NonModal
 
@@ -189,13 +189,13 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        anchors.bottomMargin: 78
-        spacing: 10
+        anchors.margins: Style.dp(12)
+        anchors.bottomMargin: Style.dp(78)
+        spacing: Style.dp(10)
 
         Label {
             text: deviceName.length ? deviceName : "Unnamed device"
-            font.pixelSize: 16
+            font.pixelSize: Style.dp(16)
             font.bold: true
         }
 
@@ -209,18 +209,18 @@ ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 12
+            spacing: Style.dp(12)
 
             Rectangle {
-                Layout.preferredWidth: 320
+                Layout.preferredWidth: Style.dp(320)
                 Layout.fillHeight: true
                 color: "#18181B"
                 border.color: "#3F3F46"
-                radius: 4
+                radius: Style.dp(4)
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 8
+                    anchors.margins: Style.dp(8)
                     Image {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -265,14 +265,14 @@ ApplicationWindow {
                     }
                     delegate: Rectangle {
                         width: ListView.view.width
-                        height: 34
+                        height: Style.dp(34)
                         color: model.lit ? "#14532D" : (index === _list.currentIndex ? "#27272A" : "transparent")
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 4
-                            anchors.rightMargin: 8
-                            spacing: 8
+                            anchors.leftMargin: Style.dp(4)
+                            anchors.rightMargin: Style.dp(8)
+                            spacing: Style.dp(8)
 
                         CheckBox {
                             checked: model.claimed
@@ -286,7 +286,7 @@ ApplicationWindow {
                         }
                         Label {
                             text: model.label
-                            Layout.preferredWidth: 120
+                            Layout.preferredWidth: Style.dp(120)
                             color: model.lit ? "#BBF7D0" : Style.foreground
                         }
                         TextField {
@@ -307,7 +307,7 @@ ApplicationWindow {
                     visible: _list.count === 0
                     color: "#A1A1AA"
                     wrapMode: Text.WordWrap
-                    width: parent.width - 24
+                    width: parent.width - Style.dp(24)
                     horizontalAlignment: Text.AlignHCenter
                     text: deviceName.toLowerCase() === "keyboard"
                           ? "Press a key to add it."
@@ -349,29 +349,29 @@ ApplicationWindow {
         title: "Module file"
         modal: true
         anchors.centerIn: parent
-        width: 460
-        padding: 16
+        width: Style.dp(460)
+        padding: Style.dp(16)
         standardButtons: Dialog.Close
 
         contentItem: ColumnLayout {
-            spacing: 10
+            spacing: Style.dp(10)
             Label {
                 text: "Current file"
                 color: "#A1A1AA"
-                font.pixelSize: 12
+                font.pixelSize: Style.dp(12)
             }
             Label {
                 Layout.fillWidth: true
                 text: moduleFileLabel.length ? moduleFileLabel : "None"
                 wrapMode: Text.WordWrap
-                font.pixelSize: 14
+                font.pixelSize: Style.dp(14)
             }
             Label {
                 Layout.fillWidth: true
                 text: "Import copies the chosen file into this device's file. The chosen file is left where it was."
                 color: "#A1A1AA"
                 wrapMode: Text.WordWrap
-                font.pixelSize: 12
+                font.pixelSize: Style.dp(12)
             }
             Label {
                 Layout.fillWidth: true
@@ -379,12 +379,12 @@ ApplicationWindow {
                 text: moduleFileNotice
                 color: "#A1A1AA"
                 wrapMode: Text.WordWrap
-                font.pixelSize: 12
+                font.pixelSize: Style.dp(12)
             }
             Label {
                 text: "Import from"
                 color: "#A1A1AA"
-                font.pixelSize: 12
+                font.pixelSize: Style.dp(12)
             }
             ComboBox {
                 id: _moduleFilePick
@@ -474,37 +474,37 @@ ApplicationWindow {
         modal: true
         focus: true
         closePolicy: Popup.NoAutoClose
-        padding: 16
+        padding: Style.dp(16)
 
         background: Rectangle {
             color: Style.background
             border.color: (_importNotice.titleText === "Import failed" || _importNotice.titleText === "Undo failed") ? "#DC2626" : Style.accent
-            border.width: 1
-            radius: 4
+            border.width: Style.dp(1)
+            radius: Style.dp(4)
         }
 
         contentItem: ColumnLayout {
-            spacing: 12
+            spacing: Style.dp(12)
 
             Label {
                 text: _importNotice.titleText
                 font.bold: true
-                font.pixelSize: 16
+                font.pixelSize: Style.dp(16)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
-                Layout.preferredWidth: 560
+                Layout.preferredWidth: Style.dp(560)
             }
 
             Label {
                 text: _importNotice.messageText
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
-                Layout.preferredWidth: 560
+                Layout.preferredWidth: Style.dp(560)
             }
 
             RowLayout {
                 Layout.alignment: Qt.AlignRight
-                spacing: 8
+                spacing: Style.dp(8)
 
                 Button {
                     visible: _importNotice.canUndo

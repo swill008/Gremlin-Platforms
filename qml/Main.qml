@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
@@ -21,8 +21,9 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
 
     title: backend ? backend.windowTitle : "Gremlin-Platforms R1"
-    minimumWidth: 1300
-    minimumHeight: 700
+    minimumWidth: Style.dp(1300)
+    minimumHeight: Style.dp(700)
+    // WindowPlacement sets the saved or default size at startup.
     width: 1400
     height: 900
     visible: true
@@ -40,7 +41,7 @@ ApplicationWindow {
         refreshSourceModuleCount()
     }
 
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
     color: Style.background
 
     property string pinSlug: ""
@@ -865,7 +866,7 @@ ApplicationWindow {
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: _homeButton.rightPadding + spacing + _toggleButton.sideSlack
-            spacing: 8
+            spacing: Style.dp(8)
 
             JGToolButton {
                 id: _homeButton
@@ -949,7 +950,7 @@ ApplicationWindow {
             LayoutHorizontalSpacer {}
 
             Label {
-                Layout.rightMargin: 10
+                Layout.rightMargin: Style.dp(10)
 
                 text: "Configuring mode"
             }
@@ -957,23 +958,23 @@ ApplicationWindow {
             TooltipComboBox {
                 id: _modeSelector
 
-                Layout.preferredWidth: 200
-                Layout.rightMargin: 10
+                Layout.preferredWidth: Style.dp(200)
+                Layout.rightMargin: Style.dp(10)
 
                 model: ModeListModel { id: _modeList }
                 textRole: "name"
                 valueRole: "name"
 
                 background: Rectangle {
-                    implicitWidth: 120
-                    implicitHeight: 32
-                    border.width: 1
+                    implicitWidth: Style.dp(120)
+                    implicitHeight: Style.dp(32)
+                    border.width: Style.dp(1)
                     border.color: _modeSelector.down || _modeSelector.hovered
-                            ? _modeSelector.Universal.baseMediumColor
-                            : _modeSelector.Universal.baseMediumLowColor
+                            ? _modeSelector.U.Universal.baseMediumColor
+                            : _modeSelector.U.Universal.baseMediumLowColor
                     color: _modeSelector.down
-                            ? _modeSelector.Universal.listMediumColor
-                            : _modeSelector.Universal.altMediumLowColor
+                            ? _modeSelector.U.Universal.listMediumColor
+                            : _modeSelector.U.Universal.altMediumLowColor
                 }
 
                 delegate: ItemDelegate {
@@ -988,7 +989,7 @@ ApplicationWindow {
 
                     background: Rectangle {
                         color: (_modeSelector.highlightedIndex === index || parent.hovered)
-                                ? _modeSelector.Universal.listMediumColor
+                                ? _modeSelector.U.Universal.listMediumColor
                                 : "transparent"
                     }
                 }
@@ -1025,7 +1026,7 @@ ApplicationWindow {
 
             Button {
                 text: "Manage Modes"
-                Layout.rightMargin: 10
+                Layout.rightMargin: Style.dp(10)
                 onClicked: () => {
                     Helpers.createComponent("DialogManageModes.qml")
                 }
@@ -1036,15 +1037,15 @@ ApplicationWindow {
     footer: Rectangle {
         id: _footer
 
-        height: 30
-        color: Universal.chromeMediumColor
+        height: Style.dp(30)
+        color: U.Universal.chromeMediumColor
 
         RowLayout {
             anchors.fill: parent
 
             Label {
-                Layout.preferredWidth: 200
-                padding: 5
+                Layout.preferredWidth: Style.dp(200)
+                padding: Style.dp(5)
 
                 color: backend && backend.gremlinActive ? Style.foreground : "#A1A1AA"
                 text: "<B>Status: </B>" +
@@ -1057,8 +1058,8 @@ ApplicationWindow {
             }
 
             Label {
-                Layout.preferredWidth: 220
-                padding: 5
+                Layout.preferredWidth: Style.dp(220)
+                padding: Style.dp(5)
 
                 text: "<B>Executing mode: </B>" + (backend ? backend.currentMode : "")
             }
@@ -1066,7 +1067,7 @@ ApplicationWindow {
             Label {
                 id: _savedLine
                 Layout.fillWidth: true
-                padding: 5
+                padding: Style.dp(5)
                 color: "#E4E4E7"
                 elide: Text.ElideMiddle
                 text: _root.lastSaveText
@@ -1191,7 +1192,7 @@ ApplicationWindow {
         id: _columnLayout
 
         anchors.fill: parent
-        anchors.bottomMargin: 58
+        anchors.bottomMargin: Style.dp(58)
 
         property InputConfiguration inputConfigurationWidget
         property bool onStatus: !uiState || uiState.currentRoom === "status"
@@ -1273,39 +1274,39 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: 16
-                Layout.rightMargin: 12
-                Layout.topMargin: 16
-                Layout.bottomMargin: 14
-                spacing: 12
+                Layout.leftMargin: Style.dp(16)
+                Layout.rightMargin: Style.dp(12)
+                Layout.topMargin: Style.dp(16)
+                Layout.bottomMargin: Style.dp(14)
+                spacing: Style.dp(12)
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 2
+                    spacing: Style.dp(2)
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: Style.dp(8)
                         Label {
                             visible: configDirection === "dest"
                             text: "Output Module View"
-                            font.pixelSize: 22
+                            font.pixelSize: Style.dp(22)
                             font.bold: true
                         }
                         Label {
                             visible: configDirection !== "dest" && configDirection !== "logical"
                             text: "Input Configuration"
-                            font.pixelSize: 22
+                            font.pixelSize: Style.dp(22)
                             font.bold: true
                         }
                         Label {
                             visible: configDirection === "logical"
                             text: "Logical Device"
-                            font.pixelSize: 22
+                            font.pixelSize: Style.dp(22)
                             font.bold: true
                         }
                         IconButton {
                             text: "\uF284"
-                            font.pixelSize: 18
+                            font.pixelSize: Style.dp(18)
                             visible: configDirection === "source" || configDirection === "dest"
                             enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
@@ -1318,7 +1319,7 @@ ApplicationWindow {
                         }
                         IconButton {
                             text: "\uF285"
-                            font.pixelSize: 18
+                            font.pixelSize: Style.dp(18)
                             visible: configDirection === "source" || configDirection === "dest"
                             enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
@@ -1333,7 +1334,7 @@ ApplicationWindow {
                             id: _configTitle
                             visible: configDirection !== "logical"
                             text: configTitleName.length ? configTitleName : "device"
-                            font.pixelSize: 22
+                            font.pixelSize: Style.dp(22)
                             font.bold: true
                             elide: Text.ElideRight
                             Layout.fillWidth: true
@@ -1344,7 +1345,7 @@ ApplicationWindow {
                         visible: configDirection === "dest"
                         text: "Bound to: [Not bound]"
                         color: "#A1A1AA"
-                        font.pixelSize: 12
+                        font.pixelSize: Style.dp(12)
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
@@ -1352,7 +1353,7 @@ ApplicationWindow {
                         visible: configDirection === "dest"
                         text: "View only — driven by input module mappings."
                         color: "#A1A1AA"
-                        font.pixelSize: 12
+                        font.pixelSize: Style.dp(12)
                     }
                 }
                 Button {
@@ -1391,7 +1392,7 @@ ApplicationWindow {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
+                Layout.preferredHeight: Style.dp(1)
                 color: "#3F3F46"
             }
         }
@@ -1403,14 +1404,14 @@ ApplicationWindow {
 
             Label {
                 text: uiState && uiState.currentRoom === "scripts" ? "Scripts" : "Profile Settings"
-                font.pixelSize: 16
+                font.pixelSize: Style.dp(16)
                 font.bold: true
-                Layout.leftMargin: 12
+                Layout.leftMargin: Style.dp(12)
             }
             Item { Layout.fillWidth: true }
             Button {
                 text: "Home"
-                Layout.rightMargin: 12
+                Layout.rightMargin: Style.dp(12)
                 onClicked: closeWorkRoom()
             }
         }
@@ -1423,8 +1424,8 @@ ApplicationWindow {
             DeviceList {
                 id: _deviceList
 
-                Layout.minimumHeight: 50
-                Layout.maximumHeight: 50
+                Layout.minimumHeight: Style.dp(50)
+                Layout.maximumHeight: Style.dp(50)
                 Layout.fillWidth: true
 
                 deviceListModel: _deviceListModel
@@ -1433,13 +1434,13 @@ ApplicationWindow {
             ColumnLayout {
                 IconButton {
                     text: "\uF285"
-                    font.pixelSize: 14
+                    font.pixelSize: Style.dp(14)
 
                     onClicked: () => { _deviceList.nextTab() }
                 }
                 IconButton {
                     text: "\uF284"
-                    font.pixelSize: 14
+                    font.pixelSize: Style.dp(14)
 
                     onClicked: () => { _deviceList.previousTab() }
                 }
@@ -1454,7 +1455,7 @@ ApplicationWindow {
                     id: _scriptButton
 
                     text: "Scripts"
-                    width: _metricScripts.width + 50
+                    width: _metricScripts.width + Style.dp(50)
                     checked: false
 
                     onClicked: () => {
@@ -1478,7 +1479,7 @@ ApplicationWindow {
                     id: _profileSettingsButton
 
                     text: "Settings"
-                    width: _metricProfileSettings.width + 50
+                    width: _metricProfileSettings.width + Style.dp(50)
                     checked: false
 
                     onClicked: () => {
@@ -1591,7 +1592,7 @@ ApplicationWindow {
                 id: _deviceInputList
 
                 visible: uiState && uiState.currentTab === "physical"
-                SplitView.minimumWidth: 400
+                SplitView.minimumWidth: Style.dp(400)
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
 
@@ -1615,8 +1616,8 @@ ApplicationWindow {
                 id: _logicalDeviceList
 
                 visible: uiState && uiState.currentTab === "logical"
-                SplitView.minimumWidth: 360
-                SplitView.preferredWidth: 420
+                SplitView.minimumWidth: Style.dp(360)
+                SplitView.preferredWidth: Style.dp(420)
                 SplitView.fillHeight: true
 
                 onInputIdentifierChanged: () => {
@@ -1630,7 +1631,7 @@ ApplicationWindow {
                 id: _oscDeviceList
 
                 visible: uiState && uiState.currentTab === "osc"
-                SplitView.minimumWidth: 400
+                SplitView.minimumWidth: Style.dp(400)
 
                 onInputIdentifierChanged: () => {
                     if (uiState) {
@@ -1643,7 +1644,7 @@ ApplicationWindow {
                 id: _xboxDeviceList
 
                 visible: uiState && uiState.currentTab === "xbox"
-                SplitView.minimumWidth: 400
+                SplitView.minimumWidth: Style.dp(400)
                 SplitView.fillWidth: true
             }
 
@@ -1651,7 +1652,7 @@ ApplicationWindow {
                 id: _keyboardInputList
 
                 visible: uiState && uiState.currentTab === "keyboard"
-                SplitView.minimumWidth: 400
+                SplitView.minimumWidth: Style.dp(400)
             }
 
             InputConfiguration {
@@ -1671,7 +1672,7 @@ ApplicationWindow {
 
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-                SplitView.minimumWidth: 900
+                SplitView.minimumWidth: Style.dp(900)
             }
         }
     }

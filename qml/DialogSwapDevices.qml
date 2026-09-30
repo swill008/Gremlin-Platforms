@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -14,11 +14,11 @@ import Gremlin.Tools
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
-    width: 800
-    height: _content.implicitHeight + 30
+    width: Style.dp(800)
+    height: _content.implicitHeight + Style.dp(30)
 
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     title: "Swap Devices"
 
@@ -45,12 +45,12 @@ ApplicationWindow {
         id: _content
 
         anchors.fill: parent
-        anchors.margins: 10
-        anchors.bottomMargin: 58
+        anchors.margins: Style.dp(10)
+        anchors.bottomMargin: Style.dp(58)
 
         RowLayout {
             Label {
-                Layout.preferredWidth: 200
+                Layout.preferredWidth: Style.dp(200)
 
                 text: "From profile device"
                 font.bold: true
@@ -70,7 +70,7 @@ ApplicationWindow {
 
         RowLayout {
             Label {
-                Layout.preferredWidth: 200
+                Layout.preferredWidth: Style.dp(200)
 
                 text: "To connected device"
                 font.bold: true
@@ -98,7 +98,7 @@ ApplicationWindow {
         }
 
         RowLayout {
-            Layout.topMargin: 10
+            Layout.topMargin: Style.dp(10)
 
             Button {
                 text: "Swap Bindings"
@@ -114,7 +114,7 @@ ApplicationWindow {
                 id: _statusMessage
 
                 Layout.fillWidth: true
-                Layout.leftMargin: 10
+                Layout.leftMargin: Style.dp(10)
 
                 text: "Select devices, then click the button."
             }

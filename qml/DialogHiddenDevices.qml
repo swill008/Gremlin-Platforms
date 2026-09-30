@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -21,7 +21,7 @@ ApplicationWindow {
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     property var moduleModel: null
     property var hiddenRows: []
@@ -30,7 +30,11 @@ ApplicationWindow {
         hiddenRows = moduleModel ? moduleModel.hiddenList() : []
     }
 
-    Component.onCompleted: refreshHidden()
+    Component.onCompleted: {
+        width = Style.dp(420)
+        height = Style.dp(360)
+        refreshHidden()
+    }
 
     Connections {
         target: moduleModel
@@ -40,8 +44,8 @@ ApplicationWindow {
     ListView {
         id: _list
         anchors.fill: parent
-        anchors.margins: 12
-        anchors.bottomMargin: 108
+        anchors.margins: Style.dp(12)
+        anchors.bottomMargin: Style.dp(108)
         model: hiddenRows
         delegate: RowLayout {
             width: ListView.view.width
@@ -67,8 +71,8 @@ ApplicationWindow {
     Button {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
-        anchors.leftMargin: 12
-        anchors.bottomMargin: 66
+        anchors.leftMargin: Style.dp(12)
+        anchors.bottomMargin: Style.dp(66)
         text: "Unhide all"
         enabled: _list.count > 0
         onClicked: {

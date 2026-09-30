@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -14,11 +14,11 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _root
 
-    minimumWidth: 900
-    minimumHeight: 500
+    minimumWidth: Style.dp(900)
+    minimumHeight: Style.dp(500)
 
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     title: "Manage Modes"
 
@@ -29,7 +29,7 @@ ApplicationWindow {
         id: _textInput
 
         visible: false
-        width: 500
+        width: Style.dp(500)
 
         property var callback: null
 
@@ -43,13 +43,13 @@ ApplicationWindow {
         id: _content
 
         anchors.fill: parent
-        anchors.topMargin: 10
-        anchors.bottomMargin: 58
+        anchors.topMargin: Style.dp(10)
+        anchors.bottomMargin: Style.dp(58)
 
         Label {
             Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
+            Layout.leftMargin: Style.dp(12)
+            Layout.rightMargin: Style.dp(12)
             wrapMode: Text.WordWrap
             color: "#E4E4E7"
             text: "The mode list is the map you edit and the map that runs. Modes are stored in the profile."
@@ -60,7 +60,7 @@ ApplicationWindow {
             Layout.fillHeight: true
 
             scrollbarAlwaysVisible: true
-            spacing: 10
+            spacing: Style.dp(10)
 
             model: modeList
             delegate: _delegate
@@ -100,9 +100,9 @@ ApplicationWindow {
 
             Label {
                 Layout.fillWidth: true
-                Layout.leftMargin: 10
+                Layout.leftMargin: Style.dp(10)
 
-                padding: 4
+                padding: Style.dp(4)
 
                 text: name
             }
@@ -110,7 +110,7 @@ ApplicationWindow {
             IconButton {
                 text: bsi.icons.edit
 
-                Layout.leftMargin: 10
+                Layout.leftMargin: Style.dp(10)
 
                 onClicked: () => {
                     let validNames = modeHierarchy.modeStringList()
@@ -130,9 +130,9 @@ ApplicationWindow {
             ComboBox {
                 id: _parentMode
 
-                Layout.preferredWidth: 200
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
+                Layout.preferredWidth: Style.dp(200)
+                Layout.leftMargin: Style.dp(10)
+                Layout.rightMargin: Style.dp(10)
 
                 model: modeHierarchy.validParents(name)
 
@@ -140,15 +140,15 @@ ApplicationWindow {
                 valueRole: "value"
 
                 background: Rectangle {
-                    implicitWidth: 120
-                    implicitHeight: 32
-                    border.width: 1
+                    implicitWidth: Style.dp(120)
+                    implicitHeight: Style.dp(32)
+                    border.width: Style.dp(1)
                     border.color: _parentMode.down || _parentMode.hovered
-                            ? _parentMode.Universal.baseMediumColor
-                            : _parentMode.Universal.baseMediumLowColor
+                            ? _parentMode.U.Universal.baseMediumColor
+                            : _parentMode.U.Universal.baseMediumLowColor
                     color: _parentMode.down
-                            ? _parentMode.Universal.listMediumColor
-                            : _parentMode.Universal.altMediumLowColor
+                            ? _parentMode.U.Universal.listMediumColor
+                            : _parentMode.U.Universal.altMediumLowColor
                 }
 
                 delegate: ItemDelegate {
@@ -163,7 +163,7 @@ ApplicationWindow {
 
                     background: Rectangle {
                         color: (_parentMode.highlightedIndex === index || parent.hovered)
-                                ? _parentMode.Universal.listMediumColor
+                                ? _parentMode.U.Universal.listMediumColor
                                 : "transparent"
                     }
                 }
@@ -180,7 +180,7 @@ ApplicationWindow {
             IconButton {
                 text: bsi.icons.trash
 
-                Layout.rightMargin: 10
+                Layout.rightMargin: Style.dp(10)
 
                 onClicked: () => { modeHierarchy.deleteMode(name) }
             }

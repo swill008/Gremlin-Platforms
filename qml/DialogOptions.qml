@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -14,12 +14,13 @@ import "helpers.js" as Helpers
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _options
+    // ToolWindowMemory sets the saved or default size when the window opens.
     width: 1200
     height: 700
-    minimumWidth: 1200
-    minimumHeight: 600
+    minimumWidth: Style.dp(1200)
+    minimumHeight: Style.dp(600)
 
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
     color: Style.background
 
     title: "Options"
@@ -27,8 +28,8 @@ ApplicationWindow {
     ToolWindowMemory {
         host: _options
         name: "options"
-        defaultWidth: 1200
-        defaultHeight: 700
+        defaultWidth: Style.dp(1200)
+        defaultHeight: Style.dp(700)
     }
 
     onClosing: () => {
@@ -43,13 +44,13 @@ ApplicationWindow {
         id: _root
 
         anchors.fill: parent
-        anchors.bottomMargin: 58
+        anchors.bottomMargin: Style.dp(58)
 
         // Shows the list of all option sections.
         JGListView {
             id: _sectionSelector
 
-            Layout.preferredWidth: 200
+            Layout.preferredWidth: Style.dp(200)
             Layout.fillHeight: true
 
             model: _sectionModel

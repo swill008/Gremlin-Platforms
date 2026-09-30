@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -12,20 +12,20 @@ import Gremlin.Style
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
-    minimumWidth: 1000
-    minimumHeight: 300
+    minimumWidth: Style.dp(1000)
+    minimumHeight: Style.dp(300)
 
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     title: "Device Information"
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.bottomMargin: 58
+        anchors.bottomMargin: Style.dp(58)
 
         RowLayout {
-            Layout.preferredHeight: 50
+            Layout.preferredHeight: Style.dp(50)
 
             HeaderText {
                 text: "Name"
@@ -33,31 +33,31 @@ ApplicationWindow {
             }
             HeaderText {
                 text: "Axes"
-                Layout.preferredWidth: 50
+                Layout.preferredWidth: Style.dp(50)
             }
             HeaderText {
                 text: "Buttons"
-                Layout.preferredWidth: 75
+                Layout.preferredWidth: Style.dp(75)
             }
             HeaderText {
                 text: "Hats"
-                Layout.preferredWidth: 50
+                Layout.preferredWidth: Style.dp(50)
             }
             HeaderText {
                 text: "VID"
-                Layout.preferredWidth: 100
+                Layout.preferredWidth: Style.dp(100)
             }
             HeaderText {
                 text: "PID"
-                Layout.preferredWidth: 100
+                Layout.preferredWidth: Style.dp(100)
             }
             HeaderText {
                 text: "Joystick ID"
-                Layout.preferredWidth: 100
+                Layout.preferredWidth: Style.dp(100)
             }
             HeaderText {
                 text: "Device GUID"
-                Layout.preferredWidth: 320
+                Layout.preferredWidth: Style.dp(320)
             }
         }
 
@@ -76,7 +76,7 @@ ApplicationWindow {
                     delegate: Rectangle {
                         id: _outer
 
-                        height: 40
+                        height: Style.dp(40)
                         width: _view.width
 
                         color: index % 2 === 0 ? Style.backgroundShade : Style.background
@@ -87,16 +87,16 @@ ApplicationWindow {
                             TextEntry {
                                 text: name
                                 Layout.fillWidth: true
-                                Layout.leftMargin: 10
+                                Layout.leftMargin: Style.dp(10)
                                 horizontalAlignment: Text.AlignLeft
 
                                 ToolTip {
                                     text: parent.text
-                                    width: contentWidth > 500 ? 500 : contentWidth + 20
+                                    width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
                                     visible: _hoverHandler.hovered
                                     delay: 500
                                     x: _hoverHandler.point.position.x - width / 2
-                                    y: _hoverHandler.point.position.y - height - 8
+                                    y: _hoverHandler.point.position.y - height - Style.dp(8)
                                 }
 
                                 HoverHandler {
@@ -108,31 +108,31 @@ ApplicationWindow {
                             }
                             TextEntry {
                                 text: axes
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: Style.dp(50)
                             }
                             TextEntry {
                                 text: buttons
-                                Layout.preferredWidth: 75
+                                Layout.preferredWidth: Style.dp(75)
                             }
                             TextEntry {
                                 text: hats
-                                Layout.preferredWidth: 50
+                                Layout.preferredWidth: Style.dp(50)
                             }
                             TextEntry {
                                 text: vid
-                                Layout.preferredWidth: 100
+                                Layout.preferredWidth: Style.dp(100)
                             }
                             TextEntry {
                                 text: pid
-                                Layout.preferredWidth: 100
+                                Layout.preferredWidth: Style.dp(100)
                             }
                             TextEntry {
                                 text: joy_id
-                                Layout.preferredWidth: 100
+                                Layout.preferredWidth: Style.dp(100)
                             }
                             JGTextField {
-                                Layout.preferredWidth: 320
-                                Layout.rightMargin: 10
+                                Layout.preferredWidth: Style.dp(320)
+                                Layout.rightMargin: Style.dp(10)
 
                                 text: guid
 
@@ -147,18 +147,18 @@ ApplicationWindow {
     }
 
     component TextEntry : JGText {
-        Layout.preferredHeight: 40
+        Layout.preferredHeight: Style.dp(40)
 
         color: Style.foreground
         elide: Text.ElideRight
 
         horizontalAlignment: Text.AlignRight
         verticalAlignment: Text.AlignVCenter
-        rightPadding: 10
+        rightPadding: Style.dp(10)
     }
 
     component HeaderText : JGText {
-        Layout.preferredHeight: 40
+        Layout.preferredHeight: Style.dp(40)
 
         color: Style.foreground
         font.weight: 600

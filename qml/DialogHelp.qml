@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -13,19 +13,20 @@ import "help_topics.js" as HelpTopics
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
+    // ToolWindowMemory sets the saved or default size when the window opens.
     width: 920
     height: 640
-    minimumWidth: 720
-    minimumHeight: 480
+    minimumWidth: Style.dp(720)
+    minimumHeight: Style.dp(480)
     title: qsTr("User Guide")
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     ToolWindowMemory {
         host: _win
         name: "help"
-        defaultWidth: 920
-        defaultHeight: 640
+        defaultWidth: Style.dp(920)
+        defaultHeight: Style.dp(640)
     }
 
     property string initialSection: ""
@@ -48,21 +49,21 @@ ApplicationWindow {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        anchors.bottomMargin: 58
-        spacing: 12
+        anchors.margins: Style.dp(12)
+        anchors.bottomMargin: Style.dp(58)
+        spacing: Style.dp(12)
 
         Rectangle {
-            Layout.preferredWidth: 260
+            Layout.preferredWidth: Style.dp(260)
             Layout.fillHeight: true
             color: "#111113"
             border.color: "#3F3F46"
-            radius: 3
+            radius: Style.dp(3)
 
             ListView {
                 id: _contents
                 anchors.fill: parent
-                anchors.margins: 6
+                anchors.margins: Style.dp(6)
                 clip: true
                 model: _win._topics
                 currentIndex: _win._index
@@ -74,19 +75,19 @@ ApplicationWindow {
                     width: _contents.width
                     text: section
                     color: "#E4E4E7"
-                    font.pixelSize: 18
+                    font.pixelSize: Style.dp(18)
                     font.bold: true
                     font.underline: true
-                    leftPadding: 8
-                    topPadding: 14
-                    bottomPadding: 6
+                    leftPadding: Style.dp(8)
+                    topPadding: Style.dp(14)
+                    bottomPadding: Style.dp(6)
                 }
                 delegate: ItemDelegate {
                     required property int index
                     required property string title
                     width: _contents.width
                     text: title
-                    font.pixelSize: 13
+                    font.pixelSize: Style.dp(13)
                     highlighted: index === _win._index
                     onClicked: _win._index = index
                 }
@@ -96,12 +97,12 @@ ApplicationWindow {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 8
+            spacing: Style.dp(8)
 
             Label {
                 text: _win._topics[_win._index].title
                 color: "#E4E4E7"
-                font.pixelSize: 20
+                font.pixelSize: Style.dp(20)
                 font.bold: true
             }
 
@@ -110,12 +111,12 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 color: "#111113"
                 border.color: "#3F3F46"
-                radius: 3
+                radius: Style.dp(3)
 
                 ScrollView {
                     id: _topicScroll
                     anchors.fill: parent
-                    anchors.margins: 12
+                    anchors.margins: Style.dp(12)
                     clip: true
                     Text {
                         width: _topicScroll.availableWidth
@@ -123,7 +124,7 @@ ApplicationWindow {
                         textFormat: Text.RichText
                         wrapMode: Text.WordWrap
                         color: "#E4E4E7"
-                        font.pixelSize: 14
+                        font.pixelSize: Style.dp(14)
                     }
                 }
             }
