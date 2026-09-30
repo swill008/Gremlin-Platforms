@@ -42,7 +42,7 @@ from gremlin.ui.hardware_profile import persist_log
 from gremlin.ui.profile import InputItemModel
 from gremlin.ui.script import ScriptListModel
 from gremlin.ui import ui_scale_option
-from gremlin.ui.util import to_local_path
+from gremlin.ui.util import save_image_as_pdf, to_local_path
 import gremlin.ui.hardware_profile  # noqa: F401
 
 QML_IMPORT_NAME = "Gremlin.UI"
@@ -467,6 +467,16 @@ class Backend(QtCore.QObject):
     @QtCore.Slot(str)
     def noteSave(self, text: str) -> None:
         self.saveNoted.emit(str(text or ""))
+
+    @QtCore.Slot(QtGui.QImage, "QVariant", result=bool)
+    def saveImageAsPdf(self, image: QtGui.QImage, url: QtCore.QUrl | str) -> bool:
+        path = to_local_path(url)
+        if save_image_as_pdf(image, path):
+            return True
+        signal.showNotification.emit(
+            "Export PDF", f"Could not write {path}."
+        )
+        return False
 
     @QtCore.Slot(result=str)
     def profilesFolderUrl(self) -> str:

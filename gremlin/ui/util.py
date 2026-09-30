@@ -516,3 +516,30 @@ def to_local_path(path_or_url) -> Path:
         local = QtCore.QUrl(text).toLocalFile()
         return Path(local) if local else Path()
     return Path(text)
+
+
+def save_image_as_pdf(image: QtGui.QImage, path: Path) -> bool:
+    """Writes image to path as a one-page PDF sized to the image.
+
+    Args:
+        image: picture to write
+        path: file to create
+
+    Returns:
+        True when the file was written
+    """
+    if image.isNull() or not str(path):
+        return False
+    writer = QtGui.QPdfWriter(str(path))
+    writer.setResolution(96)
+    writer.setPageMargins(QtCore.QMarginsF(0, 0, 0, 0))
+    writer.setPageSize(QtGui.QPageSize(
+        QtCore.QSizeF(image.width(), image.height()),
+        QtGui.QPageSize.Unit.Point,
+    ))
+    painter = QtGui.QPainter()
+    if not painter.begin(writer):
+        return False
+    target = QtCore.QRectF(painter.viewport())
+    painter.drawImage(target, image)
+    return painter.end()

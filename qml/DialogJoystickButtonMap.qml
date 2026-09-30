@@ -1504,17 +1504,14 @@ ApplicationWindow {
     }
 
     function exportViewTo(url, format) {
-        var path = String(url || "")
-        if (path.indexOf("file:") === 0)
-            path = path.replace("file:///", "").replace("file://", "")
         _buttonMap.grabToImage(function(result) {
             if (!result)
                 return
             if (format === "pdf") {
-                var png = path.replace(/\.pdf$/i, "") + ".png"
-                result.saveToFile(png)
+                if (backend)
+                    backend.saveImageAsPdf(result.image, url)
             } else {
-                result.saveToFile(path)
+                result.saveToFile(url)
             }
         })
     }
