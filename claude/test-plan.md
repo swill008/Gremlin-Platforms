@@ -461,3 +461,28 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | H-19g-b | FAIL | The "deleted devices" backup is written next to the program (`_install_root()`, hardware_profile.py:747), not in the user data folder. From source that is the repo; in the exe it is the program folder. Date in the file name reads `2026-30-SEP`. |
 | MENU-CLIP | FAIL (minor) | A card menu opened low on the page is cut off at the window bottom (Delete Device half hidden). |
 | MENU-ESC | NOTE | Escape does not close the card menu. |
+
+## Batch 3: Configuration / bindings catalog (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| H-03 | PASS | Double-click an input card opens Input Configuration. |
+| C-02 | PASS | Previous / next arrows step through input modules and wrap; tooltips. |
+| IC-01 | PASS | Type filter (all 9 entries listed); Map to keyboard / Unmapped filter the list. |
+| IC-01b | FAIL (minor) | When a filter leaves no rows, the list shows "This window only shows what the input module passes. Right-click the card → Configure input module…", which is the wrong advice. |
+| IC-03 | PASS | Parent row click opens the action pane. |
+| IC-09 | PASS | Pane X with changes: Cancel keeps the edit; Discard drops it (reopen shows the old value). |
+| IC-11 | PASS | OK commits; pane stays with "Close pane after OK" off; X then closes with no prompt. |
+| IC-06 | PASS / NOTE | Child Delete removes at once with no confirmation (S-14); leaves a blank gap until the list rebuilds. |
+| IC-05 | PASS | Add Action opens "New action"; Add + OK gives "1 assignment" (new action defaults to vJoy 1 X Axis). |
+| IC-17 | PASS | Shown > Show child rows hides them. |
+| IC-17b | FAIL (cosmetic) | Hidden child rows leave blank gaps between the parent rows. |
+| IC-29 | PASS | Leaving with unsaved display (Home) asks; Cancel stays; Discard leaves. |
+| IC-26 | PASS | Reset View to Default restores defaults; toast "Options have been reset". |
+| IC-27 | PASS | Copy View from… lists the header and the other input modules; applies the chosen view. |
+| IC-28 | PASS | Save View Settings: "Saved to the module file." and the footer names the module file. |
+| C-06 | FAIL (minor) | Hide Editor with unsaved display closes without asking (S-16); the leave gate still asks later, so nothing is lost silently. |
+| IC-13b | DEFERRED | Needs Gremlin running (Toggle). |
+| IC-07 | DEFERRED | Live LEDs / bars need a physical press. |
+| C-05, C-07..C-10, IC-02, IC-12, IC-13, IC-15..IC-25 (each section in detail) | NOT RUN | Remaining catalog detail; the display mechanism is proven by Shown, Reset, Copy View and Save. |
+| stderr | PASS | No QML errors in this batch. |
