@@ -68,13 +68,9 @@ _IOCTL_NAMES = {
 }
 
 
-_debug_log = False
-
-
-def _hh_log(message: str) -> None:
-    if not _debug_log:
-        return
-    print(f"Hardware Hide {message}", flush=True)
+def _hh_log(message: str, level: int = logging.DEBUG) -> None:
+    """HiDHide line in the system log. Options > Debug sets which levels are kept."""
+    logging.getLogger("system").log(level, "HiDHide %s", message)
 
 DEVPROP_TYPE_EMPTY = 0x00000000
 DEVPROP_TYPE_GUID = 0x0000000D
@@ -251,7 +247,7 @@ def _save_games(rows: list[dict]) -> None:
         config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_GAMES, packed)
         _hh_log(f"saved games count={len(rows)}")
     except Exception as exc:
-        _hh_log(f"save games failed: {exc}")
+        _hh_log(f"save games failed: {exc}", logging.WARNING)
 
 
 
@@ -644,7 +640,7 @@ def _open_control():
         None,
     )
     if not handle or int(handle) in (0, -1, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
-        _hh_log(f"open \\\\.\\HidHide failed err={ctypes.get_last_error()} handle={handle!r}")
+        _hh_log(f"open \\\\.\\HidHide failed err={ctypes.get_last_error()} handle={handle!r}", logging.WARNING)
         return None
     return handle
 def _close(handle) -> None:
@@ -691,7 +687,8 @@ def _ioctl(handle, code: int, inn: bytes | None = None, out_size: int = 0) -> tu
     name = _IOCTL_NAMES.get(int(code) & 0xFFFFFFFF, "OTHER")
     _hh_log(
         f"ioctl {name} code=0x{int(code) & 0xFFFFFFFF:08X} in={in_len} out={out_size} "
-        f"ok={bool(ok)} returned={int(returned.value)} err={0 if ok else ctypes.get_last_error()}"
+        f"ok={bool(ok)} returned={int(returned.value)} err={0 if ok else ctypes.get_last_error()}",
+        logging.DEBUG if ok else logging.WARNING,
     )
     data = out_buf.raw[: returned.value] if out_buf else b""
     return bool(ok), data
@@ -1503,7 +1500,6 @@ class HidHideModel(QtCore.QObject):
     """System-wide HidHide panel. Persistent cloak, devices, and game list."""
 
     changed = QtCore.Signal()
-    debugChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -1534,8 +1530,7 @@ class HidHideModel(QtCore.QObject):
         try:
             rows = list_hid_devices(self._gaming_only)
         except Exception:
-            import traceback
-            traceback.print_exc()
+            logging.getLogger("system").exception("HiDHide device list failed")
             rows = []
         built = []
         for row in _enrich_devices(rows):
@@ -1729,7 +1724,7 @@ class HidHideModel(QtCore.QObject):
         _save_hidden(kept)
         if not set_blacklist(kept):
             self._last_error = _ioctl_error or "HiDHide driver call failed."
-            _hh_log(f"set blacklist failed: {self._last_error}")
+            _hh_log(f"set blacklist failed: {self._last_error}", logging.WARNING)
             self.reload()
             return False
         self._last_error = ""
@@ -1789,16 +1784,6 @@ class HidHideModel(QtCore.QObject):
     def refresh(self) -> None:
         self.reload()
 
-    @QtCore.Property(bool, notify=debugChanged)
-    def debugLog(self) -> bool:
-        return _debug_log
-
-    @QtCore.Slot(bool)
-    def setDebugLog(self, enabled: bool) -> None:
-        global _debug_log
-        _debug_log = bool(enabled)
-        self.debugChanged.emit()
-
     @QtCore.Slot()
     def openDownload(self) -> None:
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(_DOWNLOAD))
@@ -1814,7 +1799,7 @@ class HidHideModel(QtCore.QObject):
                 close_fds=True,
             )
         except OSError as exc:
-            _hh_log(f"joy.cpl failed: {exc}")
+            _hh_log(f"joy.cpl failed: {exc}", logging.WARNING)
 
     def _ensure_gremlin_whitelisted(self) -> None:
         self._sync_whitelist()
@@ -1829,12 +1814,12 @@ def apply_on_start() -> None:
     """If Automatically Start is on, turn on Gremlin control and HiDHide Enabled."""
     _ensure_options()
     if not _start_enabled():
-        _hh_log("start skipped, Automatically Start is off")
+        _hh_log("start skipped, Automatically Start is off", logging.INFO)
         return
     if not driver_present():
-        _hh_log("start skipped, driver not present")
+        _hh_log("start skipped, driver not present", logging.WARNING)
         return
-    _hh_log("Automatically Start")
+    _hh_log("Automatically Start", logging.INFO)
     _mark_managed()
     _save_cloak(True)
     apply_saved_list()
@@ -1843,14 +1828,14 @@ def apply_on_start() -> None:
 def apply_saved_list() -> None:
     """Write Gremlin's saved HiDHide settings after the user has saved HiDHide Enabled."""
     if not driver_present():
-        _hh_log("apply skipped, driver not present")
+        _hh_log("apply skipped, driver not present", logging.WARNING)
         return
     if not _hidhide_managed():
-        _hh_log("apply skipped, Gremlin control is off")
+        _hh_log("apply skipped, Gremlin control is off", logging.INFO)
         return
-    _hh_log("apply saved list")
+    _hh_log("apply saved list", logging.INFO)
     inverse = _apply_saved_list_mode()
-    _hh_log(f"list mode block={inverse}")
+    _hh_log(f"list mode block={inverse}", logging.INFO)
     gremlin = _gremlin_exe()
     gremlin_image = _full_image_name(gremlin)
     drop = set()
@@ -1865,11 +1850,11 @@ def apply_saved_list() -> None:
         if image:
             wanted.append(image)
         else:
-            _hh_log(f"game path not converted {row['path']}")
+            _hh_log(f"game path not converted {row['path']}", logging.WARNING)
     if not inverse and gremlin_image:
         wanted.append(gremlin_image)
     elif not inverse and not gremlin_image:
-        _hh_log(f"gremlin path not converted {gremlin}")
+        _hh_log(f"gremlin path not converted {gremlin}", logging.WARNING)
     merged = []
     seen = set()
     for item in wanted:
@@ -1878,8 +1863,8 @@ def apply_saved_list() -> None:
             continue
         seen.add(key)
         merged.append(item)
-    _hh_log(f"whitelist count={len(merged)} inverse={inverse}")
+    _hh_log(f"whitelist count={len(merged)} inverse={inverse}", logging.INFO)
     set_whitelist(merged)
     _apply_saved_hidden()
     cloak = _apply_saved_cloak()
-    _hh_log(f"cloak={cloak}")
+    _hh_log(f"cloak={cloak}", logging.INFO)
