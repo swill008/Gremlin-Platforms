@@ -486,6 +486,14 @@
                 },
                 "value": "C:\\Users\\Stacie\\Joystick Gremlin\\modules"
             },
+            "plugin-directory": {
+                "data_type": "path",
+                "expose": true,
+                "properties": {
+                    "is_folder": true
+                },
+                "value": "."
+            },
             "profiles-folder": {
                 "data_type": "path",
                 "description": "Folder the profile dialogs open in.",
@@ -562,14 +570,6 @@
                 "expose": true,
                 "properties": {},
                 "value": "False"
-            },
-            "plugin-directory": {
-                "data_type": "path",
-                "expose": true,
-                "properties": {
-                    "is_folder": true
-                },
-                "value": "."
             },
             "refresh-axis-on-activation": {
                 "data_type": "bool",
