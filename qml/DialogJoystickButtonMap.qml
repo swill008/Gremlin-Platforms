@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
@@ -15,21 +15,22 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _buttonMap
 
+    // ToolWindowMemory sets the saved or default size when the window opens.
     width: 1180
     height: 980
-    minimumWidth: 880
-    minimumHeight: 720
+    minimumWidth: Style.dp(880)
+    minimumHeight: Style.dp(720)
 
     color: Style.background
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     title: targetName.length ? ("Button Map — " + targetName) : "Button Map"
 
     ToolWindowMemory {
         host: _buttonMap
         name: "button-map"
-        defaultWidth: 1180
-        defaultHeight: 980
+        defaultWidth: Style.dp(1180)
+        defaultHeight: Style.dp(980)
     }
 
     onClosing: (e) => {
@@ -57,11 +58,12 @@ ApplicationWindow {
     property string pendingGuid: ""
     property bool startBlank: false
     property bool faceLive: false
+    // Measured by growFileMenu() at startup and each time the menu opens.
     property int fileMenuW: 280
 
     TextMetrics {
         id: _menuMetric
-        font.pixelSize: 14
+        font.pixelSize: Style.dp(14)
     }
 
     function growFileMenu() {
@@ -83,13 +85,13 @@ ApplicationWindow {
         var i
         for (i = 0; i < rows.length; i++)
             labels.push(String(rows[i].name || ""))
-        var max = 160
+        var max = Style.dp(160)
         for (i = 0; i < labels.length; i++) {
             _menuMetric.text = labels[i]
             if (_menuMetric.advanceWidth > max)
                 max = _menuMetric.advanceWidth
         }
-        fileMenuW = Math.ceil(max + 88)
+        fileMenuW = Math.ceil(max + Style.dp(88))
     }
     property string stockImage: {
         if (/evo l|ot l/i.test(targetName))
@@ -144,6 +146,7 @@ ApplicationWindow {
     property string poolName: ""
     property real poolX: 0
     property real poolY: 0
+    // Chip popup size at 100%. It is saved in these units.
     property int chipPopW: 280
     property int chipPopH: 480
     property bool gridOn: true
@@ -152,7 +155,7 @@ ApplicationWindow {
     property int gridSize: 8
     property bool chipPopPlaced: false
     property real panelW: 0
-    property real panelH: 160
+    property real panelH: 0
     property bool panelFillW: true
     property bool panelDockB: true
     property real _prsX: 0
@@ -170,17 +173,17 @@ ApplicationWindow {
             return
         var pw = box.parent.width
         var ph = box.parent.height
-        if (panelFillW || box.width < 40) {
-            box.x = 12
-            box.width = Math.max(280, pw - 24)
+        if (panelFillW || box.width < Style.dp(40)) {
+            box.x = Style.dp(12)
+            box.width = Math.max(Style.dp(280), pw - Style.dp(24))
         }
-        box.width = Math.max(280, Math.min(box.width, pw - 16))
-        box.height = Math.max(90, Math.min(panelH, ph - 16))
+        box.width = Math.max(Style.dp(280), Math.min(box.width, pw - Style.dp(16)))
+        box.height = Math.max(Style.dp(90), Math.min(panelH, ph - Style.dp(16)))
         panelH = box.height
         if (panelDockB)
-            box.y = ph - box.height - 12
-        box.x = Math.max(8, Math.min(box.x, pw - box.width - 8))
-        box.y = Math.max(8, Math.min(box.y, ph - box.height - 8))
+            box.y = ph - box.height - Style.dp(12)
+        box.x = Math.max(Style.dp(8), Math.min(box.x, pw - box.width - Style.dp(8)))
+        box.y = Math.max(Style.dp(8), Math.min(box.y, ph - box.height - Style.dp(8)))
     }
 
     function startPanelResize(edge, mx, my, item) {
@@ -218,16 +221,16 @@ ApplicationWindow {
         }
         if (e.indexOf("n") >= 0)
             nh = _prsH - dy
-        var maxW = Math.max(280, host.width - 16)
-        var maxH = Math.max(90, host.height - 16)
-        nw = Math.max(280, Math.min(nw, maxW))
-        nh = Math.max(90, Math.min(nh, maxH))
+        var maxW = Math.max(Style.dp(280), host.width - Style.dp(16))
+        var maxH = Math.max(Style.dp(90), host.height - Style.dp(16))
+        nw = Math.max(Style.dp(280), Math.min(nw, maxW))
+        nh = Math.max(Style.dp(90), Math.min(nh, maxH))
         if (e.indexOf("w") >= 0)
             nx = _prsX + _prsW - nw
         if (e.indexOf("n") >= 0)
             ny = _prsY + _prsH - nh
-        nx = Math.max(8, Math.min(nx, host.width - nw - 8))
-        ny = Math.max(8, Math.min(ny, host.height - nh - 8))
+        nx = Math.max(Style.dp(8), Math.min(nx, host.width - nw - Style.dp(8)))
+        ny = Math.max(Style.dp(8), Math.min(ny, host.height - nh - Style.dp(8)))
         _poolFloat.x = nx
         _poolFloat.y = ny
         _poolFloat.width = nw
@@ -751,6 +754,7 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        panelH = Style.dp(160)
         liveNodes = []
         workNodes = []
         resItems = []
@@ -781,17 +785,17 @@ ApplicationWindow {
         title: "Button Map — Help"
         modal: true
         anchors.centerIn: parent
-        width: 640
-        height: 680
+        width: Style.dp(640)
+        height: Style.dp(680)
         standardButtons: Dialog.Close
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         ListView {
             id: _helpList
             anchors.fill: parent
-            anchors.margins: 4
+            anchors.margins: Style.dp(4)
             clip: true
-            spacing: 14
+            spacing: Style.dp(14)
             boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
             model: [
@@ -866,13 +870,13 @@ ApplicationWindow {
             ]
             delegate: Column {
                 width: _helpList.width
-                spacing: 4
+                spacing: Style.dp(4)
                 required property var modelData
                 Label {
                     width: parent.width
                     text: modelData.h
                     color: "#FBBF24"
-                    font.pixelSize: 15
+                    font.pixelSize: Style.dp(15)
                     font.bold: true
                 }
                 Label {
@@ -880,7 +884,7 @@ ApplicationWindow {
                     text: modelData.b
                     color: "#E4E4E7"
                     wrapMode: Text.WordWrap
-                    font.pixelSize: 13
+                    font.pixelSize: Style.dp(13)
                     lineHeight: 1.25
                 }
             }
@@ -892,12 +896,12 @@ ApplicationWindow {
         title: "Reset layout"
         modal: true
         anchors.centerIn: parent
-        width: 460
+        width: Style.dp(460)
         standardButtons: Dialog.NoButton
         closePolicy: Popup.CloseOnEscape
         ColumnLayout {
             anchors.fill: parent
-            spacing: 12
+            spacing: Style.dp(12)
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
@@ -912,7 +916,7 @@ ApplicationWindow {
             }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
-                spacing: 8
+                spacing: Style.dp(8)
                 Button {
                     text: "Keep map"
                     onClicked: _resetDlg.close()
@@ -1045,19 +1049,19 @@ ApplicationWindow {
     }
 
     function applyChipPopSize() {
-        var maxW = Math.max(240, _buttonMap.width - 16)
-        var maxH = Math.max(200, _buttonMap.height - 16)
-        var w = Math.max(240, Math.min(chipPopW, maxW))
-        var h = Math.max(200, Math.min(chipPopH, maxH))
+        var maxW = Math.max(Style.dp(240), _buttonMap.width - Style.dp(16))
+        var maxH = Math.max(Style.dp(200), _buttonMap.height - Style.dp(16))
+        var w = Math.max(Style.dp(240), Math.min(Style.dp(chipPopW), maxW))
+        var h = Math.max(Style.dp(200), Math.min(Style.dp(chipPopH), maxH))
         _chipPop.width = w
         _chipPop.height = h
-        chipPopW = Math.round(w)
-        chipPopH = Math.round(h)
+        chipPopW = Math.round(w * 100 / Style.uiScale)
+        chipPopH = Math.round(h * 100 / Style.uiScale)
     }
 
     function rememberChipPopSize() {
-        chipPopW = Math.round(_chipPop.width)
-        chipPopH = Math.round(_chipPop.height)
+        chipPopW = Math.round(_chipPop.width * 100 / Style.uiScale)
+        chipPopH = Math.round(_chipPop.height * 100 / Style.uiScale)
         persistChipPopUi()
     }
 
@@ -1545,7 +1549,7 @@ ApplicationWindow {
         modal: true
         dim: true
         focus: true
-        padding: 16
+        padding: Style.dp(16)
         closePolicy: Popup.CloseOnEscape
         parent: Overlay.overlay
         x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : Math.round((_buttonMap.width - width) / 2)
@@ -1553,23 +1557,23 @@ ApplicationWindow {
         background: Rectangle {
             color: "#18181B"
             border.color: "#3F3F46"
-            border.width: 1
-            radius: 4
+            border.width: Style.dp(1)
+            radius: Style.dp(4)
         }
         contentItem: Column {
-            spacing: 12
-            width: 280
+            spacing: Style.dp(12)
+            width: Style.dp(280)
             Text {
                 width: parent.width
                 text: packKind === "import" ? "Import map" : "Export map"
                 color: "#E4E4E7"
-                font.pixelSize: 14
+                font.pixelSize: Style.dp(14)
                 horizontalAlignment: Text.AlignHCenter
             }
             Image {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 240
-                height: 180
+                width: Style.dp(240)
+                height: Style.dp(180)
                 fillMode: Image.PreserveAspectFit
                 source: packPhoto
                 cache: false
@@ -1578,7 +1582,7 @@ ApplicationWindow {
                 width: parent.width
                 wrapMode: Text.WordWrap
                 color: "#E4E4E7"
-                font.pixelSize: 12
+                font.pixelSize: Style.dp(12)
                 horizontalAlignment: Text.AlignHCenter
                 text: packDevice
             }
@@ -1586,7 +1590,7 @@ ApplicationWindow {
                 width: parent.width
                 wrapMode: Text.WordWrap
                 color: "#A1A1AA"
-                font.pixelSize: 11
+                font.pixelSize: Style.dp(11)
                 horizontalAlignment: Text.AlignHCenter
                 text: {
                     var extra = packPlates === 1 ? "1 overlay plate" : (packPlates + " overlay plates")
@@ -1598,7 +1602,7 @@ ApplicationWindow {
             }
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 8
+                spacing: Style.dp(8)
                 Button {
                     text: "Cancel"
                     onClicked: _packConfirm.close()
@@ -1616,7 +1620,7 @@ ApplicationWindow {
         modal: true
         dim: true
         focus: true
-        padding: 16
+        padding: Style.dp(16)
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         parent: Overlay.overlay
         x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : Math.round((_buttonMap.width - width) / 2)
@@ -1624,17 +1628,17 @@ ApplicationWindow {
         background: Rectangle {
             color: "#450A0A"
             border.color: "#DC2626"
-            border.width: 1
-            radius: 4
+            border.width: Style.dp(1)
+            radius: Style.dp(4)
         }
         contentItem: Column {
-            spacing: 12
-            width: 280
+            spacing: Style.dp(12)
+            width: Style.dp(280)
             Text {
                 width: parent.width
                 wrapMode: Text.WordWrap
                 color: "#FECACA"
-                font.pixelSize: 13
+                font.pixelSize: Style.dp(13)
                 horizontalAlignment: Text.AlignHCenter
                 text: packError.length ? packError : "Export failed"
             }
@@ -1651,20 +1655,20 @@ ApplicationWindow {
         modal: false
         focus: true
         x: Math.round((_buttonMap.width - width) / 2)
-        y: 52
-        width: 360
-        implicitHeight: 430
-        padding: 12
+        y: Style.dp(52)
+        width: Style.dp(360)
+        implicitHeight: Style.dp(430)
+        padding: Style.dp(12)
         background: Rectangle {
             color: "#18181B"
             border.color: "#3F3F46"
-            radius: 4
+            radius: Style.dp(4)
         }
         ColumnLayout {
             anchors.fill: parent
-            spacing: 8
-            Label { text: "Photo"; color: "#E4E4E7"; font.pixelSize: 13 }
-            Label { text: "Size  " + Math.round(photoScale * 100) + "%"; color: "#A1A1AA"; font.pixelSize: 11 }
+            spacing: Style.dp(8)
+            Label { text: "Photo"; color: "#E4E4E7"; font.pixelSize: Style.dp(13) }
+            Label { text: "Size  " + Math.round(photoScale * 100) + "%"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
             Slider {
                 Layout.fillWidth: true
                 from: 0.25
@@ -1673,7 +1677,7 @@ ApplicationWindow {
                 value: photoScale
                 onMoved: _buttonMap.setPhotoScale(value)
             }
-            Label { text: "Offset X  " + photoOffX.toFixed(3); color: "#A1A1AA"; font.pixelSize: 11 }
+            Label { text: "Offset X  " + photoOffX.toFixed(3); color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
             Slider {
                 Layout.fillWidth: true
                 from: -0.5
@@ -1682,7 +1686,7 @@ ApplicationWindow {
                 value: photoOffX
                 onMoved: _buttonMap.setPhotoOff(value, photoOffY)
             }
-            Label { text: "Offset Y  " + photoOffY.toFixed(3); color: "#A1A1AA"; font.pixelSize: 11 }
+            Label { text: "Offset Y  " + photoOffY.toFixed(3); color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
             Slider {
                 Layout.fillWidth: true
                 from: -0.5
@@ -1691,7 +1695,7 @@ ApplicationWindow {
                 value: photoOffY
                 onMoved: _buttonMap.setPhotoOff(photoOffX, value)
             }
-            Label { text: "Rotate  " + Math.round(photoRot) + "°"; color: "#A1A1AA"; font.pixelSize: 11 }
+            Label { text: "Rotate  " + Math.round(photoRot) + "°"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
             Slider {
                 Layout.fillWidth: true
                 from: -180
@@ -1712,7 +1716,7 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.bottomMargin: 78
+        anchors.bottomMargin: Style.dp(78)
         spacing: 0
 
         MenuBar {
@@ -1935,7 +1939,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             RowLayout {
                 anchors.fill: parent
-                spacing: 8
+                spacing: Style.dp(8)
                 Label {
                     visible: true
                     text: {
@@ -1945,13 +1949,13 @@ ApplicationWindow {
                         return "View " + pct + "%"
                     }
                     color: "#E4E4E7"
-                    font.pixelSize: 12
+                    font.pixelSize: Style.dp(12)
                 }
                 Label {
                     visible: editing
                     text: "Photo size " + Math.round(photoScale * 100) + "%"
                     color: "#A1A1AA"
-                    font.pixelSize: 12
+                    font.pixelSize: Style.dp(12)
                 }
                 Label {
                     visible: {
@@ -1961,19 +1965,19 @@ ApplicationWindow {
                     }
                     text: "Drawing — drag empty. Shift locks aspect. Esc cancels."
                     color: "#FBBF24"
-                    font.pixelSize: 12
+                    font.pixelSize: Style.dp(12)
                 }
                 Label {
                     visible: editing && movePhoto
                     text: "Move photo — drag to park. Esc leaves the tool."
                     color: "#FBBF24"
-                    font.pixelSize: 12
+                    font.pixelSize: Style.dp(12)
                 }
                 Label {
                     visible: editing
                     text: "Module file  " + _hw.path
                     color: "#A1A1AA"
-                    font.pixelSize: 11
+                    font.pixelSize: Style.dp(11)
                     elide: Text.ElideMiddle
                     Layout.fillWidth: true
                 }
@@ -2174,6 +2178,7 @@ ApplicationWindow {
                     id: _poolFloat
                     visible: editing
                     z: 30
+                    // clampPool() sets the position and size each time the panel shows.
                     x: 12
                     width: 280
                     height: 160
@@ -2208,29 +2213,29 @@ ApplicationWindow {
                     Rectangle {
                         anchors.fill: parent
                         z: 1
-                        radius: 12
+                        radius: Style.dp(12)
                         color: "#CC0C0C0E"
                         border.color: "#3F3F46"
                     }
                     ColumnLayout {
                         z: 2
                         anchors.fill: parent
-                        anchors.margins: 8
-                        anchors.bottomMargin: 12
-                        anchors.rightMargin: 10
-                        spacing: 6
+                        anchors.margins: Style.dp(8)
+                        anchors.bottomMargin: Style.dp(12)
+                        anchors.rightMargin: Style.dp(10)
+                        spacing: Style.dp(6)
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 6
+                            spacing: Style.dp(6)
                             Item {
                                 Layout.fillWidth: true
-                                implicitHeight: 28
+                                implicitHeight: Style.dp(28)
                                 TextField {
                                     id: _poolSearch
                                     anchors.fill: parent
                                     placeholderText: "Filter friendly or hardware"
                                     text: poolFilter
-                                    rightPadding: 26
+                                    rightPadding: Style.dp(26)
                                     onTextChanged: {
                                         if (poolFilter !== text)
                                             poolFilter = text
@@ -2239,15 +2244,15 @@ ApplicationWindow {
                                 Text {
                                     visible: poolFilter.length > 0
                                     anchors.right: parent.right
-                                    anchors.rightMargin: 8
+                                    anchors.rightMargin: Style.dp(8)
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "×"
                                     color: "#A1A1AA"
-                                    font.pixelSize: 16
+                                    font.pixelSize: Style.dp(16)
                                     z: 2
                                     MouseArea {
                                         anchors.fill: parent
-                                        anchors.margins: -6
+                                        anchors.margins: -Style.dp(6)
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: clearPoolFilter()
                                     }
@@ -2255,7 +2260,7 @@ ApplicationWindow {
                             }
                             Button {
                                 text: "Reset"
-                                implicitHeight: 28
+                                implicitHeight: Style.dp(28)
                                 onClicked: clearPoolFilter()
                             }
                         }
@@ -2271,7 +2276,7 @@ ApplicationWindow {
                             Flow {
                                 id: _resFlow
                                 width: parent.width
-                                spacing: 6
+                                spacing: Style.dp(6)
                                 Repeater {
                                     model: resItems
                                     delegate: Rectangle {
@@ -2285,19 +2290,19 @@ ApplicationWindow {
                                                 return false
                                             return e.litOf(modelData.kind, modelData.hwId)
                                         }
-                                        implicitWidth: Math.min(260, _chipLab.implicitWidth + 18)
-                                        implicitHeight: 26
-                                        radius: 13
+                                        implicitWidth: Math.min(Style.dp(260), _chipLab.implicitWidth + Style.dp(18))
+                                        implicitHeight: Style.dp(26)
+                                        radius: Style.dp(13)
                                         color: lit ? "#14532D" : "#18181B"
                                         border.color: lit ? "#22C55E" : "#3F3F46"
-                                        border.width: lit ? 2 : 1
+                                        border.width: lit ? Style.dp(2) : Style.dp(1)
                                         opacity: (_buttonMap.poolDrag && _buttonMap.poolHw === (modelData ? modelData.hwId : -1) && _buttonMap.poolKind === (modelData ? modelData.kind : "")) ? 0.35 : 1
                                         Text {
                                             id: _chipLab
                                             anchors.centerIn: parent
                                             text: modelData ? modelData.friendly : ""
                                             color: lit ? "#BBF7D0" : "#E4E4E7"
-                                            font.pixelSize: 11
+                                            font.pixelSize: Style.dp(11)
                                         }
                                         PointerTip {
                                             delay: 400
@@ -2349,24 +2354,24 @@ ApplicationWindow {
                         }
                     }
 
-                    PoolGrip { edge: "n"; z: 3; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
-                    PoolGrip { edge: "s"; z: 3; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeVerCursor }
-                    PoolGrip { edge: "w"; z: 3; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left; cursorShape: Qt.SizeHorCursor }
-                    PoolGrip { edge: "e"; z: 3; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.right: parent.right; cursorShape: Qt.SizeHorCursor }
-                    PoolGrip { edge: "nw"; z: 3; width: 12; height: 12; anchors.left: parent.left; anchors.top: parent.top; cursorShape: Qt.SizeFDiagCursor }
-                    PoolGrip { edge: "ne"; z: 3; width: 12; height: 12; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeBDiagCursor }
-                    PoolGrip { edge: "sw"; z: 3; width: 12; height: 12; anchors.left: parent.left; anchors.bottom: parent.bottom; cursorShape: Qt.SizeBDiagCursor }
-                    PoolGrip { edge: "se"; z: 4; width: 14; height: 14; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeFDiagCursor }
+                    PoolGrip { edge: "n"; z: 3; height: Style.dp(6); anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
+                    PoolGrip { edge: "s"; z: 3; height: Style.dp(6); anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeVerCursor }
+                    PoolGrip { edge: "w"; z: 3; width: Style.dp(6); anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left; cursorShape: Qt.SizeHorCursor }
+                    PoolGrip { edge: "e"; z: 3; width: Style.dp(6); anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.right: parent.right; cursorShape: Qt.SizeHorCursor }
+                    PoolGrip { edge: "nw"; z: 3; width: Style.dp(12); height: Style.dp(12); anchors.left: parent.left; anchors.top: parent.top; cursorShape: Qt.SizeFDiagCursor }
+                    PoolGrip { edge: "ne"; z: 3; width: Style.dp(12); height: Style.dp(12); anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeBDiagCursor }
+                    PoolGrip { edge: "sw"; z: 3; width: Style.dp(12); height: Style.dp(12); anchors.left: parent.left; anchors.bottom: parent.bottom; cursorShape: Qt.SizeBDiagCursor }
+                    PoolGrip { edge: "se"; z: 4; width: Style.dp(14); height: Style.dp(14); anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeFDiagCursor }
 
                     Item {
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        anchors.margins: 3
-                        width: 10
-                        height: 10
+                        anchors.margins: Style.dp(3)
+                        width: Style.dp(10)
+                        height: Style.dp(10)
                         opacity: 0.55
-                        Rectangle { width: 8; height: 1; color: "#A1A1AA"; rotation: -45; x: 2; y: 7 }
-                        Rectangle { width: 5; height: 1; color: "#A1A1AA"; rotation: -45; x: 5; y: 8 }
+                        Rectangle { width: Style.dp(8); height: Style.dp(1); color: "#A1A1AA"; rotation: -45; x: Style.dp(2); y: Style.dp(7) }
+                        Rectangle { width: Style.dp(5); height: Style.dp(1); color: "#A1A1AA"; rotation: -45; x: Style.dp(5); y: Style.dp(8) }
                     }
                 }
 
@@ -2399,8 +2404,8 @@ ApplicationWindow {
     Popup {
         id: _chipPop
         parent: _buttonMap.contentItem
-        width: 280
-        height: 480
+        width: Style.dp(280)
+        height: Style.dp(480)
         modal: false
         focus: true
         padding: 0
@@ -2441,22 +2446,22 @@ ApplicationWindow {
                 nw = _rsw - dx
             if (e.indexOf("n") >= 0)
                 nh = _rsh - dy
-            var maxW = Math.max(240, parent.width - 16)
-            var maxH = Math.max(200, parent.height - 16)
-            nw = Math.max(240, Math.min(nw, maxW))
-            nh = Math.max(200, Math.min(nh, maxH))
+            var maxW = Math.max(Style.dp(240), parent.width - Style.dp(16))
+            var maxH = Math.max(Style.dp(200), parent.height - Style.dp(16))
+            nw = Math.max(Style.dp(240), Math.min(nw, maxW))
+            nh = Math.max(Style.dp(200), Math.min(nh, maxH))
             if (e.indexOf("w") >= 0)
                 nx = _rsx + _rsw - nw
             if (e.indexOf("n") >= 0)
                 ny = _rsy + _rsh - nh
-            nx = Math.max(8, Math.min(nx, parent.width - nw - 8))
-            ny = Math.max(8, Math.min(ny, parent.height - nh - 8))
+            nx = Math.max(Style.dp(8), Math.min(nx, parent.width - nw - Style.dp(8)))
+            ny = Math.max(Style.dp(8), Math.min(ny, parent.height - nh - Style.dp(8)))
             x = nx
             y = ny
             width = nw
             height = nh
-            chipPopW = Math.round(nw)
-            chipPopH = Math.round(nh)
+            chipPopW = Math.round(nw * 100 / Style.uiScale)
+            chipPopH = Math.round(nh * 100 / Style.uiScale)
         }
 
         function startMove(mx, my, item) {
@@ -2476,7 +2481,7 @@ ApplicationWindow {
         background: Rectangle {
             color: "#111113"
             border.color: "#3F3F46"
-            radius: 8
+            radius: Style.dp(8)
         }
 
         component Grip: MouseArea {
@@ -2508,33 +2513,33 @@ ApplicationWindow {
             }
             ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 10
-            anchors.bottomMargin: 14
-            anchors.rightMargin: 12
-            spacing: 6
+            anchors.margins: Style.dp(10)
+            anchors.bottomMargin: Style.dp(14)
+            anchors.rightMargin: Style.dp(12)
+            spacing: Style.dp(6)
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: Style.dp(4)
                 Button {
                     text: "Undo"
-                    implicitHeight: 24
+                    implicitHeight: Style.dp(24)
                     enabled: { var e = _ed(); return e ? e.canUndo : false }
                     onClicked: { var e = _ed(); if (e) e.undo() }
                 }
                 Button {
                     text: "Redo"
-                    implicitHeight: 24
+                    implicitHeight: Style.dp(24)
                     enabled: { var e = _ed(); return e ? e.canRedo : false }
                     onClicked: { var e = _ed(); if (e) e.redo() }
                 }
                 Button {
                     text: "Group"
-                    implicitHeight: 24
+                    implicitHeight: Style.dp(24)
                     onClicked: _groupMenu.popup()
                 }
                 Button {
                     text: "Break group"
-                    implicitHeight: 24
+                    implicitHeight: Style.dp(24)
                     visible: {
                         var e = _ed()
                         return !!(e && e.canUngroup()) || nodeIsGroup(selectedNode)
@@ -2550,14 +2555,14 @@ ApplicationWindow {
                 }
                 Button {
                     text: "Leader"
-                    implicitHeight: 24
+                    implicitHeight: Style.dp(24)
                     onClicked: _leadMenu.popup()
                 }
                 Item { Layout.fillWidth: true }
                 Button {
                     text: "×"
-                    implicitWidth: 28
-                    implicitHeight: 24
+                    implicitWidth: Style.dp(28)
+                    implicitHeight: Style.dp(24)
                     onClicked: _chipPop.close()
                 }
             }
@@ -2572,7 +2577,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: "#A1A1AA"
-                font.pixelSize: 11
+                font.pixelSize: Style.dp(11)
                 text: {
                     var e = _ed()
                     var n = selectedNode
@@ -2608,7 +2613,7 @@ ApplicationWindow {
                 ColumnLayout {
                     id: _chipForm
                     width: parent.width
-                    spacing: 6
+                    spacing: Style.dp(6)
 
                     Label { text: "Friendly name"; color: "#A1A1AA" }
                     TextField {
@@ -2629,7 +2634,7 @@ ApplicationWindow {
                     RowLayout {
                         visible: nodeIsGroup(selectedNode)
                         Layout.fillWidth: true
-                        spacing: 4
+                        spacing: Style.dp(4)
                         Button { text: "Left"; checkable: true; checked: selectedNode && selectedNode.alignH === "left"; onClicked: { var e = _ed(); if (e) e.setAlignH("left") } }
                         Button { text: "Center"; checkable: true; checked: !selectedNode || !selectedNode.alignH || selectedNode.alignH === "center"; onClicked: { var e = _ed(); if (e) e.setAlignH("center") } }
                         Button { text: "Right"; checkable: true; checked: selectedNode && selectedNode.alignH === "right"; onClicked: { var e = _ed(); if (e) e.setAlignH("right") } }
@@ -2715,8 +2720,8 @@ ApplicationWindow {
                     GridLayout {
                         Layout.fillWidth: true
                         columns: 2
-                        columnSpacing: 8
-                        rowSpacing: 6
+                        columnSpacing: Style.dp(8)
+                        rowSpacing: Style.dp(6)
                         Label { text: "Fill"; color: "#A1A1AA" }
                         ColorSwatch { hex: selectedNode && selectedNode.color ? selectedNode.color : "#18181B"; onPicked: _colorPop.openField("color", hex, this) }
                         Label { text: "Outline"; color: "#A1A1AA" }
@@ -2768,24 +2773,24 @@ ApplicationWindow {
         }
         }
 
-        Grip { edge: "n"; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
-        Grip { edge: "s"; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeVerCursor }
-        Grip { edge: "w"; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left; cursorShape: Qt.SizeHorCursor }
-        Grip { edge: "e"; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.right: parent.right; cursorShape: Qt.SizeHorCursor }
-        Grip { edge: "nw"; width: 12; height: 12; anchors.left: parent.left; anchors.top: parent.top; cursorShape: Qt.SizeFDiagCursor }
-        Grip { edge: "ne"; width: 12; height: 12; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeBDiagCursor }
-        Grip { edge: "sw"; width: 12; height: 12; anchors.left: parent.left; anchors.bottom: parent.bottom; cursorShape: Qt.SizeBDiagCursor }
-        Grip { edge: "se"; width: 14; height: 14; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeFDiagCursor; z: 2 }
+        Grip { edge: "n"; height: Style.dp(6); anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
+        Grip { edge: "s"; height: Style.dp(6); anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeVerCursor }
+        Grip { edge: "w"; width: Style.dp(6); anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left; cursorShape: Qt.SizeHorCursor }
+        Grip { edge: "e"; width: Style.dp(6); anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.right: parent.right; cursorShape: Qt.SizeHorCursor }
+        Grip { edge: "nw"; width: Style.dp(12); height: Style.dp(12); anchors.left: parent.left; anchors.top: parent.top; cursorShape: Qt.SizeFDiagCursor }
+        Grip { edge: "ne"; width: Style.dp(12); height: Style.dp(12); anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeBDiagCursor }
+        Grip { edge: "sw"; width: Style.dp(12); height: Style.dp(12); anchors.left: parent.left; anchors.bottom: parent.bottom; cursorShape: Qt.SizeBDiagCursor }
+        Grip { edge: "se"; width: Style.dp(14); height: Style.dp(14); anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeFDiagCursor; z: 2 }
 
         Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            anchors.margins: 3
-            width: 10
-            height: 10
+            anchors.margins: Style.dp(3)
+            width: Style.dp(10)
+            height: Style.dp(10)
             opacity: 0.55
-            Rectangle { width: 8; height: 1; color: "#A1A1AA"; rotation: -45; x: 2; y: 7 }
-            Rectangle { width: 5; height: 1; color: "#A1A1AA"; rotation: -45; x: 5; y: 8 }
+            Rectangle { width: Style.dp(8); height: Style.dp(1); color: "#A1A1AA"; rotation: -45; x: Style.dp(2); y: Style.dp(7) }
+            Rectangle { width: Style.dp(5); height: Style.dp(1); color: "#A1A1AA"; rotation: -45; x: Style.dp(5); y: Style.dp(8) }
         }
     }
 
@@ -2794,20 +2799,20 @@ ApplicationWindow {
         parent: _mapHost
         visible: poolDrag && editing
         z: 2000
-        width: Math.max(36, _ghostLab.implicitWidth + 18)
-        height: 26
-        radius: 13
+        width: Math.max(Style.dp(36), _ghostLab.implicitWidth + Style.dp(18))
+        height: Style.dp(26)
+        radius: Style.dp(13)
         x: poolX - width * 0.5
         y: poolY - height * 0.5
         color: "#14532D"
         border.color: "#4ADE80"
-        border.width: 1
+        border.width: Style.dp(1)
         Text {
             id: _ghostLab
             anchors.centerIn: parent
             text: poolName
             color: "#BBF7D0"
-            font.pixelSize: 11
+            font.pixelSize: Style.dp(11)
         }
     }
 
@@ -2815,14 +2820,14 @@ ApplicationWindow {
         id: _sw
         property string hex: "#18181B"
         signal picked()
-        Layout.preferredWidth: 72
-        Layout.preferredHeight: 24
-        width: 72
-        height: 24
-        radius: 4
+        Layout.preferredWidth: Style.dp(72)
+        Layout.preferredHeight: Style.dp(24)
+        width: Style.dp(72)
+        height: Style.dp(24)
+        radius: Style.dp(4)
         color: hex
         border.color: "#52525B"
-        border.width: 1
+        border.width: Style.dp(1)
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
@@ -2852,12 +2857,12 @@ ApplicationWindow {
     Popup {
         id: _colorPop
         parent: _buttonMap.contentItem
-        width: 248
-        height: 330
+        width: Style.dp(248)
+        height: Style.dp(330)
         modal: false
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        padding: 10
+        padding: Style.dp(10)
         property string field: "color"
         property real hh: 0
         property real ss: 0
@@ -2866,7 +2871,7 @@ ApplicationWindow {
         background: Rectangle {
             color: "#18181B"
             border.color: "#3F3F46"
-            radius: 8
+            radius: Style.dp(8)
         }
 
         function openField(field, hex, anchorItem) {
@@ -2900,7 +2905,7 @@ ApplicationWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 8
+            spacing: Style.dp(8)
             Label {
                 text: "Pick color"
                 color: "#E4E4E7"
@@ -2909,10 +2914,10 @@ ApplicationWindow {
             Item {
                 id: _sv
                 Layout.fillWidth: true
-                Layout.preferredHeight: 140
+                Layout.preferredHeight: Style.dp(140)
                 Rectangle {
                     anchors.fill: parent
-                    radius: 4
+                    radius: Style.dp(4)
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
                         GradientStop { position: 0; color: "#FFFFFF" }
@@ -2921,28 +2926,28 @@ ApplicationWindow {
                 }
                 Rectangle {
                     anchors.fill: parent
-                    radius: 4
+                    radius: Style.dp(4)
                     gradient: Gradient {
                         GradientStop { position: 0; color: "#00000000" }
                         GradientStop { position: 1; color: "#FF000000" }
                     }
                 }
                 Rectangle {
-                    width: 12
-                    height: 12
-                    radius: 6
+                    width: Style.dp(12)
+                    height: Style.dp(12)
+                    radius: Style.dp(6)
                     color: "transparent"
                     border.color: "#FFFFFF"
-                    border.width: 2
-                    x: _colorPop.ss * _sv.width - 6
-                    y: (1 - _colorPop.vv) * _sv.height - 6
+                    border.width: Style.dp(2)
+                    x: _colorPop.ss * _sv.width - Style.dp(6)
+                    y: (1 - _colorPop.vv) * _sv.height - Style.dp(6)
                     Rectangle {
                         anchors.fill: parent
-                        anchors.margins: 2
-                        radius: 4
+                        anchors.margins: Style.dp(2)
+                        radius: Style.dp(4)
                         color: "transparent"
                         border.color: "#111111"
-                        border.width: 1
+                        border.width: Style.dp(1)
                     }
                 }
                 MouseArea {
@@ -2959,10 +2964,10 @@ ApplicationWindow {
             Item {
                 id: _hue
                 Layout.fillWidth: true
-                Layout.preferredHeight: 16
+                Layout.preferredHeight: Style.dp(16)
                 Rectangle {
                     anchors.fill: parent
-                    radius: 4
+                    radius: Style.dp(4)
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
                         GradientStop { position: 0.0; color: "#FF0000" }
@@ -2975,14 +2980,14 @@ ApplicationWindow {
                     }
                 }
                 Rectangle {
-                    width: 6
-                    height: parent.height + 4
-                    y: -2
-                    x: _colorPop.hh * _hue.width - 3
-                    radius: 2
+                    width: Style.dp(6)
+                    height: parent.height + Style.dp(4)
+                    y: -Style.dp(2)
+                    x: _colorPop.hh * _hue.width - Style.dp(3)
+                    radius: Style.dp(2)
                     color: "transparent"
                     border.color: "#FFFFFF"
-                    border.width: 2
+                    border.width: Style.dp(2)
                 }
                 MouseArea {
                     anchors.fill: parent
@@ -2997,9 +3002,9 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 Rectangle {
-                    width: 36
-                    height: 24
-                    radius: 4
+                    width: Style.dp(36)
+                    height: Style.dp(24)
+                    radius: Style.dp(4)
                     color: _colorPop.live
                     border.color: "#52525B"
                 }
@@ -3008,19 +3013,19 @@ ApplicationWindow {
                     text: _buttonMap._toHex(_colorPop.live)
                     color: "#E4E4E7"
                     font.family: "Consolas"
-                    font.pixelSize: 13
+                    font.pixelSize: Style.dp(13)
                 }
             }
             Flow {
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: Style.dp(4)
                 Repeater {
                     model: ["#18181B", "#3F3F46", "#E4E4E7", "#14532D", "#22C55E", "#BBF7D0", "#1D4ED8", "#7C2D12", "#831843", "#0F766E", "#FBBF24", "#000000", "#FFFFFF", "#7F1D1D"]
                     Rectangle {
                         required property string modelData
-                        width: 16
-                        height: 16
-                        radius: 3
+                        width: Style.dp(16)
+                        height: Style.dp(16)
+                        radius: Style.dp(3)
                         color: modelData
                         border.color: "#52525B"
                         MouseArea {

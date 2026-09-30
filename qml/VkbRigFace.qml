@@ -285,16 +285,16 @@ Item {
             return _face.hwButton(hwId) > 0.5
         }
 
-        implicitWidth: _lab.implicitWidth + 10
-        implicitHeight: 20
-        radius: 4
+        implicitWidth: _lab.implicitWidth + Style.dp(10)
+        implicitHeight: Style.dp(20)
+        radius: Style.dp(4)
         color: lit ? "#14532D" : "#18181B"
         border.color: lit ? "#22C55E" : "#3F3F46"
         Text {
             id: _lab
             anchors.centerIn: parent
             color: lit ? "#BBF7D0" : "#E4E4E7"
-            font.pixelSize: 10
+            font.pixelSize: Style.dp(10)
             text: prefix + hwId + " → " + _dest
         }
     }
@@ -315,18 +315,18 @@ Item {
             id: _g
             columns: 3
             rows: 3
-            spacing: 3
+            spacing: Style.dp(3)
             horizontalItemAlignment: Grid.AlignHCenter
             verticalItemAlignment: Grid.AlignVCenter
-            Item { width: 8; height: 8 }
+            Item { width: Style.dp(8); height: Style.dp(8) }
             Tag { hwId: up }
-            Item { width: 8; height: 8 }
+            Item { width: Style.dp(8); height: Style.dp(8) }
             Tag { hwId: leftId }
             Tag { hwId: center }
             Tag { hwId: rightId }
-            Item { width: 8; height: 8 }
+            Item { width: Style.dp(8); height: Style.dp(8) }
             Tag { hwId: down }
-            Item { width: 8; height: 8 }
+            Item { width: Style.dp(8); height: Style.dp(8) }
         }
     }
 
@@ -357,18 +357,18 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 4
+        anchors.margins: Style.dp(8)
+        spacing: Style.dp(4)
 
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 6
+            spacing: Style.dp(6)
 
             Item {
                 id: _leftPane
-                Layout.preferredWidth: 280
-                Layout.maximumWidth: 280
+                Layout.preferredWidth: Style.dp(280)
+                Layout.maximumWidth: Style.dp(280)
                 Layout.fillHeight: true
                 clip: true
                 opacity: _editorLoader.item ? 0 : 1
@@ -377,8 +377,8 @@ Item {
                 Column {
                     id: _leftHead
                     anchors.right: parent.right
-                    anchors.rightMargin: 2
-                    spacing: 6
+                    anchors.rightMargin: Style.dp(2)
+                    spacing: Style.dp(6)
                     y: {
                         _face._layoutTok
                         return _face.followY(_leftPane, 0.210, height)
@@ -395,7 +395,7 @@ Item {
                 HatPlus {
                     id: _p1620
                     anchors.right: parent.right
-                    anchors.rightMargin: 2
+                    anchors.rightMargin: Style.dp(2)
                     up: 16; down: 18; leftId: 19; rightId: 17; center: 20
                     y: {
                         _face._layoutTok
@@ -409,8 +409,8 @@ Item {
                 Column {
                     id: _axes
                     anchors.right: parent.right
-                    anchors.rightMargin: 2
-                    spacing: 3
+                    anchors.rightMargin: Style.dp(2)
+                    spacing: Style.dp(3)
                     y: {
                         _face._layoutTok
                         _p1620.y
@@ -457,8 +457,8 @@ Item {
 
             Item {
                 id: _rightPane
-                Layout.preferredWidth: 160
-                Layout.maximumWidth: 160
+                Layout.preferredWidth: Style.dp(160)
+                Layout.maximumWidth: Style.dp(160)
                 Layout.fillHeight: true
                 clip: true
                 opacity: _editorLoader.item ? 0 : 1
@@ -467,8 +467,8 @@ Item {
                 Column {
                     id: _rightGrip
                     anchors.left: parent.left
-                    anchors.leftMargin: 2
-                    spacing: 6
+                    anchors.leftMargin: Style.dp(2)
+                    spacing: Style.dp(6)
                     y: {
                         _face._layoutTok
                         return _face.followY(_rightPane, 0.276, height)
@@ -479,13 +479,13 @@ Item {
                     Tag { id: _b4; hwId: 4 }
                     Column {
                         id: _p2122
-                        spacing: 3
+                        spacing: Style.dp(3)
                         Tag { hwId: 21 }
                         Tag { hwId: 22 }
                     }
                     Column {
                         id: _p12
-                        spacing: 3
+                        spacing: Style.dp(3)
                         Tag { hwId: 1 }
                         Tag { hwId: 2 }
                     }
@@ -495,7 +495,7 @@ Item {
                     id: _b5
                     hwId: 5
                     anchors.left: parent.left
-                    anchors.leftMargin: 2
+                    anchors.leftMargin: Style.dp(2)
                     y: {
                         _face._layoutTok
                         _rightGrip.y
@@ -509,28 +509,28 @@ Item {
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 48
+            Layout.preferredHeight: Style.dp(48)
             opacity: _editorLoader.item ? 0 : 1
             enabled: !_editorLoader.item
 
             Row {
                 id: _bottom
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 14
+                spacing: Style.dp(14)
 
                 Tag { id: _b28; hwId: 28; anchors.verticalCenter: parent.verticalCenter }
                 Tag { id: _b27; hwId: 27; anchors.verticalCenter: parent.verticalCenter }
                 Tag { id: _b29; hwId: 29; anchors.verticalCenter: parent.verticalCenter }
                 Column {
                     id: _p2526
-                    spacing: 3
+                    spacing: Style.dp(3)
                     Tag { hwId: 25 }
                     Tag { hwId: 26 }
                 }
                 Tag { id: _a4; kind: "axis"; hwId: 4; prefix: "A"; anchors.verticalCenter: parent.verticalCenter }
                 Column {
                     id: _p2324
-                    spacing: 3
+                    spacing: Style.dp(3)
                     Tag { hwId: 23 }
                     Tag { hwId: 24 }
                 }

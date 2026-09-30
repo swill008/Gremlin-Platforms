@@ -5,6 +5,7 @@ import QtQuick
 import QtQml
 import QtQuick.Controls
 import QtQuick.Layouts
+import Gremlin.Style
 
 Item {
     id: _ed
@@ -504,7 +505,7 @@ Item {
             return
         var s = spaceRect()
         var b = nodeBox(n)
-        var slop = 10
+        var slop = Style.dp(10)
         var cx = b.x + b.w * 0.5
         var cy = b.y + b.h * 0.5
         var left = b.x
@@ -2933,7 +2934,7 @@ Item {
             return false
         var list = nodes || []
         var best = null
-        var bestD = 28
+        var bestD = Style.dp(28)
         var bi = -1
         var i, j
         for (i = 0; i < list.length; i++) {
@@ -4942,16 +4943,16 @@ Item {
         property bool on: false
         property color ringColor: "#FBBF24"
         anchors.fill: parent
-        anchors.leftMargin: -4
-        anchors.rightMargin: -4
-        anchors.topMargin: -4
-        anchors.bottomMargin: -4
+        anchors.leftMargin: -Style.dp(4)
+        anchors.rightMargin: -Style.dp(4)
+        anchors.topMargin: -Style.dp(4)
+        anchors.bottomMargin: -Style.dp(4)
         z: -1
         antialiasing: true
         color: "transparent"
-        border.width: 2
+        border.width: Style.dp(2)
         border.color: on ? ringColor : "transparent"
-        radius: parent.radius > 0 ? parent.radius + 4 : 0
+        radius: parent.radius > 0 ? parent.radius + Style.dp(4) : 0
     }
 
     Component {
@@ -4962,7 +4963,7 @@ Item {
             Rectangle {
                 visible: { _ed.tick; return _ed.fiveWayFormat(_grp.node) === "mini" }
                 anchors.fill: parent
-                radius: 4
+                radius: Style.dp(4)
                 color: {
                     _ed.tick
                     var n = _grp.node || {}
@@ -4973,7 +4974,7 @@ Item {
                     var n = _grp.node || {}
                     return n.border || "#3F3F46"
                 }
-                border.width: 1
+                border.width: Style.dp(1)
             }
             Text {
                 renderType: Text.NativeRendering
@@ -4981,7 +4982,7 @@ Item {
                 text: { _ed.tick; return _ed.fiveWayCaption(_grp.node) }
                 color: "#E4E4E7"
                 font.pixelSize: { _ed.tick; return _ed.uiPx((_grp.node && _grp.node.fontSize) ? _grp.node.fontSize : 10) }
-                x: 2
+                x: Style.dp(2)
                 y: 0
             }
             Repeater {
@@ -5108,7 +5109,7 @@ Item {
                         Text {
                             renderType: Text.NativeRendering
                             anchors.fill: parent
-                            anchors.margins: 3
+                            anchors.margins: Style.dp(3)
                             visible: {
                                 _ed.tick
                                 return !(_ed.renameId === node.id && _ed.tableRow === row && _ed.tableCol === col)
@@ -5138,9 +5139,9 @@ Item {
                             }
                             Rectangle {
                                 required property int index
-                                width: 8
-                                height: 8
-                                radius: 1
+                                width: Style.dp(8)
+                                height: Style.dp(8)
+                                radius: Style.dp(1)
                                 z: 6
                                 color: "#FBBF24"
                                 border.color: "#18181B"
@@ -5206,7 +5207,7 @@ Item {
                         Text {
                             renderType: Text.NativeRendering
                             anchors.fill: parent
-                            anchors.margins: 3
+                            anchors.margins: Style.dp(3)
                             visible: {
                                 _ed.tick
                                 return !(_ed.renameId === node.id && _ed.tableExtra === index)
@@ -5233,9 +5234,9 @@ Item {
                             }
                             Rectangle {
                                 required property int index
-                                width: 8
-                                height: 8
-                                radius: 1
+                                width: Style.dp(8)
+                                height: Style.dp(8)
+                                radius: Style.dp(1)
                                 z: 6
                                 color: "#FBBF24"
                                 border.color: "#18181B"
@@ -5301,7 +5302,7 @@ Item {
                 Text {
                     renderType: Text.NativeRendering
                     anchors.fill: parent
-                    anchors.margins: 4
+                    anchors.margins: Style.dp(4)
                     visible: {
                         _ed.tick
                         return !(_ed.renameId === node.id)
@@ -5365,12 +5366,12 @@ Item {
                 }
                 Rectangle {
                     required property int index
-                    width: 8
-                    height: 8
-                    radius: 4
+                    width: Style.dp(8)
+                    height: Style.dp(8)
+                    radius: Style.dp(4)
                     color: "#F4F4F5"
                     border.color: "#18181B"
-                    border.width: 1
+                    border.width: Style.dp(1)
                     z: 5
                     x: {
                         var n = node
@@ -5397,11 +5398,11 @@ Item {
                         return true
                     return (_ed.isTable(node) || _ed.isText(node)) && _ed.isSelected(node.id)
                 }
-                width: 16
-                    height: 16
-                    x: -2
-                    y: -18
-                    radius: 3
+                width: Style.dp(16)
+                    height: Style.dp(16)
+                    x: -Style.dp(2)
+                    y: -Style.dp(18)
+                    radius: Style.dp(3)
                     z: 8
                     color: {
                         _ed.tick
@@ -5411,11 +5412,11 @@ Item {
                         _ed.tick
                         return _ed.isLocked(node) ? "#18181B" : "#A1A1AA"
                     }
-                    border.width: 1
+                    border.width: Style.dp(1)
                     Rectangle {
-                        width: 6
-                        height: 6
-                        radius: 1
+                        width: Style.dp(6)
+                        height: Style.dp(6)
+                        radius: Style.dp(1)
                         anchors.centerIn: parent
                         color: {
                             _ed.tick
@@ -5428,9 +5429,9 @@ Item {
                 model: (_ed.interactive && node && _ed.isSelected(node.id) && !_ed.isLocked(node) && !_ed.tableCellHandlesOn(node)) ? 8 : 0
                 Rectangle {
                     required property int index
-                    width: 8
-                    height: 8
-                    radius: 1
+                    width: Style.dp(8)
+                    height: Style.dp(8)
+                    radius: Style.dp(1)
                     color: "#FBBF24"
                     border.color: "#18181B"
                     x: {
@@ -6309,7 +6310,7 @@ Item {
         delay: 400
         timeout: 4000
         x: _ed.hoverTipX - width / 2
-        y: _ed.hoverTipY - height - 8
+        y: _ed.hoverTipY - height - Style.dp(8)
     }
 
     TextEdit {
@@ -6348,7 +6349,7 @@ Item {
             _ed.tick
             var n = _ed.nodeAt(_ed.renameId)
             var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
-            return Math.max(48, _ed.chipScreenRect(n, mem).width)
+            return Math.max(Style.dp(48), _ed.chipScreenRect(n, mem).width)
         }
         height: {
             _ed.tick
@@ -6367,8 +6368,8 @@ Item {
         verticalAlignment: TextInput.AlignVCenter
         selectByMouse: true
         clip: true
-        leftPadding: 4
-        rightPadding: 4
+        leftPadding: Style.dp(4)
+        rightPadding: Style.dp(4)
         onTextChanged: _ed.renameDraft = text
         onAccepted: _ed.commitRename()
         Keys.onEscapePressed: (event) => {
@@ -6378,10 +6379,10 @@ Item {
         Rectangle {
             anchors.fill: parent
             z: -1
-            radius: 4
+            radius: Style.dp(4)
             color: "#18181B"
             border.color: "#38BDF8"
-            border.width: 2
+            border.width: Style.dp(2)
         }
     }
 
@@ -6394,17 +6395,17 @@ Item {
         z: 9
         color: "#33FBBF24"
         border.color: "#FBBF24"
-        border.width: 1
+        border.width: Style.dp(1)
     }
 
     Text {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
-        anchors.margins: 6
+        anchors.margins: Style.dp(6)
         z: 9
         visible: _ed.interactive && text.length
         color: "#A1A1AA"
-        font.pixelSize: 10
+        font.pixelSize: Style.dp(10)
         text: {
             if (_ed.packWarn.length)
                 return _ed.packWarn
