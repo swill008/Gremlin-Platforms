@@ -33,6 +33,8 @@ from gremlin.types import PropertyType
 install_path = os.path.normcase(os.path.dirname(os.path.abspath(sys.argv[0])))
 os.chdir(install_path)
 
+# This UI sizes itself in pixels. Windows display scale must not scale it too.
+os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
 os.environ["QT_QUICK_CONTROLS_STYLE"] = "Universal"
 
 import gremlin.util
