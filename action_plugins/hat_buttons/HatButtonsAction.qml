@@ -29,6 +29,7 @@ Item {
             }
             RadioButton {
                 autoExclusive: false
+                checkable: false
                 text: "4 way"
                 checked: _root.action.buttonCount == 4
 
@@ -38,6 +39,7 @@ Item {
             }
             RadioButton {
                 autoExclusive: false
+                checkable: false
                 text: "8 way"
                 checked: _root.action.buttonCount == 8
 

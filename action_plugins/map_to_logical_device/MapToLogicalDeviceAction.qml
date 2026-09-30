@@ -45,6 +45,7 @@ Item {
             sourceComponent: Row {
                 RadioButton {
                     autoExclusive: false
+                    checkable: false
                     text: "Absolute"
                     checked: _root.action.axisMode === "absolute"
 
@@ -55,6 +56,7 @@ Item {
                 RadioButton {
                     id: _relativeMode
                     autoExclusive: false
+                    checkable: false
                     text: "Relative"
                     checked: _root.action.axisMode === "relative"
 

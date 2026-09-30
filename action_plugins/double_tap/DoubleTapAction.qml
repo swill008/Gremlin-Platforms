@@ -54,6 +54,7 @@ Item {
             }
             RadioButton {
                 autoExclusive: false
+                checkable: false
                 text: "exclusive"
                 checked: _root.action.activateOn == "exclusive"
 
@@ -63,6 +64,7 @@ Item {
             }
             RadioButton {
                 autoExclusive: false
+                checkable: false
                 text: "combined"
                 checked: _root.action.activateOn == "combined"
 

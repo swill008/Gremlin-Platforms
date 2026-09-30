@@ -28,6 +28,7 @@ Item {
 
         RadioButton {
             autoExclusive: false
+            checkable: false
             text: "Pause"
 
             checked: _root.action.operation === "Pause"
@@ -37,6 +38,7 @@ Item {
         }
         RadioButton {
             autoExclusive: false
+            checkable: false
             text: "Resume"
 
             checked: _root.action.operation === "Resume"
@@ -46,6 +48,7 @@ Item {
         }
         RadioButton {
             autoExclusive: false
+            checkable: false
             text: "Toggle"
 
             checked: _root.action.operation === "Toggle"

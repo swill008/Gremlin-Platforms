@@ -53,6 +53,7 @@ Item {
             }
             RadioButton {
                 autoExclusive: false
+                checkable: false
                 text: "press"
                 checked: _root.action.activateOn == "press"
 
@@ -62,6 +63,7 @@ Item {
             }
             RadioButton {
                 autoExclusive: false
+                checkable: false
                 text: "release"
                 checked: _root.action.activateOn == "release"
 

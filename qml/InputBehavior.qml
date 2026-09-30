@@ -31,6 +31,7 @@ Item {
 
         RadioButton {
             autoExclusive: false
+            checkable: false
             text: "Button"
             property bool shown: _root.inputBinding && _root.inputBinding.behavior == "button"
             onShownChanged: if (!pressed) checked = shown
@@ -40,6 +41,7 @@ Item {
 
         RadioButton {
             autoExclusive: false
+            checkable: false
             text: "Axis"
 
             visible: _root.inputBinding && _root.inputBinding.inputType == "axis"
@@ -51,6 +53,7 @@ Item {
 
         RadioButton {
             autoExclusive: false
+            checkable: false
             text: "Hat"
 
             visible: _root.inputBinding && _root.inputBinding.inputType == "hat"

@@ -42,3 +42,20 @@ def test_no_qml_object_sets_a_property_twice() -> None:
     ]
     assert files
     assert [dup for path in files for dup in _duplicates(path)] == []
+
+
+def test_unlinked_radio_buttons_cannot_be_clicked_off() -> None:
+    # Without automatic grouping, a click on the selected button would clear it.
+    # checkable: false leaves the saved setting in charge of the check mark.
+    missing = []
+    for path in [
+        *(_ROOT / "qml").rglob("*.qml"),
+        *(_ROOT / "action_plugins").rglob("*.qml"),
+    ]:
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for number, line in enumerate(lines, 1):
+            if line.strip() == "autoExclusive: false" and (
+                number >= len(lines) or lines[number].strip() != "checkable: false"
+            ):
+                missing.append(f"{path.relative_to(_ROOT)}:{number}")
+    assert missing == []

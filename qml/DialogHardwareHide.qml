@@ -412,6 +412,7 @@ ApplicationWindow {
                     RadioButton {
                         id: allowList
                         autoExclusive: false
+                        checkable: false
                         text: "Allow list"
                         enabled: _hh.installed && _hh.gremlinControl
                         property bool shown: !_hh.inverseOn
@@ -422,6 +423,7 @@ ApplicationWindow {
                     RadioButton {
                         id: blockList
                         autoExclusive: false
+                        checkable: false
                         text: "Block list"
                         enabled: _hh.installed && _hh.gremlinControl
                         property bool shown: _hh.inverseOn
