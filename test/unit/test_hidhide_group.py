@@ -42,3 +42,31 @@ def test_no_parent_does_not_merge_whole_vendor():
     ):
         keys = {hh._group_key(k, 0x231D, None) for k in NXT}
     assert len(keys) == 5
+
+
+def test_devices_sort_by_name_then_id():
+    from gremlin.ui import hidhide as hh
+    rows = [
+        {"name": "VKBsim Gladiator EVO R", "instanceId": r"HID\B"},
+        {"name": "HID-compliant game controller", "instanceId": r"HID\Z"},
+        {"name": "Elgato Stream Deck", "instanceId": r"HID\C"},
+        {"name": "hid-compliant game controller", "instanceId": r"HID\A"},
+    ]
+    assert [r["instanceId"] for r in hh._sorted_devices(rows)] == [
+        r"HID\C", r"HID\A", r"HID\Z", r"HID\B",
+    ]
+
+
+def test_saved_programs_load_sorted():
+    import json
+    from gremlin.ui import hidhide as hh
+    saved = json.dumps([
+        {"name": "Star Citizen", "path": r"C:\sc.exe"},
+        {"name": "DCS", "path": r"C:\dcs.exe"},
+        {"name": "elite", "path": r"C:\ed.exe"},
+    ])
+    with patch.object(hh, "_ensure_options"), patch.object(
+        hh.config.Configuration, "value", return_value=saved
+    ):
+        names = [r["name"] for r in hh._load_games()]
+    assert names == ["DCS", "elite", "Star Citizen"]

@@ -237,6 +237,7 @@ def _load_games() -> list[dict]:
                 continue
             name = str(row.get("name") or Path(path).stem)
             out.append({"name": name, "path": path})
+    out.sort(key=lambda r: r["name"].lower())
     return out
 
 
@@ -1480,6 +1481,18 @@ def _enrich_devices(rows: list[dict]) -> list[dict]:
     return rows
 
 
+def _sorted_devices(rows: list[dict]) -> list[dict]:
+    """By name like HidHide's device list.
+
+    The instance id keeps equal names in a fixed order.
+    """
+    def key(row: dict) -> tuple[str, str]:
+        name = str(row.get("name") or "").lower()
+        return name, str(row.get("instanceId") or "").upper()
+
+    return sorted(rows, key=key)
+
+
 def _looks_vjoy(row: dict) -> bool:
     name = str(row.get("name") or "").lower()
     instance = str(row.get("instanceId") or "").upper()
@@ -1517,11 +1530,6 @@ class HidHideModel(QtCore.QObject):
         self._version = driver_version() if self._present else ""
         saved_ids = {i.upper() for i in (_saved_hidden() or [])}
         driver_ids = {i.upper() for i in get_blacklist()} if self._present else set()
-        prior_index = {}
-        for old in self._devices:
-            for raw in old.get("instanceIds") or [old.get("instanceId")]:
-                if raw:
-                    prior_index.setdefault(str(raw).upper(), len(prior_index))
         self._devices = []
         try:
             rows = list_hid_devices(self._gaming_only)
@@ -1538,13 +1546,7 @@ class HidHideModel(QtCore.QObject):
             item["hidden"] = item["clientBlocked"]
             item["confirmed"] = bool(self._driver_active and item["clientBlocked"])
             built.append(item)
-        order = []
-        for index, item in enumerate(built):
-            ids = [str(x).upper() for x in (item.get("instanceIds") or [item.get("instanceId")]) if x]
-            seen = [prior_index[i] for i in ids if i in prior_index]
-            order.append((min(seen) if seen else len(prior_index) + index, index, item))
-        order.sort(key=lambda part: (part[0], part[1]))
-        self._devices = [part[2] for part in order]
+        self._devices = _sorted_devices(built)
         self._games = _load_games()
         self._generation += 1
         _hh_log(
