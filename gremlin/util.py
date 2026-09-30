@@ -898,10 +898,28 @@ def data_folder() -> str:
     return str(root)
 
 
-def _child_dir(name: str) -> Path:
+def _configured_child(key: str, name: str) -> Path:
+    try:
+        from gremlin.config import Configuration
+
+        cfg = Configuration()
+        if cfg.exists("global", "files", key):
+            raw = str(cfg.value("global", "files", key) or "").strip()
+            if raw and raw != ".":
+                path = Path(raw)
+                if path.is_absolute():
+                    path.mkdir(parents=True, exist_ok=True)
+                    if path.is_dir():
+                        return path.resolve()
+    except Exception:
+        pass
     path = Path(data_folder()) / name
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _child_dir(name: str) -> Path:
+    return _configured_child(f"{name}-folder", name)
 
 
 def modules_dir() -> Path:
