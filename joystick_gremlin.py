@@ -465,8 +465,6 @@ def register_config_options() -> None:
         "global", "general", "check-for-updates", PropertyType.Bool, False,
         "Check for new Gremlin versions online upon start.", {}, True,
     )
-    if cfg.exists("global", "general", "check-for-updates"):
-        cfg.set("global", "general", "check-for-updates", False)
     cfg.register(
         "global", "general", "plugin-directory", PropertyType.Path, "",
         "Directory containing additional action plugins", {"is_folder": True}, True,
@@ -589,12 +587,6 @@ def register_config_options() -> None:
         "Default Autorelease Delay in milliseconds.",
         {}, False,
     )
-    for name in (
-        "enabled", "host", "port", "output-host", "output-port",
-        "pad-args", "autorelease-no-arg", "autorelease-delay",
-    ):
-        if cfg.exists("global", "osc", name):
-            cfg.set(osc_sec, osc_grp, name, cfg.value("global", "osc", name))
     # Status layout and the chosen module file must be registered before
     # purge_unused() or the next launch deletes them.
     gremlin.ui.module_model._ensure_display_options()
