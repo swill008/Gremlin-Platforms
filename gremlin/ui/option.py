@@ -196,15 +196,7 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
             if role_name == "name":
                 name = re.sub(r"^[0-9]+-", "", name)
                 return re.sub(r"[_-]+", " ", name).capitalize()
-            if self._config.exists(self._section_name, self._group_name, name):
-                key = [self._section_name, self._group_name, entries[index.row()]]
-                value = self._config.get(*key, role_name)
-                if role_name == "value":
-                    if self._config.data_type(*key) == PropertyType.Path:
-                        value = str(value)
-                if isinstance(value, PropertyType):
-                    value = PropertyType.to_string(value)
-            else:
+            if name in self._option.entries(self._section_name, self._group_name):
                 match role_name:
                     case "description":
                         value = self._option.description(
@@ -216,6 +208,14 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
                         )().qml_path
                     case "data_type":
                         value = "meta_option"
+            elif self._config.exists(self._section_name, self._group_name, name):
+                key = [self._section_name, self._group_name, entries[index.row()]]
+                value = self._config.get(*key, role_name)
+                if role_name == "value":
+                    if self._config.data_type(*key) == PropertyType.Path:
+                        value = str(value)
+                if isinstance(value, PropertyType):
+                    value = PropertyType.to_string(value)
         return value
 
     def setData(
