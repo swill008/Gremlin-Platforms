@@ -1268,11 +1268,7 @@ Window {
         if (fittedThisEdit)
             return
         var e = _ed()
-        if (e && e.migrateInnerPageToScene) {
-            e.migrateInnerPageToScene()
-        } else {
-            sceneShiftList(editing ? workNodes : liveNodes)
-        }
+        sceneShiftList(editing ? workNodes : liveNodes)
         fittedThisEdit = true
         if (e && e.repaint)
             e.repaint()
