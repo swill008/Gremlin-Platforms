@@ -57,6 +57,11 @@ os.chdir(install_path)
 
 # Universal with scaled sizes, from theme/GremlinStyle.
 os.environ["QT_QUICK_CONTROLS_STYLE"] = "GremlinStyle"
+# Qt's own message and color dialogs pick their look by style name, so point
+# them at the Universal versions GremlinStyle is built from.
+os.environ["QT_FILE_SELECTORS"] = ",".join(
+    filter(None, [os.environ.get("QT_FILE_SELECTORS", ""), "Universal"])
+)
 
 import gremlin.util
 
