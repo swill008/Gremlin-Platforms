@@ -5,7 +5,7 @@
 import QtQuick
 import QtQuick.Templates as T
 import QtQuick.Controls.impl
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -25,7 +25,7 @@ T.MenuBarItem {
 
     icon.width: Style.dp(20)
     icon.height: Style.dp(20)
-    icon.color: !enabled ? Universal.baseLowColor : Universal.baseHighColor
+    icon.color: !enabled ? U.Universal.baseLowColor : U.Universal.baseHighColor
 
     contentItem: IconLabel {
         spacing: control.spacing
@@ -36,16 +36,16 @@ T.MenuBarItem {
         icon: control.icon
         text: control.text
         font: control.font
-        color: !control.enabled ? control.Universal.baseLowColor : control.Universal.baseHighColor
+        color: !control.enabled ? control.U.Universal.baseLowColor : control.U.Universal.baseHighColor
     }
 
     background: Rectangle {
         implicitWidth: Style.dp(40)
         implicitHeight: Style.dp(40)
 
-        color: !control.enabled ? control.Universal.baseLowColor :
-                control.down ? control.Universal.listMediumColor :
-                control.highlighted ? control.Universal.listLowColor : "transparent"
+        color: !control.enabled ? control.U.Universal.baseLowColor :
+                control.down ? control.U.Universal.listMediumColor :
+                control.highlighted ? control.U.Universal.listLowColor : "transparent"
 
         Rectangle {
             x: Style.dp(1); y: Style.dp(1)
@@ -53,8 +53,8 @@ T.MenuBarItem {
             height: parent.height - Style.dp(2)
 
             visible: control.visualFocus
-            color: control.Universal.accent
-            opacity: control.Universal.theme === Universal.Light ? 0.4 : 0.6
+            color: control.U.Universal.accent
+            opacity: control.U.Universal.theme === U.Universal.Light ? 0.4 : 0.6
         }
     }
 }

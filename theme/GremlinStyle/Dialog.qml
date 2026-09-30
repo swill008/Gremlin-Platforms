@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -24,14 +24,14 @@ T.Dialog {
     verticalPadding: Style.dp(18)
 
     background: Rectangle {
-        color: control.Universal.chromeMediumLowColor
-        border.color: control.Universal.chromeHighColor
+        color: control.U.Universal.chromeMediumLowColor
+        border.color: control.U.Universal.chromeHighColor
         border.width: Style.dp(1) // FlyoutBorderThemeThickness
     }
 
-    header: Label {
+    header: U.Label {
         text: control.title
-        visible: parent?.parent === Overlay.overlay && control.title
+        visible: parent?.parent === T.Overlay.overlay && control.title
         elide: Label.ElideRight
         topPadding: Style.dp(18)
         leftPadding: Style.dp(24)
@@ -40,7 +40,7 @@ T.Dialog {
         font.pixelSize: Style.dp(20)
         background: Rectangle {
             x: Style.dp(1); y: Style.dp(1) // // FlyoutBorderThemeThickness
-            color: control.Universal.chromeMediumLowColor
+            color: control.U.Universal.chromeMediumLowColor
             width: parent.width - Style.dp(2)
             height: parent.height - Style.dp(1)
         }
@@ -51,10 +51,10 @@ T.Dialog {
     }
 
     T.Overlay.modal: Rectangle {
-        color: control.Universal.baseLowColor
+        color: control.U.Universal.baseLowColor
     }
 
     T.Overlay.modeless: Rectangle {
-        color: control.Universal.baseLowColor
+        color: control.U.Universal.baseLowColor
     }
 }

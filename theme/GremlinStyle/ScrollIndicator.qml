@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -20,7 +20,7 @@ T.ScrollIndicator {
         implicitWidth: Style.dp(6)
         implicitHeight: Style.dp(6)
 
-        color: control.Universal.baseMediumLowColor
+        color: control.U.Universal.baseMediumLowColor
         visible: control.size < 1.0
         opacity: 0.0
 

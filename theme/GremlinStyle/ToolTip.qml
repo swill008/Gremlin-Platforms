@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -31,12 +31,12 @@ T.ToolTip {
         font: control.font
         wrapMode: Text.Wrap
         opacity: enabled ? 1.0 : 0.2
-        color: control.Universal.foreground
+        color: control.U.Universal.foreground
     }
 
     background: Rectangle {
-        color: control.Universal.chromeMediumLowColor
-        border.color: control.Universal.chromeHighColor
+        color: control.U.Universal.chromeMediumLowColor
+        border.color: control.U.Universal.chromeHighColor
         border.width: Style.dp(1) // ToolTipBorderThemeThickness
     }
 }

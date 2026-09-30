@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -23,6 +23,6 @@ T.ToolBar {
 
     background: Rectangle {
         implicitHeight: Style.dp(48) // AppBarThemeCompactHeight
-        color: control.Universal.chromeMediumColor
+        color: control.U.Universal.chromeMediumColor
     }
 }

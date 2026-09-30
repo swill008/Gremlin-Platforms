@@ -5,7 +5,7 @@
 import QtQuick
 import QtQuick.Templates as T
 import QtQuick.Controls.impl
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -19,7 +19,7 @@ T.SplitView {
     handle: Rectangle {
         implicitWidth: control.orientation === Qt.Horizontal ? Style.dp(6) : control.width
         implicitHeight: control.orientation === Qt.Horizontal ? control.height : Style.dp(6)
-        color: T.SplitHandle.pressed ? control.Universal.baseMediumColor
-            : (enabled && T.SplitHandle.hovered ? control.Universal.baseMediumLowColor : control.Universal.chromeHighColor)
+        color: T.SplitHandle.pressed ? control.U.Universal.baseMediumColor
+            : (enabled && T.SplitHandle.hovered ? control.U.Universal.baseMediumLowColor : control.U.Universal.chromeHighColor)
     }
 }

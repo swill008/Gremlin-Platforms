@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -25,9 +25,9 @@ T.ScrollBar {
         implicitWidth: control.interactive ? Style.dp(12) : Style.dp(6)
         implicitHeight: control.interactive ? Style.dp(12): Style.dp(6)
 
-        color: control.pressed ? control.Universal.baseMediumColor :
-               enabled && control.interactive && control.hovered ? control.Universal.baseMediumLowColor :
-               control.Universal.chromeHighColor
+        color: control.pressed ? control.U.Universal.baseMediumColor :
+               enabled && control.interactive && control.hovered ? control.U.Universal.baseMediumLowColor :
+               control.U.Universal.chromeHighColor
         opacity: 0.0
     }
 
@@ -35,7 +35,7 @@ T.ScrollBar {
         implicitWidth: control.interactive ? Style.dp(12) : Style.dp(6)
         implicitHeight: control.interactive ? Style.dp(12): Style.dp(6)
 
-        color: control.Universal.chromeLowColor
+        color: control.U.Universal.chromeLowColor
         visible: control.size < 1.0
         opacity: 0.0
     }

@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Controls.Universal.impl
 
 import Gremlin.Style
@@ -21,7 +21,7 @@ T.ProgressBar {
         implicitHeight: Style.dp(10)
 
         scale: control.mirrored ? -1 : 1
-        color: control.Universal.accent
+        color: control.U.Universal.accent
         progress: control.position
         indeterminate: control.visible && control.indeterminate
     }
@@ -32,6 +32,6 @@ T.ProgressBar {
         y: (control.height - height) / 2
         height: Style.dp(10)
         visible: !control.indeterminate
-        color: control.Universal.baseLowColor
+        color: control.U.Universal.baseLowColor
     }
 }

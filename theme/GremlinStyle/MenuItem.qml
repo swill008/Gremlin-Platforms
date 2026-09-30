@@ -5,7 +5,7 @@
 import QtQuick
 import QtQuick.Templates as T
 import QtQuick.Controls.impl
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -38,7 +38,7 @@ T.MenuItem {
         alignment: Qt.AlignLeft
 
         icon: control.icon
-        defaultIconColor: !control.enabled ? control.Universal.baseLowColor : control.Universal.baseHighColor
+        defaultIconColor: !control.enabled ? control.U.Universal.baseLowColor : control.U.Universal.baseHighColor
         text: control.text
         font: control.font
         color: defaultIconColor
@@ -52,7 +52,7 @@ T.MenuItem {
 
         visible: control.subMenu
         mirror: control.mirrored
-        color: !enabled ? control.Universal.baseLowColor : control.Universal.baseHighColor
+        color: !enabled ? control.U.Universal.baseLowColor : control.U.Universal.baseHighColor
         source: "qrc:/qt-project.org/imports/QtQuick/Controls/Universal/images/rightarrow.png"
     }
 
@@ -63,7 +63,7 @@ T.MenuItem {
         y: control.topPadding + (control.availableHeight - height) / 2
 
         visible: control.checked
-        color: !control.enabled ? control.Universal.baseLowColor : control.down ? control.Universal.baseHighColor : control.Universal.baseMediumHighColor
+        color: !control.enabled ? control.U.Universal.baseLowColor : control.down ? control.U.Universal.baseHighColor : control.U.Universal.baseMediumHighColor
         source: !control.checkable ? "" : "qrc:/qt-project.org/imports/QtQuick/Controls/Universal/images/checkmark.png"
     }
 
@@ -71,9 +71,9 @@ T.MenuItem {
         implicitWidth: Style.dp(200)
         implicitHeight: Style.dp(40)
 
-        color: !control.enabled ? control.Universal.baseLowColor :
-                control.down ? control.Universal.listMediumColor :
-                control.highlighted ? control.Universal.listLowColor : control.Universal.altMediumLowColor
+        color: !control.enabled ? control.U.Universal.baseLowColor :
+                control.down ? control.U.Universal.listMediumColor :
+                control.highlighted ? control.U.Universal.listLowColor : control.U.Universal.altMediumLowColor
 
         Rectangle {
             x: Style.dp(1); y: Style.dp(1)
@@ -81,8 +81,8 @@ T.MenuItem {
             height: parent.height - Style.dp(2)
 
             visible: control.visualFocus
-            color: control.Universal.accent
-            opacity: control.Universal.theme === Universal.Light ? 0.4 : 0.6
+            color: control.U.Universal.accent
+            opacity: control.U.Universal.theme === U.Universal.Light ? 0.4 : 0.6
         }
     }
 }

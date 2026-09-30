@@ -5,7 +5,7 @@
 import QtQuick
 import QtQuick.Templates as T
 import QtQuick.Controls.impl
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -31,7 +31,7 @@ T.ToolButton {
         display: control.display
 
         icon: control.icon
-        defaultIconColor: Color.transparent(control.Universal.foreground, enabled ? 1.0 : 0.2)
+        defaultIconColor: Color.transparent(control.U.Universal.foreground, enabled ? 1.0 : 0.2)
         text: control.text
         font: control.font
         color: defaultIconColor
@@ -41,13 +41,13 @@ T.ToolButton {
         implicitWidth: Style.dp(68)
         implicitHeight: Style.dp(48) // AppBarThemeCompactHeight
 
-        color: control.enabled && (control.highlighted || control.checked) ? control.Universal.accent : "transparent"
+        color: control.enabled && (control.highlighted || control.checked) ? control.U.Universal.accent : "transparent"
 
         Rectangle {
             width: parent.width
             height: parent.height
             visible: enabled && (control.down || control.hovered)
-            color: control.down ? control.Universal.listMediumColor : control.Universal.listLowColor
+            color: control.down ? control.U.Universal.listMediumColor : control.U.Universal.listLowColor
         }
     }
 }

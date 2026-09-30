@@ -3,7 +3,7 @@
 // Qt-Security score:significant reason:default
 
 import QtQuick
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -15,9 +15,9 @@ Rectangle {
     color: "transparent"
     border.width: Style.dp(2) // RadioButtonBorderThemeThickness
     border.color:  control.checked ? "transparent" :
-                  !control.enabled ? control.Universal.baseLowColor :
-                   control.down ? control.Universal.baseMediumColor :
-                   control.hovered ? control.Universal.baseHighColor : control.Universal.baseMediumHighColor
+                  !control.enabled ? control.U.Universal.baseLowColor :
+                   control.down ? control.U.Universal.baseMediumColor :
+                   control.hovered ? control.U.Universal.baseHighColor : control.U.Universal.baseMediumHighColor
 
     property var control
 
@@ -30,8 +30,8 @@ Rectangle {
         opacity: indicator.control.checked ? 1 : 0
         color: "transparent"
         border.width: Style.dp(2) // RadioButtonBorderThemeThickness
-        border.color: !indicator.control.enabled ? indicator.control.Universal.baseLowColor :
-                       indicator.control.down ? indicator.control.Universal.baseMediumColor : indicator.control.Universal.accent
+        border.color: !indicator.control.enabled ? indicator.control.U.Universal.baseLowColor :
+                       indicator.control.down ? indicator.control.U.Universal.baseMediumColor : indicator.control.U.Universal.accent
     }
 
     Rectangle {
@@ -43,8 +43,8 @@ Rectangle {
 
         radius: width / 2
         opacity: indicator.control.checked ? 1 : 0
-        color: !indicator.control.enabled ? indicator.control.Universal.baseLowColor :
-                indicator.control.down ? indicator.control.Universal.baseMediumColor :
-                indicator.control.hovered ? indicator.control.Universal.baseHighColor : indicator.control.Universal.baseMediumHighColor
+        color: !indicator.control.enabled ? indicator.control.U.Universal.baseLowColor :
+                indicator.control.down ? indicator.control.U.Universal.baseMediumColor :
+                indicator.control.hovered ? indicator.control.U.Universal.baseHighColor : indicator.control.U.Universal.baseMediumHighColor
     }
 }

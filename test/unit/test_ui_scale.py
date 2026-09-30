@@ -54,6 +54,22 @@ def test_dp_rounds_half_up_like_qml(
     assert ui_scale_option.dp(1) == 1
 
 
+def test_universal_import_is_qualified() -> None:
+    """An unqualified Universal import shadows the scaled GremlinStyle controls."""
+    repo = QML_DIR.parent
+    unqualified = [
+        str(path.relative_to(repo))
+        for folder in ("qml", "theme", "action_plugins")
+        for path in (repo / folder).rglob("*.qml")
+        if path.name != "Style.qml"
+        and any(
+            line.strip() == "import QtQuick.Controls.Universal"
+            for line in path.read_text(encoding="utf-8").splitlines()
+        )
+    ]
+    assert unqualified == []
+
+
 @pytest.mark.parametrize(
     "raw, expected", [(50, 70), (250, 200), ("abc", 100), (137.6, 138)]
 )
@@ -80,6 +96,7 @@ QtQml.qmlRegisterSingletonType(
     QtCore.QUrl.fromLocalFile(sys.argv[1]), "Gremlin.Style", 1, 0, "Style")
 backend = FakeBackend()
 engine = QtQml.QQmlApplicationEngine()
+engine.addImportPath(sys.argv[2])
 engine.rootContext().setContextProperty("backend", backend)
 engine.loadData(b'''
 import QtQuick
@@ -88,10 +105,12 @@ import Gremlin.Style
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     property string result: [Style.uiScale, Style.dp(10), Style.dp(1),
-        Style.fontSize, _label.font.pixelSize, _button.font.pixelSize].join(",")
+        Style.fontSize, _label.font.pixelSize, _button.font.pixelSize,
+        _button.background.implicitHeight, _check.indicator.width].join(",")
     Column {
         Label { id: _label; text: "a" }
         Button { id: _button; text: "b" }
+        CheckBox { id: _check }
     }
 }
 ''')
@@ -106,14 +125,18 @@ os._exit(0)
 
 
 def test_style_follows_backend_live() -> None:
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
+    env = dict(
+        os.environ, QT_QPA_PLATFORM="offscreen", QT_QUICK_CONTROLS_STYLE="GremlinStyle"
+    )
     result = subprocess.run(
-        [sys.executable, "-c", _STYLE_SCRIPT, str(QML_DIR / "Style.qml")],
+        [sys.executable, "-c", _STYLE_SCRIPT, str(QML_DIR / "Style.qml"),
+         str(QML_DIR.parent / "theme")],
         capture_output=True, text=True, timeout=60, env=env,
     )
     assert result.returncode == 0, result.stderr
+    # Style values, inherited fonts, Button background height, CheckBox box.
     assert result.stdout.split() == [
-        "100,10,1,15,15,15",
-        "200,20,2,30,30,30",
-        "70,7,1,11,11,11",
+        "100,10,1,15,15,15,32,20",
+        "200,20,2,30,30,30,64,40",
+        "70,7,1,11,11,11,22,14",
     ]

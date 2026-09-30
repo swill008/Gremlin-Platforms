@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -28,9 +28,9 @@ T.Slider {
         y: control.topPadding + (control.horizontal ? (control.availableHeight - height) / 2 : control.visualPosition * (control.availableHeight - height))
 
         radius: Style.dp(4)
-        color: control.pressed ? control.Universal.chromeHighColor :
-               control.enabled ? control.hovered ? control.Universal.chromeAltLowColor :
-               control.Universal.accent : control.Universal.chromeDisabledHighColor
+        color: control.pressed ? control.U.Universal.chromeHighColor :
+               control.enabled ? control.hovered ? control.U.Universal.chromeAltLowColor :
+               control.U.Universal.accent : control.U.Universal.chromeDisabledHighColor
     }
 
     background: Item {
@@ -50,8 +50,8 @@ T.Slider {
             width: control.horizontal ? parent.width : Style.dp(2) // SliderTrackThemeHeight
             height: !control.horizontal ? parent.height : Style.dp(2) // SliderTrackThemeHeight
 
-            color: enabled && control.hovered && !control.pressed ? control.Universal.baseMediumColor :
-                   control.enabled ? control.Universal.baseMediumLowColor : control.Universal.chromeDisabledHighColor
+            color: enabled && control.hovered && !control.pressed ? control.U.Universal.baseMediumColor :
+                   control.enabled ? control.U.Universal.baseMediumLowColor : control.U.Universal.chromeDisabledHighColor
         }
 
         Rectangle {
@@ -60,7 +60,7 @@ T.Slider {
             width: control.horizontal ? control.position * parent.width : Style.dp(2) // SliderTrackThemeHeight
             height: !control.horizontal ? control.position * parent.height : Style.dp(2) // SliderTrackThemeHeight
 
-            color: control.enabled ? control.Universal.accent : control.Universal.chromeDisabledHighColor
+            color: control.enabled ? control.U.Universal.accent : control.U.Universal.chromeDisabledHighColor
         }
     }
 }

@@ -5,7 +5,7 @@
 import QtQuick
 import QtQuick.Templates as T
 import QtQuick.Controls.impl
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -30,7 +30,7 @@ T.TabButton {
 
         icon: control.icon
         defaultIconColor: Color.transparent(enabled && control.hovered
-            ? control.Universal.baseMediumHighColor : control.Universal.foreground,
+            ? control.U.Universal.baseMediumHighColor : control.U.Universal.foreground,
             control.checked || control.down || (enabled && control.hovered) ? 1.0 : 0.2)
         text: control.text
         font: control.font

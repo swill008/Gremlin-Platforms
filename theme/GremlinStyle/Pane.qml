@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -19,6 +19,6 @@ T.Pane {
     padding: Style.dp(12)
 
     background: Rectangle {
-        color: control.Universal.background
+        color: control.U.Universal.background
     }
 }

@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -28,9 +28,9 @@ T.RangeSlider {
         y: control.topPadding + (control.horizontal ? (control.availableHeight - height) / 2 : control.first.visualPosition * (control.availableHeight - height))
 
         radius: Style.dp(4)
-        color: control.first.pressed ? control.Universal.chromeHighColor :
-               control.first.hovered ? control.Universal.chromeAltLowColor :
-               control.enabled ? control.Universal.accent : control.Universal.chromeDisabledHighColor
+        color: control.first.pressed ? control.U.Universal.chromeHighColor :
+               control.first.hovered ? control.U.Universal.chromeAltLowColor :
+               control.enabled ? control.U.Universal.accent : control.U.Universal.chromeDisabledHighColor
     }
 
     second.handle: Rectangle {
@@ -41,9 +41,9 @@ T.RangeSlider {
         y: control.topPadding + (control.horizontal ? (control.availableHeight - height) / 2 : control.second.visualPosition * (control.availableHeight - height))
 
         radius: Style.dp(4)
-        color: control.second.pressed ? control.Universal.chromeHighColor :
-               control.second.hovered ? control.Universal.chromeAltLowColor :
-               control.enabled ? control.Universal.accent : control.Universal.chromeDisabledHighColor
+        color: control.second.pressed ? control.U.Universal.chromeHighColor :
+               control.second.hovered ? control.U.Universal.chromeAltLowColor :
+               control.enabled ? control.U.Universal.accent : control.U.Universal.chromeDisabledHighColor
     }
 
     background: Item {
@@ -63,8 +63,8 @@ T.RangeSlider {
             width: control.horizontal ? parent.width : Style.dp(2) // SliderBackgroundThemeHeight
             height: control.vertical ? parent.height : Style.dp(2) // SliderBackgroundThemeHeight
 
-            color: enabled && control.hovered && !control.pressed ? control.Universal.baseMediumColor :
-                   control.enabled ? control.Universal.baseMediumLowColor : control.Universal.chromeDisabledHighColor
+            color: enabled && control.hovered && !control.pressed ? control.U.Universal.baseMediumColor :
+                   control.enabled ? control.U.Universal.baseMediumLowColor : control.U.Universal.chromeDisabledHighColor
         }
 
         Rectangle {
@@ -73,7 +73,7 @@ T.RangeSlider {
             width: control.horizontal ? control.second.position * parent.width - control.first.position * parent.width : Style.dp(2) // SliderBackgroundThemeHeight
             height: control.vertical ? control.second.position * parent.height - control.first.position * parent.height : Style.dp(2) // SliderBackgroundThemeHeight
 
-            color: control.enabled ? control.Universal.accent : control.Universal.chromeDisabledHighColor
+            color: control.enabled ? control.U.Universal.accent : control.U.Universal.chromeDisabledHighColor
         }
     }
 }

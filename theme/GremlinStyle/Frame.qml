@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -20,6 +20,6 @@ T.Frame {
 
     background: Rectangle {
         color: "transparent"
-        border.color: control.Universal.chromeDisabledLowColor
+        border.color: control.U.Universal.chromeDisabledLowColor
     }
 }

@@ -5,7 +5,7 @@
 import QtQuick
 import QtQuick.Templates as T
 import QtQuick.Controls.impl
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -33,6 +33,6 @@ T.MenuBar {
 
     background: Rectangle {
         implicitHeight: Style.dp(40)
-        color: control.Universal.chromeMediumColor
+        color: control.U.Universal.chromeMediumColor
     }
 }

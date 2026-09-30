@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -19,16 +19,16 @@ T.Popup {
     padding: Style.dp(12)
 
     background: Rectangle {
-        color: control.Universal.chromeMediumLowColor
-        border.color: control.Universal.chromeHighColor
+        color: control.U.Universal.chromeMediumLowColor
+        border.color: control.U.Universal.chromeHighColor
         border.width: Style.dp(1) // FlyoutBorderThemeThickness
     }
 
     T.Overlay.modal: Rectangle {
-        color: control.Universal.baseLowColor
+        color: control.U.Universal.baseLowColor
     }
 
     T.Overlay.modeless: Rectangle {
-        color: control.Universal.baseLowColor
+        color: control.U.Universal.baseLowColor
     }
 }

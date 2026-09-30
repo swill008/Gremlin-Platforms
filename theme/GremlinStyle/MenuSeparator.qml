@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -23,10 +23,10 @@ T.MenuSeparator {
     contentItem: Rectangle {
         implicitWidth: Style.dp(188)
         implicitHeight: Style.dp(1)
-        color: control.Universal.baseMediumLowColor
+        color: control.U.Universal.baseMediumLowColor
     }
 
     background: Rectangle {
-        color: control.Universal.altMediumLowColor
+        color: control.U.Universal.altMediumLowColor
     }
 }

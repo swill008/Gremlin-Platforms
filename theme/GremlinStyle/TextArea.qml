@@ -5,7 +5,7 @@
 import QtQuick
 import QtQuick.Templates as T
 import QtQuick.Controls.impl
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Controls.Universal.impl
 
 import Gremlin.Style
@@ -26,14 +26,14 @@ T.TextArea {
                              implicitBackgroundHeight + topInset + bottomInset,
                              placeholder.implicitHeight + topPadding + bottomPadding)
 
-    Universal.theme: activeFocus ? Universal.Light : undefined
+    U.Universal.theme: activeFocus ? U.Universal.Light : undefined
 
-    color: !enabled ? Universal.chromeDisabledLowColor : Universal.foreground
-    selectionColor: Universal.accent
-    selectedTextColor: Universal.chromeWhiteColor
-    placeholderTextColor: !enabled ? Universal.chromeDisabledLowColor :
-                                     activeFocus ? Universal.chromeBlackMediumLowColor :
-                                                   Universal.baseMediumColor
+    color: !enabled ? U.Universal.chromeDisabledLowColor : U.Universal.foreground
+    selectionColor: U.Universal.accent
+    selectedTextColor: U.Universal.chromeWhiteColor
+    placeholderTextColor: !enabled ? U.Universal.chromeDisabledLowColor :
+                                     activeFocus ? U.Universal.chromeBlackMediumLowColor :
+                                                   U.Universal.baseMediumColor
 
     ContextMenu.menu: TextEditingContextMenu {
         editor: control
@@ -60,9 +60,9 @@ T.TextArea {
         implicitHeight: Style.dp(28) // TextControlThemeMinHeight - 4 (border)
 
         border.width: Style.dp(2) // TextControlBorderThemeThickness
-        border.color: !control.enabled ? control.Universal.baseLowColor :
-                       control.activeFocus ? control.Universal.accent :
-                       control.hovered ? control.Universal.baseMediumColor : control.Universal.chromeDisabledLowColor
-        color: control.enabled ? control.Universal.background : control.Universal.baseLowColor
+        border.color: !control.enabled ? control.U.Universal.baseLowColor :
+                       control.activeFocus ? control.U.Universal.accent :
+                       control.hovered ? control.U.Universal.baseMediumColor : control.U.Universal.chromeDisabledLowColor
+        color: control.enabled ? control.U.Universal.background : control.U.Universal.baseLowColor
     }
 }

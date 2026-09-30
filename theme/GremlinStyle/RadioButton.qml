@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import "impl"
 
 import Gremlin.Style
@@ -39,6 +39,6 @@ T.RadioButton {
         verticalAlignment: Text.AlignVCenter
 
         opacity: enabled ? 1.0 : 0.2
-        color: control.Universal.foreground
+        color: control.U.Universal.foreground
     }
 }
