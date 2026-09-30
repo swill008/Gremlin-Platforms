@@ -357,6 +357,7 @@ Item {
                             spacing: Style.dp(6)
 
                             Label {
+                                id: _caret
                                 visible: _root._hasList(rowKind, childCount, extraWriters)
                                 text: (rowKind === "group" ? _root._collapsed[groupKey] : !_root._opened[key]) ? "▸" : "▾"
                                 color: _root.colorCaret
@@ -591,9 +592,13 @@ Item {
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             propagateComposedEvents: true
                             onPressed: (mouse) => {
-                                if (mouse.button === Qt.LeftButton && mouse.x < 52) {
+                                // Leave presses on the caret and the grip to them; they move with the indent.
+                                if (mouse.button !== Qt.LeftButton)
+                                    return
+                                var at = mapToItem(_line, mouse.x, mouse.y)
+                                var hit = _line.childAt(at.x, at.y)
+                                if (hit && (hit === _caret || hit === _grip.parent))
                                     mouse.accepted = false
-                                }
                             }
                             onClicked: (mouse) => {
                                 if (mouse.button === Qt.RightButton) {
