@@ -188,27 +188,6 @@ ColumnLayout {
                     }
                 }
 
-                ColumnLayout {
-                    visible: properties["show_children"] === true
-                    spacing: 2
-
-                    JGText {
-                        text: "Modules: " + _child("modules")
-                        font.pointSize: 10
-                        opacity: 0.75
-                    }
-                    JGText {
-                        text: "Logs: " + _child("logs")
-                        font.pointSize: 10
-                        opacity: 0.75
-                    }
-                    JGText {
-                        text: "Profiles open in: " + _child("profiles")
-                        font.pointSize: 10
-                        opacity: 0.75
-                    }
-                }
-
                 FileDialog {
                     id: _pathVariableFileDialog
 
