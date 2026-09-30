@@ -444,7 +444,7 @@
         "files": {
             "data-folder": {
                 "data_type": "path",
-                "description": "Root folder for user files. configuration.json stays in the profile folder.",
+                "description": "Root folder for user files.",
                 "expose": true,
                 "properties": {
                     "allow_reset": true,
