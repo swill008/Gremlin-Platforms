@@ -202,7 +202,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="joystick_gremlin",
+    name="gremlin_platforms",
     debug=False,
     bootloader_ignore_signals=False,
     exclude_binaries=single_folder,
@@ -226,5 +226,5 @@ if single_folder:
         strip=False,
         upx=False,
         upx_exclude=["dill.dll", "vJoyInterface.dll"],
-        name="joystick_gremlin",
+        name="gremlin_platforms",
     )
