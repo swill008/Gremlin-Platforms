@@ -370,9 +370,18 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         return list(self._groups)
 
     def ensure_group(self, name: str) -> str:
-        text = (name or "").strip()
-        if text and text not in self._groups:
-            self._groups.append(text)
+        """Returns the group for a typed name, creating it only when it is new.
+
+        A name that differs from an existing group only in capitals or spacing
+        is that group, so a typo in case or spaces cannot make a look-alike.
+        """
+        text = " ".join((name or "").split())
+        if not text:
+            return text
+        for existing in self._groups:
+            if " ".join(existing.split()).casefold() == text.casefold():
+                return existing
+        self._groups.append(text)
         return text
 
     def create_many(

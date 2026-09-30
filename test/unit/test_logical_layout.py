@@ -355,3 +355,18 @@ def test_delete_one_action_and_undo_puts_it_back(qapp) -> None:
         model.deleteLater()
     finally:
         shared_state.current_profile = None
+
+
+def test_typed_group_name_joins_the_existing_group() -> None:
+    logical = LogicalDevice()
+    logical.ensure_group("Device 2")
+    assert logical.ensure_group("device 2") == "Device 2"
+    assert logical.ensure_group("  Device   2 ") == "Device 2"
+    assert logical.group_names() == ["Device 2"]
+    made = logical.create_many(InputType.JoystickButton, 1, "DEVICE 2")
+    assert made[0].group == "Device 2"
+    logical.place(made[0].identifier, "device 2")
+    assert made[0].group == "Device 2"
+    assert logical.ensure_group("Device 3") == "Device 3"
+    assert logical.group_names() == ["Device 2", "Device 3"]
+    assert logical.ensure_group("   ") == ""
