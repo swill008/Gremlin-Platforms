@@ -1504,7 +1504,7 @@ ApplicationWindow {
     }
 
     function exportViewTo(url, format) {
-        _buttonMap.grabToImage(function(result) {
+        _mapHost.grabToImage(function(result) {
             if (!result)
                 return
             if (format === "pdf") {
