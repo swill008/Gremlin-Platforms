@@ -22,6 +22,7 @@ from gremlin.error import (
 )
 from gremlin.signal import signal
 import gremlin.ui.ui_scale_option  # noqa: F401
+import gremlin.ui.windows_scale_option  # noqa: F401
 from gremlin.tts import TTSManager
 from gremlin.types import PropertyType
 
