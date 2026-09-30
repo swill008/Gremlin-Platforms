@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import json
 import logging
 import logging.handlers
 import os
@@ -16,8 +17,24 @@ import types
 from pathlib import Path
 from typing import Any
 
-# This UI sizes itself in pixels. Must be set before Qt loads.
-os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
+
+def _windows_scaling_disabled() -> bool:
+    """Read the Global option before Qt loads. Default is Windows scaling on."""
+    root = os.environ.get("USERPROFILE") or os.environ.get("userprofile")
+    if not root:
+        return False
+    path = os.path.join(root, "Joystick Gremlin", "configuration.json")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+        raw = data["global"]["general"]["disable-windows-scaling"]["value"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError):
+        return False
+    return str(raw).strip().lower() in ("1", "true", "yes")
+
+
+if _windows_scaling_disabled():
+    os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
 
 from PySide6 import (
     QtCore,
