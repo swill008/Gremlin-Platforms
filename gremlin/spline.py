@@ -225,14 +225,11 @@ class PiecewiseLinear(AbstractCurve):
 class CubicSpline(AbstractCurve):
     """Defines a cubic spline for interpolation.
 
-    _MIN_SEGMENT_WIDTH avoids a divide by zero when two control points share an x.
-    """
-
-    _MIN_SEGMENT_WIDTH = 1e-9
-
     The spline requires a set of control points which are used to
     create a C2 spline which passes through all of them.
     """
+
+    _MIN_SEGMENT_WIDTH = 1e-9
 
     def __init__(self, points: CoordinateList | None = None) -> None:
         """Creates a new CubicSpline object.
