@@ -825,18 +825,6 @@ Item {
         revealRow(row)
     }
 
-    function openEditor(hid) {
-        if (hid < 0 || editorLocked)
-            return
-        if (_root.editingHid >= 0 && _root.editingHid !== hid)
-            _catalog.refreshOpenRow(_root.editingHid)
-        var opening = _root.editingHid !== hid
-        _root.editingHid = hid
-        selectHid(hid)
-        if (opening)
-            armReveal(_catalog.rowForDeviceIndex(hid))
-    }
-
     function closeEditor() {
         var hid = _root.editingHid
         var reset = false
