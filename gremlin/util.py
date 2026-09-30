@@ -942,6 +942,11 @@ def scripts_dir() -> Path:
     return _child_dir("scripts")
 
 
+def plugins_dir() -> Path:
+    """Additional action plugins. The stored key is plugin-directory."""
+    return _configured_child("plugin-directory", "plugins")
+
+
 def export_dir() -> Path:
     """Device packs saved from the program."""
     return _child_dir("export")
@@ -990,6 +995,7 @@ def ensure_data_folders() -> None:
     profiles_dir()
     scripts_dir()
     export_dir()
+    plugins_dir()
     copy_legacy_modules()
 
 
