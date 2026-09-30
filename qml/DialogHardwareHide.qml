@@ -33,13 +33,6 @@ ApplicationWindow {
         onTriggered: _hh.saveWindowSize(_win.width, _win.height)
     }
 
-    Timer {
-        id: _splitSave
-        interval: 400
-        repeat: false
-        onTriggered: _split.saveRatio()
-    }
-
     Component.onCompleted: {
         var w = _hh.windowWidth
         var h = _hh.windowHeight
@@ -225,11 +218,28 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
             orientation: Qt.Vertical
+
+            // Same pattern as the Home page split: the saved share (thousandths) sets
+            // the device list height; only a finished drag or closing saves it.
+            property bool applying: false
+
+            function applyRatio() {
+                if (height < 80)
+                    return
+                applying = true
+                _devicesPane.SplitView.preferredHeight = Math.round(height * _hh.splitRatio / 1000)
+                applying = false
+            }
+
             function saveRatio() {
-                if (height < 80 || _devicesPane.height < 96)
+                if (applying || height < 80 || _devicesPane.height < 96)
                     return
                 _hh.saveSplitRatio(Math.round(_devicesPane.height * 1000 / height))
             }
+
+            onHeightChanged: if (visible) applyRatio()
+            Component.onCompleted: Qt.callLater(applyRatio)
+            onResizingChanged: if (!resizing && visible) saveRatio()
             handle: Rectangle {
                 implicitWidth: Style.dp(8)
                 implicitHeight: Style.dp(10)
@@ -246,11 +256,8 @@ ApplicationWindow {
             ColumnLayout {
                 id: _devicesPane
                 SplitView.fillWidth: true
-                SplitView.fillHeight: true
-                SplitView.preferredHeight: Math.max(Style.dp(96), _hh.splitRatio)
                 SplitView.minimumHeight: Style.dp(96)
                 spacing: Style.dp(6)
-                onHeightChanged: if (_win.visible) _splitSave.restart()
 
                 Label {
                     text: "DEVICES"
@@ -389,7 +396,6 @@ ApplicationWindow {
             ColumnLayout {
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-                SplitView.preferredHeight: Math.max(Style.dp(120), 1000 - _hh.splitRatio)
                 SplitView.minimumHeight: Style.dp(120)
                 spacing: Style.dp(6)
 

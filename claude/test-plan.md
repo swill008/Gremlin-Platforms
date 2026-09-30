@@ -635,7 +635,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | ID | Result | Notes |
 |---|---|---|
 | HH-00 | PASS | Opens from Tools → Device setup → HiDHide; window size and place kept after close/reopen. |
-| HH-00b | FAIL | The splitter is not restored. Dragged to show 5 rows, saved `split-ratio` 710; reopened showing 2 rows, and the reopen saved 332 over it. `DialogHardwareHide.qml:250/392` use the thousandths value as a pixel `preferredHeight`, and both panes have `fillHeight`. |
+| HH-00b | FIXED | The splitter is not restored. Dragged to show 5 rows, saved `split-ratio` 710; reopened showing 2 rows, and the reopen saved 332 over it. `DialogHardwareHide.qml:250/392` use the thousandths value as a pixel `preferredHeight`, and both panes have `fillHeight`. |
 | HH-01 | PASS | "HiDHide driver found 1.4.191.0", green dot. |
 | HH-02 | PASS | Test HiDHide opens Game Controllers (joy.cpl); closed by script. |
 | HH-03 | NOT RUN | Get HiDHide opens a web page (external). |
@@ -664,7 +664,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 6. LP-29: multi-select Delete deletes only one row.
 7. F-03: Recent profiles never written.
 8. H-19g-b: "deleted devices" backup written to the install folder.
-9. HH-00b: HiDHide splitter not restored.
+9. ~~HH-00b~~ fixed (HiDHide splitter).
 10. BM-X1 / S-22: map pack Export/Import unreachable, but listed in Help.
 11. H-03-dest, H-19d, H-17, H-13, OV-08b, XV-01b: Home and viewer behavior.
 12. B-SPEC-IMPORTS (suspect): axis_delta / run_command missing from spec hidden imports.
