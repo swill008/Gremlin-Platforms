@@ -116,7 +116,7 @@ class MapToMouseFunctor(AbstractFunctor):
             self.data.max_speed - self.data.min_speed
         )
         delta_motion = math.copysign(delta_motion, value.current)
-        delta_motion = 0.0 if abs(value.current) < 1e-6 else delta_motion
+        delta_motion = 0.0 if abs(value.current) < 1e-3 else delta_motion
 
         dx = delta_motion if self.data.direction == 90 else None
         dy = delta_motion if self.data.direction == 0 else None
