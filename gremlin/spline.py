@@ -225,6 +225,11 @@ class PiecewiseLinear(AbstractCurve):
 class CubicSpline(AbstractCurve):
     """Defines a cubic spline for interpolation.
 
+    _MIN_SEGMENT_WIDTH avoids a divide by zero when two control points share an x.
+    """
+
+    _MIN_SEGMENT_WIDTH = 1e-9
+
     The spline requires a set of control points which are used to
     create a C2 spline which passes through all of them.
     """
@@ -279,21 +284,20 @@ class CubicSpline(AbstractCurve):
         if n < 2:
             return
 
-        eps = 0.000001
         h = [0.0] * n
         b = [0.0] * n
         u = [0.0] * n
         v = [0.0] * n
 
         for i in range(n):
-            h[i] = self.points[i + 1].x - self.points[i].x
-            b[i] = (self.points[i + 1].y - self.points[i].y) / (h[i] + eps)
+            h[i] = max(self.points[i + 1].x - self.points[i].x, self._MIN_SEGMENT_WIDTH)
+            b[i] = (self.points[i + 1].y - self.points[i].y) / h[i]
 
         u[1] = 2 * (h[0] + h[1])
         v[1] = 6 * (b[1] - b[0])
         for i in range(2, n):
-            u[i] = 2 * (h[i] + h[i - 1]) - h[i - 1] ** 2 / (u[i - 1] + eps)
-            v[i] = 6 * (b[i] - b[i - 1]) - (h[i - 1] * v[i - 1]) / (u[i - 1] + eps)
+            u[i] = 2 * (h[i] + h[i - 1]) - h[i - 1] ** 2 / max(u[i - 1], self._MIN_SEGMENT_WIDTH)
+            v[i] = 6 * (b[i] - b[i - 1]) - (h[i - 1] * v[i - 1]) / max(u[i - 1], self._MIN_SEGMENT_WIDTH)
 
         self.z[n] = 0.0
         for i in range(n - 1, 0, -1):
