@@ -146,14 +146,10 @@ ApplicationWindow {
     property string poolName: ""
     property real poolX: 0
     property real poolY: 0
-    // Chip popup size at 100%. It is saved in these units.
-    property int chipPopW: 280
-    property int chipPopH: 480
     property bool gridOn: true
     property bool snapOn: true
     property bool snapEntOn: true
     property int gridSize: 8
-    property bool chipPopPlaced: false
     property real panelW: 0
     property real panelH: 0
     property bool panelFillW: true
@@ -1041,37 +1037,10 @@ ApplicationWindow {
             e.deleteChip()
         applySelected()
         refreshReservoir()
-        _chipPop.close()
     }
 
     function nodeIsGroup(n) {
         return !!(n && (n.kind === "plus" || n.kind === "pair" || n.kind === "axis_stack" || n.kind === "stack" || (n.members && n.members.length)))
-    }
-
-    function applyChipPopSize() {
-        var maxW = Math.max(Style.dp(240), _buttonMap.width - Style.dp(16))
-        var maxH = Math.max(Style.dp(200), _buttonMap.height - Style.dp(16))
-        var w = Math.max(Style.dp(240), Math.min(Style.dp(chipPopW), maxW))
-        var h = Math.max(Style.dp(200), Math.min(Style.dp(chipPopH), maxH))
-        _chipPop.width = w
-        _chipPop.height = h
-        chipPopW = Math.round(w * 100 / Style.uiScale)
-        chipPopH = Math.round(h * 100 / Style.uiScale)
-    }
-
-    function rememberChipPopSize() {
-        chipPopW = Math.round(_chipPop.width * 100 / Style.uiScale)
-        chipPopH = Math.round(_chipPop.height * 100 / Style.uiScale)
-        persistChipPopUi()
-    }
-
-    function setChipPopSize(w, h) {
-        if (w)
-            chipPopW = w
-        if (h)
-            chipPopH = h
-        applyChipPopSize()
-        persistChipPopUi()
     }
 
     function captureView() {
@@ -1195,8 +1164,6 @@ ApplicationWindow {
     function uiBag() {
         captureView()
         return {
-            chipPopW: chipPopW,
-            chipPopH: chipPopH,
             gridOn: gridOn,
             snapOn: snapOn,
             snapEntOn: snapEntOn,
@@ -1210,10 +1177,6 @@ ApplicationWindow {
     function applyUi(ui) {
         if (!ui)
             return
-        if (ui.chipPopW >= 240)
-            chipPopW = ui.chipPopW
-        if (ui.chipPopH >= 200)
-            chipPopH = ui.chipPopH
         if (ui.gridOn === true || ui.gridOn === false)
             gridOn = ui.gridOn
         if (ui.snapOn === true || ui.snapOn === false)
@@ -1295,10 +1258,6 @@ ApplicationWindow {
             _hw.saveUi(targetName, JSON.stringify(doc))
         else
             _hw.save(targetName, JSON.stringify(doc))
-    }
-
-    function persistChipPopUi() {
-        persistUi()
     }
 
     function setGridPref(key, val) {
@@ -2395,399 +2354,6 @@ ApplicationWindow {
                 }
             }
 
-        }
-    }
-
-    Popup {
-        id: _chipPop
-        parent: _buttonMap.contentItem
-        width: Style.dp(280)
-        height: Style.dp(480)
-        modal: false
-        focus: true
-        padding: 0
-        closePolicy: Popup.CloseOnEscape
-        property real _rsx: 0
-        property real _rsy: 0
-        property real _rsw: 0
-        property real _rsh: 0
-        property real _rmx: 0
-        property real _rmy: 0
-        property string _redge: ""
-
-        function startResize(edge, mx, my, item) {
-            _redge = edge
-            _rsx = x
-            _rsy = y
-            _rsw = width
-            _rsh = height
-            var p = item.mapToItem(parent, mx, my)
-            _rmx = p.x
-            _rmy = p.y
-        }
-
-        function moveResize(mx, my, item) {
-            var p = item.mapToItem(parent, mx, my)
-            var dx = p.x - _rmx
-            var dy = p.y - _rmy
-            var nx = _rsx
-            var ny = _rsy
-            var nw = _rsw
-            var nh = _rsh
-            var e = _redge
-            if (e.indexOf("e") >= 0)
-                nw = _rsw + dx
-            if (e.indexOf("s") >= 0)
-                nh = _rsh + dy
-            if (e.indexOf("w") >= 0)
-                nw = _rsw - dx
-            if (e.indexOf("n") >= 0)
-                nh = _rsh - dy
-            var maxW = Math.max(Style.dp(240), parent.width - Style.dp(16))
-            var maxH = Math.max(Style.dp(200), parent.height - Style.dp(16))
-            nw = Math.max(Style.dp(240), Math.min(nw, maxW))
-            nh = Math.max(Style.dp(200), Math.min(nh, maxH))
-            if (e.indexOf("w") >= 0)
-                nx = _rsx + _rsw - nw
-            if (e.indexOf("n") >= 0)
-                ny = _rsy + _rsh - nh
-            nx = Math.max(Style.dp(8), Math.min(nx, parent.width - nw - Style.dp(8)))
-            ny = Math.max(Style.dp(8), Math.min(ny, parent.height - nh - Style.dp(8)))
-            x = nx
-            y = ny
-            width = nw
-            height = nh
-            chipPopW = Math.round(nw * 100 / Style.uiScale)
-            chipPopH = Math.round(nh * 100 / Style.uiScale)
-        }
-
-        function startMove(mx, my, item) {
-            _rsx = x
-            _rsy = y
-            var p = item.mapToItem(parent, mx, my)
-            _rmx = p.x
-            _rmy = p.y
-        }
-
-        function moveWin(mx, my, item) {
-            var p = item.mapToItem(parent, mx, my)
-            x = Math.max(8, Math.min(_rsx + p.x - _rmx, parent.width - width - 8))
-            y = Math.max(8, Math.min(_rsy + p.y - _rmy, parent.height - height - 8))
-        }
-
-        background: Rectangle {
-            color: "#111113"
-            border.color: "#3F3F46"
-            radius: Style.dp(8)
-        }
-
-        component Grip: MouseArea {
-            required property string edge
-            preventStealing: true
-            hoverEnabled: true
-            onPressed: (m) => _chipPop.startResize(edge, m.x, m.y, this)
-            onPositionChanged: (m) => {
-                if (pressed)
-                    _chipPop.moveResize(m.x, m.y, this)
-            }
-            onReleased: rememberChipPopSize()
-        }
-        MouseArea {
-            id: _chipDrag
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.SizeAllCursor
-            acceptedButtons: Qt.LeftButton
-            preventStealing: true
-            enabled: {
-                var e = _buttonMap._ed()
-                return !(e && e.dragKind && e.dragKind.length)
-            }
-            onPressed: (m) => _chipPop.startMove(m.x, m.y, this)
-            onPositionChanged: (m) => {
-                if (pressed)
-                    _chipPop.moveWin(m.x, m.y, this)
-            }
-            ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: Style.dp(10)
-            anchors.bottomMargin: Style.dp(14)
-            anchors.rightMargin: Style.dp(12)
-            spacing: Style.dp(6)
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Style.dp(4)
-                Button {
-                    text: "Undo"
-                    implicitHeight: Style.dp(24)
-                    enabled: { var e = _ed(); return e ? e.canUndo : false }
-                    onClicked: { var e = _ed(); if (e) e.undo() }
-                }
-                Button {
-                    text: "Redo"
-                    implicitHeight: Style.dp(24)
-                    enabled: { var e = _ed(); return e ? e.canRedo : false }
-                    onClicked: { var e = _ed(); if (e) e.redo() }
-                }
-                Button {
-                    text: "Group"
-                    implicitHeight: Style.dp(24)
-                    onClicked: _groupMenu.popup()
-                }
-                Button {
-                    text: "Break group"
-                    implicitHeight: Style.dp(24)
-                    visible: {
-                        var e = _ed()
-                        return !!(e && e.canUngroup()) || nodeIsGroup(selectedNode)
-                    }
-                    onClicked: {
-                        var e = _ed()
-                        if (e)
-                            e.ungroupSelection()
-                        applySelected()
-                        refreshReservoir()
-                        _chipPop.close()
-                    }
-                }
-                Button {
-                    text: "Leader"
-                    implicitHeight: Style.dp(24)
-                    onClicked: _leadMenu.popup()
-                }
-                Item { Layout.fillWidth: true }
-                Button {
-                    text: "×"
-                    implicitWidth: Style.dp(28)
-                    implicitHeight: Style.dp(24)
-                    onClicked: _chipPop.close()
-                }
-            }
-            Label {
-                text: selectedNode ? (selectedNode.friendly || selectedNode.id || "Chip") : "Chip"
-                font.bold: true
-                color: "#E4E4E7"
-                Layout.fillWidth: true
-                elide: Text.ElideRight
-            }
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                color: "#A1A1AA"
-                font.pixelSize: Style.dp(11)
-                text: {
-                    var e = _ed()
-                    var n = selectedNode
-                    if (!n || !e)
-                        return ""
-                    if (n.members && n.members.length) {
-                        var parts = []
-                        var lk = n.kind === "axis_stack" ? "axis" : "btn"
-                        for (var i = 0; i < n.members.length; i++)
-                            parts.push(e.fullNameOf(lk, n.members[i].hwId))
-                        return parts.join("\n")
-                    }
-                    return e.fullNameOf(n.kind, n.hwId)
-                }
-            }
-            Flickable {
-                id: _chipFlick
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                interactive: false
-                contentWidth: width
-                contentHeight: _chipForm.implicitHeight
-                boundsBehavior: Flickable.StopAtBounds
-                WheelHandler {
-                    onWheel: (w) => {
-                        var ny = _chipFlick.contentY - w.angleDelta.y * 0.5
-                        var maxY = Math.max(0, _chipFlick.contentHeight - _chipFlick.height)
-                        _chipFlick.contentY = Math.max(0, Math.min(maxY, ny))
-                        w.accepted = true
-                    }
-                }
-                ColumnLayout {
-                    id: _chipForm
-                    width: parent.width
-                    spacing: Style.dp(6)
-
-                    Label { text: "Friendly name"; color: "#A1A1AA" }
-                    TextField {
-                        Layout.fillWidth: true
-                        text: selectedNode && selectedNode.friendly ? selectedNode.friendly : (selectedNode && selectedNode.label ? selectedNode.label : "")
-                        placeholderText: "shown on the chip"
-                        onEditingFinished: {
-                            if (selectedNode) {
-                                selectedNode.friendly = text
-                                selectedNode.label = text
-                                var e = _ed()
-                                if (e) e.bump()
-                            }
-                        }
-                    }
-
-                    Label { text: "Group align"; color: "#A1A1AA"; visible: nodeIsGroup(selectedNode) }
-                    RowLayout {
-                        visible: nodeIsGroup(selectedNode)
-                        Layout.fillWidth: true
-                        spacing: Style.dp(4)
-                        Button { text: "Left"; checkable: true; checked: selectedNode && selectedNode.alignH === "left"; onClicked: { var e = _ed(); if (e) e.setAlignH("left") } }
-                        Button { text: "Center"; checkable: true; checked: !selectedNode || !selectedNode.alignH || selectedNode.alignH === "center"; onClicked: { var e = _ed(); if (e) e.setAlignH("center") } }
-                        Button { text: "Right"; checkable: true; checked: selectedNode && selectedNode.alignH === "right"; onClicked: { var e = _ed(); if (e) e.setAlignH("right") } }
-                        Button { text: "Free"; checkable: true; checked: selectedNode && selectedNode.alignH === "free"; onClicked: { var e = _ed(); if (e) e.setAlignH("free") } }
-                    }
-
-                    Label { text: "Hardware id"; color: "#A1A1AA"; visible: selectedNode && selectedNode.hwId !== undefined && !nodeIsGroup(selectedNode) }
-                    SpinBox {
-                        visible: selectedNode && selectedNode.hwId !== undefined && !nodeIsGroup(selectedNode)
-                        from: 1
-                        to: 64
-                        value: selectedNode && selectedNode.hwId ? selectedNode.hwId : 1
-                        onValueModified: {
-                            if (selectedNode) {
-                                selectedNode.hwId = value
-                                var e = _ed()
-                                if (e) e.bump()
-                            }
-                        }
-                    }
-
-                    Label { text: "Font size"; color: "#A1A1AA" }
-                    SpinBox {
-                        from: 8
-                        to: 22
-                        value: selectedNode && selectedNode.fontSize ? selectedNode.fontSize : 10
-                        onValueModified: { var e = _ed(); if (e) e.applyField("fontSize", value) }
-                    }
-                    Label { text: "Chip size"; color: "#A1A1AA" }
-                    SpinBox {
-                        from: 12
-                        to: 48
-                        value: selectedNode && selectedNode.chipSize ? selectedNode.chipSize : 18
-                        onValueModified: { var e = _ed(); if (e) e.applyField("chipSize", value) }
-                    }
-                    Label { text: "Chip shape"; color: "#A1A1AA" }
-                    ComboBox {
-                        Layout.fillWidth: true
-                        model: ["Round", "Square"]
-                        currentIndex: selectedNode && selectedNode.chipShape === "square" ? 1 : 0
-                        onActivated: (idx) => { var e = _ed(); if (e) e.applyField("chipShape", idx === 1 ? "square" : "round") }
-                    }
-                    Label { text: "Chip fill"; color: "#A1A1AA" }
-                    ComboBox {
-                        Layout.fillWidth: true
-                        model: ["Filled", "Hollow"]
-                        currentIndex: selectedNode && selectedNode.chipFill === "hollow" ? 1 : 0
-                        onActivated: (idx) => { var e = _ed(); if (e) e.applyField("chipFill", idx === 1 ? "hollow" : "filled") }
-                    }
-                    Label { text: "Hotspot size"; color: "#A1A1AA" }
-                    SpinBox {
-                        from: 4
-                        to: 28
-                        value: selectedNode && selectedNode.hotSize ? selectedNode.hotSize : 9
-                        onValueModified: { var e = _ed(); if (e) e.applyField("hotSize", value) }
-                    }
-                    Label { text: "Hotspot shape"; color: "#A1A1AA" }
-                    ComboBox {
-                        Layout.fillWidth: true
-                        model: ["Round", "Square"]
-                        currentIndex: selectedNode && selectedNode.hotShape === "square" ? 1 : 0
-                        onActivated: (idx) => { var e = _ed(); if (e) e.applyField("hotShape", idx === 1 ? "square" : "round") }
-                    }
-                    Label { text: "Hotspot fill"; color: "#A1A1AA" }
-                    ComboBox {
-                        Layout.fillWidth: true
-                        model: ["Filled", "Hollow"]
-                        currentIndex: selectedNode && selectedNode.hotFill === "hollow" ? 1 : 0
-                        onActivated: (idx) => { var e = _ed(); if (e) e.applyField("hotFill", idx === 1 ? "hollow" : "filled") }
-                    }
-                    CheckBox {
-                        text: "Highlight on press"
-                        checked: selectedNode ? selectedNode.highlight !== false : true
-                        onToggled: {
-                            if (selectedNode) {
-                                selectedNode.highlight = checked
-                                var e = _ed()
-                                if (e) e.bump()
-                            }
-                        }
-                    }
-                    Label { text: "Colors"; color: "#A1A1AA" }
-                    GridLayout {
-                        Layout.fillWidth: true
-                        columns: 2
-                        columnSpacing: Style.dp(8)
-                        rowSpacing: Style.dp(6)
-                        Label { text: "Fill"; color: "#A1A1AA" }
-                        ColorSwatch { hex: selectedNode && selectedNode.color ? selectedNode.color : "#18181B"; onPicked: _colorPop.openField("color", hex, this) }
-                        Label { text: "Outline"; color: "#A1A1AA" }
-                        ColorSwatch { hex: selectedNode && selectedNode.border ? selectedNode.border : "#3F3F46"; onPicked: _colorPop.openField("border", hex, this) }
-                        Label { text: "Text"; color: "#A1A1AA" }
-                        ColorSwatch { hex: selectedNode && selectedNode.textColor ? selectedNode.textColor : "#E4E4E7"; onPicked: _colorPop.openField("textColor", hex, this) }
-                        Label { text: "Highlight"; color: "#A1A1AA" }
-                        ColorSwatch { hex: selectedNode && selectedNode.hlColor ? selectedNode.hlColor : "#14532D"; onPicked: _colorPop.openField("hlColor", hex, this) }
-                        Label { text: "Pressed outline"; color: "#A1A1AA" }
-                        ColorSwatch { hex: selectedNode && selectedNode.hlBorder ? selectedNode.hlBorder : "#22C55E"; onPicked: _colorPop.openField("hlBorder", hex, this) }
-                        Label { text: "HL text"; color: "#A1A1AA" }
-                        ColorSwatch { hex: selectedNode && selectedNode.hlText ? selectedNode.hlText : "#BBF7D0"; onPicked: _colorPop.openField("hlText", hex, this) }
-                        Label { text: "Leader"; color: "#A1A1AA" }
-                        ColorSwatch { hex: selectedNode && selectedNode.leaderColor ? selectedNode.leaderColor : "#A1A1AA"; onPicked: _colorPop.openField("leaderColor", hex, this) }
-                        Label { text: "Hotspot"; color: "#A1A1AA" }
-                        ColorSwatch { hex: selectedNode && selectedNode.hotColor ? selectedNode.hotColor : "#F4F4F5"; onPicked: _colorPop.openField("hotColor", hex, this) }
-                    }
-                    Label { text: "Leader weight"; color: "#A1A1AA" }
-                    Slider {
-                        Layout.fillWidth: true
-                        from: 5
-                        to: 40
-                        stepSize: 1
-                        value: selectedNode && selectedNode.leaderWidth > 0 ? selectedNode.leaderWidth * 10 : 11
-                        onMoved: {
-                            var e = _ed()
-                            if (e)
-                                e.applyField("leaderWidth", value / 10)
-                        }
-                    }
-                    Button {
-                        text: "Delete chip"
-                        Layout.fillWidth: true
-                        enabled: !nodeIsGroup(selectedNode)
-                        onClicked: {
-                            if (nodeIsGroup(selectedNode))
-                                return
-                            var e = _ed()
-                            if (e)
-                                e.deleteChip()
-                            selectedId = ""
-                            selectedNode = null
-                            refreshReservoir()
-                            _chipPop.close()
-                        }
-                    }
-                }
-            }
-        }
-        }
-
-        Grip { edge: "n"; height: Style.dp(6); anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
-        Grip { edge: "s"; height: Style.dp(6); anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeVerCursor }
-        Grip { edge: "w"; width: Style.dp(6); anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left; cursorShape: Qt.SizeHorCursor }
-        Grip { edge: "e"; width: Style.dp(6); anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.right: parent.right; cursorShape: Qt.SizeHorCursor }
-        Grip { edge: "nw"; width: Style.dp(12); height: Style.dp(12); anchors.left: parent.left; anchors.top: parent.top; cursorShape: Qt.SizeFDiagCursor }
-        Grip { edge: "ne"; width: Style.dp(12); height: Style.dp(12); anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeBDiagCursor }
-        Grip { edge: "sw"; width: Style.dp(12); height: Style.dp(12); anchors.left: parent.left; anchors.bottom: parent.bottom; cursorShape: Qt.SizeBDiagCursor }
-        Grip { edge: "se"; width: Style.dp(14); height: Style.dp(14); anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeFDiagCursor; z: 2 }
-
-        Item {
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.margins: Style.dp(3)
-            width: Style.dp(10)
-            height: Style.dp(10)
-            opacity: 0.55
-            Rectangle { width: Style.dp(8); height: Style.dp(1); color: "#A1A1AA"; rotation: -45; x: Style.dp(2); y: Style.dp(7) }
-            Rectangle { width: Style.dp(5); height: Style.dp(1); color: "#A1A1AA"; rotation: -45; x: Style.dp(5); y: Style.dp(8) }
         }
     }
 
