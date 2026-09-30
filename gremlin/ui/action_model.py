@@ -35,6 +35,13 @@ QML_IMPORT_NAME = "Gremlin.Profile"
 QML_IMPORT_MAJOR_VERSION = 1
 
 
+def _emit_input_item_changed_later(enumeration_index: int) -> None:
+    """Emit after this slot returns so a rebuild does not free the model under it."""
+    QtCore.QTimer.singleShot(
+        0, lambda idx=enumeration_index: signal.inputItemChanged.emit(idx)
+    )
+
+
 class SequenceIndex:
     def __init__(
         self,
@@ -224,7 +231,7 @@ class ActionModel(QtCore.QObject):
         if action:
             self._data.insert_action(action, selector)
             self._binding_model.sync_data()
-            signal.inputItemChanged.emit(self._binding_model.parent().enumeration_index)
+            _emit_input_item_changed_later(self._binding_model.parent().enumeration_index)
         else:
             logging.getLogger("system").error(
                 f"Failed to create action of type {action_name}"
@@ -253,7 +260,7 @@ class ActionModel(QtCore.QObject):
         if target == 0:
             signal.reloadCurrentInputItem.emit()
 
-        signal.inputItemChanged.emit(self._binding_model.parent().enumeration_index)
+        _emit_input_item_changed_later(self._binding_model.parent().enumeration_index)
 
     @QtCore.Slot(int)
     def removeAction(self, index: int) -> None:
@@ -262,8 +269,9 @@ class ActionModel(QtCore.QObject):
         Args:
             index: sequence index corresponding to the action to remove
         """
+        enumeration_index = self._binding_model.parent().enumeration_index
         self._binding_model.remove_action(index)
-        signal.inputItemChanged.emit(self._binding_model.parent().enumeration_index)
+        _emit_input_item_changed_later(enumeration_index)
 
     @property
     def action_data(self) -> AbstractActionData:
@@ -292,7 +300,7 @@ class ActionModel(QtCore.QObject):
             # If the label of a root action is changed update the input button
             # as well as those labels are displayed on it
             if self._data == self._binding_model.root_action:
-                signal.inputItemChanged.emit(
+                _emit_input_item_changed_later(
                     self._binding_model.parent().enumeration_index
                 )
 
