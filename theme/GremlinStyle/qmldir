@@ -1,0 +1,35 @@
+module GremlinStyle
+# Qt Universal style with every size routed through Style.dp() so the
+# controls follow the UI scale. Controls not listed here come from Universal.
+import QtQuick.Controls.Universal auto
+Button 6.0 Button.qml
+CheckBox 6.0 CheckBox.qml
+ComboBox 6.0 ComboBox.qml
+Dialog 6.0 Dialog.qml
+Frame 6.0 Frame.qml
+ItemDelegate 6.0 ItemDelegate.qml
+Menu 6.0 Menu.qml
+MenuBar 6.0 MenuBar.qml
+MenuBarItem 6.0 MenuBarItem.qml
+MenuItem 6.0 MenuItem.qml
+MenuSeparator 6.0 MenuSeparator.qml
+Pane 6.0 Pane.qml
+Popup 6.0 Popup.qml
+ProgressBar 6.0 ProgressBar.qml
+RadioButton 6.0 RadioButton.qml
+RangeSlider 6.0 RangeSlider.qml
+RoundButton 6.0 RoundButton.qml
+ScrollBar 6.0 ScrollBar.qml
+ScrollIndicator 6.0 ScrollIndicator.qml
+ScrollView 6.0 ScrollView.qml
+Slider 6.0 Slider.qml
+SpinBox 6.0 SpinBox.qml
+SplitView 6.0 SplitView.qml
+Switch 6.0 Switch.qml
+TabBar 6.0 TabBar.qml
+TabButton 6.0 TabButton.qml
+TextArea 6.0 TextArea.qml
+TextField 6.0 TextField.qml
+ToolBar 6.0 ToolBar.qml
+ToolButton 6.0 ToolButton.qml
+ToolTip 6.0 ToolTip.qml

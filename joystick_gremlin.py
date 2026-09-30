@@ -53,7 +53,8 @@ from gremlin.types import PropertyType
 install_path = os.path.normcase(os.path.dirname(os.path.abspath(sys.argv[0])))
 os.chdir(install_path)
 
-os.environ["QT_QUICK_CONTROLS_STYLE"] = "Universal"
+# Universal with scaled sizes, from theme/GremlinStyle.
+os.environ["QT_QUICK_CONTROLS_STYLE"] = "GremlinStyle"
 
 import gremlin.util
 
