@@ -516,6 +516,17 @@ def register_config_options() -> None:
         "Use the dark mode UI.", {}, True,
     )
     cfg.register(
+        "ui", "general", "ui-scale", PropertyType.Int, 100,
+        "Scale the program UI. The window resizes when the slider is released.",
+        {"min": 70, "max": 200}, True,
+    )
+    cfg.register(
+        "ui", "general", "disable-windows-scaling", PropertyType.Bool, False,
+        "Disable Windows display scaling. Off uses Windows scaling. "
+        "Takes effect on the next start.",
+        {}, True,
+    )
+    cfg.register(
         "global", "general", "minimize-to-tray", PropertyType.Bool, False,
         "Minimize the Gremlin window to the system tray instead of the taskbar.",
         {}, True,
