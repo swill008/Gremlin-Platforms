@@ -300,70 +300,64 @@
         "hidhide": {
             "cloak": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "on"
             },
             "games": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "[{\"name\": \"StarCitizen\", \"path\": \"D:\\\\StarCitizen\\\\LIVE\\\\Bin64\\\\StarCitizen.exe\"}]"
             },
             "gaming-only": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "on"
             },
             "hidden-devices": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "[\"HID\\\\VID_231D&PID_2210\\\\8&d3db654&0&0000\", \"HID\\\\VID_231D&PID_2220\\\\8&26b5150d&0&0000\", \"USB\\\\VID_231D&PID_2234\\\\7&2BDEAFD4&0&4\", \"HID\\\\VID_231D&PID_3201\\\\c&2165acce&0&0000\", \"HID\\\\VID_231D&PID_2234\\\\8&336e2a8d&0&0000\", \"HID\\\\VID_231D&PID_0200\\\\c&2633fd88&0&0000\"]"
             },
             "list-mode": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "block"
             },
             "managed": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "yes"
             },
             "module-links": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "{\"HID\\\\HIDCLASS&Col02\\\\1&2d595ca7&3&0001\": \"vJoy 2\", \"HID\\\\HIDCLASS&Col03\\\\1&2d595ca7&3&0002\": \"vJoy 3\", \"HID\\\\VID_231D&PID_3201\\\\c&2165acce&0&0000\": \" VKBsim Gladiator EVO OT L  \", \"HID\\\\VID_231D&PID_2234\\\\8&336e2a8d&0&0000\": \" VKBSim NXT  SEM THQ FSM.GA \", \"HID\\\\VID_231D&PID_0200\\\\c&2633fd88&0&0000\": \" VKBsim Gladiator EVO R  \", \"HID\\\\HIDCLASS&Col01\\\\1&2d595ca7&3&0000\": \"vJoy 1\", \"HID\\\\VID_231D&PID_2234\\\\8&707c6b9&0&0000\": \" VKBSim NXT  SEM THQ FSM.GA \"}"
             },
             "photos": {
                 "data_type": "string",
-                "expose": true,
+                "expose": false,
                 "properties": {},
                 "value": "{}"
             },
             "split-ratio": {
                 "data_type": "int",
-                "expose": true,
+                "expose": false,
                 "properties": {
                     "max": 850,
                     "min": 150
                 },
                 "value": "488"
             },
-            "start-enabled": {
-                "data_type": "string",
-                "expose": true,
-                "properties": {},
-                "value": "on"
-            },
             "window-height": {
                 "data_type": "int",
-                "expose": true,
+                "expose": false,
                 "properties": {
                     "max": 8000,
                     "min": 360
@@ -372,7 +366,7 @@
             },
             "window-width": {
                 "data_type": "int",
-                "expose": true,
+                "expose": false,
                 "properties": {
                     "max": 8000,
                     "min": 480
@@ -495,6 +489,12 @@
                     ]
                 },
                 "value": "Reload"
+            },
+            "hidhide-on-start": {
+                "data_type": "bool",
+                "expose": true,
+                "properties": {},
+                "value": "True"
             },
             "log-level": {
                 "data_type": "string",
