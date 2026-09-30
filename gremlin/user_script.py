@@ -1233,11 +1233,11 @@ def clamp_value(value: float, min_val: float, max_val: float) -> float:
     return min(max_val, max(min_val, value))
 
 
-def keyboard(key_name: str, mode: str) -> Callable:
+def keyboard(key: str | gremlin.keyboard.Key, mode: str) -> Callable:
     """Decorator for keyboard key callbacks.
 
     Args:
-        key_name: name of key triggering the callback
+        key: key name, or a Key instance for keys that have no name lookup
         mode: mode in which this callback is active
     """
 
@@ -1247,8 +1247,12 @@ def keyboard(key_name: str, mode: str) -> Callable:
         def wrapper_fn(*args: Any, **kwargs: dict) -> None:  # noqa: ANN401
             callback(*args, **kwargs)
 
-        key = gremlin.keyboard.key_from_name(key_name)
-        event = event_handler.Event.from_key(key)
+        resolved_key = (
+            key
+            if isinstance(key, gremlin.keyboard.Key)
+            else gremlin.keyboard.key_from_name(key)
+        )
+        event = event_handler.Event.from_key(resolved_key)
         callback_registry.add(wrapper_fn, event, mode)
 
         return wrapper_fn
