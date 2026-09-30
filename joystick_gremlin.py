@@ -16,6 +16,9 @@ import types
 from pathlib import Path
 from typing import Any
 
+# This UI sizes itself in pixels. Must be set before Qt loads.
+os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
+
 from PySide6 import (
     QtCore,
     QtGui,
