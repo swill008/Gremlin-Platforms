@@ -210,7 +210,10 @@ class Configuration(metaclass=common.SingletonMetaclass):
             raise error.GremlinError(f"No parameter with key '{key}' exists.")
         _, is_valid = util.determine_value_type(value, self._data[key]["data_type"])
         if is_valid:
-            if self._data[key]["value"] != value:
+            stored = self._data[key]["value"]
+            # value() hands out the stored object; a list edited in place compares
+            # equal to itself, so saving the same object always writes.
+            if stored is value or stored != value:
                 self._data[key]["value"] = value
                 self.save()
         else:

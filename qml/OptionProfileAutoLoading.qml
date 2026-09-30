@@ -147,8 +147,13 @@ Item {
 
             // Buttons to select the profile and executable file for the entry
             // as well as enable/disable the entry and delete it.
+            // Tight padding so the row fits beside the 400 wide text column and
+            // stays clear of the scrollbar, which would take clicks on the ×.
             RowLayout {
+                spacing: Style.dp(4)
+
                 Button {
+                    horizontalPadding: Style.dp(4)
                     text: "Select Profile"
                     onClicked: () => {
                         _profileFileDialog.associatedField = _profile
@@ -157,6 +162,7 @@ Item {
                 }
 
                 Button {
+                    horizontalPadding: Style.dp(4)
                     text: "Browse Executable"
                     onClicked: () => {
                         _executableFileDialog.associatedField = _executable
@@ -165,6 +171,7 @@ Item {
                 }
 
                 Button {
+                    horizontalPadding: Style.dp(4)
                     text: "Select Executable"
 
                     onClicked: () => {
@@ -184,6 +191,7 @@ Item {
                 }
 
                 IconButton {
+                    horizontalPadding: Style.dp(4)
                     text: bsi.icons.remove
 
                     onClicked: () => { _model.removeEntry(index) }

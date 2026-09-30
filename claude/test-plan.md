@@ -548,15 +548,15 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | OPT-X1b | FAIL (minor) | When a combo list opens, it highlights the first entry (Disable), not the current value. |
 | OPT-X2 | PASS / NOTE | "action-priorities" is simply not shown (no blank row). S-26 ruled out. |
 | OPT-A01 | NOTE | Action list includes "Root" (internal) and "Map to Xbox" sits last, out of order; group headers show raw names ("Axis-Delta", "Change-Mode"). |
-| OPT-A01b | FAIL (suspected, code) | `move()` reorders the live config list in place, so `set()` sees no change and never writes the file; reordering may not survive a restart. |
+| OPT-A01b | FIXED | `move()` reorders the live config list in place, so `set()` sees no change and never writes the file; reordering may not survive a restart. |
 | OPT-U06 | PASS | UI scale slider is disabled while Windows scaling is on. |
 | OPT-U01 | PASS | Dark mode off/on applies immediately. |
 | OPT-U01b | FAIL | Light mode is only partial: Logical Device rows and editor stay dark on a white page; group headers light-on-light; Home cards stay dark. Many colours are fixed for dark mode. |
 | OPT-F | PASS | Files rows all point inside the data folder; Select opens a folder picker at the current folder; Reset keeps the default. |
 | OPT-F08b | FAIL (minor) | stderr after Reset: `Overwriting binding on JGTextField::text at ConfigGroup.qml:188`; the field stops following later changes. |
-| OPT-P01 | FAIL | New Entry shows a row, but the entry is never written to configuration.json (the list is edited in place, so `set()` sees no change). It is lost on restart. |
+| OPT-P01 | FIXED | New Entry shows a row, but the entry is never written to configuration.json (the list is edited in place, so `set()` sees no change). It is lost on restart. |
 | OPT-P04 | PASS | Select Executable lists running programs; Cancel closes. |
-| OPT-P07 | FAIL | The row's × does not remove the entry; no error logged. |
+| OPT-P07 | FIXED | The row's × does not remove the entry; no error logged. |
 | OPT-G.., OPT-O.., OPT-D.., OPT-C.., OPT-M.. | NOT RUN | Remaining switches (same widget as the tested ones). |
 | OPT-U02 | PASS (earlier) | Windows scaling restart popup was tested when it was built. |
 
@@ -659,7 +659,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 1. ~~AE-MOUSE~~ fixed 20722eed. Also fixed: radio buttons could be clicked off (#33, 154ed217).
 2. AM-08: fatal error dialog after closing the Auto Mapper.
 3. LP-57, CAL-09, W-03, F-02b: unsaved work is lost or not prompted for (Logical pane, Calibration close, app close after Discard, Load).
-4. OPT-P01, OPT-P07, OPT-A01b: Options list edits (profile entries, remove, reorder) are not saved; in-place config mutation.
+4. ~~OPT-P01, OPT-P07, OPT-A01b~~ fixed (in-place list edits save; auto-load row fits so × is clickable).
 5. ~~AE-XML-NONE~~ fixed (empty text loads as "").
 6. ~~LP-29~~ fixed (Delete acts on the selection).
 7. ~~F-03~~ fixed (R16 recent-profiles code restored).

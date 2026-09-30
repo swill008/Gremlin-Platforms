@@ -121,3 +121,16 @@ def test_exceptions(cfg: gremlin.config.Configuration) -> None:
 
     with pytest.raises(gremlin.error.GremlinError):
         cfg.value("does", "not", "exist")
+
+
+def test_list_edited_in_place_is_saved(cfg: gremlin.config.Configuration) -> None:
+    # value() hands out the stored list; the Options models edit it and set it back.
+    cfg.register("test", "case", "entries", PropertyType.List, [], "", {}, True)
+    with mock.patch.object(cfg, "save") as save:
+        data = cfg.value("test", "case", "entries")
+        data.append(["a.xml", "game.exe", True])
+        cfg.set("test", "case", "entries", data)
+        assert save.call_count == 1
+
+        cfg.set("test", "case", "entries", [["a.xml", "game.exe", True]])
+        assert save.call_count == 1
