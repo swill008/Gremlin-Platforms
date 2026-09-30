@@ -472,7 +472,7 @@ def register_config_options() -> None:
     cfg.register(
         "global", "files", "data-folder", PropertyType.Path,
         gremlin.util.userprofile_path(),
-        "Root folder for user files. configuration.json stays in the profile folder.",
+        "Root folder for user files.",
         {
             "is_folder": True,
             "allow_reset": True,
