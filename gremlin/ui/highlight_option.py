@@ -13,7 +13,7 @@ import gremlin.ui.type_aliases as ta
 QML_IMPORT_NAME = "Gremlin.Config"
 QML_IMPORT_MAJOR_VERSION = 1
 
-SECTION = "global"
+SECTION = "ui"
 GROUP = "general"
 NAME = "input-highlight-speed"
 SCOPE_NAME = "input-highlight-scope"
@@ -52,6 +52,9 @@ def highlight_follows_any_device(value: object | None = None) -> bool:
 
 def ensure_registered() -> None:
     cfg = Configuration()
+    for old_name in (NAME, SCOPE_NAME):
+        if cfg.exists("global", GROUP, old_name) and not cfg.exists(SECTION, GROUP, old_name):
+            cfg.set(SECTION, GROUP, old_name, cfg.value("global", GROUP, old_name))
     if not cfg.exists(SECTION, GROUP, NAME):
         cfg.register(
             SECTION,
