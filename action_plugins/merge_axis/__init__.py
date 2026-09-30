@@ -55,6 +55,7 @@ class MergeOperation(Enum):
     Maximum = 2
     Sum = 3
     Bidirectional = 4
+    Prefercenter = 5
 
     @classmethod
     def to_string(cls, value: MergeOperation) -> str:
@@ -64,6 +65,7 @@ class MergeOperation(Enum):
             MergeOperation.Maximum: "maximum",
             MergeOperation.Sum: "sum",
             MergeOperation.Bidirectional: "bidirectional",
+            MergeOperation.Prefercenter: "prefercenter",
         }
 
         res = lookup.get(value, None)
@@ -79,6 +81,7 @@ class MergeOperation(Enum):
             "maximum": MergeOperation.Maximum,
             "sum": MergeOperation.Sum,
             "bidirectional": MergeOperation.Bidirectional,
+            "prefercenter": MergeOperation.Prefercenter,
         }
         res = lookup.get(value.lower(), None)
         if res is None:
@@ -141,12 +144,18 @@ class MergeAxisFunctor(AbstractFunctor):
         """
         return (value2 - value1) / 2.0
 
+    @staticmethod
+    def _prefercenter(value1: float, value2: float) -> float:
+        """Use the axis closest to center."""
+        return value1 if abs(value1) < abs(value2) else value2
+
     actions = {
         MergeOperation.Average: _average,
         MergeOperation.Minimum: _minimum,
         MergeOperation.Maximum: _maximum,
         MergeOperation.Sum: _sum,
         MergeOperation.Bidirectional: _bidirectional,
+        MergeOperation.Prefercenter: _prefercenter,
     }
 
 
