@@ -20,6 +20,8 @@ ColumnLayout {
     width: parent ? parent.width - Style.dp(40) : implicitWidth
     anchors.left: parent ? parent.left : undefined
     anchors.right: parent ? parent.right : undefined
+    // The right margin also holds the 12-wide scrollbar, so both visible gaps are 28.
+    anchors.leftMargin: Style.dp(28)
     anchors.rightMargin: Style.dp(40)
 
     JGText {
