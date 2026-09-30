@@ -6,19 +6,20 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Device
+import Gremlin.Style
 
 Item {
     id: _root
 
     implicitHeight: _row.implicitHeight
-    implicitWidth: 420
+    implicitWidth: Style.dp(420)
 
     ModuleListModel { id: _modules }
 
     RowLayout {
         id: _row
         anchors.fill: parent
-        spacing: 8
+        spacing: Style.dp(8)
 
         Button {
             text: "Reset all card sizes"

@@ -3,11 +3,12 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Profile
 import "helpers.js" as Helpers
+import Gremlin.Style
 
 Item {
     id: _root
@@ -34,13 +35,13 @@ Item {
 
             visible: _root.showTreat
             Layout.fillWidth: true
-            spacing: 6
+            spacing: Style.dp(6)
 
             IconButton {
                 visible: !_root.catalogSequence
 
-                font.pixelSize: 24
-                horizontalPadding: -5
+                font.pixelSize: Style.dp(24)
+                horizontalPadding: -Style.dp(5)
                 text: bsi.icons.verticalDrag
 
                 MouseArea {
@@ -52,7 +53,7 @@ Item {
                     cursorShape: Qt.OpenHandCursor
                     drag.target: _payload
                     drag.axis: Drag.XAndYAxis
-                    drag.threshold: 4
+                    drag.threshold: Style.dp(4)
 
                     onPressed: (mouse) => {
                         var pos = mapToItem(_root, mouse.x, mouse.y)
@@ -82,8 +83,8 @@ Item {
                 Layout.preferredWidth: visible ? implicitWidth : 0
                 Layout.maximumWidth: visible ? implicitWidth : 0
 
-                font.pixelSize: 24
-                horizontalPadding: -5
+                font.pixelSize: Style.dp(24)
+                horizontalPadding: -Style.dp(5)
                 text: bsi.icons.verticalDrag
 
                 MouseArea {
@@ -95,7 +96,7 @@ Item {
                     cursorShape: Qt.OpenHandCursor
                     drag.target: _payload
                     drag.axis: Drag.XAndYAxis
-                    drag.threshold: 4
+                    drag.threshold: Style.dp(4)
 
                     onPressed: (mouse) => {
                         var pos = mapToItem(_root, mouse.x, mouse.y)
@@ -108,9 +109,9 @@ Item {
             JGTextField {
                 id: _description
 
-                Layout.preferredWidth: 160
-                Layout.minimumWidth: 110
-                Layout.maximumWidth: 200
+                Layout.preferredWidth: Style.dp(160)
+                Layout.minimumWidth: Style.dp(110)
+                Layout.maximumWidth: Style.dp(200)
 
                 placeholderText: "Description"
                 text: _root.inputBinding.rootAction ?
@@ -123,7 +124,7 @@ Item {
 
             ActionSelector {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 180
+                Layout.minimumWidth: Style.dp(180)
 
                 actionNode: _root.inputBinding.rootAction
                 callback: (x) => { actionNode.appendAction(x, "children") }
@@ -133,7 +134,7 @@ Item {
                 visible: _root.inputBinding.userFeedback.length > 0
 
                 font.family: "bootstrap-icons"
-                font.pixelSize: 24
+                font.pixelSize: Style.dp(24)
 
                 text: Helpers.determineHintIcon(_root.inputBinding.userFeedback)
                 color: Helpers.determineHintColor(_root.inputBinding.userFeedback)
@@ -152,7 +153,7 @@ Item {
             IconButton {
                 visible: !_root.catalogSequence
                 text: bsi.icons.remove
-                font.pixelSize: 24
+                font.pixelSize: Style.dp(24)
 
                 onClicked: () => {
                     _root.inputItemModel.deleteActionSequnce(_root.inputBinding)
@@ -171,7 +172,7 @@ Item {
 
             sourceComponent: RowLayout {
                 Label {
-                    Layout.leftMargin: 20
+                    Layout.leftMargin: Style.dp(20)
 
                     text: "Activate between"
                 }
@@ -220,7 +221,7 @@ Item {
 
             sourceComponent: RowLayout {
                 Label {
-                    Layout.leftMargin: 20
+                    Layout.leftMargin: Style.dp(20)
 
                     text: "Activate on"
                 }
@@ -234,8 +235,8 @@ Item {
     Item {
         id: _payload
 
-        width: 1
-        height: 1
+        width: Style.dp(1)
+        height: Style.dp(1)
 
         Drag.active: (_gripTop.drag.active || _gripName.drag.active) && _root.inputBinding && _root.inputBinding.rootAction
         Drag.dragType: Drag.Automatic

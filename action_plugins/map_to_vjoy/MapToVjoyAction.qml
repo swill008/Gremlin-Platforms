@@ -3,13 +3,14 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.ActionPlugins
 import Gremlin.Base
 import Gremlin.Profile
 import "../../qml"
+import Gremlin.Style
 
 
 Item {
@@ -28,7 +29,7 @@ Item {
 
         VJoySelector {
             Layout.fillWidth: true
-            Layout.minimumWidth: 160
+            Layout.minimumWidth: Style.dp(160)
             validTypes: [_root.action.actionBehavior]
 
             // Propagate internal changes to the external interface.

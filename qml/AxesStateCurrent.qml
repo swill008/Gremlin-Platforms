@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -46,7 +46,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
 
-                height: 2
+                height: Style.dp(2)
                 color: Style.lowColor
             }
         }
@@ -55,10 +55,10 @@ Item {
             id: _list
 
             Layout.fillWidth: true
-            Layout.preferredHeight: 150
+            Layout.preferredHeight: Style.dp(150)
 
             orientation: Qt.Horizontal
-            spacing: 10
+            spacing: Style.dp(10)
 
             boundsMovement: Flickable.StopAtBounds
             boundsBehavior: Flickable.StopAtBounds
@@ -72,7 +72,7 @@ Item {
                     required property double value
 
                     height: ListView.view.height
-                    width: 60
+                    width: Style.dp(60)
 
                     Label {
                         Layout.alignment: Qt.AlignHCenter
@@ -84,8 +84,8 @@ Item {
                         Layout.alignment: Qt.AlignHCenter
 
                         orientation: BetterProgressBar.Orientation.Vertical
-                        barSize: 20
-                        height: 100
+                        barSize: Style.dp(20)
+                        height: Style.dp(100)
 
                         from: -1
                         to: 1

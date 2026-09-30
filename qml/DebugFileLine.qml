@@ -4,13 +4,14 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Gremlin.Style
 
 Rectangle {
     id: _bar
 
     property int tick: 0
     property string moduleFile: ""
-    implicitHeight: _col.implicitHeight + 10
+    implicitHeight: _col.implicitHeight + Style.dp(10)
     color: "#141416"
     z: 200
 
@@ -25,14 +26,14 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: 8
-        anchors.rightMargin: 8
-        spacing: 1
+        anchors.leftMargin: Style.dp(8)
+        anchors.rightMargin: Style.dp(8)
+        spacing: Style.dp(1)
 
         Label {
             width: parent.width
             color: "#FBBF24"
-            font.pixelSize: 11
+            font.pixelSize: Style.dp(11)
             elide: Text.ElideMiddle
             text: {
                 var n = _bar.tick
@@ -43,7 +44,7 @@ Rectangle {
         Label {
             width: parent.width
             color: "#FBBF24"
-            font.pixelSize: 11
+            font.pixelSize: Style.dp(11)
             elide: Text.ElideMiddle
             text: "Configuration: " + ((backend && backend.configurationPath) ? backend.configurationPath() : "(none)")
         }
@@ -51,7 +52,7 @@ Rectangle {
             width: parent.width
             visible: _bar.moduleFile.length > 0
             color: "#FBBF24"
-            font.pixelSize: 11
+            font.pixelSize: Style.dp(11)
             elide: Text.ElideMiddle
             text: "Module file: " + _bar.moduleFile
         }

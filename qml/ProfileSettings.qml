@@ -15,8 +15,8 @@ import "helpers.js" as Helpers
 Item {
     id: _root
 
-    readonly property int userEntryColumnWidth: 350
-    readonly property int userEntryColumnPadding: 50
+    readonly property int userEntryColumnWidth: Style.dp(350)
+    readonly property int userEntryColumnPadding: Style.dp(50)
 
     property ProfileSettingsModel settingsModel
 
@@ -25,7 +25,7 @@ Item {
         anchors.fill: parent
 
         contentWidth: availableWidth
-        padding: 10
+        padding: Style.dp(10)
 
         ScrollBar.vertical.interactive: true
         Component.onCompleted: {
@@ -34,7 +34,7 @@ Item {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 10
+            anchors.margins: Style.dp(10)
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -123,7 +123,7 @@ Item {
                         delegate: RowLayout {
                             Label {
                                 text: `vJoy ${vid} is`
-                                Layout.preferredWidth: 75
+                                Layout.preferredWidth: Style.dp(75)
                             }
                             Switch {
                                 text: checked ? "Input" : "Output"
@@ -161,7 +161,7 @@ Item {
                         Layout.rightMargin: userEntryColumnPadding
                         implicitHeight: contentHeight
 
-                        spacing: 20
+                        spacing: Style.dp(20)
 
                         model: OutputVJoyListModel {}
 
@@ -176,8 +176,8 @@ Item {
                                 Layout.fillWidth: true
 
                                 dividerColor: Style.lowColor
-                                lineWidth: 2
-                                spacing: 2
+                                lineWidth: Style.dp(2)
+                                spacing: Style.dp(2)
                             }
 
                             OutputVJoyInitialValueEntryDelegate {
@@ -203,7 +203,7 @@ Item {
     }
 
     component UIHeader : JGText {
-        font.pointSize: 14
+        font.pixelSize: Style.dp(19)
         font.weight: 500
         font.family: "Segoe UI"
     }
@@ -213,7 +213,7 @@ Item {
         horizontalAlignment: Text.AlignJustify
         wrapMode: Text.Wrap
 
-        font.pointSize: 11
+        font.pixelSize: Style.dp(15)
         font.family: "Segoe UI"
     }
 
@@ -226,7 +226,7 @@ Item {
             delegate: RowLayout {
                 JGText {
                     text: label
-                    Layout.preferredWidth: 100
+                    Layout.preferredWidth: Style.dp(100)
                 }
 
                 FloatSpinBox {

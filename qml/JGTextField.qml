@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -16,7 +16,7 @@ TextField {
     background: Rectangle {
         anchors.fill: parent
         border.color: _control.outlineOverride !== null ? _control.outlineOverride : (_control.activeFocus ? Style.accent : Style.lowColor)
-        border.width: 1
+        border.width: Style.dp(1)
         color: readOnly ? Style.lowColor : Style.background
     }
 }

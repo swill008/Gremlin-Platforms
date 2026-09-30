@@ -3,11 +3,12 @@
 
 import QtQuick
 import QtQuick.Controls
+import Gremlin.Style
 
 CheckBox {
     font {
         family: "bootstrap-icons"
-        pixelSize: 20
+        pixelSize: Style.dp(20)
         weight: 800
     }
 }

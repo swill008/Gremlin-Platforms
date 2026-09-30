@@ -5,7 +5,8 @@
 import QtQuick
 import QtQuick.Templates as T
 import QtQuick.Controls.impl
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
+import Gremlin.Style
 
 T.SpinBox {
     id: control
@@ -20,15 +21,15 @@ T.SpinBox {
                              up.implicitIndicatorHeight, down.implicitIndicatorHeight)
 
     // TextControlThemePadding + 2 (border), halved for compact sizing
-    padding: 6
-    topPadding: padding - 4
+    padding: Style.dp(6)
+    topPadding: padding - Style.dp(4)
     leftPadding: padding + (control.mirrored ? (up.indicator ? up.indicator.width : 0) : (down.indicator ? down.indicator.width : 0))
     rightPadding: padding + (control.mirrored ? (down.indicator ? down.indicator.width : 0) : (up.indicator ? up.indicator.width : 0))
-    bottomPadding: padding - 3
+    bottomPadding: padding - Style.dp(3)
 
-    font.pixelSize: 14
+    font.pixelSize: Style.dp(14)
 
-    Universal.theme: activeFocus ? Universal.Light : undefined
+    U.Universal.theme: activeFocus ? U.Universal.Light : undefined
 
     validator: IntValidator {
         locale: control.locale.name
@@ -40,10 +41,10 @@ T.SpinBox {
         text: control.displayText
 
         font: control.font
-        color: !enabled ? control.Universal.chromeDisabledLowColor :
-                activeFocus ? control.Universal.chromeBlackHighColor : control.Universal.foreground
-        selectionColor: control.Universal.accent
-        selectedTextColor: control.Universal.chromeWhiteColor
+        color: !enabled ? control.U.Universal.chromeDisabledLowColor :
+                activeFocus ? control.U.Universal.chromeBlackHighColor : control.U.Universal.foreground
+        selectionColor: control.U.Universal.accent
+        selectedTextColor: control.U.Universal.chromeWhiteColor
         horizontalAlignment: Qt.AlignHCenter
         verticalAlignment: TextInput.AlignVCenter
 
@@ -54,18 +55,18 @@ T.SpinBox {
     }
 
     up.indicator: Item {
-        implicitWidth: 28
-        height: control.height + 4
-        y: -2
+        implicitWidth: Style.dp(28)
+        height: control.height + Style.dp(4)
+        y: -Style.dp(2)
         x: control.mirrored ? 0 : control.width - width
 
         Rectangle {
-            x: 2; y: 4
-            width: parent.width - 4
-            height: parent.height - 8
-            color: control.activeFocus ? control.Universal.accent :
-                   control.up.pressed ? control.Universal.baseMediumLowColor :
-                   control.up.hovered ? control.Universal.baseLowColor : "transparent"
+            x: Style.dp(2); y: Style.dp(4)
+            width: parent.width - Style.dp(4)
+            height: parent.height - Style.dp(8)
+            color: control.activeFocus ? control.U.Universal.accent :
+                   control.up.pressed ? control.U.Universal.baseMediumLowColor :
+                   control.up.hovered ? control.U.Universal.baseLowColor : "transparent"
             visible: control.up.pressed || control.up.hovered
             opacity: control.activeFocus && !control.up.pressed ? 0.4 : 1.0
         }
@@ -73,25 +74,25 @@ T.SpinBox {
         ColorImage {
             x: (parent.width - width) / 2
             y: (parent.height - height) / 2
-            color: !enabled ? control.Universal.chromeDisabledLowColor :
-                              control.activeFocus ? control.Universal.chromeBlackHighColor : control.Universal.baseHighColor
+            color: !enabled ? control.U.Universal.chromeDisabledLowColor :
+                              control.activeFocus ? control.U.Universal.chromeBlackHighColor : control.U.Universal.baseHighColor
             source: "qrc:/qt-project.org/imports/QtQuick/Controls/Universal/images/" + (control.mirrored ? "left" : "right") + "arrow.png"
         }
     }
 
     down.indicator: Item {
-        implicitWidth: 28
-        height: control.height + 4
-        y: -2
+        implicitWidth: Style.dp(28)
+        height: control.height + Style.dp(4)
+        y: -Style.dp(2)
         x: control.mirrored ? control.width - width : 0
 
         Rectangle {
-            x: 2; y: 4
-            width: parent.width - 4
-            height: parent.height - 8
-            color: control.activeFocus ? control.Universal.accent :
-                   control.down.pressed ? control.Universal.baseMediumLowColor :
-                   control.down.hovered ? control.Universal.baseLowColor : "transparent"
+            x: Style.dp(2); y: Style.dp(4)
+            width: parent.width - Style.dp(4)
+            height: parent.height - Style.dp(8)
+            color: control.activeFocus ? control.U.Universal.accent :
+                   control.down.pressed ? control.U.Universal.baseMediumLowColor :
+                   control.down.hovered ? control.U.Universal.baseLowColor : "transparent"
             visible: control.down.pressed || control.down.hovered
             opacity: control.activeFocus && !control.down.pressed ? 0.4 : 1.0
         }
@@ -99,20 +100,20 @@ T.SpinBox {
         ColorImage {
             x: (parent.width - width) / 2
             y: (parent.height - height) / 2
-            color: !enabled ? control.Universal.chromeDisabledLowColor :
-                              control.activeFocus ? control.Universal.chromeBlackHighColor : control.Universal.baseHighColor
+            color: !enabled ? control.U.Universal.chromeDisabledLowColor :
+                              control.activeFocus ? control.U.Universal.chromeBlackHighColor : control.U.Universal.baseHighColor
             source: "qrc:/qt-project.org/imports/QtQuick/Controls/Universal/images/" + (control.mirrored ? "right" : "left") + "arrow.png"
         }
     }
 
     background: Rectangle {
-        implicitWidth: 60 + 28 // TextControlThemeMinWidth - 4 (border)
-        implicitHeight: 24 // compact: reduced from 28
+        implicitWidth: Style.dp(60) + Style.dp(28) // TextControlThemeMinWidth - 4 (border)
+        implicitHeight: Style.dp(24) // compact: reduced from 28
 
-        border.width: 1 // TextControlBorderThemeThickness
-        border.color: !control.enabled ? control.Universal.baseLowColor :
-                       control.activeFocus ? control.Universal.accent :
-                       control.hovered ? control.Universal.baseMediumColor : control.Universal.chromeDisabledLowColor
-        color: control.enabled ? control.Universal.background : control.Universal.baseLowColor
+        border.width: Style.dp(1) // TextControlBorderThemeThickness
+        border.color: !control.enabled ? control.U.Universal.baseLowColor :
+                       control.activeFocus ? control.U.Universal.accent :
+                       control.hovered ? control.U.Universal.baseMediumColor : control.U.Universal.chromeDisabledLowColor
+        color: control.enabled ? control.U.Universal.background : control.U.Universal.baseLowColor
     }
 }

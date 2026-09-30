@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 import Qt.labs.qmlmodels
@@ -35,7 +35,7 @@ Item {
             Layout.fillWidth: true
 
             Label {
-                Layout.preferredWidth: 125
+                Layout.preferredWidth: Style.dp(125)
 
                 text: "<b>Repeat Mode</b>"
             }
@@ -106,7 +106,7 @@ Item {
             Layout.fillWidth: true
 
             Label {
-                Layout.preferredWidth: 125
+                Layout.preferredWidth: Style.dp(125)
 
                 text: "<b>Record Inputs</b>"
             }
@@ -168,19 +168,19 @@ Item {
             targetIndex: 0
             insertionMode: "prepend"
 
-            Layout.bottomMargin: -10
+            Layout.bottomMargin: -Style.dp(10)
         }
 
         ScrollView {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(_actionList.contentHeight, 400)
+            Layout.preferredHeight: Math.min(_actionList.contentHeight, Style.dp(400))
             clip: true
 
             JGListView {
                 id: _actionList
 
                 width: parent.width
-                spacing: 2
+                spacing: Style.dp(2)
                 scrollbarAlwaysVisible: true
 
                 model: _root.action.actions
@@ -200,12 +200,12 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.topMargin: 10
+            Layout.topMargin: Style.dp(10)
 
             ComboBox {
                 id: _macroAction
 
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: Style.dp(150)
 
                 textRole: "text"
                 valueRole: "value"
@@ -479,7 +479,7 @@ Item {
 
                 actionItem: RowLayout {
                     Label {
-                        Layout.leftMargin: 5
+                        Layout.leftMargin: Style.dp(5)
 
                         text: "X-Axis"
                     }
@@ -495,7 +495,7 @@ Item {
                     Label {
                         text: "Y-Axis"
 
-                        leftPadding: 25
+                        leftPadding: Style.dp(25)
                     }
                     Compact.SpinBox {
                         from: -10000
@@ -643,7 +643,7 @@ Item {
     // Predefined button that removes a given action.
     component DeleteButton : IconButton {
         text: bsi.icons.remove
-        font.pixelSize: 16
+        font.pixelSize: Style.dp(16)
 
         onClicked: () => { _root.action.removeAction(index) }
     }
@@ -667,19 +667,19 @@ Item {
             Label {
                 text: bsi.icons.drag_handle
                 font.family: "bootstrap-icons"
-                font.pixelSize: 16
+                font.pixelSize: Style.dp(16)
             }
             Label {
                 visible: iconName !== ""
                 text: iconName
                 font.family: "bootstrap-icons"
-                font.pixelSize: 16
+                font.pixelSize: Style.dp(16)
             }
             Image {
                 visible: iconSource !== ""
                 source: iconSource
-                width: 16
-                height: 16
+                width: Style.dp(16)
+                height: Style.dp(16)
                 fillMode: Image.PreserveAspectFit
             }
         }
@@ -715,7 +715,7 @@ Item {
         property int targetIndex
         property string insertionMode: "append"
 
-        height: 8
+        height: Style.dp(8)
 
         Layout.fillWidth: true
 
@@ -735,8 +735,8 @@ Item {
             Rectangle {
                 id: _marker
 
-                y: parent.y+5
-                height: 10
+                y: parent.y+Style.dp(5)
+                height: Style.dp(10)
                 anchors.left: parent.left
                 anchors.right: parent.right
 
@@ -757,7 +757,7 @@ Item {
 
         // Ensure entire width is taken up.
         width: ListView.view ? ListView.view.width : 0
-        spacing: 1
+        spacing: Style.dp(1)
 
         // Define drag&drop behavior.
         Drag.dragType: Drag.Automatic
@@ -778,13 +778,13 @@ Item {
         // Widget content assembly.
         RowLayout {
             id: _actionContent
-            spacing: 4
+            spacing: Style.dp(4)
 
             Icon {
                 id: _icon
 
                 Layout.alignment: Qt.AlignVCenter
-                Layout.rightMargin: 10
+                Layout.rightMargin: Style.dp(10)
 
                 iconName: icon
                 iconSource: icon_qrc
@@ -803,13 +803,13 @@ Item {
             LayoutHorizontalSpacer {}
 
             DeleteButton {
-                Layout.rightMargin: 10
+                Layout.rightMargin: Style.dp(10)
             }
         }
 
         ActionDrop {
-            Layout.bottomMargin: -4
-            Layout.topMargin: -4
+            Layout.bottomMargin: -Style.dp(4)
+            Layout.topMargin: -Style.dp(4)
 
             targetIndex: index
         }

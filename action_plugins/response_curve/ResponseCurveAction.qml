@@ -6,7 +6,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Shapes
 import Qt.labs.qmlmodels
 
@@ -27,7 +27,7 @@ Item {
     property ResponseCurveModel action
     property Deadzone deadzone: action.deadzone
     property alias widgetSize : _vis.size
-    readonly property int handleOffset: 5
+    readonly property int handleOffset: Style.dp(5)
 
     implicitHeight: _content.height
 
@@ -124,7 +124,7 @@ Item {
             Layout.fillWidth: true
 
             ComboBox {
-                Layout.preferredWidth: 200
+                Layout.preferredWidth: Style.dp(200)
 
                 model: ["Piecewise Linear", "Cubic Spline", "Cubic Bezier Spline"]
 
@@ -151,15 +151,16 @@ Item {
 
         // Response curve widget
         RowLayout {
-            Layout.preferredWidth: 475
+            Layout.preferredWidth: Style.dp(475)
 
             Item {
                 id: _vis
 
-                property int size: 450
-                property int border: 2
+                property int size: Style.dp(450)
+                property int border: Style.dp(2)
 
                 Component.onCompleted: () => { action.setWidgetSize(size) }
+                onSizeChanged: action.setWidgetSize(size)
 
                 width: size + 2 * border
                 height: size + 2 * border
@@ -176,7 +177,7 @@ Item {
                         anchors.fill: parent
                         color: "transparent"
                         border.color: Style.foreground
-                        border.width: 1
+                        border.width: Style.dp(1)
                     }
                 }
 
@@ -194,7 +195,7 @@ Item {
                     ShapePath {
                         strokeColor: "#808080"
 
-                        strokeWidth: 2
+                        strokeWidth: Style.dp(2)
                         fillColor: "transparent"
 
                         PathPolyline {
@@ -243,7 +244,7 @@ Item {
                 columns: 2
 
                 Label {
-                    Layout.preferredWidth: 30
+                    Layout.preferredWidth: Style.dp(30)
 
                     text: "X"
                 }

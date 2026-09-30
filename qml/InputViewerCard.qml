@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Device
@@ -21,7 +21,7 @@ ColumnLayout {
     property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
     property bool pairActive: backend && backend.gremlinActive
 
-    spacing: 4
+    spacing: Style.dp(4)
 
     ModulePairAxisModel {
         id: _axes
@@ -63,33 +63,33 @@ ColumnLayout {
 
     Rectangle {
         Layout.fillWidth: true
-        implicitHeight: _inner.implicitHeight + 16
+        implicitHeight: _inner.implicitHeight + Style.dp(16)
         color: pairActive ? "#052e16" : Style.background
         border.color: pairActive ? "#22C55E" : Style.accent
-        border.width: pairActive ? 2 : 1
-        radius: 6
+        border.width: pairActive ? Style.dp(2) : Style.dp(1)
+        radius: Style.dp(6)
         clip: true
 
         ColumnLayout {
             id: _inner
-            width: parent.width - 16
-            x: 8
-            y: 8
-            spacing: 6
+            width: parent.width - Style.dp(16)
+            x: Style.dp(8)
+            y: Style.dp(8)
+            spacing: Style.dp(6)
 
             RowLayout {
                 Layout.fillWidth: true
 
                 JGText {
                     text: title
-                    font.pointSize: 12
+                    font.pixelSize: Style.dp(16)
                 }
 
                 Rectangle {
                     visible: pairActive
-                    width: 8
-                    height: 8
-                    radius: 4
+                    width: Style.dp(8)
+                    height: Style.dp(8)
+                    radius: Style.dp(4)
                     color: "#22C55E"
                 }
 
@@ -97,7 +97,7 @@ ColumnLayout {
                     visible: pairActive
                     text: "Active"
                     color: "#22C55E"
-                    font.pointSize: 10
+                    font.pixelSize: Style.dp(13)
                 }
 
                 Item { Layout.fillWidth: true }
@@ -120,12 +120,12 @@ ColumnLayout {
                 color: "#A1A1AA"
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
-                font.pointSize: 10
+                font.pixelSize: Style.dp(13)
             }
 
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: _temporal.checked ? 200 : 0
+                Layout.preferredHeight: _temporal.checked ? Style.dp(200) : 0
                 visible: _temporal.checked
                 clip: true
 
@@ -145,14 +145,14 @@ ColumnLayout {
             JGText {
                 text: "Mapped axes"
                 opacity: 0.7
-                font.pointSize: 10
+                font.pixelSize: Style.dp(13)
             }
 
             JGText {
                 visible: _axes.count === 0
                 text: destEmpty ? "No dest-claimed axes." : "No claimed axes wired to this dest."
                 opacity: 0.45
-                font.pointSize: 10
+                font.pixelSize: Style.dp(13)
             }
 
             Repeater {
@@ -166,24 +166,24 @@ ColumnLayout {
                     required property int vjoyInput
                     required property bool destClaimed
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: Style.dp(8)
 
                     Label {
                         text: label
                         color: Style.foreground
-                        Layout.preferredWidth: 28
-                        font.pointSize: 10
+                        Layout.preferredWidth: Style.dp(28)
+                        font.pixelSize: Style.dp(13)
                     }
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 4
-                        radius: 2
+                        Layout.preferredHeight: Style.dp(4)
+                        radius: Style.dp(2)
                         color: Style.lowColor
 
                         Rectangle {
                             height: parent.height
-                            radius: 2
+                            radius: Style.dp(2)
                             width: parent.width * Math.min(1.0, Math.max(0.0, (hwAxis(identifier) + 1.0) * 0.5))
                             color: "#22C55E"
                         }
@@ -192,20 +192,20 @@ ColumnLayout {
                     Label {
                         text: destClaimed ? vjoyLabel : "—"
                         color: destClaimed ? Style.accent : "#71717A"
-                        Layout.preferredWidth: 88
-                        font.pointSize: 9
+                        Layout.preferredWidth: Style.dp(88)
+                        font.pixelSize: Style.dp(12)
                     }
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 4
-                        radius: 2
+                        Layout.preferredHeight: Style.dp(4)
+                        radius: Style.dp(2)
                         color: Style.lowColor
 
                         Rectangle {
                             visible: destClaimed
                             height: parent.height
-                            radius: 2
+                            radius: Style.dp(2)
                             width: parent.width * Math.min(1.0, Math.max(0.0, (vjAxis(vjoyGuid, vjoyInput) + 1.0) * 0.5))
                             color: "#38BDF8"
                         }
@@ -216,31 +216,31 @@ ColumnLayout {
             JGText {
                 text: "Mapped buttons"
                 opacity: 0.7
-                font.pointSize: 10
+                font.pixelSize: Style.dp(13)
             }
 
             JGText {
                 visible: _buttons.count === 0
                 text: destEmpty ? "No dest-claimed buttons." : "No claimed buttons wired to this dest."
                 opacity: 0.45
-                font.pointSize: 10
+                font.pixelSize: Style.dp(13)
             }
 
             Rectangle {
                 Layout.fillWidth: true
                 visible: _buttons.count > 0
-                implicitHeight: _btnFlow.implicitHeight + 16
+                implicitHeight: _btnFlow.implicitHeight + Style.dp(16)
                 color: "transparent"
                 border.color: Style.medColor
-                border.width: 1
-                radius: 6
+                border.width: Style.dp(1)
+                radius: Style.dp(6)
 
                 Flow {
                     id: _btnFlow
-                    width: parent.width - 16
-                    x: 8
-                    y: 8
-                    spacing: 10
+                    width: parent.width - Style.dp(16)
+                    x: Style.dp(8)
+                    y: Style.dp(8)
+                    spacing: Style.dp(10)
 
                     Repeater {
                         model: _buttons
@@ -256,12 +256,12 @@ ColumnLayout {
                             property bool hwOn: hwButton(identifier) > 0.5
                             property bool vjOn: destClaimed && vjButton(vjoyGuid, vjoyInput) > 0.5
 
-                            width: 40
-                            height: 18
-                            radius: 3
+                            width: Style.dp(40)
+                            height: Style.dp(18)
+                            radius: Style.dp(3)
                             color: Style.background
                             border.color: (hwOn || vjOn) ? "#22C55E" : Style.medColor
-                            border.width: 1
+                            border.width: Style.dp(1)
                             clip: true
 
                             Row {
@@ -276,7 +276,7 @@ ColumnLayout {
                                         anchors.centerIn: parent
                                         text: label
                                         color: hwOn ? "#052e16" : Style.foreground
-                                        font.pointSize: 8
+                                        font.pixelSize: Style.dp(11)
                                     }
 
                                     HoverHandler { id: _hwHover }
@@ -288,13 +288,13 @@ ColumnLayout {
                                 }
 
                                 Rectangle {
-                                    width: 1
+                                    width: Style.dp(1)
                                     height: parent.height
                                     color: Style.medColor
                                 }
 
                                 Rectangle {
-                                    width: parent.width / 2 - 1
+                                    width: parent.width / 2 - Style.dp(1)
                                     height: parent.height
                                     color: vjOn ? "#38BDF8" : "transparent"
 
@@ -302,7 +302,7 @@ ColumnLayout {
                                         anchors.centerIn: parent
                                         text: destClaimed ? String(vjoyInput) : "—"
                                         color: vjOn ? "#0b1220" : (destClaimed ? Style.foreground : "#71717A")
-                                        font.pointSize: 8
+                                        font.pixelSize: Style.dp(11)
                                     }
 
                                     HoverHandler { id: _vjHover }

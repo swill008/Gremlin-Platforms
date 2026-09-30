@@ -6,12 +6,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Config
+import Gremlin.Style
 
 Item {
     id: _root
 
     implicitHeight: _col.implicitHeight
-    implicitWidth: 420
+    implicitWidth: Style.dp(420)
 
     OscAutoreleaseModel {
         id: _model
@@ -21,11 +22,11 @@ Item {
         id: _col
 
         anchors.fill: parent
-        spacing: 6
+        spacing: Style.dp(6)
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Style.dp(8)
 
             Label {
                 text: "ms"
@@ -34,7 +35,7 @@ Item {
             TextField {
                 id: _delay
 
-                Layout.preferredWidth: 80
+                Layout.preferredWidth: Style.dp(80)
                 text: _model.delayMs
                 inputMethodHints: Qt.ImhDigitsOnly
                 onEditingFinished: () => { _model.delayMs = text }
@@ -43,7 +44,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: Style.dp(6)
 
             Button {
                 text: "1/10s"

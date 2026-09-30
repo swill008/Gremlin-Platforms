@@ -3,13 +3,14 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.ActionPlugins
 import Gremlin.Base
 import Gremlin.Profile
 import "../../qml"
+import Gremlin.Style
 
 
 Item {
@@ -42,7 +43,7 @@ Item {
 
         RowLayout {
             ComboBox {
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: Style.dp(150)
 
                 readonly property var _labels: ["Interrupt", "Queue Front", "Queue Back"]
                 readonly property var _values: ["interrupt", "queue-front", "queue-back"]
@@ -63,7 +64,7 @@ Item {
             LayoutHorizontalSpacer {}
 
             Label {
-                Layout.rightMargin: 5
+                Layout.rightMargin: Style.dp(5)
 
                 text: "Volume"
             }
@@ -80,7 +81,7 @@ Item {
             LayoutHorizontalSpacer {}
 
             Label {
-                Layout.rightMargin: 5
+                Layout.rightMargin: Style.dp(5)
 
                 text: "Rate"
             }
@@ -97,7 +98,7 @@ Item {
             LayoutHorizontalSpacer {}
 
             Label {
-                Layout.rightMargin: 5
+                Layout.rightMargin: Style.dp(5)
 
                 text: "Pitch"
             }

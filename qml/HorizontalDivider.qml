@@ -6,8 +6,8 @@ import QtQuick
 import Gremlin.Style
 
 Rectangle {
-    property int spacing: 10
-    property int lineWidth: 1
+    property int spacing: Style.dp(10)
+    property int lineWidth: Style.dp(1)
     property bool dividerVisible: true
     property color dividerColor: Style.accent
 

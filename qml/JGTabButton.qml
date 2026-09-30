@@ -7,7 +7,7 @@ import QtQuick.Controls
 import Gremlin.Style
 
 TabButton {
-    font.pixelSize: 14
+    font.pixelSize: Style.dp(14)
     font.weight: 600
 
     contentItem: Text {

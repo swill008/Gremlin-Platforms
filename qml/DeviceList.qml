@@ -6,10 +6,11 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Device
 import Gremlin.Profile
+import Gremlin.Style
 
 Item {
     id: _root
@@ -34,7 +35,7 @@ Item {
         id: _renameDialog
 
         visible: false
-        width: 320
+        width: Style.dp(320)
         clearOnClick: false
 
         property string nameKey: ""
@@ -105,7 +106,7 @@ Item {
 
                 visible: _root._vjoyTick >= 0 && _root.showDeviceTab(name, vjoy_id)
                 text: _root.displayName(model.guid, name)
-                width: visible ? _metric.width + 50 : 0
+                width: visible ? _metric.width + Style.dp(50) : 0
                 checked: uiState && uiState.currentTab === "physical" &&
                     uiState.currentDevice === model.guid
 
@@ -145,7 +146,7 @@ Item {
 
             visible: _root._vjoyTick >= 0 && _root.extraVisible("keyboard")
             text: _root.displayName("keyboard", "Keyboard")
-            width: visible ? _metricKeyboard.width + 50 : 0
+            width: visible ? _metricKeyboard.width + Style.dp(50) : 0
             checked: uiState && uiState.currentTab === "keyboard"
 
             PointerTip {
@@ -183,7 +184,7 @@ Item {
 
             visible: _root._vjoyTick >= 0 && _root.extraVisible("logical")
             text: _root.displayName("logical", "Logical Device")
-            width: visible ? _metricIO.width + 50 : 0
+            width: visible ? _metricIO.width + Style.dp(50) : 0
             checked: uiState && uiState.currentTab === "logical"
 
             PointerTip {
@@ -221,7 +222,7 @@ Item {
 
             visible: _root._vjoyTick >= 0 && _root.extraVisible("osc")
             text: _root.displayName("osc", "OSC")
-            width: visible ? _metricOsc.width + 50 : 0
+            width: visible ? _metricOsc.width + Style.dp(50) : 0
             checked: uiState && uiState.currentTab === "osc"
 
             PointerTip {
@@ -259,7 +260,7 @@ Item {
 
             visible: _root._vjoyTick >= 0 && _root.extraVisible("xbox")
             text: _root.displayName("xbox", "Xbox 360 Controller")
-            width: visible ? _metricXbox.width + 50 : 0
+            width: visible ? _metricXbox.width + Style.dp(50) : 0
             checked: uiState && uiState.currentTab === "xbox"
 
             PointerTip {

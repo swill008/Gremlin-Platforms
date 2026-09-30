@@ -6,6 +6,7 @@ import QtQuick.Layouts
 
 import Gremlin.Compact as Compact
 import Gremlin.Profile
+import Gremlin.Style
 
 Item {
     id: _root
@@ -20,7 +21,7 @@ Item {
 
         Compact.CheckBox {
             font.family: "bootstrap-icons"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_n
             checked: directions.hatNorth
@@ -29,7 +30,7 @@ Item {
 
         Compact.CheckBox {
             font.family: "bootstrap-icons"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_ne
             checked: directions.hatNorthEast
@@ -38,7 +39,7 @@ Item {
 
         Compact.CheckBox {
             font.family: "bootstrap-icons"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_e
             checked: directions.hatEast
@@ -47,7 +48,7 @@ Item {
 
         Compact.CheckBox {
             font.family: "bootstrap-icons"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_se
             checked: directions.hatSouthEast
@@ -56,7 +57,7 @@ Item {
 
         Compact.CheckBox {
             font.family: "bootstrap-icons"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_s
             checked: directions.hatSouth
@@ -65,7 +66,7 @@ Item {
 
         Compact.CheckBox {
             font.family: "bootstrap-icons"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_sw
             checked: directions.hatSouthWest
@@ -74,7 +75,7 @@ Item {
 
         Compact.CheckBox {
             font.family: "bootstrap-icons"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_w
             checked: directions.hatWest
@@ -83,7 +84,7 @@ Item {
 
         Compact.CheckBox {
             font.family: "bootstrap-icons"
-            font.pixelSize: 14
+            font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_nw
             checked: directions.hatNorthWest

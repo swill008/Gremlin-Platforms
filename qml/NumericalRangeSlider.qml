@@ -70,14 +70,14 @@ Item {
         anchors.verticalCenter: _slider.verticalCenter
 
         border.color: Style.lowColor
-        border.width: 2
+        border.width: Style.dp(2)
         width: _firstValueInput.width
         height: _firstValueInput.height
 
         JGTextField {
             id: _firstValueInput
 
-            padding: 10
+            padding: Style.dp(10)
 
             font: _slider.font
             horizontalAlignment: Qt.AlignHCenter
@@ -118,14 +118,14 @@ Item {
         anchors.verticalCenter: _slider.verticalCenter
 
         border.color: Style.lowColor
-        border.width: 2
+        border.width: Style.dp(2)
         width: _secondValueInput.width
         height: _secondValueInput.height
 
         JGTextField {
             id: _secondValueInput
 
-            padding: 10
+            padding: Style.dp(10)
 
             font: _slider.font
             horizontalAlignment: Qt.AlignHCenter

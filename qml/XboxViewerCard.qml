@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Device
@@ -20,7 +20,7 @@ ColumnLayout {
     property int xboxStamp: _live && _live.xboxStamp !== undefined ? _live.xboxStamp : 0
     property bool pairActive: backend && backend.gremlinActive
 
-    spacing: 4
+    spacing: Style.dp(4)
 
     XboxMappedAxisModel { id: _axes; guid: deviceGuid }
     XboxMappedButtonModel { id: _buttons; guid: deviceGuid }
@@ -49,32 +49,32 @@ ColumnLayout {
 
     Rectangle {
         Layout.fillWidth: true
-        implicitHeight: _inner.implicitHeight + 16
+        implicitHeight: _inner.implicitHeight + Style.dp(16)
         color: pairActive ? "#052e16" : Style.background
         border.color: pairActive ? "#22C55E" : Style.accent
-        border.width: pairActive ? 2 : 1
-        radius: 6
+        border.width: pairActive ? Style.dp(2) : Style.dp(1)
+        radius: Style.dp(6)
         clip: false
 
         ColumnLayout {
             id: _inner
-            width: parent.width - 16
-            x: 8
-            y: 8
-            spacing: 6
+            width: parent.width - Style.dp(16)
+            x: Style.dp(8)
+            y: Style.dp(8)
+            spacing: Style.dp(6)
 
             RowLayout {
                 Layout.fillWidth: true
-                JGText { text: title; font.pointSize: 12 }
+                JGText { text: title; font.pixelSize: Style.dp(16)}
                 Rectangle {
                     visible: pairActive
-                    width: 8; height: 8; radius: 4; color: "#22C55E"
+                    width: Style.dp(8); height: Style.dp(8); radius: Style.dp(4); color: "#22C55E"
                 }
                 JGText {
                     visible: pairActive
                     text: "Active"
                     color: "#22C55E"
-                    font.pointSize: 10
+                    font.pixelSize: Style.dp(13)
                 }
                 Item { Layout.fillWidth: true }
                 JGText {
@@ -88,7 +88,7 @@ ColumnLayout {
                 visible: !pairActive && _xboxPads.count > 0
                 text: "Activate Gremlin to plug the virtual pad and light this face."
                 color: "#F97316"
-                font.pointSize: 10
+                font.pixelSize: Style.dp(13)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -96,11 +96,11 @@ ColumnLayout {
             Item {
                 visible: _xboxPads.count > 0
                 Layout.fillWidth: true
-                Layout.preferredHeight: 410
+                Layout.preferredHeight: Style.dp(410)
                 Column {
                     id: _faces
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 8
+                    spacing: Style.dp(8)
                     Repeater {
                         model: _xboxPads
                         delegate: Xbox360Face {
@@ -112,7 +112,7 @@ ColumnLayout {
                 }
             }
 
-            JGText { text: "Mapped axes"; opacity: 0.7; font.pointSize: 10 }
+            JGText { text: "Mapped axes"; opacity: 0.7; font.pixelSize: Style.dp(13)}
 
             Repeater {
                 model: _axes
@@ -123,16 +123,16 @@ ColumnLayout {
                     required property string xboxTarget
                     required property string xboxLabel
                     Layout.fillWidth: true
-                    spacing: 8
-                    Label { text: label; color: Style.foreground; Layout.preferredWidth: 28; font.pointSize: 10 }
+                    spacing: Style.dp(8)
+                    Label { text: label; color: Style.foreground; Layout.preferredWidth: Style.dp(28); font.pixelSize: Style.dp(13)}
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 4
-                        radius: 2
+                        Layout.preferredHeight: Style.dp(4)
+                        radius: Style.dp(2)
                         color: Style.lowColor
                         Rectangle {
                             height: parent.height
-                            radius: 2
+                            radius: Style.dp(2)
                             width: parent.width * Math.min(1.0, Math.max(0.0, (hwAxis(identifier) + 1.0) * 0.5))
                             color: "#22C55E"
                         }
@@ -140,17 +140,17 @@ ColumnLayout {
                     Label {
                         text: xboxLabel
                         color: "#86EFAC"
-                        Layout.preferredWidth: 110
-                        font.pointSize: 9
+                        Layout.preferredWidth: Style.dp(110)
+                        font.pixelSize: Style.dp(12)
                     }
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 4
-                        radius: 2
+                        Layout.preferredHeight: Style.dp(4)
+                        radius: Style.dp(2)
                         color: Style.lowColor
                         Rectangle {
                             height: parent.height
-                            radius: 2
+                            radius: Style.dp(2)
                             width: parent.width * Math.min(1.0, Math.max(0.0, (destAxis(xboxPad, xboxTarget) + 1.0) * 0.5))
                             color: "#22C55E"
                         }
@@ -158,19 +158,19 @@ ColumnLayout {
                 }
             }
 
-            JGText { text: "Mapped buttons"; opacity: 0.7; font.pointSize: 10 }
+            JGText { text: "Mapped buttons"; opacity: 0.7; font.pixelSize: Style.dp(13)}
 
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: _btnFlow.implicitHeight + 16
+                implicitHeight: _btnFlow.implicitHeight + Style.dp(16)
                 color: "transparent"
                 border.color: Style.medColor
-                border.width: 1
-                radius: 6
+                border.width: Style.dp(1)
+                radius: Style.dp(6)
                 Flow {
                     id: _btnFlow
-                    width: parent.width - 16
-                    x: 8; y: 8; spacing: 10
+                    width: parent.width - Style.dp(16)
+                    x: Style.dp(8); y: Style.dp(8); spacing: Style.dp(10)
                     Repeater {
                         model: _buttons
                         delegate: Rectangle {
@@ -182,10 +182,10 @@ ColumnLayout {
                             required property string xboxChip
                             property bool hwOn: buttonStamp >= 0 && hwButton(identifier) > 0.5
                             property bool xbOn: xboxStamp >= 0 && xb(xboxPad, xboxTarget) > 0.5
-                            width: 48; height: 18; radius: 3
+                            width: Style.dp(48); height: Style.dp(18); radius: Style.dp(3)
                             color: Style.background
                             border.color: (hwOn || xbOn) ? "#22C55E" : Style.medColor
-                            border.width: 1
+                            border.width: Style.dp(1)
                             clip: true
                             Row {
                                 anchors.fill: parent
@@ -196,7 +196,7 @@ ColumnLayout {
                                         anchors.centerIn: parent
                                         text: label
                                         color: hwOn ? "#052e16" : Style.foreground
-                                        font.pointSize: 8
+                                        font.pixelSize: Style.dp(11)
                                     }
                                     HoverHandler { id: _hwHover }
                                     PointerTip {
@@ -205,15 +205,15 @@ ColumnLayout {
                                         show: true
                                     }
                                 }
-                                Rectangle { width: 1; height: parent.height; color: Style.medColor }
+                                Rectangle { width: Style.dp(1); height: parent.height; color: Style.medColor }
                                 Rectangle {
-                                    width: parent.width / 2 - 1; height: parent.height
+                                    width: parent.width / 2 - Style.dp(1); height: parent.height
                                     color: xbOn ? "#22C55E" : "transparent"
                                     Label {
                                         anchors.centerIn: parent
                                         text: xboxChip
                                         color: xbOn ? "#052e16" : Style.foreground
-                                        font.pointSize: 8
+                                        font.pixelSize: Style.dp(11)
                                     }
                                     HoverHandler { id: _xbHover }
                                     PointerTip {
@@ -236,7 +236,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     JGText {
                         text: label + "  \u2192  " + xboxLabel
-                        font.pointSize: 10
+                        font.pixelSize: Style.dp(13)
                     }
                 }
             }

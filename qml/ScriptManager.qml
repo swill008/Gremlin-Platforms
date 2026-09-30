@@ -10,6 +10,7 @@ import Qt.labs.qmlmodels
 import Gremlin.Script
 
 import "helpers.js" as Helpers
+import Gremlin.Style
 
 
 Item {
@@ -40,7 +41,7 @@ Item {
         id: _renameScriptDialog
 
         visible: false
-        width: 300
+        width: Style.dp(300)
 
         property var callback: null
 
@@ -53,34 +54,34 @@ Item {
 
     SplitView {
         anchors.fill: parent
-        anchors.leftMargin: 10
+        anchors.leftMargin: Style.dp(10)
 
         ColumnLayout {
             SplitView.fillHeight: true
             SplitView.fillWidth: true
-            SplitView.minimumWidth: 400
+            SplitView.minimumWidth: Style.dp(400)
 
             JGListView {
                 id: _view
 
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                Layout.rightMargin: 5
+                Layout.rightMargin: Style.dp(5)
 
-                spacing: 10
+                spacing: Style.dp(10)
                 scrollbarAlwaysVisible: true
 
                 model: scriptListModel
                 delegate: ScriptUI {
-                    Layout.margins: 10
+                    Layout.margins: Style.dp(10)
                     width: _view.width
                 }
             }
 
             Button {
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
-                Layout.preferredHeight: 30
-                Layout.bottomMargin: 10
+                Layout.preferredHeight: Style.dp(30)
+                Layout.bottomMargin: Style.dp(10)
 
                 text: "Add Script"
 
@@ -92,7 +93,7 @@ Item {
             id: _config
 
             SplitView.fillHeight: true
-            SplitView.minimumWidth: 500
+            SplitView.minimumWidth: Style.dp(500)
         }
     }
 
@@ -104,28 +105,28 @@ Item {
         required property var variables
 
         JGText {
-            Layout.leftMargin: 10
+            Layout.leftMargin: Style.dp(10)
             text: bsi.icons.script
-            font.pixelSize: 18
+            font.pixelSize: Style.dp(18)
         }
 
         JGText {
             id: _path
 
             Layout.alignment: Qt.AlignVCenter
-            Layout.preferredWidth: _view.width - 400
+            Layout.preferredWidth: _view.width - Style.dp(400)
 
             text: _item.path
-            leftPadding: 10
+            leftPadding: Style.dp(10)
             elide: Text.ElideMiddle
 
             ToolTip {
                 text: _path.text
-                width: contentWidth > 500 ? 500 : contentWidth + 20
+                width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
                 visible: _hoverPath.hovered
                 delay: 500
                 x: _hoverPath.point.position.x - width / 2
-                y: _hoverPath.point.position.y - height - 8
+                y: _hoverPath.point.position.y - height - Style.dp(8)
             }
 
             HoverHandler {
@@ -139,20 +140,20 @@ Item {
         JGText {
             id: _name
 
-            Layout.preferredWidth: 200
+            Layout.preferredWidth: Style.dp(200)
             Layout.alignment: Qt.AlignVCenter
 
             text: _item.name
-            rightPadding: 50
+            rightPadding: Style.dp(50)
             elide: Text.ElideMiddle
 
             ToolTip {
                 x: _hoverName.point.position.x - width / 2
-                y: _hoverName.point.position.y - height - 8
+                y: _hoverName.point.position.y - height - Style.dp(8)
                 text: _name.text
                 // Set an upper width of the tooltip to force word wrap on
                 // long texts.
-                width: contentWidth > 500 ? 500 : contentWidth + 20
+                width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
                 visible: _hoverName.hovered
                 delay: 500
             }
@@ -184,7 +185,7 @@ Item {
         }
 
         IconButton {
-            Layout.rightMargin: 20
+            Layout.rightMargin: Style.dp(20)
             text: bsi.icons.trash
 
             onClicked: () => scriptListModel.removeScript(path, name)

@@ -70,13 +70,13 @@ Item {
 
         anchors.left: parent.left
         anchors.right: parent.right
-        spacing: 10
+        spacing: Style.dp(10)
 
         Loader {
             id: _deviceLoader
 
             visible: _vjoy && _vjoy.hasValidVJoyDevices
-            Layout.minimumWidth: visible ? 72 : 0
+            Layout.minimumWidth: visible ? Style.dp(72) : 0
             Layout.fillWidth: visible
             Layout.preferredWidth: visible ? -1 : 0
 
@@ -93,7 +93,7 @@ Item {
             id: _inputLoader
 
             visible: _vjoy && _vjoy.hasValidVJoyDevices && _vjoy.inputChoices.length > 0
-            Layout.minimumWidth: visible ? 72 : 0
+            Layout.minimumWidth: visible ? Style.dp(72) : 0
             Layout.fillWidth: visible
             Layout.preferredWidth: visible ? -1 : 0
 

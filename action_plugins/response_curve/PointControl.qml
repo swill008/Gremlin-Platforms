@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 import "render_helpers.js" as RH
@@ -11,7 +11,7 @@ import "render_helpers.js" as RH
 Rectangle {
     id: _control
 
-    readonly property int offset: 5
+    readonly property int offset: Style.dp(5)
     property Repeater repeater
     property Item focusTarget
 

@@ -3,11 +3,12 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.ActionPlugins
 import "../../qml"
+import Gremlin.Style
 
 Item {
     id: _root
@@ -19,7 +20,7 @@ Item {
         id: _content
         anchors.left: parent.left
         anchors.right: parent.right
-        spacing: 8
+        spacing: Style.dp(8)
 
         Label { text: "Xbox" }
         ComboBox {
@@ -33,7 +34,7 @@ Item {
         ComboBox {
             id: _target
             Layout.fillWidth: true
-            Layout.minimumWidth: 60
+            Layout.minimumWidth: Style.dp(60)
             textRole: "label"
             valueRole: "value"
             model: _root.action.targetChoices

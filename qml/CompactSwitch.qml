@@ -3,7 +3,8 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
+import Gremlin.Style
 
 
 T.Switch {
@@ -15,14 +16,14 @@ T.Switch {
                              implicitContentHeight + topPadding + bottomPadding,
                              implicitIndicatorHeight + topPadding + bottomPadding)
 
-    padding: 2
-    spacing: 2
+    padding: Style.dp(2)
+    spacing: Style.dp(2)
 
     property bool useSystemFocusVisuals: true
 
     indicator: CompactSwitchIndicator {
         x: control.text ? (control.mirrored ? control.width - width - control.rightPadding : control.leftPadding) : control.leftPadding + (control.availableWidth - width) / 2
-        y: control.topPadding + (control.availableHeight - height) / 2 + 1
+        y: control.topPadding + (control.availableHeight - height) / 2 + Style.dp(1)
         control: control
     }
 
@@ -36,6 +37,6 @@ T.Switch {
         verticalAlignment: Text.AlignVCenter
 
         opacity: enabled ? 1.0 : 0.2
-        color: control.Universal.foreground
+        color: control.U.Universal.foreground
     }
 }

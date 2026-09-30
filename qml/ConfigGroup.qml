@@ -10,24 +10,25 @@ import Qt.labs.qmlmodels
 import Gremlin.Base
 import Gremlin.Config
 import "helpers.js" as Helpers
+import Gremlin.Style
 
 ColumnLayout {
     required property int index
     required property string groupName
     required property ConfigEntryModel entryModel
 
-    width: parent ? parent.width - 20 : implicitWidth
+    width: parent ? parent.width - Style.dp(20) : implicitWidth
     anchors.left: parent ? parent.left : undefined
     anchors.right: parent ? parent.right : undefined
-    anchors.rightMargin: 20
+    anchors.rightMargin: Style.dp(20)
 
     JGText {
         Layout.fillWidth: true
-        Layout.preferredHeight: 50
+        Layout.preferredHeight: Style.dp(50)
 
         text: Helpers.capitalize(groupName)
 
-        font.pointSize: 16
+        font.pixelSize: Style.dp(21)
         font.weight: 500
         font.family: "Segoe UI"
         verticalAlignment: Text.AlignBottom
@@ -40,7 +41,7 @@ ColumnLayout {
     }
 
     LayoutVerticalSpacer {
-        Layout.preferredHeight: 5
+        Layout.preferredHeight: Style.dp(5)
     }
 
     DelegateChooser {
@@ -59,12 +60,12 @@ ColumnLayout {
                     : description
 
                 RowLayout {
-                    spacing: 8
+                    spacing: Style.dp(8)
 
                     OptionHighlightSpeed {
                         visible: name === "Input highlighting"
-                        Layout.preferredWidth: visible ? 252 : 0
-                        Layout.minimumWidth: visible ? 180 : 0
+                        Layout.preferredWidth: visible ? Style.dp(252) : 0
+                        Layout.minimumWidth: visible ? Style.dp(180) : 0
                     }
 
                     Switch {

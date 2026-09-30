@@ -3,13 +3,14 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.ActionPlugins
 import Gremlin.Profile
 import "../../qml"
+import Gremlin.Style
 
 Item {
     property DescriptionModel action
@@ -25,7 +26,7 @@ Item {
         Label {
             id: _label
 
-            Layout.preferredWidth: 150
+            Layout.preferredWidth: Style.dp(150)
 
             text: "Description"
         }

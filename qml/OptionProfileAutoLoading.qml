@@ -71,7 +71,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                spacing: 5
+                spacing: Style.dp(5)
 
                 model: ProcessListModel {}
 
@@ -222,7 +222,7 @@ Item {
             }
 
             LayoutVerticalSpacer {
-                Layout.preferredHeight: 10
+                Layout.preferredHeight: Style.dp(10)
             }
         }
     }

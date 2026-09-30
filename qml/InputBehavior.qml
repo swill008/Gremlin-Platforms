@@ -6,6 +6,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Profile
+import Gremlin.Style
 
 Item {
     id: _root
@@ -24,7 +25,7 @@ Item {
         visible: _root.hasChoice
 
         Label {
-            leftPadding: 20
+            leftPadding: Style.dp(20)
             text: "Treat as"
         }
 

@@ -6,12 +6,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Config
+import Gremlin.Style
 
 Item {
     id: _root
 
     implicitHeight: _row.implicitHeight
-    implicitWidth: 420
+    implicitWidth: Style.dp(420)
 
     LogLevelModel {
         id: _model
@@ -21,15 +22,15 @@ Item {
         id: _row
 
         anchors.fill: parent
-        spacing: 6
+        spacing: Style.dp(6)
 
         Repeater {
             model: ["Off", "ALL", "Info", "Warning", "Error"]
 
             Button {
                 Layout.fillWidth: true
-                Layout.preferredWidth: 78
-                Layout.minimumWidth: 64
+                Layout.preferredWidth: Style.dp(78)
+                Layout.minimumWidth: Style.dp(64)
 
                 text: modelData
                 checked: _model && _model.level === modelData

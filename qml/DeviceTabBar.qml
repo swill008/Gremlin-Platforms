@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
+import Gremlin.Style
 
 T.TabBar {
     id: control
@@ -32,8 +34,8 @@ T.TabBar {
 
         highlightMoveDuration: 100
         highlightRangeMode: ListView.ApplyRange
-        preferredHighlightBegin: 48
-        preferredHighlightEnd: width - 48
+        preferredHighlightBegin: Style.dp(48)
+        preferredHighlightEnd: width - Style.dp(48)
 
 
         MouseArea {
@@ -67,8 +69,8 @@ T.TabBar {
     }
 
     background: Rectangle {
-        implicitWidth: 200
-        implicitHeight: 48
-        color: control.Universal.background
+        implicitWidth: Style.dp(200)
+        implicitHeight: Style.dp(48)
+        color: control.U.Universal.background
     }
 }

@@ -36,7 +36,7 @@ Item {
             id: _bottomDropArea
 
             Layout.fillWidth: true
-            height: 20
+            height: Style.dp(20)
 
             onDropped: (drop) => {
                 _data.move(drop.text, _data.rowCount())
@@ -46,7 +46,7 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 y: 0
-                height: 1
+                height: Style.dp(1)
 
                 color: Style.accent
                 opacity: parent.containsDrag ? 1.0 : 0.0
@@ -133,7 +133,7 @@ Item {
             Rectangle {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                height: 1
+                height: Style.dp(1)
                 y: parent.height / 2
 
                 color: Style.accent

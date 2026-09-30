@@ -6,6 +6,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Profile
+import Gremlin.Style
 
 Item {
     id: _root
@@ -18,7 +19,7 @@ Item {
     RowLayout {
         id: _checkboxes
 
-        spacing: 10
+        spacing: Style.dp(10)
 
         IconCheckBox {
             text: bsi.icons.hat_n

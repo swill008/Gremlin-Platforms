@@ -80,9 +80,9 @@ Button {
         let descriptionWidth = 0
         let actionWidth = 0
 
-        let countWidth = 15
-        let spacing = 30
-        let textPadding = 10
+        let countWidth = Style.dp(15)
+        let spacing = Style.dp(30)
+        let textPadding = Style.dp(10)
 
         if (text.length == 0) {
             actionWidth = Math.min(_control.width, imageWidth)
@@ -117,7 +117,7 @@ Button {
 
     background: Rectangle {
         border.color: hovered ? Style.accent : selected ? Style.accent : Style.backgroundShade
-        border.width: _ledOn ? 2 : 1
+        border.width: _ledOn ? Style.dp(2) : Style.dp(1)
         color: {
             if (_ledOn) {
                 return Qt.rgba(0.133, 0.773, 0.369, selected ? 0.55 : 0.38)
@@ -133,10 +133,10 @@ Button {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            anchors.leftMargin: 1
-            anchors.rightMargin: 1
-            anchors.bottomMargin: 1
-            height: 5
+            anchors.leftMargin: Style.dp(1)
+            anchors.rightMargin: Style.dp(1)
+            anchors.bottomMargin: Style.dp(1)
+            height: Style.dp(5)
             color: Style.lowColor
 
             Rectangle {
@@ -153,14 +153,14 @@ Button {
         Rectangle {
             id: _led
             visible: !_axisActive
-            width: 10
-            height: 10
-            radius: 5
+            width: Style.dp(10)
+            height: Style.dp(10)
+            radius: Style.dp(5)
             anchors.left: parent.left
             anchors.top: parent.top
-            anchors.topMargin: 4
+            anchors.topMargin: Style.dp(4)
             color: _ledOn ? "#22C55E" : Style.lowColor
-            border.width: 1
+            border.width: Style.dp(1)
             border.color: _ledOn ? "#16A34A" : Style.medColor
         }
 
@@ -169,12 +169,12 @@ Button {
             text: name
             font.weight: 600
 
-            width: Math.min(implicitWidth, parent.width - 48)
+            width: Math.min(implicitWidth, parent.width - Style.dp(48))
             elide: Text.ElideRight
 
             anchors.top: parent.top
             anchors.left: _axisActive ? parent.left : _led.right
-            anchors.leftMargin: _axisActive ? 0 : 8
+            anchors.leftMargin: _axisActive ? 0 : Style.dp(8)
         }
 
         Loader {
@@ -182,7 +182,7 @@ Button {
 
             anchors.top: parent.top
             anchors.left: _inputLabel.right
-            anchors.leftMargin: 4
+            anchors.leftMargin: Style.dp(4)
         }
 
         Loader {
@@ -208,7 +208,7 @@ Button {
 
             anchors.bottom: parent.bottom
             anchors.right: parent.right
-            anchors.bottomMargin: _axisActive ? 6 : 0
+            anchors.bottomMargin: _axisActive ? Style.dp(6) : 0
 
             sourceComponent: Image {
                 source: "image://action_summary/" + actionSequenceDescriptor
@@ -234,9 +234,9 @@ Button {
             elide: Text.ElideRight
 
             anchors.left: _axisActive ? parent.left : _led.right
-            anchors.leftMargin: _axisActive ? 0 : 8
+            anchors.leftMargin: _axisActive ? 0 : Style.dp(8)
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: _axisActive ? 6 : 0
+            anchors.bottomMargin: _axisActive ? Style.dp(6) : 0
         }
 
         TextMetrics {
@@ -266,7 +266,7 @@ Button {
         delay: 400
 
         x: _hover.point.position.x - width / 2
-        y: _hover.point.position.y - height - 8
+        y: _hover.point.position.y - height - Style.dp(8)
 
         contentItem: Image {
             source: _actionSequenceFull.item ? _actionSequenceFull.item.source : ""

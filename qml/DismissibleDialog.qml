@@ -77,7 +77,7 @@ Popup {
     modal: true
     focus: true
     closePolicy: holdOpen ? Popup.NoAutoClose : (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
-    padding: 16
+    padding: Style.dp(16)
 
     onClosed: {
         var choice = _choice
@@ -97,33 +97,33 @@ Popup {
     background: Rectangle {
         color: Style.background
         border.color: destructive ? "#DC2626" : Style.accent
-        border.width: 1
-        radius: 4
+        border.width: Style.dp(1)
+        radius: Style.dp(4)
     }
 
     contentItem: ColumnLayout {
-        spacing: 12
+        spacing: Style.dp(12)
 
         Label {
             text: _root.titleText
             font.bold: true
-            font.pixelSize: 16
+            font.pixelSize: Style.dp(16)
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
-            Layout.preferredWidth: 420
+            Layout.preferredWidth: Style.dp(420)
         }
 
         Label {
             text: _root.messageText
             wrapMode: Text.WordWrap
-            Layout.preferredWidth: 420
+            Layout.preferredWidth: Style.dp(420)
             Layout.fillWidth: true
             visible: text.length > 0
         }
 
         RowLayout {
             Layout.alignment: Qt.AlignRight
-            spacing: 8
+            spacing: Style.dp(8)
 
             Button {
                 visible: _root.cancelText.length > 0

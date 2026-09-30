@@ -3,10 +3,11 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Profile
+import Gremlin.Style
 
 
 Item {
@@ -16,7 +17,7 @@ Item {
     property var callback: null
 
     implicitHeight: _content.implicitHeight
-    implicitWidth: 200
+    implicitWidth: Style.dp(200)
 
     Connections {
         target: actionNode
@@ -49,8 +50,8 @@ Item {
             id: _combobox
 
             Layout.fillWidth: true
-            Layout.minimumWidth: 72
-            popup.width: Math.max(width, 240)
+            Layout.minimumWidth: Style.dp(72)
+            popup.width: Math.max(width, Style.dp(240))
         }
     }
 }

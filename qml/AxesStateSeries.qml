@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 import QtCharts
@@ -92,14 +92,14 @@ Item {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
 
-                height: 2
+                height: Style.dp(2)
                 color: Style.lowColor
             }
         }
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 200
+            Layout.preferredHeight: Style.dp(200)
 
             z: -1
             clip: true
@@ -117,7 +117,7 @@ Item {
                     right: 0
                 }
 
-                y: -20
+                y: -Style.dp(20)
                 width: parent.width
                 height: parent.height
 

@@ -6,12 +6,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Config
+import Gremlin.Style
 
 Item {
     id: _root
 
     implicitHeight: _row.implicitHeight
-    implicitWidth: 220
+    implicitWidth: Style.dp(220)
 
     HighlightScopeModel {
         id: _model
@@ -21,15 +22,15 @@ Item {
         id: _row
 
         anchors.fill: parent
-        spacing: 6
+        spacing: Style.dp(6)
 
         Repeater {
             model: ["This tab", "Any device"]
 
             Button {
                 Layout.fillWidth: true
-                Layout.preferredWidth: 104
-                Layout.minimumWidth: 84
+                Layout.preferredWidth: Style.dp(104)
+                Layout.minimumWidth: Style.dp(84)
 
                 text: modelData
                 checked: _model && _model.scope === modelData

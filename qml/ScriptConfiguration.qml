@@ -16,9 +16,9 @@ import Gremlin.Style
 JGListView {
     model: []
     delegate: _variableRenderer
-    spacing: 10
+    spacing: Style.dp(10)
 
-    readonly property int labelWidth: 250
+    readonly property int labelWidth: Style.dp(250)
 
     DelegateChooser {
         id: _variableRenderer
@@ -32,7 +32,7 @@ JGListView {
 
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
 
                 DescriptiveText {
                     text: modelData.name
@@ -58,7 +58,7 @@ JGListView {
             RowLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
 
                 DescriptiveText {
                     text: modelData.name
@@ -87,7 +87,7 @@ JGListView {
             RowLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
 
                 DescriptiveText {
                     text: modelData.name
@@ -116,7 +116,7 @@ JGListView {
             RowLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
 
                 DescriptiveText {
                     text: modelData.name
@@ -142,7 +142,7 @@ JGListView {
             RowLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
 
                 DescriptiveText {
                     text: modelData.name
@@ -170,7 +170,7 @@ JGListView {
             RowLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
 
                 DescriptiveText {
                     text: modelData.name
@@ -203,7 +203,7 @@ JGListView {
             RowLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
 
                 DescriptiveText {
                     text: modelData.name
@@ -227,11 +227,11 @@ JGListView {
 
                     ToolTip {
                         text: parent.currentText
-                        width: contentWidth > 500 ? 500 : contentWidth + 20
+                        width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
                         visible: _hoverHandler.hovered
                         delay: 500
                         x: _hoverHandler.point.position.x - width / 2
-                        y: _hoverHandler.point.position.y - height - 8
+                        y: _hoverHandler.point.position.y - height - Style.dp(8)
                     }
 
                     HoverHandler {
@@ -249,7 +249,7 @@ JGListView {
             RowLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
 
                 DescriptiveText {
                     text: modelData.name
@@ -274,7 +274,7 @@ JGListView {
             RowLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
 
                 DescriptiveText {
                     text: modelData.name
@@ -300,7 +300,7 @@ JGListView {
             RowLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 10
+                anchors.margins: Style.dp(10)
 
                 DescriptiveText {
                     text: modelData.name
@@ -341,7 +341,7 @@ JGListView {
         Rectangle {
             id: _marker
 
-            width: 5
+            width: Style.dp(5)
             Layout.fillHeight: true
             color: parent.isValid ? "transparent" : Style.error
         }
@@ -349,20 +349,20 @@ JGListView {
         JGText {
             id: _text
 
-            font.pointSize: 11
+            font.pixelSize: Style.dp(15)
             text: `${parent.text} ${modelData.isOptional ? '' : '(req)'}`
             wrapMode: Text.WordWrap
 
-            Layout.minimumWidth: 150
+            Layout.minimumWidth: Style.dp(150)
             Layout.preferredWidth: labelWidth
 
             ToolTip {
                 id: _tooltip
-                width: contentWidth > 500 ? 500 : contentWidth + 20
+                width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
                 visible: _hoverHandler.hovered
                 delay: 500
                 x: _hoverHandler.point.position.x - width / 2
-                y: _hoverHandler.point.position.y - height - 8
+                y: _hoverHandler.point.position.y - height - Style.dp(8)
             }
 
             HoverHandler {

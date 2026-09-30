@@ -6,17 +6,18 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Config
+import Gremlin.Style
 
 Item {
     implicitHeight: _row.implicitHeight
-    implicitWidth: 420
+    implicitWidth: Style.dp(420)
 
     WindowsScaleModel { id: _model }
 
     RowLayout {
         id: _row
         anchors.fill: parent
-        spacing: 8
+        spacing: Style.dp(8)
 
         CheckBox {
             id: _box

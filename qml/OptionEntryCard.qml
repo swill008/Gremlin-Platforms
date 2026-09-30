@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import "helpers.js" as Helpers
+import Gremlin.Style
 
 Pane {
     id: root
@@ -15,13 +16,13 @@ Pane {
     property string explanation: "No description"
     default property alias optionElement: _optionElementContainer.data
 
-    padding: 10
+    padding: Style.dp(10)
 
     background: Rectangle {
         color: Universal.chromeLowColor
         border.color: Universal.chromeMediumColor
-        border.width: 1
-        radius: 4
+        border.width: Style.dp(1)
+        radius: Style.dp(4)
     }
 
     RowLayout {
@@ -30,10 +31,10 @@ Pane {
 
         ColumnLayout {
             Layout.alignment: Qt.AlignTop
-            Layout.preferredWidth: 400
-            Layout.minimumWidth: 400
-            Layout.maximumWidth: 400
-            Layout.rightMargin: 10
+            Layout.preferredWidth: Style.dp(400)
+            Layout.minimumWidth: Style.dp(400)
+            Layout.maximumWidth: Style.dp(400)
+            Layout.rightMargin: Style.dp(10)
 
             Label {
                 Layout.fillWidth: true
@@ -56,7 +57,7 @@ Pane {
 
         Item {
             Layout.alignment: Qt.AlignTop
-            Layout.topMargin: 5
+            Layout.topMargin: Style.dp(5)
             Layout.fillWidth: true
             Layout.preferredHeight: _optionElementContainer.implicitHeight
 

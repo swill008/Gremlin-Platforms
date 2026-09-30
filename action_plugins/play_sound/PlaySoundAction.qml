@@ -3,13 +3,14 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.ActionPlugins
 import "../../qml"
+import Gremlin.Style
 
 Item {
     property PlaySoundModel action
@@ -23,7 +24,7 @@ Item {
         anchors.right: parent.right
 
         Label {
-            Layout.preferredWidth: 110
+            Layout.preferredWidth: Style.dp(110)
 
             text: "Audio filename"
         }
@@ -48,13 +49,13 @@ Item {
         }
 
         Label {
-            Layout.preferredWidth: 50
+            Layout.preferredWidth: Style.dp(50)
 
             text: "Volume"
         }
 
         JGSpinBox {
-            Layout.preferredWidth: 100
+            Layout.preferredWidth: Style.dp(100)
 
             value: action.soundVolume
             from: 0

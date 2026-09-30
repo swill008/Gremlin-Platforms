@@ -6,12 +6,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Profile
 import Gremlin.ActionPlugins
 import "../../qml"
 import "../../qml/helpers.js" as Helpers
+import Gremlin.Style
 
 
 Item {
@@ -29,7 +30,7 @@ Item {
 
         RowLayout {
             Label {
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: Style.dp(150)
 
                 text: "<B>Key Combination</B>"
             }

@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -71,8 +71,8 @@ Item {
             Layout.fillWidth: true
 
             dividerColor: Style.lowColor
-            lineWidth: 2
-            spacing: 2
+            lineWidth: Style.dp(2)
+            spacing: Style.dp(2)
         }
 
         Repeater {
@@ -109,8 +109,8 @@ Item {
             Layout.fillWidth: true
 
             dividerColor: Style.lowColor
-            lineWidth: 2
-            spacing: 2
+            lineWidth: Style.dp(2)
+            spacing: Style.dp(2)
         }
 
         Repeater {

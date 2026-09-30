@@ -6,12 +6,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Profile
 import Gremlin.ActionPlugins
 import Gremlin.Base
 import "../../qml"
+import Gremlin.Style
 
 
 Item {
@@ -59,7 +60,7 @@ Item {
             TooltipComboBox {
                 id: _switch_combo
 
-                Layout.preferredWidth: 200
+                Layout.preferredWidth: Style.dp(200)
 
                 model: ModeListModel {}
                 textRole: "name"
@@ -125,7 +126,7 @@ Item {
                         required property int index
 
                         TooltipComboBox {
-                            Layout.preferredWidth: 200
+                            Layout.preferredWidth: Style.dp(200)
 
                             model: ModeListModel {}
                             textRole: "name"
@@ -172,7 +173,7 @@ Item {
             TooltipComboBox {
                 id: temporary_combo
 
-                Layout.preferredWidth: 200
+                Layout.preferredWidth: Style.dp(200)
 
                 model: ModeListModel {}
                 textRole: "name"

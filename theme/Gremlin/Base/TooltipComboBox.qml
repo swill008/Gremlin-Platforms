@@ -6,8 +6,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Templates as T
+import Gremlin.Style
 
 ComboBox {
     id: control
@@ -34,11 +35,11 @@ ComboBox {
     popup: T.Popup {
         width: control.width
         height: Math.min(contentItem.implicitHeight, control.Window.height - topMargin - bottomMargin)
-        topMargin: 8
-        bottomMargin: 8
+        topMargin: Style.dp(8)
+        bottomMargin: Style.dp(8)
 
-        Universal.theme: control.Universal.theme
-        Universal.accent: control.Universal.accent
+        U.Universal.theme: control.U.Universal.theme
+        U.Universal.accent: control.U.Universal.accent
 
         contentItem: ComboBoxScrollableEntries {
             model: control.delegateModel
@@ -47,9 +48,9 @@ ComboBox {
         }
 
         background: Rectangle {
-            color: control.Universal.chromeMediumLowColor
-            border.color: control.Universal.chromeHighColor
-            border.width: 1
+            color: control.U.Universal.chromeMediumLowColor
+            border.color: control.U.Universal.chromeHighColor
+            border.width: Style.dp(1)
         }
     }
 

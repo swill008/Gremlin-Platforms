@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import Gremlin.Style
 
 
 Item {
@@ -22,7 +23,7 @@ Item {
 
     signal valueModified(real value)
 
-    implicitWidth: _textMetrics.boundingRect.width + 10 + (
+    implicitWidth: _textMetrics.boundingRect.width + Style.dp(10) + (
         _loader.item ? _loader.item.leftPadding + _loader.item.rightPadding : 0)
     implicitHeight: _loader.implicitHeight
 

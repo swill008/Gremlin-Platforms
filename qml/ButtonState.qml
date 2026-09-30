@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -63,7 +63,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
 
-                height: 2
+                height: Style.dp(2)
                 color: Style.lowColor
             }
         }
@@ -73,8 +73,8 @@ Item {
                 id: _button_grid
 
                 Layout.fillWidth: true
-                Layout.minimumWidth: 400
-                Layout.preferredWidth: 600
+                Layout.minimumWidth: Style.dp(400)
+                Layout.preferredWidth: Style.dp(600)
                 Layout.minimumHeight: computeButtonHeight()
                 Layout.alignment: Qt.AlignTop
 
@@ -82,8 +82,8 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 interactive: false
 
-                cellWidth: 56
-                cellHeight: 22
+                cellWidth: Style.dp(56)
+                cellHeight: Style.dp(22)
 
                 model: _button_state
                 delegate: Item {
@@ -95,23 +95,23 @@ Item {
 
                     Row {
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 6
+                        spacing: Style.dp(6)
 
                         Rectangle {
-                            width: 12
-                            height: 12
-                            radius: 6
+                            width: Style.dp(12)
+                            height: Style.dp(12)
+                            radius: Style.dp(6)
                             anchors.verticalCenter: parent.verticalCenter
 
                             color: value ? "#22C55E" : Style.lowColor
-                            border.width: 1
+                            border.width: Style.dp(1)
                             border.color: value ? "#16A34A" : Style.medColor
                         }
 
                         JGText {
                             anchors.verticalCenter: parent.verticalCenter
                             text: identifier
-                            font.pointSize: 10
+                            font.pixelSize: Style.dp(13)
                         }
                     }
                 }
@@ -121,16 +121,16 @@ Item {
                 id: _hat_grid
 
                 Layout.fillWidth: true
-                Layout.minimumWidth: 200
-                Layout.preferredWidth: 200
+                Layout.minimumWidth: Style.dp(200)
+                Layout.preferredWidth: Style.dp(200)
                 Layout.minimumHeight: computeHatHeight(cellHeight)
                 Layout.alignment: Qt.AlignTop
 
                 boundsMovement: Flickable.StopAtBounds
                 boundsBehavior: Flickable.StopAtBounds
 
-                cellWidth: 100
-                cellHeight: 100
+                cellWidth: Style.dp(100)
+                cellHeight: Style.dp(100)
 
                 model: _hat_state
                 delegate: Component {
@@ -138,8 +138,8 @@ Item {
                         required property int identifier
                         required property point value
 
-                        height: _hat_grid.cellHeight - 20
-                        width: _hat_grid.cellWidth - 20
+                        height: _hat_grid.cellHeight - Style.dp(20)
+                        width: _hat_grid.cellWidth - Style.dp(20)
 
                         text: identifier
                         currentValue: value

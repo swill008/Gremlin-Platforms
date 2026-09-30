@@ -6,9 +6,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Profile
+import Gremlin.Style
 
 
 Item {
@@ -21,7 +22,7 @@ Item {
 
         JGText {
             text: "Action"
-            width: 300
+            width: Style.dp(300)
         }
         ComboBox {
             id: idActionLlist
@@ -29,7 +30,7 @@ Item {
         }
         Button {
             text: "Add"
-            font.pointSize: 10
+            font.pixelSize: Style.dp(13)
         }
     }
 

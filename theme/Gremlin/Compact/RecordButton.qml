@@ -3,16 +3,17 @@
 
 import QtQuick
 import QtQuick.Layouts
+import Gremlin.Style
 
 RoundButton {
     property alias description: _description.text
 
     contentItem: RowLayout {
-        spacing: 4
+        spacing: Style.dp(4)
         anchors.centerIn: parent
 
         Label {
-            Layout.leftMargin: 4
+            Layout.leftMargin: Style.dp(4)
             Layout.alignment: Qt.AlignVCenter
             text: "\uF518"
             font.family: "bootstrap-icons"
@@ -20,7 +21,7 @@ RoundButton {
         Label {
             id: _description
             Layout.alignment: Qt.AlignBaseline
-            Layout.rightMargin: 4
+            Layout.rightMargin: Style.dp(4)
             text: "Rec"
         }
     }

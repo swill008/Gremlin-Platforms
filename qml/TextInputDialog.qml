@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Style
@@ -16,9 +16,9 @@ Popup {
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    padding: 10
-    width: 320
-    height: (heading.length > 0 ? 86 : 56) + (showOption ? 28 : 0)
+    padding: Style.dp(10)
+    width: Style.dp(320)
+    height: (heading.length > 0 ? Style.dp(86) : Style.dp(56)) + (showOption ? Style.dp(28) : 0)
 
     signal accepted(string value)
     property string text : "New text"
@@ -42,8 +42,8 @@ Popup {
     background: Rectangle {
         color: Style.background
         border.color: Style.accent
-        border.width: 1
-        radius: 4
+        border.width: Style.dp(1)
+        radius: Style.dp(4)
     }
 
     onOpened: {
@@ -65,7 +65,7 @@ Popup {
     }
 
     contentItem: ColumnLayout {
-        spacing: 6
+        spacing: Style.dp(6)
 
         Label {
             visible: _root.heading.length > 0
@@ -75,7 +75,7 @@ Popup {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Style.dp(8)
 
             JGTextField {
                 id: _input

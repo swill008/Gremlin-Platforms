@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -93,7 +93,7 @@ Item {
         Rectangle {
             id: _singleDivider
             Layout.fillWidth: true
-            height: 2
+            height: Style.dp(2)
             color: Style.lowColor
         }
 
@@ -130,7 +130,7 @@ Item {
         Rectangle {
             id: _doubleDivider
             Layout.fillWidth: true
-            height: 2
+            height: Style.dp(2)
             color: Style.lowColor
         }
 

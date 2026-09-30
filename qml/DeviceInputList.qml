@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -68,7 +68,7 @@ Item {
         id: _renameDialog
 
         visible: false
-        width: 320
+        width: Style.dp(320)
 
         property int rowIndex: -1
 
@@ -128,10 +128,10 @@ Item {
         id: _inputList
 
         anchors.fill: parent
-        anchors.leftMargin: 10
+        anchors.leftMargin: Style.dp(10)
 
         scrollbarAlwaysVisible: true
-        spacing: 5
+        spacing: Style.dp(5)
         highlightFollowsCurrentItem: true
         highlightMoveVelocity: -1
         highlightMoveDuration: {
@@ -151,8 +151,8 @@ Item {
         model: _claimed
 
         delegate: InputButton {
-            width: _inputList.width - 20
-            height: 50
+            width: _inputList.width - Style.dp(20)
+            height: Style.dp(50)
             enabled: !editorLocked
 
             liveIndex: model.deviceIndex
@@ -177,7 +177,7 @@ Item {
 
         footer: Item {
             width: ListView.view.width
-            height: 10
+            height: Style.dp(10)
         }
 
         function syncSelection() {
@@ -201,7 +201,7 @@ Item {
 
     Label {
         anchors.centerIn: parent
-        width: parent.width - 32
+        width: parent.width - Style.dp(32)
         visible: claimedCount === 0
         wrapMode: Text.WordWrap
         horizontalAlignment: Text.AlignHCenter

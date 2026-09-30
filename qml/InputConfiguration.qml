@@ -24,19 +24,19 @@ Item {
     property color editorFill: "#0F2744"
     property color editorEdge: "#3B82F6"
     property color editorAccent: "#3B82F6"
-    property int editorRadius: 3
-    property int editorBorderW: 1
-    property int editorAccentW: 3
+    property int editorRadius: Style.dp(3)
+    property int editorBorderW: Style.dp(1)
+    property int editorAccentW: Style.dp(3)
     property bool showAccent: true
-    property int editorPad: 10
-    property int editorPadTop: 10
-    property int editorPadRight: 10
-    property int editorPadBottom: 10
-    property int editorPadLeft: 10
+    property int editorPad: Style.dp(10)
+    property int editorPadTop: Style.dp(10)
+    property int editorPadRight: Style.dp(10)
+    property int editorPadBottom: Style.dp(10)
+    property int editorPadLeft: Style.dp(10)
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
     enabled: true
     opacity: editorLocked ? 0.55 : 1.0
-    implicitHeight: inlineMode ? Math.max(80, _content.implicitHeight) + editorPadTop + editorPadBottom : 200
+    implicitHeight: inlineMode ? Math.max(Style.dp(80), _content.implicitHeight) + editorPadTop + editorPadBottom : Style.dp(200)
 
     Rectangle {
         visible: inlineMode
@@ -53,7 +53,7 @@ Item {
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        anchors.margins: Math.max(1, editorBorderW)
+        anchors.margins: Math.max(Style.dp(1), editorBorderW)
         color: editorAccent
     }
 
@@ -107,7 +107,7 @@ Item {
         x: inlineMode ? editorPadLeft : 0
         y: inlineMode ? editorPadTop : 0
         width: parent.width - (inlineMode ? editorPadLeft + editorPadRight : 0)
-        spacing: 8
+        spacing: Style.dp(8)
 
         Repeater {
             id: _inlineRepeater

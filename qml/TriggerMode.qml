@@ -6,7 +6,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
+import Gremlin.Style
 
 
 Item {
@@ -19,13 +20,13 @@ Item {
     RowLayout {
         id: _layout
 
-        spacing: 4
+        spacing: Style.dp(4)
 
         JGText {
             id: _description
 
             text: "Activation"
-            font.pointSize: 10
+            font.pixelSize: Style.dp(13)
         }
 
         CompactSwitch {

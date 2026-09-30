@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Shapes
 import QtQuick.Window
@@ -14,8 +14,8 @@ import Gremlin.Style
 Item {
     id: _root
 
-    height: 200
-    width: 200
+    height: Style.dp(200)
+    width: Style.dp(200)
 
     property point currentValue
     property string text
@@ -53,8 +53,8 @@ Item {
         delegate: Triangle {
             required property int index
 
-            width: 15
-            height: 15
+            width: Style.dp(15)
+            height: Style.dp(15)
             color: _root.currentIndex === index ? Style.accent : Style.lowColor
 
             transform: [

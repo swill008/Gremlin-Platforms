@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Profile
@@ -17,7 +17,7 @@ Item {
     property ActionModel action
     property ActionModel parentAction
     property string containerName
-    property int itemSpacing : 10
+    property int itemSpacing : Style.dp(10)
     property bool compactMode: false
     property var inputItemModel
     property var inputBinding
@@ -115,8 +115,8 @@ Item {
 
             Layout.fillWidth: true
             Layout.preferredHeight: _foldButton.height
-            Layout.bottomMargin: 10
-            spacing: 10
+            Layout.bottomMargin: Style.dp(10)
+            spacing: Style.dp(10)
 
             IconButton {
                 id: _foldButton
@@ -129,7 +129,7 @@ Item {
                 text: checked ? bsi.icons.folded : bsi.icons.unfolded
 
                 Layout.alignment: Qt.AlignVCenter
-                Layout.leftMargin: -10
+                Layout.leftMargin: -Style.dp(10)
 
                 onClicked: () => {
                     if (backend && _root.action) {
@@ -146,7 +146,7 @@ Item {
                 id: _headerIcon
 
                 font.family: "bootstrap-icons"
-                font.pixelSize: 24
+                font.pixelSize: Style.dp(24)
 
                 text: _root.action ? _root.action.icon : ""
             }
@@ -154,7 +154,7 @@ Item {
             JGTextField {
                 id: _headerLabel
 
-                Layout.minimumWidth: 72
+                Layout.minimumWidth: Style.dp(72)
                 Layout.fillWidth: true
 
                 text: _root.action ? _root.action.actionLabel : ""
@@ -191,7 +191,7 @@ Item {
                 visible: _root.action && _root.action.isValid != true
 
                 font.family: "bootstrap-icons"
-                font.pixelSize: 24
+                font.pixelSize: Style.dp(24)
 
                 text: bsi.icons.error
                 color: Style.error
@@ -251,7 +251,7 @@ Item {
         Rectangle {
             color: "transparent"
             z: -1
-            height: _root.action && _root.action.lastInContainer ? 15 : 0
+            height: _root.action && _root.action.lastInContainer ? Style.dp(15) : 0
             Layout.fillWidth: true
         }
     }
@@ -319,7 +319,7 @@ Item {
         x: _header.x
         y: _header.y
         z: -1
-        width: _header.width + 20
+        width: _header.width + Style.dp(20)
         height: _header.height
 
         drag.target: _content

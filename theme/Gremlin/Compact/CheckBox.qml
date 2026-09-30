@@ -4,8 +4,9 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Controls.Universal.impl
+import Gremlin.Style
 
 T.CheckBox {
     id: control
@@ -16,9 +17,9 @@ T.CheckBox {
                              implicitContentHeight + topPadding + bottomPadding,
                              implicitIndicatorHeight + topPadding + bottomPadding)
 
-    padding: 2
-    spacing: 6
-    font.pixelSize: 14
+    padding: Style.dp(2)
+    spacing: Style.dp(6)
+    font.pixelSize: Style.dp(14)
     property bool useSystemFocusVisuals: true
 
     indicator: CheckIndicator {
@@ -37,6 +38,6 @@ T.CheckBox {
         verticalAlignment: Text.AlignVCenter
 
         opacity: enabled ? 1.0 : 0.2
-        color: control.Universal.foreground
+        color: control.U.Universal.foreground
     }
 }

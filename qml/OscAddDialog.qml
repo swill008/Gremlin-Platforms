@@ -24,8 +24,8 @@ Popup {
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    padding: 20
-    width: 860
+    padding: Style.dp(20)
+    width: Style.dp(860)
 
     OscSettingsInfo { id: _oscInfo }
     OscBulkCapture { id: _bulk }
@@ -33,8 +33,8 @@ Popup {
     background: Rectangle {
         color: Style.background
         border.color: Style.accent
-        border.width: 1
-        radius: 4
+        border.width: Style.dp(1)
+        radius: Style.dp(4)
     }
 
     function resetFields() {
@@ -117,18 +117,18 @@ Popup {
     }
 
     contentItem: ColumnLayout {
-        spacing: 10
+        spacing: Style.dp(10)
 
         Label {
             text: "OSC Input Mapper"
             font.bold: true
-            font.pixelSize: 16
+            font.pixelSize: Style.dp(16)
         }
 
         Label { text: "OSC message:" }
 
         RowLayout {
-            Label { text: "Cmd:"; Layout.preferredWidth: 70 }
+            Label { text: "Cmd:"; Layout.preferredWidth: Style.dp(70) }
             TextField {
                 id: _cmd
                 Layout.fillWidth: true
@@ -140,7 +140,7 @@ Popup {
         Label { text: "Source:  " + (_root.lastSource || "") }
 
         RowLayout {
-            spacing: 16
+            spacing: Style.dp(16)
             Layout.fillWidth: true
             Label { text: "Action mode:" }
             RadioButton { id: _modeChange; text: "Change" }
@@ -158,12 +158,12 @@ Popup {
         ButtonGroup { buttons: [_messageOnly, _messageData] }
 
         RowLayout {
-            spacing: 6
+            spacing: Style.dp(6)
             CheckBox { id: _triggerOn; text: "Trigger on message" }
             TextField {
                 id: _delay
                 text: "250"
-                implicitWidth: 60
+                implicitWidth: Style.dp(60)
                 enabled: _triggerOn.checked
             }
             Repeater {
@@ -184,12 +184,12 @@ Popup {
 
         Item {
             Layout.fillWidth: true
-            implicitHeight: _helpMeasure.implicitHeight + 16
+            implicitHeight: _helpMeasure.implicitHeight + Style.dp(16)
 
             Label {
                 id: _helpMeasure
                 visible: false
-                width: parent.width - 16
+                width: parent.width - Style.dp(16)
                 wrapMode: Text.WordWrap
                 text: _root.buttonHelpText
             }
@@ -202,7 +202,7 @@ Popup {
                 Label {
                     id: _help
                     anchors.fill: parent
-                    anchors.margins: 8
+                    anchors.margins: Style.dp(8)
                     wrapMode: Text.WordWrap
                     verticalAlignment: Text.AlignTop
                     text: _root.helpText()
@@ -213,7 +213,7 @@ Popup {
 
         Label { text: _root.footerText() }
 
-        Item { Layout.preferredHeight: 8 }
+        Item { Layout.preferredHeight: Style.dp(8) }
 
         RowLayout {
             Button {

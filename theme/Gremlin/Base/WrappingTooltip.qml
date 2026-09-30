@@ -13,6 +13,6 @@ ToolTip {
 
     // The width is clamped to force word-wrap on long text with padding added
     // to have space on the end of the tooltip box.
-    width: contentWidth > maxWidth ? maxWidth : contentWidth + 20
+    width: contentWidth > maxWidth ? maxWidth : contentWidth + Style.dp(20)
     delay: Style.tooltipDelayMs
 }

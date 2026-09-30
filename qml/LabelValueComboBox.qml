@@ -6,9 +6,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Profile
+import Gremlin.Style
 
 
 Item {
@@ -26,12 +27,12 @@ Item {
 
         anchors.left: parent.left
         anchors.right: parent.right
-        spacing: 10
+        spacing: Style.dp(10)
 
         ComboBox {
             id: _selection
 
-            Layout.minimumWidth: 250
+            Layout.minimumWidth: Style.dp(250)
             Layout.fillWidth: true
 
             model: _root.model
@@ -54,11 +55,11 @@ Item {
              Label {
                  text: bootstrap
 
-                 width: bootstrap.length > 0 ? 30 : 0
+                 width: bootstrap.length > 0 ? Style.dp(30) : 0
                  verticalAlignment: Text.AlignBottom
 
                  font.family: "bootstrap-icons"
-                 font.pixelSize: 20
+                 font.pixelSize: Style.dp(20)
              }
              Label {
                 text: label

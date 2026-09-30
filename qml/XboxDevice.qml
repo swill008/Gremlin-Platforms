@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Device
@@ -18,17 +18,17 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 8
+        anchors.margins: Style.dp(10)
+        spacing: Style.dp(8)
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Style.dp(8)
 
             Label {
                 text: "Xbox 360 Controller"
                 font.bold: true
-                font.pixelSize: 16
+                font.pixelSize: Style.dp(16)
             }
 
             Label { text: "Pad" }
@@ -56,7 +56,7 @@ Item {
             wrapMode: Text.WordWrap
             text: "This tab is the labeled 360 layout. Mapping is done from a hardware / Keyboard / OSC tab with the Map to Xbox action. Rows below show who already targets each control."
             opacity: 0.7
-            font.pixelSize: 12
+            font.pixelSize: Style.dp(12)
         }
 
         JGListView {
@@ -64,7 +64,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             scrollbarAlwaysVisible: true
-            spacing: 4
+            spacing: Style.dp(4)
             model: _model
 
             delegate: Rectangle {
@@ -73,20 +73,20 @@ Item {
                 required property string incoming
                 required property int index
 
-                width: _list.width - 16
-                implicitHeight: _row.implicitHeight + 12
-                radius: 4
+                width: _list.width - Style.dp(16)
+                implicitHeight: _row.implicitHeight + Style.dp(12)
+                radius: Style.dp(4)
                 color: Style.background
                 border.color: incoming.length ? Style.accent : Style.lowColor
-                border.width: 1
+                border.width: Style.dp(1)
 
                 ColumnLayout {
                     id: _row
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.margins: 8
-                    spacing: 2
+                    anchors.margins: Style.dp(8)
+                    spacing: Style.dp(2)
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -94,7 +94,7 @@ Item {
                         Label {
                             text: label
                             font.bold: true
-                            font.pixelSize: 13
+                            font.pixelSize: Style.dp(13)
                         }
 
                         Item { Layout.fillWidth: true }
@@ -102,7 +102,7 @@ Item {
                         Label {
                             text: kind
                             opacity: 0.55
-                            font.pixelSize: 11
+                            font.pixelSize: Style.dp(11)
                         }
                     }
 
@@ -112,14 +112,14 @@ Item {
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                         color: Style.accent
-                        font.pixelSize: 11
+                        font.pixelSize: Style.dp(11)
                     }
 
                     Label {
                         visible: incoming.length === 0
                         text: "Unmapped"
                         opacity: 0.45
-                        font.pixelSize: 11
+                        font.pixelSize: Style.dp(11)
                     }
                 }
             }

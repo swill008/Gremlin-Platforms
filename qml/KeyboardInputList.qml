@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -21,7 +21,7 @@ Item {
         id: _renameDialog
 
         visible: false
-        width: 320
+        width: Style.dp(320)
 
         property int rowIndex: -1
 
@@ -44,16 +44,16 @@ Item {
 
             Layout.fillHeight: true
             Layout.fillWidth: true
-            Layout.leftMargin: 10
+            Layout.leftMargin: Style.dp(10)
 
             scrollbarAlwaysVisible: true
-            spacing: 5
+            spacing: Style.dp(5)
 
             model: KeyboardManagerModel {}
 
             delegate: InputButton {
-                width: _inputList.width - 20
-                height: 50
+                width: _inputList.width - Style.dp(20)
+                height: Style.dp(50)
                 enabled: !editorLocked
 
                 selected: model.index === _inputList.currentIndex
@@ -73,8 +73,8 @@ Item {
 
                 deleteButton: IconButton {
                     text: bsi.icons.remove
-                    font.pixelSize: 12
-                    width: 15
+                    font.pixelSize: Style.dp(12)
+                    width: Style.dp(15)
                     enabled: !editorLocked
 
                     onClicked: () => {
@@ -87,7 +87,7 @@ Item {
 
             footer: Item {
                 width: ListView.view.width
-                height: 10
+                height: Style.dp(10)
             }
 
             onCurrentIndexChanged: () => {
@@ -102,7 +102,7 @@ Item {
          }
 
         InputListener {
-            Layout.margins: 10
+            Layout.margins: Style.dp(10)
             Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
             enabled: !editorLocked
 

@@ -4,14 +4,15 @@
 
 import QtQuick
 import QtQuick.Templates as T
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
+import Gremlin.Style
 
 T.Label {
     id: control
 
-    font.pixelSize: 14
+    font.pixelSize: Style.dp(14)
 
     opacity: enabled ? 1.0 : 0.2
-    color: control.Universal.foreground
-    linkColor: Universal.accent
+    color: control.U.Universal.foreground
+    linkColor: U.Universal.accent
 }

@@ -6,12 +6,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Config
+import Gremlin.Style
 
 Item {
     id: _root
 
     implicitHeight: _row.implicitHeight
-    implicitWidth: 420
+    implicitWidth: Style.dp(420)
 
     OscInputHostModel {
         id: _model
@@ -21,7 +22,7 @@ Item {
         id: _row
 
         anchors.fill: parent
-        spacing: 6
+        spacing: Style.dp(6)
 
         ComboBox {
             id: _combo
@@ -46,7 +47,7 @@ Item {
         }
 
         Button {
-            Layout.preferredWidth: 36
+            Layout.preferredWidth: Style.dp(36)
             Layout.preferredHeight: _combo.height
             text: "\u21bb"
             PointerTip {
@@ -64,7 +65,7 @@ Item {
         TextField {
             id: _port
 
-            Layout.preferredWidth: 72
+            Layout.preferredWidth: Style.dp(72)
             text: _model.port
             selectByMouse: true
             inputMethodHints: Qt.ImhDigitsOnly

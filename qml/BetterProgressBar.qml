@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -18,9 +18,9 @@ ProgressBar {
     }
 
     value: 0
-    padding: 2
+    padding: Style.dp(2)
 
-    property int barSize: 20
+    property int barSize: Style.dp(20)
     property color fillColor: Style.accent
     property int orientation: BetterProgressBar.Orientation.Horizontal
 
@@ -31,20 +31,20 @@ ProgressBar {
         implicitHeight: __isHorizontal ? barSize : height
         implicitWidth: __isHorizontal ? width : barSize
 
-        radius: 3
+        radius: Style.dp(3)
         color: Style.lowColor
     }
 
     contentItem: Item {
-        implicitHeight: __isHorizontal ? barSize - 2 : height
-        implicitWidth: __isHorizontal ? width : barSize - 2
+        implicitHeight: __isHorizontal ? barSize - Style.dp(2) : height
+        implicitWidth: __isHorizontal ? width : barSize - Style.dp(2)
 
         Rectangle {
             anchors.bottom: parent.bottom
 
             height: __isHorizontal ? parent.height : control.visualPosition * parent.height
             width: __isHorizontal ? control.visualPosition * parent.width : parent.width
-            radius: 2
+            radius: Style.dp(2)
             color: control.fillColor
         }
     }

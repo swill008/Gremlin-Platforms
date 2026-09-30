@@ -6,10 +6,11 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Templates as T
 import Gremlin.Base as Base
 import Gremlin.Compact as Compact
+import Gremlin.Style
 
 Compact.ComboBox {
     id: control
@@ -23,9 +24,9 @@ Compact.ComboBox {
 
         width: ListView.view.width
         text: model[control.textRole]
-        font.pixelSize: 14
-        topPadding: 4
-        bottomPadding: 4
+        font.pixelSize: Style.dp(14)
+        topPadding: Style.dp(4)
+        bottomPadding: Style.dp(4)
         font.weight: control.currentIndex === index ? Font.DemiBold : Font.Normal
         highlighted: control.highlightedIndex === index
         hoverEnabled: control.hoverEnabled
@@ -39,11 +40,11 @@ Compact.ComboBox {
     popup: T.Popup {
         width: control.width
         height: Math.min(contentItem.implicitHeight, control.Window.height - topMargin - bottomMargin)
-        topMargin: 4
-        bottomMargin: 4
+        topMargin: Style.dp(4)
+        bottomMargin: Style.dp(4)
 
-        Universal.theme: control.Universal.theme
-        Universal.accent: control.Universal.accent
+        U.Universal.theme: control.U.Universal.theme
+        U.Universal.accent: control.U.Universal.accent
 
         contentItem: Base.ComboBoxScrollableEntries {
             model: control.delegateModel
@@ -52,9 +53,9 @@ Compact.ComboBox {
         }
 
         background: Rectangle {
-            color: control.Universal.chromeMediumLowColor
-            border.color: control.Universal.chromeHighColor
-            border.width: 1
+            color: control.U.Universal.chromeMediumLowColor
+            border.color: control.U.Universal.chromeHighColor
+            border.width: Style.dp(1)
         }
     }
 

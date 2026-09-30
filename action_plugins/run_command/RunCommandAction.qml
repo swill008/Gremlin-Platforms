@@ -3,13 +3,14 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.ActionPlugins
 import "../../qml"
+import Gremlin.Style
 
 Item {
     id: _root
@@ -28,7 +29,7 @@ Item {
             Layout.fillWidth: true
 
             Label {
-                Layout.preferredWidth: 110
+                Layout.preferredWidth: Style.dp(110)
 
                 text: "Executable"
             }
@@ -63,7 +64,7 @@ Item {
             Layout.fillWidth: true
 
             Label {
-                Layout.preferredWidth: 110
+                Layout.preferredWidth: Style.dp(110)
 
                 text: "Arguments"
             }

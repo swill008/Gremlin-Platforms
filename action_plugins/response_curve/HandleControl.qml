@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Shapes
 
 import Gremlin.Style
@@ -12,7 +12,7 @@ import "render_helpers.js" as RH
 Rectangle {
     id: _control
 
-    readonly property int offset: 5
+    readonly property int offset: Style.dp(5)
     property Repeater repeater
     property Item focusTarget
 
@@ -105,7 +105,7 @@ Rectangle {
 
             color: Style.background
             border.color: action.selectedPoint === index ? Style.accent : Style.medColor
-            border.width: 2
+            border.width: Style.dp(2)
 
             MouseArea {
                 anchors.fill: parent
@@ -136,7 +136,7 @@ Rectangle {
 
             color: Style.background
             border.color: action.selectedPoint === index ? Style.accent : Style.medColor
-            border.width: 2
+            border.width: Style.dp(2)
 
             MouseArea {
                 anchors.fill: parent

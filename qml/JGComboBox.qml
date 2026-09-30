@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import Gremlin.Style
 
 ComboBox {
     id: _combobox
@@ -26,11 +27,11 @@ ComboBox {
 
         ToolTip {
             text: parent.text
-            width: contentWidth > 500 ? 500 : contentWidth + 20
+            width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
             visible: _rowHover.hovered && _combobox.enableTooltips
             delay: 500
             x: _rowHover.point.position.x - width / 2
-            y: _rowHover.point.position.y - height - 8
+            y: _rowHover.point.position.y - height - Style.dp(8)
         }
     }
 
@@ -38,11 +39,11 @@ ComboBox {
         text: parent.currentText
         // Set an upper width of the tooltip to force word wrap
         // on long selection names.
-        width: contentWidth > 500 ? 500 : contentWidth + 20
+        width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
         visible: _hoverHandler.hovered && enableTooltips
         delay: 500
         x: _hoverHandler.point.position.x - width / 2
-        y: _hoverHandler.point.position.y - height - 8
+        y: _hoverHandler.point.position.y - height - Style.dp(8)
     }
 
     HoverHandler {

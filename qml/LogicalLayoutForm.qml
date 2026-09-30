@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Style
@@ -16,7 +16,7 @@ Item {
     signal closeRequested()
 
     readonly property bool canEdit: layout && !locked
-    Universal.theme: Style.theme
+    U.Universal.theme: Style.theme
 
     Rectangle {
         anchors.fill: parent
@@ -44,14 +44,14 @@ Item {
     ColumnLayout {
         id: _col
         width: _flick.width
-        spacing: 8
+        spacing: Style.dp(8)
 
         RowLayout {
             Label {
                 text: "Layout"
                 color: "#E4E4E7"
                 font.bold: true
-                font.pixelSize: 16
+                font.pixelSize: Style.dp(16)
                 Layout.fillWidth: true
             }
             Button {
@@ -66,7 +66,7 @@ Item {
             }
             Button {
                 text: "×"
-                implicitWidth: 28
+                implicitWidth: Style.dp(28)
                 onClicked: _root.closeRequested()
             }
         }
@@ -143,19 +143,19 @@ Item {
         }
         ListView {
             Layout.fillWidth: true
-            Layout.preferredHeight: 140
+            Layout.preferredHeight: Style.dp(140)
             clip: true
             model: layout ? layout.groups : []
-            spacing: 4
+            spacing: Style.dp(4)
             delegate: Rectangle {
                 width: ListView.view.width
-                height: 36
+                height: Style.dp(36)
                 color: "#27272A"
-                radius: 3
+                radius: Style.dp(3)
                 required property var modelData
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 6
+                    anchors.margins: Style.dp(6)
                     Label {
                         text: modelData.title
                         color: "#E4E4E7"
@@ -163,7 +163,7 @@ Item {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
                     }
-                    Label { text: modelData.summary; color: "#A1A1AA"; font.pixelSize: 11 }
+                    Label { text: modelData.summary; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
                     Button {
                         visible: modelData.name.length > 0
                         text: "Up"
@@ -278,7 +278,7 @@ Item {
                 _applyFilter()
             }
         }
-        Item { Layout.preferredHeight: 12 }
+        Item { Layout.preferredHeight: Style.dp(12) }
     }
     }
 
@@ -303,7 +303,7 @@ Item {
         standardButtons: Dialog.Ok | Dialog.Cancel
         TextField {
             id: _renameField
-            width: 240
+            width: Style.dp(240)
             color: "#E4E4E7"
         }
         onAccepted: {

@@ -17,8 +17,8 @@ Popup {
     signal accepted()
     signal rejected()
 
-    width: 800
-    height: 500
+    width: Style.dp(800)
+    height: Style.dp(500)
     anchors.centerIn: parent
 
     popupType: Popup.Item
@@ -28,7 +28,7 @@ Popup {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: Style.dp(10)
 
         Label {
             Layout.fillWidth: true
@@ -36,7 +36,7 @@ Popup {
             text: root.title
 
             font.bold: true
-            font.pixelSize: 16
+            font.pixelSize: Style.dp(16)
         }
 
         Label {

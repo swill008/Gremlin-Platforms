@@ -18,12 +18,12 @@ Button {
 
     text: name
 
-    height: 40
+    height: Style.dp(40)
     width: _sectionSelector.width
 
     background: Row {
         Rectangle {
-            width: 5
+            width: Style.dp(5)
             anchors.top: parent.top
             anchors.bottom: parent.bottom
 
@@ -31,8 +31,8 @@ Button {
                 Style.accent : Style.background
         }
         Rectangle {
-            x: 5
-            width: parent.width - 5
+            x: Style.dp(5)
+            width: parent.width - Style.dp(5)
             anchors.top: parent.top
             anchors.bottom: parent.bottom
 

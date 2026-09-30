@@ -11,7 +11,7 @@ Button {
     property alias textColor: _text.color
 
     font.family: "bootstrap-icons"
-    font.pixelSize: 17
+    font.pixelSize: Style.dp(17)
 
     contentItem: Text {
         id: _text

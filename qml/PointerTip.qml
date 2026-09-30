@@ -4,6 +4,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import Gremlin.Style
 
 Item {
     id: _root
@@ -26,6 +27,6 @@ Item {
         delay: _root.delay
         timeout: _root.timeout < 0 ? -1 : _root.timeout
         x: _hover.point.position.x - width / 2
-        y: _hover.point.position.y - height - 8
+        y: _hover.point.position.y - height - Style.dp(8)
     }
 }

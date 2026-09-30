@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -12,6 +12,7 @@ import Gremlin.Base
 import Gremlin.Profile
 import Gremlin.UI
 import "../../qml"
+import Gremlin.Style
 
 Item {
     id: _root
@@ -48,7 +49,7 @@ Item {
             JGTextField {
                 id: _actionLabel
 
-                width: 400
+                width: Style.dp(400)
                 focus: true
 
                 text: action.label
@@ -72,7 +73,7 @@ Item {
         // +-------------------------------------------------------------------
         RowLayout {
             Label {
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: Style.dp(150)
 
                 text: "Deadzone instance"
             }
@@ -91,14 +92,14 @@ Item {
 
             IconButton {
                 text: bsi.icons.add_new
-                font.pixelSize: 24
+                font.pixelSize: Style.dp(24)
 
                 onClicked: () => { _root.action.newDeadzone() }
             }
 
             IconButton {
                 text: bsi.icons.rename
-                font.pixelSize: 24
+                font.pixelSize: Style.dp(24)
 
                 onClicked: () => { _dialog.open() }
             }
@@ -107,7 +108,7 @@ Item {
         // Deadzone configuration
         RowLayout {
             Label {
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: Style.dp(150)
 
                 text: "Deadzone limits"
             }
@@ -130,7 +131,7 @@ Item {
             }
 
             Label {
-                Layout.leftMargin: 20
+                Layout.leftMargin: Style.dp(20)
 
                 text: "Outer"
             }
@@ -171,7 +172,7 @@ Item {
 
             LayoutHorizontalSpacer {
                 Layout.fillWidth: false
-                Layout.preferredWidth: 50
+                Layout.preferredWidth: Style.dp(50)
             }
 
             // Second axis selection
@@ -211,7 +212,7 @@ Item {
         Rectangle {
             id: _firstDivider
             Layout.fillWidth: true
-            height: 2
+            height: Style.dp(2)
             color: Style.lowColor
         }
 
@@ -248,7 +249,7 @@ Item {
         Rectangle {
             id: _secondDivider
             Layout.fillWidth: true
-            height: 2
+            height: Style.dp(2)
             color: Style.lowColor
         }
 

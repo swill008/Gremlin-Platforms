@@ -17,14 +17,14 @@ Popup {
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    padding: 16
-    width: 460
+    padding: Style.dp(16)
+    width: Style.dp(460)
 
     background: Rectangle {
         color: Style.background
         border.color: Style.accent
-        border.width: 1
-        radius: 4
+        border.width: Style.dp(1)
+        radius: Style.dp(4)
     }
 
     function resetFields() {
@@ -32,32 +32,32 @@ Popup {
     }
 
     contentItem: ColumnLayout {
-        spacing: 10
+        spacing: Style.dp(10)
 
         Label {
             text: "New OSC messages:"
             font.bold: true
-            font.pixelSize: 16
+            font.pixelSize: Style.dp(16)
         }
 
         TextArea {
             id: _messages
             Layout.fillWidth: true
-            Layout.preferredHeight: 90
+            Layout.preferredHeight: Style.dp(90)
             wrapMode: TextEdit.NoWrap
             placeholderText: "/button/1"
         }
 
         Rectangle {
             Layout.fillWidth: true
-            implicitHeight: _help.implicitHeight + 16
+            implicitHeight: _help.implicitHeight + Style.dp(16)
             color: "#8a7a2a"
             border.color: "#c4b44a"
 
             Label {
                 id: _help
                 anchors.fill: parent
-                anchors.margins: 8
+                anchors.margins: Style.dp(8)
                 wrapMode: Text.WordWrap
                 color: "#1b1b1b"
                 text: "Enter new OSC messages one per line.\n" +

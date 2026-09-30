@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -27,7 +27,7 @@ Item {
         id: _textInput
 
         visible: false
-        width: 300
+        width: Style.dp(300)
 
         property var callback: null
 
@@ -50,16 +50,16 @@ Item {
 
             Layout.fillHeight: true
             Layout.fillWidth: true
-            Layout.leftMargin: 10
+            Layout.leftMargin: Style.dp(10)
 
             scrollbarAlwaysVisible: true
-            spacing: 5
+            spacing: Style.dp(5)
 
             model: LogicalDeviceManagementModel {}
 
             delegate: InputButton {
-                width: _inputList.width - 20
-                height: 50
+                width: _inputList.width - Style.dp(20)
+                height: Style.dp(50)
                 enabled: !editorLocked
 
                 selected: model.index === _inputList.currentIndex
@@ -81,8 +81,8 @@ Item {
 
                 editButton: IconButton {
                     text: bsi.icons.edit
-                    font.pixelSize: 12
-                    width: 15
+                    font.pixelSize: Style.dp(12)
+                    width: Style.dp(15)
                     enabled: !editorLocked
 
                     onClicked: () => {
@@ -99,8 +99,8 @@ Item {
 
                 deleteButton: IconButton {
                     text: bsi.icons.remove
-                    font.pixelSize: 12
-                    width: 15
+                    font.pixelSize: Style.dp(12)
+                    width: Style.dp(15)
                     enabled: !editorLocked
 
                     onClicked: () => {
@@ -113,7 +113,7 @@ Item {
 
             footer: Item {
                 width: ListView.view.width
-                height: 10
+                height: Style.dp(10)
             }
 
             onCurrentIndexChanged: () => {
@@ -126,22 +126,22 @@ Item {
         }
 
         RowLayout {
-            Layout.minimumWidth: 100
-            Layout.preferredHeight: 50
+            Layout.minimumWidth: Style.dp(100)
+            Layout.preferredHeight: Style.dp(50)
             enabled: !editorLocked
 
             ComboBox {
                 id: _input_type
 
                 Layout.fillWidth: true
-                Layout.leftMargin: 5
+                Layout.leftMargin: Style.dp(5)
 
                 model: ["Axis", "Button", "Hat"]
             }
 
             Button {
                 Layout.preferredHeight: _input_type.height
-                Layout.rightMargin: 5
+                Layout.rightMargin: Style.dp(5)
                 enabled: !editorLocked
 
                 text: bsi.icons.add

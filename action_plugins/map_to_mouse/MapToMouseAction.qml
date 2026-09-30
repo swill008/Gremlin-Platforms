@@ -6,13 +6,14 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.ActionPlugins
 import Gremlin.Base as Base
 import Gremlin.Compact as Compact
 import Gremlin.Profile
 import "../../qml"
+import Gremlin.Style
 
 
 Item {
@@ -41,7 +42,7 @@ Item {
             Label {
                 id: _label
 
-                Layout.preferredWidth: 50
+                Layout.preferredWidth: Style.dp(50)
 
                 text: "<B>Mode</B>"
             }
@@ -209,7 +210,7 @@ Item {
             RowLayout {
 
                 Label {
-                    Layout.rightMargin: 10
+                    Layout.rightMargin: Style.dp(10)
 
                     text: "Minimum speed"
                 }
@@ -217,7 +218,7 @@ Item {
                 Loader {
                     id: _min_speed_axis
 
-                    Layout.preferredWidth: 150
+                    Layout.preferredWidth: Style.dp(150)
 
                     sourceComponent: _root.useCompact ? _compactSpinBox : _baseSpinBox
 
@@ -230,8 +231,8 @@ Item {
                 }
 
                 Label {
-                    Layout.leftMargin: 50
-                    Layout.rightMargin: 10
+                    Layout.leftMargin: Style.dp(50)
+                    Layout.rightMargin: Style.dp(10)
 
                     text: "Maximum speed"
                 }
@@ -239,7 +240,7 @@ Item {
                 Loader {
                     id: _max_speed_axis
 
-                    Layout.preferredWidth: 150
+                    Layout.preferredWidth: Style.dp(150)
 
                     sourceComponent: _root.useCompact ? _compactSpinBox : _baseSpinBox
 

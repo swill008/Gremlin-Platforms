@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -18,7 +18,7 @@ Item {
     id: _root
 
     property ConditionModel action
-    readonly property int conditionLabelWidth: 150
+    readonly property int conditionLabelWidth: Style.dp(150)
 
     implicitHeight: _content.height
 
@@ -114,8 +114,8 @@ Item {
             Layout.fillWidth: true
 
             dividerColor: Style.lowColor
-            lineWidth: 2
-            spacing: 2
+            lineWidth: Style.dp(2)
+            spacing: Style.dp(2)
         }
 
         Repeater {
@@ -154,8 +154,8 @@ Item {
             Layout.fillWidth: true
 
             dividerColor: Style.lowColor
-            lineWidth: 2
-            spacing: 2
+            lineWidth: Style.dp(2)
+            spacing: Style.dp(2)
         }
 
         Repeater {
@@ -338,7 +338,7 @@ Item {
 
     component DeleteConditionButton : IconButton {
         text: bsi.icons.remove
-        font.pixelSize: 16
+        font.pixelSize: Style.dp(16)
 
         onClicked: () => _root.action.removeCondition(index)
     }
@@ -360,11 +360,11 @@ Item {
                     visible: typeIcon !== ""
                     text: typeIcon
                     font.family: "bootstrap-icons"
-                    font.pixelSize: 16
+                    font.pixelSize: Style.dp(16)
                 }
                 Image {
-                    width: 16
-                    height: 16
+                    width: Style.dp(16)
+                    height: Style.dp(16)
 
                     visible: typeIconSource !== ""
                     source: typeIconSource
@@ -388,7 +388,7 @@ Item {
             id: _actionLoader
 
             Layout.fillWidth: true
-            Layout.leftMargin: 10
+            Layout.leftMargin: Style.dp(10)
         }
 
         LayoutHorizontalSpacer {}
@@ -397,7 +397,7 @@ Item {
             visible: modelData.isValid != true
 
             font.family: "bootstrap-icons"
-            font.pixelSize: 24
+            font.pixelSize: Style.dp(24)
 
             text: bsi.icons.error
             color: Style.error

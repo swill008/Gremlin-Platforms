@@ -16,8 +16,8 @@ Popup {
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    padding: 16
-    width: 420
+    padding: Style.dp(16)
+    width: Style.dp(420)
 
     property var status: _status
 
@@ -30,8 +30,8 @@ Popup {
     background: Rectangle {
         color: Style.background
         border.color: Style.accent
-        border.width: 1
-        radius: 4
+        border.width: Style.dp(1)
+        radius: Style.dp(4)
     }
 
     onOpened: {
@@ -41,13 +41,13 @@ Popup {
     }
 
     contentItem: ColumnLayout {
-        spacing: 12
-        width: parent ? parent.width : 420
+        spacing: Style.dp(12)
+        width: parent ? parent.width : Style.dp(420)
 
         Label {
             text: "Device tabs"
             font.bold: true
-            font.pixelSize: 16
+            font.pixelSize: Style.dp(16)
         }
 
         Label {
@@ -55,7 +55,7 @@ Popup {
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             opacity: 0.75
-            font.pixelSize: 12
+            font.pixelSize: Style.dp(12)
         }
 
         Repeater {
@@ -85,8 +85,8 @@ Popup {
 
         GridLayout {
             columns: 4
-            columnSpacing: 12
-            rowSpacing: 10
+            columnSpacing: Style.dp(12)
+            rowSpacing: Style.dp(10)
             Layout.fillWidth: true
 
             Repeater {
@@ -98,7 +98,7 @@ Popup {
                     readonly property bool active: _root.status && _root.status.activeCount >= 0 && _root.status.isActive(deviceId)
                     readonly property bool pinned: _root.status && _root.status.pinStamp >= 0 && _root.status.isPinned(deviceId)
                     Layout.fillWidth: true
-                    spacing: 4
+                    spacing: Style.dp(4)
 
                     CheckBox {
                         checked: parent.pinned
@@ -112,17 +112,17 @@ Popup {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        implicitHeight: 32
-                        radius: 4
+                        implicitHeight: Style.dp(32)
+                        radius: Style.dp(4)
                         color: parent.active ? Style.accent : Style.background
                         border.color: parent.active ? Style.accent : Style.lowColor
-                        border.width: 1
+                        border.width: Style.dp(1)
 
                         Label {
                             anchors.centerIn: parent
                             text: deviceId
                             font.bold: true
-                            font.pixelSize: 14
+                            font.pixelSize: Style.dp(14)
                             color: parent.parent.active ? Style.background : Style.foreground
                             opacity: parent.parent.active ? 1.0 : 0.45
                         }

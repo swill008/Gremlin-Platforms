@@ -8,6 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Base as Base
 import Gremlin.Compact as Compact
 import Gremlin.Device
+import Gremlin.Style
 
 
 Item {
@@ -49,7 +50,7 @@ Item {
         Loader {
             id: _loader
 
-            Layout.minimumWidth: 200
+            Layout.minimumWidth: Style.dp(200)
             Layout.fillWidth: true
 
             sourceComponent: _root.useCompact ? _compactVariant : _baseVariant

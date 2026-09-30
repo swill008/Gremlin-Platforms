@@ -7,10 +7,11 @@ import QtQuick.Layouts
 import QtQuick.Window
 import QtQml.Models
 
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 
 import Gremlin.ActionPlugins
 import Gremlin.Profile
+import Gremlin.Style
 
 
 Item {
@@ -50,8 +51,8 @@ Item {
             id: _header
 
             Layout.fillWidth: true
-            Layout.leftMargin: 5
-            Layout.rightMargin: 20
+            Layout.leftMargin: Style.dp(5)
+            Layout.rightMargin: Style.dp(20)
 
             inputBinding: _root.inputBinding
             inputItemModel: _root.inputItemModel
@@ -66,7 +67,7 @@ Item {
             id: _action_node
 
             Layout.fillWidth: true
-            Layout.rightMargin: 20
+            Layout.rightMargin: Style.dp(20)
 
             action: _root.inputBinding ? _root.inputBinding.rootAction : null
             inputBinding: _root.inputBinding
@@ -75,10 +76,10 @@ Item {
 
         HorizontalDivider {
             Layout.fillWidth: true
-            Layout.leftMargin: 5
-            Layout.rightMargin: 20
+            Layout.leftMargin: Style.dp(5)
+            Layout.rightMargin: Style.dp(20)
 
-            spacing: 15
+            spacing: Style.dp(15)
         }
     }
 
@@ -113,7 +114,7 @@ Item {
             z: 5
             anchors.left: parent.left
             anchors.right: parent.right
-            height: 2
+            height: Style.dp(2)
             color: "#3B82F6"
         }
     }

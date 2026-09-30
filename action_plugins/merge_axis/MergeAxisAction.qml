@@ -3,7 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -12,6 +12,7 @@ import Gremlin.UI
 import Gremlin.ActionPlugins
 import "../../qml"
 import Gremlin.Compact as Compact
+import Gremlin.Style
 
 Item {
     id: _root
@@ -50,7 +51,7 @@ Item {
             JGTextField {
                 id: _action_label
 
-                width: 400
+                width: Style.dp(400)
                 focus: true
 
                 text: action.label
@@ -94,14 +95,14 @@ Item {
             Row {
                 IconButton {
                     text: bsi.icons.add_new
-                    font.pixelSize: 24
+                    font.pixelSize: Style.dp(24)
 
                     onClicked: () => { _root.action.newMergeAxis() }
                 }
 
                 IconButton {
                     text: bsi.icons.rename
-                    font.pixelSize: 24
+                    font.pixelSize: Style.dp(24)
 
                     onClicked: () => { _dialog.open() }
                 }
@@ -148,7 +149,7 @@ Item {
 
             LayoutHorizontalSpacer {
                 Layout.fillWidth: false
-                Layout.preferredWidth: 50
+                Layout.preferredWidth: Style.dp(50)
             }
 
             // Second axis selection
@@ -188,7 +189,7 @@ Item {
         Rectangle {
             id: _childActionDivider
             Layout.fillWidth: true
-            height: 2
+            height: Style.dp(2)
             color: Style.lowColor
         }
 

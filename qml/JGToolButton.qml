@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Gremlin.Style
 
 ToolButton {
     id: _button
@@ -13,10 +14,10 @@ ToolButton {
     property string caption: ""
     readonly property real sideSlack: Math.max(0, (_face.implicitWidth - _icon.implicitWidth) / 2)
 
-    leftPadding: 10
-    rightPadding: 10
-    topPadding: 4
-    bottomPadding: 4
+    leftPadding: Style.dp(10)
+    rightPadding: Style.dp(10)
+    topPadding: Style.dp(4)
+    bottomPadding: Style.dp(4)
 
     implicitWidth: _face.implicitWidth + leftPadding + rightPadding
     implicitHeight: _face.implicitHeight + topPadding + bottomPadding
@@ -27,7 +28,7 @@ ToolButton {
         id: _face
 
         implicitWidth: Math.max(_icon.implicitWidth, _caption.visible ? _caption.implicitWidth : 0)
-        implicitHeight: _icon.implicitHeight + (_caption.visible ? _caption.implicitHeight + 2 : 0)
+        implicitHeight: _icon.implicitHeight + (_caption.visible ? _caption.implicitHeight + Style.dp(2) : 0)
 
         Label {
             id: _icon
@@ -35,7 +36,7 @@ ToolButton {
             anchors.top: parent.top
             text: _button.text
             font.family: "bootstrap-icons"
-            font.pixelSize: 48
+            font.pixelSize: Style.dp(48)
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }
@@ -44,10 +45,10 @@ ToolButton {
             id: _caption
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: _icon.bottom
-            anchors.topMargin: 2
+            anchors.topMargin: Style.dp(2)
             visible: _button.caption.length > 0
             text: _button.caption
-            font.pixelSize: 18
+            font.pixelSize: Style.dp(18)
             horizontalAlignment: Text.AlignHCenter
         }
     }
@@ -62,6 +63,6 @@ ToolButton {
         visible: _tipHover.hovered && text.length > 0
         delay: 500
         x: _tipHover.point.position.x - width / 2
-        y: _tipHover.point.position.y - height - 8
+        y: _tipHover.point.position.y - height - Style.dp(8)
     }
 }

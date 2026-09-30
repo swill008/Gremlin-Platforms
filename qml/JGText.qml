@@ -8,6 +8,6 @@ import Gremlin.Style
 
 Text {
     color: Style.foreground
-    font.pointSize: 12
+    font.pixelSize: Style.dp(16)
     font.family: "Segoe UI"
 }
