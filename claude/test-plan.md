@@ -559,3 +559,16 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | OPT-P07 | FAIL | The row's × does not remove the entry; no error logged. |
 | OPT-G.., OPT-O.., OPT-D.., OPT-C.., OPT-M.. | NOT RUN | Remaining switches (same widget as the tested ones). |
 | OPT-U02 | PASS (earlier) | Windows scaling restart popup was tested when it was built. |
+
+## Batch 8: Button Map (2026-09-30)
+
+Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) were tested earlier today.
+
+| ID | Result | Notes |
+|---|---|---|
+| BM-V02 / S-25 | NOTE (by design) | Show grid outside edit mode writes the module file immediately (`ui` block only). The editor help says "Grid / snap writes only ui", so this is intended. |
+| BM-X1 / S-22 | FAIL | No "Export map…" / "Import map…" in the File menu; the code (openExport / openImport) has no caller. |
+| BM-H01 / S-23 | PASS / FAIL | Editor help opens (F1 / Help). Its File section lists "Export map…" and "Import map…", which do not exist. |
+| BM-F08 / S-24 | NOT RUN | Clear image (destructive to the module picture). |
+| BM-E03..05, BM-P01..03, TBL, TXT | NOT RUN | Remaining editor menus. |
+| stderr | PASS | No QML errors. |
