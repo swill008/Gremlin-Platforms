@@ -499,7 +499,10 @@ ApplicationWindow {
         Qt.quit()
     }
 
-    function quitGremlin() {
+    // restart: start Gremlin again once it has shut down. Any other quit clears it.
+    function quitGremlin(restart) {
+        if (backend)
+            backend.setRestartOnExit(!!restart)
         if (backend && backend.profileContainsUnsavedChanges) {
             _saveBeforeQuitDialog.ask()
         } else {
@@ -556,6 +559,7 @@ ApplicationWindow {
             }
         }
         onDiscardChosen: deactivateThenQuit()
+        onCancelled: if (backend) backend.setRestartOnExit(false)
     }
 
     DismissibleDialog {
@@ -1139,6 +1143,10 @@ ApplicationWindow {
             _root.quitGremlin()
         }
 
+        function onRestartRequested() {
+            _root.quitGremlin(true)
+        }
+
         function onSaveNoted(text) {
             _root.lastSaveText = text
         }
@@ -1166,6 +1174,8 @@ ApplicationWindow {
     }
 
     onClosing: (close) => {
+        if (backend)
+            backend.setRestartOnExit(false)
         _windowPlacement.save(_root)
         var output = outputPane()
         if (output && output.hasUnsaved && output.hasUnsaved()) {

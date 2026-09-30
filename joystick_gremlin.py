@@ -33,6 +33,8 @@ def _windows_scaling_disabled() -> bool:
     return str(raw).strip().lower() in ("1", "true", "yes")
 
 
+# Value at launch, put back before a restart so the new process reads the setting afresh.
+_LAUNCH_HIGHDPI_SCALING = os.environ.get("QT_ENABLE_HIGHDPI_SCALING")
 if _windows_scaling_disabled():
     os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
 
@@ -841,6 +843,20 @@ def main() -> int:
             lock.unlock()
         except Exception:
             pass
+    backend = getattr(app, "backend", None)
+    if backend is not None and backend.restart_on_exit:
+        program, args = gremlin.util.restart_command(
+            sys.argv,
+            os.path.join(install_path, os.path.basename(sys.argv[0])),
+            bool(getattr(sys, "frozen", False)),
+            sys.executable,
+        )
+        if _LAUNCH_HIGHDPI_SCALING is None:
+            os.environ.pop("QT_ENABLE_HIGHDPI_SCALING", None)
+        else:
+            os.environ["QT_ENABLE_HIGHDPI_SCALING"] = _LAUNCH_HIGHDPI_SCALING
+        logging.getLogger("system").info(f"Restarting: {program} {args}")
+        QtCore.QProcess.startDetached(program, args, install_path)
     # Non-daemon listener / hook threads can otherwise keep python.exe alive.
     os._exit(0)
 

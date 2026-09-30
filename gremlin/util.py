@@ -1166,6 +1166,25 @@ def file_exists_and_is_accessible(filename: str) -> bool:
     )
 
 
+def restart_command(
+    argv: list[str], script: str, frozen: bool, executable: str
+) -> tuple[str, list[str]]:
+    """Program and arguments that start Gremlin again the way it was started.
+
+    Args:
+        argv: command line of the running instance
+        script: absolute path of the entry script, used when running from source
+        frozen: True when running as the packaged executable
+        executable: path of the running executable or Python interpreter
+
+    Returns:
+        Program to launch and its arguments
+    """
+    if frozen:
+        return executable, list(argv[1:])
+    return executable, [script, *argv[1:]]
+
+
 def latest_gremlin_version() -> str | None:
     """Returns the latest Gremlin version available online.
 

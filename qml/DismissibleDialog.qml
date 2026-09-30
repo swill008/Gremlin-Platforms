@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
 
@@ -18,6 +19,8 @@ Popup {
     property string cancelText: ""
     property bool destructive: false
     property bool holdOpen: false
+    // Fill color for the confirm button. Empty keeps the normal look.
+    property string confirmColor: ""
 
     signal confirmed()
     signal cancelled()
@@ -55,6 +58,21 @@ Popup {
         discardText = ""
         cancelText = "Cancel"
         destructive = false
+        holdOpen = true
+        open()
+    }
+
+    // Three choices: confirmed(), discarded() for the middle button, cancelled().
+    function choose(title, message, acceptLabel, middleLabel) {
+        _mode = "choice"
+        _choice = ""
+        _resultOk = false
+        titleText = title
+        messageText = message ? String(message) : ""
+        confirmText = String(acceptLabel)
+        discardText = String(middleLabel)
+        cancelText = "Cancel"
+        destructive = true
         holdOpen = true
         open()
     }
@@ -146,7 +164,8 @@ Popup {
 
             Button {
                 text: _root.confirmText
-                highlighted: !_root.destructive
+                highlighted: !_root.destructive || _root.confirmColor.length > 0
+                U.Universal.accent: _root.confirmColor.length > 0 ? _root.confirmColor : _root.U.Universal.accent
                 onClicked: {
                     var mode = _root._mode
                     if (mode === "ask")

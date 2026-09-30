@@ -186,6 +186,7 @@ class Backend(QtCore.QObject):
     quitRequested = QtCore.Signal()
     saveNoted = QtCore.Signal(str)
     uiScaleChanged = QtCore.Signal()
+    restartRequested = QtCore.Signal()
 
     def __init__(
         self, engine: QtQml.QQmlApplicationEngine, parent: ta.OQO = None
@@ -196,6 +197,8 @@ class Backend(QtCore.QObject):
         self.profile = profile.Profile()
         shared_state.current_profile = self.profile
         self._last_error = ""
+        # Read by main() after the event loop ends; set only by the quit path.
+        self.restart_on_exit = False
         self._action_state = {}
         self.runner = code_runner.CodeRunner()
         self.ui_state = UIState(self)
@@ -287,6 +290,15 @@ class Backend(QtCore.QObject):
         mm = mode_manager.ModeManager()
         if mm.current.name != name:
             mm.switch_to(mode_manager.Mode(name, mm.current.name))
+
+    @QtCore.Slot()
+    def requestRestart(self) -> None:
+        """Quit through the normal path, then start Gremlin again."""
+        self.restartRequested.emit()
+
+    @QtCore.Slot(bool)
+    def setRestartOnExit(self, restart: bool) -> None:
+        self.restart_on_exit = bool(restart)
 
     @QtCore.Slot()
     def emitConfigChanged(self) -> None:
