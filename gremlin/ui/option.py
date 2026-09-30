@@ -241,7 +241,7 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
                 value = Path(value)
 
             self._config.set(*key, value)
-            self.dataChanged.emit(index, index, {role})
+            self.dataChanged.emit(index, index, [role])
             signal.configChanged.emit()
             return True
         return False
