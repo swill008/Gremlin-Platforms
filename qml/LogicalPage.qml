@@ -120,8 +120,29 @@ Item {
         _layout.setMode(mode)
     }
 
-    function hasUnsaved() { return false }
-    function requestLeave() { leaveResolved() }
+    // An open action pane with edits counts as unsaved work when leaving the page.
+    property bool _leavingPage: false
+
+    function hasUnsaved() { return actionOpen && _layout.paneDirty() }
+
+    function requestLeave() {
+        if (!hasUnsaved()) {
+            leaveResolved()
+            return
+        }
+        _leavingPage = true
+        _leave.ask("The action editor has changes that are not saved.")
+    }
+
+    function _finishLeave(resolved) {
+        if (!_leavingPage)
+            return
+        _leavingPage = false
+        if (resolved)
+            leaveResolved()
+        else
+            leaveCancelled()
+    }
 
     function _saveDock() {
         if (!_ready)
@@ -1565,11 +1586,14 @@ Item {
         onSaveChosen: {
             _layout.commitPane()
             _finishClose()
+            _root._finishLeave(true)
         }
         onDiscardChosen: {
             _layout.discardPane()
             _finishClose()
+            _root._finishLeave(true)
         }
+        onCancelled: _root._finishLeave(false)
     }
 
 

@@ -522,7 +522,7 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | LP-37 | PASS / NOTE | Delete group moves its rows to Ungrouped; no confirmation (S-14). |
 | LP-24 | PASS | Assign hardware: search box, devices with tri-state boxes; ticking EVO R Button 5 adds "Written by VKBsim Gladiator EVO R · Button 5" with an Invert box. |
 | LP-24b | FAIL (minor) | The small expand arrow next to a device does not respond; clicking the device name does. |
-| LP-57 | FAIL | Leaving the page (Home) with an unsaved action pane edit gives no warning and the edit is silently discarded (S-08 confirmed). |
+| LP-57 | FIXED | Leaving the page (Home) with an unsaved action pane edit gives no warning and the edit is silently discarded (S-08 confirmed). |
 | LP-16..18, LP-23, LP-27..28, LP-30, LP-38, LP-50..56 | NOT RUN / earlier | Group as, Move to group, pane and display editor were tested with #21 and #26. |
 | stderr | PASS | No QML errors. |
 

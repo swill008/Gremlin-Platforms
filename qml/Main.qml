@@ -232,6 +232,11 @@ ApplicationWindow {
             output.requestLeave()
             return
         }
+        var logical = logicalPane()
+        if (logical && logical.hasUnsaved && logical.hasUnsaved()) {
+            logical.requestLeave()
+            return
+        }
         var next = _afterDisplayLeave
         _afterDisplayLeave = null
         if (next)
@@ -1575,6 +1580,13 @@ ApplicationWindow {
             onLoaded: {
                 if (uiState)
                     item.setMode(uiState.currentMode)
+            }
+
+            Connections {
+                target: _logicalLoader.item
+                ignoreUnknownSignals: true
+                function onLeaveResolved() { _root.continueDisplayLeave() }
+                function onLeaveCancelled() { _root.cancelDisplayLeave() }
             }
         }
 
