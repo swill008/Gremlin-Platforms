@@ -444,14 +444,69 @@
         "files": {
             "data-folder": {
                 "data_type": "path",
+                "description": "Root folder for user files. configuration.json stays in the profile folder.",
                 "expose": true,
                 "properties": {
                     "allow_reset": true,
                     "default_path": "C:\\Users\\Stacie\\Joystick Gremlin",
-                    "is_folder": true,
-                    "show_children": true
+                    "is_folder": true
                 },
                 "value": "C:\\Users\\Stacie\\Joystick Gremlin"
+            },
+            "export-folder": {
+                "data_type": "path",
+                "description": "Device packs saved from the program.",
+                "expose": true,
+                "properties": {
+                    "allow_reset": true,
+                    "default_path": "C:\\Users\\Stacie\\Joystick Gremlin\\export",
+                    "is_folder": true
+                },
+                "value": "C:\\Users\\Stacie\\Joystick Gremlin\\export"
+            },
+            "logs-folder": {
+                "data_type": "path",
+                "description": "Live log and the diagnostic logs.",
+                "expose": true,
+                "properties": {
+                    "allow_reset": true,
+                    "default_path": "C:\\Users\\Stacie\\Joystick Gremlin\\logs",
+                    "is_folder": true
+                },
+                "value": "C:\\Users\\Stacie\\Joystick Gremlin\\logs"
+            },
+            "modules-folder": {
+                "data_type": "path",
+                "description": "Device files, pictures, and imported copies.",
+                "expose": true,
+                "properties": {
+                    "allow_reset": true,
+                    "default_path": "C:\\Users\\Stacie\\Joystick Gremlin\\modules",
+                    "is_folder": true
+                },
+                "value": "C:\\Users\\Stacie\\Joystick Gremlin\\modules"
+            },
+            "profiles-folder": {
+                "data_type": "path",
+                "description": "Folder the profile dialogs open in.",
+                "expose": true,
+                "properties": {
+                    "allow_reset": true,
+                    "default_path": "C:\\Users\\Stacie\\Joystick Gremlin\\profiles",
+                    "is_folder": true
+                },
+                "value": "C:\\Users\\Stacie\\Joystick Gremlin\\profiles"
+            },
+            "scripts-folder": {
+                "data_type": "path",
+                "description": "User scripts.",
+                "expose": true,
+                "properties": {
+                    "allow_reset": true,
+                    "default_path": "C:\\Users\\Stacie\\Joystick Gremlin\\scripts",
+                    "is_folder": true
+                },
+                "value": "C:\\Users\\Stacie\\Joystick Gremlin\\scripts"
             }
         },
         "general": {
