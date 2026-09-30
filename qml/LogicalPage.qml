@@ -1008,8 +1008,14 @@ Item {
         _pageMenu.popup()
     }
 
+    // Same rule as the model: group names ignore capitals and spacing.
+    function _sameGroup(first, second) {
+        var clean = (text) => String(text || "").split(/\s+/).filter(Boolean).join(" ").toLowerCase()
+        return clean(first) === clean(second)
+    }
+
     function _groupAs(name) {
-        if (_picked.length === 1 && _menuGroup.length > 0 && _menuGroup !== name) {
+        if (_picked.length === 1 && _menuGroup.length > 0 && !_sameGroup(_menuGroup, name)) {
             _pendingGroup = name
             _moveWarn.confirm(
                 "Already in a group",

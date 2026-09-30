@@ -20,6 +20,11 @@ from gremlin.types import (
 )
 
 
+def _same_group(first: str, second: str) -> bool:
+    """True when two group names differ only in capitals or spacing."""
+    return " ".join(first.split()).casefold() == " ".join(second.split()).casefold()
+
+
 class LogicalDevice(metaclass=SingletonMetaclass):
     """Implements a device like system for arbitrary amonuts of logical device
     inputs that can be used to combine and further modify inputs before
@@ -379,7 +384,7 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         if not text:
             return text
         for existing in self._groups:
-            if " ".join(existing.split()).casefold() == text.casefold():
+            if _same_group(existing, text):
                 return existing
         self._groups.append(text)
         return text
@@ -414,13 +419,18 @@ class LogicalDevice(metaclass=SingletonMetaclass):
 
     def rename_group(self, old_name: str, new_name: str) -> None:
         old = (old_name or "").strip()
-        new = (new_name or "").strip()
+        new = " ".join((new_name or "").split())
         if not old or old not in self._groups:
             raise GremlinError(f"No group named '{old_name}' exists")
         if not new:
             raise GremlinError("A group needs a name")
-        if new != old and new in self._groups:
-            raise GremlinError(f"A group named '{new}' already exists")
+        # Capitals or spacing on the same group are a rename; another group's name is not.
+        clash = next(
+            (name for name in self._groups if name != old and _same_group(name, new)),
+            None,
+        )
+        if clash is not None:
+            raise GremlinError(f"A group named '{clash}' already exists")
         self._groups = [new if name == old else name for name in self._groups]
         for item in self._inputs.values():
             if item.group == old:

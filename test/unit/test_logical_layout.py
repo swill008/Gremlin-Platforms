@@ -370,3 +370,14 @@ def test_typed_group_name_joins_the_existing_group() -> None:
     assert logical.ensure_group("Device 3") == "Device 3"
     assert logical.group_names() == ["Device 2", "Device 3"]
     assert logical.ensure_group("   ") == ""
+
+
+def test_rename_refuses_a_look_alike_but_allows_recasing_itself() -> None:
+    logical = LogicalDevice()
+    logical.ensure_group("Device 2")
+    logical.ensure_group("Device 3")
+    for look_alike in ("device 2", "Device 2 ", "DEVICE  2"):
+        with pytest.raises(GremlinError):
+            logical.rename_group("Device 3", look_alike)
+    logical.rename_group("Device 3", "device 3")
+    assert logical.group_names() == ["Device 2", "device 3"]
