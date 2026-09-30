@@ -584,3 +584,18 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | DV-01 | PASS (batch 1) | Device Viewer lists the devices. |
 | DV-05..07, VJV-03, XV-03 | DEFERRED | Need physical input / Gremlin active. |
 | DV-02 / S-30 | NOTE | Viewers ignore Esc (by design in code). |
+
+## Batch 10: Calibration and Configure Module (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| CAL-01 | PASS | Opens from Tools (first module selected). From a card it does not preselect that card (H-17). |
+| CAL-04 | PASS | Changing a limit shows "Not saved" and a gold save icon. |
+| CAL-05b | FAIL (minor) | Reset (↻) restores the value but "Not saved" and the gold icon stay. |
+| CAL-09 | FAIL | Closing the window (its X, or a close request) with a real unsaved change (High 32,767 → 32,766) closes without asking and the change is lost. The close gate calls `_calib.hasUnsaved()`, which returns false while the row says "Not saved". |
+| CFGM-02, CFGM-03 | PASS | Untick a claim; type a friendly name. |
+| CFGM-05 | PASS | Cancel with changes asks: "Checks, names, and the picture on this screen are not saved…" (Cancel / Discard / Save). |
+| CFGM-06 | PASS | Save writes the module: Button 9 unclaimed (55 buttons), friendly `button:1 = Fire`; "Saved to the module file." |
+| S-31 | NOT VERIFIED | The window closed after saving through the Cancel prompt (expected); the plain Save module button was not tried separately. |
+| CAL-07, CAL-08, CAL-10, CFGM-02b | DEFERRED | Need a physical stick. |
+| CFGM-04a..f | NOT RUN | Module file dialog (import, browse, delete file). |
