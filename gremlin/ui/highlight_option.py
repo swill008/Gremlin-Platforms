@@ -52,9 +52,6 @@ def highlight_follows_any_device(value: object | None = None) -> bool:
 
 def ensure_registered() -> None:
     cfg = Configuration()
-    for old_name in (NAME, SCOPE_NAME):
-        if cfg.exists("global", GROUP, old_name) and not cfg.exists(SECTION, GROUP, old_name):
-            cfg.set(SECTION, GROUP, old_name, cfg.value("global", GROUP, old_name))
     if not cfg.exists(SECTION, GROUP, NAME):
         cfg.register(
             SECTION,
