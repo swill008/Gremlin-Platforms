@@ -41,6 +41,9 @@ ApplicationWindow {
         var next = slug ? String(slug) : ""
         if (!next.length || next === shownSlug)
             return
+        // A device that has no calibration entry (list already loaded) is ignored.
+        if (_moduleSelection.count > 0 && _moduleSelection.indexOfValue(next) < 0)
+            return
         if (_calib.hasUnsaved()) {
             pendingSlug = next
             var back = _moduleSelection.indexOfValue(shownSlug)
@@ -53,6 +56,14 @@ ApplicationWindow {
             return
         }
         shownSlug = next
+        syncSelection()
+    }
+
+    // The drop-down names the device whose axes are shown.
+    function syncSelection() {
+        var index = _moduleSelection.indexOfValue(shownSlug)
+        if (index >= 0 && _moduleSelection.currentIndex !== index)
+            _moduleSelection.currentIndex = index
     }
 
     function finishLeave() {
@@ -125,6 +136,15 @@ ApplicationWindow {
                 onActivated: _calibrationDialog.chooseModule(currentValue)
                 onCurrentValueChanged: {
                     if (!_calibrationDialog.shownSlug.length && currentValue)
+                        _calibrationDialog.shownSlug = String(currentValue)
+                }
+                // The list can finish loading after a card preselected a device.
+                onCountChanged: {
+                    if (count === 0)
+                        return
+                    if (indexOfValue(_calibrationDialog.shownSlug) >= 0)
+                        _calibrationDialog.syncSelection()
+                    else if (currentValue)
                         _calibrationDialog.shownSlug = String(currentValue)
                 }
             }

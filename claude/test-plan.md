@@ -453,7 +453,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | H-19d | FAIL | Reset size: the card keeps its enlarged drawing while the flow reflows as normal size, so the next card is drawn on top of it. Stays wrong until a reflow (stacking) or restart. |
 | H-10..H-12 | PASS | Open Configuration, Button Map (title names the card), Configure input module (targets the card). |
 | H-14..H-16, H-18 | PASS | Auto Mapper, Device Viewer, vJoy Viewer, Device Information open. |
-| H-17 | FAIL | Calibration from the NXT card opens with EVO OT L selected; NXT is in the list but not preselected. |
+| H-17 | FIXED (it showed the card's axes under another device's name) | Calibration from the NXT card opens with EVO OT L selected; NXT is in the list but not preselected. |
 | H-19 | PASS / NOTE | "Assign hardware…" opens a window titled "Swap Devices" (name mismatch). |
 | H-19a | PASS / NOTE | Stack selected cards works; the right-clicked card (NXT) is not the one on top. |
 | H-19c | PASS | Unstack all. |
