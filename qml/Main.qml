@@ -503,10 +503,22 @@ ApplicationWindow {
     function quitGremlin(restart) {
         if (backend)
             backend.setRestartOnExit(!!restart)
+        guardUnsavedChanges(deactivateThenQuit, true)
+    }
+
+    // Runs action once unsaved profile changes are saved or discarded (same as R16's
+    // guardUnsavedChanges). Cancel drops the action. quitting: a cancel also clears
+    // the restart request.
+    function guardUnsavedChanges(action, quitting) {
         if (backend && backend.profileContainsUnsavedChanges) {
-            _saveBeforeQuitDialog.ask()
+            _saveBeforeContinueDialog.pendingAction = action
+            _saveBeforeContinueDialog.quitting = !!quitting
+            _saveBeforeContinueDialog.detail = quitting
+                ? "There are unsaved changes in the current profile. Save them before quitting, or they will be lost."
+                : "There are unsaved changes in the current profile. Save them before continuing, or they will be lost."
+            _saveBeforeContinueDialog.ask()
         } else {
-            deactivateThenQuit()
+            action()
         }
     }
 
@@ -541,25 +553,41 @@ ApplicationWindow {
     }
 
     DismissibleDialog {
-        id: _saveBeforeQuitDialog
+        id: _saveBeforeContinueDialog
 
-        detail: "There are unsaved changes in the current profile. Save them before quitting, or they will be lost."
+        property var pendingAction: null
+        property bool quitting: false
+
+        function takeAction() {
+            var action = pendingAction
+            pendingAction = null
+            return action
+        }
 
         onSaveChosen: {
-            if (!backend)
+            var action = takeAction()
+            if (!backend || !action)
                 return
             var fpath = backend.profilePath()
             if (fpath === "") {
-                _saveProfileFileDialog.quitAfterSave = true
+                _saveProfileFileDialog.afterSave = action
                 _saveProfileFileDialog.open()
             } else if (backend.saveProfile(fpath)) {
-                deactivateThenQuit()
+                action()
             } else {
                 showSaveResult(false, fpath)
             }
         }
-        onDiscardChosen: deactivateThenQuit()
-        onCancelled: if (backend) backend.setRestartOnExit(false)
+        onDiscardChosen: {
+            var action = takeAction()
+            if (action)
+                action()
+        }
+        onCancelled: {
+            takeAction()
+            if (quitting && backend)
+                backend.setRestartOnExit(false)
+        }
     }
 
     DismissibleDialog {
@@ -592,7 +620,8 @@ ApplicationWindow {
         id: _saveProfileFileDialog
         title: "Please choose a file"
 
-        property bool quitAfterSave: false
+        // Set by guardUnsavedChanges: runs after a successful save.
+        property var afterSave: null
 
         acceptLabel: "Save"
         defaultSuffix: "xml"
@@ -605,10 +634,11 @@ ApplicationWindow {
                 return
             }
             var ok = backend.saveProfile(currentFile)
-            if (quitAfterSave) {
-                quitAfterSave = false
+            var next = afterSave
+            afterSave = null
+            if (next) {
                 if (ok) {
-                    deactivateThenQuit()
+                    next()
                 } else {
                     showSaveResult(false, "")
                 }
@@ -629,9 +659,9 @@ ApplicationWindow {
         currentFolder: backend.profilesFolderUrl()
 
         onAccepted: () => {
-            if (backend) {
-                backend.loadProfile(currentFile)
-            }
+            var file = currentFile
+            if (backend)
+                guardUnsavedChanges(function() { backend.loadProfile(file) })
         }
     }
 
@@ -668,9 +698,9 @@ ApplicationWindow {
                             show: true
                         }
                         onTriggered: () => {
-                            if (backend) {
-                                backend.loadProfile(modelData)
-                            }
+                            var file = modelData
+                            if (backend)
+                                guardUnsavedChanges(function() { backend.loadProfile(file) })
                         }
                     }
                 }
@@ -1190,8 +1220,8 @@ ApplicationWindow {
             return
         }
         if (backend && backend.profileContainsUnsavedChanges) {
-            _saveBeforeQuitDialog.ask()
             close.accepted = false
+            guardUnsavedChanges(deactivateThenQuit, true)
             return
         }
         if (buttonMapNeedsLeave()) {

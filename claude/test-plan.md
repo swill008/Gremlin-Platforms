@@ -408,7 +408,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | F-01 | PASS | Confirm dialog; Cancel keeps profile; Create gives a blank profile. |
 | F-01b | FAIL (minor) | After New Profile (and after Save As) the "Configuring mode" box is blank until opened; the list holds "Default". |
 | F-02 | PASS | Load from the profiles folder; title, bindings and mode restored. |
-| F-02b | FAIL | Ctrl+O with unsaved changes gives no warning (S-05 confirmed). |
+| F-02b | FIXED (Load and Recent ask) | Ctrl+O with unsaved changes gives no warning (S-05 confirmed). |
 | F-03 | FIXED | File > Recent is always empty; `recent-profiles` is never written (S-04 confirmed). |
 | F-04b | PASS | Ctrl+S on a new profile opens Save As in the profiles folder; "Saved" popup; footer line. |
 | F-06a | PASS | Exit with unsaved profile shows Save / Discard / Cancel; Cancel stays. |
@@ -670,3 +670,10 @@ Data loss or broken feature first. IDs point to the batch rows above.
 12. B-SPEC-IMPORTS (suspect): axis_delta / run_command missing from spec hidden imports.
 13. Minor/cosmetic: F-01b, HD-01b, PS-06, MENU-CLIP, IC-01b, IC-17b, C-06, LP-24b, S-05b, OPT-X1b, OPT-U01b, OPT-F08b, CAL-05b, MM-01b, AE-XML-CHAIN, AE-NARROW, HH-08 note.
 14. Back burner: XB-IMG / XV-IMG (#9).
+
+### Noted while fixing #10 (2026-09-30)
+
+| ID | Result | Notes |
+|---|---|---|
+| F-04 | FAIL (minor) | After loading a profile the Configuring mode switches to Test Mode (not Default), so rows show Not bound. |
+| F-05 | FAIL (minor) | An open action pane stays open showing the previous profile's action after Load. |
