@@ -21,7 +21,8 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
 
     title: backend ? backend.windowTitle : "Gremlin-Platforms R1"
-    minimumWidth: Style.dp(1300)
+    // Never narrower than the toolbar row, so Manage Modes stays in the window.
+    minimumWidth: Math.max(Style.dp(1300), Math.ceil(_toolbarRow.implicitWidth + _toolbarRow.anchors.leftMargin))
     minimumHeight: Style.dp(700)
     // WindowPlacement sets the saved or default size at startup.
     width: 1400
@@ -864,6 +865,7 @@ ApplicationWindow {
         id: _toolbar
 
         RowLayout {
+            id: _toolbarRow
             anchors.fill: parent
             anchors.leftMargin: _homeButton.rightPadding + spacing + _toggleButton.sideSlack
             spacing: Style.dp(8)
