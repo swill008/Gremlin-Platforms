@@ -458,7 +458,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | H-19a | PASS / NOTE | Stack selected cards works; the right-clicked card (NXT) is not the one on top. |
 | H-19c | PASS | Unstack all. |
 | H-19g | PASS | Delete Device: three steps (explain with "Save a copy", red confirm, result); card becomes a stub. |
-| H-19g-b | FAIL | The "deleted devices" backup is written next to the program (`_install_root()`, hardware_profile.py:747), not in the user data folder. From source that is the repo; in the exe it is the program folder. Date in the file name reads `2026-30-SEP`. |
+| H-19g-b | FIXED (bc4ebe27) | The "deleted devices" backup is written next to the program (`_install_root()`, hardware_profile.py:747), not in the user data folder. From source that is the repo; in the exe it is the program folder. Date in the file name reads `2026-30-SEP`. |
 | MENU-CLIP | FAIL (minor) | A card menu opened low on the page is cut off at the window bottom (Delete Device half hidden). |
 | MENU-ESC | NOTE | Escape does not close the card menu. |
 
@@ -663,7 +663,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 5. ~~AE-XML-NONE~~ fixed (empty text loads as "").
 6. LP-29: multi-select Delete deletes only one row.
 7. F-03: Recent profiles never written.
-8. H-19g-b: "deleted devices" backup written to the install folder.
+8. ~~H-19g-b~~ fixed bc4ebe27: backups go to the data folder; Deleted devices folder picker in Options.
 9. ~~HH-00b~~ fixed (HiDHide splitter).
 10. BM-X1 / S-22: map pack Export/Import unreachable, but listed in Help.
 11. H-03-dest, H-19d, H-17, H-13, OV-08b, XV-01b: Home and viewer behavior.
