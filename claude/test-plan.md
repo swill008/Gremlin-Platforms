@@ -567,7 +567,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | ID | Result | Notes |
 |---|---|---|
 | BM-V02 / S-25 | NOTE (by design) | Show grid outside edit mode writes the module file immediately (`ui` block only). The editor help says "Grid / snap writes only ui", so this is intended. |
-| BM-X1 / S-22 | FAIL | No "Export map…" / "Import map…" in the File menu; the code (openExport / openImport) has no caller. |
+| BM-X1 / S-22 | RESOLVED | No "Export map…" / "Import map…" in the File menu; the code (openExport / openImport) has no caller. |
 | BM-H01 / S-23 | PASS / FAIL | Editor help opens (F1 / Help). Its File section lists "Export map…" and "Import map…", which do not exist. |
 | BM-F08 / S-24 | NOT RUN | Clear image (destructive to the module picture). |
 | BM-E03..05, BM-P01..03, TBL, TXT | NOT RUN | Remaining editor menus. |
@@ -665,7 +665,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 7. ~~F-03~~ fixed (R16 recent-profiles code restored).
 8. ~~H-19g-b~~ fixed bc4ebe27: backups go to the data folder; Deleted devices folder picker in Options.
 9. ~~HH-00b~~ fixed (HiDHide splitter).
-10. BM-X1 / S-22: map pack Export/Import unreachable, but listed in Help.
+10. ~~BM-X1 / S-22~~ resolved: moved to Device Pack on purpose (bbf22b58); stale help fixed, dead Button Map pack code removed. Note: Button Map's File menu also lists the Logical Device by raw ID (see XV-01b).
 11. H-03-dest, H-19d, H-17, H-13, OV-08b, XV-01b: Home and viewer behavior.
 12. B-SPEC-IMPORTS (suspect): axis_delta / run_command missing from spec hidden imports.
 13. Minor/cosmetic: F-01b, HD-01b, PS-06, MENU-CLIP, IC-01b, IC-17b, C-06, LP-24b, S-05b, OPT-X1b, OPT-U01b, OPT-F08b, CAL-05b, MM-01b, AE-XML-CHAIN, AE-NARROW, HH-08 note.

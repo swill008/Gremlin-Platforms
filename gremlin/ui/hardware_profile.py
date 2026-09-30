@@ -7,7 +7,6 @@ import json
 import os
 import shutil
 import sys
-import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -1199,15 +1198,6 @@ def _unique_archive(stem: str) -> Path:
     return path
 
 
-def _zip_map_name(names: list[str]) -> str:
-    if "map.json" in names:
-        return "map.json"
-    for name in names:
-        if name.lower().endswith(".json") and name.count("/") == 0:
-            return name
-    return ""
-
-
 def _export_dir() -> Path:
     from gremlin.util import export_dir
 
@@ -1673,36 +1663,6 @@ class HardwareProfile(QtCore.QObject):
         result = apply_zip(Path(src), target_name, chosen if isinstance(chosen, dict) else {})
         return json.dumps(result)
 
-    @QtCore.Slot(str, str, result=str)
-    def exportMap(self, device_name: str, dest_url: str) -> str:
-        return self.exportPack(device_name, dest_url)
-
-    @QtCore.Slot(str, result=str)
-    def importMap(self, zip_url: str) -> str:
-        try:
-            src = to_local_path(zip_url)
-        except Exception:
-            return json.dumps({"ok": False, "error": "Cannot read that file."})
-        if not src or not src.is_file():
-            return json.dumps({"ok": False, "error": "File not found."})
-        try:
-            with zipfile.ZipFile(src, "r") as zf:
-                json_name = _zip_map_name(zf.namelist())
-                if not json_name:
-                    return json.dumps({"ok": False, "error": "No map.json in this zip."})
-                doc = json.loads(zf.read(json_name).decode("utf-8"))
-        except zipfile.BadZipFile:
-            return json.dumps({"ok": False, "error": "Not a valid zip."})
-        except Exception as exc:
-            return json.dumps({"ok": False, "error": str(exc)})
-        if not isinstance(doc, dict):
-            return json.dumps({"ok": False, "error": "No map.json in this zip."})
-        label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
-        exported = str(label.get("exportedName") or doc.get("device") or "").strip()
-        if not exported:
-            return json.dumps({"ok": False, "error": "This pack has no device name."})
-        return self.importPack(zip_url, exported, "")
-
     @QtCore.Slot(str, result="QVariant")
     def chips(self, guid: str):
         return chips_for_guid(guid)
@@ -1963,79 +1923,6 @@ class HardwareProfile(QtCore.QObject):
             packed = _maps_dir() / "vkb_evo_l" / "photo.jpg"
             return packed.as_uri() if packed.is_file() else ""
         return ""
-
-    def _plate_count(self, payload: dict) -> int:
-        n = 0
-        for node in payload.get("nodes") or []:
-            if isinstance(node, dict) and node.get("shape") == "image" and node.get("src"):
-                n += 1
-        return n
-
-    @QtCore.Slot(str, result=str)
-    def peekLocal(self, device_name: str) -> str:
-        name = device_name or self._device_name
-        text = self.load(name)
-        try:
-            doc = json.loads(text) if text else {}
-        except json.JSONDecodeError:
-            doc = {}
-        device = str(doc.get("device") or name)
-        return json.dumps({
-            "ok": True,
-            "device": device,
-            "slug": _slug(device),
-            "photoUrl": self.profilePhotoUrl(name),
-            "plates": self._plate_count(doc),
-            "fallback": "vkb_gladiator_rig" in str(doc.get("image") or "") or not doc,
-        })
-
-    @QtCore.Slot(str, result=str)
-    def peekZip(self, zip_url: str) -> str:
-        try:
-            src = to_local_path(zip_url)
-        except Exception:
-            return json.dumps({"ok": False, "error": "Cannot read that file."})
-        if not src or not src.is_file():
-            return json.dumps({"ok": False, "error": "File not found."})
-        try:
-            with zipfile.ZipFile(src, "r") as zf:
-                names = zf.namelist()
-                json_name = "map.json" if "map.json" in names else next(
-                    (n for n in names if n.lower().endswith(".json") and "/" not in n.strip("/")),
-                    "",
-                )
-                if not json_name:
-                    return json.dumps({"ok": False, "error": "No map.json in this zip."})
-                doc = json.loads(zf.read(json_name).decode("utf-8"))
-                device = str(doc.get("device") or "")
-                photo_name = Path(str(doc.get("image") or "photo.jpg")).name
-                photo_member = photo_name if photo_name in names else next(
-                    (n for n in names if Path(n).name.startswith("photo")),
-                    "",
-                )
-                photo_url = ""
-                fallback = False
-                if photo_member:
-                    data = zf.read(photo_member)
-                    tmp = Path(tempfile.gettempdir()) / f"jg_peek_{_slug(device) or 'map'}{Path(photo_member).suffix}"
-                    tmp.write_bytes(data)
-                    self._peek_photo = str(tmp)
-                    photo_url = tmp.as_uri()
-                else:
-                    photo_url = ""
-                    fallback = False
-                return json.dumps({
-                    "ok": True,
-                    "device": device,
-                    "slug": _slug(device),
-                    "photoUrl": photo_url,
-                    "plates": self._plate_count(doc),
-                    "fallback": fallback,
-                })
-        except zipfile.BadZipFile:
-            return json.dumps({"ok": False, "error": "Not a valid zip."})
-        except Exception as exc:
-            return json.dumps({"ok": False, "error": str(exc)})
 
     @QtCore.Property(str, notify=pathChanged)
     def path(self) -> str:
