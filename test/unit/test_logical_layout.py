@@ -381,3 +381,24 @@ def test_rename_refuses_a_look_alike_but_allows_recasing_itself() -> None:
             logical.rename_group("Device 3", look_alike)
     logical.rename_group("Device 3", "device 3")
     assert logical.group_names() == ["Device 2", "device 3"]
+
+def test_delete_removes_every_selected_row_in_one_undo_step(qapp) -> None:
+    from gremlin import shared_state
+    from gremlin.ui.logical_layout import LogicalLayoutModel
+
+    profile = Profile()
+    shared_state.current_profile = profile
+    try:
+        logical = LogicalDevice()
+        for _ in range(3):
+            logical.create(InputType.JoystickButton)
+        model = LogicalLayoutModel()
+        model.deleteParents(["parent:button:1", "parent:button:3"])
+        left = [i.id for i in logical.inputs_of_type([InputType.JoystickButton])]
+        assert left == [2]
+        model.undo()
+        left = [i.id for i in logical.inputs_of_type([InputType.JoystickButton])]
+        assert left == [1, 2, 3]
+        model.deleteLater()
+    finally:
+        shared_state.current_profile = None

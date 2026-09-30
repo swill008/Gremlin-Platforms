@@ -515,7 +515,7 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | LP-19 | PASS | Name hover shows the system name. |
 | LP-25 | PASS | Rename ("Your name", Hide system name option) → "Button 2  Rudder 10". |
 | LP-26 | PASS (present) | "Clear name" appears for a named row. |
-| LP-29 | FAIL | With 2 rows selected, Delete removes only the right-clicked row (S-15 confirmed); Group as / Move to group act on the whole selection. |
+| LP-29 | FIXED | With 2 rows selected, Delete removes only the right-clicked row (S-15 confirmed); Group as / Move to group act on the whole selection. |
 | LP-40 | PASS | Ctrl+Z restored the deleted row and the deleted group. |
 | LP-35 | PASS | Move group up. |
 | LP-36 | PASS | Rename group to a look-alike ("TEST 21") refused: "A group named 'test 21' already exists". |
@@ -661,7 +661,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 3. LP-57, CAL-09, W-03, F-02b: unsaved work is lost or not prompted for (Logical pane, Calibration close, app close after Discard, Load).
 4. OPT-P01, OPT-P07, OPT-A01b: Options list edits (profile entries, remove, reorder) are not saved; in-place config mutation.
 5. ~~AE-XML-NONE~~ fixed (empty text loads as "").
-6. LP-29: multi-select Delete deletes only one row.
+6. ~~LP-29~~ fixed (Delete acts on the selection).
 7. F-03: Recent profiles never written.
 8. ~~H-19g-b~~ fixed bc4ebe27: backups go to the data folder; Deleted devices folder picker in Options.
 9. ~~HH-00b~~ fixed (HiDHide splitter).

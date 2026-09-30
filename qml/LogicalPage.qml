@@ -1311,10 +1311,11 @@ Item {
         }
         MenuItem {
             id: _deleteRowItem
-            text: "Delete"
+            // Acts on the selection, like Group as and Move to group.
+            text: _root._picked.length > 1 ? "Delete " + _root._picked.length + " rows" : "Delete"
             visible: _root._menuOnRow && !_root.editorLocked
             height: visible ? implicitHeight : 0
-            onTriggered: _layout.deleteParents([_root._menuKey])
+            onTriggered: _layout.deleteParents(_root._picked.length > 0 ? _root._picked : [_root._menuKey])
         }
 
         MenuSeparator { visible: !_root.editorLocked; height: visible ? implicitHeight : 0 }
