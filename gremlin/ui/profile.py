@@ -826,7 +826,13 @@ class ModeHierarchyModel(QtCore.QObject):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
 
-        signal.profileChanged.connect(self.modesChanged.emit)
+        # A method of this object, not modesChanged.emit, so the connection ends
+        # when the model is deleted (a closed Manage Modes window).
+        signal.profileChanged.connect(self._on_profile_changed)
+
+    @QtCore.Slot()
+    def _on_profile_changed(self) -> None:
+        self.modesChanged.emit()
 
     @property
     def current_modes(self) -> gremlin.profile.ModeHierarchy:

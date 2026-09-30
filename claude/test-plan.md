@@ -610,7 +610,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | MM-04 | PASS / NOTE | Deleting the current mode (no confirm, S-14) falls back to Default in the box and the footer. |
 | AM-05 | PASS | Create 1:1 mappings: "Created 36 mappings, retained 0 previous bindings."; boxes clear afterwards (S-32 ruled out). |
 | AM-03 | NOTE | "Overwrite used inputs" is on by default, so existing bindings are replaced without warning. |
-| AM-08 | FAIL | Closing the Auto Mapper after creating mappings shows "A fatal error occurred: RuntimeError: Signal source has been deleted" (reproduced twice; the app keeps running). |
+| AM-08 | FIXED | Closing the Auto Mapper after creating mappings shows "A fatal error occurred: RuntimeError: Signal source has been deleted" (reproduced twice; the app keeps running). |
 | DP-02 | PASS | Device Pack opens alone: device preview, pack size, Export… |
 | DP-03..13, SW-01..03, HLP topics, DI-01 | NOT RUN | Remaining dialog detail. |
 
@@ -657,7 +657,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 Data loss or broken feature first. IDs point to the batch rows above.
 
 1. ~~AE-MOUSE~~ fixed 20722eed. Also fixed: radio buttons could be clicked off (#33, 154ed217).
-2. AM-08: fatal error dialog after closing the Auto Mapper.
+2. ~~AM-08~~ fixed: the cause was a closed Manage Modes model (ModeHierarchyModel) still wired to profileChanged; also in R16. Also fixed #34: old Map to Xbox actions no longer log a trigger-range ERROR.
 3. LP-57, CAL-09, W-03, F-02b: unsaved work is lost or not prompted for (Logical pane, Calibration close, app close after Discard, Load).
 4. ~~OPT-P01, OPT-P07, OPT-A01b~~ fixed (in-place list edits save; auto-load row fits so × is clickable).
 5. ~~AE-XML-NONE~~ fixed (empty text loads as "").

@@ -61,3 +61,17 @@ def test_available_checks_again_after_a_failure() -> None:
         assert proxy.available() is True
         assert proxy.available() is True
     assert probe.call_count == 2
+
+
+def test_old_profile_without_trigger_range_logs_no_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    node = mx.MapToXboxData()._to_xml()
+    for prop in list(node):
+        if "trigger-range" in (prop.findtext("name") or ""):
+            node.remove(prop)
+    with caplog.at_level("ERROR"):
+        loaded = mx.MapToXboxData()
+        loaded._from_xml(node, None)
+    assert loaded.trigger_range == mx.TRIGGER_FULL
+    assert "trigger-range" not in caplog.text

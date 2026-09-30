@@ -60,8 +60,9 @@ def _trigger_value(current: float, trigger_range: str) -> float:
 
 
 def _read_xml_property(node: ElementTree.Element, name: str, ptype: PropertyType, default):
+    # A missing property (older profiles) quietly takes the default.
     try:
-        return util.read_property(node, name, ptype)
+        return util.read_property(node, name, ptype, default)
     except Exception:
         return default
 
