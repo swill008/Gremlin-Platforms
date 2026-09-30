@@ -10,7 +10,8 @@ import QtQuick.Window
 import Gremlin.Style
 import "help_topics.js" as HelpTopics
 
-Window {
+ApplicationWindow {
+    font.pixelSize: Style.fontSize
     id: _win
     width: 920
     height: 640

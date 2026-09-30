@@ -11,7 +11,8 @@ import Gremlin.Config
 import Gremlin.Style
 import "helpers.js" as Helpers
 
-Window {
+ApplicationWindow {
+    font.pixelSize: Style.fontSize
     id: _options
     width: 1200
     height: 700

@@ -9,7 +9,8 @@ import QtQuick.Layouts
 import Gremlin.Style
 import Gremlin.UI
 
-Window {
+ApplicationWindow {
+    font.pixelSize: Style.fontSize
     id: _win
     width: 960
     height: 640

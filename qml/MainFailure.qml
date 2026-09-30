@@ -8,8 +8,11 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
+import Gremlin.Style
+
 ApplicationWindow {
     id: mainWindow
+    font.pixelSize: Style.fontSize
     width: 600
     height: 300
     visible: true

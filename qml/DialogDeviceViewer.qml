@@ -10,7 +10,8 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Style
 
-Window {
+ApplicationWindow {
+    font.pixelSize: Style.fontSize
     id: _deviceViewer
 
     width: 1400

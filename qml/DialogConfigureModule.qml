@@ -12,7 +12,8 @@ import Gremlin.Device
 import Gremlin.Style
 import "helpers.js" as Helpers
 
-Window {
+ApplicationWindow {
+    font.pixelSize: Style.fontSize
     id: _win
 
     property string direction: "source"

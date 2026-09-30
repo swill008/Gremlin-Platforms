@@ -18,6 +18,7 @@ import Gremlin.UI
 import "helpers.js" as Helpers
 
 ApplicationWindow {
+    font.pixelSize: Style.fontSize
 
     title: backend ? backend.windowTitle : "Gremlin-Platforms R1"
     minimumWidth: 1300

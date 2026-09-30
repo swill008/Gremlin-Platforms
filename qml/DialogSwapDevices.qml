@@ -12,7 +12,8 @@ import Gremlin.Profile
 import Gremlin.Style
 import Gremlin.Tools
 
-Window {
+ApplicationWindow {
+    font.pixelSize: Style.fontSize
     width: 800
     height: _content.implicitHeight + 30
 

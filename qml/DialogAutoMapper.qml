@@ -13,7 +13,8 @@ import Gremlin.Tools
 import Gremlin.Style
 import Gremlin.Config
 
-Window {
+ApplicationWindow {
+    font.pixelSize: Style.fontSize
     minimumWidth: 900
     minimumHeight: 400
 

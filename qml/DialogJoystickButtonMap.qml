@@ -11,7 +11,8 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Style
 
-Window {
+ApplicationWindow {
+    font.pixelSize: Style.fontSize
     id: _buttonMap
 
     width: 1180

@@ -10,7 +10,8 @@ import QtQuick.Window
 import Gremlin.Profile
 import Gremlin.Style
 
-Window {
+ApplicationWindow {
+    font.pixelSize: Style.fontSize
     id: _root
 
     minimumWidth: 900
