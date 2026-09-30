@@ -47,7 +47,7 @@ class PluginManager(metaclass=SingletonMetaclass):
 
         self._discover_plugins(Path(util.resource_path("action_plugins")), True)
         user_plugins_path = config.Configuration().value(
-            "global", "general", "plugin-directory"
+            "global", "files", "plugin-directory"
         )
         if os.path.isdir(user_plugins_path):
             self._discover_plugins(Path(user_plugins_path), False)
