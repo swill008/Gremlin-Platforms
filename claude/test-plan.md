@@ -432,7 +432,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | TB-11 | PASS | Width cannot go below 1346 px. |
 | SB-03 | PASS | Footer saved-line. |
 | W-02 | PASS | New profile title is "Gremlin-Platforms R1" (S-06 ruled out). |
-| W-03 | FAIL | Close with unsaved catalog display: after Discard only the panel closes; the app stays open and never asks about the unsaved profile (S-07 confirmed). |
+| W-03 | FIXED | Close with unsaved catalog display: after Discard only the panel closes; the app stays open and never asks about the unsaved profile (S-07 confirmed). |
 | W-12 | PASS | Dialogs readable in the dark theme. |
 | LP-20 | PASS | Add Button from the empty-area menu. |
 | NOTE | not a bug | The Add Button menu stays open after adding; an Undo line appears, and a stray click on it undid the add. |
@@ -677,3 +677,5 @@ Data loss or broken feature first. IDs point to the batch rows above.
 |---|---|---|
 | F-04 | FAIL (minor) | After loading a profile the Configuring mode switches to Test Mode (not Default), so rows show Not bound. |
 | F-05 | FAIL (minor) | An open action pane stays open showing the previous profile's action after Load. |
+| F-06 | FAIL (minor) | Opening a device page (NXT) marks the profile as unsaved with no mapping changes, so quitting asks about the profile. |
+| W-03b | NOTE | When quitting, the display-options prompt says "Leave this device and they will be lost" (wording from the leave path). |

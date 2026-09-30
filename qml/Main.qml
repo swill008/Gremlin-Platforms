@@ -245,6 +245,22 @@ ApplicationWindow {
 
     function cancelDisplayLeave() {
         _afterDisplayLeave = null
+        if (_quitPending) {
+            _quitPending = false
+            if (backend)
+                backend.setRestartOnExit(false)
+        }
+    }
+
+    // Unsaved display options or an edited Logical action pane.
+    function displayUnsaved() {
+        var panes = [catalogPane(), outputPane(), logicalPane()]
+        for (var i = 0; i < panes.length; ++i) {
+            var pane = panes[i]
+            if (pane && pane.hasUnsaved && pane.hasUnsaved())
+                return true
+        }
+        return false
     }
 
     function openConfigurationForCard(card) {
@@ -508,8 +524,15 @@ ApplicationWindow {
     function quitGremlin(restart) {
         if (backend)
             backend.setRestartOnExit(!!restart)
-        guardUnsavedChanges(deactivateThenQuit, true)
+        // Panels and the Logical pane first, then the profile, then quit.
+        _quitPending = true
+        leaveDisplayThen(function() {
+            _quitPending = false
+            guardUnsavedChanges(deactivateThenQuit, true)
+        })
     }
+
+    property bool _quitPending: false
 
     // Runs action once unsaved profile changes are saved or discarded (same as R16's
     // guardUnsavedChanges). Cancel drops the action. quitting: a cancel also clears
@@ -1212,21 +1235,10 @@ ApplicationWindow {
         if (backend)
             backend.setRestartOnExit(false)
         _windowPlacement.save(_root)
-        var output = outputPane()
-        if (output && output.hasUnsaved && output.hasUnsaved()) {
+        // Same order as File > Exit: panels, then the profile, then quit.
+        if (displayUnsaved() || (backend && backend.profileContainsUnsavedChanges)) {
             close.accepted = false
-            output.requestClose()
-            return
-        }
-        var catalog = catalogPane()
-        if (catalog && catalog.hasUnsaved && catalog.hasUnsaved()) {
-            close.accepted = false
-            catalog.requestClose()
-            return
-        }
-        if (backend && backend.profileContainsUnsavedChanges) {
-            close.accepted = false
-            guardUnsavedChanges(deactivateThenQuit, true)
+            quitGremlin(false)
             return
         }
         if (buttonMapNeedsLeave()) {
