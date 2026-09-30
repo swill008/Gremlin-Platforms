@@ -39,7 +39,11 @@ function createComponent(componentSpec, properties)
         if (!window)
             return null
         window.transientParent = null
-        window.closing.connect(function() {
+        // Runs after the window's own onClosing. A window that kept itself open to
+        // ask about unsaved work (close.accepted = false) must not be destroyed.
+        window.closing.connect(function(close) {
+            if (close && !close.accepted)
+                return
             if (_openWindows[componentSpec] === window) {
                 delete _openWindows[componentSpec]
             }

@@ -592,7 +592,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | CAL-01 | PASS | Opens from Tools (first module selected). From a card it does not preselect that card (H-17). |
 | CAL-04 | PASS | Changing a limit shows "Not saved" and a gold save icon. |
 | CAL-05b | FAIL (minor) | Reset (↻) restores the value but "Not saved" and the gold icon stay. |
-| CAL-09 | FAIL | Closing the window (its X, or a close request) with a real unsaved change (High 32,767 → 32,766) closes without asking and the change is lost. The close gate calls `_calib.hasUnsaved()`, which returns false while the row says "Not saved". |
+| CAL-09 | FIXED | Closing the window (its X, or a close request) with a real unsaved change (High 32,767 → 32,766) closes without asking and the change is lost. The close gate calls `_calib.hasUnsaved()`, which returns false while the row says "Not saved". |
 | CFGM-02, CFGM-03 | PASS | Untick a claim; type a friendly name. |
 | CFGM-05 | PASS | Cancel with changes asks: "Checks, names, and the picture on this screen are not saved…" (Cancel / Discard / Save). |
 | CFGM-06 | PASS | Save writes the module: Button 9 unclaimed (55 buttons), friendly `button:1 = Fire`; "Saved to the module file." |
@@ -658,7 +658,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 
 1. ~~AE-MOUSE~~ fixed 20722eed. Also fixed: radio buttons could be clicked off (#33, 154ed217).
 2. ~~AM-08~~ fixed: the cause was a closed Manage Modes model (ModeHierarchyModel) still wired to profileChanged; also in R16. Also fixed #34: old Map to Xbox actions no longer log a trigger-range ERROR.
-3. LP-57, CAL-09, W-03, F-02b: unsaved work is lost or not prompted for (Logical pane, Calibration close, app close after Discard, Load).
+3. ~~LP-57, CAL-09, W-03, F-02b~~ fixed (#10 parts A-D). CAL-09 cause: helpers.js destroyed every tool window on close even when it asked to stay open (also Button Map, Configure Module).
 4. ~~OPT-P01, OPT-P07, OPT-A01b~~ fixed (in-place list edits save; auto-load row fits so × is clickable).
 5. ~~AE-XML-NONE~~ fixed (empty text loads as "").
 6. ~~LP-29~~ fixed (Delete acts on the selection).
