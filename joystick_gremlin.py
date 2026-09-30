@@ -630,6 +630,7 @@ def register_config_options() -> None:
     # purge_unused() or the next launch deletes them.
     gremlin.ui.module_model._ensure_display_options()
     gremlin.ui.hardware_profile._binding_store()
+    gremlin.ui.hidhide._ensure_options()
 
 
 def configure_loggers() -> None:

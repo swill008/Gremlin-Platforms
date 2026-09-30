@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -216,7 +217,7 @@ def _ensure_options() -> None:
             False,
         )
     except Exception:
-        pass
+        logging.getLogger("system").exception("HiDHide settings not registered")
 
 
 def _load_games() -> list[dict]:
@@ -900,7 +901,7 @@ def _is_keyboard_mouse(instance: str, name: str) -> bool:
 
 
 
-def list_hid_devices(gaming_only: bool = True) -> list[dict]:
+def list_hid_devices(gaming_only: bool) -> list[dict]:
     """HidHide HidDevices(). Tools → Hardware Hide only."""
     if os.name != "nt":
         return []
