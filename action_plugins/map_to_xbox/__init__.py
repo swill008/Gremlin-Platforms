@@ -13,7 +13,12 @@ from PySide6 import QtCore
 from gremlin import event_handler, signal, util
 from gremlin.base_classes import AbstractActionData, AbstractFunctor, UserFeedback, Value
 from gremlin.profile import Library
-from gremlin.types import ActionProperty, InputType, PropertyType
+from gremlin.types import (
+    ActionProperty,
+    HatDirection,
+    InputType,
+    PropertyType,
+)
 from gremlin.ui.action_model import ActionModel, SequenceIndex
 from vigem.xbox import XboxError, XboxProxy, XboxTarget
 
@@ -29,6 +34,29 @@ def _default_target(behavior: InputType) -> XboxTarget:
     if behavior == InputType.JoystickHat:
         return XboxTarget.DPAD
     return XboxTarget.A
+
+
+TRIGGER_FULL = "full"
+TRIGGER_UPPER = "upper"
+
+
+def _is_pressed(current: object) -> bool:
+    """A hat is pressed when it is off center.
+
+    A centered hat is (0, 0), which bool() calls true.
+    """
+    if isinstance(current, HatDirection):
+        return current != HatDirection.Center
+    if isinstance(current, tuple):
+        return any(part != 0 for part in current)
+    return bool(current)
+
+
+def _trigger_value(current: float, trigger_range: str) -> float:
+    """Axis value for a trigger. Upper half: rest at 0 is 0% and +1 is 100%."""
+    if trigger_range == TRIGGER_UPPER:
+        return util.clamp(float(current), 0.0, 1.0) * 2.0 - 1.0
+    return float(current)
 
 
 def _read_xml_property(node: ElementTree.Element, name: str, ptype: PropertyType, default):
@@ -55,10 +83,13 @@ class MapToXboxFunctor(AbstractFunctor):
             pad = XboxProxy()[self.data.xbox_device_id]
             target = self.data.xbox_target
             if target.kind == "button":
-                pressed = bool(value.current)
+                pressed = _is_pressed(value.current)
                 if self.data.button_inverted:
                     pressed = not pressed
                 pad.apply(target, pressed)
+            elif target.kind == "trigger":
+                raw = _trigger_value(value.current, self.data.trigger_range)
+                pad.apply(target, raw)
             else:
                 pad.apply(target, value.current)
         except Exception as exc:
@@ -69,6 +100,7 @@ class MapToXboxModel(ActionModel):
     xboxDeviceIdChanged = QtCore.Signal()
     xboxTargetChanged = QtCore.Signal()
     buttonInvertedChanged = QtCore.Signal()
+    triggerRangeChanged = QtCore.Signal()
 
     def __init__(
         self,
@@ -134,6 +166,17 @@ class MapToXboxModel(ActionModel):
         self.buttonInvertedChanged.emit()
         self._notify_item()
 
+    def _get_trigger_range(self) -> str:
+        return self._data.trigger_range
+
+    def _set_trigger_range(self, trigger_range: str) -> None:
+        value = TRIGGER_UPPER if trigger_range == TRIGGER_UPPER else TRIGGER_FULL
+        if value == self._data.trigger_range:
+            return
+        self._data.trigger_range = value
+        self.triggerRangeChanged.emit()
+        self._notify_item()
+
     def _get_target_choices(self) -> list:
         return [{"value": item.value, "label": item.label} for item in XboxTarget]
 
@@ -154,6 +197,12 @@ class MapToXboxModel(ActionModel):
         fget=_get_button_inverted,
         fset=_set_button_inverted,
         notify=buttonInvertedChanged,
+    )
+    triggerRange = QtCore.Property(
+        str,
+        fget=_get_trigger_range,
+        fset=_set_trigger_range,
+        notify=triggerRangeChanged,
     )
     targetChoices = QtCore.Property("QVariant", fget=_get_target_choices, constant=True)
 
@@ -180,6 +229,7 @@ class MapToXboxData(AbstractActionData):
         self.xbox_device_id = 1
         self.xbox_target = _default_target(behavior_type)
         self.button_inverted = False
+        self.trigger_range = TRIGGER_FULL
 
     @classmethod
     @override
@@ -206,6 +256,12 @@ class MapToXboxData(AbstractActionData):
             node, "button-inverted", PropertyType.Bool, False
         )
         self.button_inverted = bool(inverted)
+        trigger_range = _read_xml_property(
+            node, "trigger-range", PropertyType.String, TRIGGER_FULL
+        )
+        self.trigger_range = (
+            TRIGGER_UPPER if str(trigger_range) == TRIGGER_UPPER else TRIGGER_FULL
+        )
 
     @override
     def _to_xml(self) -> ElementTree.Element:
@@ -223,6 +279,11 @@ class MapToXboxData(AbstractActionData):
         node.append(
             util.create_property_node(
                 "button-inverted", self.button_inverted, PropertyType.Bool
+            )
+        )
+        node.append(
+            util.create_property_node(
+                "trigger-range", self.trigger_range, PropertyType.String
             )
         )
         return node

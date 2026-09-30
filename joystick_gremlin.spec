@@ -22,6 +22,7 @@ binaries = [
     ("dill/dill.dll", "."),
     ("dill/dill.dll", "dill"),
     ("vjoy/vJoyInterface.dll", "vjoy"),
+    ("vigem/ViGEmClient.dll", "vigem"),
 ]
 
 hidden_imports = [
@@ -42,6 +43,7 @@ hidden_imports = [
     "action_plugins.map_to_logical_device",
     "action_plugins.map_to_mouse",
     "action_plugins.map_to_vjoy",
+    "action_plugins.map_to_xbox",
     "action_plugins.merge_axis",
     "action_plugins.pause_resume",
     "action_plugins.play_sound",

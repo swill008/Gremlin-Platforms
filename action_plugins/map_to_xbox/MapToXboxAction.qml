@@ -46,6 +46,23 @@ Item {
             }
         }
 
+        ComboBox {
+            visible: _root.action.xboxTargetKind === "trigger"
+            textRole: "label"
+            valueRole: "value"
+            model: [
+                { value: "full", label: "Full axis" },
+                { value: "upper", label: "Upper half" }
+            ]
+            Component.onCompleted: currentIndex = Math.max(0, indexOfValue(_root.action.triggerRange))
+            onActivated: _root.action.triggerRange = currentValue
+            PointerTip {
+                text: "Full axis: -1 is 0%, +1 is 100%. Upper half: centre is 0%, +1 is 100%."
+                delay: 300
+                show: true
+            }
+        }
+
         Switch {
             visible: _root.action.xboxTargetKind === "button"
             text: "Invert"

@@ -255,7 +255,8 @@ class XboxProxy(metaclass=SingletonMetaclass):
         self._available: bool | None = None
 
     def available(self) -> bool:
-        if self._available is None:
+        # Remember only success, so installing ViGEmBus later is picked up.
+        if not self._available:
             self._available = self._probe()
         return self._available
 
