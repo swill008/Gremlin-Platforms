@@ -865,8 +865,8 @@ Item {
                                     stackIndex: index
                                     stacked: _pile.members.length > 1
                                     compactView: !!(_page.model && _page.model.compactView)
-                                    width: _pile.cardW
-                                    height: Math.max(_pile.cardH > 0 ? _pile.cardH : 0, implicitHeight)
+                                    width: _card.resizing ? _card.liveW : _pile.cardW
+                                    height: _card.resizing ? _card.liveH : Math.max(_pile.cardH > 0 ? _pile.cardH : 0, implicitHeight)
                                     stretchPhoto: _pile.cardH >= Style.dp(140)
                                     dropStacking: false
                                     opacity: (_page.dragSlug === modelData || _page.dragSlug === slug) ? 0 : 1

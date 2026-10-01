@@ -33,6 +33,10 @@ Rectangle {
     property bool stacked: false
     property bool lifting: false
     property bool resizing: false
+    // Live size while a resize handle is dragged. The page shows it only during the
+    // drag; otherwise the card follows its pile's saved size (width/height stay bound).
+    property real liveW: 0
+    property real liveH: 0
     property bool dropStacking: false
     property bool selected: false
     property bool canStackSelected: false
@@ -314,6 +318,19 @@ Rectangle {
     }
 
     function _clampW(w) { return Math.max(220, Math.min(720, w)) }
+
+    function _beginResize() {
+        liveW = width
+        liveH = height
+        lifting = false
+        resizing = true
+    }
+
+    function _endResize() {
+        // Report first so the saved size is in place when the card stops resizing.
+        sizeChanged(Math.round(liveW), Math.round(liveH))
+        resizing = false
+    }
     function _clampH(h) { return Math.max(140, Math.min(520, h)) }
 
     MouseArea {
@@ -325,16 +342,13 @@ Rectangle {
         anchors.right: parent.right
         anchors.bottomMargin: Style.dp(16)
         cursorShape: Qt.SizeHorCursor
-        onPressed: function() { _card.resizing = true; _card.lifting = false }
+        onPressed: function() { _card._beginResize() }
         onCanceled: function() { _card.resizing = false }
         onPositionChanged: function(mouse) {
             if (pressed)
-                _card.width = _card._clampW(_card.width + mouse.x - width / 2)
+                _card.liveW = _card._clampW(_card.liveW + mouse.x - width / 2)
         }
-        onReleased: function() {
-            _card.resizing = false
-            _card.sizeChanged(Math.round(_card.width), Math.round(_card.height))
-        }
+        onReleased: function() { _card._endResize() }
     }
     MouseArea {
         id: _south
@@ -345,16 +359,13 @@ Rectangle {
         anchors.bottom: parent.bottom
         anchors.rightMargin: Style.dp(16)
         cursorShape: Qt.SizeVerCursor
-        onPressed: function() { _card.resizing = true; _card.lifting = false }
+        onPressed: function() { _card._beginResize() }
         onCanceled: function() { _card.resizing = false }
         onPositionChanged: function(mouse) {
             if (pressed)
-                _card.height = _card._clampH(_card.height + mouse.y - height / 2)
+                _card.liveH = _card._clampH(_card.liveH + mouse.y - height / 2)
         }
-        onReleased: function() {
-            _card.resizing = false
-            _card.sizeChanged(Math.round(_card.width), Math.round(_card.height))
-        }
+        onReleased: function() { _card._endResize() }
     }
     MouseArea {
         id: _corner
@@ -364,18 +375,15 @@ Rectangle {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         cursorShape: Qt.SizeFDiagCursor
-        onPressed: function() { _card.resizing = true; _card.lifting = false }
+        onPressed: function() { _card._beginResize() }
         onCanceled: function() { _card.resizing = false }
         onPositionChanged: function(mouse) {
             if (pressed) {
-                _card.width = _card._clampW(_card.width + mouse.x - width / 2)
-                _card.height = _card._clampH(_card.height + mouse.y - height / 2)
+                _card.liveW = _card._clampW(_card.liveW + mouse.x - width / 2)
+                _card.liveH = _card._clampH(_card.liveH + mouse.y - height / 2)
             }
         }
-        onReleased: function() {
-            _card.resizing = false
-            _card.sizeChanged(Math.round(_card.width), Math.round(_card.height))
-        }
+        onReleased: function() { _card._endResize() }
         Rectangle {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
