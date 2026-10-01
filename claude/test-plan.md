@@ -418,9 +418,9 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | V-03 | DEFERRED to batch 2 | Needs Compact view off. |
 | V-04..06 | PASS | Single list / Side by side / Stacked. The Split box uses other names (None / Vertical / Horizontal). |
 | V-07, HD-01, HD-02 | PASS | Hidden devices, Unhide, Unhide all ("No hidden devices."). |
-| HD-01b | FAIL (harmless) | stderr on Unhide: `DialogHiddenDevices.qml:58 ReferenceError: _win is not defined` (the row is destroyed while its click runs). |
+| HD-01b | FIXED | stderr on Unhide: `DialogHiddenDevices.qml:58 ReferenceError: _win is not defined` (the row is destroyed while its click runs). |
 | V-08, V-09 | PASS | Scripts room; Profile Settings room. |
-| PS-06 | FAIL (cosmetic) | Typos confirmed: "aninput", "devicethe", "a vJoy devices are" (S-19). |
+| PS-06 | FIXED | Typos confirmed: "aninput", "devicethe", "a vJoy devices are" (S-19). |
 | T-01..T-15 | PASS | Every Tools item opens its window (Viewers x3, Device setup x7, Mapping x4, Options). |
 | D-01 | PASS | Live Log Reader shows the log (new Gremlin Platforms paths). |
 | H-01, H-02 | PASS | User Guide; About text. Link not clicked (opens the browser). |

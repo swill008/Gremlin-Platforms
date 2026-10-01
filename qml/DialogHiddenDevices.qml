@@ -52,10 +52,11 @@ ApplicationWindow {
             Label { text: modelData; Layout.fillWidth: true; color: Style.foreground }
             Button {
                 text: "Unhide"
+                // unignoreSlug emits hiddenChanged, which refreshes the list (and
+                // removes this row), so nothing may run here afterwards.
                 onClicked: {
                     if (moduleModel)
                         moduleModel.unignoreSlug(modelData)
-                    _win.refreshHidden()
                 }
             }
         }
