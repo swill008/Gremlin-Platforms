@@ -114,7 +114,7 @@ Popup {
 
     background: Rectangle {
         color: Style.background
-        border.color: destructive ? "#DC2626" : Style.accent
+        border.color: destructive ? Style.danger : Style.accent
         border.width: Style.dp(1)
         radius: Style.dp(4)
     }

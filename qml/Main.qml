@@ -1113,7 +1113,7 @@ ApplicationWindow {
                 Layout.preferredWidth: Style.dp(200)
                 padding: Style.dp(5)
 
-                color: backend && backend.gremlinActive ? Style.foreground : "#A1A1AA"
+                color: backend && backend.gremlinActive ? Style.foreground : Style.fgMuted
                 text: "<B>Status: </B>" +
                     Helpers.selectText(
                         backend && backend.gremlinActive, "Active", "Not Running"
@@ -1134,7 +1134,7 @@ ApplicationWindow {
                 id: _savedLine
                 Layout.fillWidth: true
                 padding: Style.dp(5)
-                color: "#E4E4E7"
+                color: Style.fg
                 elide: Text.ElideMiddle
                 text: _root.lastSaveText
                 HoverHandler {
@@ -1406,7 +1406,7 @@ ApplicationWindow {
                         id: _destBound
                         visible: configDirection === "dest"
                         text: "Bound to: [Not bound]"
-                        color: "#A1A1AA"
+                        color: Style.fgMuted
                         font.pixelSize: Style.dp(12)
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
@@ -1414,7 +1414,7 @@ ApplicationWindow {
                     Label {
                         visible: configDirection === "dest"
                         text: "View only — driven by input module mappings."
-                        color: "#A1A1AA"
+                        color: Style.fgMuted
                         font.pixelSize: Style.dp(12)
                     }
                 }
@@ -1467,7 +1467,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Style.dp(1)
-                color: "#3F3F46"
+                color: Style.line
             }
         }
 

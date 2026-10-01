@@ -66,7 +66,7 @@ ApplicationWindow {
         anchors.centerIn: parent
         visible: _list.count === 0
         text: "No hidden devices."
-        color: "#A1A1AA"
+        color: Style.fgMuted
     }
 
     Button {

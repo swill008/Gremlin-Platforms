@@ -90,8 +90,8 @@ ApplicationWindow {
             Layout.fillWidth: true
             implicitHeight: driverRow.implicitHeight + Style.dp(20)
             radius: Style.dp(3)
-            color: "#111113"
-            border.color: "#3F3F46"
+            color: Style.bgPage
+            border.color: Style.line
 
             RowLayout {
                 id: driverRow
@@ -105,18 +105,18 @@ ApplicationWindow {
                     height: Style.dp(8)
                     radius: Style.dp(4)
                     Layout.alignment: Qt.AlignVCenter
-                    color: _hh.installed ? "#22C55E" : "#A1A1AA"
+                    color: _hh.installed ? Style.ok : Style.fgMuted
                 }
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 0
                     Label {
-                        color: "#E4E4E7"
+                        color: Style.fg
                         text: _hh.installed ? "HiDHide driver found" : "HiDHide is not installed"
                     }
                     Label {
                         visible: _hh.driverVersion.length > 0
-                        color: "#A1A1AA"
+                        color: Style.fgMuted
                         font.pixelSize: Style.dp(11)
                         text: _hh.driverVersion
                     }
@@ -139,8 +139,8 @@ ApplicationWindow {
             Layout.fillWidth: true
             implicitHeight: optionRow.implicitHeight + Style.dp(20)
             radius: Style.dp(3)
-            color: "#111113"
-            border.color: "#3F3F46"
+            color: Style.bgPage
+            border.color: Style.line
 
             RowLayout {
                 id: optionRow
@@ -182,7 +182,7 @@ ApplicationWindow {
 
         Label {
             text: "HiDHide"
-            color: "#E4E4E7"
+            color: Style.fg
             font.pixelSize: Style.dp(16)
             font.bold: true
         }
@@ -190,7 +190,7 @@ ApplicationWindow {
         Label {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            color: "#A1A1AA"
+            color: Style.fgMuted
             font.pixelSize: Style.dp(12)
             text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. Automatically Start turns Gremlin control and HiDHide Enabled on each time this program starts. This program does not install HiDHide. Click on Get HiDHide to download the program."
         }
@@ -199,7 +199,7 @@ ApplicationWindow {
             visible: !_hh.installed
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
-            color: "#A1A1AA"
+            color: Style.fgMuted
             font.pixelSize: Style.dp(12)
             text: "Install HiDHide from the Nefarius releases page, then open this window again. Gremlin will not download or bundle that installer."
         }
@@ -243,13 +243,13 @@ ApplicationWindow {
             handle: Rectangle {
                 implicitWidth: Style.dp(8)
                 implicitHeight: Style.dp(10)
-                color: SplitHandle.pressed ? "#3F3F46" : (SplitHandle.hovered ? "#27272A" : "#18181B")
+                color: SplitHandle.pressed ? Style.line : (SplitHandle.hovered ? Style.bgRaised : Style.bgCard)
                 Rectangle {
                     anchors.centerIn: parent
                     width: Style.dp(36)
                     height: Style.dp(3)
                     radius: Style.dp(1)
-                    color: "#71717A"
+                    color: Style.fgDisabled
                 }
             }
 
@@ -261,7 +261,7 @@ ApplicationWindow {
 
                 Label {
                     text: "DEVICES"
-                    color: "#A1A1AA"
+                    color: Style.fgMuted
                     font.pixelSize: Style.dp(11)
                     font.capitalization: Font.AllUppercase
                 }
@@ -270,7 +270,7 @@ ApplicationWindow {
                     visible: _hh.lastError.length > 0
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
-                    color: "#FCA5A5"
+                    color: Style.dangerTextSoft
                     font.pixelSize: Style.dp(12)
                     text: _hh.lastError
                 }
@@ -278,7 +278,7 @@ ApplicationWindow {
                 Label {
                     visible: _hh.deviceCount === 0
                     text: _hh.installed ? "No HID devices reported." : "Device list needs the HiDHide driver."
-                    color: "#A1A1AA"
+                    color: Style.fgMuted
                 }
 
                 ListView {
@@ -296,7 +296,7 @@ ApplicationWindow {
                         contentItem: Rectangle {
                             implicitWidth: Style.dp(8)
                             radius: Style.dp(3)
-                            color: parent.pressed ? "#E4E4E7" : (parent.hovered ? "#A1A1AA" : "#52525B")
+                            color: parent.pressed ? Style.fg : (parent.hovered ? Style.fgMuted : Style.lineStrong)
                         }
                     }
                     delegate: Rectangle {
@@ -304,8 +304,8 @@ ApplicationWindow {
                         width: ListView.view.width - Style.dp(12)
                         height: Style.dp(56)
                         radius: Style.dp(3)
-                        color: "#111113"
-                        border.color: "#3F3F46"
+                        color: Style.bgPage
+                        border.color: Style.line
                         property int _gen: _hh.generation
                         property var row: _gen >= 0 ? _hh.deviceAt(index) : ({})
                         property bool confirmed: !!(row && row.confirmed)
@@ -320,8 +320,8 @@ ApplicationWindow {
                                 width: Style.dp(40)
                                 height: Style.dp(40)
                                 radius: Style.dp(3)
-                                color: "#09090B"
-                                border.color: "#3F3F46"
+                                color: Style.bgWell
+                                border.color: Style.line
                                 Image {
                                     anchors.fill: parent
                                     anchors.margins: Style.dp(2)
@@ -339,7 +339,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 Label {
                                     text: titleOf(row)
-                                    color: confirmed ? "#A1A1AA" : "#E4E4E7"
+                                    color: confirmed ? Style.fgMuted : Style.fg
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -357,7 +357,7 @@ ApplicationWindow {
                                         var prefix = bits.length ? bits.join(" · ") + "  " : ""
                                         return prefix + (row.instanceId || "")
                                     }
-                                    color: confirmed ? "#71717A" : "#A1A1AA"
+                                    color: confirmed ? Style.fgDisabled : Style.fgMuted
                                     font.pixelSize: Style.dp(11)
                                     elide: Text.ElideMiddle
                                     Layout.fillWidth: true
@@ -387,7 +387,7 @@ ApplicationWindow {
                             text: "HIDDEN"
                             font.bold: true
                             font.pixelSize: Style.dp(22)
-                            color: "#F4F4F5"
+                            color: Style.fgStrong
                         }
                     }
                 }
@@ -401,7 +401,7 @@ ApplicationWindow {
 
                 Label {
                     text: "Programs that have been added to the Mask"
-                    color: "#E4E4E7"
+                    color: Style.fg
                     font.pixelSize: Style.dp(16)
                     font.bold: true
                 }
@@ -442,7 +442,7 @@ ApplicationWindow {
                 Label {
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
-                    color: "#A1A1AA"
+                    color: Style.fgMuted
                     font.pixelSize: Style.dp(12)
                     text: "Allow list: only these programs can see the hidden controllers. Block list: these programs cannot see them. Gremlin-Platforms is allowed in both modes."
                 }
@@ -462,7 +462,7 @@ ApplicationWindow {
                         contentItem: Rectangle {
                             implicitWidth: Style.dp(8)
                             radius: Style.dp(3)
-                            color: parent.pressed ? "#E4E4E7" : (parent.hovered ? "#A1A1AA" : "#52525B")
+                            color: parent.pressed ? Style.fg : (parent.hovered ? Style.fgMuted : Style.lineStrong)
                         }
                     }
                     delegate: Rectangle {
@@ -470,8 +470,8 @@ ApplicationWindow {
                         width: ListView.view.width - Style.dp(12)
                         height: Style.dp(44)
                         radius: Style.dp(3)
-                        color: "#111113"
-                        border.color: "#3F3F46"
+                        color: Style.bgPage
+                        border.color: Style.line
                         property var row: _hh.gameAt(index)
                         RowLayout {
                             anchors.fill: parent
@@ -481,13 +481,13 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 Label {
                                     text: row.name
-                                    color: "#E4E4E7"
+                                    color: Style.fg
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
                                 Label {
                                     text: row.path
-                                    color: "#A1A1AA"
+                                    color: Style.fgMuted
                                     font.pixelSize: Style.dp(11)
                                     elide: Text.ElideMiddle
                                     Layout.fillWidth: true
@@ -505,7 +505,7 @@ ApplicationWindow {
                     visible: _hh.gameCount === 0
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
-                    color: "#A1A1AA"
+                    color: Style.fgMuted
                     font.pixelSize: Style.dp(12)
                     text: _hh.inverseOn
                           ? "Add a program here to block it from the hidden controllers."

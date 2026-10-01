@@ -47,7 +47,7 @@ Item {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             text: _model ? _model.statusText : ""
-            color: (_model && _model.available) ? Style.foreground : "#F97316"
+            color: (_model && _model.available) ? Style.foreground : Style.alert
             opacity: 0.9
         }
 

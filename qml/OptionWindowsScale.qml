@@ -47,7 +47,7 @@ Item {
 
     DismissibleDialog {
         id: _restartAsk
-        confirmColor: "#DC2626"
+        confirmColor: Style.danger
 
         onConfirmed: {
             if (!backend)

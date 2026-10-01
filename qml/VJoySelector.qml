@@ -112,14 +112,14 @@ Item {
             Layout.fillWidth: true
 
             text: "No output module claimed"
-            color: "#A1A1AA"
+            color: Style.fgMuted
         }
 
         Label {
             visible: _vjoy && _vjoy.hasValidVJoyDevices && _vjoy.inputChoices.length === 0
 
             text: "Output module has no claimed controls."
-            color: "#A1A1AA"
+            color: Style.fgMuted
         }
     }
 }

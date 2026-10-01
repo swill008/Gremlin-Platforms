@@ -153,7 +153,7 @@ ApplicationWindow {
         Label {
             visible: _modules && _modules.moduleCount === 0
             text: "No connected input module."
-            color: "#A1A1AA"
+            color: Style.fgMuted
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -164,7 +164,7 @@ ApplicationWindow {
                     && _calibrationDialog.shownSlug.length > 0
                     && _axisView.count === 0
             text: "This input module is not connected."
-            color: "#A1A1AA"
+            color: Style.fgMuted
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -374,7 +374,7 @@ ApplicationWindow {
                     // below (the next click would land on the gap above the arrows).
                     opacity: unsavedChanges ? 1 : 0
                     text: "Not saved"
-                    color: "#FBBF24"
+                    color: Style.warn
                     font.pixelSize: Style.dp(11)
                 }
 

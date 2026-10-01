@@ -198,7 +198,7 @@ ApplicationWindow {
 
         Label {
             text: "Device is a name line. Marks and 5-ways stay on Button Map. Press a control to claim it; uncheck to undo."
-            color: "#A1A1AA"
+            color: Style.fgMuted
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -211,8 +211,8 @@ ApplicationWindow {
             Rectangle {
                 Layout.preferredWidth: Style.dp(320)
                 Layout.fillHeight: true
-                color: "#18181B"
-                border.color: "#3F3F46"
+                color: Style.bgCard
+                border.color: Style.line
                 radius: Style.dp(4)
 
                 ColumnLayout {
@@ -232,7 +232,7 @@ ApplicationWindow {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         wrapMode: Text.WordWrap
-                        color: "#A1A1AA"
+                        color: Style.fgMuted
                         text: "No photo for this module.\nImport image…"
                     }
                     Button {
@@ -263,7 +263,7 @@ ApplicationWindow {
                     delegate: Rectangle {
                         width: ListView.view.width
                         height: Style.dp(34)
-                        color: model.lit ? "#14532D" : (index === _list.currentIndex ? "#27272A" : "transparent")
+                        color: model.lit ? Style.okFill : (index === _list.currentIndex ? Style.bgRaised : "transparent")
 
                         RowLayout {
                             anchors.fill: parent
@@ -284,7 +284,7 @@ ApplicationWindow {
                         Label {
                             text: model.label
                             Layout.preferredWidth: Style.dp(120)
-                            color: model.lit ? "#BBF7D0" : Style.foreground
+                            color: model.lit ? Style.okTextStrong : Style.foreground
                         }
                         TextField {
                             Layout.fillWidth: true
@@ -302,7 +302,7 @@ ApplicationWindow {
                 Label {
                     anchors.centerIn: parent
                     visible: _list.count === 0
-                    color: "#A1A1AA"
+                    color: Style.fgMuted
                     wrapMode: Text.WordWrap
                     width: parent.width - Style.dp(24)
                     horizontalAlignment: Text.AlignHCenter
@@ -354,7 +354,7 @@ ApplicationWindow {
             spacing: Style.dp(10)
             Label {
                 text: "Current file"
-                color: "#A1A1AA"
+                color: Style.fgMuted
                 font.pixelSize: Style.dp(12)
             }
             Label {
@@ -366,7 +366,7 @@ ApplicationWindow {
             Label {
                 Layout.fillWidth: true
                 text: "Import copies the chosen file into this device's file. The chosen file is left where it was."
-                color: "#A1A1AA"
+                color: Style.fgMuted
                 wrapMode: Text.WordWrap
                 font.pixelSize: Style.dp(12)
             }
@@ -374,13 +374,13 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 visible: moduleFileNotice.length > 0
                 text: moduleFileNotice
-                color: "#A1A1AA"
+                color: Style.fgMuted
                 wrapMode: Text.WordWrap
                 font.pixelSize: Style.dp(12)
             }
             Label {
                 text: "Import from"
-                color: "#A1A1AA"
+                color: Style.fgMuted
                 font.pixelSize: Style.dp(12)
             }
             ComboBox {
@@ -437,7 +437,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 visible: moduleFileMessage.length > 0
                 text: moduleFileMessage
-                color: moduleFileError ? "#F87171" : "#A1A1AA"
+                color: moduleFileError ? Style.dangerText : Style.fgMuted
                 wrapMode: Text.WordWrap
             }
         }
@@ -475,7 +475,7 @@ ApplicationWindow {
 
         background: Rectangle {
             color: Style.background
-            border.color: (_importNotice.titleText === "Import failed" || _importNotice.titleText === "Undo failed") ? "#DC2626" : Style.accent
+            border.color: (_importNotice.titleText === "Import failed" || _importNotice.titleText === "Undo failed") ? Style.danger : Style.accent
             border.width: Style.dp(1)
             radius: Style.dp(4)
         }

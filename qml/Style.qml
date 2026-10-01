@@ -41,7 +41,8 @@ Item {
         danger: "#DC2626", dangerHover: "#B91C1C",
         dangerText: "#F87171", dangerTextSoft: "#FCA5A5", dangerFill: "#7F1D1D",
         info: "#3B82F6", infoText: "#60A5FA", live: "#38BDF8",
-        infoFill: "#1E3A5F", infoFillDeep: "#0F2744"
+        infoFill: "#1E3A5F", infoFillDeep: "#0F2744",
+        alert: "#F97316", noteFill: "#8A7A2A", noteLine: "#C4B44A"
     })
     readonly property var _light: ({
         bgWell: "#F4F4F5", bgPage: "#FAFAFA", bgCard: "#FFFFFF",
@@ -56,7 +57,8 @@ Item {
         danger: "#DC2626", dangerHover: "#B91C1C",
         dangerText: "#DC2626", dangerTextSoft: "#B91C1C", dangerFill: "#FEE2E2",
         info: "#2563EB", infoText: "#2563EB", live: "#0284C7",
-        infoFill: "#DBEAFE", infoFillDeep: "#EFF6FF"
+        infoFill: "#DBEAFE", infoFillDeep: "#EFF6FF",
+        alert: "#C2410C", noteFill: "#FEF9C3", noteLine: "#EAB308"
     })
     readonly property var _scheme: isDarkMode ? _dark : _light
 
@@ -102,6 +104,12 @@ Item {
     readonly property color live: _scheme.live
     readonly property color infoFill: _scheme.infoFill
     readonly property color infoFillDeep: _scheme.infoFillDeep
+    // Something needs attention (e.g. a missing driver).
+    readonly property color alert: _scheme.alert
+    // Help notes: a yellow box with dark text in both modes.
+    readonly property color noteFill: _scheme.noteFill
+    readonly property color noteLine: _scheme.noteLine
+    readonly property color noteText: "#1B1B1B"
 
     // A token with transparency, e.g. Style.alpha(Style.ok, 0.4).
     function alpha(c, a) {

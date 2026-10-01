@@ -196,8 +196,8 @@ Popup {
 
             Rectangle {
                 anchors.fill: parent
-                color: "#8a7a2a"
-                border.color: "#c4b44a"
+                color: Style.noteFill
+                border.color: Style.noteLine
 
                 Label {
                     id: _help
@@ -206,7 +206,7 @@ Popup {
                     wrapMode: Text.WordWrap
                     verticalAlignment: Text.AlignTop
                     text: _root.helpText()
-                    color: "#1b1b1b"
+                    color: Style.noteText
                 }
             }
         }

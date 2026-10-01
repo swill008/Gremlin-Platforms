@@ -21,9 +21,9 @@ Item {
     property bool hideControlSetup: false
     property bool catalogSequence: false
     property int onlySequence: -1
-    property color editorFill: "#0F2744"
-    property color editorEdge: "#3B82F6"
-    property color editorAccent: "#3B82F6"
+    property color editorFill: Style.infoFillDeep
+    property color editorEdge: Style.info
+    property color editorAccent: Style.info
     property int editorRadius: Style.dp(3)
     property int editorBorderW: Style.dp(1)
     property int editorAccentW: Style.dp(3)

@@ -290,14 +290,14 @@ ApplicationWindow {
         anchors.centerIn: Overlay.overlay
         width: Style.dp(460)
         standardButtons: Dialog.NoButton
-        background: Rectangle { color: "#18181B"; border.color: "#3F3F46"; radius: 4 }
+        background: Rectangle { color: Style.bgCard; border.color: Style.line; radius: 4 }
         contentItem: ColumnLayout {
             spacing: Style.dp(12)
             Label {
                 id: _warnText
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
-                color: "#E4E4E7"
+                color: Style.fg
             }
             RowLayout {
                 Item { Layout.fillWidth: true }
@@ -348,7 +348,7 @@ ApplicationWindow {
                   : "Tick a section to include every row in it. A partial tick means only some rows are included. Nothing is written until you import."
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
-            color: "#A1A1AA"
+            color: Style.fgMuted
         }
 
         TabBar {
@@ -387,8 +387,8 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         Layout.preferredWidth: Math.min(_exportRow.height, Style.dp(560))
                         Layout.maximumWidth: Style.dp(560)
-                        color: "#18181B"
-                        border.color: "#3F3F46"
+                        color: Style.bgCard
+                        border.color: Style.line
                         radius: Style.dp(6)
                         Image {
                             anchors.fill: parent
@@ -401,7 +401,7 @@ ApplicationWindow {
                             anchors.centerIn: parent
                             visible: exportPhoto.length === 0
                             text: "No picture"
-                            color: "#A1A1AA"
+                            color: Style.fgMuted
                             font.pixelSize: Style.dp(22)
                         }
                     }
@@ -420,7 +420,7 @@ ApplicationWindow {
                         }
                         Label {
                             text: exportSize.length ? ("Pack size: " + exportSize) : ""
-                            color: "#E4E4E7"
+                            color: Style.fg
                             font.pixelSize: Style.dp(24)
                         }
                         Button {
@@ -468,8 +468,8 @@ ApplicationWindow {
                         Layout.preferredWidth: Style.dp(200)
                         Layout.preferredHeight: Style.dp(200)
                         Layout.alignment: Qt.AlignTop
-                        color: "#18181B"
-                        border.color: "#3F3F46"
+                        color: Style.bgCard
+                        border.color: Style.line
                         radius: Style.dp(4)
                         visible: importPhoto.length > 0 && mode === "import"
                         Image {
@@ -493,7 +493,7 @@ ApplicationWindow {
                             text: "Windows name in the pack. The device you choose below is the one that is written."
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
-                            color: "#A1A1AA"
+                            color: Style.fgMuted
                             visible: importName.length > 0
                         }
                     }
@@ -552,7 +552,7 @@ ApplicationWindow {
                                 Rectangle {
                                     Layout.fillWidth: true
                                     height: Style.dp(32)
-                                    color: "#27272A"
+                                    color: Style.bgRaised
                                     radius: Style.dp(3)
                                     RowLayout {
                                         anchors.fill: parent
@@ -571,12 +571,12 @@ ApplicationWindow {
                                                         var rev = _win.openRev
                                                         return _win.isFoldedOpen(sectionKey) ? "\u25BC" : "\u25B6"
                                                     }
-                                                    color: "#E4E4E7"
+                                                    color: Style.fg
                                                     font.pixelSize: Style.dp(10)
                                                 }
                                                 Label {
                                                     text: modelData.title || ""
-                                                    color: "#E4E4E7"
+                                                    color: Style.fg
                                                     font.pixelSize: Style.dp(13)
                                                     font.bold: true
                                                     Layout.fillWidth: true
@@ -619,8 +619,8 @@ ApplicationWindow {
                                             Rectangle {
                                                 Layout.fillWidth: true
                                                 height: Style.dp(28)
-                                                color: "#18181B"
-                                                border.color: "#3F3F46"
+                                                color: Style.bgCard
+                                                border.color: Style.line
                                                 radius: Style.dp(3)
                                                 RowLayout {
                                                     anchors.fill: parent
@@ -648,12 +648,12 @@ ApplicationWindow {
                                                                     var rev = _win.openRev
                                                                     return _win.isFoldedOpen(rowKey) ? "\u25BC" : "\u25B6"
                                                                 }
-                                                                color: "#A1A1AA"
+                                                                color: Style.fgMuted
                                                                 font.pixelSize: Style.dp(10)
                                                             }
                                                             Label {
                                                                 text: modelData.title || ""
-                                                                color: "#E4E4E7"
+                                                                color: Style.fg
                                                                 Layout.fillWidth: true
                                                                 elide: Text.ElideRight
                                                             }
@@ -685,7 +685,7 @@ ApplicationWindow {
                                                 Label {
                                                     visible: modelData.kind !== "image"
                                                     text: modelData.body || ""
-                                                    color: "#E4E4E7"
+                                                    color: Style.fg
                                                     wrapMode: Text.WordWrap
                                                     Layout.fillWidth: true
                                                 }
@@ -713,7 +713,7 @@ ApplicationWindow {
             text: status
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
-            color: "#E4E4E7"
+            color: Style.fg
             visible: status.length > 0
         }
     }

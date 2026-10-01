@@ -55,8 +55,8 @@ ApplicationWindow {
         Rectangle {
             Layout.preferredWidth: Style.dp(260)
             Layout.fillHeight: true
-            color: "#111113"
-            border.color: "#3F3F46"
+            color: Style.bgPage
+            border.color: Style.line
             radius: Style.dp(3)
 
             ListView {
@@ -73,7 +73,7 @@ ApplicationWindow {
                     required property string section
                     width: _contents.width
                     text: section
-                    color: "#E4E4E7"
+                    color: Style.fg
                     font.pixelSize: Style.dp(18)
                     font.bold: true
                     font.underline: true
@@ -100,7 +100,7 @@ ApplicationWindow {
 
             Label {
                 text: _win._topics[_win._index].title
-                color: "#E4E4E7"
+                color: Style.fg
                 font.pixelSize: Style.dp(20)
                 font.bold: true
             }
@@ -108,8 +108,8 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: "#111113"
-                border.color: "#3F3F46"
+                color: Style.bgPage
+                border.color: Style.line
                 radius: Style.dp(3)
 
                 ScrollView {
@@ -122,7 +122,7 @@ ApplicationWindow {
                         text: _win._topics[_win._index].body
                         textFormat: Text.RichText
                         wrapMode: Text.WordWrap
-                        color: "#E4E4E7"
+                        color: Style.fg
                         font.pixelSize: Style.dp(14)
                     }
                 }

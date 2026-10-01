@@ -103,9 +103,9 @@ Item {
                             radius: Style.dp(6)
                             anchors.verticalCenter: parent.verticalCenter
 
-                            color: value ? "#22C55E" : Style.lowColor
+                            color: value ? Style.ok : Style.lowColor
                             border.width: Style.dp(1)
-                            border.color: value ? "#16A34A" : Style.medColor
+                            border.color: value ? Style.okStrong : Style.medColor
                         }
 
                         JGText {

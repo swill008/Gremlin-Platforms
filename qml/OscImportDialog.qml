@@ -51,15 +51,15 @@ Popup {
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: _help.implicitHeight + Style.dp(16)
-            color: "#8a7a2a"
-            border.color: "#c4b44a"
+            color: Style.noteFill
+            border.color: Style.noteLine
 
             Label {
                 id: _help
                 anchors.fill: parent
                 anchors.margins: Style.dp(8)
                 wrapMode: Text.WordWrap
-                color: "#1b1b1b"
+                color: Style.noteText
                 text: "Enter new OSC messages one per line.\n" +
                       "Messages must start with a forward slash (/).\n" +
                       "Entries may be given a suffix to set the type automatically. The default is a button. If you are importing an axis message, add the suffix A after the message such as /osc_msg A or /osc_msg, A Valid suffixes are A for axis, BNP for a no parameter (auto-release) button, B for a parameter button (0 = released, not 0 = pressed), C for change, E for encoder. Existing entries will be ignored."

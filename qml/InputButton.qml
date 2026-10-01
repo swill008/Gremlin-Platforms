@@ -144,7 +144,7 @@ Button {
                        ? Math.max(0, Math.min(parent.width, parent.width * ((liveValue + 1.0) * 0.5)))
                        : 0
                 height: parent.height
-                color: "#22C55E"
+                color: Style.ok
             }
         }
     }
@@ -159,9 +159,9 @@ Button {
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.topMargin: Style.dp(4)
-            color: _ledOn ? "#22C55E" : Style.lowColor
+            color: _ledOn ? Style.ok : Style.lowColor
             border.width: Style.dp(1)
-            border.color: _ledOn ? "#16A34A" : Style.medColor
+            border.color: _ledOn ? Style.okStrong : Style.medColor
         }
 
         JGText {

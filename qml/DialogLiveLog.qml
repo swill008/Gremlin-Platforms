@@ -64,7 +64,7 @@ ApplicationWindow {
 
         Label {
             text: _log.path
-            color: "#A1A1AA"
+            color: Style.fgMuted
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -72,8 +72,8 @@ ApplicationWindow {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "#111113"
-            border.color: "#3F3F46"
+            color: Style.bgPage
+            border.color: Style.line
             radius: Style.dp(3)
 
             Flickable {
@@ -106,9 +106,9 @@ ApplicationWindow {
                     readOnly: true
                     selectByMouse: true
                     wrapMode: TextEdit.NoWrap
-                    color: "#E4E4E7"
-                    selectionColor: "#3F3F46"
-                    selectedTextColor: "#E4E4E7"
+                    color: Style.fg
+                    selectionColor: Style.line
+                    selectedTextColor: Style.fg
                     font.family: "Consolas"
                     font.pixelSize: Style.dp(13)
                     textFormat: TextEdit.PlainText
@@ -120,11 +120,11 @@ ApplicationWindow {
                     contentItem: Rectangle {
                         implicitWidth: Style.dp(8)
                         radius: Style.dp(4)
-                        color: _vbar.pressed ? "#E4E4E7" : "#71717A"
+                        color: _vbar.pressed ? Style.fg : Style.fgDisabled
                     }
                     background: Rectangle {
                         implicitWidth: Style.dp(12)
-                        color: "#27272A"
+                        color: Style.bgRaised
                     }
                 }
                 ScrollBar.horizontal: ScrollBar {
@@ -133,11 +133,11 @@ ApplicationWindow {
                     contentItem: Rectangle {
                         implicitHeight: Style.dp(8)
                         radius: Style.dp(4)
-                        color: _hbar.pressed ? "#E4E4E7" : "#71717A"
+                        color: _hbar.pressed ? Style.fg : Style.fgDisabled
                     }
                     background: Rectangle {
                         implicitHeight: Style.dp(12)
-                        color: "#27272A"
+                        color: Style.bgRaised
                     }
                 }
             }

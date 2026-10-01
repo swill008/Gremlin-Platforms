@@ -205,7 +205,7 @@ Item {
         visible: claimedCount === 0
         wrapMode: Text.WordWrap
         horizontalAlignment: Text.AlignHCenter
-        color: "#A1A1AA"
+        color: Style.fgMuted
         text: outputLive
               ? "This list is the output module's claimed controls.\nWhen Gremlin is Active, axes and buttons follow the vJoy feeder, not HID."
               : "This window only shows what the input module passes.\nRight-click the card → Configure input module, press the controls to claim, then Save module."

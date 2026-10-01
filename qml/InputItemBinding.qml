@@ -115,7 +115,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             height: Style.dp(2)
-            color: "#3B82F6"
+            color: Style.info
         }
     }
 }
