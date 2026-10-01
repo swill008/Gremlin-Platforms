@@ -408,6 +408,8 @@ Rectangle {
 
     Menu {
         id: _menu
+        // Keeps the menu inside the window near the bottom edge.
+        margins: Style.dp(4)
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         MenuItem {

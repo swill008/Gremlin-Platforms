@@ -948,6 +948,8 @@ Item {
 
     Menu {
         id: _emptyMenu
+        // Keeps the menu inside the window near the bottom edge.
+        margins: Style.dp(4)
         onAboutToShow: {
             _unhideAll.enabled = !!( _page.model && _page.model.hiddenList().length )
         }

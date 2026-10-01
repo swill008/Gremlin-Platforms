@@ -663,6 +663,11 @@ Item {
         return savedCatalog.length > 0 && JSON.stringify(catalogPayload()) !== savedCatalog
     }
 
+    // Leaving needs a prompt for unsaved display options or an edited action pane.
+    function needsLeave() {
+        return hasUnsaved() || (paneHid >= 0 && _catalog.paneDirty())
+    }
+
     function saveCatalog() {
         var ok = false
         if (moduleModel && claimDeviceName.length)
@@ -680,6 +685,8 @@ Item {
     }
 
     property bool _leaveOnly: false
+    // Set by Main while quitting, so the prompt does not talk about leaving a device.
+    property string leaveMessage: ""
     property bool _leaveAfterPane: false
     signal leaveResolved()
     signal leaveCancelled()
@@ -705,7 +712,9 @@ Item {
             return
         }
         _leaveOnly = true
-        _saveGate.detail = "Display options are not saved. Leave this device and they will be lost."
+        _saveGate.detail = leaveMessage.length
+            ? leaveMessage
+            : "Display options are not saved. Leave this device and they will be lost."
         _saveGate.ask()
     }
 
@@ -1311,6 +1320,11 @@ Item {
                     readonly property int gPadB: groupStart ? _root.padPx(_root.groupPadShape, _root.groupPad, _root.groupPadBottom) : 0
                     readonly property int gPadL: (groupStart || isLeaf) ? _root.padPx(_root.groupPadShape, _root.groupPad, _root.groupPadLeft) : 0
                     readonly property int gPadR: (groupStart || isLeaf) ? _root.padPx(_root.groupPadShape, _root.groupPad, _root.groupPadRight) : 0
+                    // With child rows hidden the list is a compact list of inputs:
+                    // half the gap between groups and no group padding.
+                    readonly property int padT: lv.kidsOn ? gPadT : 0
+                    readonly property int padB: lv.kidsOn ? gPadB : 0
+                    readonly property int betweenGap: lv.kidsOn ? Style.dp(_root.groupBetween) : Math.round(Style.dp(_root.groupBetween) / 2)
                     readonly property int topGap: {
                         if (hideLeaf)
                             return 0
@@ -1319,15 +1333,15 @@ Item {
                         if (rowKind === "unmapped-header")
                             return index > 0 ? Style.dp(_root.unmappedGap) : 0
                         if (index > 0)
-                            return Style.dp(_root.groupBetween) + gPadT
-                        return gPadT
+                            return betweenGap + padT
+                        return padT
                     }
                     readonly property bool endOfCard: isLeaf && lv.catalogModel.lastLeaf(index)
                     readonly property int bottomGap: {
                         if (hideLeaf)
                             return 0
                         if (groupStart && shownKids === 0)
-                            return gPadB
+                            return padB
                         if (endOfCard)
                             return gPadB
                         return 0
@@ -1357,9 +1371,9 @@ Item {
                         visible: groupStart && _root.colorGroup !== "#00000000" && _root.colorGroup !== "transparent"
                         z: -1
                         x: _root.groupX(_row.width)
-                        y: index > 0 ? Style.dp(_root.groupBetween) : 0
+                        y: index > 0 ? betweenGap : 0
                         width: Math.max(0, _root.groupW(_row.width))
-                        height: gPadT + (groupStart ? bodyH : lv.parentH) + (shownKids * (Style.dp(_root.groupInside) + lv.childH)) + gPadB
+                        height: padT + (groupStart ? bodyH : lv.parentH) + (shownKids * (Style.dp(_root.groupInside) + lv.childH)) + padB
                         radius: Style.dp(_root.groupRadius)
                         color: _root.colorGroup
                     }

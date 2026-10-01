@@ -230,6 +230,12 @@ Item {
         _finishClose()
     }
 
+    // After a profile change the pane belongs to a profile that is gone.
+    function closePaneNow() {
+        if (actionOpen)
+            _finishClose()
+    }
+
     function _finishClose() {
         _layout.endPane()
         actionOpen = false
@@ -1229,6 +1235,8 @@ Item {
 
     Menu {
         id: _actionMenu
+        // Keeps the menu inside the window near the bottom edge.
+        margins: Style.dp(4)
         width: Style.dp(300)
         popupType: Popup.Item
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -1246,6 +1254,8 @@ Item {
 
     Menu {
         id: _pageMenu
+        // Keeps the menu inside the window near the bottom edge.
+        margins: Style.dp(4)
         width: Style.dp(300)
         popupType: Popup.Item
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside

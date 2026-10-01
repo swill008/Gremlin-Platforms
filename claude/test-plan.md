@@ -459,7 +459,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | H-19c | PASS | Unstack all. |
 | H-19g | PASS | Delete Device: three steps (explain with "Save a copy", red confirm, result); card becomes a stub. |
 | H-19g-b | FIXED (bc4ebe27) | The "deleted devices" backup is written next to the program (`_install_root()`, hardware_profile.py:747), not in the user data folder. From source that is the repo; in the exe it is the program folder. Date in the file name reads `2026-30-SEP`. |
-| MENU-CLIP | FAIL (minor) | A card menu opened low on the page is cut off at the window bottom (Delete Device half hidden). |
+| MENU-CLIP | FIXED | A card menu opened low on the page is cut off at the window bottom (Delete Device half hidden). |
 | MENU-ESC | NOTE | Escape does not close the card menu. |
 
 ## Batch 3: Configuration / bindings catalog (2026-09-30)
@@ -476,7 +476,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | IC-06 | PASS / NOTE | Child Delete removes at once with no confirmation (S-14); leaves a blank gap until the list rebuilds. |
 | IC-05 | PASS | Add Action opens "New action"; Add + OK gives "1 assignment" (new action defaults to vJoy 1 X Axis). |
 | IC-17 | PASS | Shown > Show child rows hides them. |
-| IC-17b | FAIL (cosmetic) | Hidden child rows leave blank gaps between the parent rows. |
+| IC-17b | FIXED (compact spacing when child rows are hidden) | Hidden child rows leave blank gaps between the parent rows. |
 | IC-29 | PASS | Leaving with unsaved display (Home) asks; Cancel stays; Discard leaves. |
 | IC-26 | PASS | Reset View to Default restores defaults; toast "Options have been reset". |
 | IC-27 | PASS | Copy View from… lists the header and the other input modules; applies the chosen view. |
@@ -676,8 +676,8 @@ Data loss or broken feature first. IDs point to the batch rows above.
 | ID | Result | Notes |
 |---|---|---|
 | F-04 | NOTE (by design: Startup Mode "Use Heuristic" picks the first parentless mode) | After loading a profile the Configuring mode switches to Test Mode (not Default), so rows show Not bound. |
-| F-05 | FAIL (minor) | An open action pane stays open showing the previous profile's action after Load. |
+| F-05 | FIXED (panes close after a profile change; edited configuration panes now ask before leave, Load, New and Quit) | An open action pane stays open showing the previous profile's action after Load. |
 | F-06 | FAIL (minor) | Opening a device page (NXT) marks the profile as unsaved with no mapping changes, so quitting asks about the profile. |
-| W-03b | NOTE | When quitting, the display-options prompt says "Leave this device and they will be lost" (wording from the leave path). |
+| W-03b | FIXED | When quitting, the display-options prompt says "Leave this device and they will be lost" (wording from the leave path). |
 | OPT-RS | FIXED (plus Reset all card sizes in the card and background right-click menus) | Options > Display > Reset all card sizes clears the saved sizes, but Home keeps showing the old sizes until restart (Options uses its own model copy). |
 | CAL-11 | FIXED | The arrows always worked: showing "Not saved" made the axis block taller, so the spin boxes moved down and the next click landed above them. The label now keeps its space. |

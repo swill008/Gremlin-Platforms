@@ -221,12 +221,17 @@ ApplicationWindow {
     }
 
     function continueDisplayLeave() {
+        var quitText = _quitPending ? "Display options are not saved. Quit and they will be lost." : ""
         var catalog = catalogPane()
-        if (catalog && catalog.hasUnsaved && catalog.hasUnsaved()) {
+        if (catalog)
+            catalog.leaveMessage = quitText
+        var output = outputPane()
+        if (output)
+            output.leaveMessage = quitText
+        if (catalog && catalog.needsLeave && catalog.needsLeave()) {
             catalog.requestLeave()
             return
         }
-        var output = outputPane()
         if (output && output.hasUnsaved && output.hasUnsaved()) {
             output.requestLeave()
             return
@@ -253,7 +258,10 @@ ApplicationWindow {
 
     // Unsaved display options or an edited Logical action pane.
     function displayUnsaved() {
-        var panes = [catalogPane(), outputPane(), logicalPane()]
+        var catalog = catalogPane()
+        if (catalog && catalog.needsLeave && catalog.needsLeave())
+            return true
+        var panes = [outputPane(), logicalPane()]
         for (var i = 0; i < panes.length; ++i) {
             var pane = panes[i]
             if (pane && pane.hasUnsaved && pane.hasUnsaved())
@@ -620,9 +628,8 @@ ApplicationWindow {
         destructive: true
 
         onConfirmed: {
-            if (backend) {
-                backend.newProfile()
-            }
+            if (backend)
+                leaveDisplayThen(function() { backend.newProfile() })
         }
     }
 
@@ -681,7 +688,9 @@ ApplicationWindow {
         onAccepted: () => {
             var file = currentFile
             if (backend)
-                guardUnsavedChanges(function() { backend.loadProfile(file) })
+                leaveDisplayThen(function() {
+                    guardUnsavedChanges(function() { backend.loadProfile(file) })
+                })
         }
     }
 
@@ -720,7 +729,9 @@ ApplicationWindow {
                         onTriggered: () => {
                             var file = modelData
                             if (backend)
-                                guardUnsavedChanges(function() { backend.loadProfile(file) })
+                                leaveDisplayThen(function() {
+                                    guardUnsavedChanges(function() { backend.loadProfile(file) })
+                                })
                         }
                     }
                 }
@@ -1185,7 +1196,14 @@ ApplicationWindow {
     Connections {
         target: backend
 
+        // Open action panes belong to the old profile; nothing unsaved is left by now.
         function onProfileChanged() {
+            var catalog = _root.catalogPane()
+            if (catalog && catalog.paneHid >= 0)
+                catalog.closeAdvancedPane()
+            var logical = _root.logicalPane()
+            if (logical && logical.closePaneNow)
+                logical.closePaneNow()
         }
 
         function onQuitRequested() {

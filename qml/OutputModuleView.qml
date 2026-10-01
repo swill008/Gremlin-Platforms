@@ -453,11 +453,15 @@ Item {
             return
         }
         _leaveOnly = true
-        _saveGate.detail = "Display options are not saved. Leave this device and they will be lost."
+        _saveGate.detail = leaveMessage.length
+            ? leaveMessage
+            : "Display options are not saved. Leave this device and they will be lost."
         _saveGate.ask()
     }
 
     property bool _leaveOnly: false
+    // Set by Main while quitting, so the prompt does not talk about leaving a device.
+    property string leaveMessage: ""
     signal leaveResolved()
     signal leaveCancelled()
 
