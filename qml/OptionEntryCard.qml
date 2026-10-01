@@ -19,8 +19,8 @@ Pane {
     padding: Style.dp(10)
 
     background: Rectangle {
-        color: Universal.chromeLowColor
-        border.color: Universal.chromeMediumColor
+        color: Style.isDarkMode ? Universal.chromeLowColor : Style.bgCard
+        border.color: (Style.isDarkMode ? Universal.chromeMediumColor : Style._light.bar)
         border.width: Style.dp(1)
         radius: Style.dp(4)
     }

@@ -123,7 +123,7 @@ Button {
                 return Qt.rgba(0.133, 0.773, 0.369, selected ? 0.55 : 0.38)
             }
             if (selected) {
-                return Universal.chromeMediumColor
+                return (Style.isDarkMode ? Universal.chromeMediumColor : Style._light.bar)
             }
             return Style.background
         }

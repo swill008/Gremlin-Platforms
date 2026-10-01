@@ -529,7 +529,7 @@ def register_config_options() -> None:
         {"valid_options": ["Disable", "Ignore", "Reload"]}, True,
     )
     cfg.register(
-        "ui", "general", "dark-mode", PropertyType.Bool, False,
+        "ui", "general", "dark-mode", PropertyType.Bool, True,
         "Use the dark mode UI.", {}, True,
     )
     cfg.register(

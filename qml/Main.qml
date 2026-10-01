@@ -1037,7 +1037,7 @@ ApplicationWindow {
                             : _modeSelector.U.Universal.baseMediumLowColor
                     color: _modeSelector.down
                             ? _modeSelector.U.Universal.listMediumColor
-                            : _modeSelector.U.Universal.altMediumLowColor
+                            : (Style.isDarkMode ? _modeSelector.U.Universal.altMediumLowColor : Style._light.item)
                 }
 
                 delegate: ItemDelegate {
@@ -1104,7 +1104,7 @@ ApplicationWindow {
         id: _footer
 
         height: Style.dp(30)
-        color: U.Universal.chromeMediumColor
+        color: (Style.isDarkMode ? U.Universal.chromeMediumColor : Style._light.bar)
 
         RowLayout {
             anchors.fill: parent

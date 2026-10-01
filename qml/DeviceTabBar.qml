@@ -71,6 +71,6 @@ T.TabBar {
     background: Rectangle {
         implicitWidth: Style.dp(200)
         implicitHeight: Style.dp(48)
-        color: control.U.Universal.background
+        color: Style.isDarkMode ? control.U.Universal.background : Style._light.window
     }
 }

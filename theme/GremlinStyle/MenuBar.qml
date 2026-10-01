@@ -33,6 +33,6 @@ T.MenuBar {
 
     background: Rectangle {
         implicitHeight: Style.dp(40)
-        color: control.U.Universal.chromeMediumColor
+        color: (Style.isDarkMode ? control.U.Universal.chromeMediumColor : Style._light.bar)
     }
 }

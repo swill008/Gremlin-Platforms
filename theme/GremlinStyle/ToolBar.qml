@@ -23,6 +23,6 @@ T.ToolBar {
 
     background: Rectangle {
         implicitHeight: Style.dp(48) // AppBarThemeCompactHeight
-        color: control.U.Universal.chromeMediumColor
+        color: (Style.isDarkMode ? control.U.Universal.chromeMediumColor : Style._light.bar)
     }
 }

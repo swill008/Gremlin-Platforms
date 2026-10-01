@@ -19,6 +19,6 @@ T.Pane {
     padding: Style.dp(12)
 
     background: Rectangle {
-        color: control.U.Universal.background
+        color: (Style.isDarkMode ? control.U.Universal.background : Style._light.window)
     }
 }

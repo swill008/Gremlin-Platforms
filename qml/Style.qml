@@ -16,7 +16,7 @@ Item {
     // Color definitions.
     property var accent: Universal.accent
     property var theme: isDarkMode ? Universal.Dark : Universal.Light
-    property var background: isDarkMode ? Universal.foreground : Universal.background
+    property var background: isDarkMode ? Universal.foreground : _light.window
     property var foreground: isDarkMode ? Universal.background : Universal.foreground
     property var backgroundShade: isDarkMode ? Qt.tint(background, "#40ffffff") : Qt.tint(foreground, "#b0ffffff")
     property var lowColor: isDarkMode ? Qt.hsva(0.0, 0.0, 0.2, 1.0) : Qt.hsva(0.0, 0.0, 0.8, 1.0)
@@ -45,22 +45,28 @@ Item {
         alert: "#F97316", noteFill: "#8A7A2A", noteLine: "#C4B44A",
         onLive: "#0B1220"
     })
+    // Light mode is a grey mode: no white surfaces, cards a little lighter
+    // than the window, status colours a step darker to read on grey.
     readonly property var _light: ({
-        bgWell: "#F4F4F5", bgPage: "#FAFAFA", bgCard: "#FFFFFF",
-        bgRaised: "#F4F4F5", bgSelected: "#DBEAFE",
-        line: "#D4D4D8", lineStrong: "#A1A1AA",
-        fgStrong: "#09090B", fg: "#18181B", fgSoft: "#3F3F46",
-        fgMuted: "#52525B", fgDisabled: "#A1A1AA",
-        ok: "#16A34A", okStrong: "#15803D", okBright: "#16A34A",
-        okText: "#15803D", okTextStrong: "#14532D",
-        okFill: "#DCFCE7", okFillDeep: "#F0FDF4",
-        warn: "#D97706",
+        window: "#D4D4D8",
+        bgWell: "#C8C8CD", bgPage: "#CDCDD2", bgCard: "#E2E2E6",
+        bgRaised: "#D8D8DC", bgSelected: "#BFCFE6",
+        line: "#A8A8B0", lineStrong: "#85858E",
+        fgStrong: "#09090B", fg: "#18181B", fgSoft: "#303036",
+        fgMuted: "#45454C", fgDisabled: "#7A7A82",
+        ok: "#15803D", okStrong: "#166534", okBright: "#15803D",
+        okText: "#166534", okTextStrong: "#14532D",
+        okFill: "#BFE3CB", okFillDeep: "#CFE8D7",
+        warn: "#B45309",
         danger: "#DC2626", dangerHover: "#B91C1C",
-        dangerText: "#DC2626", dangerTextSoft: "#B91C1C", dangerFill: "#FEE2E2",
-        info: "#2563EB", infoText: "#2563EB", live: "#0284C7",
-        infoFill: "#DBEAFE", infoFillDeep: "#EFF6FF",
-        alert: "#C2410C", noteFill: "#FEF9C3", noteLine: "#EAB308",
-        onLive: "#FFFFFF"
+        dangerText: "#B91C1C", dangerTextSoft: "#991B1B", dangerFill: "#EBC8C8",
+        info: "#1D4ED8", infoText: "#1D4ED8", live: "#0369A1",
+        infoFill: "#C3D4EE", infoFillDeep: "#D0DBEC",
+        alert: "#C2410C", noteFill: "#E6DCA6", noteLine: "#B8960C",
+        onLive: "#FFFFFF",
+        // Built-in controls, which are white in stock light mode.
+        field: "#E6E6E9", popup: "#DEDEE2", item: "#99E4E4E7", scroll: "#C4C4C9",
+        bar: "#C8C8CD"
     })
     readonly property var _scheme: isDarkMode ? _dark : _light
 

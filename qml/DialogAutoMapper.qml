@@ -140,7 +140,7 @@ ApplicationWindow {
                             : _modeSelector.U.Universal.baseMediumLowColor
                     color: _modeSelector.down
                             ? _modeSelector.U.Universal.listMediumColor
-                            : _modeSelector.U.Universal.altMediumLowColor
+                            : (Style.isDarkMode ? _modeSelector.U.Universal.altMediumLowColor : Style._light.item)
                 }
 
                 delegate: ItemDelegate {

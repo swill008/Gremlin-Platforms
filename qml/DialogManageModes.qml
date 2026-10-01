@@ -145,7 +145,7 @@ ApplicationWindow {
                             : _parentMode.U.Universal.baseMediumLowColor
                     color: _parentMode.down
                             ? _parentMode.U.Universal.listMediumColor
-                            : _parentMode.U.Universal.altMediumLowColor
+                            : (Style.isDarkMode ? _parentMode.U.Universal.altMediumLowColor : Style._light.item)
                 }
 
                 delegate: ItemDelegate {

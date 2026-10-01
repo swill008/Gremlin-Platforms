@@ -24,7 +24,7 @@ T.Dialog {
     verticalPadding: Style.dp(18)
 
     background: Rectangle {
-        color: control.U.Universal.chromeMediumLowColor
+        color: (Style.isDarkMode ? control.U.Universal.chromeMediumLowColor : Style._light.popup)
         border.color: control.U.Universal.chromeHighColor
         border.width: Style.dp(1) // FlyoutBorderThemeThickness
     }
@@ -40,7 +40,7 @@ T.Dialog {
         font.pixelSize: Style.dp(20)
         background: Rectangle {
             x: Style.dp(1); y: Style.dp(1) // // FlyoutBorderThemeThickness
-            color: control.U.Universal.chromeMediumLowColor
+            color: (Style.isDarkMode ? control.U.Universal.chromeMediumLowColor : Style._light.popup)
             width: parent.width - Style.dp(2)
             height: parent.height - Style.dp(1)
         }

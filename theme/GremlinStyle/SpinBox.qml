@@ -121,6 +121,6 @@ T.SpinBox {
         border.color: !control.enabled ? control.U.Universal.baseLowColor :
                        control.activeFocus ? control.U.Universal.accent :
                        control.hovered ? control.U.Universal.baseMediumColor : control.U.Universal.chromeDisabledLowColor
-        color: control.enabled ? control.U.Universal.background : control.U.Universal.baseLowColor
+        color: control.enabled ? (Style.isDarkMode ? control.U.Universal.background : Style._light.field) : control.U.Universal.baseLowColor
     }
 }

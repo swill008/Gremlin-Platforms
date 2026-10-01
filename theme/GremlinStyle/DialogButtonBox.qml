@@ -38,7 +38,7 @@ T.DialogButtonBox {
 
     background: Rectangle {
         implicitHeight: Style.dp(32)
-        color: control.U.Universal.chromeMediumLowColor
+        color: (Style.isDarkMode ? control.U.Universal.chromeMediumLowColor : Style._light.popup)
         x: Style.dp(1); y: Style.dp(1)
         width: parent.width - Style.dp(2)
         height: parent.height - Style.dp(2)

@@ -21,7 +21,7 @@ Popup {
     implicitHeight: _content.implicitHeight + 2 * padding
 
     background: Rectangle {
-        color: Universal.chromeMediumLowColor
+        color: Style.isDarkMode ? Universal.chromeMediumLowColor : Style._light.popup
         border.color: Universal.chromeHighColor
         border.width: Style.dp(1)
     }

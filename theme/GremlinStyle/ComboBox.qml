@@ -109,7 +109,7 @@ T.ComboBox {
         color: !control.enabled ? control.U.Universal.baseLowColor :
                 control.down ? control.U.Universal.listMediumColor :
                 control.flat && control.hovered ? control.U.Universal.listLowColor :
-                control.editable && control.activeFocus ? control.U.Universal.background : control.U.Universal.altMediumLowColor
+                control.editable && control.activeFocus ? (Style.isDarkMode ? control.U.Universal.background : Style._light.field) : (Style.isDarkMode ? control.U.Universal.altMediumLowColor : Style._light.item)
         visible: !control.flat || control.pressed || control.hovered || control.visualFocus
 
         Rectangle {
@@ -148,7 +148,7 @@ T.ComboBox {
         }
 
         background: Rectangle {
-            color: control.U.Universal.chromeMediumLowColor
+            color: (Style.isDarkMode ? control.U.Universal.chromeMediumLowColor : Style._light.popup)
             border.color: control.U.Universal.chromeHighColor
             border.width: Style.dp(1) // FlyoutBorderThemeThickness
         }

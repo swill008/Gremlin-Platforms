@@ -37,7 +37,7 @@ Button {
             anchors.bottom: parent.bottom
 
             color: _sectionSelector.currentIndex == index ?
-                Universal.chromeMediumColor : Style.background
+                (Style.isDarkMode ? Universal.chromeMediumColor : Style._light.bar) : Style.background
         }
     }
 

@@ -43,7 +43,7 @@ T.ItemDelegate {
     background: Rectangle {
         visible: enabled && (control.down || control.highlighted || control.visualFocus || control.hovered)
         color: control.down ? control.U.Universal.listMediumColor :
-               control.hovered ? control.U.Universal.listLowColor : control.U.Universal.altMediumLowColor
+               control.hovered ? control.U.Universal.listLowColor : (Style.isDarkMode ? control.U.Universal.altMediumLowColor : Style._light.item)
         Rectangle {
             width: parent.width
             height: parent.height

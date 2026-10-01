@@ -35,7 +35,7 @@ T.ScrollBar {
         implicitWidth: control.interactive ? Style.dp(12) : Style.dp(6)
         implicitHeight: control.interactive ? Style.dp(12): Style.dp(6)
 
-        color: control.U.Universal.chromeLowColor
+        color: (Style.isDarkMode ? control.U.Universal.chromeLowColor : Style._light.scroll)
         visible: control.size < 1.0
         opacity: 0.0
     }

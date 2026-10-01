@@ -73,7 +73,7 @@ T.MenuItem {
 
         color: !control.enabled ? control.U.Universal.baseLowColor :
                 control.down ? control.U.Universal.listMediumColor :
-                control.highlighted ? control.U.Universal.listLowColor : control.U.Universal.altMediumLowColor
+                control.highlighted ? control.U.Universal.listLowColor : (Style.isDarkMode ? control.U.Universal.altMediumLowColor : Style._light.item)
 
         Rectangle {
             x: Style.dp(1); y: Style.dp(1)
