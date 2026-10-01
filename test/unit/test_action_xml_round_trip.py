@@ -17,9 +17,6 @@ from gremlin.types import InputType
 
 _PLUGIN_DIR = pathlib.Path(__file__).resolve().parents[2] / "action_plugins"
 
-# Known failure from the test plan: the empty first sequence is dropped on reload.
-_EMPTY_SEQUENCE_DROPPED = {"ChainData"}
-
 
 def _plugin_folders() -> set[str]:
     return {f.name for f in _PLUGIN_DIR.iterdir() if (f / "__init__.py").exists()}
@@ -41,12 +38,7 @@ def _action_classes() -> list[type[AbstractActionData]]:
 
 
 def _case(cls: type[AbstractActionData], input_type: InputType) -> pytest.param:
-    marks = []
-    if cls.__name__ in _EMPTY_SEQUENCE_DROPPED:
-        marks.append(pytest.mark.xfail(reason="empty sequence dropped", strict=True))
-    return pytest.param(
-        cls, input_type, id=f"{cls.__name__}-{input_type.name}", marks=marks
-    )
+    return pytest.param(cls, input_type, id=f"{cls.__name__}-{input_type.name}")
 
 
 _CLASSES = _action_classes()

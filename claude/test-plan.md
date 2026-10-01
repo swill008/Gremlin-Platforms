@@ -481,7 +481,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | IC-26 | PASS | Reset View to Default restores defaults; toast "Options have been reset". |
 | IC-27 | PASS | Copy View from… lists the header and the other input modules; applies the chosen view. |
 | IC-28 | PASS | Save View Settings: "Saved to the module file." and the footer names the module file. |
-| C-06 | FAIL (minor) | Hide Editor with unsaved display closes without asking (S-16); the leave gate still asks later, so nothing is lost silently. |
+| C-06 | FIXED | Hide Editor with unsaved display closes without asking (S-16); the leave gate still asks later, so nothing is lost silently. |
 | IC-13b | DEFERRED | Needs Gremlin running (Toggle). |
 | IC-07 | DEFERRED | Live LEDs / bars need a physical press. |
 | C-05, C-07..C-10, IC-02, IC-12, IC-13, IC-15..IC-25 (each section in detail) | NOT RUN | Remaining catalog detail; the display mechanism is proven by Shown, Reset, Copy View and Save. |
@@ -521,7 +521,7 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | LP-36 | PASS | Rename group to a look-alike ("TEST 21") refused: "A group named 'test 21' already exists". |
 | LP-37 | PASS / NOTE | Delete group moves its rows to Ungrouped; no confirmation (S-14). |
 | LP-24 | PASS | Assign hardware: search box, devices with tri-state boxes; ticking EVO R Button 5 adds "Written by VKBsim Gladiator EVO R · Button 5" with an Invert box. |
-| LP-24b | FAIL (minor) | The small expand arrow next to a device does not respond; clicking the device name does. |
+| LP-24b | FIXED | The small expand arrow next to a device does not respond; clicking the device name does. |
 | LP-57 | FIXED | Leaving the page (Home) with an unsaved action pane edit gives no warning and the edit is silently discarded (S-08 confirmed). |
 | LP-16..18, LP-23, LP-27..28, LP-30, LP-38, LP-50..56 | NOT RUN / earlier | Group as, Move to group, pane and display editor were tested with #21 and #26. |
 | stderr | PASS | No QML errors. |
@@ -534,7 +534,7 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | S-04 | PASS | Gear shows every variable type of example.py; unset ones marked red. |
 | S-03 | PASS | Pencil renames the instance ("Instance A"). |
 | S-05 | PASS / NOTE | Trash removes at once (no confirm, S-14). |
-| S-05b | FAIL (minor) | After removing the script, the variables panel still shows its variables. |
+| S-05b | FIXED | After removing the script, the variables panel still shows its variables. |
 | PS-01 | PASS | Startup Mode lists Use Heuristic / Last Active / Default / Test Mode; "Last Active" is saved to the profile XML. |
 | PS-06 | FAIL (cosmetic) | Typos (see batch 1). |
 | PS-02 | NOT RUN | Macro Default Delay. |
@@ -626,7 +626,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | AE-NARROW | NOTE | At this window size some right-hand controls are cut off (Double Tap's Add button, Condition's "Add Con…", Response Curve deadzone boxes overlap). |
 | AE-XML | NEW TEST | `test_action_xml_round_trip.py` saves and reloads every action plugin for each input type it supports (42 pass, 15 skipped because a new action is not valid until set up). |
 | AE-XML-NONE | FIXED | An empty text field reloads as the word "None": Description, Run Command (executable/arguments), Text to Speech. `_property_from_string[String]` is `str`, so `str(None)`. The next save writes "None". Marked xfail. |
-| AE-XML-CHAIN | FAIL (minor) | A new Chain's empty "Sequence 0" is gone after save and reload. Marked xfail. |
+| AE-XML-CHAIN | FIXED | Empty sequences (and their order) survive save and reload; a middle empty one used to shift the rest. |
 | AE-LABEL | PASS | A blank action label stays blank after save and reload. |
 | AE-SET-ALL | DEFERRED | Setting every control and reloading in the app needs Save on the sandbox profile plus physical input for Record buttons. |
 

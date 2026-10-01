@@ -151,14 +151,17 @@ class ChainData(AbstractActionData):
         self._id = util.read_action_id(node)
         self.timeout = util.read_property(node, "timeout", PropertyType.Float)
         chain_dict = {}
-        # Extract action ids for each chain
-        for elem in node.findall(".//action-id/.."):
-            key = int(elem.tag.split("-")[1])
+        # Every chain-N entry, empty ones included; reading only entries with an
+        # action-id dropped empty sequences and shifted the later ones down.
+        for elem in node:
+            parts = elem.tag.split("-")
+            if len(parts) != 2 or parts[0] != "chain" or not parts[1].isdigit():
+                continue
             action_ids = util.read_action_ids(elem)
-            chain_dict[key] = [library.get_action(aid) for aid in action_ids]
-        self.chain_sequences = []
-        for idx in sorted(chain_dict.keys()):
-            self.chain_sequences.append(chain_dict[idx])
+            chain_dict[int(parts[1])] = [library.get_action(aid) for aid in action_ids]
+        self.chain_sequences = [chain_dict[idx] for idx in sorted(chain_dict)]
+        if not self.chain_sequences:
+            self.chain_sequences = [[]]
 
     @override
     def _to_xml(self) -> ElementTree.Element:
