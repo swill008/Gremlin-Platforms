@@ -54,6 +54,15 @@ ApplicationWindow {
             text: "The mode list is the map you edit and the map that runs. Modes are stored in the profile."
         }
 
+        Label {
+            Layout.fillWidth: true
+            Layout.leftMargin: Style.dp(12)
+            Layout.rightMargin: Style.dp(12)
+            wrapMode: Text.WordWrap
+            color: Style.fgMuted
+            text: "A mode uses its parent's mappings for any input it does not map itself."
+        }
+
         JGListView  {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -63,6 +72,39 @@ ApplicationWindow {
 
             model: modeList
             delegate: _delegate
+
+            // Column headings, laid out like a row so they line up with it.
+            header: RowLayout {
+                width: ListView.view.width
+                height: implicitHeight + Style.dp(6)
+
+                Label {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Style.dp(10)
+                    padding: Style.dp(4)
+                    text: "Mode"
+                    color: Style.fgMuted
+                }
+                IconButton {
+                    text: bsi.icons.edit
+                    Layout.leftMargin: Style.dp(10)
+                    opacity: 0
+                    enabled: false
+                }
+                Label {
+                    Layout.preferredWidth: Style.dp(200)
+                    Layout.leftMargin: Style.dp(10)
+                    Layout.rightMargin: Style.dp(10)
+                    text: "Inherits from"
+                    color: Style.fgMuted
+                }
+                IconButton {
+                    text: bsi.icons.trash
+                    Layout.rightMargin: Style.dp(10)
+                    opacity: 0
+                    enabled: false
+                }
+            }
         }
 
         Button {
@@ -135,6 +177,8 @@ ApplicationWindow {
 
                 textRole: "value"
                 valueRole: "value"
+                // "" means no parent.
+                displayText: currentIndex < 0 || currentValue === "" ? "(none)" : currentText
 
                 background: Rectangle {
                     implicitWidth: Style.dp(120)
@@ -153,7 +197,7 @@ ApplicationWindow {
                     required property int index
 
                     width: ListView.view ? ListView.view.width : implicitWidth
-                    text: model[_parentMode.textRole]
+                    text: model[_parentMode.textRole] === "" ? "(none)" : model[_parentMode.textRole]
                     font.weight: _parentMode.currentIndex === index ? Font.DemiBold : Font.Normal
                     highlighted: false
                     hoverEnabled: true
