@@ -120,17 +120,30 @@ Item {
     property int editorBorderW: 1
     property int editorAccentW: 3
     property bool showEditorAccent: true
-    property string colorParent: "#111113"
-    property string colorChild: "#111113"
-    property string colorSelected: "#27272A"
-    property string colorText: "#E4E4E7"
-    property string colorMuted: "#A1A1AA"
-    property string colorLive: "#22C55E"
-    property string colorBorder: "#3F3F46"
-    property string colorSelectBorder: "#E4E4E7"
-    property string colorEditor: "#0F2744"
-    property string colorEditorBorder: "#3B82F6"
-    property string colorEditorAccent: "#3B82F6"
+    // Display colours. colorXSet is the user's choice, "" when never changed;
+    // colorX is the colour shown, which follows Dark mode until a choice is made.
+    property string colorParentSet: ""
+    property string colorChildSet: ""
+    property string colorSelectedSet: ""
+    property string colorTextSet: ""
+    property string colorMutedSet: ""
+    property string colorLiveSet: ""
+    property string colorBorderSet: ""
+    property string colorSelectBorderSet: ""
+    property string colorEditorSet: ""
+    property string colorEditorBorderSet: ""
+    property string colorEditorAccentSet: ""
+    readonly property color colorParent: colorParentSet.length ? colorParentSet : Style.bgPage
+    readonly property color colorChild: colorChildSet.length ? colorChildSet : Style.bgPage
+    readonly property color colorSelected: colorSelectedSet.length ? colorSelectedSet : Style.bgRaised
+    readonly property color colorText: colorTextSet.length ? colorTextSet : Style.fg
+    readonly property color colorMuted: colorMutedSet.length ? colorMutedSet : Style.fgMuted
+    readonly property color colorLive: colorLiveSet.length ? colorLiveSet : Style.ok
+    readonly property color colorBorder: colorBorderSet.length ? colorBorderSet : Style.line
+    readonly property color colorSelectBorder: colorSelectBorderSet.length ? colorSelectBorderSet : Style.fg
+    readonly property color colorEditor: colorEditorSet.length ? colorEditorSet : Style.infoFillDeep
+    readonly property color colorEditorBorder: colorEditorBorderSet.length ? colorEditorBorderSet : Style.info
+    readonly property color colorEditorAccent: colorEditorAccentSet.length ? colorEditorAccentSet : colorEditorBorder
     property string colorScreen: "#00000000"
     property string screenImage: ""
     property string _colorTarget: "parent"
@@ -238,19 +251,19 @@ Item {
         title: "Choose color"
         onAccepted: {
             var c = selectedColor.toString()
-            if (_colorTarget === "child") colorChild = c
-            else if (_colorTarget === "selected") colorSelected = c
-            else if (_colorTarget === "text") colorText = c
-            else if (_colorTarget === "muted") colorMuted = c
-            else if (_colorTarget === "live") colorLive = c
-            else if (_colorTarget === "border") colorBorder = c
-            else if (_colorTarget === "selectBorder") colorSelectBorder = c
-            else if (_colorTarget === "editor") colorEditor = c
-            else if (_colorTarget === "editorBorder") colorEditorBorder = c
-            else if (_colorTarget === "editorAccent") colorEditorAccent = c
+            if (_colorTarget === "child") colorChildSet = c
+            else if (_colorTarget === "selected") colorSelectedSet = c
+            else if (_colorTarget === "text") colorTextSet = c
+            else if (_colorTarget === "muted") colorMutedSet = c
+            else if (_colorTarget === "live") colorLiveSet = c
+            else if (_colorTarget === "border") colorBorderSet = c
+            else if (_colorTarget === "selectBorder") colorSelectBorderSet = c
+            else if (_colorTarget === "editor") colorEditorSet = c
+            else if (_colorTarget === "editorBorder") colorEditorBorderSet = c
+            else if (_colorTarget === "editorAccent") colorEditorAccentSet = c
             else if (_colorTarget === "group") colorGroup = c
             else if (_colorTarget === "screen") colorScreen = c
-            else colorParent = c
+            else colorParentSet = c
         }
     }
 
@@ -337,17 +350,17 @@ Item {
             editorBorderW: editorBorderW,
             editorAccentW: editorAccentW,
             showEditorAccent: showEditorAccent,
-            colorParent: colorParent,
-            colorChild: colorChild,
-            colorSelected: colorSelected,
-            colorText: colorText,
-            colorMuted: colorMuted,
-            colorLive: colorLive,
-            colorBorder: colorBorder,
-            colorSelectBorder: colorSelectBorder,
-            colorEditor: colorEditor,
-            colorEditorBorder: colorEditorBorder,
-            colorEditorAccent: colorEditorAccent,
+            colorParent: colorParentSet,
+            colorChild: colorChildSet,
+            colorSelected: colorSelectedSet,
+            colorText: colorTextSet,
+            colorMuted: colorMutedSet,
+            colorLive: colorLiveSet,
+            colorBorder: colorBorderSet,
+            colorSelectBorder: colorSelectBorderSet,
+            colorEditor: colorEditorSet,
+            colorEditorBorder: colorEditorBorderSet,
+            colorEditorAccent: colorEditorAccentSet,
             colorScreen: colorScreen,
             screenImage: screenImage,
             parkEmptyInUnmapped: parkEmptyInUnmapped,
@@ -482,17 +495,17 @@ Item {
         editorBorderW = 1
         editorAccentW = 3
         showEditorAccent = true
-        colorParent = "#111113"
-        colorChild = "#111113"
-        colorSelected = "#27272A"
-        colorText = "#E4E4E7"
-        colorMuted = "#A1A1AA"
-        colorLive = "#22C55E"
-        colorBorder = "#3F3F46"
-        colorSelectBorder = "#E4E4E7"
-        colorEditor = "#0F2744"
-        colorEditorBorder = "#3B82F6"
-        colorEditorAccent = "#3B82F6"
+        colorParentSet = ""
+        colorChildSet = ""
+        colorSelectedSet = ""
+        colorTextSet = ""
+        colorMutedSet = ""
+        colorLiveSet = ""
+        colorBorderSet = ""
+        colorSelectBorderSet = ""
+        colorEditorSet = ""
+        colorEditorBorderSet = ""
+        colorEditorAccentSet = ""
         colorScreen = "#00000000"
         screenImage = ""
         parkEmptyInUnmapped = false
@@ -636,21 +649,35 @@ Item {
         editorBorderW = numVal(v.editorBorderW, 1)
         editorAccentW = numVal(v.editorAccentW, 3)
         showEditorAccent = v.showEditorAccent !== false
-        colorParent = v.colorParent || "#111113"
-        colorChild = v.colorChild || "#111113"
-        colorSelected = v.colorSelected || "#27272A"
-        colorText = v.colorText || "#E4E4E7"
-        colorMuted = v.colorMuted || "#A1A1AA"
-        colorLive = v.colorLive || "#22C55E"
-        colorBorder = v.colorBorder || "#3F3F46"
-        colorSelectBorder = v.colorSelectBorder || "#E4E4E7"
-        colorEditor = v.colorEditor || "#0F2744"
-        colorEditorBorder = v.colorEditorBorder || "#3B82F6"
-        colorEditorAccent = v.colorEditorAccent || v.colorEditorBorder || "#3B82F6"
+        colorParentSet = userColour(v.colorParent, "#111113")
+        colorChildSet = userColour(v.colorChild, "#111113")
+        colorSelectedSet = userColour(v.colorSelected, "#27272A")
+        colorTextSet = userColour(v.colorText, "#E4E4E7")
+        colorMutedSet = userColour(v.colorMuted, "#A1A1AA")
+        colorLiveSet = userColour(v.colorLive, "#22C55E")
+        colorBorderSet = userColour(v.colorBorder, "#3F3F46")
+        colorSelectBorderSet = userColour(v.colorSelectBorder, "#E4E4E7")
+        colorEditorSet = userColour(v.colorEditor, "#0F2744")
+        colorEditorBorderSet = userColour(v.colorEditorBorder, "#3B82F6")
+        colorEditorAccentSet = userColour(v.colorEditorAccent, "#3B82F6")
         colorScreen = v.colorScreen || "#00000000"
         screenImage = v.screenImage || ""
         parkEmptyInUnmapped = v.parkEmptyInUnmapped === true
         applySections(v.sections)
+    }
+
+    // A saved colour equal to the old fixed (dark) default was never changed by
+    // the user, so it follows Dark mode like a colour that was never set.
+    function userColour(saved, oldDefault) {
+        var text = String(saved || "")
+        return text.toLowerCase() === oldDefault.toLowerCase() ? "" : text
+    }
+
+    function userColourOf(target) {
+        var names = { parent: "Parent", child: "Child", selected: "Selected", text: "Text",
+                      muted: "Muted", live: "Live", border: "Border", selectBorder: "SelectBorder",
+                      editor: "Editor", editorBorder: "EditorBorder", editorAccent: "EditorAccent" }
+        return names[target] ? "color" + names[target] + "Set" : ""
     }
 
     property string savedCatalog: ""
@@ -989,7 +1016,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             height: Style.dp(26)
-            color: "#27272A"
+            color: Style.bgRaised
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: Style.dp(8)
@@ -997,12 +1024,12 @@ Item {
                 spacing: Style.dp(6)
                 Label {
                     text: fold.open ? "\u25BC" : "\u25B6"
-                    color: "#E4E4E7"
+                    color: Style.fg
                     font.pixelSize: Style.dp(10)
                 }
                 Label {
                     text: fold.title
-                    color: "#E4E4E7"
+                    color: Style.fg
                     font.pixelSize: Style.dp(11)
                     font.bold: true
                     Layout.fillWidth: true
@@ -1050,7 +1077,7 @@ Item {
         spacing: Style.dp(4)
 
         RowLayout {
-            Label { text: "Alignment"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
+            Label { text: "Alignment"; color: Style.fg; Layout.preferredWidth: Style.dp(70) }
             ComboBox {
                 id: _alignPick
                 Layout.fillWidth: true
@@ -1080,17 +1107,17 @@ Item {
         }
         RowLayout {
             visible: align !== "center"
-            Label { text: "Left"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Left"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 800; stepSize: 8; source: fromLeft; onUserSet: (v) => { edited(align, v, fromRight, widthPct); }}
         }
         RowLayout {
             visible: align !== "center"
-            Label { text: "Right"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Right"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 800; stepSize: 8; source: fromRight; onUserSet: (v) => { edited(align, fromLeft, v, widthPct); }}
         }
         RowLayout {
             visible: align === "center"
-            Label { text: "Width %"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Width %"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 20; to: 100; source: widthPct; onUserSet: (v) => { edited(align, fromLeft, fromRight, v); }}
         }
     }
@@ -1108,7 +1135,7 @@ Item {
         spacing: Style.dp(4)
 
         RowLayout {
-            Label { text: "Shape"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
+            Label { text: "Shape"; color: Style.fg; Layout.preferredWidth: Style.dp(70) }
             ComboBox {
                 id: _shapePick
                 Layout.fillWidth: true
@@ -1125,39 +1152,39 @@ Item {
         }
         RowLayout {
             visible: shape !== "sides"
-            Label { text: "Size"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Size"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 80; source: size; onUserSet: (v) => { edited("box", v, v, v, v, v); }}
         }
         RowLayout {
             visible: shape === "sides"
-            Label { text: "Top"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Top"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 80; source: padTop; onUserSet: (v) => { edited("sides", size, v, padRight, padBottom, padLeft); }}
         }
         RowLayout {
             visible: shape === "sides"
-            Label { text: "Right"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Right"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 80; source: padRight; onUserSet: (v) => { edited("sides", size, padTop, v, padBottom, padLeft); }}
         }
         RowLayout {
             visible: shape === "sides"
-            Label { text: "Bottom"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Bottom"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 80; source: padBottom; onUserSet: (v) => { edited("sides", size, padTop, padRight, v, padLeft); }}
         }
         RowLayout {
             visible: shape === "sides"
-            Label { text: "Left"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Left"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 80; source: padLeft; onUserSet: (v) => { edited("sides", size, padTop, padRight, padBottom, v); }}
         }
     }
 
     component ColorPick: RowLayout {
         property string label: ""
-        property color swatch: "#111111"
+        property color swatch: Style.onLight
         property string target: ""
         Layout.fillWidth: true
         Label {
             text: label
-            color: "#E4E4E7"
+            color: Style.fg
             wrapMode: Text.WordWrap
             Layout.preferredWidth: Style.dp(150)
             Layout.maximumWidth: Style.dp(160)
@@ -1166,8 +1193,16 @@ Item {
             Layout.fillWidth: true
             text: "Choose…"
             onClicked: { _colorTarget = target; _colorDlg.selectedColor = swatch; _colorDlg.open() }
-            background: Rectangle { color: swatch; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-            contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            background: Rectangle { color: swatch; border.color: Style.line; border.width: 1; radius: 3 }
+            contentItem: Label { text: parent.text; color: Style.onLight; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        }
+        // Back to the colour that follows Dark mode.
+        Button {
+            readonly property string setName: _root.userColourOf(target)
+            visible: setName.length > 0
+            enabled: visible && _root[setName].length > 0
+            text: "Default"
+            onClicked: _root[setName] = ""
         }
     }
 
@@ -1393,7 +1428,7 @@ Item {
                             if (selected)
                                 return lv.cSel
                             if (rowKind === "unmapped-header")
-                                return "#18181B"
+                                return Style.bgCard
                             return isLeaf ? lv.cChild : lv.cParent
                         }
 
@@ -1537,7 +1572,7 @@ Item {
             visible: _root.paneHid >= 0
             Layout.preferredWidth: Style.dp(6)
             Layout.fillHeight: true
-            color: _paneGrip.pressed || _paneGrip.containsMouse ? "#3B82F6" : "#3F3F46"
+            color: _paneGrip.pressed || _paneGrip.containsMouse ? Style.info : Style.line
 
             MouseArea {
                 id: _paneGrip
@@ -1569,8 +1604,8 @@ Item {
             Layout.minimumWidth: Style.dp(420)
             Layout.maximumWidth: _root.clampPane(_root.paneWidth)
             Layout.fillHeight: true
-            color: "#18181B"
-            border.color: "#3F3F46"
+            color: Style.bgCard
+            border.color: Style.line
             border.width: Style.dp(1)
 
             ColumnLayout {
@@ -1581,7 +1616,7 @@ Item {
                 RowLayout {
                     Label {
                         text: _root.paneName.length ? _root.paneName : "Action Editor"
-                        color: "#E4E4E7"
+                        color: Style.fg
                         font.bold: true
                         font.pixelSize: Style.dp(16)
                         Layout.fillWidth: true
@@ -1596,7 +1631,7 @@ Item {
                 Label {
                     visible: _root.paneSummary.length > 0
                     text: _root.paneSummary
-                    color: "#9AA4B2"
+                    color: Style.fgMuted
                     font.pixelSize: Style.dp(12)
                     Layout.fillWidth: true
                     elide: Text.ElideRight
@@ -1635,8 +1670,8 @@ Item {
             Layout.preferredWidth: Style.dp(360)
             Layout.maximumWidth: Style.dp(360)
             Layout.fillHeight: true
-            color: "#18181B"
-            border.color: "#3F3F46"
+            color: Style.bgCard
+            border.color: Style.line
             border.width: Style.dp(1)
 
             ColumnLayout {
@@ -1647,7 +1682,7 @@ Item {
                 RowLayout {
                     Label {
                         text: "Input Configuration — Display Editor"
-                        color: "#E4E4E7"
+                        color: Style.fg
                         font.bold: true
                         font.pixelSize: Style.dp(13)
                         Layout.fillWidth: true
@@ -1679,24 +1714,24 @@ Item {
                             onToggled: (v) => { openScreen = v }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Background"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(110) }
+                                Label { text: "Background"; color: Style.fg; Layout.preferredWidth: Style.dp(110) }
                                 Button {
                                     Layout.fillWidth: true
                                     text: colorScreen === "#00000000" ? "None" : "Choose…"
                                     onClicked: {
                                         _colorTarget = "screen"
-                                        _colorDlg.selectedColor = colorScreen === "#00000000" ? "#111113" : colorScreen
+                                        _colorDlg.selectedColor = colorScreen === "#00000000" ? Style.bgPage : colorScreen
                                         _colorDlg.open()
                                     }
                                     background: Rectangle {
-                                        color: colorScreen === "#00000000" ? "#27272A" : colorScreen
-                                        border.color: "#3F3F46"
+                                        color: colorScreen === "#00000000" ? Style.bgRaised : colorScreen
+                                        border.color: Style.line
                                         border.width: Style.dp(1)
                                         radius: Style.dp(3)
                                     }
                                     contentItem: Label {
                                         text: parent.text
-                                        color: "#F4F4F5"
+                                        color: Style.fgStrong
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                     }
@@ -1709,7 +1744,7 @@ Item {
                             }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Image"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(110) }
+                                Label { text: "Image"; color: Style.fg; Layout.preferredWidth: Style.dp(110) }
                                 Button {
                                     Layout.fillWidth: true
                                     text: screenImage.length ? "Change…" : "Choose…"
@@ -1724,7 +1759,7 @@ Item {
                             Label {
                                 visible: screenImage.length > 0
                                 text: "The image covers the color."
-                                color: "#A1A1AA"
+                                color: Style.fgMuted
                                 font.pixelSize: Style.dp(11)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
@@ -1740,7 +1775,7 @@ Item {
                             FlagBox { text: "Show LED dots"; source: showLeds; onUserSet: (v) => { showLeds = v } }
                             FlagBox { text: "Show summary"; source: showSummary; onUserSet: (v) => { showSummary = v } }
                             RowLayout {
-                                Label { text: "Summary size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Summary size"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 9; to: 20; source: summaryFont; onUserSet: (v) => { summaryFont = v; }}
                             }
                         }
@@ -1749,10 +1784,10 @@ Item {
                             open: openList
                             onToggled: (v) => { openList = v }
                             RowLayout {
-                                Label { text: "Space between groups"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Space between groups"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: groupBetween; onUserSet: (v) => { groupBetween = v; }}
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+                            Label { text: "Padding"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: listPadShape
                                 size: listPad
@@ -1775,7 +1810,7 @@ Item {
                             open: openUnmapped
                             onToggled: (v) => { openUnmapped = v }
                             RowLayout {
-                                Label { text: "Space before Unmapped"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Space before Unmapped"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 80; source: unmappedGap; onUserSet: (v) => { unmappedGap = v; }}
                             }
                         }
@@ -1784,10 +1819,10 @@ Item {
                             open: openGroup
                             onToggled: (v) => { openGroup = v }
                             RowLayout {
-                                Label { text: "Space inside the group"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Space inside the group"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: groupInside; onUserSet: (v) => { groupInside = v; }}
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+                            Label { text: "Padding"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: groupPadShape
                                 size: groupPad
@@ -1817,7 +1852,7 @@ Item {
                                 }
                             }
                             RowLayout {
-                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Corner radius"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 16; source: groupRadius; onUserSet: (v) => { groupRadius = v; }}
                             }
                             ColorPick { label: "Color"; swatch: colorGroup; target: "group" }
@@ -1827,10 +1862,10 @@ Item {
                             open: openParent
                             onToggled: (v) => { openParent = v }
                             RowLayout {
-                                Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Height"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 36; to: 80; source: parentHeight; onUserSet: (v) => { parentHeight = v; }}
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+                            Label { text: "Padding"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: parentPadShape
                                 size: parentPad
@@ -1860,18 +1895,18 @@ Item {
                                 }
                             }
                             RowLayout {
-                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Corner radius"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 16; source: rowRadius; onUserSet: (v) => { rowRadius = v; }}
                             }
                             RowLayout {
-                                Label { text: "Name width"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Name width"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 80; to: 360; stepSize: 10; source: nameColW; onUserSet: (v) => { nameColW = v; }}
                             }
                             ColorPick { label: "Row color"; swatch: colorParent; target: "parent" }
                             ColorPick { label: "Line around the row"; swatch: colorBorder; target: "border" }
                             Label {
                                 text: "The child row uses this line too."
-                                color: "#A1A1AA"
+                                color: Style.fgMuted
                                 font.pixelSize: Style.dp(11)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
@@ -1882,10 +1917,10 @@ Item {
                             open: openChild
                             onToggled: (v) => { openChild = v }
                             RowLayout {
-                                Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Height"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 24; to: 60; source: childHeight; onUserSet: (v) => { childHeight = v; }}
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+                            Label { text: "Padding"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: childPadShape
                                 size: childPad
@@ -1915,11 +1950,11 @@ Item {
                                 }
                             }
                             RowLayout {
-                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Corner radius"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 16; source: childRadius; onUserSet: (v) => { childRadius = v; }}
                             }
                             RowLayout {
-                                Label { text: "Name width"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Name width"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 80; to: 360; stepSize: 10; source: childNameColW; onUserSet: (v) => { childNameColW = v; }}
                             }
                             ColorPick { label: "Row color"; swatch: colorChild; target: "child" }
@@ -1929,12 +1964,12 @@ Item {
                             open: openText
                             onToggled: (v) => { openText = v }
                             RowLayout {
-                                Label { text: "Parent text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Parent text size"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 10; to: 22; source: parentFont; onUserSet: (v) => { parentFont = v; }}
                             }
                             FlagBox { text: "Bold names"; source: parentBold; onUserSet: (v) => { parentBold = v } }
                             RowLayout {
-                                Label { text: "Child text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Child text size"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 9; to: 20; source: childFont; onUserSet: (v) => { childFont = v; }}
                             }
                             ColorPick { label: "Text color"; swatch: colorText; target: "text" }
@@ -1963,7 +1998,7 @@ Item {
                                     editorWidthPct = widthPct
                                 }
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+                            Label { text: "Padding"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: editorPadShape
                                 size: editorPad
@@ -1981,19 +2016,19 @@ Item {
                                 }
                             }
                             RowLayout {
-                                Label { text: "Gap below row"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Gap below row"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 24; source: editorGap; onUserSet: (v) => { editorGap = v; }}
                             }
                             RowLayout {
-                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Corner radius"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 16; source: editorRadius; onUserSet: (v) => { editorRadius = v; }}
                             }
                             RowLayout {
-                                Label { text: "Border width"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Border width"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 8; source: editorBorderW; onUserSet: (v) => { editorBorderW = v; }}
                             }
                             RowLayout {
-                                Label { text: "Accent width"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Accent width"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 12; source: editorAccentW; onUserSet: (v) => { editorAccentW = v; }}
                             }
                             FlagBox { text: "Show accent bar"; source: showEditorAccent; onUserSet: (v) => { showEditorAccent = v } }
@@ -2014,16 +2049,16 @@ Item {
                         onClicked: resetCatalog()
                         contentItem: Text {
                             text: parent.text
-                            color: "#FFFFFF"
+                            color: Style.onColor
                             font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
                             implicitHeight: Style.dp(44)
-                            color: parent.down ? "#991B1B" : (parent.hovered ? "#EF4444" : "#DC2626")
+                            color: parent.down ? Style.dangerPressed : (parent.hovered ? Style.dangerBright : Style.danger)
                             border.width: Style.dp(1)
-                            border.color: parent.hovered ? "#FCA5A5" : "#B91C1C"
+                            border.color: parent.hovered ? Style.dangerTextSoft : Style.dangerHover
                         }
                     }
                     Button {
@@ -2037,7 +2072,7 @@ Item {
                         }
                         contentItem: Text {
                             text: parent.text
-                            color: "#F4F4F5"
+                            color: Style.fgStrong
                             font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -2051,7 +2086,7 @@ Item {
                         onClicked: saveCatalog()
                         contentItem: Text {
                             text: parent.text
-                            color: "#FFFFFF"
+                            color: Style.onColor
                             font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -2130,17 +2165,17 @@ Item {
         anchors.centerIn: parent
         modal: true
         dim: true
-        Overlay.modal: Rectangle { color: "#66000000" }
+        Overlay.modal: Rectangle { color: Style.dim }
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
         padding: Style.dp(18)
         background: Rectangle {
-            color: "#27272A"
-            border.color: "#52525B"
+            color: Style.bgRaised
+            border.color: Style.lineStrong
             radius: Style.dp(6)
         }
         contentItem: Label {
             text: toastText
-            color: "#F4F4F5"
+            color: Style.fgStrong
             font.pixelSize: Style.dp(14)
             horizontalAlignment: Text.AlignHCenter
         }

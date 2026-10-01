@@ -17,7 +17,7 @@ _REMAINING = {
     "action_plugins/response_curve/HandleControl.qml": 2,
     "action_plugins/response_curve/ResponseCurveAction.qml": 1,
     "qml/AxesStateSeries.qml": 8,
-    "qml/BindingCatalog.qml": 115,
+    "qml/BindingCatalog.qml": 24,
     "qml/ButtonState.qml": 2,
     "qml/DeviceInputList.qml": 1,
     "qml/DialogCalibration.qml": 3,

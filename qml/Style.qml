@@ -78,6 +78,11 @@ Item {
     readonly property color onColor: "#FFFFFF"
     readonly property color onLight: "#111111"
     readonly property color clear: "#00000000"
+    // Backdrop behind a modal dialog.
+    readonly property color dim: "#66000000"
+    // Delete buttons: white text on red in both modes.
+    readonly property color dangerPressed: "#991B1B"
+    readonly property color dangerBright: "#EF4444"
     // Status: live/claimed (ok), highlight (warn), delete/error (danger), info.
     readonly property color ok: _scheme.ok
     readonly property color okStrong: _scheme.okStrong

@@ -253,7 +253,7 @@ def test_editor_geometry_defaults_match_old_indent() -> None:
     assert '"editorAlign": "left"' in mm
     assert '"editorIndent": 12' in mm
     assert '"editorRight": 0' in mm
-    assert '"colorEditorAccent": "#3B82F6"' in mm
+    assert '"colorEditorAccent": ""' in mm
 
 
 def test_photo_lookup_does_not_copy_another_device() -> None:
