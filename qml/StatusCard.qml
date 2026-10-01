@@ -206,7 +206,23 @@ Rectangle {
         property real pressY: 0
         property real lastSx: 0
         property real lastSy: 0
+        // The card counts double-clicks itself: Qt did not report them on output
+        // cards with pictures. Every card opens the same way.
+        property real lastClickAt: 0
+        property real lastClickX: 0
+        property real lastClickY: 0
         enabled: !_card.resizing
+
+        function isSecondClick(x, y) {
+            var now = Date.now()
+            var second = now - lastClickAt <= Qt.styleHints.mouseDoubleClickInterval
+                && Math.abs(x - lastClickX) <= Style.dp(6)
+                && Math.abs(y - lastClickY) <= Style.dp(6)
+            lastClickAt = second ? 0 : now
+            lastClickX = x
+            lastClickY = y
+            return second
+        }
 
         onPressed: function(mouse) {
             didDrag = false
@@ -243,12 +259,14 @@ Rectangle {
             didDrag = false
             _card.lifting = false
             if (dragged) {
+                lastClickAt = 0
                 Qt.callLater(function() {
                     _card.dropAt(sx, sy)
                 })
                 return
             }
             if (button === Qt.RightButton) {
+                lastClickAt = 0
                 // Open after this release. Opening during the release makes
                 // Qt treat it as a click outside and close the menu at once.
                 Qt.callLater(function() {
@@ -256,18 +274,18 @@ Rectangle {
                 })
                 return
             }
-            if (shift)
+            if (shift) {
+                lastClickAt = 0
                 _card.shiftToggled()
-            else
-                _card.cardFocused()
+                return
+            }
+            _card.cardFocused()
+            if (button === Qt.LeftButton && isSecondClick(px, py))
+                _card.openConfiguration()
         }
         onCanceled: function() {
             didDrag = false
             _card.lifting = false
-        }
-        onDoubleClicked: function(mouse) {
-            if (mouse.button === Qt.LeftButton && !didDrag)
-                _card.openConfiguration()
         }
     }
 

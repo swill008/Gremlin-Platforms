@@ -491,7 +491,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 
 | ID | Result | Notes |
 |---|---|---|
-| H-03-dest | FAIL | Double-clicking an output card (vJoy 1) does nothing; the input card double-click works. The card menu "Output View" works. |
+| H-03-dest | FIXED (cards count double-clicks themselves) | Double-clicking an output card (vJoy 1) does nothing; the input card double-click works. The card menu "Output View" works. |
 | H-10-dest | PASS | Output card menu: Output View, Button Map, Configure output module, Auto Mapper, vJoy Viewer, Device Information, Reset size, Hide device, Clear module settings, Delete Device. |
 | OV-08b | FAIL | Default button grid is 12 columns with no wrap or scroll: with the Display Editor open only columns 1-5 show (6-12 hidden under the panel); with it hidden, 11-12 are cut at the edge. |
 | OV-08 | PASS | Columns = 5 shows all 29 buttons. |
