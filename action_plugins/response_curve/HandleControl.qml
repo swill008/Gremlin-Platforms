@@ -67,7 +67,7 @@ Rectangle {
 
         // Left control handle line.
         ShapePath {
-            strokeColor: modelData.hasLeft ? "#808080" : "transparent"
+            strokeColor: modelData.hasLeft ? Style.fgDisabled : "transparent"
 
             startX: offset
             startY: offset
@@ -80,7 +80,7 @@ Rectangle {
 
         // Right control handle line.
         ShapePath {
-            strokeColor: modelData.hasRight ? "#808080" : "transparent"
+            strokeColor: modelData.hasRight ? Style.fgDisabled : "transparent"
 
             startX: offset
             startY: offset

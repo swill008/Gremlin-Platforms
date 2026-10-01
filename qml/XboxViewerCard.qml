@@ -50,8 +50,8 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         implicitHeight: _inner.implicitHeight + Style.dp(16)
-        color: pairActive ? "#052e16" : Style.background
-        border.color: pairActive ? "#22C55E" : Style.accent
+        color: pairActive ? Style.okFillDeep : Style.background
+        border.color: pairActive ? Style.ok : Style.accent
         border.width: pairActive ? Style.dp(2) : Style.dp(1)
         radius: Style.dp(6)
         clip: false
@@ -68,26 +68,26 @@ ColumnLayout {
                 JGText { text: title; font.pixelSize: Style.dp(16)}
                 Rectangle {
                     visible: pairActive
-                    width: Style.dp(8); height: Style.dp(8); radius: Style.dp(4); color: "#22C55E"
+                    width: Style.dp(8); height: Style.dp(8); radius: Style.dp(4); color: Style.ok
                 }
                 JGText {
                     visible: pairActive
                     text: "Active"
-                    color: "#22C55E"
+                    color: Style.ok
                     font.pixelSize: Style.dp(13)
                 }
                 Item { Layout.fillWidth: true }
                 JGText {
                     visible: pairLabel.length > 0
                     text: "\u2192  " + pairLabel
-                    color: pairActive ? "#86EFAC" : Style.accent
+                    color: pairActive ? Style.okText : Style.accent
                 }
             }
 
             JGText {
                 visible: !pairActive && _xboxPads.count > 0
                 text: "Activate Gremlin to plug the virtual pad and light this face."
-                color: "#F97316"
+                color: Style.alert
                 font.pixelSize: Style.dp(13)
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -134,12 +134,12 @@ ColumnLayout {
                             height: parent.height
                             radius: Style.dp(2)
                             width: parent.width * Math.min(1.0, Math.max(0.0, (hwAxis(identifier) + 1.0) * 0.5))
-                            color: "#22C55E"
+                            color: Style.ok
                         }
                     }
                     Label {
                         text: xboxLabel
-                        color: "#86EFAC"
+                        color: Style.okText
                         Layout.preferredWidth: Style.dp(110)
                         font.pixelSize: Style.dp(12)
                     }
@@ -152,7 +152,7 @@ ColumnLayout {
                             height: parent.height
                             radius: Style.dp(2)
                             width: parent.width * Math.min(1.0, Math.max(0.0, (destAxis(xboxPad, xboxTarget) + 1.0) * 0.5))
-                            color: "#22C55E"
+                            color: Style.ok
                         }
                     }
                 }
@@ -184,18 +184,18 @@ ColumnLayout {
                             property bool xbOn: xboxStamp >= 0 && xb(xboxPad, xboxTarget) > 0.5
                             width: Style.dp(48); height: Style.dp(18); radius: Style.dp(3)
                             color: Style.background
-                            border.color: (hwOn || xbOn) ? "#22C55E" : Style.medColor
+                            border.color: (hwOn || xbOn) ? Style.ok : Style.medColor
                             border.width: Style.dp(1)
                             clip: true
                             Row {
                                 anchors.fill: parent
                                 Rectangle {
                                     width: parent.width / 2; height: parent.height
-                                    color: hwOn ? "#22C55E" : "transparent"
+                                    color: hwOn ? Style.ok : "transparent"
                                     Label {
                                         anchors.centerIn: parent
                                         text: label
-                                        color: hwOn ? "#052e16" : Style.foreground
+                                        color: hwOn ? Style.okFillDeep : Style.foreground
                                         font.pixelSize: Style.dp(11)
                                     }
                                     HoverHandler { id: _hwHover }
@@ -208,11 +208,11 @@ ColumnLayout {
                                 Rectangle { width: Style.dp(1); height: parent.height; color: Style.medColor }
                                 Rectangle {
                                     width: parent.width / 2 - Style.dp(1); height: parent.height
-                                    color: xbOn ? "#22C55E" : "transparent"
+                                    color: xbOn ? Style.ok : "transparent"
                                     Label {
                                         anchors.centerIn: parent
                                         text: xboxChip
-                                        color: xbOn ? "#052e16" : Style.foreground
+                                        color: xbOn ? Style.okFillDeep : Style.foreground
                                         font.pixelSize: Style.dp(11)
                                     }
                                     HoverHandler { id: _xbHover }

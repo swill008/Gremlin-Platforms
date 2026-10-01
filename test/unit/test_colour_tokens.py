@@ -14,19 +14,14 @@ _LITERAL = re.compile(r"[\"']#[0-9A-Fa-f]{6,8}[\"']")
 # from the Style tokens, so these counts may only go down; lower a count (or drop
 # the file) after converting it.
 _REMAINING = {
-    "action_plugins/response_curve/HandleControl.qml": 2,
-    "action_plugins/response_curve/ResponseCurveAction.qml": 1,
-    "qml/AxesStateSeries.qml": 8,
     "qml/BindingCatalog.qml": 24,
     "qml/DialogJoystickButtonMap.qml": 66,
-    "qml/InputViewerCard.qml": 15,
     "qml/LogicalPage.qml": 11,
     "qml/OutputModuleView.qml": 12,
     "qml/UnmappedCard.qml": 1,
     "qml/VkbRigEditor.qml": 114,
     "qml/VkbRigFace.qml": 8,
     "qml/Xbox360Face.qml": 44,
-    "qml/XboxViewerCard.qml": 14,
 }
 
 

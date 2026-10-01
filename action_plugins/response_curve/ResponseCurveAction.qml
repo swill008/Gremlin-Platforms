@@ -193,7 +193,7 @@ Item {
                     preferredRendererType: Shape.CurveRenderer
 
                     ShapePath {
-                        strokeColor: "#808080"
+                        strokeColor: Style.fgDisabled
 
                         strokeWidth: Style.dp(2)
                         fillColor: "transparent"

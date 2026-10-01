@@ -64,8 +64,8 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         implicitHeight: _inner.implicitHeight + Style.dp(16)
-        color: pairActive ? "#052e16" : Style.background
-        border.color: pairActive ? "#22C55E" : Style.accent
+        color: pairActive ? Style.okFillDeep : Style.background
+        border.color: pairActive ? Style.ok : Style.accent
         border.width: pairActive ? Style.dp(2) : Style.dp(1)
         radius: Style.dp(6)
         clip: true
@@ -90,13 +90,13 @@ ColumnLayout {
                     width: Style.dp(8)
                     height: Style.dp(8)
                     radius: Style.dp(4)
-                    color: "#22C55E"
+                    color: Style.ok
                 }
 
                 JGText {
                     visible: pairActive
                     text: "Active"
-                    color: "#22C55E"
+                    color: Style.ok
                     font.pixelSize: Style.dp(13)
                 }
 
@@ -105,7 +105,7 @@ ColumnLayout {
                 JGText {
                     visible: pairLabel.length > 0
                     text: "\u2192  " + pairLabel
-                    color: pairActive ? "#86EFAC" : Style.accent
+                    color: pairActive ? Style.okText : Style.accent
                 }
 
                 Switch {
@@ -117,7 +117,7 @@ ColumnLayout {
             JGText {
                 visible: destEmpty
                 text: "Output module has no claimed controls. Configure output module to fill the right half."
-                color: "#A1A1AA"
+                color: Style.fgMuted
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
                 font.pixelSize: Style.dp(13)
@@ -185,13 +185,13 @@ ColumnLayout {
                             height: parent.height
                             radius: Style.dp(2)
                             width: parent.width * Math.min(1.0, Math.max(0.0, (hwAxis(identifier) + 1.0) * 0.5))
-                            color: "#22C55E"
+                            color: Style.ok
                         }
                     }
 
                     Label {
                         text: destClaimed ? vjoyLabel : "—"
-                        color: destClaimed ? Style.accent : "#71717A"
+                        color: destClaimed ? Style.accent : Style.fgDisabled
                         Layout.preferredWidth: Style.dp(88)
                         font.pixelSize: Style.dp(12)
                     }
@@ -207,7 +207,7 @@ ColumnLayout {
                             height: parent.height
                             radius: Style.dp(2)
                             width: parent.width * Math.min(1.0, Math.max(0.0, (vjAxis(vjoyGuid, vjoyInput) + 1.0) * 0.5))
-                            color: "#38BDF8"
+                            color: Style.live
                         }
                     }
                 }
@@ -260,7 +260,7 @@ ColumnLayout {
                             height: Style.dp(18)
                             radius: Style.dp(3)
                             color: Style.background
-                            border.color: (hwOn || vjOn) ? "#22C55E" : Style.medColor
+                            border.color: (hwOn || vjOn) ? Style.ok : Style.medColor
                             border.width: Style.dp(1)
                             clip: true
 
@@ -270,12 +270,12 @@ ColumnLayout {
                                 Rectangle {
                                     width: parent.width / 2
                                     height: parent.height
-                                    color: hwOn ? "#22C55E" : "transparent"
+                                    color: hwOn ? Style.ok : "transparent"
 
                                     Label {
                                         anchors.centerIn: parent
                                         text: label
-                                        color: hwOn ? "#052e16" : Style.foreground
+                                        color: hwOn ? Style.okFillDeep : Style.foreground
                                         font.pixelSize: Style.dp(11)
                                     }
 
@@ -296,12 +296,12 @@ ColumnLayout {
                                 Rectangle {
                                     width: parent.width / 2 - Style.dp(1)
                                     height: parent.height
-                                    color: vjOn ? "#38BDF8" : "transparent"
+                                    color: vjOn ? Style.live : "transparent"
 
                                     Label {
                                         anchors.centerIn: parent
                                         text: destClaimed ? String(vjoyInput) : "—"
-                                        color: vjOn ? "#0b1220" : (destClaimed ? Style.foreground : "#71717A")
+                                        color: vjOn ? Style.onLive : (destClaimed ? Style.foreground : Style.fgDisabled)
                                         font.pixelSize: Style.dp(11)
                                     }
 
