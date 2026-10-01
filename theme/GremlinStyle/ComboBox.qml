@@ -37,6 +37,16 @@ T.ComboBox {
         font.weight: control.currentIndex === index ? Font.DemiBold : Font.Normal
         highlighted: control.highlightedIndex === index
         hoverEnabled: control.hoverEnabled
+
+        // The current value: an accent bar as well as the bold text.
+        Rectangle {
+            visible: control.currentIndex === index
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: Style.dp(3)
+            color: control.U.Universal.accent
+        }
     }
 
     indicator: ColorImage {
@@ -115,6 +125,9 @@ T.ComboBox {
     }
 
     popup: T.Popup {
+        // Open below the box. Opened on top, the first entry sat under the pointer
+        // and was highlighted instead of the current value.
+        y: control.height
         width: control.width
         height: Math.min(contentItem.implicitHeight, control.Window.height - topMargin - bottomMargin)
         topMargin: Style.dp(8)

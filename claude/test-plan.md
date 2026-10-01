@@ -406,7 +406,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | ID | Result | Notes |
 |---|---|---|
 | F-01 | PASS | Confirm dialog; Cancel keeps profile; Create gives a blank profile. |
-| F-01b | FAIL (minor) | After New Profile (and after Save As) the "Configuring mode" box is blank until opened; the list holds "Default". |
+| F-01b | FIXED | After New Profile (and after Save As) the "Configuring mode" box is blank until opened; the list holds "Default". |
 | F-02 | PASS | Load from the profiles folder; title, bindings and mode restored. |
 | F-02b | FIXED (Load and Recent ask) | Ctrl+O with unsaved changes gives no warning (S-05 confirmed). |
 | F-03 | FIXED | File > Recent is always empty; `recent-profiles` is never written (S-04 confirmed). |
@@ -469,7 +469,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | H-03 | PASS | Double-click an input card opens Input Configuration. |
 | C-02 | PASS | Previous / next arrows step through input modules and wrap; tooltips. |
 | IC-01 | PASS | Type filter (all 9 entries listed); Map to keyboard / Unmapped filter the list. |
-| IC-01b | FAIL (minor) | When a filter leaves no rows, the list shows "This window only shows what the input module passes. Right-click the card → Configure input module…", which is the wrong advice. |
+| IC-01b | FIXED | When a filter leaves no rows, the list shows "This window only shows what the input module passes. Right-click the card → Configure input module…", which is the wrong advice. |
 | IC-03 | PASS | Parent row click opens the action pane. |
 | IC-09 | PASS | Pane X with changes: Cancel keeps the edit; Discard drops it (reopen shows the old value). |
 | IC-11 | PASS | OK commits; pane stays with "Close pane after OK" off; X then closes with no prompt. |
@@ -545,7 +545,7 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | ID | Result | Notes |
 |---|---|---|
 | OPT-X1 | PASS | Selection combos save and load (Device change behavior Reload → Ignore survives reopen). S-27 ruled out. |
-| OPT-X1b | FAIL (minor) | When a combo list opens, it highlights the first entry (Disable), not the current value. |
+| OPT-X1b | FIXED | When a combo list opens, it highlights the first entry (Disable), not the current value. |
 | OPT-X2 | PASS / NOTE | "action-priorities" is simply not shown (no blank row). S-26 ruled out. |
 | OPT-A01 | NOTE | Action list includes "Root" (internal) and "Map to Xbox" sits last, out of order; group headers show raw names ("Axis-Delta", "Change-Mode"). |
 | OPT-A01b | FIXED | `move()` reorders the live config list in place, so `set()` sees no change and never writes the file; reordering may not survive a restart. |
@@ -553,7 +553,7 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | OPT-U01 | PASS | Dark mode off/on applies immediately. |
 | OPT-U01b | FAIL | Light mode is only partial: Logical Device rows and editor stay dark on a white page; group headers light-on-light; Home cards stay dark. Many colours are fixed for dark mode. |
 | OPT-F | PASS | Files rows all point inside the data folder; Select opens a folder picker at the current folder; Reset keeps the default. |
-| OPT-F08b | FAIL (minor) | stderr after Reset: `Overwriting binding on JGTextField::text at ConfigGroup.qml:188`; the field stops following later changes. |
+| OPT-F08b | FIXED | stderr after Reset: `Overwriting binding on JGTextField::text at ConfigGroup.qml:188`; the field stops following later changes. |
 | OPT-P01 | FIXED | New Entry shows a row, but the entry is never written to configuration.json (the list is edited in place, so `set()` sees no change). It is lost on restart. |
 | OPT-P04 | PASS | Select Executable lists running programs; Cancel closes. |
 | OPT-P07 | FIXED | The row's × does not remove the entry; no error logged. |
@@ -675,7 +675,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 
 | ID | Result | Notes |
 |---|---|---|
-| F-04 | FAIL (minor) | After loading a profile the Configuring mode switches to Test Mode (not Default), so rows show Not bound. |
+| F-04 | NOTE (by design: Startup Mode "Use Heuristic" picks the first parentless mode) | After loading a profile the Configuring mode switches to Test Mode (not Default), so rows show Not bound. |
 | F-05 | FAIL (minor) | An open action pane stays open showing the previous profile's action after Load. |
 | F-06 | FAIL (minor) | Opening a device page (NXT) marks the profile as unsaved with no mapping changes, so quitting asks about the profile. |
 | W-03b | NOTE | When quitting, the display-options prompt says "Leave this device and they will be lost" (wording from the leave path). |
