@@ -16,6 +16,10 @@ import Gremlin.Style
 Item {
     id: _root
 
+    // The script whose variables the right panel shows.
+    property string shownPath: ""
+    property string shownName: ""
+
     property ScriptListModel scriptListModel : backend.scriptListModel
 
     // Dialog to select a script to add
@@ -170,6 +174,8 @@ Item {
             onClicked: {
                 _renameScriptDialog.text = name
                 _renameScriptDialog.callback = (value) => {
+                    if (_root.shownPath === path && _root.shownName === name)
+                        _root.shownName = value
                     scriptListModel.renameScript(path, name, value)
                 }
                 _renameScriptDialog.visible = true
@@ -181,6 +187,8 @@ Item {
 
             onClicked: {
                 _config.model = variables
+                _root.shownPath = path
+                _root.shownName = name
             }
         }
 
@@ -188,7 +196,14 @@ Item {
             Layout.rightMargin: Style.dp(20)
             text: bsi.icons.trash
 
-            onClicked: () => scriptListModel.removeScript(path, name)
+            onClicked: () => {
+                if (_root.shownPath === path && _root.shownName === name) {
+                    _config.model = []
+                    _root.shownPath = ""
+                    _root.shownName = ""
+                }
+                scriptListModel.removeScript(path, name)
+            }
         }
     }
 }
