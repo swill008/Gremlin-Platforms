@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
+import Gremlin.Device
 import Gremlin.Style
 
 Item {
@@ -32,10 +33,14 @@ Item {
     function pw(n) { return n * _pw }
     function ph(n) { return n * _ph }
 
+    // The picture lives in the data folder's modules library, with the other
+    // device pictures.
+    HardwareProfile { id: _hw }
+
     Image {
         id: _img
         anchors.fill: parent
-        source: Qt.resolvedUrl("images/xbox360_two_panel.jpg")
+        source: _hw.imageUrl("xbox360_two_panel.jpg")
         fillMode: Image.PreserveAspectFit
         asynchronous: true
         cache: true
