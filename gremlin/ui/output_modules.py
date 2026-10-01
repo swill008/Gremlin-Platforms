@@ -58,6 +58,57 @@ def _resolve_vjoy_id(name: str, bound_guid: str) -> int:
     return 0
 
 
+def _claimed_ints(claim: dict | None, key: str) -> list[int]:
+    out: list[int] = []
+    for raw in (claim or {}).get(key) or []:
+        try:
+            out.append(int(raw))
+        except (TypeError, ValueError):
+            continue
+    return sorted(set(out))
+
+
+def _vjoy_device(vjoy_id: int) -> object | None:
+    """The vJoy device Gremlin has opened for this id, or None."""
+    try:
+        from vjoy.vjoy import VJoyProxy
+
+        devices = VJoyProxy.vjoy_devices or {}
+    except Exception:
+        return None
+    for key, dev in devices.items():
+        try:
+            if int(key) == int(vjoy_id):
+                return dev
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def vjoy_output_state(
+    vjoy_id: int, claim: dict | None
+) -> dict[tuple[str, int], float]:
+    """Current values of the outputs a vJoy output module claims.
+
+    The output module is the firewall: only claimed outputs are read, and only
+    ones the vJoy device actually has, so the driver is never asked for an
+    output it would refuse. Empty when Gremlin has not opened that device.
+    """
+    dev = _vjoy_device(vjoy_id)
+    if dev is None:
+        return {}
+    state: dict[tuple[str, int], float] = {}
+    for axis_id in _claimed_ints(claim, "axes"):
+        if dev.is_axis_valid(axis_id=axis_id):
+            axis = dev.axis(axis_id=axis_id)
+            state[("axis", axis_id)] = float(getattr(axis, "_value", 0.0))
+    for button_id in _claimed_ints(claim, "buttons"):
+        if dev.is_button_valid(button_id):
+            pressed = bool(getattr(dev.button(button_id), "_is_pressed", False))
+            state[("button", button_id)] = 1.0 if pressed else 0.0
+    return state
+
+
 def _dest_modules() -> list[dict]:
     folder = _maps_dir()
     if not folder.is_dir():

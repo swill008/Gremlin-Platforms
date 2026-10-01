@@ -16,6 +16,7 @@ from gremlin import (
     device_initialization,
     event_handler,
 )
+from gremlin.shared_state import runtime_active
 from gremlin.signal import signal
 from gremlin.types import InputType, PropertyType
 from gremlin import keyboard as gremlin_keyboard
@@ -557,6 +558,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._refresh_timer.setInterval(50)
         self._refresh_timer.timeout.connect(self._refresh_inplace)
         self._dest_snap: dict[str, dict] = {}
+        # vJoy id and claim per output card, read once per reload.
+        self._dest_targets: dict[str, tuple[int, dict]] = {}
         self._reload()
         event_handler.EventListener().device_change_event.connect(self._schedule_reload)
         from gremlin.input_module_runtime import InputModuleRuntime
@@ -1257,6 +1260,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._refresh_timer.start()
 
     def _refresh_inplace(self) -> None:
+        self._dest_targets = {}
         if not self._rows:
             self._reload()
             return
@@ -1425,61 +1429,45 @@ class ModuleListModel(QtCore.QAbstractListModel):
         )
         self.lastChanged.emit()
 
+    def _dest_target(self, row: ModuleRow) -> tuple[int, dict]:
+        """vJoy id and claim of an output card's output module."""
+        cached = self._dest_targets.get(row.slug)
+        if cached is not None:
+            return cached
+        from gremlin.ui.output_modules import _resolve_vjoy_id
+
+        name = row.raw_name or row.name
+        vid = int(_resolve_vjoy_id(name, row.guid) or 0)
+        doc = _load_module_doc(name, row.guid) if vid else None
+        target = (vid, _claim_from_doc(doc) if doc else {})
+        self._dest_targets[row.slug] = target
+        return target
+
     def _poll_dest_last(self) -> None:
+        # Outputs only change while a profile runs.
+        if not runtime_active():
+            self._dest_snap = {}
+            return
         from gremlin.input_module_gate import dest_last_change
+        from gremlin.ui.output_modules import vjoy_output_state
 
-        try:
-            from vjoy.vjoy import VJoyProxy
-
-            devices = VJoyProxy.vjoy_devices or {}
-        except Exception:
-            return
-        if not devices:
-            return
         for row in self._rows:
             if row.direction != "dest":
                 continue
-            digits = "".join(ch for ch in (row.name or "") if ch.isdigit())
-            if not digits:
+            vid, claim = self._dest_target(row)
+            if not vid:
                 continue
-            vid = int(digits)
-            dev = devices.get(vid)
-            if dev is None:
-                for key, item in devices.items():
-                    try:
-                        if int(key) == vid or int(getattr(item, "vjoy_id", 0) or 0) == vid:
-                            dev = item
-                            break
-                    except Exception:
-                        continue
-            if dev is None:
-                continue
-            snap: dict[tuple[str, int], float] = {}
-            for axis_id in range(1, 9):
-                try:
-                    axis_obj = dev.axis(axis_id=axis_id)
-                    snap[("axis", axis_id)] = float(getattr(axis_obj, "_value", 0.0))
-                except Exception:
-                    continue
-            for btn_id in range(1, 129):
-                try:
-                    btn = dev.button(btn_id)
-                    snap[("button", btn_id)] = (
-                        1.0 if bool(getattr(btn, "_is_pressed", False)) else 0.0
-                    )
-                except Exception:
-                    break
+            snap = vjoy_output_state(vid, claim)
             prev = self._dest_snap.get(row.slug)
             self._dest_snap[row.slug] = snap
             changed = dest_last_change(prev or {}, snap)
             if changed is None:
                 continue
             kind, hid = changed
-            doc = _load_module_doc(row.raw_name or row.name, row.guid)
-            claim = _claim_from_doc(doc) if doc else {}
             self._set_last(row, kind, hid, claim)
 
     def _reload(self) -> None:
+        self._dest_targets = {}
         hidden = _hidden_slugs()
         show_stubs = _show_stubs()
         rows: list[ModuleRow] = []
