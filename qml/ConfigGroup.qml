@@ -184,9 +184,9 @@ ColumnLayout {
                         visible: properties["allow_reset"] === true
                         text: "Reset"
                         onClicked: () => {
-                            var path = String(properties["default_path"] || "")
-                            _pathVariable.text = path
-                            model.value = path
+                            // The field follows model.value; writing its text would
+                            // break that binding.
+                            model.value = String(properties["default_path"] || "")
                         }
                     }
                 }
@@ -199,9 +199,7 @@ ColumnLayout {
                     title: "Select a File"
 
                     onAccepted: () => {
-                        var path = selectedFile.toString().substring("file:///".length)
-                        associatedField.text = path
-                        model.value = path
+                        model.value = selectedFile.toString().substring("file:///".length)
                     }
                 }
 
@@ -213,9 +211,7 @@ ColumnLayout {
                     title: "Select a Folder"
 
                     onAccepted: () => {
-                        var path = selectedFolder.toString().substring("file:///".length)
-                        associatedField.text = path
-                        model.value = path
+                        model.value = selectedFolder.toString().substring("file:///".length)
                     }
                 }
             }
