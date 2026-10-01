@@ -815,10 +815,6 @@ ApplicationWindow {
                         Helpers.toggleComponent("DialogXboxViewer.qml")
                     }
                 }
-                MenuItem {
-                    text: qsTr("Device Viewer")
-                    onTriggered: () => { Helpers.toggleComponent("DialogDeviceViewer.qml") }
-                }
             }
             Menu {
                 title: qsTr("Device setup")
@@ -989,16 +985,6 @@ ApplicationWindow {
                 tooltip: qsTr("Open the Logical Device configuration")
 
                 onClicked: () => { openLogicalDevice() }
-            }
-
-            JGToolButton {
-                text: "\uF4CA"
-                tooltip: qsTr("Toggle Device Viewer")
-                caption: "Device"
-
-                onClicked: () => {
-                    Helpers.toggleComponent("DialogDeviceViewer.qml")
-                }
             }
 
             JGToolButton {
@@ -1300,10 +1286,6 @@ ApplicationWindow {
             onAutoMap: function(card) {
                 _statusLastCard = card
                 Helpers.createComponent("DialogAutoMapper.qml")
-            }
-            onOpenDeviceViewer: function(card) {
-                _statusLastCard = card
-                Helpers.toggleComponent("DialogDeviceViewer.qml")
             }
             onOpenPairing: function(card) {
                 _statusLastCard = card

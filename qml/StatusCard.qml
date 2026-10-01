@@ -50,7 +50,6 @@ Rectangle {
     signal openOutputView()
     signal configureModule()
     signal autoMap()
-    signal openDeviceViewer()
     signal openPairing()
     signal openCalibration()
     signal openDeviceInformation()
@@ -428,12 +427,6 @@ Rectangle {
             onTriggered: _card.configureModule()
         }
         MenuItem { text: "Auto Mapper"; onTriggered: _card.autoMap() }
-        MenuItem {
-            visible: direction !== "dest"
-            height: visible ? implicitHeight : 0
-            text: "Device Viewer"
-            onTriggered: _card.openDeviceViewer()
-        }
         MenuItem {
             text: (bus === "XInput" || tab === "xbox" || slug === "xbox") ? "Xbox Viewer" : "vJoy Viewer"
             onTriggered: _card.openPairing()

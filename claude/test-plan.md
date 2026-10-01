@@ -236,8 +236,8 @@ Profile Settings, 7 Options, 8 Button Map, 9 Viewers, 10 Calibration and Configu
 
 ## 9. Viewers
 
-- [ ] DV-01..04 [A] Device Viewer: opens, pauses highlighting, fold rows, name tooltip. Esc does not close it (see S-30).
-- [ ] DV-05..07 [U] Temporal, Current, and Buttons & Hats switches with a moving stick.
+- [x] ~~DV-01..04 [A] Device Viewer: opens, pauses highlighting, fold rows, name tooltip. Esc does not close it (see S-30).~~ Removed (legacy Device Viewer).
+- [x] ~~DV-05..07 [U] Temporal, Current, and Buttons & Hats switches with a moving stick.~~ Removed (legacy Device Viewer).
 - [ ] VJV-01..02 [A] vJoy Viewer: cards, chips (dash rule), "Active" badge.
 - [ ] VJV-03 [U] Temporal plot while moving an axis.
 - [ ] XV-01..02 [A] Xbox Viewer lists Map to Xbox cards; "Activate Gremlin…" message.
@@ -328,7 +328,7 @@ Physical input and real output. One sitting, about 30 minutes:
 3. Catalog live LEDs, bars and tint (IC-07).
 4. Output View live (OV-01).
 5. Button Map chip lights on a press (BM-Z02).
-6. Device Viewer switches (DV-05..07).
+6. ~~Device Viewer switches (DV-05..07).~~ Removed (legacy Device Viewer).
 7. vJoy Viewer temporal plot (VJV-03).
 8. Xbox Viewer with a hat mapped to an Xbox button, and Upper half triggers (XV-03).
 9. Calibration center and extrema (CAL-07..10).
@@ -584,7 +584,8 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | XV-01b | FIXED (also Button Map device list) | The card title is the raw Logical Device ID "f0af472f-8e17-493b-a1eb-7333ee8543f2" instead of "Logical Device". |
 | XV-IMG | FAIL (back burner #9) | "Xbox face image missing". |
 | DV-01 | PASS (batch 1) | Device Viewer lists the devices. |
-| DV-05..07, VJV-03, XV-03 | DEFERRED | Need physical input / Gremlin active. |
+| DV-05..07 | REMOVED | Legacy Device Viewer removed (Tools menu, toolbar Device button, card menu, its QML and state models). |
+| VJV-03, XV-03 | DEFERRED | Need physical input / Gremlin active. |
 | DV-02 / S-30 | NOTE | Viewers ignore Esc (by design in code). |
 
 ## Batch 10: Calibration and Configure Module (2026-09-30)
