@@ -450,28 +450,49 @@ Item {
                                     enabled: !_root.editorLocked
                                     cursorShape: rowKind === "parent" ? Qt.OpenHandCursor : Qt.SizeAllCursor
                                     preventStealing: true
-                                    drag.target: rowKind === "parent" ? _payload : null
-                                    drag.axis: Drag.XAndYAxis
-                                    drag.threshold: Style.dp(4)
                                     onPressed: (mouse) => {
                                         if (rowKind !== "parent") {
                                             _root._dragFrom = key
                                             return
                                         }
-                                        var pos = mapToItem(_row, mouse.x, mouse.y)
-                                        _payload.x = pos.x
-                                        _payload.y = pos.y
+                                        // The ghost is held where the row was pressed.
+                                        var inRow = mapToItem(_row, mouse.x, mouse.y)
+                                        _payload.Drag.hotSpot.x = inRow.x
+                                        _payload.Drag.hotSpot.y = inRow.y
+                                        _payload.pressAt = mapToItem(_root, mouse.x, mouse.y)
                                         _row.grabToImage(function(result) {
-                                            _payload.Drag.imageSource = result.url
-                                        })
+                                            _payload.ghost = result.url
+                                        }, Qt.size(_row.width, _row.height))
+                                    }
+                                    // In-app drag: it starts while the button is held, never
+                                    // after release, so it cannot swallow the next click.
+                                    onPositionChanged: (mouse) => {
+                                        if (rowKind !== "parent")
+                                            return
+                                        var pos = mapToItem(_root, mouse.x, mouse.y)
+                                        if (!_payload.Drag.active
+                                                && Math.abs(pos.x - _payload.pressAt.x) + Math.abs(pos.y - _payload.pressAt.y) < Style.dp(4))
+                                            return
+                                        _payload.x = pos.x - _payload.Drag.hotSpot.x
+                                        _payload.y = pos.y - _payload.Drag.hotSpot.y
+                                        _payload.Drag.active = true
                                     }
                                     onReleased: (mouse) => {
-                                        if (rowKind === "parent")
+                                        if (rowKind === "parent") {
+                                            if (_payload.Drag.active)
+                                                _payload.Drag.drop()
                                             return
+                                        }
                                         var pos = mapToItem(_list.contentItem, mouse.x, mouse.y)
                                         var hit = _list.indexAt(pos.x, pos.y)
+                                        var from = _root._dragFrom
+                                        _root._dragFrom = ""
                                         if (hit >= 0)
-                                            _layout.moveRow(_root._dragFrom, _layout.keyAt(hit))
+                                            _root.moveLater("row", from, _layout.keyAt(hit), "")
+                                    }
+                                    onCanceled: {
+                                        if (_payload.Drag.active)
+                                            _payload.Drag.cancel()
                                         _root._dragFrom = ""
                                     }
                                 }
@@ -595,7 +616,7 @@ Item {
                             keys: ["application/x-gremlin-logical"]
                             property bool placeBefore: true
                             onPositionChanged: (drag) => {
-                                var source = drag.getDataAsString("application/x-gremlin-logical")
+                                var source = drag.source && drag.source.dragKey ? drag.source.dragKey : ""
                                 if (!source || source === key || source.indexOf("parent:") !== 0) {
                                     _insertLine.visible = false
                                     return
@@ -612,14 +633,12 @@ Item {
                             onExited: _insertLine.visible = false
                             onDropped: (drop) => {
                                 _insertLine.visible = false
-                                var source = drop.getDataAsString("application/x-gremlin-logical")
+                                var source = drop.source && drop.source.dragKey ? drop.source.dragKey : ""
                                 if (!source || source === key)
                                     return
-                                if (rowKind === "group")
-                                    _layout.moveParent(source, key, "into")
-                                else
-                                    _layout.moveParent(source, key, placeBefore ? "before" : "after")
                                 drop.accept(Qt.MoveAction)
+                                _root.moveLater("parent", source, key,
+                                                rowKind === "group" ? "into" : (placeBefore ? "before" : "after"))
                             }
                             Rectangle {
                                 id: _insertLine
@@ -634,15 +653,25 @@ Item {
 
                         Item {
                             id: _payload
+                            // On the page, not the row, so the list never clips it.
+                            parent: _root
+                            z: 100
                             width: Style.dp(1)
                             height: Style.dp(1)
-                            Drag.active: _grip.drag.active && rowKind === "parent" && !_root.editorLocked
-                            Drag.dragType: Drag.Automatic
+                            property string dragKey: key
+                            property url ghost
+                            property point pressAt
+                            Drag.dragType: Drag.Internal
+                            Drag.keys: ["application/x-gremlin-logical"]
                             Drag.supportedActions: Qt.MoveAction
                             Drag.proposedAction: Qt.MoveAction
-                            Drag.hotSpot.x: Style.dp(12)
-                            Drag.hotSpot.y: Style.dp(12)
-                            Drag.mimeData: { "application/x-gremlin-logical": key }
+                            Image {
+                                visible: _payload.Drag.active
+                                source: _payload.ghost
+                                width: _row.width
+                                height: _row.height
+                                opacity: 0.85
+                            }
                         }
 
                         MouseArea {
@@ -1049,6 +1078,20 @@ Item {
 
 
     property string _dragFrom: ""
+
+    // Moves run after the mouse and drop handlers finish: the move rebuilds the
+    // rows, and a handler still running in a destroyed row loses its names.
+    function moveLater(kind, from, to, where) {
+        if (!from || !to)
+            return
+        var layout = _layout
+        Qt.callLater(function() {
+            if (kind === "row")
+                layout.moveRow(from, to)
+            else
+                layout.moveParent(from, to, where)
+        })
+    }
     property string _menuKey: ""
     property string _menuTitle: ""
     property string _menuUser: ""

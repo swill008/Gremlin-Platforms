@@ -572,6 +572,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | BM-F08 / S-24 | NOT RUN | Clear image (destructive to the module picture). |
 | BM-E03..05, BM-P01..03, TBL, TXT | NOT RUN | Remaining editor menus. |
 | BM-CARD-TRAY | FIXED | Button Map opened from a Home card (window not yet open) showed no chips in Edit Mapping: the other devices' panels turned the face off while the list filled in. Now only the panel in use does. Sandbox: card path, menu path, switching devices all show chips. |
+| LD-DRAG-STUCK | FIXED | Item drag used Windows' drag, which could start after release and swallow the next click. Now an in-app drag (as R16's action editor): ghost follows the pointer, drop on release. Group drag no longer logs ReferenceError (moves run after the handlers). Sandbox: quick and slow drags, before / into group, release outside, group drag. |
 | stderr | PASS | No QML errors. |
 
 ## Batch 9: Viewers (2026-09-30)
