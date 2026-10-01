@@ -605,7 +605,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | ID | Result | Notes |
 |---|---|---|
 | MM-01 | PASS | Add Mode: duplicate "Test Mode" refused (red border, OK disabled); "Flight" added and sorted. |
-| MM-01b | FAIL (minor) | "test mode" (a case look-alike of "Test Mode") is accepted, unlike group names. |
+| MM-01b | FIXED | "test mode" (a case look-alike of "Test Mode") is accepted, unlike group names. |
 | TB-09 | PASS | Configuring mode → Flight; footer "Executing mode: Flight". |
 | MM-04 | PASS / NOTE | Deleting the current mode (no confirm, S-14) falls back to Default in the box and the footer. |
 | AM-05 | PASS | Create 1:1 mappings: "Created 36 mappings, retained 0 previous bindings."; boxes clear afterwards (S-32 ruled out). |

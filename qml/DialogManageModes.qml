@@ -71,13 +71,12 @@ ApplicationWindow {
             text: "Add Mode"
 
             onClicked: () => {
-                let validNames = modeHierarchy.modeStringList()
-
                 _textInput.heading = "Add new mode"
                 _textInput.text = "New mode"
+                // Refuses blank names and look-alikes such as "test mode" next to "Test Mode".
                 _textInput.validator = function(value)
                 {
-                    return !validNames.includes(value)
+                    return !modeHierarchy.nameTaken(value, "")
                 }
                 _textInput.callback = function(name) {
                     modeHierarchy.newMode(name)
@@ -112,15 +111,14 @@ ApplicationWindow {
                 Layout.leftMargin: Style.dp(10)
 
                 onClicked: () => {
-                    let validNames = modeHierarchy.modeStringList()
-
                     _textInput.heading = "Rename existing mode"
                     _textInput.text = name
                     _textInput.callback = function(value) {
                         modeHierarchy.renameMode(name, value)
                     }
+                    // A mode may change the capitals of its own name.
                     _textInput.validator = function(value) {
-                        return !validNames.includes(value)
+                        return !modeHierarchy.nameTaken(value, name)
                     }
                     _textInput.visible = true
                 }

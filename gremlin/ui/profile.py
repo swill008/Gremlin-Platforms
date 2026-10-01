@@ -817,6 +817,10 @@ class ModeListModel(QtCore.QAbstractListModel):
         return self.roles
 
 
+def _clean_mode_name(name: str) -> str:
+    return " ".join(str(name or "").split())
+
+
 @ta.QmlElement
 class ModeHierarchyModel(QtCore.QObject):
     """Model exposing the mode hierarchy and allows managing it."""
@@ -845,16 +849,30 @@ class ModeHierarchyModel(QtCore.QObject):
         if state.currentMode == old_name and new_name:
             state.setCurrentMode(new_name)
 
+    @QtCore.Slot(str, str, result=bool)
+    def nameTaken(self, name: str, ignore: str) -> bool:
+        """True when name is blank or matches another mode, ignoring capitals and
+        spacing (the rule Logical Device groups use). ignore is the mode being renamed."""
+        text = _clean_mode_name(name)
+        if not text:
+            return True
+        return any(
+            existing != ignore and _clean_mode_name(existing).casefold() == text.casefold()
+            for existing in self.modeStringList()
+        )
+
     @QtCore.Slot(str)
     def newMode(self, name: str) -> None:
-        if not self.current_modes.mode_exists(name):
+        name = _clean_mode_name(name)
+        if not self.nameTaken(name, ""):
             self.current_modes.add_mode(name)
             self.modesChanged.emit()
             signal.modesChanged.emit()
 
     @QtCore.Slot(str, str)
     def renameMode(self, old_name: str, new_name: str) -> None:
-        if old_name != new_name and new_name not in self.modeStringList():
+        new_name = _clean_mode_name(new_name)
+        if old_name != new_name and not self.nameTaken(new_name, old_name):
             self.current_modes.rename_mode(old_name, new_name)
             from gremlin.mode_manager import ModeManager
 
