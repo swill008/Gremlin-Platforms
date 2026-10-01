@@ -584,7 +584,7 @@ Item {
                         _page.model.setCompactView(checked)
                 }
             }
-            Label { text: "Split"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+            Label { text: "Split"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
             ComboBox {
                 id: _split
                 model: ["None", "Vertical", "Horizontal"]
@@ -609,7 +609,7 @@ Item {
             Layout.fillHeight: _page.splitOn
             visible: _page.splitOn
             orientation: (_page.model && _page.model.splitMode === "horizontal") ? Qt.Vertical : Qt.Horizontal
-            handle: Rectangle { implicitWidth: Style.dp(8); implicitHeight: Style.dp(8); color: "#52525B" }
+            handle: Rectangle { implicitWidth: Style.dp(8); implicitHeight: Style.dp(8); color: Style.lineStrong }
 
             property bool applying: false
 
@@ -682,9 +682,9 @@ Item {
 
     component SlotGhost: Rectangle {
         radius: Style.dp(4)
-        color: "#3318181B"
+        color: Style.alpha(Style.bgCard, 0.2)
         border.width: Style.dp(2)
-        border.color: "#A1A1AA"
+        border.color: Style.fgMuted
 
         Image {
             anchors.fill: parent
@@ -702,7 +702,7 @@ Item {
             anchors.bottom: parent.bottom
             anchors.bottomMargin: Style.dp(12)
             text: _page.dragName
-            color: "#E4E4E7"
+            color: Style.fg
             font.pixelSize: Style.dp(13)
             font.bold: true
             opacity: 0.8
@@ -728,7 +728,7 @@ Item {
             Label {
                 visible: _pane.title.length
                 text: _pane.title
-                color: "#E4E4E7"
+                color: Style.fg
                 font.pixelSize: Style.dp(20)
                 font.bold: true
                 font.capitalization: Font.AllUppercase
@@ -908,9 +908,9 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: Style.dp(4)
-            color: "#18181B"
+            color: Style.bgCard
             border.width: Style.dp(2)
-            border.color: "#E4E4E7"
+            border.color: Style.fg
 
             Image {
                 anchors.fill: parent
@@ -927,7 +927,7 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: Style.dp(12)
                 text: _page.dragName
-                color: "#E4E4E7"
+                color: Style.fg
                 font.pixelSize: Style.dp(13)
                 font.bold: true
             }
@@ -1071,7 +1071,7 @@ Item {
 
         background: Rectangle {
             color: Style.background
-            border.color: "#DC2626"
+            border.color: Style.danger
             border.width: Style.dp(1)
             radius: Style.dp(4)
         }
@@ -1082,7 +1082,7 @@ Item {
                 text: "Really delete this device?"
                 font.bold: true
                 font.pixelSize: Style.dp(16)
-                color: "#F87171"
+                color: Style.dangerText
                 Layout.preferredWidth: Style.dp(440)
             }
             Label {
@@ -1106,12 +1106,12 @@ Item {
                     }
                     contentItem: Label {
                         text: "Delete"
-                        color: "white"
+                        color: Style.onColor
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
                     background: Rectangle {
-                        color: parent.hovered ? "#B91C1C" : "#DC2626"
+                        color: parent.hovered ? Style.dangerHover : Style.danger
                         radius: Style.dp(4)
                     }
                 }
@@ -1130,7 +1130,7 @@ Item {
 
         background: Rectangle {
             color: Style.background
-            border.color: _doneTitle === "Delete stopped" ? "#DC2626" : Style.accent
+            border.color: _doneTitle === "Delete stopped" ? Style.danger : Style.accent
             border.width: Style.dp(1)
             radius: Style.dp(4)
         }
@@ -1164,6 +1164,6 @@ Item {
         anchors.centerIn: parent
         visible: model && model.visibleCount() === 0
         text: "No devices to show. Plug in hardware or unhide a card from View → Hidden devices…"
-        color: "#A1A1AA"
+        color: Style.fgMuted
     }
 }

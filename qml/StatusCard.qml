@@ -72,9 +72,9 @@ Rectangle {
     implicitHeight: _body.implicitHeight + Style.dp(20)
     radius: Style.dp(4)
     clip: true
-    color: selected ? "#1F2A37" : "#18181B"
+    color: selected ? Style.bgSelected : Style.bgCard
     border.width: focused || selected || dropStacking ? Style.dp(2) : Style.dp(1)
-    border.color: dropStacking ? "#22C55E" : (focused || selected ? "#E4E4E7" : "#3F3F46")
+    border.color: dropStacking ? Style.ok : (focused || selected ? Style.fg : Style.line)
 
     ColumnLayout {
         id: _body
@@ -101,8 +101,8 @@ Rectangle {
 
             Rectangle {
                 anchors.fill: parent
-                color: "#09090B"
-                border.color: "#3F3F46"
+                color: Style.bgWell
+                border.color: Style.line
                 border.width: Style.dp(1)
                 radius: Style.dp(2)
 
@@ -123,7 +123,7 @@ Rectangle {
                     anchors.centerIn: parent
                     visible: !(photo && photo.length)
                     text: isStub ? "No module photo" : "No photo"
-                    color: "#A1A1AA"
+                    color: Style.fgMuted
                     font.pixelSize: Style.dp(11)
                 }
             }
@@ -131,7 +131,7 @@ Rectangle {
 
         Label {
             text: cardName
-            color: "#E4E4E7"
+            color: Style.fg
             font.pixelSize: Style.dp(14)
             font.bold: true
             elide: Text.ElideRight
@@ -140,20 +140,20 @@ Rectangle {
 
         Label {
             text: status + " · " + bus
-            color: "#A1A1AA"
+            color: Style.fgMuted
             font.pixelSize: Style.dp(11)
         }
 
         Label {
             visible: isModule
             text: buttons + " buttons  " + axes + " axes  " + hats + " hats"
-            color: "#E4E4E7"
+            color: Style.fg
             font.pixelSize: Style.dp(11)
         }
 
         Label {
             text: "Bound to: [" + (target.length ? target : "Not bound") + "]"
-            color: "#A1A1AA"
+            color: Style.fgMuted
             font.pixelSize: Style.dp(11)
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -166,7 +166,7 @@ Rectangle {
 
         Label {
             text: lastLine.length ? ("last: " + lastLine) : "last: —"
-            color: "#E4E4E7"
+            color: Style.fg
             font.pixelSize: Style.dp(11)
             elide: Text.ElideRight
             Layout.fillWidth: true
@@ -285,14 +285,14 @@ Rectangle {
         height: Style.dp(20)
         radius: Style.dp(2)
         z: 6
-        color: _hideHover.hovered ? "#3F3F46" : "#00000000"
-        border.color: "#3F3F46"
+        color: _hideHover.hovered ? Style.line : "transparent"
+        border.color: Style.line
         border.width: Style.dp(1)
 
         Label {
             anchors.centerIn: parent
             text: "×"
-            color: "#A1A1AA"
+            color: Style.fgMuted
             font.pixelSize: Style.dp(12)
         }
         HoverHandler { id: _hideHover }
@@ -391,13 +391,16 @@ Rectangle {
             anchors.margins: Style.dp(3)
             width: Style.dp(10)
             height: Style.dp(10)
-            color: "#00000000"
+            color: "transparent"
             Canvas {
                 anchors.fill: parent
+                // Repaint when Dark mode changes the colour.
+                property color ink: Style.fgMuted
+                onInkChanged: requestPaint()
                 onPaint: {
                     var c = getContext("2d")
                     c.clearRect(0, 0, width, height)
-                    c.strokeStyle = "#A1A1AA"
+                    c.strokeStyle = ink
                     c.lineWidth = 1.5
                     c.beginPath(); c.moveTo(2, 10); c.lineTo(10, 2); c.stroke()
                     c.beginPath(); c.moveTo(6, 10); c.lineTo(10, 6); c.stroke()
@@ -480,7 +483,7 @@ Rectangle {
             onTriggered: _card.deleteDevice()
             contentItem: Label {
                 text: _deleteDeviceItem.text
-                color: "#F87171"
+                color: Style.dangerText
                 font.bold: true
                 leftPadding: Style.dp(12)
                 rightPadding: Style.dp(12)
