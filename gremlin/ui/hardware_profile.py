@@ -16,6 +16,7 @@ from PySide6 import QtCore
 import gremlin.ui.type_aliases as ta
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.ids import stored_guid_key
+from gremlin.modules.registry import is_output_name, plain_slug
 from gremlin.signal import signal
 from gremlin.ui.live_debug import trace
 from gremlin.ui.util import to_local_path
@@ -78,17 +79,7 @@ def _module_relative(stored: str) -> str:
     return text
 
 
-def _plain_slug(device_name: str) -> str:
-    raw = (device_name or "").strip().lower()
-    if raw.endswith(".json"):
-        raw = raw[:-5]
-    out = []
-    for ch in raw:
-        if ch.isalnum():
-            out.append(ch)
-        elif out and out[-1] != "_":
-            out.append("_")
-    return "".join(out).strip("_")
+_plain_slug = plain_slug
 
 
 def _slug(device_name: str) -> str:
@@ -799,9 +790,7 @@ def _active_module_path(device_name: str, guid: str) -> Path:
 
 def _is_protected_output(device_name: str) -> bool:
     """vJoy and Xbox module files stay. Delete Device removes their wires only."""
-    slug = _slug(device_name)
-    lower = " ".join(str(device_name or "").split()).lower()
-    return slug.startswith("vjoy") or slug.startswith("xbox") or "xbox" in lower
+    return is_output_name(device_name)
 
 
 def _own_file_shared(device_name: str, guid: str) -> bool:

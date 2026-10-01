@@ -1420,10 +1420,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
         cached = self._dest_targets.get(row.slug)
         if cached is not None:
             return cached
-        from gremlin.ui.output_modules import _resolve_vjoy_id
+        from gremlin.modules.registry import resolve_vjoy_id
 
         name = row.raw_name or row.name
-        vid = int(_resolve_vjoy_id(name, row.guid) or 0)
+        vid = int(resolve_vjoy_id(name, row.guid) or 0)
         doc = _load_module_doc(name, row.guid) if vid else None
         target = (vid, read_claim(doc) if doc else {})
         self._dest_targets[row.slug] = target

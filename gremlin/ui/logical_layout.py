@@ -13,7 +13,7 @@ from gremlin import device_initialization, keyboard, shared_state
 from gremlin.base_classes import AbstractActionData
 from gremlin.error import GremlinError
 from gremlin.logical_device import LogicalDevice
-from gremlin.ui.hardware_profile import _doc_direction, _name_direction
+from gremlin.modules.registry import module_direction
 from gremlin.ui.module_model import (
     KEYBOARD_GUID,
     LOGICAL_GUID,
@@ -51,9 +51,7 @@ _KIND_WORD = {
 
 
 def _module_direction(doc: dict, name: str) -> str:
-    if _name_direction(name) == "dest":
-        return "dest"
-    return _doc_direction(doc or {}, name)
+    return module_direction(doc, name=name)
 
 
 def _assign_input_modules() -> list[dict]:

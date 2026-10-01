@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 
 from PySide6 import QtCore
@@ -13,12 +12,12 @@ import dill
 from gremlin.common import SingletonDecorator
 from gremlin.event_handler import Event, EventListener
 from gremlin.input_module_gate import should_forward
+from gremlin.modules import registry
 from gremlin.modules.claim import read_claim
 from gremlin.modules.ids import guid_key
 from gremlin.osc import OSC_DEVICE_UUID
 from gremlin.signal import signal
 from gremlin.types import InputType
-from gremlin.ui.hardware_profile import _maps_dir
 
 syslog = logging.getLogger("system")
 
@@ -42,11 +41,6 @@ def _vjoy_as_input_ids() -> set[int]:
         return {int(vid) for vid, flag in raw.items() if flag}
     except Exception:
         return set()
-
-
-def _vjoy_id_from_name(name: str) -> int:
-    digits = "".join(ch for ch in str(name or "") if ch.isdigit())
-    return int(digits) if digits else 0
 
 
 @SingletonDecorator
@@ -73,32 +67,17 @@ class InputModuleRuntime(QtCore.QObject):
         dest: set[str] = set()
         passthrough = always_forwarded()
         as_input = _vjoy_as_input_ids()
-        folder = _maps_dir()
-        if folder.is_dir():
-            for path in folder.glob("*.json"):
-                try:
-                    doc = json.loads(path.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError):
-                    continue
-                if not isinstance(doc, dict):
-                    continue
-                guid = guid_key(doc.get("boundGuidLocal") or "")
-                if not guid:
-                    continue
-                direction = str(doc.get("direction") or "source").strip().lower()
-                name = str(doc.get("device") or doc.get("boundName") or path.stem)
-                vjoy_id = _vjoy_id_from_name(name) if direction in (
-                    "dest",
-                    "target",
-                    "output",
-                ) or path.stem.lower().startswith("vjoy") else 0
-                if direction in ("dest", "target", "output") and vjoy_id not in as_input:
-                    dest.add(guid)
-                    continue
-                if vjoy_id and vjoy_id in as_input:
-                    passthrough.add(guid)
-                    continue
-                claims[guid] = read_claim(doc)
+        for module in registry.modules():
+            guid = guid_key(module.bound_guid)
+            if not guid:
+                continue
+            if not module.is_output:
+                claims[guid] = module.claim
+            elif registry.vjoy_id_from_name(module.name) in as_input:
+                # a vJoy read back as an input: its events pass unfiltered
+                passthrough.add(guid)
+            else:
+                dest.add(guid)
         self._bind_live_physical(claims, dest, passthrough)
         self._claims = claims
         self._dest_guids = dest

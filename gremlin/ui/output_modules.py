@@ -3,19 +3,16 @@
 
 from __future__ import annotations
 
-import json
-import re
 from dataclasses import dataclass
 
 from PySide6 import QtCore
 
-from gremlin import common, device_initialization, event_handler
+from gremlin import common, event_handler
 from gremlin.signal import signal
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
-from gremlin.ui.hardware_profile import _maps_dir
-from gremlin.modules.ids import guid_key
-from gremlin.modules.claim import claim_friendly, claim_ids, kind_of, read_claim
+from gremlin.modules import registry
+from gremlin.modules.claim import claim_friendly, claim_ids, kind_of
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -30,29 +27,6 @@ _AXIS_WORDS = {
     7: "Slider",
     8: "Dial",
 }
-
-
-def _vjoy_id_from_name(name: str) -> int:
-    match = re.search(r"(\d+)", str(name or ""))
-    return int(match.group(1)) if match else 0
-
-
-def _resolve_vjoy_id(name: str, bound_guid: str) -> int:
-    want = guid_key(bound_guid)
-    devices = []
-    try:
-        devices = list(device_initialization.output_vjoy_devices() or [])
-    except Exception:
-        devices = []
-    if want:
-        for device in devices:
-            if guid_key(getattr(device, "device_guid", "")) == want:
-                return int(device.vjoy_id)
-    guess = _vjoy_id_from_name(name)
-    ids = {int(device.vjoy_id) for device in devices}
-    if guess in ids:
-        return guess
-    return 0
 
 
 def _claimed_ints(claim: dict | None, key: str) -> list[int]:
@@ -107,36 +81,15 @@ def vjoy_output_state(
 
 
 def _dest_modules() -> list[dict]:
-    folder = _maps_dir()
-    if not folder.is_dir():
-        return []
+    """vJoy output modules, one per vJoy device, by vJoy number."""
     rows: list[dict] = []
     seen: set[int] = set()
-    for path in sorted(folder.glob("*.json")):
-        try:
-            doc = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if not isinstance(doc, dict):
-            continue
-        direction = str(doc.get("direction") or "").strip().lower()
-        slug = path.stem.lower()
-        if direction not in ("dest", "target", "output") and not slug.startswith("vjoy"):
-            continue
-        name = str(doc.get("device") or doc.get("boundName") or path.stem).strip()
-        if not name:
-            continue
-        vjoy_id = _resolve_vjoy_id(name, str(doc.get("boundGuidLocal") or ""))
+    for module in registry.outputs():
+        vjoy_id = registry.resolve_vjoy_id(module.name, module.bound_guid)
         if not vjoy_id or vjoy_id in seen:
             continue
         seen.add(vjoy_id)
-        rows.append(
-            {
-                "name": name,
-                "vjoy_id": int(vjoy_id),
-                "claim": read_claim(doc),
-            }
-        )
+        rows.append({"name": module.name, "vjoy_id": vjoy_id, "claim": module.claim})
     rows.sort(key=lambda row: (row["vjoy_id"], row["name"].lower()))
     return rows
 

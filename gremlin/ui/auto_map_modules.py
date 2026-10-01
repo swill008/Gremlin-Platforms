@@ -10,11 +10,10 @@ from PySide6 import QtCore
 from gremlin import event_handler
 from gremlin.signal import signal
 import gremlin.ui.type_aliases as ta
-from gremlin.ui.hardware_profile import _maps_dir, _slug, resolve_module_slug
+from gremlin.ui.hardware_profile import _slug, resolve_module_slug
 from gremlin.ui.live_debug import trace
-from gremlin.ui.output_modules import _resolve_vjoy_id
+from gremlin.modules import registry
 from gremlin.modules.ids import guid_key
-from gremlin.modules.claim import read_claim
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -24,45 +23,20 @@ def _norm_guid(value: object) -> str:
     return str(value or "").strip().strip("{}")
 
 
-def _is_dest(doc: dict, slug: str) -> bool:
-    direction = str(doc.get("direction") or "").strip().lower()
-    if direction in ("dest", "target", "output"):
-        return True
-    if direction in ("source", "input"):
-        return False
-    return slug.startswith("vjoy") or slug.startswith("xbox")
-
-
 def _scan_modules() -> list[dict]:
-    folder = _maps_dir()
-    if not folder.is_dir():
-        return []
     rows: list[dict] = []
-    for path in sorted(folder.glob("*.json")):
-        try:
-            doc = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if not isinstance(doc, dict):
-            continue
-        slug = path.stem.lower()
-        name = str(doc.get("device") or doc.get("boundName") or path.stem).strip()
-        if not name:
-            continue
-        claim = read_claim(doc)
+    for module in registry.modules():
         rows.append(
             {
-                "slug": slug,
-                "name": name,
-                "path": path,
-                "doc": doc,
-                "claim": claim,
-                "guid": _norm_guid(doc.get("boundGuidLocal")),
-                "boundName": str(doc.get("boundName") or name).strip(),
-                "isDest": _is_dest(doc, slug),
-                "vjoyId": _resolve_vjoy_id(
-                    name, str(doc.get("boundGuidLocal") or "")
-                ),
+                "slug": module.slug,
+                "name": module.name,
+                "path": module.path,
+                "doc": module.doc,
+                "claim": module.claim,
+                "guid": _norm_guid(module.bound_guid),
+                "boundName": module.bound_name,
+                "isDest": module.is_output,
+                "vjoyId": registry.resolve_vjoy_id(module.name, module.bound_guid),
             }
         )
     return rows

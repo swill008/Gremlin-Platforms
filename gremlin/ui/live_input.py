@@ -210,8 +210,8 @@ class DeviceLiveState(QtCore.QObject):
         # output_modules: name "vJoy N" and bound GUID.
         self._vjoy_id = 0
         try:
-            from gremlin.ui.output_modules import _resolve_vjoy_id
-            self._vjoy_id = int(_resolve_vjoy_id(self._device_name, self._guid) or 0)
+            from gremlin.modules.registry import resolve_vjoy_id
+            self._vjoy_id = int(resolve_vjoy_id(self._device_name, self._guid) or 0)
         except Exception:
             self._vjoy_id = 0
         if self._vjoy_id:

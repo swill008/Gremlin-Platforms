@@ -14,8 +14,8 @@ from PySide6 import QtCore
 import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.device_initialization import physical_devices
+from gremlin.modules import registry
 from gremlin.modules.ids import guid_key
-from gremlin.ui.hardware_profile import _maps_dir
 from gremlin.ui.live_debug import trace
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -43,30 +43,20 @@ def _load(path) -> dict:
 
 
 def _source_modules() -> list[dict]:
-    folder = _maps_dir()
-    if not folder.is_dir():
-        return []
     physical = {guid_key(dev.device_guid): dev for dev in physical_devices()}
     rows = []
-    for path in sorted(folder.glob("*.json")):
-        slug = path.stem.lower()
-        if slug in _SKIP_SLUGS:
+    for module in registry.inputs():
+        if module.slug in _SKIP_SLUGS:
             continue
-        doc = _load(path)
-        direction = str(doc.get("direction") or "").strip().lower()
-        if direction in ("dest", "target", "output"):
-            continue
-        guid = str(doc.get("boundGuidLocal") or "").strip()
-        device = physical.get(guid_key(guid))
+        device = physical.get(guid_key(module.bound_guid))
         if device is None:
             continue
-        name = str(doc.get("device") or doc.get("boundName") or device.name).strip()
         rows.append(
             {
-                "name": name or device.name,
-                "slug": slug,
+                "name": module.name or device.name,
+                "slug": module.slug,
                 "guid": str(device.device_guid),
-                "path": path,
+                "path": module.path,
             }
         )
     rows.sort(key=lambda row: row["name"].lower())

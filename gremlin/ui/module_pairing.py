@@ -6,6 +6,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 from gremlin import device_initialization, event_handler, shared_state
+from gremlin.modules import registry
 from gremlin.modules.ids import guid_key
 from gremlin.signal import signal
 from gremlin.types import InputType
@@ -41,7 +42,8 @@ def _source_title(device_name: str, fallback: str) -> str:
 
 def _dest_for_vjoy(vjoy_id: int) -> dict:
     name = f"vJoy {int(vjoy_id)}"
-    doc = _load_module_doc(name)
+    module = registry.output_for_vjoy(int(vjoy_id))
+    doc = module.doc if module else _load_module_doc(name)
     claim = read_claim(doc) if doc else empty_claim()
     return {
         "name": str((doc or {}).get("device") or name).strip() or name,
