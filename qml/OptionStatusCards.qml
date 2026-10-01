@@ -14,7 +14,8 @@ Item {
     implicitHeight: _row.implicitHeight
     implicitWidth: Style.dp(420)
 
-    ModuleListModel { id: _modules }
+    // Only the reset; the card list itself lives on Home.
+    CardSizes { id: _sizes }
 
     RowLayout {
         id: _row
@@ -23,7 +24,7 @@ Item {
 
         Button {
             text: "Reset all card sizes"
-            onClicked: _modules.resetAllCardSizes()
+            onClicked: _sizes.resetAll()
         }
     }
 }

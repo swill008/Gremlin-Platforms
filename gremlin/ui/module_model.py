@@ -507,6 +507,21 @@ class ModuleRow:
         self.last_hardware = ""
 
 
+def reset_all_card_sizes() -> None:
+    """Back to the default size for every card. Home cards follow on configChanged."""
+    _set_sizes({})
+    signal.configChanged.emit()
+
+
+@ta.QmlElement
+class CardSizes(QtCore.QObject):
+    """Card size reset for pages that do not show the cards (Options)."""
+
+    @QtCore.Slot()
+    def resetAll(self) -> None:
+        reset_all_card_sizes()
+
+
 @ta.QmlElement
 class ModuleListModel(QtCore.QAbstractListModel):
     """Status cards: detected hardware stubs plus saved modules."""
@@ -571,8 +586,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._dest_timer.start()
         signal.profileChanged.connect(self._schedule_reload)
         signal.configChanged.connect(self._schedule_refresh)
-        # Another copy of this model (Options > Reset all card sizes) can change the
-        # saved sizes; re-read them here so Home cards follow at once.
+        # Options > Reset all card sizes changes the saved sizes elsewhere;
+        # re-read them here so Home cards follow at once.
         self._sizes_snap = _sizes()
         signal.configChanged.connect(self._follow_card_sizes)
 
@@ -1046,8 +1061,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot()
     def resetAllCardSizes(self) -> None:
-        _set_sizes({})
-        signal.configChanged.emit()
+        reset_all_card_sizes()
         self.panesChanged.emit()
 
     @QtCore.Slot(str, str)
