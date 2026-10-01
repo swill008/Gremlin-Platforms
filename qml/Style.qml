@@ -48,25 +48,25 @@ Item {
     // Light mode is a grey mode: no white surfaces, cards a little lighter
     // than the window, status colours a step darker to read on grey.
     readonly property var _light: ({
-        window: "#D4D4D8",
-        bgWell: "#C8C8CD", bgPage: "#CDCDD2", bgCard: "#E2E2E6",
-        bgRaised: "#D8D8DC", bgSelected: "#BFCFE6",
-        line: "#A8A8B0", lineStrong: "#85858E",
+        window: "#AAAAAD",
+        bgWell: "#A0A0A4", bgPage: "#A4A4A8", bgCard: "#B5B5B8",
+        bgRaised: "#ADADB0", bgSelected: "#99A6B8",
+        line: "#86868D", lineStrong: "#6A6A72",
         fgStrong: "#09090B", fg: "#18181B", fgSoft: "#303036",
-        fgMuted: "#45454C", fgDisabled: "#7A7A82",
-        ok: "#15803D", okStrong: "#166534", okBright: "#15803D",
-        okText: "#166534", okTextStrong: "#14532D",
-        okFill: "#BFE3CB", okFillDeep: "#CFE8D7",
-        warn: "#B45309",
+        fgMuted: "#36363C", fgDisabled: "#5A5A62",
+        ok: "#166534", okStrong: "#14532D", okBright: "#166534",
+        okText: "#14532D", okTextStrong: "#052E16",
+        okFill: "#99B6A2", okFillDeep: "#A6BAAC",
+        warn: "#92400E",
         danger: "#DC2626", dangerHover: "#B91C1C",
-        dangerText: "#B91C1C", dangerTextSoft: "#991B1B", dangerFill: "#EBC8C8",
-        info: "#1D4ED8", infoText: "#1D4ED8", live: "#0369A1",
-        infoFill: "#C3D4EE", infoFillDeep: "#D0DBEC",
-        alert: "#C2410C", noteFill: "#E6DCA6", noteLine: "#B8960C",
+        dangerText: "#991B1B", dangerTextSoft: "#7F1D1D", dangerFill: "#BCA0A0",
+        info: "#1E40AF", infoText: "#1E40AF", live: "#075985",
+        infoFill: "#9CAABE", infoFillDeep: "#A6AFBD",
+        alert: "#9A3412", noteFill: "#B8B085", noteLine: "#8A6D05",
         onLive: "#FFFFFF",
         // Built-in controls, which are white in stock light mode.
-        field: "#E6E6E9", popup: "#DEDEE2", item: "#99E4E4E7", scroll: "#C4C4C9",
-        bar: "#C8C8CD"
+        field: "#B8B8BA", popup: "#B2B2B5", item: "#99B6B6B9", scroll: "#9D9DA1",
+        bar: "#A0A0A4"
     })
     readonly property var _scheme: isDarkMode ? _dark : _light
 
