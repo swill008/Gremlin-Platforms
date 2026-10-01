@@ -12,9 +12,9 @@ from gremlin.signal import signal
 import gremlin.ui.type_aliases as ta
 from gremlin.ui.hardware_profile import _maps_dir, _slug, resolve_module_slug
 from gremlin.ui.live_debug import trace
-from gremlin.ui.module_model import _claim_from_doc
 from gremlin.ui.output_modules import _resolve_vjoy_id
 from gremlin.modules.ids import guid_key
+from gremlin.modules.claim import read_claim
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -49,7 +49,7 @@ def _scan_modules() -> list[dict]:
         name = str(doc.get("device") or doc.get("boundName") or path.stem).strip()
         if not name:
             continue
-        claim = _claim_from_doc(doc)
+        claim = read_claim(doc)
         rows.append(
             {
                 "slug": slug,

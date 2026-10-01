@@ -14,8 +14,8 @@ from gremlin.signal import signal
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
 from gremlin.ui.hardware_profile import _maps_dir
-from gremlin.ui.module_model import _claim_from_doc
 from gremlin.modules.ids import guid_key
+from gremlin.modules.claim import claim_friendly, claim_ids, kind_of, read_claim
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -134,7 +134,7 @@ def _dest_modules() -> list[dict]:
             {
                 "name": name,
                 "vjoy_id": int(vjoy_id),
-                "claim": _claim_from_doc(doc),
+                "claim": read_claim(doc),
             }
         )
     rows.sort(key=lambda row: (row["vjoy_id"], row["name"].lower()))
@@ -186,14 +186,9 @@ class OutputModuleDevices(QtCore.QObject):
         signal.configChanged.connect(self._update_choices)
 
     def _input_label(self, claim: dict, input_type: InputType, input_id: int) -> str:
-        kind = "button"
-        if input_type == InputType.JoystickAxis:
-            kind = "axis"
-        elif input_type == InputType.JoystickHat:
-            kind = "hat"
-        custom = str((claim.get("friendly") or {}).get(f"{kind}:{int(input_id)}") or "")
-        if custom.strip():
-            return custom.strip()
+        custom = claim_friendly(claim, kind_of(input_type), input_id)
+        if custom:
+            return custom
         if input_type == InputType.JoystickAxis:
             return _AXIS_WORDS.get(int(input_id), f"Axis {int(input_id)}")
         if input_type == InputType.JoystickHat:
@@ -209,13 +204,7 @@ class OutputModuleDevices(QtCore.QObject):
             self._modules[vjoy_id] = module
             options: list[OutputModuleDevices.InputOption] = []
             for input_type in self._valid_types:
-                if input_type == InputType.JoystickAxis:
-                    ids = [int(x) for x in (claim.get("axes") or [])]
-                elif input_type == InputType.JoystickHat:
-                    ids = [int(x) for x in (claim.get("hats") or [])]
-                else:
-                    ids = [int(x) for x in (claim.get("buttons") or [])]
-                for input_id in ids:
+                for input_id in claim_ids(claim, kind_of(input_type)):
                     options.append(
                         OutputModuleDevices.InputOption(
                             vjoy_id,

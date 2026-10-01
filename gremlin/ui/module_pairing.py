@@ -11,22 +11,26 @@ from gremlin.signal import signal
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
 from gremlin.ui import input_pairing as pairing
-from gremlin.ui.module_model import _claim_from_doc, _load_module_doc, module_exists
+from gremlin.ui.module_model import _load_module_doc, module_exists
 from gremlin.ui.hardware_profile import _slug
+from gremlin.modules.claim import (
+    claim_allows,
+    claim_friendly,
+    claim_ids,
+    empty_claim,
+    kind_of,
+    read_claim,
+)
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
 
-def _empty_claim() -> dict:
-    return {"buttons": [], "axes": [], "hats": [], "keys": [], "friendly": {}}
-
-
 def _source_claim(device_name: str) -> dict:
     doc = _load_module_doc(device_name)
     if not doc:
-        return _empty_claim()
-    return _claim_from_doc(doc)
+        return empty_claim()
+    return read_claim(doc)
 
 
 def _source_title(device_name: str, fallback: str) -> str:
@@ -38,7 +42,7 @@ def _source_title(device_name: str, fallback: str) -> str:
 def _dest_for_vjoy(vjoy_id: int) -> dict:
     name = f"vJoy {int(vjoy_id)}"
     doc = _load_module_doc(name)
-    claim = _claim_from_doc(doc) if doc else _empty_claim()
+    claim = read_claim(doc) if doc else empty_claim()
     return {
         "name": str((doc or {}).get("device") or name).strip() or name,
         "slug": _slug(name),
@@ -52,25 +56,8 @@ def _vjoy_maps_only(item) -> list[tuple[int, object, int]]:
     return [m for m in pairing._maps_for_item(item) if m[1] is not None]
 
 
-def _claimed_ids(claim: dict, input_type: InputType) -> set[int]:
-    if input_type == InputType.JoystickAxis:
-        return {int(x) for x in (claim.get("axes") or [])}
-    if input_type == InputType.JoystickHat:
-        return {int(x) for x in (claim.get("hats") or [])}
-    return {int(x) for x in (claim.get("buttons") or [])}
-
-
-def _friendly(claim: dict, input_type: InputType, hid: int) -> str:
-    kind = "axis"
-    if input_type == InputType.JoystickButton:
-        kind = "button"
-    elif input_type == InputType.JoystickHat:
-        kind = "hat"
-    return str((claim.get("friendly") or {}).get(f"{kind}:{int(hid)}") or "")
-
-
 def _src_label(input_type: InputType, hid: int, claim: dict) -> str:
-    custom = _friendly(claim, input_type, hid)
+    custom = claim_friendly(claim, kind_of(input_type), hid)
     if custom:
         return custom
     if input_type == InputType.JoystickAxis:
@@ -82,7 +69,7 @@ def _src_label(input_type: InputType, hid: int, claim: dict) -> str:
 
 def _module_pair_rows(guid: str, device_name: str, input_type: InputType) -> list[dict]:
     src_claim = _source_claim(device_name)
-    allowed = _claimed_ids(src_claim, input_type)
+    allowed = set(claim_ids(src_claim, kind_of(input_type)))
     if not allowed:
         return []
     rows: list[dict] = []
@@ -103,9 +90,9 @@ def _module_pair_rows(guid: str, device_name: str, input_type: InputType) -> lis
         vjoy_id = int(vjoy_maps[0][0])
         vinput = int(vjoy_maps[0][2])
         dest = _dest_for_vjoy(vjoy_id)
-        dest_allowed = _claimed_ids(dest["claim"], vjoy_maps[0][1] or input_type)
-        dest_claimed = int(vinput) in dest_allowed
-        dest_custom = _friendly(dest["claim"], vjoy_maps[0][1] or input_type, vinput)
+        dest_kind = kind_of(vjoy_maps[0][1] or input_type)
+        dest_claimed = claim_allows(dest["claim"], dest_kind, vinput)
+        dest_custom = claim_friendly(dest["claim"], dest_kind, vinput)
         if dest_claimed:
             if dest_custom:
                 vjoy_label = dest_custom

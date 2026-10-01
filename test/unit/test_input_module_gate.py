@@ -1,7 +1,8 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-from gremlin.input_module_gate import claim_allows, dest_last_change, should_forward, status_last_from_hid
+from gremlin.input_module_gate import dest_last_change, should_forward, status_last_from_hid
+from gremlin.modules.claim import claim_allows
 from gremlin.modules.ids import guid_key
 
 

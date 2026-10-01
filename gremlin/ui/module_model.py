@@ -23,6 +23,13 @@ from gremlin import keyboard as gremlin_keyboard
 from gremlin.ui.live_debug import trace
 from gremlin.modules.ids import guid_key
 from gremlin.modules import ids
+from gremlin.modules.claim import (
+    claim_allows,
+    claim_friendly,
+    claim_is_empty,
+    kind_of,
+    read_claim,
+)
 from gremlin.ui.hardware_profile import (
     HardwareProfile,
     _maps_dir,
@@ -437,21 +444,6 @@ _DEFAULT_VIEW = {
     "colorScreen": "#00000000",
     "screenImage": "",
 }
-
-
-def _claim_from_doc(doc: dict) -> dict:
-    claim = doc.get("claim") if isinstance(doc.get("claim"), dict) else {}
-    buttons: list[int] = list(claim.get("buttons") or [])
-    axes: list[int] = list(claim.get("axes") or [])
-    hats: list[int] = list(claim.get("hats") or [])
-    friendly: dict[str, str] = dict(claim.get("friendly") or {})
-    return {
-        "buttons": sorted(set(buttons)),
-        "axes": sorted(set(axes)),
-        "hats": sorted(set(hats)),
-        "keys": [int(k) for k in (claim.get("keys") or [])],
-        "friendly": friendly,
-    }
 
 
 def module_exists(device_name: str) -> bool:
@@ -1230,31 +1222,17 @@ class ModuleListModel(QtCore.QAbstractListModel):
         doc = _load_module_doc(device_name)
         if not doc:
             return False
-        claim = _claim_from_doc(doc)
-        if (
-            not claim["buttons"]
-            and not claim["axes"]
-            and not claim["hats"]
-            and not claim["keys"]
-        ):
+        claim = read_claim(doc)
+        if claim_is_empty(claim):
             return False
-        hid = int(hw_id)
-        if kind == "button":
-            return hid in claim["buttons"]
-        if kind == "axis":
-            return hid in claim["axes"]
-        if kind == "hat":
-            return hid in claim["hats"]
-        if kind == "key":
-            return hid in claim["keys"]
-        return False
+        return claim_allows(claim, kind, hw_id)
 
     @QtCore.Slot(str, result=int)
     def claimedCount(self, device_name: str) -> int:
         doc = _load_module_doc(device_name)
         if not doc:
             return 0
-        claim = _claim_from_doc(doc)
+        claim = read_claim(doc)
         return (
             len(claim["buttons"])
             + len(claim["axes"])
@@ -1295,7 +1273,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.is_stub = not saved
             if saved:
                 doc = _load_module_doc(name)
-                claim = _claim_from_doc(doc)
+                claim = read_claim(doc)
                 row.buttons = len(claim["buttons"])
                 row.axes = len(claim["axes"])
                 row.hats = len(claim["hats"])
@@ -1404,7 +1382,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def _on_joy(self, event: event_handler.Event) -> None:
         if event is None:
             return
-        from gremlin.input_module_gate import claim_allows, event_kind, status_last_from_hid
+        from gremlin.input_module_gate import status_last_from_hid
 
         guid = guid_key(event.device_guid)
         row = next((r for r in self._rows if guid_key(r.guid) == guid), None)
@@ -1412,23 +1390,20 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return
         if not status_last_from_hid(row.direction):
             return
-        kind = event_kind(getattr(event, "event_type", None)) or "button"
+        kind = kind_of(getattr(event, "event_type", None)) or "button"
         try:
             hid = int(getattr(event, "identifier", 0) or 0)
         except (TypeError, ValueError):
             return
         doc = _load_module_doc(row.raw_name or row.name, row.guid)
-        claim = _claim_from_doc(doc) if doc else {}
-        has_claim = bool(
-            (claim.get("axes") or claim.get("buttons") or claim.get("hats") or claim.get("keys"))
-        )
-        if has_claim and not claim_allows(claim, kind, hid):
+        claim = read_claim(doc) if doc else {}
+        if not claim_is_empty(claim) and not claim_allows(claim, kind, hid):
             return
         self._set_last(row, kind, hid, claim)
 
     def _set_last(self, row: ModuleRow, kind: str, hid: int, claim: dict | None) -> None:
         hardware = f"{kind} {hid}"
-        friendly = (claim or {}).get("friendly", {}).get(f"{kind}:{hid}", "") or hardware.replace(
+        friendly = claim_friendly(claim, kind, hid) or hardware.replace(
             "button", "Button"
         ).replace("axis", "Axis").replace("hat", "Hat")
         self._last[row.slug] = (friendly, hardware)
@@ -1450,7 +1425,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         name = row.raw_name or row.name
         vid = int(_resolve_vjoy_id(name, row.guid) or 0)
         doc = _load_module_doc(name, row.guid) if vid else None
-        target = (vid, _claim_from_doc(doc) if doc else {})
+        target = (vid, read_claim(doc) if doc else {})
         self._dest_targets[row.slug] = target
         return target
 
@@ -1504,7 +1479,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.photo = self._hw.profilePhotoUrl(name)
             if saved:
                 doc = _load_module_doc(name, str(dev.device_guid))
-                claim = _claim_from_doc(doc)
+                claim = read_claim(doc)
                 row.is_stub = False
                 row.is_module = True
                 row.status = "Connected"
@@ -1539,7 +1514,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.status = "Virtual" if direction == "dest" else ("Connected" if saved else "Stub")
             row.photo = self._hw.profilePhotoUrl(name)
             if saved:
-                claim = _claim_from_doc(_load_module_doc(name, guid))
+                claim = read_claim(_load_module_doc(name, guid))
                 row.buttons = len(claim["buttons"])
                 row.axes = len(claim["axes"])
                 row.hats = len(claim["hats"])
@@ -1568,7 +1543,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             if not row.photo:
                 row.photo = self._hw.profilePhotoUrl("vJoy")
             if row.is_module:
-                claim = _claim_from_doc(_load_module_doc(name, str(vdev.device_guid)))
+                claim = read_claim(_load_module_doc(name, str(vdev.device_guid)))
                 row.buttons = len(claim["buttons"]) or int(vdev.button_count)
                 row.axes = len(claim["axes"]) or int(vdev.axis_count)
                 row.hats = len(claim["hats"]) or int(vdev.hat_count)
@@ -1660,7 +1635,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self._guid = guid or ""
         self._device_name = device_name or ""
         rows: list[dict] = []
-        claim = _claim_from_doc(_load_module_doc(device_name, guid)) if device_name else {
+        claim = read_claim(_load_module_doc(device_name, guid)) if device_name else {
             "buttons": [],
             "axes": [],
             "hats": [],

@@ -14,6 +14,7 @@ from pathlib import Path
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
+from gremlin.modules.claim import claim_ids
 from gremlin.modules.ids import stored_guid_key
 from gremlin.signal import signal
 from gremlin.ui.live_debug import trace
@@ -361,9 +362,9 @@ def prepare_imported_doc(
                 continue
             if number > 0:
                 keys.add(number)
-    source_buttons = set(_explicit_ids(claim, "buttons"))
-    source_axes = set(_explicit_ids(claim, "axes"))
-    source_hats = set(_explicit_ids(claim, "hats"))
+    source_buttons = set(claim_ids(claim, "button"))
+    source_axes = set(claim_ids(claim, "axis"))
+    source_hats = set(claim_ids(claim, "hat"))
     source_keys = set()
     for item in claim.get("keys") or []:
         try:
@@ -1051,19 +1052,6 @@ def _safe_name(name: str, fallback: str = "image.jpg") -> str:
     return out
 
 
-def _explicit_ids(claim: dict, key: str) -> list[int]:
-    raw = claim.get(key) if isinstance(claim, dict) else None
-    ids: list[int] = []
-    for item in raw or []:
-        try:
-            number = int(item)
-        except (TypeError, ValueError):
-            continue
-        if number > 0:
-            ids.append(number)
-    return sorted(set(ids))
-
-
 def _guid_text(value: object) -> str:
     raw = getattr(value, "uuid", value)
     text = str(raw or "").strip()
@@ -1105,9 +1093,9 @@ def _claim_summary(doc: dict) -> dict:
     nodes = [node for node in (doc.get("nodes") or []) if isinstance(node, dict)]
     image = str(doc.get("image") or "").strip()
     return {
-        "buttons": len(_explicit_ids(claim, "buttons")),
-        "axes": len(_explicit_ids(claim, "axes")),
-        "hats": len(_explicit_ids(claim, "hats")),
+        "buttons": len(claim_ids(claim, "button")),
+        "axes": len(claim_ids(claim, "axis")),
+        "hats": len(claim_ids(claim, "hat")),
         "nodes": len(nodes),
         "hasPhoto": bool(image),
         "hasMap": bool(nodes),
@@ -1351,9 +1339,9 @@ def chips_for_guid(guid: str) -> list[dict]:
     reported = _device_input_ids(text)
     stored = _profile_input_ids(text)
     groups = (
-        ("btn", _explicit_ids(claim, "buttons"), reported[0], stored[0]),
-        ("axis", _explicit_ids(claim, "axes"), reported[1], stored[1]),
-        ("hat", _explicit_ids(claim, "hats"), reported[2], stored[2]),
+        ("btn", claim_ids(claim, "button"), reported[0], stored[0]),
+        ("axis", claim_ids(claim, "axis"), reported[1], stored[1]),
+        ("hat", claim_ids(claim, "hat"), reported[2], stored[2]),
     )
     rows: list[dict] = []
     for kind, claimed, live, saved in groups:

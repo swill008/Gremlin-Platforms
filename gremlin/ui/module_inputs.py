@@ -11,20 +11,12 @@ from gremlin import common, shared_state
 from gremlin.config import Configuration
 from gremlin.input_cache import DeviceDatabase
 from gremlin.signal import signal
-from gremlin.types import InputType
 from gremlin.ui.device import _description_from_item, _generate_action_sequence_descriptor
-from gremlin.ui.module_model import _claim_from_doc, _load_module_doc
+from gremlin.ui.module_model import _load_module_doc
+from gremlin.modules.claim import claim_friendly, claim_ids, read_claim, type_of
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
-
-
-def _kind_to_type(kind: str) -> InputType:
-    if kind == "axis":
-        return InputType.JoystickAxis
-    if kind == "hat":
-        return InputType.JoystickHat
-    return InputType.JoystickButton
 
 
 @ta.QmlElement
@@ -124,11 +116,11 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
             )
         return -1
 
-    def _label(self, kind: str, hw_id: int, friendly: dict) -> str:
-        custom = str(friendly.get(f"{kind}:{int(hw_id)}") or "").strip()
+    def _label(self, kind: str, hw_id: int, claim: dict) -> str:
+        custom = claim_friendly(claim, kind, hw_id)
         if custom:
             return custom
-        input_type = _kind_to_type(kind)
+        input_type = type_of(kind)
         if self._mapping is not None:
             try:
                 return self._mapping.input_name((input_type, int(hw_id)))
@@ -145,15 +137,12 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
             self.endResetModel()
             self.countChanged.emit()
             return
-        claim = _claim_from_doc(doc)
-        friendly = claim.get("friendly") or {}
-        ordered: list[tuple[str, int]] = []
-        for hid in claim.get("axes") or []:
-            ordered.append(("axis", int(hid)))
-        for hid in claim.get("buttons") or []:
-            ordered.append(("button", int(hid)))
-        for hid in claim.get("hats") or []:
-            ordered.append(("hat", int(hid)))
+        claim = read_claim(doc)
+        ordered = [
+            (kind, hid)
+            for kind in ("axis", "button", "hat")
+            for hid in claim_ids(claim, kind)
+        ]
         for kind, hid in ordered:
             device_index = self._hid_index(kind, hid)
             if device_index < 0:
@@ -163,7 +152,7 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
                     "kind": kind,
                     "hwId": int(hid),
                     "deviceIndex": device_index,
-                    "name": self._label(kind, hid, friendly),
+                    "name": self._label(kind, hid, claim),
                 }
             )
         self.endResetModel()
@@ -185,7 +174,7 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
             return None
         return profile.get_input_item(
             self._device.device_guid.uuid,
-            _kind_to_type(row["kind"]),
+            type_of(row["kind"]),
             int(row["hwId"]),
             self._mode,
         )

@@ -17,13 +17,13 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from gremlin.ui.live_debug import trace
+from gremlin.modules.claim import claim_ids
 from gremlin.ui.hardware_profile import (
     _IMAGE_EXT,
     _asset_ref,
     _claim_summary,
     _collapsed_name,
     _doc_direction,
-    _explicit_ids,
     _maps_dir,
     _match_pack_device,
     _name_direction,
@@ -99,11 +99,11 @@ def _control_lines(doc: dict) -> list[str]:
     claim = _claim(doc)
     names = _friendly(doc)
     lines: list[str] = []
-    for number in _explicit_ids(claim, "buttons"):
+    for number in claim_ids(claim, "button"):
         lines.append(_control_name("button", number, names))
-    for number in _explicit_ids(claim, "axes"):
+    for number in claim_ids(claim, "axis"):
         lines.append(_control_name("axis", number, names))
-    for number in _explicit_ids(claim, "hats"):
+    for number in claim_ids(claim, "hat"):
         lines.append(_control_name("hat", number, names))
     return lines
 
@@ -118,7 +118,7 @@ def _name_lines(doc: dict) -> list[str]:
         ("hat", "hats"),
     )
     for kind, key in groups:
-        for number in _explicit_ids(claim, key):
+        for number in claim_ids(claim, kind):
             label = str(names.get(f"{kind}:{number}") or "").strip()
             if label:
                 lines.append(f"{_KIND_WORD[kind]} {number} — {label}")
@@ -740,9 +740,9 @@ def _place_pictures(doc: dict, pictures: list[dict], prefix: str = "in.") -> lis
 def _checked_ids(doc: dict) -> tuple[set[int], set[int], set[int]]:
     claim = _claim(doc)
     return (
-        set(_explicit_ids(claim, "buttons")),
-        set(_explicit_ids(claim, "axes")),
-        set(_explicit_ids(claim, "hats")),
+        set(claim_ids(claim, "button")),
+        set(claim_ids(claim, "axis")),
+        set(claim_ids(claim, "hat")),
     )
 
 

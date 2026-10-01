@@ -148,11 +148,11 @@ def test_old_profile_label_becomes_user_name(tmp_path) -> None:
 
 
 def test_claimed_ids_are_sorted_and_unique() -> None:
-    from gremlin.ui.logical_layout import _claimed_ids
+    from gremlin.modules.claim import claim_ids
 
-    assert _claimed_ids({"buttons": [3, 1, 1, "2"]}, "button") == [1, 2, 3]
-    assert _claimed_ids({"axes": []}, "axis") == []
-    assert _claimed_ids({"hats": ["nope"]}, "hat") == []
+    assert claim_ids({"buttons": [3, 1, 1, "2"]}, "button") == [1, 2, 3]
+    assert claim_ids({"axes": []}, "axis") == []
+    assert claim_ids({"hats": ["nope"]}, "hat") == []
 
 
 def test_named_vjoy_cannot_be_a_source_module() -> None:

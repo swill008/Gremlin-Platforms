@@ -4,38 +4,8 @@
 
 from __future__ import annotations
 
+from gremlin.modules.claim import claim_allows, kind_of
 from gremlin.modules.ids import guid_key
-
-_BUCKET = {
-    "axis": "axes",
-    "button": "buttons",
-    "hat": "hats",
-}
-
-
-def event_kind(event_type: object) -> str:
-    name = str(getattr(event_type, "name", event_type) or "")
-    text = name.lower()
-    if "axis" in text:
-        return "axis"
-    if "hat" in text:
-        return "hat"
-    if "button" in text:
-        return "button"
-    return ""
-
-
-def claim_allows(claim: dict | None, kind: str, hid: int) -> bool:
-    if not claim or not kind:
-        return False
-    bucket = _BUCKET.get(kind)
-    if not bucket:
-        return False
-    try:
-        want = int(hid)
-    except (TypeError, ValueError):
-        return False
-    return want in {int(x) for x in (claim.get(bucket) or [])}
 
 
 def should_forward(
@@ -59,7 +29,7 @@ def should_forward(
         ident = int(hid)
     except (TypeError, ValueError):
         return False
-    return claim_allows(claims.get(key), event_kind(event_type), ident)
+    return claim_allows(claims.get(key), kind_of(event_type), ident)
 
 
 def status_last_from_hid(direction: str) -> bool:

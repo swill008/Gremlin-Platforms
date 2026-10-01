@@ -18,7 +18,6 @@ from gremlin.ui.module_model import (
     KEYBOARD_GUID,
     LOGICAL_GUID,
     OSC_GUID,
-    _claim_from_doc,
     _load_module_doc,
     module_exists,
 )
@@ -27,6 +26,7 @@ from gremlin.profile import InputItem
 from gremlin.signal import signal
 from gremlin.types import AxisMode, InputType
 from gremlin.modules.ids import guid_key
+from gremlin.modules.claim import claim_friendly, claim_ids, read_claim
 from gremlin.ui.binding_catalog import (
     _attach_binding,
     _clone_binding,
@@ -56,11 +56,6 @@ def _module_direction(doc: dict, name: str) -> str:
     return _doc_direction(doc or {}, name)
 
 
-def _friendly(claim: dict, kind: str, hid: int) -> str:
-    names = claim.get("friendly") or {}
-    return str(names.get(f"{kind}:{int(hid)}") or "")
-
-
 def _assign_input_modules() -> list[dict]:
     """Saved source input modules. Logical Device is never a writer source."""
     rows: list[dict] = []
@@ -82,7 +77,7 @@ def _assign_input_modules() -> list[dict]:
                 "name": name,
                 "guid": guid,
                 "bus": bus,
-                "claim": _claim_from_doc(doc),
+                "claim": read_claim(doc),
             }
         )
 
@@ -99,26 +94,6 @@ def _assign_input_modules() -> list[dict]:
         add(f"vJoy {vdev.vjoy_id}", str(vdev.device_guid.uuid), "vjoy-input")
     rows.sort(key=lambda row: row["name"].lower())
     return rows
-
-
-def _claimed_ids(claim: dict, kind: str) -> list[int]:
-    if kind == "button":
-        values = claim.get("buttons") or []
-    elif kind == "axis":
-        values = claim.get("axes") or []
-    elif kind == "hat":
-        values = claim.get("hats") or []
-    else:
-        values = claim.get("keys") or []
-    out: list[int] = []
-    for raw in values:
-        try:
-            out.append(int(raw))
-        except (TypeError, ValueError):
-            continue
-    return sorted(set(out))
-
-
 
 
 def _kind_word(kind: InputType) -> str:
@@ -1074,14 +1049,14 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             if module["bus"] == "keyboard":
                 if logical_kind != InputType.JoystickButton:
                     continue
-                saved = set(_claimed_ids(claim, "key"))
+                saved = set(claim_ids(claim, "key"))
                 for key in keyboard.g_name_to_key.values():
                     hid = (int(key.scan_code) & 0xFFFF) | ((1 if key.is_extended else 0) << 16)
                     if saved and hid not in saved and int(key.scan_code) not in saved:
                         continue
                     if not saved:
                         continue
-                    label = _friendly(claim, "key", hid) or key.name
+                    label = claim_friendly(claim, "key", hid) or key.name
                     if needle and needle not in label.lower() and needle not in module["name"].lower():
                         continue
                     src_id = (key.scan_code, key.is_extended)
@@ -1095,8 +1070,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 controls.sort(key=lambda row: row["label"].lower())
             else:
                 src_type = logical_kind
-                for number in _claimed_ids(claim, word):
-                    label = _friendly(claim, word, number) or f"{word.capitalize()} {number}"
+                for number in claim_ids(claim, word):
+                    label = claim_friendly(claim, word, number) or f"{word.capitalize()} {number}"
                     if needle and needle not in label.lower() and needle not in module["name"].lower():
                         continue
                     guid = module["guid"]

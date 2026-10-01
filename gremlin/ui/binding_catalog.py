@@ -11,11 +11,12 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import common, shared_state
+from gremlin.modules.claim import type_of
 from gremlin.profile import InputItem, InputItemBinding
 from gremlin.signal import signal
 from gremlin.types import InputType
-from gremlin.ui.module_inputs import ModuleClaimedInputModel, _kind_to_type
-from gremlin.ui.module_model import _claim_from_doc, _load_module_doc
+from gremlin.ui.module_inputs import ModuleClaimedInputModel
+from gremlin.ui.module_model import _load_module_doc
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -852,7 +853,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 continue
             return profile.get_input_item(
                 dev.device_guid.uuid,
-                _kind_to_type(self._claimed.kindAt(i)),
+                type_of(self._claimed.kindAt(i)),
                 int(self._claimed.hwIdAt(i)),
                 mode,
                 create_if_missing=create,
@@ -968,7 +969,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             hw = self._claimed.hwIdAt(i)
             item = profile.get_input_item(
                 dev.device_guid.uuid,
-                _kind_to_type(kind),
+                type_of(kind),
                 int(hw),
                 mode,
                 create_if_missing=True,
@@ -1000,7 +1001,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 continue
             item = profile.get_input_item(
                 dev.device_guid.uuid,
-                _kind_to_type(self._claimed.kindAt(i)),
+                type_of(self._claimed.kindAt(i)),
                 int(self._claimed.hwIdAt(i)),
                 mode,
                 create_if_missing=False,
@@ -1024,7 +1025,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         for i in range(self._claimed.rowCount()):
             if int(self._claimed.deviceIndexAt(i)) != want:
                 continue
-            kind = _kind_to_type(self._claimed.kindAt(i))
+            kind = type_of(self._claimed.kindAt(i))
             hw = int(self._claimed.hwIdAt(i))
             item = profile.get_input_item(
                 dev.device_guid.uuid,

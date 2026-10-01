@@ -13,12 +13,12 @@ import dill
 from gremlin.common import SingletonDecorator
 from gremlin.event_handler import Event, EventListener
 from gremlin.input_module_gate import should_forward
+from gremlin.modules.claim import read_claim
 from gremlin.modules.ids import guid_key
 from gremlin.osc import OSC_DEVICE_UUID
 from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui.hardware_profile import _maps_dir
-from gremlin.ui.module_model import _claim_from_doc
 
 syslog = logging.getLogger("system")
 
@@ -98,7 +98,7 @@ class InputModuleRuntime(QtCore.QObject):
                 if vjoy_id and vjoy_id in as_input:
                     passthrough.add(guid)
                     continue
-                claims[guid] = _claim_from_doc(doc)
+                claims[guid] = read_claim(doc)
         self._bind_live_physical(claims, dest, passthrough)
         self._claims = claims
         self._dest_guids = dest
@@ -133,7 +133,7 @@ class InputModuleRuntime(QtCore.QObject):
             if direction in ("dest", "target", "output"):
                 dest.add(guid)
                 continue
-            claims[guid] = _claim_from_doc(doc)
+            claims[guid] = read_claim(doc)
 
     def _on_hid(self, event: Event) -> None:
         if event is None:
