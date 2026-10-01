@@ -8,14 +8,37 @@ from PySide6 import QtCore
 import gremlin.ui.type_aliases as ta
 from gremlin import shared_state
 from gremlin.signal import signal
+from gremlin.types import InputType
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
-from gremlin.ui.input_pairing import _device_name
+from gremlin.ui.input_pairing import device_label
 from gremlin.ui.xbox_maps import xbox_maps_for_item
 from vigem.ids import XBOX_TAB_GUID, vigem_client_error
 from vigem.xbox import XboxProxy, XboxTarget
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
+
+
+def _input_text(device_id: str, item: object) -> str:
+    """Readable input name: "Button 1", or "Button 1 — Name" for a named
+    Logical Device input."""
+    input_type = getattr(item, "input_type", None)
+    try:
+        number = int(item.input_id)
+    except (TypeError, ValueError):
+        return str(getattr(item, "input_id", ""))
+    if device_label(device_id) == "Logical Device":
+        from gremlin.logical_device import LogicalDevice
+
+        logical = LogicalDevice()
+        ident = LogicalDevice.Input.Identifier(input_type, number)
+        if logical.exists(ident):
+            return logical[ident].choice_label
+    try:
+        kind = InputType.to_string(input_type).capitalize()
+    except Exception:
+        kind = "Input"
+    return f"{kind} {number}"
 
 
 def _incoming_for(pad_id: int, target: XboxTarget) -> str:
@@ -30,8 +53,8 @@ def _incoming_for(pad_id: int, target: XboxTarget) -> str:
                 for pid, value in xbox_maps_for_item(item)
             ):
                 continue
-            kind = getattr(item.input_type, "name", str(item.input_type))
-            hits.append(f"{_device_name(str(device_id))} {kind} {item.input_id}")
+            guid = str(device_id)
+            hits.append(f"{device_label(guid)} · {_input_text(guid, item)}")
     return "  ·  ".join(hits)
 
 
