@@ -10,18 +10,22 @@ import re
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _LITERAL = re.compile(r"[\"']#[0-9A-Fa-f]{6,8}[\"']")
 
-# Colour literals still left per file. Light mode works only where colours come
-# from the Style tokens, so these counts may only go down; lower a count (or drop
-# the file) after converting it.
+# Colour literals allowed per file; the counts may only go down. Everything
+# else takes its colours from the Style tokens so Dark mode switches it.
 _REMAINING = {
+    # Old fixed dark defaults, kept so saved colours equal to them still
+    # follow Dark mode; and "#00000000", the "no colour" value.
     "qml/BindingCatalog.qml": 24,
-    "qml/DialogJoystickButtonMap.qml": 66,
     "qml/LogicalPage.qml": 11,
     "qml/OutputModuleView.qml": 12,
-    "qml/UnmappedCard.qml": 1,
+    # Overlays on the device photo and the colour picker's fixed palette.
+    "qml/DialogJoystickButtonMap.qml": 50,
+    # Drawn on the device photo, which looks the same in both modes.
     "qml/VkbRigEditor.qml": 114,
     "qml/VkbRigFace.qml": 8,
     "qml/Xbox360Face.qml": 44,
+    # Not used by any screen.
+    "qml/UnmappedCard.qml": 1,
 }
 
 

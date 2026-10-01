@@ -551,7 +551,7 @@ Indents (#21), natural sorting and Ctrl+Z / Ctrl+Y (#26) were tested earlier tod
 | OPT-A01b | FIXED | `move()` reorders the live config list in place, so `set()` sees no change and never writes the file; reordering may not survive a restart. |
 | OPT-U06 | PASS | UI scale slider is disabled while Windows scaling is on. |
 | OPT-U01 | PASS | Dark mode off/on applies immediately. |
-| OPT-U01b | FAIL | Light mode is only partial: Logical Device rows and editor stay dark on a white page; group headers light-on-light; Home cards stay dark. Many colours are fixed for dark mode. |
+| OPT-U01b | FIXED | Colour tokens in Style (dark = the old palette, light = same roles); Home, input page, Logical Device, output view, dialogs, viewers and Button Map chrome follow Dark mode. Display Editor colours never changed by the user follow the mode (saved values equal to the old dark defaults count as unchanged); each picker has Default. Device photos and what is drawn on them (Button Map rig, Xbox face) keep their colours. Guard: test_colour_tokens.py. Sandbox: light and dark checked on each screen. |
 | OPT-F | PASS | Files rows all point inside the data folder; Select opens a folder picker at the current folder; Reset keeps the default. |
 | OPT-F08b | FIXED | stderr after Reset: `Overwriting binding on JGTextField::text at ConfigGroup.qml:188`; the field stops following later changes. |
 | OPT-P01 | FIXED | New Entry shows a row, but the entry is never written to configuration.json (the list is edited in place, so `set()` sees no change). It is lost on restart. |

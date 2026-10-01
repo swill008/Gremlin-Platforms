@@ -865,14 +865,14 @@ ApplicationWindow {
                 Label {
                     width: parent.width
                     text: modelData.h
-                    color: "#FBBF24"
+                    color: Style.warn
                     font.pixelSize: Style.dp(15)
                     font.bold: true
                 }
                 Label {
                     width: parent.width
                     text: modelData.b
-                    color: "#E4E4E7"
+                    color: Style.fg
                     wrapMode: Text.WordWrap
                     font.pixelSize: Style.dp(13)
                     lineHeight: 1.25
@@ -895,13 +895,13 @@ ApplicationWindow {
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                color: "#FBBF24"
+                color: Style.warn
                 text: "Clear every chip, leader, and hotspot from the map?"
             }
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                color: "#A1A1AA"
+                color: Style.fgMuted
                 text: "Joystick mappings are not changed. Pressed buttons still light in the reservoir. Save after reset if you want the empty layout to become the live map."
             }
             RowLayout {
@@ -1418,15 +1418,15 @@ ApplicationWindow {
         implicitHeight: Style.dp(430)
         padding: Style.dp(12)
         background: Rectangle {
-            color: "#18181B"
-            border.color: "#3F3F46"
+            color: Style.bgCard
+            border.color: Style.line
             radius: Style.dp(4)
         }
         ColumnLayout {
             anchors.fill: parent
             spacing: Style.dp(8)
-            Label { text: "Photo"; color: "#E4E4E7"; font.pixelSize: Style.dp(13) }
-            Label { text: "Size  " + Math.round(photoScale * 100) + "%"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+            Label { text: "Photo"; color: Style.fg; font.pixelSize: Style.dp(13) }
+            Label { text: "Size  " + Math.round(photoScale * 100) + "%"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
             Slider {
                 Layout.fillWidth: true
                 from: 0.25
@@ -1435,7 +1435,7 @@ ApplicationWindow {
                 value: photoScale
                 onMoved: _buttonMap.setPhotoScale(value)
             }
-            Label { text: "Offset X  " + photoOffX.toFixed(3); color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+            Label { text: "Offset X  " + photoOffX.toFixed(3); color: Style.fgMuted; font.pixelSize: Style.dp(11) }
             Slider {
                 Layout.fillWidth: true
                 from: -0.5
@@ -1444,7 +1444,7 @@ ApplicationWindow {
                 value: photoOffX
                 onMoved: _buttonMap.setPhotoOff(value, photoOffY)
             }
-            Label { text: "Offset Y  " + photoOffY.toFixed(3); color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+            Label { text: "Offset Y  " + photoOffY.toFixed(3); color: Style.fgMuted; font.pixelSize: Style.dp(11) }
             Slider {
                 Layout.fillWidth: true
                 from: -0.5
@@ -1453,7 +1453,7 @@ ApplicationWindow {
                 value: photoOffY
                 onMoved: _buttonMap.setPhotoOff(photoOffX, value)
             }
-            Label { text: "Rotate  " + Math.round(photoRot) + "°"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+            Label { text: "Rotate  " + Math.round(photoRot) + "°"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
             Slider {
                 Layout.fillWidth: true
                 from: -180
@@ -1706,13 +1706,13 @@ ApplicationWindow {
                         var pct = (raw === raw) ? Math.round(raw * 100) : 100
                         return "View " + pct + "%"
                     }
-                    color: "#E4E4E7"
+                    color: Style.fg
                     font.pixelSize: Style.dp(12)
                 }
                 Label {
                     visible: editing
                     text: "Photo size " + Math.round(photoScale * 100) + "%"
-                    color: "#A1A1AA"
+                    color: Style.fgMuted
                     font.pixelSize: Style.dp(12)
                 }
                 Label {
@@ -1722,19 +1722,19 @@ ApplicationWindow {
                         return editing && e && e.drawTool && e.drawTool.length
                     }
                     text: "Drawing — drag empty. Shift locks aspect. Esc cancels."
-                    color: "#FBBF24"
+                    color: Style.warn
                     font.pixelSize: Style.dp(12)
                 }
                 Label {
                     visible: editing && movePhoto
                     text: "Move photo — drag to park. Esc leaves the tool."
-                    color: "#FBBF24"
+                    color: Style.warn
                     font.pixelSize: Style.dp(12)
                 }
                 Label {
                     visible: editing
                     text: "Module file  " + _hw.path
-                    color: "#A1A1AA"
+                    color: Style.fgMuted
                     font.pixelSize: Style.dp(11)
                     elide: Text.ElideMiddle
                     Layout.fillWidth: true
