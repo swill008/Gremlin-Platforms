@@ -688,3 +688,19 @@ Data loss or broken feature first. IDs point to the batch rows above.
 | W-03b | FIXED | When quitting, the display-options prompt says "Leave this device and they will be lost" (wording from the leave path). |
 | OPT-RS | FIXED (plus Reset all card sizes in the card and background right-click menus) | Options > Display > Reset all card sizes clears the saved sizes, but Home keeps showing the old sizes until restart (Options uses its own model copy). |
 | CAL-11 | FIXED | The arrows always worked: showing "Not saved" made the axis block taller, so the spin boxes moved down and the next click landed above them. The label now keeps its space. |
+
+## Phase 0 (architecture review, 2026-10-01)
+
+Pipeline: hardware -> input module -> wiring -> output module -> driver. Decisions: block unclaimed outputs (firewall), flag unclaimed wires, profiles keep vJoy numbers (2A), keyboard gated by claim (3A).
+
+| ID | Result | Notes |
+|---|---|---|
+| P0.1 | FIXED 6e5903bb | Home vJoy card "last:" reads only claimed outputs via output_modules.vjoy_output_state; no blind 1..128 probe, no log flood; polls only while a profile runs. |
+| P0.2 | FIXED 04b47030 | Options > Reset all card sizes uses CardSizes; no second Home model. |
+| P0.3 | FIXED 6228041d | Button Map group members keep their kind (axis/hat/button); no duplicates in the tray; ungroup restores kinds. |
+| P0.4 | FIXED 7856814d | Output picker keeps a saved unclaimed output, flags it "(not claimed)", writes nothing back. |
+| P0.5 | FIXED 1f5123ca | Map to vJoy behaviour change updates vjoy_input_type (typo, also in R16); Change Mode stray line removed. |
+| P0.6 | FIXED c896cd0c | Xbox pads labelled "Xbox 360 N", not "vJoy Device N" (label not displayed yet). |
+| P0.7 | FIXED (this commit) | Logical Device events were dropped by the input gate (no claim), so Logical Device -> vJoy/Xbox never ran; Logical Device is now always forwarded like OSC. |
+| P0-HANDS-ON | [U] | With Gremlin active: Home vJoy card last line updates and system.log has no "Invalid button index"; a Logical Device input wired to vJoy fires; a mixed Button Map group lights on the right inputs. |
+| P0-DATA | NOTE | Your profile has 70 wires from NXT buttons 57-126 to vJoy 3 buttons 57-126: neither the NXT input module nor vjoy_3 claims them. Left as is (flagged by design). |

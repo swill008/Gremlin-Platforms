@@ -9,6 +9,7 @@ import logging
 
 from PySide6 import QtCore
 
+import dill
 from gremlin.common import SingletonDecorator
 from gremlin.event_handler import Event, EventListener
 from gremlin.input_module_gate import norm_guid, should_forward
@@ -19,6 +20,14 @@ from gremlin.ui.hardware_profile import _maps_dir
 from gremlin.ui.module_model import _claim_from_doc
 
 syslog = logging.getLogger("system")
+
+
+def always_forwarded() -> set[str]:
+    """Devices whose inputs exist without an input-module claim: OSC, and the
+    Logical Device, whose inputs are created on the Logical Device page. Without
+    this, events re-emitted by Map to Logical Device were dropped here and
+    nothing wired from a Logical Device input ever ran."""
+    return {norm_guid(OSC_DEVICE_UUID), norm_guid(dill.UUID_LogicalDevice)}
 
 
 def _vjoy_as_input_ids() -> set[int]:
@@ -49,7 +58,7 @@ class InputModuleRuntime(QtCore.QObject):
         super().__init__()
         self._claims: dict[str, dict] = {}
         self._dest_guids: set[str] = set()
-        self._passthrough: set[str] = {norm_guid(OSC_DEVICE_UUID)}
+        self._passthrough: set[str] = always_forwarded()
         EventListener().joystick_event.connect(self._on_hid)
         try:
             signal.configChanged.connect(self.reload)
@@ -61,7 +70,7 @@ class InputModuleRuntime(QtCore.QObject):
     def reload(self) -> None:
         claims: dict[str, dict] = {}
         dest: set[str] = set()
-        passthrough = {norm_guid(OSC_DEVICE_UUID)}
+        passthrough = always_forwarded()
         as_input = _vjoy_as_input_ids()
         folder = _maps_dir()
         if folder.is_dir():
