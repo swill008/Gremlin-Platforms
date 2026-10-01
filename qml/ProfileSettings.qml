@@ -137,11 +137,11 @@ Item {
                     UIText {
                         Layout.fillWidth: true
 
-                        text: "Determines if a vJoy devices are treated as an" +
-                            "input or output device by Gremlin. If treated " +
-                            "as an output device it can be used with the " +
-                            "'Map to vJoy' action. If treated as an input device" +
-                            "the vJoy device is treated as if it was any other " +
+                        text: "Determines whether vJoy devices are treated as " +
+                            "input or output devices by Gremlin. If treated " +
+                            "as an output device, it can be used with the " +
+                            "'Map to vJoy' action. If treated as an input device, " +
+                            "the vJoy device is treated like any other " +
                             "joystick. This is useful when multiple vJoy " +
                             "devices exist and are used by different programs."
                     }
