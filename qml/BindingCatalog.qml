@@ -1194,7 +1194,8 @@ Item {
             text: "Choose…"
             onClicked: { _colorTarget = target; _colorDlg.selectedColor = swatch; _colorDlg.open() }
             background: Rectangle { color: swatch; border.color: Style.line; border.width: 1; radius: 3 }
-            contentItem: Label { text: parent.text; color: Style.onLight; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            // Dark text on a light swatch, white on a dark one.
+            contentItem: Label { text: parent.text; color: swatch.hslLightness > 0.6 ? Style.onLight : Style.onColor; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         }
         // Back to the colour that follows Dark mode.
         Button {

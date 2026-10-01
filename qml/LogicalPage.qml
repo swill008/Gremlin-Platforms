@@ -41,7 +41,10 @@ Item {
     property int groupPadBottom: 0
     property int groupPadLeft: 8
     property int groupRadius: 3
-    property string colorGroup: "#27272A"
+    // Display colours: colorXSet is the user's choice ("" when never changed);
+    // colorX is shown and follows Dark mode until a choice is made.
+    property string colorGroupSet: ""
+    readonly property color colorGroup: colorGroupSet.length ? colorGroupSet : Style.bgRaised
     property string parentPadShape: "sides"
     property int parentPad: 0
     property int parentPadTop: 0
@@ -49,7 +52,8 @@ Item {
     property int parentPadBottom: 0
     property int parentPadLeft: 24
     property int parentRadius: 3
-    property string colorParent: "#18181B"
+    property string colorParentSet: ""
+    readonly property color colorParent: colorParentSet.length ? colorParentSet : Style.bgCard
     property int parentIndent: 16
     property int childIndent: 32
     property string childPadShape: "sides"
@@ -59,7 +63,8 @@ Item {
     property int childPadBottom: 0
     property int childPadLeft: 0
     property int childRadius: 3
-    property string colorChild: "#18181B"
+    property string colorChildSet: ""
+    readonly property color colorChild: colorChildSet.length ? colorChildSet : Style.bgCard
     property bool showChildren: true
     property bool showSummary: true
     property int summaryFont: 11
@@ -67,19 +72,27 @@ Item {
     property int groupFont: 15
     property int childFont: 13
     property int targetFont: 11
-    property string colorActionTarget: "#A1A1AA"
+    property string colorActionTargetSet: ""
+    readonly property color colorActionTarget: colorActionTargetSet.length ? colorActionTargetSet : Style.fgMuted
     property bool parentBold: true
-    property string colorText: "#E4E4E7"
-    property string colorMuted: "#A1A1AA"
-    property string colorSelected: "#1E3A5F"
-    property string colorSelectBorder: "#3F3F46"
-    property string colorBorder: "#3F3F46"
+    property string colorTextSet: ""
+    readonly property color colorText: colorTextSet.length ? colorTextSet : Style.fg
+    property string colorMutedSet: ""
+    readonly property color colorMuted: colorMutedSet.length ? colorMutedSet : Style.fgMuted
+    property string colorSelectedSet: ""
+    readonly property color colorSelected: colorSelectedSet.length ? colorSelectedSet : Style.infoFill
+    property string colorSelectBorderSet: ""
+    readonly property color colorSelectBorder: colorSelectBorderSet.length ? colorSelectBorderSet : Style.line
+    property string colorBorderSet: ""
+    readonly property color colorBorder: colorBorderSet.length ? colorBorderSet : Style.line
     property int caretSize: 18
-    property string colorCaret: "#E4E4E7"
+    property string colorCaretSet: ""
+    readonly property color colorCaret: colorCaretSet.length ? colorCaretSet : Style.fg
     property int gripWidth: 8
     property int gripHeight: 18
     property int gripRadius: 2
-    property string colorGrip: "#52525B"
+    property string colorGripSet: ""
+    readonly property color colorGrip: colorGripSet.length ? colorGripSet : Style.lineStrong
     property string _colorTarget: "parent"
     property string toastText: "Display Options Saved"
     property string savedDisplay: ""
@@ -275,12 +288,12 @@ Item {
                 Layout.rightMargin: Style.dp(8)
                 Layout.topMargin: Style.dp(8)
                 spacing: Style.dp(8)
-                Label { text: "Find"; color: "#A1A1AA" }
+                Label { text: "Find"; color: Style.fgMuted }
                 TextField {
                     id: _findText
                     Layout.fillWidth: true
                     placeholderText: "System name, your name, or group"
-                    color: "#E4E4E7"
+                    color: Style.fg
                     onTextChanged: _root._applyFind()
                 }
                 ComboBox {
@@ -314,7 +327,7 @@ Item {
                 }
                 Label {
                     text: _root.editorLocked ? "Running" : ""
-                    color: "#A1A1AA"
+                    color: Style.fgMuted
                 }
             }
 
@@ -615,7 +628,7 @@ Item {
                                 anchors.left: parent.left
                                 anchors.right: parent.right
                                 height: Style.dp(2)
-                                color: "#3B82F6"
+                                color: Style.info
                             }
                         }
 
@@ -686,7 +699,7 @@ Item {
             visible: _root.actionOpen
             Layout.preferredWidth: Style.dp(6)
             Layout.fillHeight: true
-            color: _actGrip.containsMouse ? "#3B82F6" : "#3F3F46"
+            color: _actGrip.containsMouse ? Style.info : Style.line
             MouseArea {
                 id: _actGrip
                 anchors.fill: parent
@@ -712,15 +725,15 @@ Item {
             Layout.preferredWidth: _root.paneWidth
             Layout.minimumWidth: visible ? Style.dp(420) : 0
             Layout.fillHeight: true
-            color: "#18181B"
-            border.color: "#3F3F46"
+            color: Style.bgCard
+            border.color: Style.line
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: Style.dp(10)
                 RowLayout {
                     Label {
                         text: _root.paneTitle.length ? _root.paneTitle : "Action Editor"
-                        color: "#E4E4E7"
+                        color: Style.fg
                         font.bold: true
                         font.pixelSize: Style.dp(16)
                         Layout.fillWidth: true
@@ -759,8 +772,8 @@ Item {
             Layout.preferredWidth: Style.dp(360)
             Layout.maximumWidth: Style.dp(360)
             Layout.fillHeight: true
-            color: "#18181B"
-            border.color: "#3F3F46"
+            color: Style.bgCard
+            border.color: Style.line
             border.width: Style.dp(1)
 
             ColumnLayout {
@@ -771,7 +784,7 @@ Item {
                 RowLayout {
                     Label {
                         text: "Logical Device — Display Editor"
-                        color: "#E4E4E7"
+                        color: Style.fg
                         font.bold: true
                         font.pixelSize: Style.dp(13)
                         Layout.fillWidth: true
@@ -804,7 +817,7 @@ Item {
                             FlagBox { text: "Show action rows"; source: _root.showChildren; onUserSet: (v) => { _root.showChildren = v } }
                             FlagBox { text: "Show written by"; source: _root.showSummary; onUserSet: (v) => { _root.showSummary = v } }
                             RowLayout {
-                                Label { text: "Written-by size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Written-by size"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 9; to: 20; source: _root.summaryFont; onUserSet: (v) => { _root.summaryFont = v } }
                             }
                         }
@@ -813,21 +826,21 @@ Item {
                             open: _root.openHandles
                             onToggled: (v) => { _root.openHandles = v }
                             RowLayout {
-                                Label { text: "Caret size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Caret size"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 12; to: 36; source: _root.caretSize; onUserSet: (v) => { _root.caretSize = v } }
                             }
                             ColorPick { label: "Caret color"; swatch: _root.colorCaret; target: "caret" }
                             RowLayout {
-                                Label { text: "Pad width"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Pad width"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 4; to: 36; source: _root.gripWidth; onUserSet: (v) => { _root.gripWidth = v } }
                             }
                             RowLayout {
-                                Label { text: "Pad height"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Pad height"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 8; to: 42; source: _root.gripHeight; onUserSet: (v) => { _root.gripHeight = v } }
                             }
                             ColorPick { label: "Pad color"; swatch: _root.colorGrip; target: "grip" }
                             RowLayout {
-                                Label { text: "Pad corner"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Pad corner"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 16; source: _root.gripRadius; onUserSet: (v) => { _root.gripRadius = v } }
                             }
                         }
@@ -836,10 +849,10 @@ Item {
                             open: _root.openList
                             onToggled: (v) => { _root.openList = v }
                             RowLayout {
-                                Label { text: "Space between rows"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Space between rows"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: _root.rowSpacing; onUserSet: (v) => { _root.rowSpacing = v } }
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+                            Label { text: "Padding"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: _root.listPadShape
                                 size: _root.listPad
@@ -862,10 +875,10 @@ Item {
                             open: _root.openGroup
                             onToggled: (v) => { _root.openGroup = v }
                             RowLayout {
-                                Label { text: "Space inside the group"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Space inside the group"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 48; source: _root.groupInside; onUserSet: (v) => { _root.groupInside = v } }
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+                            Label { text: "Padding"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: _root.groupPadShape
                                 size: _root.groupPad
@@ -883,7 +896,7 @@ Item {
                                 }
                             }
                             RowLayout {
-                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Corner radius"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 16; source: _root.groupRadius; onUserSet: (v) => { _root.groupRadius = v } }
                             }
                             ColorPick { label: "Color"; swatch: _root.colorGroup; target: "group" }
@@ -893,14 +906,14 @@ Item {
                             open: _root.openParent
                             onToggled: (v) => { _root.openParent = v }
                             RowLayout {
-                                Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Height"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 32; to: 80; source: _root.parentHeight; onUserSet: (v) => { _root.parentHeight = v } }
                             }
                             RowLayout {
-                                Label { text: "Indent inside group"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Indent inside group"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 160; source: _root.parentIndent; onUserSet: (v) => { _root.parentIndent = v } }
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+                            Label { text: "Padding"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: _root.parentPadShape
                                 size: _root.parentPad
@@ -918,7 +931,7 @@ Item {
                                 }
                             }
                             RowLayout {
-                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Corner radius"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 16; source: _root.parentRadius; onUserSet: (v) => { _root.parentRadius = v } }
                             }
                             ColorPick { label: "Row color"; swatch: _root.colorParent; target: "parent" }
@@ -928,14 +941,14 @@ Item {
                             open: _root.openChild
                             onToggled: (v) => { _root.openChild = v }
                             RowLayout {
-                                Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Height"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 24; to: 80; source: _root.childHeight; onUserSet: (v) => { _root.childHeight = v } }
                             }
                             RowLayout {
-                                Label { text: "Indent past parent"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Indent past parent"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 160; source: _root.childIndent; onUserSet: (v) => { _root.childIndent = v } }
                             }
-                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: Style.dp(11) }
+                            Label { text: "Padding"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
                             PadFields {
                                 shape: _root.childPadShape
                                 size: _root.childPad
@@ -953,7 +966,7 @@ Item {
                                 }
                             }
                             RowLayout {
-                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Corner radius"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 16; source: _root.childRadius; onUserSet: (v) => { _root.childRadius = v } }
                             }
                             ColorPick { label: "Row color"; swatch: _root.colorChild; target: "child" }
@@ -963,20 +976,20 @@ Item {
                             open: _root.openText
                             onToggled: (v) => { _root.openText = v }
                             RowLayout {
-                                Label { text: "Parent text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Parent text size"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 10; to: 22; source: _root.parentFont; onUserSet: (v) => { _root.parentFont = v } }
                             }
                             RowLayout {
-                                Label { text: "Group text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Group text size"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 10; to: 22; source: _root.groupFont; onUserSet: (v) => { _root.groupFont = v } }
                             }
                             FlagBox { text: "Bold names"; source: _root.parentBold; onUserSet: (v) => { _root.parentBold = v } }
                             RowLayout {
-                                Label { text: "Action name size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Action name size"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 9; to: 20; source: _root.childFont; onUserSet: (v) => { _root.childFont = v } }
                             }
                             RowLayout {
-                                Label { text: "Action target size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Action target size"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 9; to: 20; source: _root.targetFont; onUserSet: (v) => { _root.targetFont = v } }
                             }
                             ColorPick { label: "Text color"; swatch: _root.colorText; target: "text" }
@@ -1002,16 +1015,16 @@ Item {
                         onClicked: _root.resetDisplay()
                         contentItem: Text {
                             text: parent.text
-                            color: "#FFFFFF"
+                            color: Style.onColor
                             font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
                             implicitHeight: Style.dp(44)
-                            color: parent.down ? "#991B1B" : (parent.hovered ? "#EF4444" : "#DC2626")
+                            color: parent.down ? Style.dangerPressed : (parent.hovered ? Style.dangerBright : Style.danger)
                             border.width: Style.dp(1)
-                            border.color: parent.hovered ? "#FCA5A5" : "#B91C1C"
+                            border.color: parent.hovered ? Style.dangerTextSoft : Style.dangerHover
                         }
                     }
                     Button {
@@ -1022,7 +1035,7 @@ Item {
                         onClicked: _root.saveDisplay()
                         contentItem: Text {
                             text: parent.text
-                            color: "#FFFFFF"
+                            color: Style.onColor
                             font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -1470,7 +1483,7 @@ Item {
         anchors.centerIn: parent
         padding: Style.dp(12)
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        background: Rectangle { color: "#18181B"; border.color: "#3F3F46" }
+        background: Rectangle { color: Style.bgCard; border.color: Style.line }
         property var devices: []
         property var moduleOpen: ({})
         function deviceOpen(name) {
@@ -1485,12 +1498,12 @@ Item {
         }
         ColumnLayout {
             anchors.fill: parent
-            Label { id: _hardwareTitle; color: "#E4E4E7"; font.bold: true; font.pixelSize: Style.dp(16) }
+            Label { id: _hardwareTitle; color: Style.fg; font.bold: true; font.pixelSize: Style.dp(16) }
             TextField {
                 id: _search
                 Layout.fillWidth: true
                 placeholderText: "Search"
-                color: "#E4E4E7"
+                color: Style.fg
                 onTextChanged: _loadHardware()
             }
             Flickable {
@@ -1518,7 +1531,7 @@ Item {
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     text: _hardware.deviceOpen(modelData.name) ? "▾" : "▸"
-                                    color: "#A1A1AA"
+                                    color: Style.fgMuted
                                     opacity: _search.text.length ? 0.35 : 1
                                     font.pixelSize: Style.dp(14)
                                     MouseArea {
@@ -1541,7 +1554,7 @@ Item {
                                 }
                                 Label {
                                     text: modelData.name
-                                    color: "#E4E4E7"
+                                    color: Style.fg
                                     font.bold: true
                                     Layout.fillWidth: true
                                     MouseArea {
@@ -1633,7 +1646,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             height: Style.dp(26)
-            color: "#27272A"
+            color: Style.bgRaised
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: Style.dp(8)
@@ -1641,12 +1654,12 @@ Item {
                 spacing: Style.dp(6)
                 Label {
                     text: fold.open ? "\u25BC" : "\u25B6"
-                    color: "#E4E4E7"
+                    color: Style.fg
                     font.pixelSize: Style.dp(10)
                 }
                 Label {
                     text: fold.title
-                    color: "#E4E4E7"
+                    color: Style.fg
                     font.pixelSize: Style.dp(11)
                     font.bold: true
                     Layout.fillWidth: true
@@ -1696,7 +1709,7 @@ Item {
         spacing: Style.dp(4)
 
         RowLayout {
-            Label { text: "Shape"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
+            Label { text: "Shape"; color: Style.fg; Layout.preferredWidth: Style.dp(70) }
             ComboBox {
                 id: _shapePick
                 Layout.fillWidth: true
@@ -1713,39 +1726,39 @@ Item {
         }
         RowLayout {
             visible: shape !== "sides"
-            Label { text: "Size"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Size"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 48; source: size; onUserSet: (v) => { edited("box", v, v, v, v, v) } }
         }
         RowLayout {
             visible: shape === "sides"
-            Label { text: "Top"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Top"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 48; source: padTop; onUserSet: (v) => { edited("sides", size, v, padRight, padBottom, padLeft) } }
         }
         RowLayout {
             visible: shape === "sides"
-            Label { text: "Right"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Right"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 48; source: padRight; onUserSet: (v) => { edited("sides", size, padTop, v, padBottom, padLeft) } }
         }
         RowLayout {
             visible: shape === "sides"
-            Label { text: "Bottom"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Bottom"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 48; source: padBottom; onUserSet: (v) => { edited("sides", size, padTop, padRight, v, padLeft) } }
         }
         RowLayout {
             visible: shape === "sides"
-            Label { text: "Left"; color: "#E4E4E7"; Layout.fillWidth: true }
+            Label { text: "Left"; color: Style.fg; Layout.fillWidth: true }
             TrackSpin { from: 0; to: 48; source: padLeft; onUserSet: (v) => { edited("sides", size, padTop, padRight, padBottom, v) } }
         }
     }
 
     component ColorPick: RowLayout {
         property string label: ""
-        property color swatch: "#18181B"
+        property color swatch: Style.bgCard
         property string target: ""
         Layout.fillWidth: true
         Label {
             text: label
-            color: "#E4E4E7"
+            color: Style.fg
             wrapMode: Text.WordWrap
             Layout.preferredWidth: Style.dp(150)
             Layout.maximumWidth: Style.dp(160)
@@ -1754,8 +1767,17 @@ Item {
             Layout.fillWidth: true
             text: "Choose\u2026"
             onClicked: { _root._colorTarget = target; _colorDlg.selectedColor = swatch; _colorDlg.open() }
-            background: Rectangle { color: swatch; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-            contentItem: Label { text: parent.text; color: "#F4F4F5"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            background: Rectangle { color: swatch; border.color: Style.line; border.width: 1; radius: 3 }
+            // Dark text on a light swatch, white on a dark one.
+            contentItem: Label { text: parent.text; color: swatch.hslLightness > 0.6 ? Style.onLight : Style.onColor; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        }
+        // Back to the colour that follows Dark mode.
+        Button {
+            readonly property string setName: _root.userColourOf(target)
+            visible: setName.length > 0
+            enabled: visible && _root[setName].length > 0
+            text: "Default"
+            onClicked: _root[setName] = ""
         }
     }
 
@@ -1832,7 +1854,7 @@ Item {
             "groupPadBottom": groupPadBottom,
             "groupPadLeft": groupPadLeft,
             "groupRadius": groupRadius,
-            "colorGroup": colorGroup,
+            "colorGroup": colorGroupSet,
             "parentHeight": parentHeight,
             "parentPadShape": parentPadShape,
             "parentPad": parentPad,
@@ -1841,7 +1863,7 @@ Item {
             "parentPadBottom": parentPadBottom,
             "parentPadLeft": parentPadLeft,
             "parentRadius": parentRadius,
-            "colorParent": colorParent,
+            "colorParent": colorParentSet,
             "parentIndent": parentIndent,
             "childHeight": childHeight,
             "childIndent": childIndent,
@@ -1852,7 +1874,7 @@ Item {
             "childPadBottom": childPadBottom,
             "childPadLeft": childPadLeft,
             "childRadius": childRadius,
-            "colorChild": colorChild,
+            "colorChild": colorChildSet,
             "showChildren": showChildren,
             "showSummary": showSummary,
             "summaryFont": summaryFont,
@@ -1860,19 +1882,19 @@ Item {
             "groupFont": groupFont,
             "childFont": childFont,
             "targetFont": targetFont,
-            "colorActionTarget": colorActionTarget,
+            "colorActionTarget": colorActionTargetSet,
             "parentBold": parentBold,
-            "colorText": colorText,
-            "colorMuted": colorMuted,
-            "colorSelected": colorSelected,
-            "colorSelectBorder": colorSelectBorder,
-            "colorBorder": colorBorder,
+            "colorText": colorTextSet,
+            "colorMuted": colorMutedSet,
+            "colorSelected": colorSelectedSet,
+            "colorSelectBorder": colorSelectBorderSet,
+            "colorBorder": colorBorderSet,
             "caretSize": caretSize,
-            "colorCaret": colorCaret,
+            "colorCaret": colorCaretSet,
             "gripWidth": gripWidth,
             "gripHeight": gripHeight,
             "gripRadius": gripRadius,
-            "colorGrip": colorGrip
+            "colorGrip": colorGripSet
         }
     }
 
@@ -1894,7 +1916,7 @@ Item {
         groupPadBottom = numVal(v.groupPadBottom, 0)
         groupPadLeft = numVal(v.groupPadLeft, 8)
         groupRadius = numVal(v.groupRadius, 3)
-        colorGroup = v.colorGroup || "#27272A"
+        colorGroupSet = userColour(v.colorGroup, "#27272A")
         parentHeight = numVal(v.parentHeight, 44)
         parentPadShape = v.parentPadShape || "sides"
         parentPad = numVal(v.parentPad, 0)
@@ -1903,7 +1925,7 @@ Item {
         parentPadBottom = numVal(v.parentPadBottom, 0)
         parentPadLeft = numVal(v.parentPadLeft, 24)
         parentRadius = numVal(v.parentRadius, 3)
-        colorParent = v.colorParent || "#18181B"
+        colorParentSet = userColour(v.colorParent, "#18181B")
         parentIndent = numVal(v.parentIndent, 16)
         childHeight = numVal(v.childHeight, 32)
         childIndent = numVal(v.childIndent, 32)
@@ -1914,7 +1936,7 @@ Item {
         childPadBottom = numVal(v.childPadBottom, 0)
         childPadLeft = numVal(v.childPadLeft, 0)
         childRadius = numVal(v.childRadius, 3)
-        colorChild = v.colorChild || "#18181B"
+        colorChildSet = userColour(v.colorChild, "#18181B")
         showChildren = v.showChildren !== false
         showSummary = v.showSummary !== false
         summaryFont = numVal(v.summaryFont, 11)
@@ -1922,19 +1944,31 @@ Item {
         groupFont = numVal(v.groupFont, 15)
         childFont = numVal(v.childFont, 13)
         targetFont = numVal(v.targetFont, 11)
-        colorActionTarget = v.colorActionTarget || "#A1A1AA"
+        colorActionTargetSet = userColour(v.colorActionTarget, "#A1A1AA")
         parentBold = v.parentBold !== false
-        colorText = v.colorText || "#E4E4E7"
-        colorMuted = v.colorMuted || "#A1A1AA"
-        colorSelected = v.colorSelected || "#1E3A5F"
-        colorSelectBorder = v.colorSelectBorder || "#3F3F46"
-        colorBorder = v.colorBorder || "#3F3F46"
+        colorTextSet = userColour(v.colorText, "#E4E4E7")
+        colorMutedSet = userColour(v.colorMuted, "#A1A1AA")
+        colorSelectedSet = userColour(v.colorSelected, "#1E3A5F")
+        colorSelectBorderSet = userColour(v.colorSelectBorder, "#3F3F46")
+        colorBorderSet = userColour(v.colorBorder, "#3F3F46")
         caretSize = numVal(v.caretSize, 18)
-        colorCaret = v.colorCaret || "#E4E4E7"
+        colorCaretSet = userColour(v.colorCaret, "#E4E4E7")
         gripWidth = numVal(v.gripWidth, 8)
         gripHeight = numVal(v.gripHeight, 18)
         gripRadius = numVal(v.gripRadius, 2)
-        colorGrip = v.colorGrip || "#52525B"
+        colorGripSet = userColour(v.colorGrip, "#52525B")
+    }
+
+    // A saved colour equal to the old fixed (dark) default was never changed by
+    // the user, so it follows Dark mode like a colour that was never set.
+    function userColour(saved, oldDefault) {
+        var text = String(saved || "")
+        return text.toLowerCase() === oldDefault.toLowerCase() ? "" : text
+    }
+
+    function userColourOf(target) {
+        var names = { group: "colorGroupSet", parent: "colorParentSet", child: "colorChildSet", actionTarget: "colorActionTargetSet", text: "colorTextSet", muted: "colorMutedSet", selected: "colorSelectedSet", selectBorder: "colorSelectBorderSet", border: "colorBorderSet", caret: "colorCaretSet", grip: "colorGripSet" }
+        return names[target] || ""
     }
 
     function applyDisplayDefaults() {
@@ -1953,7 +1987,7 @@ Item {
         groupPadBottom = 0
         groupPadLeft = 8
         groupRadius = 3
-        colorGroup = "#27272A"
+        colorGroupSet = ""
         parentHeight = 44
         parentPadShape = "sides"
         parentPad = 0
@@ -1962,7 +1996,7 @@ Item {
         parentPadBottom = 0
         parentPadLeft = 24
         parentRadius = 3
-        colorParent = "#18181B"
+        colorParentSet = ""
         parentIndent = 16
         childHeight = 32
         childIndent = 32
@@ -1973,7 +2007,7 @@ Item {
         childPadBottom = 0
         childPadLeft = 0
         childRadius = 3
-        colorChild = "#18181B"
+        colorChildSet = ""
         showChildren = true
         showSummary = true
         summaryFont = 11
@@ -1981,19 +2015,19 @@ Item {
         groupFont = 15
         childFont = 13
         targetFont = 11
-        colorActionTarget = "#A1A1AA"
+        colorActionTargetSet = ""
         parentBold = true
-        colorText = "#E4E4E7"
-        colorMuted = "#A1A1AA"
-        colorSelected = "#1E3A5F"
-        colorSelectBorder = "#3F3F46"
-        colorBorder = "#3F3F46"
+        colorTextSet = ""
+        colorMutedSet = ""
+        colorSelectedSet = ""
+        colorSelectBorderSet = ""
+        colorBorderSet = ""
         caretSize = 18
-        colorCaret = "#E4E4E7"
+        colorCaretSet = ""
         gripWidth = 8
         gripHeight = 18
         gripRadius = 2
-        colorGrip = "#52525B"
+        colorGripSet = ""
         setAllSections(false)
     }
 
@@ -2059,17 +2093,17 @@ Item {
         title: "Choose color"
         onAccepted: {
             var c = selectedColor.toString()
-            if (_colorTarget === "child") colorChild = c
-            else if (_colorTarget === "selected") colorSelected = c
-            else if (_colorTarget === "text") colorText = c
-            else if (_colorTarget === "muted") colorMuted = c
-            else if (_colorTarget === "actionTarget") colorActionTarget = c
-            else if (_colorTarget === "selectBorder") colorSelectBorder = c
-            else if (_colorTarget === "border") colorBorder = c
-            else if (_colorTarget === "group") colorGroup = c
-            else if (_colorTarget === "grip") colorGrip = c
-            else if (_colorTarget === "caret") colorCaret = c
-            else colorParent = c
+            if (_colorTarget === "child") colorChildSet = c
+            else if (_colorTarget === "selected") colorSelectedSet = c
+            else if (_colorTarget === "text") colorTextSet = c
+            else if (_colorTarget === "muted") colorMutedSet = c
+            else if (_colorTarget === "actionTarget") colorActionTargetSet = c
+            else if (_colorTarget === "selectBorder") colorSelectBorderSet = c
+            else if (_colorTarget === "border") colorBorderSet = c
+            else if (_colorTarget === "group") colorGroupSet = c
+            else if (_colorTarget === "grip") colorGripSet = c
+            else if (_colorTarget === "caret") colorCaretSet = c
+            else colorParentSet = c
         }
     }
 
@@ -2091,17 +2125,17 @@ Item {
         anchors.centerIn: parent
         modal: true
         dim: true
-        Overlay.modal: Rectangle { color: "#66000000" }
+        Overlay.modal: Rectangle { color: Style.dim }
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
         padding: Style.dp(18)
         background: Rectangle {
-            color: "#27272A"
-            border.color: "#52525B"
+            color: Style.bgRaised
+            border.color: Style.lineStrong
             radius: Style.dp(6)
         }
         contentItem: Label {
             text: toastText
-            color: "#F4F4F5"
+            color: Style.fgStrong
             font.pixelSize: Style.dp(14)
             horizontalAlignment: Text.AlignHCenter
         }

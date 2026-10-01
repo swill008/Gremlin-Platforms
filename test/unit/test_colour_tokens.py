@@ -34,7 +34,7 @@ _REMAINING = {
     "qml/InputConfiguration.qml": 3,
     "qml/InputItemBinding.qml": 1,
     "qml/InputViewerCard.qml": 15,
-    "qml/LogicalPage.qml": 97,
+    "qml/LogicalPage.qml": 11,
     "qml/Main.qml": 5,
     "qml/OptionWindowsScale.qml": 1,
     "qml/OscAddDialog.qml": 3,
