@@ -591,7 +591,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 |---|---|---|
 | CAL-01 | PASS | Opens from Tools (first module selected). From a card it does not preselect that card (H-17). |
 | CAL-04 | PASS | Changing a limit shows "Not saved" and a gold save icon. |
-| CAL-05b | FAIL (minor) | Reset (↻) restores the value but "Not saved" and the gold icon stay. |
+| CAL-05b | FIXED | Reset (↻) restores the value but "Not saved" and the gold icon stay. |
 | CAL-09 | FIXED | Closing the window (its X, or a close request) with a real unsaved change (High 32,767 → 32,766) closes without asking and the change is lost. The close gate calls `_calib.hasUnsaved()`, which returns false while the row says "Not saved". |
 | CFGM-02, CFGM-03 | PASS | Untick a claim; type a friendly name. |
 | CFGM-05 | PASS | Cancel with changes asks: "Checks, names, and the picture on this screen are not saved…" (Cancel / Discard / Save). |
@@ -680,3 +680,4 @@ Data loss or broken feature first. IDs point to the batch rows above.
 | F-06 | FAIL (minor) | Opening a device page (NXT) marks the profile as unsaved with no mapping changes, so quitting asks about the profile. |
 | W-03b | NOTE | When quitting, the display-options prompt says "Leave this device and they will be lost" (wording from the leave path). |
 | OPT-RS | FIXED (plus Reset all card sizes in the card and background right-click menus) | Options > Display > Reset all card sizes clears the saved sizes, but Home keeps showing the old sizes until restart (Options uses its own model copy). |
+| CAL-11 | FAIL | Calibration spin box arrows change a value only once; further clicks do nothing (also before today's changes). Suspect: onValueModified sets model.x = Qt.binding(() => value). |

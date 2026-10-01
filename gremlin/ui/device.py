@@ -1454,7 +1454,8 @@ class AxisCalibration(QtCore.QAbstractListModel):
             case _:
                 return False
 
-        state["unsavedChanges"] = True
+        if self.roles.get(role) != "unsavedChanges":
+            state["unsavedChanges"] = not self._matches_saved(index.row())
         self._update_calibration(index.row())
 
         # Signal that the model has changed for a UI update
@@ -1489,7 +1490,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
         self._state[index]["centerLow"] = 0
         self._state[index]["centerHigh"] = 0
         self._state[index]["high"] = 32767
-        self._state[index]["unsavedChanges"] = True
+        self._state[index]["unsavedChanges"] = not self._matches_saved(index)
 
         # Reset calibration tracking data to continue calibration after a
         # reset.
@@ -1594,6 +1595,19 @@ class AxisCalibration(QtCore.QAbstractListModel):
         self._initialize_state()
         self.endResetModel()
         self.deviceChanged.emit()
+
+    def _matches_saved(self, index: int) -> bool:
+        """True when the axis limits equal what is saved, so nothing is unsaved."""
+        if self._device is None or self._device_uuid is None:
+            return False
+        state = self._state[index]
+        saved = values_for_module(
+            self._module_slug, self._device_uuid, self._device.axis_map[index].axis_index
+        )
+        current = (state["low"], state["centerLow"], state["centerHigh"], state["high"])
+        return [int(v) for v in current] == [int(v) for v in saved[:4]] and bool(
+            state["withCenter"]
+        ) == bool(saved[4])
 
     def _update_calibration(self, index: int) -> None:
         """Creates the calibration function based on the stored values.
