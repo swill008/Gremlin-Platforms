@@ -1,7 +1,8 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-from gremlin.input_module_gate import claim_allows, dest_last_change, norm_guid, should_forward, status_last_from_hid
+from gremlin.input_module_gate import claim_allows, dest_last_change, should_forward, status_last_from_hid
+from gremlin.modules.ids import guid_key
 
 
 class _T:
@@ -20,8 +21,8 @@ CLAIM = {"axes": [1, 2, 3], "buttons": [1, 8], "hats": []}
 
 
 def test_norm_guid_forms() -> None:
-    assert norm_guid(EVO) == norm_guid("{" + EVO + "}")
-    assert "-" not in norm_guid(EVO)
+    assert guid_key(EVO) == guid_key("{" + EVO + "}")
+    assert "-" not in guid_key(EVO)
 
 
 def test_claimed_axis_passes() -> None:
@@ -36,9 +37,9 @@ def test_source_claimed_enters_wire() -> None:
         EVO,
         JoystickAxis,
         1,
-        claims={norm_guid(EVO): CLAIM},
-        dest_guids={norm_guid(VJOY3)},
-        passthrough={norm_guid(OSC)},
+        claims={guid_key(EVO): CLAIM},
+        dest_guids={guid_key(VJOY3)},
+        passthrough={guid_key(OSC)},
     )
 
 
@@ -47,7 +48,7 @@ def test_unclaimed_button_does_not_enter_wire() -> None:
         EVO,
         JoystickButton,
         99,
-        claims={norm_guid(EVO): CLAIM},
+        claims={guid_key(EVO): CLAIM},
         dest_guids=set(),
         passthrough=set(),
     )
@@ -58,8 +59,8 @@ def test_dest_vjoy_hid_never_enters_wire() -> None:
         VJOY3,
         JoystickAxis,
         1,
-        claims={norm_guid(VJOY3): CLAIM},
-        dest_guids={norm_guid(VJOY3)},
+        claims={guid_key(VJOY3): CLAIM},
+        dest_guids={guid_key(VJOY3)},
         passthrough=set(),
     )
 
@@ -71,7 +72,7 @@ def test_osc_passthrough() -> None:
         1,
         claims={},
         dest_guids=set(),
-        passthrough={norm_guid(OSC)},
+        passthrough={guid_key(OSC)},
     )
 
 
@@ -80,7 +81,7 @@ def test_unknown_device_dropped() -> None:
         "00000000-0000-0000-0000-000000000000",
         JoystickButton,
         1,
-        claims={norm_guid(EVO): CLAIM},
+        claims={guid_key(EVO): CLAIM},
         dest_guids=set(),
         passthrough=set(),
     )

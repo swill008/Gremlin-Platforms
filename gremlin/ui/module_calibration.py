@@ -14,6 +14,7 @@ from PySide6 import QtCore
 import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.device_initialization import physical_devices
+from gremlin.modules.ids import guid_key
 from gremlin.ui.hardware_profile import _maps_dir
 from gremlin.ui.live_debug import trace
 
@@ -22,10 +23,6 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 _DEFAULT = (-32768, 0, 0, 32767, True)
 _SKIP_SLUGS = {"keyboard", "osc"}
-
-
-def _key(value: object) -> str:
-    return str(value or "").upper().replace("{", "").replace("}", "").replace("-", "")
 
 
 def _as_tuple(raw: object) -> tuple[int, int, int, int, bool] | None:
@@ -49,7 +46,7 @@ def _source_modules() -> list[dict]:
     folder = _maps_dir()
     if not folder.is_dir():
         return []
-    physical = {_key(dev.device_guid): dev for dev in physical_devices()}
+    physical = {guid_key(dev.device_guid): dev for dev in physical_devices()}
     rows = []
     for path in sorted(folder.glob("*.json")):
         slug = path.stem.lower()
@@ -60,7 +57,7 @@ def _source_modules() -> list[dict]:
         if direction in ("dest", "target", "output"):
             continue
         guid = str(doc.get("boundGuidLocal") or "").strip()
-        device = physical.get(_key(guid))
+        device = physical.get(guid_key(guid))
         if device is None:
             continue
         name = str(doc.get("device") or doc.get("boundName") or device.name).strip()
@@ -87,9 +84,9 @@ def module_for_slug(slug: str) -> dict | None:
 
 
 def _module_for_guid(device_id: uuid.UUID) -> dict | None:
-    want = _key(device_id)
+    want = guid_key(device_id)
     for row in _source_modules():
-        if _key(row["guid"]) == want:
+        if guid_key(row["guid"]) == want:
             return row
     return None
 

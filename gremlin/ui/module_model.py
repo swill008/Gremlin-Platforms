@@ -21,6 +21,8 @@ from gremlin.signal import signal
 from gremlin.types import InputType, PropertyType
 from gremlin import keyboard as gremlin_keyboard
 from gremlin.ui.live_debug import trace
+from gremlin.modules.ids import guid_key
+from gremlin.modules import ids
 from gremlin.ui.hardware_profile import (
     HardwareProfile,
     _maps_dir,
@@ -47,10 +49,11 @@ from gremlin.ui.hardware_profile import (
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
-KEYBOARD_GUID = "6F1D2B61-D5A0-11CF-BFC7-444553540000"
-OSC_GUID = "A7C3E91B-4D2F-4E18-9B06-2F8C1D5A6E70"
-XBOX_GUID = "C8E4B6A1-3D92-4F17-9A50-7B2C4E8F1D60"
-LOGICAL_GUID = "F0AF472F-8E17-493B-A1EB-7333EE8543F2"
+# Built-in device rows; upper-case text as already written to module files.
+KEYBOARD_GUID = str(ids.KEYBOARD).upper()
+OSC_GUID = str(ids.OSC).upper()
+XBOX_GUID = str(ids.XBOX).upper()
+LOGICAL_GUID = str(ids.LOGICAL_DEVICE).upper()
 
 _CFG_SECTION = "display"
 _CFG_GROUP = "status"
@@ -179,12 +182,6 @@ def _set_hidden(slugs: set[str]) -> None:
     _write_status(_CFG_HIDDEN, ",".join(sorted(slugs)))
 
 
-def _norm_guid(value) -> str:
-    text = str(value or "").upper()
-    return text.replace("{", "").replace("}", "").replace("-", "")
-
-
-
 def collect_bound_names(
     source_guid_to_name: dict[str, str],
     dest_vjoy_to_name: dict[int, str],
@@ -226,7 +223,7 @@ def _profile_wire_maps() -> list[tuple[str, str, int]]:
         return []
     out: list[tuple[str, str, int]] = []
     for uid, items in (getattr(profile, "inputs", None) or {}).items():
-        guid = _norm_guid(uid)
+        guid = guid_key(uid)
         for item in items or []:
             try:
                 mapped = _maps_for_item(item)
@@ -243,7 +240,7 @@ def _profile_wire_maps() -> list[tuple[str, str, int]]:
 
 def apply_bound_targets(rows: list) -> None:
     guid_to_name = {
-        _norm_guid(getattr(row, "guid", "")): getattr(row, "name", "")
+        guid_key(getattr(row, "guid", "")): getattr(row, "name", "")
         for row in rows
         if getattr(row, "direction", "") == "source"
     }
@@ -268,7 +265,7 @@ def apply_bound_targets(rows: list) -> None:
         name = str(getattr(row, "name", "") or "")
         tab = str(getattr(row, "tab", "") or "")
         if direction == "source":
-            names = src_bound.get(_norm_guid(getattr(row, "guid", "")), [])
+            names = src_bound.get(guid_key(getattr(row, "guid", "")), [])
         elif tab == "xbox" or "xbox" in name.lower():
             names = dest_bound.get("xbox", [])
         else:
@@ -1409,8 +1406,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return
         from gremlin.input_module_gate import claim_allows, event_kind, status_last_from_hid
 
-        guid = _norm_guid(event.device_guid)
-        row = next((r for r in self._rows if _norm_guid(r.guid) == guid), None)
+        guid = guid_key(event.device_guid)
+        row = next((r for r in self._rows if guid_key(r.guid) == guid), None)
         if row is None:
             return
         if not status_last_from_hid(row.direction):
@@ -1692,7 +1689,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             return
         if info is None and (
             "xbox" in (device_name or "").lower()
-            or _norm_guid(guid) == _norm_guid(XBOX_GUID)
+            or guid_key(guid) == guid_key(XBOX_GUID)
         ):
             self._load_xbox_dest(claim)
             return
@@ -1738,11 +1735,11 @@ class DriverInputModel(QtCore.QAbstractListModel):
 
     def _is_keyboard(self) -> bool:
         name = (self._device_name or "").strip().lower()
-        return name == "keyboard" or _norm_guid(self._guid) == _norm_guid(KEYBOARD_GUID)
+        return name == "keyboard" or guid_key(self._guid) == guid_key(KEYBOARD_GUID)
 
     def _is_osc(self) -> bool:
         name = (self._device_name or "").strip().lower()
-        return name == "osc" or _norm_guid(self._guid) == _norm_guid(OSC_GUID)
+        return name == "osc" or guid_key(self._guid) == guid_key(OSC_GUID)
 
     def _load_osc(self, claim: dict) -> None:
         from gremlin.osc import OscDevice
@@ -1910,7 +1907,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
     def _same_device(self, event: event_handler.Event) -> bool:
         if event is None:
             return False
-        if _norm_guid(event.device_guid) == _norm_guid(self._guid):
+        if guid_key(event.device_guid) == guid_key(self._guid):
             return True
         if not self._device_name:
             return False
@@ -1919,9 +1916,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
         except Exception:
             devices = []
         want = _slug(self._device_name)
-        ev = _norm_guid(event.device_guid)
+        ev = guid_key(event.device_guid)
         for dev in devices:
-            if _norm_guid(dev.device_guid) != ev:
+            if guid_key(dev.device_guid) != ev:
                 continue
             if _slug(dev.name) == want or dev.name == self._device_name:
                 self._guid = str(dev.device_guid)

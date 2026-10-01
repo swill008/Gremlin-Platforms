@@ -12,12 +12,14 @@ from gremlin.types import InputType
 from gremlin.ui import input_pairing as pairing
 from gremlin.ui import xbox_maps
 import gremlin.ui.type_aliases as ta
+from gremlin.modules.ids import guid_key
+from gremlin.modules import ids
 from vigem.xbox import XboxProxy, XboxTarget
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
-OSC_GUID = "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
+OSC_GUID = str(ids.OSC)
 
 _CHIP = {
     "left_stick_x": "LSX",
@@ -45,12 +47,6 @@ _CHIP = {
 }
 
 
-def _norm(value: object) -> str:
-    if value is not None and hasattr(value, "uuid"):
-        value = value.uuid
-    return str(value or "").strip().strip("{}").lower()
-
-
 def _connected_keys() -> set[str]:
     keys: set[str] = set()
     for getter in (
@@ -63,11 +59,11 @@ def _connected_keys() -> set[str]:
         except Exception:
             continue
         for device in devices or []:
-            key = _norm(getattr(device, "device_guid", ""))
+            key = guid_key(getattr(device, "device_guid", ""))
             if key:
                 keys.add(key)
     for guid in (dill.UUID_Keyboard, dill.UUID_LogicalDevice, OSC_GUID):
-        keys.add(_norm(guid))
+        keys.add(guid_key(guid))
     return keys
 
 
@@ -281,7 +277,7 @@ class XboxViewerDeviceModel(QtCore.QAbstractListModel):
                 if not any(_xbox_maps_for_item(item) for item in items or []):
                     continue
                 guid = str(device_id)
-                if _norm(guid) not in connected:
+                if guid_key(guid) not in connected:
                     continue
                 self._rows.append(
                     {
@@ -380,8 +376,8 @@ class XboxLiveThrottle(QtCore.QObject):
     def _on_event(self, event: event_handler.Event) -> None:
         if self._uid is None:
             return
-        ev = _norm(event.device_guid)
-        if ev != _norm(self._uid):
+        ev = guid_key(event.device_guid)
+        if ev != guid_key(self._uid):
             return
         if event.event_type == InputType.JoystickAxis:
             try:

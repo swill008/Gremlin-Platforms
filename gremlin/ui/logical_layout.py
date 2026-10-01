@@ -26,6 +26,7 @@ from gremlin.plugin_manager import PluginManager
 from gremlin.profile import InputItem
 from gremlin.signal import signal
 from gremlin.types import AxisMode, InputType
+from gremlin.modules.ids import guid_key
 from gremlin.ui.binding_catalog import (
     _attach_binding,
     _clone_binding,
@@ -49,11 +50,6 @@ _KIND_WORD = {
 }
 
 
-def _norm_guid(value) -> str:
-    text = str(value or "").strip().strip("{}").lower()
-    return text
-
-
 def _module_direction(doc: dict, name: str) -> str:
     if _name_direction(name) == "dest":
         return "dest"
@@ -69,10 +65,10 @@ def _assign_input_modules() -> list[dict]:
     """Saved source input modules. Logical Device is never a writer source."""
     rows: list[dict] = []
     seen: set[str] = set()
-    logical = _norm_guid(LOGICAL_GUID)
+    logical = guid_key(LOGICAL_GUID)
 
     def add(name: str, guid: str, bus: str) -> None:
-        key = _norm_guid(guid) or name.lower()
+        key = guid_key(guid) or name.lower()
         if key in seen or key == logical:
             return
         if not module_exists(name):

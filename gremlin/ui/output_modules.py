@@ -15,6 +15,7 @@ from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
 from gremlin.ui.hardware_profile import _maps_dir
 from gremlin.ui.module_model import _claim_from_doc
+from gremlin.modules.ids import guid_key
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -31,17 +32,13 @@ _AXIS_WORDS = {
 }
 
 
-def _norm_guid(value: object) -> str:
-    return str(value or "").strip().strip("{}").lower().replace("-", "")
-
-
 def _vjoy_id_from_name(name: str) -> int:
     match = re.search(r"(\d+)", str(name or ""))
     return int(match.group(1)) if match else 0
 
 
 def _resolve_vjoy_id(name: str, bound_guid: str) -> int:
-    want = _norm_guid(bound_guid)
+    want = guid_key(bound_guid)
     devices = []
     try:
         devices = list(device_initialization.output_vjoy_devices() or [])
@@ -49,7 +46,7 @@ def _resolve_vjoy_id(name: str, bound_guid: str) -> int:
         devices = []
     if want:
         for device in devices:
-            if _norm_guid(getattr(device, "device_guid", "")) == want:
+            if guid_key(getattr(device, "device_guid", "")) == want:
                 return int(device.vjoy_id)
     guess = _vjoy_id_from_name(name)
     ids = {int(device.vjoy_id) for device in devices}

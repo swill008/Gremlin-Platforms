@@ -7,7 +7,6 @@ from __future__ import annotations
 import logging
 import socket
 import threading
-import uuid
 from collections.abc import Callable
 from typing import Any
 
@@ -15,12 +14,12 @@ from PySide6 import QtCore
 
 from gremlin.common import SingletonDecorator, SingletonMetaclass
 from gremlin.error import GremlinError
+from gremlin.modules import ids
 from gremlin.types import InputType
 
 log = logging.getLogger("system")
 
-OSC_DEVICE_GUID = "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
-OSC_DEVICE_UUID = uuid.UUID(OSC_DEVICE_GUID)
+OSC_DEVICE_UUID = ids.OSC
 
 OSC_SECTION = "osc"
 OSC_GROUP = "connection"

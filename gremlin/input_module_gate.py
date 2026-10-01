@@ -4,17 +4,13 @@
 
 from __future__ import annotations
 
+from gremlin.modules.ids import guid_key
+
 _BUCKET = {
     "axis": "axes",
     "button": "buttons",
     "hat": "hats",
 }
-
-
-def norm_guid(value: object) -> str:
-    if value is not None and hasattr(value, "uuid"):
-        value = value.uuid
-    return str(value or "").strip().strip("{}").replace("-", "").lower()
 
 
 def event_kind(event_type: object) -> str:
@@ -52,7 +48,7 @@ def should_forward(
     passthrough: set[str],
 ) -> bool:
     """True if this HID event may enter the wire (Map to vJoy, etc.)."""
-    key = norm_guid(guid)
+    key = guid_key(guid)
     if not key:
         return False
     if key in passthrough:

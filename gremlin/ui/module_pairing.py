@@ -6,6 +6,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 from gremlin import device_initialization, event_handler, shared_state
+from gremlin.modules.ids import guid_key
 from gremlin.signal import signal
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
@@ -15,12 +16,6 @@ from gremlin.ui.hardware_profile import _slug
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
-
-
-def _norm(value: object) -> str:
-    if value is not None and hasattr(value, "uuid"):
-        value = value.uuid
-    return str(value or "").strip().strip("{}").lower()
 
 
 def _empty_claim() -> dict:
@@ -182,14 +177,14 @@ class ModulePairDeviceModel(QtCore.QAbstractListModel):
             if name.lower().startswith("vjoy"):
                 continue
             guid = str(getattr(device, "device_guid", "") or "")
-            key = _norm(guid)
+            key = guid_key(guid)
             if not key or key in seen:
                 continue
             seen.add(key)
             roster.append((guid, name))
         if profile is not None:
             for device_id, items in (profile.inputs or {}).items():
-                key = _norm(device_id)
+                key = guid_key(device_id)
                 if not key or key in seen:
                     continue
                 if not any(_vjoy_maps_only(item) for item in items or []):

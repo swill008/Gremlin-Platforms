@@ -9,15 +9,10 @@ from gremlin import event_handler
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
 from gremlin.ui import input_pairing as pairing
+from gremlin.modules.ids import guid_key
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
-
-
-def _norm(value: object) -> str:
-    if value is not None and hasattr(value, "uuid"):
-        value = value.uuid
-    return str(value or "").strip().strip("{}").lower()
 
 
 @ta.QmlElement
@@ -73,20 +68,20 @@ class PairLiveThrottle(QtCore.QObject):
         self._uid = pairing._guid(self._guid)
         self._hw_axis.clear()
         self._hw_button.clear()
-        self._watch = {_norm(self._guid)} if self._guid else set()
+        self._watch = {guid_key(self._guid)} if self._guid else set()
         self._hw_hat.clear()
         for kind in (InputType.JoystickAxis, InputType.JoystickButton, InputType.JoystickHat):
             for row in pairing._mapped_rows(self._guid, kind):
-                vg = _norm(row.get("vjoyGuid", ""))
+                vg = guid_key(row.get("vjoyGuid", ""))
                 if vg:
                     self._watch.add(vg)
         self._bump()
 
     def _on_event(self, event: event_handler.Event) -> None:
-        ev = _norm(event.device_guid)
+        ev = guid_key(event.device_guid)
         if ev not in self._watch:
             return
-        is_hw = self._uid is not None and ev == _norm(self._uid)
+        is_hw = self._uid is not None and ev == guid_key(self._uid)
         if event.event_type == InputType.JoystickAxis:
             try:
                 value = float(event.value)
@@ -142,11 +137,11 @@ class PairLiveThrottle(QtCore.QObject):
 
     @QtCore.Slot(str, int, result=float)
     def vjoyAxisValue(self, vjoy_guid: str, identifier: int) -> float:
-        return float(self._vj_axis.get((_norm(vjoy_guid), int(identifier)), 0.0))
+        return float(self._vj_axis.get((guid_key(vjoy_guid), int(identifier)), 0.0))
 
     @QtCore.Slot(str, int, result=float)
     def vjoyButtonValue(self, vjoy_guid: str, identifier: int) -> float:
-        return float(self._vj_button.get((_norm(vjoy_guid), int(identifier)), 0.0))
+        return float(self._vj_button.get((guid_key(vjoy_guid), int(identifier)), 0.0))
 
     @QtCore.Slot(int, result=float)
     def hatValue(self, identifier: int) -> float:

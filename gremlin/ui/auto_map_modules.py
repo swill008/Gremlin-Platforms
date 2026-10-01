@@ -14,6 +14,7 @@ from gremlin.ui.hardware_profile import _maps_dir, _slug, resolve_module_slug
 from gremlin.ui.live_debug import trace
 from gremlin.ui.module_model import _claim_from_doc
 from gremlin.ui.output_modules import _resolve_vjoy_id
+from gremlin.modules.ids import guid_key
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -71,16 +72,12 @@ def _display_key(name: str) -> str:
     return " ".join(str(name or "").casefold().split())
 
 
-def _guid_key(value: object) -> str:
-    return str(value or "").strip().strip("{}").replace("-", "").lower()
-
-
 def _same_device(left: dict, right: dict) -> bool:
     name = _display_key(left.get("name") or "")
     if name and name == _display_key(right.get("name") or ""):
         return True
-    guid = _guid_key(left.get("guid"))
-    return bool(guid and guid == _guid_key(right.get("guid")))
+    guid = guid_key(left.get("guid"))
+    return bool(guid and guid == guid_key(right.get("guid")))
 
 
 def _choose_input(group: list[dict]) -> dict:

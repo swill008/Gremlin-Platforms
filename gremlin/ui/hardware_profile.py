@@ -14,6 +14,7 @@ from pathlib import Path
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
+from gremlin.modules.ids import stored_guid_key
 from gremlin.signal import signal
 from gremlin.ui.live_debug import trace
 from gremlin.ui.util import to_local_path
@@ -93,13 +94,9 @@ def _slug(device_name: str) -> str:
     return _plain_slug(device_name) or "device"
 
 
-def _norm_guid(value: object) -> str:
-    return str(value or "").upper().replace("{", "").replace("}", "").replace("-", "")
-
-
 def guid_for_module(device_name: str, guid: str) -> str:
     """Use guid only when it belongs to device_name. A stale id must not select another module."""
-    given = _norm_guid(guid)
+    given = stored_guid_key(guid)
     if not given:
         return ""
     owned = _guid_for_name(device_name)
@@ -122,7 +119,7 @@ def _guid_for_name(device_name: str) -> str:
         name = str(getattr(dev, "name", "") or "")
         if name.strip().lower() != wanted:
             continue
-        return _norm_guid(getattr(dev, "device_guid", ""))
+        return stored_guid_key(getattr(dev, "device_guid", ""))
     return ""
 
 
@@ -189,14 +186,15 @@ def module_json_path(device_name: str, guid: str = "") -> Path:
     this = str(device_name or "").strip().lower()
     if named and named == this:
         return bound
-    if _norm_guid(guid) and _norm_guid(doc.get("boundGuidLocal")) == _norm_guid(guid):
+    key = stored_guid_key(guid)
+    if key and stored_guid_key(doc.get("boundGuidLocal")) == key:
         return bound
     return own_path
 
 
 def resolve_module_slug(device_name: str, guid: str = "") -> str:
     data = _binding_store()
-    key = _norm_guid(guid) or _guid_for_name(device_name)
+    key = stored_guid_key(guid) or _guid_for_name(device_name)
     bound = data.get(key, "") if key else ""
     name_key = _name_key(device_name)
     if not bound and name_key:
@@ -669,7 +667,7 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
 
 def _clear_device_binding(device_name: str, guid: str) -> None:
     data = _binding_store()
-    key = _norm_guid(guid) or _guid_for_name(device_name)
+    key = stored_guid_key(guid) or _guid_for_name(device_name)
     name_key = _name_key(device_name)
     changed = False
     if key and key in data:
@@ -684,7 +682,7 @@ def _clear_device_binding(device_name: str, guid: str) -> None:
 
 def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
     slug = _plain_slug(file_name)
-    key = _norm_guid(guid) or _guid_for_name(device_name)
+    key = stored_guid_key(guid) or _guid_for_name(device_name)
     if not slug or not key:
         return ""
     data = _binding_store()
@@ -718,7 +716,7 @@ def _users_of_slug(slug: str) -> set[str]:
         if _plain_slug(value) == slug:
             users.add(key)
     for dev in _live_devices():
-        guid = _norm_guid(getattr(dev, "device_guid", ""))
+        guid = stored_guid_key(getattr(dev, "device_guid", ""))
         name = str(getattr(dev, "name", "") or "")
         if guid and name and resolve_module_slug(name, guid) == slug:
             users.add(guid)
@@ -732,7 +730,7 @@ def load_module_file(device_name: str, guid: str, source_url: str, direction: st
 def delete_module_file(device_name: str, guid: str) -> str:
     """Delete this device's own file. Do not delete, or unhook, a different file."""
     slug = _slug(device_name)
-    key = _norm_guid(guid) or _guid_for_name(device_name)
+    key = stored_guid_key(guid) or _guid_for_name(device_name)
     others = _users_of_slug(slug) - ({key} if key else set())
     name_key = _name_key(device_name)
     others.discard(name_key)
@@ -809,7 +807,7 @@ def _own_file_shared(device_name: str, guid: str) -> bool:
     own = _slug(device_name)
     if not (_maps_dir() / f"{own}.json").is_file():
         return False
-    key = _norm_guid(guid) or _guid_for_name(device_name)
+    key = stored_guid_key(guid) or _guid_for_name(device_name)
     others = _users_of_slug(own) - ({key} if key else set())
     others.discard(_name_key(device_name))
     return bool(others)
@@ -907,7 +905,7 @@ def _save_profile_wires(device_name: str, guid: str) -> str:
 
 def _clear_device_binding_keys(device_name: str, guid: str) -> None:
     data = _binding_store()
-    key = _norm_guid(guid) or _guid_for_name(device_name)
+    key = stored_guid_key(guid) or _guid_for_name(device_name)
     name_key = _name_key(device_name)
     changed = False
     if key and key in data:
@@ -1387,10 +1385,10 @@ class HardwareProfile(QtCore.QObject):
 
     def _guid_for_this_device(self, device_name: str) -> str:
         # The object remembers one device. Do not use that id for a different name.
-        guid = _norm_guid(self._device_guid)
+        guid = stored_guid_key(self._device_guid)
         if not guid:
             return ""
-        owned = _norm_guid(_guid_for_name(device_name))
+        owned = stored_guid_key(_guid_for_name(device_name))
         if not owned or owned != guid:
             return ""
         return str(self._device_guid)

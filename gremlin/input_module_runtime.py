@@ -12,7 +12,8 @@ from PySide6 import QtCore
 import dill
 from gremlin.common import SingletonDecorator
 from gremlin.event_handler import Event, EventListener
-from gremlin.input_module_gate import norm_guid, should_forward
+from gremlin.input_module_gate import should_forward
+from gremlin.modules.ids import guid_key
 from gremlin.osc import OSC_DEVICE_UUID
 from gremlin.signal import signal
 from gremlin.types import InputType
@@ -27,7 +28,7 @@ def always_forwarded() -> set[str]:
     Logical Device, whose inputs are created on the Logical Device page. Without
     this, events re-emitted by Map to Logical Device were dropped here and
     nothing wired from a Logical Device input ever ran."""
-    return {norm_guid(OSC_DEVICE_UUID), norm_guid(dill.UUID_LogicalDevice)}
+    return {guid_key(OSC_DEVICE_UUID), guid_key(dill.UUID_LogicalDevice)}
 
 
 def _vjoy_as_input_ids() -> set[int]:
@@ -81,7 +82,7 @@ class InputModuleRuntime(QtCore.QObject):
                     continue
                 if not isinstance(doc, dict):
                     continue
-                guid = norm_guid(doc.get("boundGuidLocal") or "")
+                guid = guid_key(doc.get("boundGuidLocal") or "")
                 if not guid:
                     continue
                 direction = str(doc.get("direction") or "source").strip().lower()
@@ -116,7 +117,7 @@ class InputModuleRuntime(QtCore.QObject):
         except Exception:
             return
         for dev in devices:
-            guid = norm_guid(getattr(dev, "device_guid", ""))
+            guid = guid_key(getattr(dev, "device_guid", ""))
             if not guid or guid in claims or guid in dest or guid in passthrough:
                 continue
             name = str(getattr(dev, "name", "") or "")

@@ -25,10 +25,6 @@ _UUID_RE = re.compile(
 _VJOY_NAME_RE = re.compile(r"vjoy\s*(\d+)", re.I)
 
 
-def _norm_guid(value: object) -> str:
-    return _extract_uuid(value)
-
-
 def _extract_uuid(value: object) -> str:
     if value is None:
         return ""
@@ -156,7 +152,7 @@ class DeviceLiveState(QtCore.QObject):
         self._bump()
 
     def _set_guid(self, guid: str) -> None:
-        incoming = _norm_guid(guid)
+        incoming = _extract_uuid(guid)
         if not incoming or incoming in ("unknown", str(dill.UUID_Invalid).lower()):
             self._clear()
             return

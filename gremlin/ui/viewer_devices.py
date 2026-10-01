@@ -10,17 +10,13 @@ from gremlin import device_initialization, event_handler, shared_state
 from gremlin.signal import signal
 import gremlin.ui.type_aliases as ta
 from gremlin.ui import input_pairing as pairing
+from gremlin.modules.ids import guid_key
+from gremlin.modules import ids
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
-OSC_GUID = "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
-
-
-def _norm(value: object) -> str:
-    if value is not None and hasattr(value, "uuid"):
-        value = value.uuid
-    return str(value or "").strip().strip("{}").lower()
+OSC_GUID = str(ids.OSC)
 
 
 def _is_vjoy_name(name: str) -> bool:
@@ -39,7 +35,7 @@ def _connected_keys() -> set[str]:
         except Exception:
             continue
         for device in devices or []:
-            key = _norm(getattr(device, "device_guid", ""))
+            key = guid_key(getattr(device, "device_guid", ""))
             if key:
                 keys.add(key)
     for guid in (
@@ -47,7 +43,7 @@ def _connected_keys() -> set[str]:
         dill.UUID_LogicalDevice,
         OSC_GUID,
     ):
-        keys.add(_norm(guid))
+        keys.add(guid_key(guid))
     return keys
 
 
@@ -92,7 +88,7 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
                 if not any(pairing._maps_for_item(item) for item in items or []):
                     continue
                 guid = str(device_id)
-                key = _norm(guid)
+                key = guid_key(guid)
                 if key not in connected:
                     continue
                 self._rows.append(
@@ -113,7 +109,7 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
             name = str(getattr(device, "name", guid))
             if _is_vjoy_name(name):
                 continue
-            key = _norm(guid)
+            key = guid_key(guid)
             if not key or key not in connected or key in seen:
                 continue
             self._rows.append(
@@ -131,7 +127,7 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
             (OSC_GUID, "OSC"),
         ]
         for guid, label in extras:
-            key = _norm(guid)
+            key = guid_key(guid)
             if key in seen:
                 continue
             self._rows.append(
