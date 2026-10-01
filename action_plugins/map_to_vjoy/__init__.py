@@ -397,7 +397,7 @@ class MapToVjoyData(AbstractActionData):
     def _handle_behavior_change(
         self, old_behavior: InputType, new_behavior: InputType
     ) -> None:
-        self._vjoy_input_type = new_behavior
+        self.vjoy_input_type = new_behavior
 
 
 create = MapToVjoyData

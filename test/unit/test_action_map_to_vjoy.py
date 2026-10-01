@@ -99,3 +99,11 @@ def test_to_xml() -> None:
     assert node.find("./property/name[.='vjoy-input-type']/../value").text == "axis"
     assert node.find("./property/name[.='axis-mode']/../value").text == "absolute"
     assert node.find("./property/name[.='axis-scaling']/../value").text == "0.75"
+
+
+def test_behavior_change_updates_the_output_type(joystick_init: None) -> None:
+    # A typo used to store the new type on a stray attribute instead.
+    r = MapToVjoyData(types.InputType.JoystickButton)
+    r.set_behavior_type(types.InputType.JoystickAxis)
+    assert r.vjoy_input_type == types.InputType.JoystickAxis
+    assert not hasattr(r, "_vjoy_input_type")
