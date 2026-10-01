@@ -61,6 +61,7 @@ Rectangle {
     signal dragMovedAt(real sx, real sy)
     signal sizeChanged(int w, int h)
     signal resetSize()
+    signal resetAllSizes()
     signal clearSettings()
     signal deleteDevice()
     signal unstackCard()
@@ -465,6 +466,7 @@ Rectangle {
         }
         MenuSeparator {}
         MenuItem { text: "Reset size"; onTriggered: _card.resetSize() }
+        MenuItem { text: "Reset all card sizes"; onTriggered: _card.resetAllSizes() }
         MenuSeparator {}
         MenuItem { text: "Hide device"; onTriggered: _card.ignoreDevice() }
         MenuSeparator {}

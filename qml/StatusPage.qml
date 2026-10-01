@@ -501,6 +501,7 @@ Item {
             if (model)
                 model.resetCardSize(card.slug)
         })
+        card.onResetAllSizes.connect(function() { _page.resetAllCardSizes() })
         card.onClearSettings.connect(function() {
             if (model)
                 model.clearCardSettings(card.slug)
@@ -958,6 +959,15 @@ Item {
                     _page.model.unignoreAll()
             }
         }
+        MenuItem {
+            text: "Reset all card sizes"
+            onTriggered: _page.resetAllCardSizes()
+        }
+    }
+
+    function resetAllCardSizes() {
+        if (model)
+            model.resetAllCardSizes()
     }
 
     Connections {

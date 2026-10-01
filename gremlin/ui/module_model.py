@@ -566,6 +566,18 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._dest_timer.start()
         signal.profileChanged.connect(self._schedule_reload)
         signal.configChanged.connect(self._schedule_refresh)
+        # Another copy of this model (Options > Reset all card sizes) can change the
+        # saved sizes; re-read them here so Home cards follow at once.
+        self._sizes_snap = _sizes()
+        signal.configChanged.connect(self._follow_card_sizes)
+
+    @QtCore.Slot()
+    def _follow_card_sizes(self) -> None:
+        sizes = _sizes()
+        if sizes == self._sizes_snap:
+            return
+        self._sizes_snap = sizes
+        self.panesChanged.emit()
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._rows)
