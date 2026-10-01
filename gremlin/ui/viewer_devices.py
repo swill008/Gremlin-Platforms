@@ -51,6 +51,19 @@ def _connected_keys() -> set[str]:
     return keys
 
 
+def _pair_label(items: list) -> str:
+    """Outputs a device's inputs are wired to. _maps_for_item lists Xbox pads
+    with no input type; they are Xbox pads, not vJoy devices."""
+    vjoy: set[int] = set()
+    xbox: set[int] = set()
+    for item in items or []:
+        for target, input_type, _ in pairing._maps_for_item(item):
+            (xbox if input_type is None else vjoy).add(target)
+    labels = [f"vJoy Device {vid}" for vid in sorted(vjoy)]
+    labels += [f"Xbox 360 {pad}" for pad in sorted(xbox)]
+    return ", ".join(labels)
+
+
 @ta.QmlElement
 class ViewerDeviceModel(QtCore.QAbstractListModel):
     roles = {
@@ -82,18 +95,11 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
                 key = _norm(guid)
                 if key not in connected:
                     continue
-                targets = sorted(
-                    {
-                        vid
-                        for item in items or []
-                        for vid, _, _ in pairing._maps_for_item(item)
-                    }
-                )
                 self._rows.append(
                     {
                         "guid": guid,
                         "name": pairing.device_label(guid),
-                        "pairLabel": ", ".join(f"vJoy Device {vid}" for vid in targets),
+                        "pairLabel": _pair_label(items),
                         "mapped": True,
                     }
                 )
