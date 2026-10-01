@@ -1435,7 +1435,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             self._dest_snap = {}
             return
         from gremlin.modules.gate import dest_last_change
-        from gremlin.ui.output_modules import vjoy_output_state
+        from gremlin.modules.output import vjoy_state
 
         for row in self._rows:
             if row.direction != "dest":
@@ -1443,7 +1443,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             vid, claim = self._dest_target(row)
             if not vid:
                 continue
-            snap = vjoy_output_state(vid, claim)
+            snap = vjoy_state(vid, claim)
             prev = self._dest_snap.get(row.slug)
             self._dest_snap[row.slug] = snap
             changed = dest_last_change(prev or {}, snap)

@@ -7,13 +7,14 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import shared_state
+from gremlin.modules import output
 from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 from gremlin.ui.input_pairing import device_label
 from gremlin.ui.xbox_maps import xbox_maps_for_item
-from vigem.ids import XBOX_TAB_GUID, vigem_client_error
-from vigem.xbox import XboxProxy, XboxTarget
+from vigem.ids import XBOX_TAB_GUID
+from vigem.xbox import XboxTarget
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
@@ -120,12 +121,12 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
         return XBOX_TAB_GUID
 
     def _get_available(self) -> bool:
-        return XboxProxy().available()
+        return output.xbox_available()
 
     def _get_status(self) -> str:
-        if XboxProxy().available():
+        if output.xbox_available():
             return "ViGEmBus ready. Map hardware with Map to Xbox, then toggle Gremlin on."
-        err = vigem_client_error()
+        err = output.xbox_error()
         if err:
             return err
         return "ViGEmBus / ViGEmClient.dll not available."

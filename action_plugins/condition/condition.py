@@ -42,6 +42,7 @@ from gremlin.input_cache import (
 )
 from gremlin.keyboard import key_from_code
 from gremlin.logical_device import LogicalDevice
+from gremlin.modules import output
 from gremlin.types import (
     ConditionType,
     HatDirection,
@@ -49,7 +50,6 @@ from gremlin.types import (
     PropertyType,
 )
 from gremlin.ui.device import InputIdentifier
-from vjoy.vjoy import VJoyProxy
 
 QML_IMPORT_NAME = "Gremlin.ActionPlugins"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -304,16 +304,17 @@ class VJoyCondition(AbstractCondition):
             self.vjoy_id = vjoy_id
             self.input_type = input_type
             self.input_id = input_id
-            self.vjoy = VJoyProxy()[self.vjoy_id]
 
         def get(self, value: Value) -> bool | float | HatDirection:
+            # Read through the vJoy output module: an unclaimed output reads
+            # as neutral.
             match self.input_type:
                 case InputType.JoystickAxis:
-                    return self.vjoy.axis(self.input_id).value
+                    return output.vjoy_value(self.vjoy_id, "axis", self.input_id)
                 case InputType.JoystickButton:
-                    return self.vjoy.button(self.input_id).is_pressed
+                    return output.vjoy_value(self.vjoy_id, "button", self.input_id)
                 case InputType.JoystickHat:
-                    return self.vjoy.hat(self.input_id).direction
+                    return output.vjoy_value(self.vjoy_id, "hat", self.input_id)
                 case _:
                     raise error.GremlinError(
                         f"ConditionAction: Invalid InputType {self.input_type} "

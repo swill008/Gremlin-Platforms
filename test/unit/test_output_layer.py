@@ -10,7 +10,7 @@ from unittest import mock
 
 import pytest
 
-from gremlin.ui import output_modules
+from gremlin.modules import output
 
 
 class _FakeVJoy:
@@ -31,6 +31,12 @@ class _FakeVJoy:
     def is_button_valid(self, index: int) -> bool:
         return index in self._buttons
 
+    def is_hat_valid(self, index: int) -> bool:
+        return index == 1
+
+    def axis_id(self, linear_index: int) -> int:
+        return linear_index
+
     def axis(
         self, axis_id: int | None = None, linear_index: int | None = None
     ) -> SimpleNamespace:
@@ -45,7 +51,7 @@ class _FakeVJoy:
 @pytest.fixture
 def device() -> _FakeVJoy:
     dev = _FakeVJoy()
-    with mock.patch.object(output_modules, "_vjoy_device", return_value=dev):
+    with mock.patch.object(output, "_opened_vjoy", return_value=dev):
         yield dev
 
 
@@ -54,7 +60,7 @@ def test_only_claimed_outputs_are_read(
 ) -> None:
     claim = {"axes": [1, 2, 3], "buttons": list(range(1, 57))}
     with caplog.at_level(logging.DEBUG):
-        state = output_modules.vjoy_output_state(3, claim)
+        state = output.vjoy_state(3, claim)
 
     axes = sorted(k for k in state if k[0] == "axis")
     assert axes == [("axis", 1), ("axis", 2), ("axis", 3)]
@@ -68,11 +74,58 @@ def test_only_claimed_outputs_are_read(
 def test_claimed_outputs_the_device_lacks_are_skipped(device: _FakeVJoy) -> None:
     # Claimed beyond what the driver has: skipped quietly, never requested.
     claim = {"axes": [1, 7], "buttons": [126, 127, 128]}
-    state = output_modules.vjoy_output_state(3, claim)
+    state = output.vjoy_state(3, claim)
     assert set(state) == {("axis", 1), ("button", 126)}
     assert ("button", 127) not in device.asked and ("axis", 7) not in device.asked
 
 
 def test_unopened_device_gives_nothing() -> None:
-    with mock.patch.object(output_modules, "_vjoy_device", return_value=None):
-        assert output_modules.vjoy_output_state(2, {"buttons": [1]}) == {}
+    with mock.patch.object(output, "_opened_vjoy", return_value=None):
+        assert output.vjoy_state(2, {"buttons": [1]}) == {}
+
+
+# --- writes go through the firewall -------------------------------------------
+
+_CLAIM = {"buttons": [1, 2, 3], "axes": [1], "hats": [], "keys": [], "friendly": {}}
+
+
+@pytest.fixture
+def writable() -> _FakeVJoy:
+    dev = _FakeVJoy()
+    output.clear_blocked_log()
+    with (
+        mock.patch.object(output, "_open_vjoy", return_value=dev),
+        mock.patch.object(output, "vjoy_claim", return_value=_CLAIM),
+    ):
+        yield dev
+    output.clear_blocked_log()
+
+
+def test_claimed_write_reaches_the_driver(writable: _FakeVJoy) -> None:
+    assert output.write_vjoy(3, "button", 2, True)
+    assert writable._buttons[2].is_pressed is True
+    assert output.write_vjoy(3, "axis", 1, -0.5)
+    assert writable._axes[1].value == -0.5
+
+
+def test_unclaimed_write_is_blocked_and_logged_once(
+    writable: _FakeVJoy, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="system"):
+        for _ in range(5):
+            assert not output.write_vjoy(3, "button", 57, True)
+    assert not hasattr(writable._buttons[57], "is_pressed")
+    blocked = [r for r in caplog.records if "vJoy 3 button 57" in r.getMessage()]
+    assert len(blocked) == 1
+
+
+def test_claimed_output_the_driver_lacks_is_refused(writable: _FakeVJoy) -> None:
+    with mock.patch.object(
+        output, "vjoy_claim", return_value={"buttons": [200], "axes": [], "hats": []}
+    ):
+        assert not output.write_vjoy(3, "button", 200, True)
+
+
+def test_reads_of_unclaimed_outputs_are_neutral(writable: _FakeVJoy) -> None:
+    assert output.vjoy_value(3, "button", 5) is False  # pressed, but unclaimed
+    assert output.vjoy_value(3, "axis", 2) == 0.0

@@ -10,6 +10,7 @@ from PySide6 import QtCore
 import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import event_handler, shared_state
+from gremlin.modules import output
 from gremlin.types import InputType
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -241,25 +242,6 @@ class DeviceLiveState(QtCore.QObject):
             self._poll.stop()
             self._set_driven(False)
 
-    def _feeder_device(self):
-        try:
-            from vjoy.vjoy import VJoyProxy
-            devices = VJoyProxy.vjoy_devices or {}
-            if self._vjoy_id in devices:
-                return devices[self._vjoy_id]
-            want = int(self._vjoy_id)
-            for key, dev in devices.items():
-                try:
-                    if int(key) == want:
-                        return dev
-                except Exception:
-                    pass
-                if int(getattr(dev, "vjoy_id", 0) or 0) == want:
-                    return dev
-        except Exception:
-            return None
-        return None
-
     def _gremlin_running(self) -> bool:
         try:
             return bool(event_handler.EventListener().gremlin_active)
@@ -276,49 +258,36 @@ class DeviceLiveState(QtCore.QObject):
         if not running:
             self._set_driven(False)
             return
-        try:
-            from vjoy.vjoy import HatDirection
-            dev = self._feeder_device()
-        except Exception:
-            self._set_driven(False)
-            return
-        if dev is None:
+        # Read through the vJoy output module: claimed outputs only, and only
+        # while Gremlin holds the device.
+        if not output.vjoy_held(self._vjoy_id):
             self._set_driven(False)
             return
         self._set_driven(True)
         if not self._values:
             return
+        state = output.vjoy_state(self._vjoy_id, hats=True)
         changed = False
         axis_count = int(self._device.axis_count) if self._device is not None else 0
         button_count = int(self._device.button_count) if self._device is not None else 0
         for i, kind in enumerate(self._kinds):
-            value = None
-            try:
-                if kind == "axis":
-                    try:
-                        axis_id = int(self._device.axis_map[i].axis_index)
-                        axis_obj = dev.axis(axis_id=axis_id)
-                    except Exception:
-                        axis_obj = dev.axis(linear_index=i + 1)
-                    value = float(getattr(axis_obj, "_value", 0.0))
-                elif kind == "button":
-                    btn_id = i - axis_count + 1
-                    btn = dev.button(btn_id)
-                    value = 1.0 if bool(getattr(btn, "_is_pressed", False)) else 0.0
-                elif kind == "hat":
-                    hat_id = i - axis_count - button_count + 1
-                    direction = getattr(dev.hat(hat_id), "_direction", None)
-                    if direction is None:
-                        direction = dev.hat(hat_id).direction
-                    hx, hy = _hat_xy(direction)
-                    if i < len(self._hat_x) and (self._hat_x[i], self._hat_y[i]) != (hx, hy):
-                        self._hat_x[i] = hx
-                        self._hat_y[i] = hy
-                        changed = True
-                    value = 0.0 if (hx, hy) == (0, 0) else 1.0
-            except Exception:
-                continue
-            if value is None:
+            if kind == "axis":
+                try:
+                    axis_id = int(self._device.axis_map[i].axis_index)
+                except Exception:
+                    axis_id = i + 1
+                value = float(state.get(("axis", axis_id), 0.0))
+            elif kind == "button":
+                value = float(state.get(("button", i - axis_count + 1), 0.0))
+            elif kind == "hat":
+                hat_id = i - axis_count - button_count + 1
+                hx, hy = _hat_xy(state.get(("hat", hat_id)))
+                if i < len(self._hat_x) and (self._hat_x[i], self._hat_y[i]) != (hx, hy):
+                    self._hat_x[i] = hx
+                    self._hat_y[i] = hy
+                    changed = True
+                value = 0.0 if (hx, hy) == (0, 0) else 1.0
+            else:
                 continue
             if abs(self._values[i] - value) > 0.002:
                 self._values[i] = value

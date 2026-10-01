@@ -9,7 +9,7 @@ import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
-from vjoy import vjoy
+from gremlin.modules import output
 import gremlin.ui.xbox_device_model  # noqa: F401
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
@@ -121,7 +121,7 @@ class VJoyStatus(QtCore.QObject):
         active = []
         for index in range(1, 17):
             try:
-                active.append(bool(vjoy.device_exists(index)))
+                active.append(output.vjoy_exists(index))
             except Exception:
                 active.append(False)
         self._active = active
@@ -169,12 +169,7 @@ class VJoyStatus(QtCore.QObject):
 
     @QtCore.Slot(result=bool)
     def xboxAvailable(self) -> bool:
-        try:
-            from vigem.xbox import XboxProxy
-
-            return XboxProxy().available()
-        except Exception:
-            return False
+        return output.xbox_available()
 
     def _count(self) -> int:
         return sum(1 for item in self._active if item)
