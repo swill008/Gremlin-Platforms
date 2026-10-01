@@ -35,7 +35,7 @@ def test_save_toast_click_off_or_two_seconds() -> None:
 def test_button_columns_to_one_and_stacked_label() -> None:
     text = _QML.read_text(encoding="utf-8")
     assert "from: 1; to: 16" in text
-    assert "Math.max(1, _root.buttonColumns)" in text
+    assert "Math.max(1, Math.min(_root.buttonColumns," in text
     assert 'text: "Button"' in text
 
 
@@ -91,7 +91,9 @@ def test_reset_does_not_save_and_has_width() -> None:
 def test_button_grid_uses_columns_and_width() -> None:
     text = _QML.read_text(encoding="utf-8")
     assert "GridView" not in text
-    assert "columns: Math.max(1, _root.buttonColumns)" in text
+    # Columns is a maximum; the grid wraps to the width instead of hiding columns.
+    assert "columns: Math.max(1, Math.min(_root.buttonColumns," in text
+    assert "flickableDirection: Flickable.VerticalFlick" in text
     assert "Layout.preferredWidth: Style.dp(Math.max(40, _root.buttonWidth))" in text
 
 

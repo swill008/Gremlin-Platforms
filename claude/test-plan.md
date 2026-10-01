@@ -493,7 +493,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 |---|---|---|
 | H-03-dest | FIXED (cards count double-clicks themselves) | Double-clicking an output card (vJoy 1) does nothing; the input card double-click works. The card menu "Output View" works. |
 | H-10-dest | PASS | Output card menu: Output View, Button Map, Configure output module, Auto Mapper, vJoy Viewer, Device Information, Reset size, Hide device, Clear module settings, Delete Device. |
-| OV-08b | FAIL | Default button grid is 12 columns with no wrap or scroll: with the Display Editor open only columns 1-5 show (6-12 hidden under the panel); with it hidden, 11-12 are cut at the edge. |
+| OV-08b | FIXED (Columns is a maximum; the grid wraps to fit) | Default button grid is 12 columns with no wrap or scroll: with the Display Editor open only columns 1-5 show (6-12 hidden under the panel); with it hidden, 11-12 are cut at the edge. |
 | OV-08 | PASS | Columns = 5 shows all 29 buttons. |
 | OV-05 | PASS | Layout > Show pads off: the hat display takes the space; meters show axis labels. |
 | OV-11 | PASS / NOTE | Copy View from… lists vJoy 2, vJoy 3, Xbox 360 Controller and applies; no header line, unlike the catalog (S-17, cosmetic). |

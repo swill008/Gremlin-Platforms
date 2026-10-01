@@ -706,13 +706,18 @@ Item {
                 anchors.fill: parent
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
+                // Columns wrap to fit, so nothing sits off to the side.
+                flickableDirection: Flickable.VerticalFlick
                 contentWidth: Math.max(width, _btnGrid.implicitWidth)
                 contentHeight: Math.max(height, _btnGrid.implicitHeight)
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 GridLayout {
                     id: _btnGrid
-                    columns: Math.max(1, _root.buttonColumns)
+                    // The Columns setting is a maximum: use fewer when the view is narrower.
+                    readonly property real cellW: Style.dp(Math.max(40, _root.buttonWidth))
+                    columns: Math.max(1, Math.min(_root.buttonColumns,
+                        Math.floor((_buttons.width + columnSpacing) / (cellW + columnSpacing))))
                     columnSpacing: Style.dp(6)
                     rowSpacing: Style.dp(6)
 
@@ -995,7 +1000,11 @@ Item {
                                 onUserSet: (v) => { buttonSize = v }
                             }
                             RowLayout {
-                                Label { text: "Columns"; color: "#E4E4E7" }
+                                Label {
+                                    text: "Columns"
+                                    color: "#E4E4E7"
+                                    PointerTip { text: "Maximum columns; fewer are used when the view is narrower." }
+                                }
                                 TrackSpin { from: 1; to: 16; source: buttonColumns; onUserSet: (v) => { buttonColumns = v } }
                                 Label { text: "Width"; color: "#E4E4E7" }
                                 TrackSpin { from: 40; to: 200; source: buttonWidth; onUserSet: (v) => { buttonWidth = v } }
