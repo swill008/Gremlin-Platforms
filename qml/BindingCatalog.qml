@@ -1492,13 +1492,29 @@ Item {
                 onCurrentIndexChanged: syncSelection()
             }
 
+            // A filter can hide every row; say so instead of the "nothing claimed" text.
+            readonly property bool _filtered: _catalog.typeFilter !== "all" || _catalog.destFilter !== "all"
+
             Label {
                 visible: _catalog.count === 0
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: colorMuted
                 horizontalAlignment: Text.AlignHCenter
-                text: "This window only shows what the input module passes.\nRight-click the card → Configure input module, press the controls to claim, then Save module."
+                text: parent._filtered
+                    ? "No inputs match the current filters."
+                    : "This window only shows what the input module passes.\nRight-click the card → Configure input module, press the controls to claim, then Save module."
+            }
+            Button {
+                visible: _catalog.count === 0 && parent._filtered
+                Layout.alignment: Qt.AlignHCenter
+                text: "Clear filters"
+                onClicked: {
+                    _catalog.typeFilter = "all"
+                    _catalog.destFilter = "all"
+                    _typeBox.currentIndex = 0
+                    _destBox.currentIndex = 0
+                }
             }
             }
         }
