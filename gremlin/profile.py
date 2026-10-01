@@ -6,9 +6,7 @@ from __future__ import annotations
 
 import codecs
 import dataclasses
-import hashlib
 import logging
-import os
 import uuid
 from abc import (
     ABCMeta,
@@ -580,6 +578,8 @@ class Profile:
         self.modes = ModeHierarchy(self)
         self.scripts = ScriptManager(self)
         self.fpath: Path | None = None
+        # The profile as it would be written right after the last load or save.
+        self._saved_snapshot: str | None = None
         LogicalDevice().reset()
         OscDevice().reset()
 
@@ -621,6 +621,8 @@ class Profile:
         for node in root.findall("./inputs/input"):
             self._process_input(node)
 
+        self._saved_snapshot = self._xml_text()
+
     def to_xml(self, fpath: Path, *, prune: bool = True) -> None:
         """Writes the profile's content to an XML file.
 
@@ -632,6 +634,15 @@ class Profile:
         """
         if prune:
             self.library.drop_invalid_actions()
+        text = self._xml_text()
+        with codecs.open(str(fpath), "w", "utf-8-sig") as out:
+            out.write(text)
+        self._saved_snapshot = text
+        from gremlin.ui.live_debug import trace
+        trace("SAVE", "Profile", "to_xml", fpath, "ok")
+
+    def _xml_text(self) -> str:
+        """The profile as pretty XML text, exactly as to_xml writes it."""
         root = ElementTree.Element("profile")
         root.set("version", str(Profile.current_version))
 
@@ -657,11 +668,7 @@ class Profile:
 
         # Serialize XML document.
         ugly_xml = ElementTree.tostring(root, encoding="utf-8")
-        dom_xml = minidom.parseString(ugly_xml)
-        with codecs.open(str(fpath), "w", "utf-8-sig") as out:
-            out.write(dom_xml.toprettyxml(indent="    "))
-        from gremlin.ui.live_debug import trace
-        trace("SAVE", "Profile", "to_xml", fpath, "ok")
+        return minidom.parseString(ugly_xml).toprettyxml(indent="    ")
 
     def get_input_count(
         self,
@@ -778,22 +785,16 @@ class Profile:
     def has_unsaved_changes(self) -> bool:
         """Checks if the profile has unsaved changes.
 
+        Compares against the profile as it was right after the last load or
+        save, not the file on disk: a file saved by an older version (for
+        example without a newer default property) is not an edit.
+
         Returns:
             True if there are unsaved changes, False otherwise
         """
-        if self.fpath is None:
+        if self.fpath is None or self._saved_snapshot is None:
             return True
-        else:
-            tmp_path = os.path.join(os.getenv("temp") or os.getenv("TMP") or ".", "gremlin.xml")
-            self.to_xml(tmp_path, prune=False)
-            current_sha = hashlib.sha256(
-                open(tmp_path).read().encode("utf-8")
-            ).hexdigest()
-            profile_sha = hashlib.sha256(
-                open(self.fpath).read().encode("utf-8")
-            ).hexdigest()
-
-            return current_sha != profile_sha
+        return self._xml_text() != self._saved_snapshot
 
     def _process_input(self, node: ElementTree.Element) -> None:
         """Processes an InputItem XML node and stores it.

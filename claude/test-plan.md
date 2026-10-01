@@ -677,7 +677,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 |---|---|---|
 | F-04 | NOTE (by design: Startup Mode "Use Heuristic" picks the first parentless mode) | After loading a profile the Configuring mode switches to Test Mode (not Default), so rows show Not bound. |
 | F-05 | FIXED (panes close after a profile change; edited configuration panes now ask before leave, Load, New and Quit) | An open action pane stays open showing the previous profile's action after Load. |
-| F-06 | FAIL (minor) | Opening a device page (NXT) marks the profile as unsaved with no mapping changes, so quitting asks about the profile. |
+| F-06 | FIXED | Cause was the older file format (no trigger-range), not the page: the unsaved check compared a fresh write against the file on disk. It now compares against the profile as loaded or last saved. Sandbox: older file, open NXT, quit: no prompt; delete a mapping: prompt; save, relaunch, quit: no prompt. |
 | W-03b | FIXED | When quitting, the display-options prompt says "Leave this device and they will be lost" (wording from the leave path). |
 | OPT-RS | FIXED (plus Reset all card sizes in the card and background right-click menus) | Options > Display > Reset all card sizes clears the saved sizes, but Home keeps showing the old sizes until restart (Options uses its own model copy). |
 | CAL-11 | FIXED | The arrows always worked: showing "Not saved" made the axis block taller, so the spin boxes moved down and the next click landed above them. The label now keeps its space. |
