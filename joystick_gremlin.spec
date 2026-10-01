@@ -61,7 +61,6 @@ hidden_imports = [
     "gremlin.ui.backend",
     "gremlin.ui.device",
     "gremlin.ui.option",
-    "gremlin.ui.profile_devices_model",
     "gremlin.ui.profile",
     "gremlin.ui.script",
     "gremlin.ui.tools",

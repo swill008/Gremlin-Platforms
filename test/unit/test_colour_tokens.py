@@ -24,8 +24,6 @@ _REMAINING = {
     "qml/VkbRigEditor.qml": 114,
     "qml/VkbRigFace.qml": 8,
     "qml/Xbox360Face.qml": 44,
-    # Not used by any screen.
-    "qml/UnmappedCard.qml": 1,
 }
 
 
