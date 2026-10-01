@@ -370,7 +370,9 @@ ApplicationWindow {
                     }
                 }
                 Label {
-                    visible: unsavedChanges
+                    // Always takes its space; showing it must not move the controls
+                    // below (the next click would land on the gap above the arrows).
+                    opacity: unsavedChanges ? 1 : 0
                     text: "Not saved"
                     color: "#FBBF24"
                     font.pixelSize: Style.dp(11)

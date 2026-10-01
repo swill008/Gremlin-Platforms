@@ -680,4 +680,4 @@ Data loss or broken feature first. IDs point to the batch rows above.
 | F-06 | FAIL (minor) | Opening a device page (NXT) marks the profile as unsaved with no mapping changes, so quitting asks about the profile. |
 | W-03b | NOTE | When quitting, the display-options prompt says "Leave this device and they will be lost" (wording from the leave path). |
 | OPT-RS | FIXED (plus Reset all card sizes in the card and background right-click menus) | Options > Display > Reset all card sizes clears the saved sizes, but Home keeps showing the old sizes until restart (Options uses its own model copy). |
-| CAL-11 | FAIL | Calibration spin box arrows change a value only once; further clicks do nothing (also before today's changes). Suspect: onValueModified sets model.x = Qt.binding(() => value). |
+| CAL-11 | FIXED | The arrows always worked: showing "Not saved" made the axis block taller, so the spin boxes moved down and the next click landed above them. The label now keeps its space. |
