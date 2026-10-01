@@ -678,6 +678,7 @@ ApplicationWindow {
 
     function clearToBlank() {
         discardEdit()
+        faceLive = false
         targetName = ""
         loadedDevice = ""
         initialPhoto = ""
@@ -1886,9 +1887,12 @@ ApplicationWindow {
                                 _hasTarget.hit = true
                                 return
                             }
-                            _buttonMap.faceLive = false
-                            if (_cardLoader.item === item)
+                            // Only the panel in use turns the face off: the other
+                            // devices' panels report inactive as the list fills in.
+                            if (_cardLoader.item === item) {
                                 _cardLoader.item = null
+                                _buttonMap.faceLive = false
+                            }
                         }
                         onLoaded: {
                             _hasTarget.hit = true
@@ -1915,9 +1919,10 @@ ApplicationWindow {
                     onActiveChanged: {
                         if (active)
                             return
-                        _buttonMap.faceLive = false
-                        if (_cardLoader.item === item)
+                        if (_cardLoader.item === item) {
                             _cardLoader.item = null
+                            _buttonMap.faceLive = false
+                        }
                     }
                     onLoaded: {
                         _hasTarget.hit = true
