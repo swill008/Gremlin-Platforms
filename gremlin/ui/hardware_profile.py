@@ -247,6 +247,17 @@ def _infer_direction(doc: dict, path: Path) -> str:
     return "source"
 
 
+def member_kind(node: dict, member: dict) -> str:
+    """Kind of one chip in a group: its own kind when saved, otherwise from the
+    group (an axis stack holds axes, any other group buttons)."""
+    own = str(member.get("kind") or "").strip().lower()
+    if own in ("axis", "hat"):
+        return own
+    if own in ("btn", "button"):
+        return "btn"
+    return "axis" if str(node.get("kind") or "") == "axis_stack" else "btn"
+
+
 def _filter_nodes(nodes: list, buttons: set[int], axes: set[int], hats: set[int], keys: set[int]) -> list:
     kept: list = []
     for node in nodes:
@@ -254,11 +265,12 @@ def _filter_nodes(nodes: list, buttons: set[int], axes: set[int], hats: set[int]
             continue
         kind = str(node.get("kind") or "")
         if kind in ("stack", "axis_stack"):
-            want = axes if kind == "axis_stack" else buttons
             members = []
             for member in node.get("members") or []:
                 if not isinstance(member, dict):
                     continue
+                by_kind = {"axis": axes, "hat": hats}
+                want = by_kind.get(member_kind(node, member), buttons)
                 hid = _hid(member)
                 if hid is not None and hid not in want:
                     continue

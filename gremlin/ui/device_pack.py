@@ -35,6 +35,7 @@ from gremlin.ui.hardware_profile import (
     _suggest_pack_name,
     _target_direction,
     _unique_archive,
+    member_kind,
     module_json_path,
 )
 
@@ -181,7 +182,7 @@ def _node_controls(node: dict) -> set[tuple[str, int]]:
         if not isinstance(member, dict):
             continue
         try:
-            found.add((kind or "btn", int(member.get("hwId"))))
+            found.add((member_kind(node, member), int(member.get("hwId"))))
         except (TypeError, ValueError):
             continue
     return found
@@ -772,7 +773,8 @@ def _copy_names_onto_nodes(nodes: list, names: dict) -> None:
         for member in node.get("members") or []:
             if not isinstance(member, dict) or member.get("hwId") is None:
                 continue
-            label = str(names.get(f"button:{int(member['hwId'])}") or "").strip()
+            word = _FRIENDLY_KIND[member_kind(node, member)]
+            label = str(names.get(f"{word}:{int(member['hwId'])}") or "").strip()
             if label:
                 member["friendly"] = label
 

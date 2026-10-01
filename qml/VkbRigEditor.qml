@@ -711,6 +711,18 @@ Item {
         "axis:4": "Z slider (En1–En2)"
     })
 
+    // Kind of one chip in a group: its own kind when saved. Files saved before
+    // members carried a kind fall back to the group: an axis stack holds axes,
+    // any other group buttons.
+    function memberKind(n, mem) {
+        var own = mem && mem.kind ? String(mem.kind) : ""
+        if (own === "axis" || own === "hat")
+            return own
+        if (own === "btn" || own === "button")
+            return "btn"
+        return (n && n.kind === "axis_stack") ? "axis" : "btn"
+    }
+
     function leafKind(kind) {
         if (kind === "axis_stack")
             return "axis"
@@ -764,7 +776,7 @@ Item {
 
     function friendlyOf(n, mem) {
         if (mem) {
-            var lk = (n && n.kind === "axis_stack") ? "axis" : "btn"
+            var lk = memberKind(n, mem)
             if (isUserFriendly(lk, mem.hwId, mem.friendly))
                 return String(mem.friendly).trim()
             return hardwareLabel(lk, mem.hwId)
@@ -807,9 +819,8 @@ Item {
             var n = list[i]
             if (isGroup(n)) {
                 var mem = n.members || []
-                var lk = n.kind === "axis_stack" ? "axis" : "btn"
                 for (var j = 0; j < mem.length; j++) {
-                    if (lk + ":" + mem[j].hwId === want)
+                    if (memberKind(n, mem[j]) + ":" + mem[j].hwId === want)
                         return n.id
                 }
             } else if (leafKind(n.kind) + ":" + n.hwId === want) {
@@ -991,10 +1002,9 @@ Item {
             return
         if (isGroup(n)) {
             var mem = n.members || []
-            var lk = n.kind === "axis_stack" ? "axis" : "btn"
             for (var i = 0; i < mem.length; i++) {
                 if (mem[i].friendly === undefined || mem[i].friendly === null)
-                    mem[i].friendly = defaultFriendly(lk, mem[i].hwId)
+                    mem[i].friendly = defaultFriendly(memberKind(n, mem[i]), mem[i].hwId)
             }
             if (n.friendly === undefined || n.friendly === null)
                 n.friendly = n.label && n.label.length ? n.label : n.id
@@ -3941,7 +3951,7 @@ Item {
 
     function systemName(n, mem) {
         if (mem)
-            return hardwareLabel((n && n.kind === "axis_stack") ? "axis" : "btn", mem.hwId)
+            return hardwareLabel(memberKind(n, mem), mem.hwId)
         if (!n)
             return ""
         return hardwareLabel(n.kind, n.hwId)
@@ -3982,8 +3992,7 @@ Item {
     function memberHasCustomName(n, mem) {
         if (!mem)
             return false
-        var lk = (n && n.kind === "axis_stack") ? "axis" : "btn"
-        return isUserFriendly(lk, mem.hwId, mem.friendly)
+        return isUserFriendly(memberKind(n, mem), mem.hwId, mem.friendly)
     }
 
     function memberLabel(n, mem) {
@@ -4515,9 +4524,8 @@ Item {
             return out
         if (isGroup(n)) {
             var mem = n.members || []
-            var leaf = n.kind === "axis_stack" ? "axis" : "btn"
             for (var i = 0; i < mem.length; i++)
-                out.push({ hwId: mem[i].hwId, kind: leaf, role: mem[i].role || "", src: n, friendly: mem[i].friendly || "" })
+                out.push({ hwId: mem[i].hwId, kind: memberKind(n, mem[i]), role: mem[i].role || "", src: n, friendly: mem[i].friendly || "" })
         } else {
             out.push({ hwId: n.hwId, kind: n.kind || "btn", role: "", src: n, friendly: n.friendly || "" })
         }
@@ -4625,6 +4633,7 @@ Item {
         for (i = 0; i < parts.length; i++)
             members.push({
                 hwId: parts[i].hwId,
+                kind: leafKind(parts[i].kind),
                 role: parts[i].role || ("m" + i),
                 ox: parts[i].src.chipFx - ox0,
                 oy: parts[i].src.chipFy - oy0,
@@ -4685,17 +4694,17 @@ Item {
         if (!mem.length)
             return
         var st = _styleOf(n)
-        var leafKind = n.kind === "axis_stack" ? "axis" : "btn"
-        var prefix = n.kind === "axis_stack" ? "A" : ""
         var created = []
         var i
         for (i = 0; i < mem.length; i++) {
             var px = fxToX(n.chipFx) + groupMinX(n) + memberLocalX(n, mem[i])
             var py = fyToY(n.chipFy) + groupMinY(n) + memberLocalY(n, mem[i])
+            var kindOf = memberKind(n, mem[i])
             created.push({
-                id: _uid("b"), kind: leafKind, hwId: mem[i].hwId, prefix: prefix,
+                id: _uid(kindOf === "btn" ? "b" : kindOf.charAt(0)), kind: kindOf, hwId: mem[i].hwId,
+                prefix: kindOf === "axis" ? "A" : "",
                 label: "",
-                friendly: carryFriendly(mem[i].friendly, defaultFriendly(leafKind, mem[i].hwId)),
+                friendly: carryFriendly(mem[i].friendly, defaultFriendly(kindOf, mem[i].hwId)),
                 hotFx: hotFxOf(n), hotFy: hotFyOf(n),
                 chipFx: xToFx(px),
                 chipFy: yToFy(py),
@@ -5012,7 +5021,8 @@ Item {
                             return m && m.hwId ? m.hwId : 0
                         })
                         item.leafKind = Qt.binding(function() {
-                            return (_grp.node && _grp.node.kind === "axis_stack") ? "axis" : "btn"
+                            var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
+                            return _ed.memberKind(_grp.node, m)
                         })
                     }
                 }
