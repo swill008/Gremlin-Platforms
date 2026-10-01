@@ -675,6 +675,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 12. ~~B-SPEC-IMPORTS~~ fixed: axis_delta / run_command added to spec hidden imports.
 13. Minor/cosmetic: F-01b, HD-01b, PS-06, MENU-CLIP, IC-01b, IC-17b, C-06, LP-24b, S-05b, OPT-X1b, OPT-U01b, OPT-F08b, CAL-05b, MM-01b, AE-XML-CHAIN, AE-NARROW, HH-08 note.
 14. Back burner: XB-IMG / XV-IMG (#9).
+15. To do: [Stock Images] Code still looks for the stock pictures in `qml/images`, which "moved user data" (a4f743fc) emptied; the pictures are now in `User_Data/images` and `User_Data/modules/library`. Points at the old path: `imagesFolderUrl()` (hardware_profile.py, creates an empty `qml/images` next to the exe), `_stock_photo()` / `_stock_photo_l()`, the relative-path fallback in hardware_profile.py, Button Map `stockImage`, VkbRigFace / VkbRigEditor (`images/vkb_gladiator_rig.jpg`), Xbox360Face (`images/xbox360_two_panel.jpg`, i.e. XB-IMG). Decide where stock pictures live for other users (bundled read-only vs copied into the data folder), then point all of these at one place.
 
 ### Noted while fixing #10 (2026-09-30)
 
