@@ -104,6 +104,6 @@ def test_vjoy_view_save_uses_that_devices_module_file() -> None:
     assert "module_json_path(name, guid)" in save
     assert "module_json_path(device_name, guid)" in load
     rule = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/hardware_profile.py").read_text(encoding="utf-8")
-    body = rule[rule.find("def module_json_path"): rule.find("def resolve_module_slug")]
+    body = rule[rule.find("def module_json_path"): rule.find("def module_file_choices")]
     assert "return own_path" in body
     assert 'doc.get("device")' in body

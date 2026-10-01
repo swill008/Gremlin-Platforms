@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from gremlin.modules.claim import read_claim
-from gremlin.modules.ids import guid_key
+from gremlin.modules.ids import guid_key, stored_guid_key
 
 _OUTPUT_WORDS = ("dest", "target", "output")
 _INPUT_WORDS = ("source", "input")
@@ -104,6 +104,78 @@ def resolve_vjoy_id(name: str, bound_guid: str = "") -> int:
     if guess and guess in {int(device.vjoy_id) for device in devices}:
         return guess
     return 0
+
+
+def trace(action: str, window: str, function: str, path: object, result: str) -> None:
+    """Write a line to the live debug log. That log is a UI window, so it is
+    loaded only when a module file is read or saved."""
+    from gremlin.ui.live_debug import trace as live_trace
+
+    live_trace(action, window, function, path, result)
+
+
+# Which module file each device uses: guid (or name:slug) -> slug.
+
+def _guid_for_name(device_name: str) -> str:
+    wanted = (device_name or "").strip().lower()
+    if not wanted:
+        return ""
+    try:
+        from gremlin import device_initialization
+        devices = list(device_initialization.physical_devices() or [])
+        devices.extend(device_initialization.vjoy_devices() or [])
+    except Exception:
+        devices = []
+    for dev in devices:
+        name = str(getattr(dev, "name", "") or "")
+        if name.strip().lower() != wanted:
+            continue
+        return stored_guid_key(getattr(dev, "device_guid", ""))
+    return ""
+
+
+def _binding_store() -> dict[str, str]:
+    from gremlin.config import Configuration
+    from gremlin.types import PropertyType
+
+    cfg = Configuration()
+    section, group, name = "global", "internal", "module-file-bindings"
+    # Register every launch. An existing value is kept. Skipping this when
+    # the key already exists leaves it unregistered, and purge_unused deletes it.
+    cfg.register(
+        section,
+        group,
+        name,
+        PropertyType.String,
+        "{}",
+        "Input module file chosen for each device.",
+        {},
+        False,
+    )
+    try:
+        data = json.loads(cfg.value(section, group, name) or "{}")
+    except (TypeError, json.JSONDecodeError):
+        data = {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(key): str(value) for key, value in data.items() if key and value}
+
+
+def _name_key(device_name: str) -> str:
+    slug = plain_slug(device_name)
+    return f"name:{slug}" if slug else ""
+
+
+def resolve_module_slug(device_name: str, guid: str = "") -> str:
+    data = _binding_store()
+    key = stored_guid_key(guid) or _guid_for_name(device_name)
+    bound = data.get(key, "") if key else ""
+    name_key = _name_key(device_name)
+    if not bound and name_key:
+        bound = data.get(name_key, "")
+    if bound:
+        return plain_slug(bound) or plain_slug(device_name) or "device"
+    return plain_slug(device_name) or "device"
 
 
 # path -> ((mtime_ns, size), Module | None)
@@ -193,5 +265,14 @@ def output_for_vjoy(vjoy_id: int) -> Module | None:
     """The output module that drives this vJoy device."""
     for module in outputs():
         if resolve_vjoy_id(module.name, module.bound_guid) == int(vjoy_id):
+            return module
+    return None
+
+
+def for_device(device_name: str, guid: str = "") -> Module | None:
+    """The module file a device uses: its saved binding, else its own name."""
+    path = _folder() / f"{resolve_module_slug(device_name, guid)}.json"
+    for module in modules():
+        if module.path == path:
             return module
     return None

@@ -258,9 +258,12 @@ def test_editor_geometry_defaults_match_old_indent() -> None:
 
 def test_photo_lookup_does_not_copy_another_device() -> None:
     text = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/hardware_profile.py").read_text(encoding="utf-8")
-    start = text.find("def resolve_module_slug")
-    end = text.find("def module_file_choices")
-    body = text[start:end]
+    root = Path(__file__).resolve().parents[2]
+    registry = root.joinpath("gremlin/modules/registry.py").read_text(encoding="utf-8")
+    start = registry.find("def resolve_module_slug")
+    end = registry.find("def ", start + 1)
+    assert start != -1
+    body = registry[start:end]
     assert "_write_bindings" not in body
     assert "for folder in _maps_dir().iterdir()" not in text
     assert "def _guid_for_this_device" in text

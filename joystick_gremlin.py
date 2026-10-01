@@ -99,6 +99,7 @@ import gremlin.ui.live_debug  # noqa: F401
 import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
 import gremlin.ui.logical_layout  # noqa: F401
 import gremlin.ui.module_pairing  # noqa: F401
+import gremlin.ui.module_calibration  # noqa: F401
 import gremlin.ui.shell_option  # noqa: F401
 import gremlin.osc_persist  # noqa: F401
 

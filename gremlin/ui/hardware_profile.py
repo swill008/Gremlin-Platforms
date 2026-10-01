@@ -16,7 +16,14 @@ from PySide6 import QtCore
 import gremlin.ui.type_aliases as ta
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.ids import stored_guid_key
-from gremlin.modules.registry import is_output_name, plain_slug
+from gremlin.modules.registry import (
+    _binding_store,
+    _guid_for_name,
+    _name_key,
+    is_output_name,
+    plain_slug,
+    resolve_module_slug,
+)
 from gremlin.signal import signal
 from gremlin.ui.live_debug import trace
 from gremlin.ui.util import to_local_path
@@ -97,61 +104,11 @@ def guid_for_module(device_name: str, guid: str) -> str:
     return str(guid)
 
 
-def _guid_for_name(device_name: str) -> str:
-    wanted = (device_name or "").strip().lower()
-    if not wanted:
-        return ""
-    try:
-        from gremlin import device_initialization
-        devices = list(device_initialization.physical_devices() or [])
-        devices.extend(device_initialization.vjoy_devices() or [])
-    except Exception:
-        devices = []
-    for dev in devices:
-        name = str(getattr(dev, "name", "") or "")
-        if name.strip().lower() != wanted:
-            continue
-        return stored_guid_key(getattr(dev, "device_guid", ""))
-    return ""
-
-
-def _binding_store() -> dict[str, str]:
-    from gremlin.config import Configuration
-    from gremlin.types import PropertyType
-
-    cfg = Configuration()
-    section, group, name = "global", "internal", "module-file-bindings"
-    # Register every launch. An existing value is kept. Skipping this when
-    # the key already exists leaves it unregistered, and purge_unused deletes it.
-    cfg.register(
-        section,
-        group,
-        name,
-        PropertyType.String,
-        "{}",
-        "Input module file chosen for each device.",
-        {},
-        False,
-    )
-    try:
-        data = json.loads(cfg.value(section, group, name) or "{}")
-    except (TypeError, json.JSONDecodeError):
-        data = {}
-    if not isinstance(data, dict):
-        return {}
-    return {str(key): str(value) for key, value in data.items() if key and value}
-
-
 def _write_bindings(data: dict[str, str]) -> None:
     from gremlin.config import Configuration
 
     _binding_store()
     Configuration().set("global", "internal", "module-file-bindings", json.dumps(data))
-
-
-def _name_key(device_name: str) -> str:
-    slug = _plain_slug(device_name)
-    return f"name:{slug}" if slug else ""
 
 
 def module_json_path(device_name: str, guid: str = "") -> Path:
@@ -182,18 +139,6 @@ def module_json_path(device_name: str, guid: str = "") -> Path:
     if key and stored_guid_key(doc.get("boundGuidLocal")) == key:
         return bound
     return own_path
-
-
-def resolve_module_slug(device_name: str, guid: str = "") -> str:
-    data = _binding_store()
-    key = stored_guid_key(guid) or _guid_for_name(device_name)
-    bound = data.get(key, "") if key else ""
-    name_key = _name_key(device_name)
-    if not bound and name_key:
-        bound = data.get(name_key, "")
-    if bound:
-        return _plain_slug(bound) or _slug(device_name)
-    return _slug(device_name)
 
 
 def module_file_choices(device_name: str, guid: str = "") -> list[str]:

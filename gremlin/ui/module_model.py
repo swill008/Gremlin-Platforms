@@ -566,7 +566,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._dest_targets: dict[str, tuple[int, dict]] = {}
         self._reload()
         event_handler.EventListener().device_change_event.connect(self._schedule_reload)
-        from gremlin.input_module_runtime import InputModuleRuntime
+        from gremlin.modules.runtime import InputModuleRuntime
 
         InputModuleRuntime().event.connect(self._on_joy)
         self._dest_timer = QtCore.QTimer(self)
@@ -1382,7 +1382,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def _on_joy(self, event: event_handler.Event) -> None:
         if event is None:
             return
-        from gremlin.input_module_gate import status_last_from_hid
+        from gremlin.modules.gate import status_last_from_hid
 
         guid = guid_key(event.device_guid)
         row = next((r for r in self._rows if guid_key(r.guid) == guid), None)
@@ -1434,7 +1434,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if not runtime_active():
             self._dest_snap = {}
             return
-        from gremlin.input_module_gate import dest_last_change
+        from gremlin.modules.gate import dest_last_change
         from gremlin.ui.output_modules import vjoy_output_state
 
         for row in self._rows:

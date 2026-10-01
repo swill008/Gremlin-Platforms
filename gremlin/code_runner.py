@@ -32,7 +32,7 @@ from gremlin import (
 from gremlin.base_classes import Value
 from gremlin.config import Configuration
 from gremlin.input_refresh import RefreshPhysicalInputs
-from gremlin.input_module_runtime import InputModuleRuntime
+from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.osc import OscRuntime
 from gremlin.types import (
     ActionProperty,

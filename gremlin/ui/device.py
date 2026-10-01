@@ -34,7 +34,7 @@ from gremlin.input_cache import DeviceDatabase
 from gremlin.logical_device import LogicalDevice
 from gremlin.profile import InputItem
 from gremlin.ui.hardware_profile import persist_log
-from gremlin.ui.module_calibration import values_for_module, write_axis
+from gremlin.modules.calibration import values_for_module, write_axis
 from gremlin.signal import signal
 from gremlin.types import (
     InputType,
@@ -1439,7 +1439,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
 
     @QtCore.Slot(result=str)
     def moduleFilePath(self) -> str:
-        from gremlin.ui.module_calibration import module_for_slug
+        from gremlin.modules.calibration import module_for_slug
 
         row = module_for_slug(self._module_slug)
         if not row:
@@ -1593,7 +1593,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
         slug = str(slug or "").strip().lower()
         if not slug or slug == self._module_slug:
             return
-        from gremlin.ui.module_calibration import module_for_slug
+        from gremlin.modules.calibration import module_for_slug
 
         row = module_for_slug(slug)
         if row is None:

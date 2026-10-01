@@ -7,8 +7,8 @@ from __future__ import annotations
 import uuid
 
 import dill
-from gremlin.input_module_gate import should_forward
-from gremlin.input_module_runtime import always_forwarded
+from gremlin.modules.gate import should_forward
+from gremlin.modules.runtime import always_forwarded
 from gremlin.types import InputType
 
 

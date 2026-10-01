@@ -25,7 +25,7 @@ from gremlin import (
     shared_state,
     types,
 )
-from gremlin.ui import auto_map_modules
+from gremlin.modules import auto_map
 
 
 @dataclasses.dataclass
@@ -98,12 +98,12 @@ class AutoMapper:
     ) -> str:
         sources = [
             row
-            for row in auto_map_modules.input_modules()
+            for row in auto_map.input_modules()
             if row["slug"] in set(source_slugs)
         ]
         dests = [
             row
-            for row in auto_map_modules.output_modules()
+            for row in auto_map.output_modules()
             if row["slug"] in set(dest_slugs)
         ]
         if not sources:
@@ -125,7 +125,7 @@ class AutoMapper:
             claim = source.get("claim") or {}
             if not (claim.get("buttons") or claim.get("axes") or claim.get("hats")):
                 continue
-            auto_map_modules.merge_claim_into_output(dest, claim)
+            auto_map.merge_claim_into_output(dest, claim)
             limits = self._vjoy_limits(int(dest["vjoyId"]))
             vjoy_id = int(dest["vjoyId"])
             jobs = (

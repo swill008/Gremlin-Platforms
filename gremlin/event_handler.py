@@ -283,7 +283,7 @@ class EventListener(QtCore.QObject):
 
     def reload_calibration(self, device_guid: dill.GUID, axis_index: int) -> None:
         """Reloads the calibration data of the specified axis."""
-        from gremlin.ui.module_calibration import values_for_device
+        from gremlin.modules.calibration import values_for_device
 
         key = (device_guid, axis_index)
         self._calibrations[key] = util.create_calibration_function(

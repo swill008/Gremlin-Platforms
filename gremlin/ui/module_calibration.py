@@ -2,131 +2,17 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Calibration stored on an input module and applied to the bound stick."""
+"""The Calibration window's list of input modules."""
 
 from __future__ import annotations
-
-import json
-import uuid
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin.config import Configuration
-from gremlin.device_initialization import physical_devices
-from gremlin.modules import registry
-from gremlin.modules.ids import guid_key
-from gremlin.ui.live_debug import trace
+from gremlin.modules.calibration import _source_modules
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
-
-_DEFAULT = (-32768, 0, 0, 32767, True)
-_SKIP_SLUGS = {"keyboard", "osc"}
-
-
-def _as_tuple(raw: object) -> tuple[int, int, int, int, bool] | None:
-    if not isinstance(raw, (list, tuple)) or len(raw) < 5:
-        return None
-    try:
-        return (int(raw[0]), int(raw[1]), int(raw[2]), int(raw[3]), bool(raw[4]))
-    except (TypeError, ValueError):
-        return None
-
-
-def _load(path) -> dict:
-    try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return doc if isinstance(doc, dict) else {}
-
-
-def _source_modules() -> list[dict]:
-    physical = {guid_key(dev.device_guid): dev for dev in physical_devices()}
-    rows = []
-    for module in registry.inputs():
-        if module.slug in _SKIP_SLUGS:
-            continue
-        device = physical.get(guid_key(module.bound_guid))
-        if device is None:
-            continue
-        rows.append(
-            {
-                "name": module.name or device.name,
-                "slug": module.slug,
-                "guid": str(device.device_guid),
-                "path": module.path,
-            }
-        )
-    rows.sort(key=lambda row: row["name"].lower())
-    return rows
-
-
-def module_for_slug(slug: str) -> dict | None:
-    want = str(slug or "").strip().lower()
-    if not want:
-        return None
-    for row in _source_modules():
-        if row["slug"] == want:
-            return row
-    return None
-
-
-def _module_for_guid(device_id: uuid.UUID) -> dict | None:
-    want = guid_key(device_id)
-    for row in _source_modules():
-        if guid_key(row["guid"]) == want:
-            return row
-    return None
-
-
-def _from_config(device_id: uuid.UUID, axis_id: int) -> tuple[int, int, int, int, bool]:
-    stored = _as_tuple(Configuration().get_calibration(device_id, int(axis_id)))
-    return stored if stored is not None else _DEFAULT
-
-
-def values_for_device(device_id: uuid.UUID, axis_id: int) -> tuple[int, int, int, int, bool]:
-    """The curve for a live stick. The module file wins. Older program data is used until then."""
-    row = _module_for_guid(device_id)
-    if row is not None:
-        stored = _as_tuple((_load(row["path"]).get("calibration") or {}).get(str(int(axis_id))))
-        if stored is not None:
-            return stored
-    return _from_config(device_id, axis_id)
-
-
-def values_for_module(slug: str, device_id: uuid.UUID, axis_id: int) -> tuple[int, int, int, int, bool]:
-    row = module_for_slug(slug)
-    if row is not None:
-        stored = _as_tuple((_load(row["path"]).get("calibration") or {}).get(str(int(axis_id))))
-        if stored is not None:
-            return stored
-    return _from_config(device_id, axis_id)
-
-
-def write_axis(slug: str, axis_id: int, data: tuple[int, int, int, int, bool]) -> bool:
-    row = module_for_slug(slug)
-    if row is None:
-        return False
-    doc = _load(row["path"])
-    trace("READ", "Calibration", "write_axis", row["path"], "ok")
-    calibration = dict(doc.get("calibration") or {})
-    calibration[str(int(axis_id))] = [
-        int(data[0]),
-        int(data[1]),
-        int(data[2]),
-        int(data[3]),
-        bool(data[4]),
-    ]
-    doc["calibration"] = calibration
-    try:
-        row["path"].write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
-    except OSError:
-        trace("SAVE", "Calibration", "write_axis", row["path"], "error")
-        return False
-    trace("SAVE", "Calibration", "write_axis", row["path"], "ok")
-    return True
 
 
 @ta.QmlElement
