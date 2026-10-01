@@ -155,6 +155,8 @@ class OutputModuleDevices(QtCore.QObject):
         input_id: int
         module_name: str = ""
         input_label: str = ""
+        # A saved wire to an output its output module does not claim.
+        unclaimed: bool = False
 
         def vjoy_str(self) -> str:
             return self.module_name or f"vJoy {self.vjoy_id}"
@@ -179,6 +181,8 @@ class OutputModuleDevices(QtCore.QObject):
         )
         self._choices: dict[int, list[OutputModuleDevices.InputOption]] = {}
         self._modules: dict[int, dict] = {}
+        # The flagged saved output, listed so the combos can show it.
+        self._unclaimed: OutputModuleDevices.InputOption | None = None
         self._update_choices()
         event_handler.EventListener().device_change_event.connect(self._update_choices)
         signal.profileChanged.connect(self._update_choices)
@@ -243,6 +247,7 @@ class OutputModuleDevices(QtCore.QObject):
 
     @QtCore.Slot(int, str, int)
     def setInitialState(self, vjoy_id: int, input_type_str: str, input_id: int) -> None:
+        self._unclaimed = None
         self._transfer_current_selection_if_possible(
             OutputModuleDevices.InputOption(
                 int(vjoy_id),
@@ -255,6 +260,13 @@ class OutputModuleDevices(QtCore.QObject):
     def _parse_state_string(
         self, vjoy_name: str, input_name: str
     ) -> OutputModuleDevices.InputOption:
+        flagged = self._unclaimed
+        if (
+            flagged is not None
+            and flagged.vjoy_str() == vjoy_name
+            and flagged.input_str() == input_name
+        ):
+            return flagged
         for vjoy_id, options in self._choices.items():
             if not options:
                 module = self._modules.get(vjoy_id) or {}
@@ -283,6 +295,9 @@ class OutputModuleDevices(QtCore.QObject):
         )
         if match is not None:
             new_selection = match
+        elif self._keeps_unclaimed(selection):
+            # Never re-point a saved wire: keep it and flag it.
+            new_selection = self._flag_unclaimed(selection)
         elif options:
             new_selection = options[0]
         elif allow_invalid:
@@ -303,12 +318,45 @@ class OutputModuleDevices(QtCore.QObject):
         self.currentValuesChanged.emit(
             new_selection.vjoy_str(), new_selection.input_str()
         )
+        if new_selection.unclaimed:
+            # Unchanged wire: nothing to write back.
+            return
         if new_selection.vjoy_id and new_selection.input_id:
             self.currentSelectionChanged.emit(
                 new_selection.vjoy_id,
                 InputType.to_string(new_selection.input_type),
                 new_selection.input_id,
             )
+
+    def _keeps_unclaimed(self, selection: OutputModuleDevices.InputOption) -> bool:
+        """A complete saved output of a type this action uses."""
+        return bool(
+            selection.vjoy_id
+            and selection.input_id
+            and selection.input_type in self._valid_types
+        )
+
+    def _flag_unclaimed(
+        self, selection: OutputModuleDevices.InputOption
+    ) -> OutputModuleDevices.InputOption:
+        module = self._modules.get(selection.vjoy_id)
+        if module is None:
+            name = f"vJoy {selection.vjoy_id} (no output module)"
+            label = common.input_to_ui_string(selection.input_type, selection.input_id)
+        else:
+            name = str(module.get("name") or f"vJoy {selection.vjoy_id}")
+            claim = module.get("claim") or {}
+            label = self._input_label(claim, selection.input_type, selection.input_id)
+        flagged = OutputModuleDevices.InputOption(
+            selection.vjoy_id,
+            selection.input_type,
+            selection.input_id,
+            name,
+            f"{label} (not claimed)",
+            True,
+        )
+        self._unclaimed = flagged
+        return flagged
 
     def _get_vjoy_devices(self) -> list[str]:
         names: list[str] = []
@@ -320,11 +368,25 @@ class OutputModuleDevices(QtCore.QObject):
             if name not in seen:
                 seen.add(name)
                 names.append(name)
+        flagged = self._unclaimed
+        if flagged is not None and flagged.vjoy_str() not in seen:
+            names.append(flagged.vjoy_str())
         return names
 
     def _get_input_choices(self) -> list[str]:
         options = self._choices.get(self._current_selection.vjoy_id) or []
-        return [option.input_str() for option in options if option.input_str()]
+        labels = [option.input_str() for option in options if option.input_str()]
+        flagged = self._unclaimed
+        if (
+            flagged is not None
+            and flagged.vjoy_id == self._current_selection.vjoy_id
+            and flagged.input_type in self._valid_types
+        ):
+            labels.append(flagged.input_str())
+        return labels
+
+    def _get_current_unclaimed(self) -> bool:
+        return bool(self._current_selection.unclaimed)
 
     def _get_valid_types(self) -> list[str]:
         return [InputType.to_string(item) for item in self._valid_types]
@@ -353,3 +415,6 @@ class OutputModuleDevices(QtCore.QObject):
         notify=validTypesChanged,
     )
     hasValidVJoyDevices = QtCore.Property(bool, fget=_get_has_valid, notify=choicesChanged)
+    currentUnclaimed = QtCore.Property(
+        bool, fget=_get_current_unclaimed, notify=choicesChanged
+    )

@@ -121,5 +121,17 @@ Item {
             text: "Output module has no claimed controls."
             color: Style.fgMuted
         }
+
+        // A saved wire to an output its output module does not claim. The wire
+        // is kept as saved; claim the output or pick a claimed one.
+        Label {
+            visible: _vjoy && _vjoy.currentUnclaimed
+
+            text: "Output not claimed"
+            color: Style.warn
+            ToolTip.visible: _unclaimedHover.hovered
+            ToolTip.text: "This output is not claimed by its output module. Claim it in Configure output module, or pick a claimed output."
+            HoverHandler { id: _unclaimedHover }
+        }
     }
 }
