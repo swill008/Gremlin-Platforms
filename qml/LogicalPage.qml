@@ -298,7 +298,13 @@ Item {
                 }
                 Button {
                     text: _root.displayOpen ? "Hide Editor" : "Show Editor"
-                    onClicked: _root.displayOpen = !_root.displayOpen
+                    // Hiding asks about unsaved display options, like the panel's close.
+                    onClicked: {
+                        if (_root.displayOpen)
+                            _root.requestCloseDisplay()
+                        else
+                            _root.displayOpen = true
+                    }
                 }
                 Label {
                     text: _root.editorLocked ? "Running" : ""
@@ -1494,12 +1500,20 @@ Item {
                             spacing: Style.dp(2)
                             RowLayout {
                                 width: parent.width
+                                // A full cell to click, not just the glyph. Dimmed while a
+                                // search shows every device open.
                                 Label {
+                                    Layout.preferredWidth: Style.dp(24)
+                                    Layout.preferredHeight: Style.dp(24)
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
                                     text: _hardware.deviceOpen(modelData.name) ? "▾" : "▸"
                                     color: "#A1A1AA"
+                                    opacity: _search.text.length ? 0.35 : 1
                                     font.pixelSize: Style.dp(14)
                                     MouseArea {
                                         anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
                                         onClicked: _hardware.toggleDevice(modelData.name)
                                     }
                                 }

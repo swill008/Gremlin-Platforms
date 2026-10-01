@@ -1403,7 +1403,14 @@ ApplicationWindow {
                 Button {
                     visible: configDirection === "dest"
                     text: outputViewPanel ? "Hide Editor" : "Show Editor"
+                    // Hiding goes through the panel's close, which asks about unsaved
+                    // display options and then hides it.
                     onClicked: {
+                        var output = outputPane()
+                        if (outputViewPanel && output && output.requestClose) {
+                            output.requestClose()
+                            return
+                        }
                         outputViewPanel = !outputViewPanel
                         rememberDisplayPanel()
                     }
@@ -1428,6 +1435,11 @@ ApplicationWindow {
                     visible: configDirection !== "dest" && configDirection !== "logical"
                     text: catalogPanel ? "Hide Editor" : "Show Editor"
                     onClicked: {
+                        var catalog = catalogPane()
+                        if (catalogPanel && catalog && catalog.requestClose) {
+                            catalog.requestClose()
+                            return
+                        }
                         catalogPanel = !catalogPanel
                         rememberDisplayPanel()
                     }
