@@ -432,9 +432,10 @@ _DEFAULT_VIEW = {
     "buttonSize": "medium",
     "buttonColumns": 12,
     "buttonWidth": 64,
-    "colorLive": "#22C55E",
-    "colorMeter": "#3B82F6",
-    "colorPress": "#22C55E",
+    # Colours: "" follows Dark mode; a value is the user's own choice.
+    "colorLive": "",
+    "colorMeter": "",
+    "colorPress": "",
     "colorScreen": "#00000000",
     "screenImage": "",
 }

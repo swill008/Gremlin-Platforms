@@ -38,9 +38,14 @@ Item {
     property string buttonSize: "medium"
     property int buttonColumns: 12
     property int buttonWidth: 64
-    property string colorLive: "#22C55E"
-    property string colorMeter: "#3B82F6"
-    property string colorPress: "#22C55E"
+    // Display colours: colorXSet is the user's choice ("" when never changed);
+    // colorX is shown and follows Dark mode until a choice is made.
+    property string colorLiveSet: ""
+    property string colorMeterSet: ""
+    property string colorPressSet: ""
+    readonly property color colorLive: colorLiveSet.length ? colorLiveSet : Style.ok
+    readonly property color colorMeter: colorMeterSet.length ? colorMeterSet : Style.info
+    readonly property color colorPress: colorPressSet.length ? colorPressSet : Style.ok
     property string colorScreen: "#00000000"
     property string screenImage: ""
     property string _colorTarget: "live"
@@ -75,7 +80,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             height: Style.dp(26)
-            color: "#27272A"
+            color: Style.bgRaised
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: Style.dp(8)
@@ -83,12 +88,12 @@ Item {
                 spacing: Style.dp(6)
                 Label {
                     text: fold.open ? "\u25BC" : "\u25B6"
-                    color: "#E4E4E7"
+                    color: Style.fg
                     font.pixelSize: Style.dp(10)
                 }
                 Label {
                     text: fold.title
-                    color: "#E4E4E7"
+                    color: Style.fg
                     font.pixelSize: Style.dp(11)
                     font.bold: true
                     Layout.fillWidth: true
@@ -179,13 +184,13 @@ Item {
         onAccepted: {
             var c = selectedColor.toString()
             if (_colorTarget === "meter")
-                colorMeter = c
+                colorMeterSet = c
             else if (_colorTarget === "press")
-                colorPress = c
+                colorPressSet = c
             else if (_colorTarget === "screen")
                 colorScreen = c
             else
-                colorLive = c
+                colorLiveSet = c
         }
     }
 
@@ -313,9 +318,9 @@ Item {
             "buttonSize": buttonSize,
             "buttonColumns": buttonColumns,
             "buttonWidth": buttonWidth,
-            "colorLive": colorLive,
-            "colorMeter": colorMeter,
-            "colorPress": colorPress,
+            "colorLive": colorLiveSet,
+            "colorMeter": colorMeterSet,
+            "colorPress": colorPressSet,
             "colorScreen": colorScreen,
             "screenImage": screenImage,
             "sections": sectionState()
@@ -359,6 +364,13 @@ Item {
         openColors = open
     }
 
+    // A saved colour equal to the old fixed (dark) default was never changed by
+    // the user, so it follows Dark mode like a colour that was never set.
+    function userColour(saved, oldDefault) {
+        var text = String(saved || "")
+        return text.toLowerCase() === oldDefault.toLowerCase() ? "" : text
+    }
+
     function applyViewValues(v) {
         layout = v.layout || "pads_meters_grid"
         padAX = (v.padAX === undefined || v.padAX === null) ? 1 : v.padAX
@@ -381,9 +393,9 @@ Item {
         buttonSize = v.buttonSize || "medium"
         buttonColumns = v.buttonColumns || 12
         buttonWidth = v.buttonWidth || 64
-        colorLive = v.colorLive || "#22C55E"
-        colorMeter = v.colorMeter || "#3B82F6"
-        colorPress = v.colorPress || "#22C55E"
+        colorLiveSet = userColour(v.colorLive, "#22C55E")
+        colorMeterSet = userColour(v.colorMeter, "#3B82F6")
+        colorPressSet = userColour(v.colorPress, "#22C55E")
         colorScreen = v.colorScreen || "#00000000"
         screenImage = v.screenImage || ""
         applySections(v.sections)
@@ -488,9 +500,9 @@ Item {
         buttonSize = "medium"
         buttonColumns = 12
         buttonWidth = 64
-        colorLive = "#22C55E"
-        colorMeter = "#3B82F6"
-        colorPress = "#22C55E"
+        colorLiveSet = ""
+        colorMeterSet = ""
+        colorPressSet = ""
         colorScreen = "#00000000"
         screenImage = ""
         setAllSections(false)
@@ -582,7 +594,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottomMargin: Style.dp(6)
             text: pad.label
-            color: "#A1A1AA"
+            color: Style.fgMuted
             font.pixelSize: Style.dp(12)
         }
     }
@@ -685,14 +697,14 @@ Item {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         text: axisShort(hw, name)
-                        color: "#E4E4E7"
+                        color: Style.fg
                         font.pixelSize: Style.dp(12)
                     }
                     Label {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         text: (liveVal(idx) >= 0 ? "+" : "") + liveVal(idx).toFixed(2)
-                        color: "#A1A1AA"
+                        color: Style.fgMuted
                         font.pixelSize: Style.dp(10)
                     }
                 }
@@ -765,14 +777,14 @@ Item {
                             spacing: 0
                             Label {
                                 text: "Button"
-                                color: on ? "#F4F4F5" : "#A1A1AA"
+                                color: on ? Style.fgStrong : Style.fgMuted
                                 font.pixelSize: _root.buttonSize === "small" ? Style.dp(9) : Style.dp(11)
                                 horizontalAlignment: Text.AlignHCenter
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
                             Label {
                                 text: "" + hw
-                                color: on ? "#F4F4F5" : "#E4E4E7"
+                                color: on ? Style.fgStrong : Style.fg
                                 font.pixelSize: _root.buttonSize === "small" ? Style.dp(12) : Style.dp(14)
                                 font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
@@ -791,8 +803,8 @@ Item {
             Layout.preferredWidth: Style.dp(360)
             Layout.maximumWidth: Style.dp(360)
             Layout.fillHeight: true
-            color: "#18181B"
-            border.color: "#3F3F46"
+            color: Style.bgCard
+            border.color: Style.line
             border.width: Style.dp(1)
 
             ColumnLayout {
@@ -803,7 +815,7 @@ Item {
                 RowLayout {
                     Label {
                         text: "Output Module View — Display Editor"
-                        color: "#E4E4E7"
+                        color: Style.fg
                         font.bold: true
                         font.pixelSize: Style.dp(13)
                         Layout.fillWidth: true
@@ -835,24 +847,24 @@ Item {
                             onToggled: (v) => { openScreen = v }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Color"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(110) }
+                                Label { text: "Color"; color: Style.fg; Layout.preferredWidth: Style.dp(110) }
                                 Button {
                                     Layout.fillWidth: true
                                     text: colorScreen === "#00000000" ? "None" : "Choose…"
                                     onClicked: {
                                         _colorTarget = "screen"
-                                        _colorDlg.selectedColor = colorScreen === "#00000000" ? "#111113" : colorScreen
+                                        _colorDlg.selectedColor = colorScreen === "#00000000" ? Style.bgPage : colorScreen
                                         _colorDlg.open()
                                     }
                                     background: Rectangle {
-                                        color: colorScreen === "#00000000" ? "#27272A" : colorScreen
-                                        border.color: "#3F3F46"
+                                        color: colorScreen === "#00000000" ? Style.bgRaised : colorScreen
+                                        border.color: Style.line
                                         border.width: Style.dp(1)
                                         radius: Style.dp(3)
                                     }
                                     contentItem: Label {
                                         text: parent.text
-                                        color: "#F4F4F5"
+                                        color: Style.fgStrong
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                     }
@@ -865,7 +877,7 @@ Item {
                             }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Image"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(110) }
+                                Label { text: "Image"; color: Style.fg; Layout.preferredWidth: Style.dp(110) }
                                 Button {
                                     Layout.fillWidth: true
                                     text: screenImage.length ? "Change…" : "Choose…"
@@ -880,7 +892,7 @@ Item {
                             Label {
                                 visible: screenImage.length > 0
                                 text: "The image covers the color."
-                                color: "#A1A1AA"
+                                color: Style.fgMuted
                                 font.pixelSize: Style.dp(11)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
@@ -903,29 +915,29 @@ Item {
                             Label {
                                 visible: !showPads
                                 text: "Pads hidden"
-                                color: "#71717A"
+                                color: Style.fgDisabled
                                 font.pixelSize: Style.dp(11)
                             }
                             ColumnLayout {
                                 visible: showPads
                                 spacing: Style.dp(4)
                                 Layout.fillWidth: true
-                                Label { text: "X / Y pad"; color: "#E4E4E7"; font.pixelSize: Style.dp(11) }
+                                Label { text: "X / Y pad"; color: Style.fg; font.pixelSize: Style.dp(11) }
                                 RowLayout {
-                                    Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: Style.dp(80) }
+                                    Label { text: "Horizontal"; color: Style.fgMuted; Layout.preferredWidth: Style.dp(80) }
                                     AxisMenu { hw: padAX; onUserSet: (v) => { padAX = v } }
                                 }
                                 RowLayout {
-                                    Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: Style.dp(80) }
+                                    Label { text: "Vertical"; color: Style.fgMuted; Layout.preferredWidth: Style.dp(80) }
                                     AxisMenu { hw: padAY; onUserSet: (v) => { padAY = v } }
                                 }
-                                Label { text: "Rx / Ry pad"; color: "#E4E4E7"; font.pixelSize: Style.dp(11) }
+                                Label { text: "Rx / Ry pad"; color: Style.fg; font.pixelSize: Style.dp(11) }
                                 RowLayout {
-                                    Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: Style.dp(80) }
+                                    Label { text: "Horizontal"; color: Style.fgMuted; Layout.preferredWidth: Style.dp(80) }
                                     AxisMenu { hw: padBX; onUserSet: (v) => { padBX = v } }
                                 }
                                 RowLayout {
-                                    Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: Style.dp(80) }
+                                    Label { text: "Vertical"; color: Style.fgMuted; Layout.preferredWidth: Style.dp(80) }
                                     AxisMenu { hw: padBY; onUserSet: (v) => { padBY = v } }
                                 }
                             }
@@ -946,17 +958,17 @@ Item {
                             }
                             RowLayout {
                                 enabled: showMeters
-                                Label { text: "Width"; color: "#E4E4E7" }
+                                Label { text: "Width"; color: Style.fg }
                                 TrackSpin { from: 12; to: 48; source: meterWidth; onUserSet: (v) => { meterWidth = v } }
                             }
                             Label {
                                 text: "Axes on bars"
-                                color: "#E4E4E7"
+                                color: Style.fg
                                 font.pixelSize: Style.dp(11)
                             }
                             Label {
                                 text: "Uncheck an axis to hide its bar."
-                                color: "#A1A1AA"
+                                color: Style.fgMuted
                                 font.pixelSize: Style.dp(11)
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
@@ -1006,11 +1018,11 @@ Item {
                             RowLayout {
                                 Label {
                                     text: "Columns"
-                                    color: "#E4E4E7"
+                                    color: Style.fg
                                     PointerTip { text: "Maximum columns; fewer are used when the view is narrower." }
                                 }
                                 TrackSpin { from: 1; to: 16; source: buttonColumns; onUserSet: (v) => { buttonColumns = v } }
-                                Label { text: "Width"; color: "#E4E4E7" }
+                                Label { text: "Width"; color: Style.fg }
                                 TrackSpin { from: 40; to: 200; source: buttonWidth; onUserSet: (v) => { buttonWidth = v } }
                             }
                         }
@@ -1020,63 +1032,84 @@ Item {
                             open: openColors
                             onToggled: (v) => { openColors = v }
                         RowLayout {
-                            Label { text: "Live"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
+                            Label { text: "Live"; color: Style.fg; Layout.preferredWidth: Style.dp(70) }
                             Button {
                                 Layout.fillWidth: true
                                 text: "Choose…"
                                 onClicked: { _colorTarget = "live"; _colorDlg.selectedColor = colorLive; _colorDlg.open() }
                                 background: Rectangle {
                                     color: colorLive
-                                    border.color: "#3F3F46"
+                                    border.color: Style.line
                                     border.width: Style.dp(1)
                                     radius: Style.dp(3)
                                 }
+                                // Dark text on a light swatch, white on a dark one.
                                 contentItem: Label {
                                     text: parent.text
-                                    color: "#111111"
+                                    color: colorLive.hslLightness > 0.6 ? Style.onLight : Style.onColor
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
                             }
+                            // Back to the colour that follows Dark mode.
+                            Button {
+                                text: "Default"
+                                enabled: colorLiveSet.length > 0
+                                onClicked: colorLiveSet = ""
+                            }
                         }
                         RowLayout {
-                            Label { text: "Meter"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
+                            Label { text: "Meter"; color: Style.fg; Layout.preferredWidth: Style.dp(70) }
                             Button {
                                 Layout.fillWidth: true
                                 text: "Choose…"
                                 onClicked: { _colorTarget = "meter"; _colorDlg.selectedColor = colorMeter; _colorDlg.open() }
                                 background: Rectangle {
                                     color: colorMeter
-                                    border.color: "#3F3F46"
+                                    border.color: Style.line
                                     border.width: Style.dp(1)
                                     radius: Style.dp(3)
                                 }
+                                // Dark text on a light swatch, white on a dark one.
                                 contentItem: Label {
                                     text: parent.text
-                                    color: "#111111"
+                                    color: colorMeter.hslLightness > 0.6 ? Style.onLight : Style.onColor
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
                             }
+                            // Back to the colour that follows Dark mode.
+                            Button {
+                                text: "Default"
+                                enabled: colorMeterSet.length > 0
+                                onClicked: colorMeterSet = ""
+                            }
                         }
                         RowLayout {
-                            Label { text: "Press"; color: "#E4E4E7"; Layout.preferredWidth: Style.dp(70) }
+                            Label { text: "Press"; color: Style.fg; Layout.preferredWidth: Style.dp(70) }
                             Button {
                                 Layout.fillWidth: true
                                 text: "Choose…"
                                 onClicked: { _colorTarget = "press"; _colorDlg.selectedColor = colorPress; _colorDlg.open() }
                                 background: Rectangle {
                                     color: colorPress
-                                    border.color: "#3F3F46"
+                                    border.color: Style.line
                                     border.width: Style.dp(1)
                                     radius: Style.dp(3)
                                 }
+                                // Dark text on a light swatch, white on a dark one.
                                 contentItem: Label {
                                     text: parent.text
-                                    color: "#111111"
+                                    color: colorPress.hslLightness > 0.6 ? Style.onLight : Style.onColor
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
+                            }
+                            // Back to the colour that follows Dark mode.
+                            Button {
+                                text: "Default"
+                                enabled: colorPressSet.length > 0
+                                onClicked: colorPressSet = ""
                             }
                         }
                         }
@@ -1092,16 +1125,16 @@ Item {
                         onClicked: resetView()
                         contentItem: Text {
                             text: parent.text
-                            color: "#FFFFFF"
+                            color: Style.onColor
                             font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
                             implicitHeight: Style.dp(44)
-                            color: parent.down ? "#991B1B" : (parent.hovered ? "#EF4444" : "#DC2626")
+                            color: parent.down ? Style.dangerPressed : (parent.hovered ? Style.dangerBright : Style.danger)
                             border.width: Style.dp(1)
-                            border.color: parent.hovered ? "#FCA5A5" : "#B91C1C"
+                            border.color: parent.hovered ? Style.dangerTextSoft : Style.dangerHover
                         }
                     }
                     Button {
@@ -1115,7 +1148,7 @@ Item {
                         }
                         contentItem: Text {
                             text: parent.text
-                            color: "#F4F4F5"
+                            color: Style.fgStrong
                             font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -1129,7 +1162,7 @@ Item {
                         onClicked: saveView()
                         contentItem: Text {
                             text: parent.text
-                            color: "#FFFFFF"
+                            color: Style.onColor
                             font.pixelSize: Style.dp(12)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -1195,17 +1228,17 @@ Item {
         anchors.centerIn: parent
         modal: true
         dim: true
-        Overlay.modal: Rectangle { color: "#66000000" }
+        Overlay.modal: Rectangle { color: Style.dim }
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
         padding: Style.dp(18)
         background: Rectangle {
-            color: "#27272A"
-            border.color: "#52525B"
+            color: Style.bgRaised
+            border.color: Style.lineStrong
             radius: Style.dp(6)
         }
         contentItem: Label {
             text: toastText
-            color: "#F4F4F5"
+            color: Style.fgStrong
             font.pixelSize: Style.dp(14)
             horizontalAlignment: Text.AlignHCenter
         }

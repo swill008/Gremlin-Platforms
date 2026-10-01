@@ -39,7 +39,7 @@ _REMAINING = {
     "qml/OptionWindowsScale.qml": 1,
     "qml/OscAddDialog.qml": 3,
     "qml/OscImportDialog.qml": 3,
-    "qml/OutputModuleView.qml": 71,
+    "qml/OutputModuleView.qml": 12,
     "qml/UnmappedCard.qml": 1,
     "qml/VJoySelector.qml": 2,
     "qml/VkbRigEditor.qml": 114,
