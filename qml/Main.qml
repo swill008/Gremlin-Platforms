@@ -1056,11 +1056,14 @@ ApplicationWindow {
                 Connections {
                     target: _modeList
                     function onModelReset() {
-                        if (!uiState)
-                            return
-                        var index = _modeSelector.find(uiState.currentMode)
-                        if (index >= 0)
-                            _modeSelector.currentIndex = index
+                        // After the ComboBox's own reset, or it clears this again and the
+                        // box shows blank (New Profile, Load, Save As).
+                        Qt.callLater(function() {
+                            if (!uiState)
+                                return
+                            var index = _modeSelector.find(uiState.currentMode)
+                            _modeSelector.currentIndex = index >= 0 ? index : (_modeSelector.count > 0 ? 0 : -1)
+                        })
                     }
                 }
 
