@@ -27,6 +27,7 @@ binaries = [
 
 hidden_imports = [
     "action_plugins",
+    "action_plugins.axis_delta",
     "action_plugins.chain",
     "action_plugins.change_mode",
     "action_plugins.common",
@@ -50,6 +51,7 @@ hidden_imports = [
     "action_plugins.reference",
     "action_plugins.response_curve",
     "action_plugins.root",
+    "action_plugins.run_command",
     "action_plugins.smart_toggle",
     "action_plugins.split_axis",
     "action_plugins.tempo",

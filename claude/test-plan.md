@@ -649,8 +649,11 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | ID | Result | Notes |
 |---|---|---|
 | B-SPEC-DLL | PASS | Spec bundles vJoyInterface.dll, dill.dll, ViGEmClient.dll; datas include gfx, qml, theme, device_db.json, version.json and every action_plugins file. |
-| B-SPEC-IMPORTS | SUSPECT | `action_plugins.axis_delta` and `action_plugins.run_command` are not in `hidden_imports` (all other plugins are). Their .py files ship as data and load via importlib, so they may still work. Check in the exe: Axis Delta (axis input) and Run Command (button) in Add Action. |
-| B-01..04 | DEFERRED | Need the 76.6 MB release zip downloaded (your permission) or a local pyinstaller build. The current R1 zip predates the "Gremlin Platforms" data folder change. |
+| B-SPEC-IMPORTS | FIXED | Both added to `hidden_imports` (as in R16); guard test `test_spec_hidden_imports.py` fails if any plugin folder is missing from the list. Local build: both are in the exe's module archive. |
+| B-01 (local build) | PASS | Local `pyinstaller` build (no zip) starts with sandbox USERPROFILE, opens the sandbox profile, quits cleanly. |
+| B-03 (log) | PASS / [U] | No errors in system.log for the exe run, so no plugin failed to load. Add Action list not checked on screen (display was off): confirm Axis Delta and Run Command by hand. |
+| B-02, B-04 | DEFERRED [U] | Xbox Viewer, Help, About and theme in the exe: hands-on. |
+| B-SPEC-STALE | NOTE | Build log: hidden import `gremlin.ui.profile_devices_model` not found (module no longer exists). Harmless; can be removed from the spec. |
 
 ## Failure summary, ranked (2026-09-30)
 
@@ -667,7 +670,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 9. ~~HH-00b~~ fixed (HiDHide splitter).
 10. ~~BM-X1 / S-22~~ resolved: moved to Device Pack on purpose (bbf22b58); stale help fixed, dead Button Map pack code removed. Note: Button Map's File menu also lists the Logical Device by raw ID (see XV-01b).
 11. H-03-dest, H-19d, H-17, H-13, OV-08b, XV-01b: Home and viewer behavior.
-12. B-SPEC-IMPORTS (suspect): axis_delta / run_command missing from spec hidden imports.
+12. ~~B-SPEC-IMPORTS~~ fixed: axis_delta / run_command added to spec hidden imports.
 13. Minor/cosmetic: F-01b, HD-01b, PS-06, MENU-CLIP, IC-01b, IC-17b, C-06, LP-24b, S-05b, OPT-X1b, OPT-U01b, OPT-F08b, CAL-05b, MM-01b, AE-XML-CHAIN, AE-NARROW, HH-08 note.
 14. Back burner: XB-IMG / XV-IMG (#9).
 
