@@ -14,7 +14,6 @@ QML_IMPORT_NAME = "Gremlin.Config"
 QML_IMPORT_MAJOR_VERSION = 1
 
 SECTION_DISPLAY = "display"
-SECTION_CONTROL = "control-display"
 SECTION_AUTOMAP = "automap"
 
 
@@ -36,22 +35,6 @@ def ensure_shell_options() -> None:
             PropertyType.Bool,
             True,
             "Keep the last: value after the control is released.",
-        ),
-        (
-            SECTION_CONTROL,
-            "overlay",
-            "hover-peek",
-            PropertyType.Bool,
-            True,
-            "Hover peek Control Display on the Status card photo.",
-        ),
-        (
-            SECTION_CONTROL,
-            "overlay",
-            "one-pin",
-            PropertyType.Bool,
-            True,
-            "Only one pinned Control Display overlay on Status at a time.",
         ),
         (
             SECTION_AUTOMAP,

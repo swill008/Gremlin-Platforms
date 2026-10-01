@@ -445,7 +445,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 |---|---|---|
 | H-20 | PASS | Compact view off shows photos; persists across restart. |
 | H-07, H-08 | PASS | Output View button on output cards; hover shows the "Control Display" overlay. |
-| H-13 / V-03 | FAIL (minor) | Pin from the card menu: the card does not show "pinned" and the menu still says "Pin" until another click refreshes the page. stderr: `Overwriting binding on StatusPage::pinSlug at Main.qml:1247` (the handler assigns the page's pinSlug and breaks its binding to Main). Pins are not saved across restart (by design). |
+| H-13 / V-03 | RESOLVED (pin feature removed) | Pin from the card menu: the card does not show "pinned" and the menu still says "Pin" until another click refreshes the page. stderr: `Overwriting binding on StatusPage::pinSlug at Main.qml:1247` (the handler assigns the page's pinSlug and breaks its binding to Main). Pins are not saved across restart (by design). |
 | H-06 | PASS | Card x hides the device. |
 | H-24 | PASS | Empty-area right-click > Unhide all devices. |
 | H-04 | PASS | Drag reorder with ghost and slot; order persists across restart. |

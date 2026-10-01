@@ -34,7 +34,6 @@ SECTION_DISPLAY_NAMES = {
     "profile": "Profile",
     "osc": "OSC Connection",
     "display": "Display",
-    "control-display": "Control Display",
     "automap": "Auto Mapper",
 }
 
@@ -92,8 +91,6 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
                     return 4
                 case "display":
                     return 5
-                case "control-display":
-                    return 6
                 case "automap":
                     return 6
                 case _:

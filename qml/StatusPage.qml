@@ -22,8 +22,6 @@ Item {
 
     property var model: null
     readonly property bool splitOn: model && model.splitMode !== "none"
-    property string pinSlug: ""
-    property bool hoverPeek: true
     property var _liveCards: []
     property var slotSnap: []
 
@@ -56,7 +54,6 @@ Item {
     signal openButtonMap(var card)
     signal openOutputView(var card)
     signal configureModule(var card)
-    signal pinControlDisplay(var card)
     signal autoMap(var card)
     signal openDeviceViewer(var card)
     signal openPairing(var card)
@@ -473,8 +470,6 @@ Item {
 
     function bindCard(card) {
         _page.registerCard(card)
-        card.hoverPeek = _page.hoverPeek
-        card.pinActive = _page.pinSlug === card.slug
         card.onCardFocused.connect(function() {
             _page.clearSelection()
             if (model)
@@ -488,7 +483,6 @@ Item {
         card.openButtonMap.connect(function() { _page.openButtonMap(_page.pack(card)) })
         card.openOutputView.connect(function() { _page.openOutputView(_page.pack(card)) })
         card.onConfigureModule.connect(function() { _page.configureModule(_page.pack(card)) })
-        card.onPinControlDisplay.connect(function() { _page.pinControlDisplay(_page.pack(card)) })
         card.onAutoMap.connect(function() { _page.autoMap(_page.pack(card)) })
         card.onOpenDeviceViewer.connect(function() { _page.openDeviceViewer(_page.pack(card)) })
         card.onOpenPairing.connect(function() { _page.openPairing(_page.pack(card)) })
@@ -556,7 +550,6 @@ Item {
         card.focused = !!info.focused
         if (card.lifting && _page.dragSlug !== card.slug)
             card.lifting = false
-        card.pinActive = _page.pinSlug === card.slug
         card.selected = _page._selectHas(card.slug)
         card.canStackSelected = card.selected && selectedSlugs.length >= 2
     }

@@ -45,7 +45,6 @@ ApplicationWindow {
     U.Universal.theme: Style.theme
     color: Style.background
 
-    property string pinSlug: ""
     property string configTitleName: ""
     onConfigTitleNameChanged: {
         syncOutputView()
@@ -331,13 +330,6 @@ ApplicationWindow {
     }
 
     property var _statusLastCard: null
-
-    function pinFocusedControlDisplay() {
-        var card = _statusLastCard && _statusLastCard.slug ? _statusLastCard : _moduleModel.focusedCardMap()
-        if (!card || !card.slug)
-            return
-        pinSlug = (pinSlug === card.slug) ? "" : card.slug
-    }
 
     function openConfigureModule(direction) {
         var card = _statusLastCard && _statusLastCard.slug ? _statusLastCard : _moduleModel.focusedCardMap()
@@ -758,10 +750,6 @@ ApplicationWindow {
             MenuItem {
                 text: qsTr("Configuration")
                 onTriggered: () => { openConfigurationForFocus() }
-            }
-            MenuItem {
-                text: qsTr("Control Display")
-                onTriggered: () => { pinFocusedControlDisplay() }
             }
             MenuSeparator {}
             Menu {
@@ -1269,7 +1257,6 @@ ApplicationWindow {
             Layout.fillHeight: true
             visible: !uiState || uiState.currentRoom === "status"
             model: _moduleModel
-            pinSlug: _root.pinSlug
             onFocusSlug: function(slug) {
                 _moduleModel.setFocus(slug)
             }
@@ -1288,10 +1275,6 @@ ApplicationWindow {
             onConfigureModule: function(card) {
                 _statusLastCard = card
                 openConfigureModule(card.direction === "dest" ? "dest" : "source")
-            }
-            onPinControlDisplay: function(card) {
-                _statusLastCard = card
-                pinSlug = (pinSlug === card.slug) ? "" : card.slug
             }
             onAutoMap: function(card) {
                 _statusLastCard = card

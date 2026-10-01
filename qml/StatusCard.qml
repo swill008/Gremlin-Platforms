@@ -29,8 +29,6 @@ Rectangle {
     property string lastLine: ""
     property string lastHardware: ""
     property bool focused: false
-    property bool pinActive: false
-    property bool hoverPeek: true
     property int stackIndex: 0
     property bool stacked: false
     property bool lifting: false
@@ -47,7 +45,6 @@ Rectangle {
     signal openButtonMap()
     signal openOutputView()
     signal configureModule()
-    signal pinControlDisplay()
     signal autoMap()
     signal openDeviceViewer()
     signal openPairing()
@@ -124,21 +121,7 @@ Rectangle {
                     color: "#A1A1AA"
                     font.pixelSize: Style.dp(11)
                 }
-
-                Rectangle {
-                    visible: pinActive || (hoverPeek && _hover.hovered)
-                    anchors.fill: parent
-                    color: "#AA14532D"
-                    Label {
-                        anchors.centerIn: parent
-                        text: pinActive ? "Control Display pinned" : "Control Display"
-                        color: "#BBF7D0"
-                        font.pixelSize: Style.dp(11)
-                    }
-                }
             }
-
-            HoverHandler { id: _hover }
         }
 
         Label {
@@ -429,12 +412,6 @@ Rectangle {
         MenuItem {
             text: direction === "dest" ? "Configure output module" : "Configure input module"
             onTriggered: _card.configureModule()
-        }
-        MenuItem {
-            visible: direction !== "dest"
-            height: visible ? implicitHeight : 0
-            text: pinActive ? "Unpin Control Display" : "Pin Control Display"
-            onTriggered: _card.pinControlDisplay()
         }
         MenuItem { text: "Auto Mapper"; onTriggered: _card.autoMap() }
         MenuItem {

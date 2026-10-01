@@ -24,9 +24,6 @@ function topics() {
             "<p>Home lists input devices and output devices. Each card is one device.</p>"
             + "<p>View → Home, or Home on the toolbar, returns here. Select a card to work on that device. Right-click a card for Button Map and the other actions for that device.</p>"
             + "<p>View → Home layout sets the arrangement: Single list, Side by side, or Stacked. The choice is kept.</p>"),
-        topic("Home", "Control display",
-            "<p>Control display is the extra live view of a device’s inputs. It can stay open while you work.</p>"
-            + "<p>View → Control Display pins it for the device you are focused on. Choose it again to change that pin. The program remembers that you left it open.</p>"),
         topic("Home", "Hidden devices",
             "<p>Hidden devices removes a card from Home. It does not hide the device from Windows or from other programs. Use HiDHide for that.</p>"
             + "<p>View → Hidden devices. Turn a device off to take its card off Home. Turn it on to put the card back.</p>"),
