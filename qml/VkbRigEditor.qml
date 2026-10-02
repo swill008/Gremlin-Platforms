@@ -154,6 +154,15 @@ Item {
     // Layers panel flags for the background photo (saved with its pose).
     property bool photoHidden: false
     property bool photoLocked: false
+    // The photo's look (Photo → Adjust photo), saved with its pose.
+    property real photoBright: 0
+    property real photoContrast: 0
+    property real photoGrey: 0
+    property real photoFade: 0
+    // An adjusted copy of the photo for brightness, contrast and greyscale,
+    // made by the window (HardwareProfile.adjustedPhotoUrl); "" for none.
+    property string photoLookUrl: ""
+    readonly property url photoBaseUrl: _photoWell ? _photoWell.baseUrl : ""
     property real photoDragX0: 0
     property real photoDragY0: 0
     signal selectedChanged()
@@ -272,6 +281,8 @@ Item {
     function resetPhotoPose() { return RigPhoto.resetPhotoPose() }
     function fitPhotoWell() { return RigPhoto.fitPhotoWell() }
     function photoBag() { return RigPhoto.photoBag() }
+    function setPhotoLook(key, value) { return RigPhoto.setPhotoLook(key, value) }
+    function resetPhotoLook() { return RigPhoto.resetPhotoLook() }
     function pagePhotoRect() { return RigPhoto.pagePhotoRect() }
     function toPhoto(mx, my) { return RigPhoto.toPhoto(mx, my) }
 
@@ -669,7 +680,10 @@ Item {
         for (var i = 0; i < next.length; i++)
             list.push(next[i])
         if (!Array.isArray(doc) && doc.photo) {
-            applyPhotoPose(Object.assign({ hidden: false, locked: false }, doc.photo))
+            // The look is saved as plain keys; one left out was not set.
+            var ph = doc.photo
+            applyPhotoPose(Object.assign({ hidden: false, locked: false }, ph,
+                                         { look: { bright: ph.bright, contrast: ph.contrast, grey: ph.grey, fade: ph.fade } }))
             photoRestored()
         }
     }

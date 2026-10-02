@@ -249,6 +249,7 @@ function topics() {
             + "<p>View → <b>Layers</b> and View → <b>Properties</b> show the two side panels (see Layers and Properties panel).</p>"),
         topic("Button Map", "The photo",
             "<p>The photo is the device picture under everything else. Photo → <b>Move photo</b> drags it (Esc leaves the tool); <b>Adjust photo…</b> sets its size, offset and rotation; <b>Reset photo</b> puts it back.</p>"
+            + "<p><b>Adjust photo…</b> also sets its <b>Look</b>, so the chips stand out against a busy picture: <b>Brightness</b> and <b>Contrast</b> (either way), <b>Greyscale</b> and <b>Fade</b>. <b>Reset look</b> puts them back; Reset photo leaves the look alone. The look is saved with the layout, shows on the live map and in exports, and Undo steps through it.</p>"
             + "<p>File → <b>Choose background…</b> uses another picture; <b>Clear image</b> returns to the module's picture. The photo has its own row at the bottom of the Layers panel, so it can be hidden or locked like any item.</p>"),
         topic("Button Map", "Chips",
             "<p>A chip shows a control's name (Button 10, Axis 1, Hat 1) or its friendly name. Drag one from the pool onto the photo; drag it again to move it.</p>"

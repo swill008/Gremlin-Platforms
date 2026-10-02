@@ -12,6 +12,10 @@ Item {
     id: _photoWell
     property var ed: null
     property var linesCanvas: null
+    // The photo as chosen, before any look is applied.
+    readonly property url baseUrl: (ed.face && ed.face.photoOverride && ed.face.photoOverride.length)
+                                   ? ed.face.photoOverride
+                                   : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
     z: 0
     visible: !ed.photoHidden
     x: ed.innerPageRect().x
@@ -23,6 +27,7 @@ Item {
     Item {
         id: _photoXform
         anchors.fill: parent
+        opacity: 1 - ed.photoFade
         // Scale and turn about the photo's own centre, then move it: moving
         // first turned an offset photo round the frame's centre instead.
         transform: [
@@ -49,13 +54,13 @@ Item {
             fillMode: Image.PreserveAspectFit
             asynchronous: true
             cache: true
-            source: (ed.face && ed.face.photoOverride && ed.face.photoOverride.length)
-                    ? ed.face.photoOverride
-                    : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
+            // An adjusted copy when the look is changed (the window makes it).
+            source: ed.photoLookUrl.length ? ed.photoLookUrl : _photoWell.baseUrl
             onStatusChanged: {
                 if (status === Image.Ready && linesCanvas)
                     linesCanvas.requestPaint()
             }
+
         }
     }
 }

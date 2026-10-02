@@ -140,6 +140,7 @@ Window {
             pan: [Math.round(_face.panX), Math.round(_face.panY)]
         })
     }
+    function setPhotoUrl(url) { _face.photoOverride = url }
     function setZoom(z, px, py) {
         _face.zoom = z
         _face.panX = px
@@ -1508,6 +1509,31 @@ def scenario_styles(s: Session) -> None:
     s.steps[-1]["state"]["saveAsked"] = json.loads(s.js("styleAsked"))
 
 
+def scenario_photo_look(s: Session) -> None:
+    """The photo's look: brightness, contrast, greyscale and fade, saved with
+    its pose, undone in one step, and reset on its own."""
+    _load(s, "evo_r")
+    # A picture stands in for the photo, which a plain checkout lacks.
+    icon = ROOT / "gfx" / "icon_large.png"
+    s.js("setPhotoUrl", QtCore.QUrl.fromLocalFile(str(icon)).toString())
+    s.call("setSelection", [])
+    s.record("plain", image=True)
+    s.call("setPhotoLook", "grey", 1)
+    s.call("setPhotoLook", "bright", 0.3)
+    s.call("setPhotoLook", "fade", 0.5)
+    s.wait(500)
+    s.record("adjusted", image=True)
+    s.steps[-1]["state"]["bag"] = s.call("photoBag")
+    s.key(QtCore.Qt.Key.Key_Z, QtCore.Qt.KeyboardModifier.ControlModifier)
+    s.record("undone")
+    s.steps[-1]["state"]["bag"] = s.call("photoBag")
+    s.call("setPhotoLook", "contrast", 0.5)
+    s.call("resetPhotoLook")
+    s.wait(500)
+    s.record("reset")
+    s.steps[-1]["state"]["bag"] = s.call("photoBag")
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1561,6 +1587,7 @@ SCENARIOS = {
     "callout": scenario_callout,
     "paths": scenario_paths,
     "styles": scenario_styles,
+    "photo_look": scenario_photo_look,
 }
 
 

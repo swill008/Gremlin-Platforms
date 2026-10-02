@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -69,7 +70,17 @@ def _photo_pose(raw) -> dict:
     for flag in ("hidden", "locked"):
         if src.get(flag) is True:
             pose[flag] = True
+    # The photo's look (Photo > Adjust photo); written only when changed.
+    for key, low, high in _PHOTO_LOOK:
+        value = max(low, min(high, _num(key, 0.0)))
+        if value:
+            pose[key] = value
     return pose
+
+
+# Brightness and contrast -1..1, greyscale 0..1, fade 0..0.9.
+_PHOTO_LOOK = (("bright", -1.0, 1.0), ("contrast", -1.0, 1.0), ("grey", 0.0, 1.0),
+               ("fade", 0.0, 0.9))
 
 
 _RECENT_COLOURS = 10
@@ -137,6 +148,43 @@ def _save_image(page: QtGui.QImage, path: Path, kind: str) -> bool:
     if kind in ("jpg", "jpeg"):
         return page.save(str(path), "JPG", 92)
     return page.save(str(path), "PNG")
+
+
+def adjust_photo(
+    image: QtGui.QImage, bright: float, contrast: float, grey: float
+) -> QtGui.QImage:
+    """The photo with its look applied (Photo > Adjust photo): greyscale
+    0..1 blends towards grey; contrast -1..1 flattens towards mid grey or
+    deepens with an overlay of itself; brightness -1..1 washes towards white
+    or black. Transparent parts stay transparent."""
+    out = image.convertToFormat(QtGui.QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QtGui.QPainter(out)
+    mode = QtGui.QPainter.CompositionMode
+    if grey > 0:
+        flat = image.convertToFormat(QtGui.QImage.Format.Format_Grayscale8)
+        painter.setCompositionMode(mode.CompositionMode_SourceAtop)
+        painter.setOpacity(min(1.0, grey))
+        painter.drawImage(0, 0, flat.convertToFormat(QtGui.QImage.Format.Format_ARGB32))
+    if contrast > 0:
+        copy = out.copy()
+        painter.setCompositionMode(mode.CompositionMode_Overlay)
+        painter.setOpacity(min(1.0, contrast))
+        painter.drawImage(0, 0, copy)
+    elif contrast < 0:
+        painter.setCompositionMode(mode.CompositionMode_SourceAtop)
+        painter.setOpacity(min(1.0, -contrast) * 0.8)
+        painter.fillRect(out.rect(), QtGui.QColor(128, 128, 128))
+    if bright:
+        painter.setCompositionMode(mode.CompositionMode_SourceAtop)
+        painter.setOpacity(min(1.0, abs(bright)) * 0.8)
+        wash = QtGui.QColor(255, 255, 255) if bright > 0 else QtGui.QColor(0, 0, 0)
+        painter.fillRect(out.rect(), wash)
+    painter.end()
+    return out
+
+
+# How many adjusted photos the cache keeps.
+_LOOK_CACHE = 12
 
 
 def _template_stem(name: str) -> str:
@@ -1826,6 +1874,48 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str)
     def setDeviceGuid(self, guid: str) -> None:
         self._device_guid = str(guid or "")
+
+    # --- the photo's look (Photo > Adjust photo) ---------------------------------
+
+    @QtCore.Slot(str, float, float, float, result=str)
+    def adjustedPhotoUrl(
+        self, url: str, bright: float, contrast: float, grey: float
+    ) -> str:
+        """A copy of the photo with brightness, contrast and greyscale applied,
+        kept in a cache beside the module files; "" when nothing is changed
+        or the photo cannot be read."""
+        if not (bright or contrast or grey):
+            return ""
+        text = str(url or "")
+        source = text[len("qrc"):] if text.startswith("qrc:") else to_local_path(text)
+        image = QtGui.QImage(str(source))
+        if image.isNull():
+            return ""
+        stamp = ""
+        try:
+            stamp = str(Path(source).stat().st_mtime_ns)
+        except OSError:
+            pass
+        key = hashlib.sha1(
+            f"{source}|{stamp}|{bright:.3f}|{contrast:.3f}|{grey:.3f}".encode()
+        ).hexdigest()[:16]
+        folder = _maps_dir() / "cache"
+        target = folder / f"photo-{key}.png"
+        if not target.is_file():
+            try:
+                folder.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                return ""
+            if not adjust_photo(image, bright, contrast, grey).save(str(target), "PNG"):
+                return ""
+            # Only the latest few are kept.
+            old = sorted(folder.glob("photo-*.png"), key=lambda f: f.stat().st_mtime)
+            for stale in old[:-_LOOK_CACHE]:
+                try:
+                    stale.unlink()
+                except OSError:
+                    pass
+        return QtCore.QUrl.fromLocalFile(str(target)).toString()
 
     # --- layouts of other devices (File > Copy layout from) ---------------------
 

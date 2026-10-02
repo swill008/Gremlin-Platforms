@@ -25,3 +25,13 @@ def test_layers_flags_kept_only_when_on() -> None:
     assert pose["hidden"] is True and pose["locked"] is True
     pose = _photo_pose({"scale": 1, "hidden": False, "locked": "yes"})
     assert "hidden" not in pose and "locked" not in pose
+
+
+def test_look_kept_clamped_and_only_when_changed() -> None:
+    pose = _photo_pose({"bright": 0.3, "contrast": -2, "grey": 1, "fade": 5})
+    assert pose["bright"] == 0.3
+    assert pose["contrast"] == -1.0
+    assert pose["grey"] == 1.0
+    assert pose["fade"] == 0.9
+    pose = _photo_pose({"bright": 0, "grey": "bad"})
+    assert "bright" not in pose and "grey" not in pose

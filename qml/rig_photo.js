@@ -38,8 +38,45 @@ function applyPhotoPose(pose) {
         photoHidden = !!pose.hidden
     if (pose.locked !== undefined)
         photoLocked = !!pose.locked
+    // So does the look: a loaded pose without it means none.
+    if (pose.look !== undefined) {
+        var look = pose.look || {}
+        photoBright = _lookVal(look.bright, -1, 1)
+        photoContrast = _lookVal(look.contrast, -1, 1)
+        photoGrey = _lookVal(look.grey, 0, 1)
+        photoFade = _lookVal(look.fade, 0, 0.9)
+    }
     if (_photoWell)
         repaint()
+}
+
+function _lookVal(v, low, high) {
+    var n = Number(v)
+    if (!(n === n))
+        n = 0
+    return Math.max(low, Math.min(high, n))
+}
+
+// One of the photo's look values (Photo → Adjust photo): bright, contrast,
+// grey or fade. An undo step follows when the slider rests.
+function setPhotoLook(key, value) {
+    if (key === "bright")
+        photoBright = _lookVal(value, -1, 1)
+    else if (key === "contrast")
+        photoContrast = _lookVal(value, -1, 1)
+    else if (key === "grey")
+        photoGrey = _lookVal(value, 0, 1)
+    else if (key === "fade")
+        photoFade = _lookVal(value, 0, 0.9)
+    notePhotoChange()
+}
+
+function resetPhotoLook() {
+    photoBright = 0
+    photoContrast = 0
+    photoGrey = 0
+    photoFade = 0
+    notePhotoChange()
 }
 
 function resetPhotoPose() {
@@ -68,6 +105,14 @@ function photoBag() {
         bag.hidden = true
     if (photoLocked)
         bag.locked = true
+    if (photoBright)
+        bag.bright = photoBright
+    if (photoContrast)
+        bag.contrast = photoContrast
+    if (photoGrey)
+        bag.grey = photoGrey
+    if (photoFade)
+        bag.fade = photoFade
     return bag
 }
 

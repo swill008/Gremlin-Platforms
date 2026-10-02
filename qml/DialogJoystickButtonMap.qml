@@ -1095,6 +1095,13 @@ ApplicationWindow {
             pose.hidden = true
         if (p.locked === true)
             pose.locked = true
+        // The look, kept only when changed.
+        var look = { bright: [-1, 1], contrast: [-1, 1], grey: [0, 1], fade: [0, 0.9] }
+        for (var key in look) {
+            var v = Number(p[key])
+            if (v === v && v !== 0)
+                pose[key] = Math.max(look[key][0], Math.min(look[key][1], v))
+        }
         return pose
     }
 
@@ -1124,7 +1131,8 @@ ApplicationWindow {
         var e = _ed()
         if (faceLive && e && e.applyPhotoPose)
             e.applyPhotoPose({ scale: photoScale, offX: photoOffX, offY: photoOffY, rot: photoRot,
-                               hidden: photoHidden, locked: photoLocked })
+                               hidden: photoHidden, locked: photoLocked,
+                               look: { bright: p.bright, contrast: p.contrast, grey: p.grey, fade: p.fade } })
     }
 
     function applyPhotoToEditor() {
@@ -1174,11 +1182,27 @@ ApplicationWindow {
         notePhotoChange()
     }
 
-    // The pose returns to the frame; hidden and locked stay as they are.
+    // The photo's look: an adjusted copy, made once the sliders rest.
+    Timer {
+        id: _lookTimer
+        interval: 150
+        onTriggered: {
+            var e = _buttonMap._ed()
+            if (!e)
+                return
+            e.photoLookUrl = _hw.adjustedPhotoUrl(String(e.photoBaseUrl), e.photoBright,
+                                                  e.photoContrast, e.photoGrey)
+        }
+    }
+
+    // The pose returns to the frame; hidden, locked and the look stay as they
+    // are (Reset look puts the look back).
     function resetPhoto() {
         var e = _ed()
         applyPhoto({ scale: 1, offX: 0, offY: 0, rot: 0,
-                     hidden: e ? e.photoHidden : photoHidden, locked: e ? e.photoLocked : photoLocked })
+                     hidden: e ? e.photoHidden : photoHidden, locked: e ? e.photoLocked : photoLocked,
+                     bright: e ? e.photoBright : 0, contrast: e ? e.photoContrast : 0,
+                     grey: e ? e.photoGrey : 0, fade: e ? e.photoFade : 0 })
         movePhoto = false
         applyPhotoToEditor()
         notePhotoChange()
@@ -2142,7 +2166,7 @@ ApplicationWindow {
         x: Math.round((_buttonMap.width - width) / 2)
         y: Style.dp(52)
         width: Style.dp(360)
-        implicitHeight: Style.dp(430)
+        implicitHeight: Style.dp(690)
         padding: Style.dp(12)
         background: Rectangle {
             color: Style.bgCard
@@ -2188,6 +2212,45 @@ ApplicationWindow {
                 stepSize: 1
                 value: photoRot
                 onMoved: _buttonMap.setPhotoRot(value)
+            }
+            Label { text: "Look"; color: Style.fg; font.pixelSize: Style.dp(13); Layout.topMargin: Style.dp(6) }
+            Repeater {
+                model: [
+                    { key: "bright", label: "Brightness", from: -1, to: 1 },
+                    { key: "contrast", label: "Contrast", from: -1, to: 1 },
+                    { key: "grey", label: "Greyscale", from: 0, to: 1 },
+                    { key: "fade", label: "Fade", from: 0, to: 0.9 }
+                ]
+                ColumnLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: 0
+                    readonly property real current: {
+                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                        if (!e)
+                            return 0
+                        var k = modelData.key
+                        return k === "bright" ? e.photoBright : (k === "contrast" ? e.photoContrast
+                               : (k === "grey" ? e.photoGrey : e.photoFade))
+                    }
+                    Label {
+                        text: modelData.label + "  " + Math.round(parent.current * 100) + "%"
+                        color: Style.fgMuted
+                        font.pixelSize: Style.dp(11)
+                    }
+                    Slider {
+                        Layout.fillWidth: true
+                        from: modelData.from
+                        to: modelData.to
+                        stepSize: 0.01
+                        value: parent.current
+                        onMoved: { var e = _buttonMap._ed(); if (e) e.setPhotoLook(modelData.key, value) }
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button { text: "Reset look"; onClicked: { var e = _buttonMap._ed(); if (e) e.resetPhotoLook() } }
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -2737,6 +2800,10 @@ ApplicationWindow {
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
                             function onFindNotPlaced(label) { _buttonMap.poolFilter = label }
+                            function onPhotoBrightChanged() { _lookTimer.restart() }
+                            function onPhotoContrastChanged() { _lookTimer.restart() }
+                            function onPhotoGreyChanged() { _lookTimer.restart() }
+                            function onPhotoBaseUrlChanged() { _lookTimer.restart() }
                             function onSaveStyleRequested(kind, fieldsJson) { _buttonMap.askStyleName(kind, fieldsJson) }
                             function onOverlayImportRequested() { _overlayDialog.open() }
                             function onPastePictureRequested() { _buttonMap.pastePicture() }
