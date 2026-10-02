@@ -26,3 +26,5 @@ dill_debug.log
 /.venv
 /gh_page/_site
 /export
+# Local testing data (modules, images, logs, settings): never committed.
+/User_Data/

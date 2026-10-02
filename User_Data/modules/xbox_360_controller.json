@@ -1,6 +1,0 @@
-{
-  "kind": "control.hardware",
-  "device": "Xbox 360 Controller",
-  "direction": "dest",
-  "image": "qml/maps/xbox_360_controller/photo.jpg"
-}
