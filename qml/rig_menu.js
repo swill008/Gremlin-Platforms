@@ -586,6 +586,23 @@ function _turnSection() {
     ])
 }
 
+// Saved looks for this kind of item, and saving this one's.
+function _savedStyles() {
+    var n = nodeAt(_ctx.nodeId || selectedId)
+    var kind = styleKindOf(n)
+    if (!kind)
+        return null
+    var id = n.id
+    var items = [_act("Save this style…", function() { saveStyleOf(id) })]
+    var list = stylesFor(kind)
+    for (var i = 0; i < list.length && i < 12; i++) {
+        (function(style) {
+            items.push(_act("Apply " + style.name, function() { applySavedStyle(style) }))
+        })(list[i])
+    }
+    return _sect("saved-styles", "Saved styles", items)
+}
+
 // --- the menu ----------------------------------------------------------------
 
 function _compact(list) {
@@ -598,7 +615,7 @@ function menuModel() {
     var sections = []
     if (kind === "chip") {
         quick = [_act("Rename", _renameChip), _act("Add callout", function() { addCalloutFor(_ctx.nodeId) }), _act("Delete chip", deleteChip)]
-        sections = [_chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _group(), _format(), _around(), _arrange()]
+        sections = [_chipStyle(), _chipColours(), _savedStyles(), _hotspot(), _leader(), _leaderEnds(), _group(), _format(), _around(), _arrange()]
     } else if (kind === "group") {
         quick = groupEditId !== ""
             ? [_act("Done editing group", endGroupEdit), _act("Break group", ungroupSelection)]
@@ -613,6 +630,8 @@ function menuModel() {
         quick = [_act("Duplicate", duplicateSelection), _act("Delete", deleteChip)]
         sections = kind === "shape" ? _shapeSections()
             : (kind === "line" ? _lineSections() : (kind === "path" ? _pathSections() : _imageSections()))
+        if (kind !== "image")
+            sections.splice(sections.length - 2, 0, _savedStyles())
     } else if (kind === "text") {
         quick = [
             _act("Edit text…", function() { var t = nodeAt(selectedId); if (isText(t)) beginTextRename(t.id) }),
@@ -620,13 +639,14 @@ function menuModel() {
             _act("Delete text box", deleteChip)
         ]
         sections = _textSections()
+        sections.splice(sections.length - 2, 0, _savedStyles())
     } else if (kind === "table") {
         quick = [_act("Add row below", function() { addTableRow(true) }), _act("Add column right", function() { addTableCol(true) })]
         sections = _tableSections()
     } else if (kind === "multi") {
         quick = [_act("Group selected", groupSelection, canGroup()), _act("Duplicate", duplicateSelection), _act("Delete", deleteChip)]
         var first = nodeAt(_ctx.nodeId)
-        sections = [_alignSection(), _turnSection()].concat(isDraw(first) ? (isLine(first) ? _lineSections() : _shapeSections())
+        sections = [_alignSection(), _turnSection(), _savedStyles()].concat(isDraw(first) ? (isLine(first) ? _lineSections() : _shapeSections())
                                  : [_chipStyle(), _chipColours(), _hotspot(), _leader(), _around()])
     } else {
         if (clip && clip.length)

@@ -12,6 +12,7 @@ prefix ("01-undo-steps" -> "undo-steps").
 
 from __future__ import annotations
 
+import json
 import re
 
 from PySide6 import QtCore
@@ -20,6 +21,7 @@ import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.signal import signal
 from gremlin.types import PropertyType
+from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -30,7 +32,7 @@ SECTION = "button-map"
 OptionValue = bool | int | float | str | list
 
 # Groups in the order Options shows them.
-GROUPS = ("labels", "editing", "autosave", "view", "export", "colours")
+GROUPS = ("labels", "editing", "autosave", "view", "export", "colours", "library")
 
 # (group, name, type, default, description, properties). A name's number only
 # orders the entries inside their group.
@@ -130,6 +132,89 @@ def register() -> None:
     # are brought up to date.
     for group, name, kind, default, description, properties in OPTIONS:
         cfg.register(SECTION, group, name, kind, default, description, properties, True)
+    cfg.register(
+        SECTION, "internal", "styles", PropertyType.List, [],
+        "Saved Button Map styles: [{name, kind, fields}].", {},
+    )
+
+
+# --- saved styles ----------------------------------------------------------------
+
+# What a style can be saved from and applied to.
+STYLE_KINDS = ("chip", "shape", "line", "text")
+
+
+def styles() -> list[dict]:
+    """Saved styles, by kind then name."""
+    register()
+    raw = Configuration().value(SECTION, "internal", "styles") or []
+    out = [
+        s for s in raw
+        if isinstance(s, dict) and s.get("kind") in STYLE_KINDS
+        and str(s.get("name") or "").strip() and isinstance(s.get("fields"), dict)
+    ]
+    return sorted(out, key=lambda s: (s["kind"], str(s["name"]).lower()))
+
+
+def _store_styles(rows: list[dict]) -> None:
+    register()
+    Configuration().set(SECTION, "internal", "styles", rows)
+
+
+def save_style(name: str, kind: str, fields: dict) -> bool:
+    """Keeps a look under a name; one of the same name and kind is replaced."""
+    clean = str(name or "").strip()
+    if not clean or kind not in STYLE_KINDS:
+        return False
+    if not isinstance(fields, dict) or not fields:
+        return False
+    rows = [s for s in styles() if not (s["kind"] == kind and s["name"] == clean)]
+    rows.append({"name": clean, "kind": kind, "fields": fields})
+    _store_styles(rows)
+    return True
+
+
+def delete_style(name: str, kind: str) -> bool:
+    rows = styles()
+    kept = [s for s in rows if not (s["kind"] == kind and s["name"] == name)]
+    if len(kept) == len(rows):
+        return False
+    _store_styles(kept)
+    return True
+
+
+def rename_style(name: str, kind: str, new_name: str) -> bool:
+    clean = str(new_name or "").strip()
+    rows = styles()
+    if not clean or any(s["kind"] == kind and s["name"] == clean for s in rows):
+        return False
+    for s in rows:
+        if s["kind"] == kind and s["name"] == name:
+            s["name"] = clean
+            _store_styles(rows)
+            return True
+    return False
+
+
+class ButtonMapLibraryOption(QtCore.QObject, BaseMetaConfigOptionWidget):
+    """Options → Button Map → Library: saved styles and templates."""
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        QtCore.QObject.__init__(self, parent)
+        BaseMetaConfigOptionWidget.__init__(self)
+
+    def _qml_path(self) -> str:
+        return "file:///" + QtCore.QFile("qml:OptionButtonMapLibrary.qml").fileName()
+
+
+MetaConfigOption().register(
+    SECTION,
+    "library",
+    "saved-styles-and-templates",
+    "Styles saved from the Button Map's right-click menus, and layout "
+    "templates (File > Templates). Rename or delete them here.",
+    ButtonMapLibraryOption,
+)
 
 
 def _entry(key: str) -> tuple[str, str] | None:
@@ -189,6 +274,36 @@ class ButtonMapOptions(QtCore.QObject):
             for group, name, *_rest in OPTIONS
             if cfg.exists(SECTION, group, name)
         }
+
+    @QtCore.Property(list, notify=changed)
+    def styles(self) -> list:
+        """Saved styles: [{name, kind, fields}]."""
+        return styles()
+
+    @QtCore.Slot(str, str, str, result=bool)
+    def saveStyle(self, name: str, kind: str, fields_json: str) -> bool:
+        try:
+            fields = json.loads(fields_json)
+        except ValueError:
+            return False
+        ok = save_style(name, kind, fields)
+        if ok:
+            signal.configChanged.emit()
+        return ok
+
+    @QtCore.Slot(str, str, result=bool)
+    def deleteStyle(self, name: str, kind: str) -> bool:
+        ok = delete_style(name, kind)
+        if ok:
+            signal.configChanged.emit()
+        return ok
+
+    @QtCore.Slot(str, str, str, result=bool)
+    def renameStyle(self, name: str, kind: str, new_name: str) -> bool:
+        ok = rename_style(name, kind, new_name)
+        if ok:
+            signal.configChanged.emit()
+        return ok
 
     @QtCore.Slot(str, "QVariant")
     def set(self, key: str, new_value: object) -> None:

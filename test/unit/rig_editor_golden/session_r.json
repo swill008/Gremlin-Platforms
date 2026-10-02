@@ -5722,6 +5722,7 @@
      "Delete chip",
      "> Chip style",
      "> Colours",
+     "> Saved styles",
      "> Hotspot",
      "> Leader",
      "> Leader ends",
@@ -5761,6 +5762,7 @@
      "> Box",
      "> Copy and paint format",
      "> Pointer",
+     "> Saved styles",
      "> Rotate",
      "> Arrange"
     ],

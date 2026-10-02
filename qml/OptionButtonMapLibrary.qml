@@ -1,0 +1,139 @@
+// -*- coding: utf-8; -*-
+// SPDX-License-Identifier: GPL-3.0-only
+
+// Options → Button Map → Library: the saved styles and layout templates, to
+// rename or delete. They are made in the Button Map itself.
+
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+import Gremlin.Device
+import Gremlin.Style
+
+Item {
+    id: _library
+
+    implicitHeight: _content.implicitHeight
+    implicitWidth: Style.dp(420)
+
+    ButtonMapOptions { id: _opts }
+    HardwareProfile { id: _hw }
+
+    property var templateList: _hw.templates()
+    property string renaming: ""
+
+    readonly property var _kindNames: ({ chip: "Chip", shape: "Shape", line: "Line", text: "Text" })
+
+    function refreshTemplates() {
+        templateList = _hw.templates()
+    }
+
+    ColumnLayout {
+        id: _content
+        width: parent.width
+        spacing: Style.dp(4)
+
+        Label {
+            text: "Styles"
+            font.bold: true
+            color: Style.fg
+        }
+        Label {
+            visible: _opts.styles.length === 0
+            text: "None yet. Right-click a chip, shape, line or text box in the Button Map → Saved styles → Save this style."
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            color: Style.fgMuted
+        }
+        Repeater {
+            model: _opts.styles
+            RowLayout {
+                required property var modelData
+                readonly property string key: "style:" + modelData.kind + ":" + modelData.name
+                Layout.fillWidth: true
+                spacing: Style.dp(6)
+                Label {
+                    text: _library._kindNames[modelData.kind] || modelData.kind
+                    color: Style.fgMuted
+                    Layout.preferredWidth: Style.dp(48)
+                }
+                TextField {
+                    visible: _library.renaming === parent.key
+                    Layout.fillWidth: true
+                    text: modelData.name
+                    onAccepted: {
+                        _library.renaming = ""
+                        _opts.renameStyle(modelData.name, modelData.kind, text)
+                    }
+                }
+                Label {
+                    visible: _library.renaming !== parent.key
+                    Layout.fillWidth: true
+                    text: modelData.name
+                    color: Style.fg
+                    elide: Text.ElideRight
+                }
+                Button {
+                    text: "Rename"
+                    onClicked: _library.renaming = parent.key
+                }
+                Button {
+                    text: "Delete"
+                    onClicked: _opts.deleteStyle(modelData.name, modelData.kind)
+                }
+            }
+        }
+
+        Label {
+            text: "Templates"
+            font.bold: true
+            color: Style.fg
+            Layout.topMargin: Style.dp(8)
+        }
+        Label {
+            visible: _library.templateList.length === 0
+            text: "None yet. In the Button Map: File → Templates → Save layout as template. Export and import are there too."
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            color: Style.fgMuted
+        }
+        Repeater {
+            model: _library.templateList
+            RowLayout {
+                required property var modelData
+                readonly property string key: "template:" + modelData.name
+                Layout.fillWidth: true
+                spacing: Style.dp(6)
+                TextField {
+                    visible: _library.renaming === parent.key
+                    Layout.fillWidth: true
+                    text: modelData.name
+                    onAccepted: {
+                        _library.renaming = ""
+                        _hw.renameTemplate(modelData.name, text)
+                        _library.refreshTemplates()
+                    }
+                }
+                Label {
+                    visible: _library.renaming !== parent.key
+                    Layout.fillWidth: true
+                    text: modelData.name + "  ·  " + modelData.count + (modelData.count === 1 ? " item" : " items")
+                    color: Style.fg
+                    elide: Text.ElideRight
+                }
+                Button {
+                    text: "Rename"
+                    onClicked: _library.renaming = parent.key
+                }
+                Button {
+                    text: "Delete"
+                    onClicked: {
+                        _hw.deleteTemplate(modelData.name)
+                        _library.refreshTemplates()
+                    }
+                }
+            }
+        }
+    }
+}

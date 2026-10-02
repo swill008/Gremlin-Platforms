@@ -106,6 +106,8 @@ Window {
         _face.liveStamp++
     }
     property string notPlaced: ""
+    property var lastStyleAsk: []
+    function styleAsked() { return JSON.stringify(lastStyleAsk) }
     // Text of a few chips and of a group's members, as shown.
     function chipTexts() {
         var e = ed()
@@ -151,6 +153,9 @@ Window {
         target: _face.editorItem
         function onPastePictureRequested() { _win.pasteRequests++ }
         function onFindNotPlaced(label) { _win.notPlaced = label }
+        function onSaveStyleRequested(kind, fields) {
+            _win.lastStyleAsk = [kind, fields]
+        }
     }
     function propLines() {
         return JSON.stringify(_props.visible ? _props.describe() : [])
@@ -1473,6 +1478,36 @@ def scenario_paths(s: Session) -> None:
     s.record("closed-smooth", image=True)
 
 
+def scenario_styles(s: Session) -> None:
+    """Saved styles: offered for the item's kind in its menu, applied to the
+    selection as one undo step, and Save this style asks the window."""
+    _load(s, "evo_r")
+    s.call("setDrawTool", "rect")
+    s.drag(s.point(0.05, 0.08), s.point(0.18, 0.18))
+    s.call("setDrawTool", "rect")
+    s.drag(s.point(0.05, 0.26), s.point(0.18, 0.36))
+    s.call("setDrawTool", "")
+    shapes = [n["id"] for n in s.state()["nodes"] if n.get("shape") == "rect"]
+    s.set_prop("savedStyles", [
+        {"name": "Warning", "kind": "shape",
+         "fields": {"fill": "filled", "color": "#7C2D12", "border": "#FBBF24",
+                    "stroke": 4, "dash": "dash"}},
+        {"name": "Weapons", "kind": "chip", "fields": {"color": "#7F1D1D"}},
+    ])
+    s.call("setSelection", shapes)
+    box = s._box(shapes[0])
+    s.right_click(s.ed_point(box["x"] + 4, box["y"] + 4))
+    s.open_menu_section("Saved styles")
+    s.record("menu")
+    s.click_menu_row("Apply Warning")
+    s.record("applied", image=True)
+    s.key(QtCore.Qt.Key.Key_Z, QtCore.Qt.KeyboardModifier.ControlModifier)
+    s.record("undone")
+    s.call("saveStyleOf", "b3")
+    s.record("save-asked")
+    s.steps[-1]["state"]["saveAsked"] = json.loads(s.js("styleAsked"))
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1525,6 +1560,7 @@ SCENARIOS = {
     "turn": scenario_turn,
     "callout": scenario_callout,
     "paths": scenario_paths,
+    "styles": scenario_styles,
 }
 
 

@@ -29,6 +29,7 @@ import "rig_mirror.js" as RigMirror
 import "rig_grouprot.js" as RigGroupRot
 import "rig_callout.js" as RigCallout
 import "rig_path.js" as RigPath
+import "rig_styles.js" as RigStyles
 
 Item {
     id: _ed
@@ -58,6 +59,8 @@ Item {
     // pointer for the Path tool's next segment.
     property var pathDraft: []
     property var pathHover: null
+    // Saved styles (Options → Button Map → Library), from the window.
+    property var savedStyles: []
     property var selectedIds: []
     property bool banding: false
     property bool bandAdd: false
@@ -162,6 +165,8 @@ Item {
     signal photoRestored()
     // Press to find: a pressed control that has no chip on the map.
     signal findNotPlaced(string label)
+    // Save this style: the window asks for a name.
+    signal saveStyleRequested(string kind, string fieldsJson)
 
     property var hist
     property int histAt: -1
@@ -544,6 +549,13 @@ Item {
     function dragPathPoint(i, mx, my) { return RigPath.dragPathPoint(i, mx, my) }
     function togglePathClosed() { return RigPath.togglePathClosed() }
     function togglePathSmooth() { return RigPath.togglePathSmooth() }
+
+    // Saved styles (rig_styles.js)
+    function styleKindOf(n) { return RigStyles.styleKindOf(n) }
+    function styleFieldsOf(n) { return RigStyles.styleFieldsOf(n) }
+    function saveStyleOf(id) { return RigStyles.saveStyleOf(id) }
+    function applySavedStyle(style) { return RigStyles.applySavedStyle(style) }
+    function stylesFor(kind) { return RigStyles.stylesFor(kind) }
     function distributeSelection(axis) { return RigAlign.distributeSelection(axis) }
 
     // The Properties panel's fields (rig_props.js)

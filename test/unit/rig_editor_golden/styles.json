@@ -7,11 +7,11 @@
       "around": [],
       "border": "#22C55E",
       "color": "#14532D",
-      "fh": 0.05556,
+      "fh": 0.10333,
       "fill": "hollow",
-      "fw": 0.06875,
-      "fx": 0.03125,
-      "fy": 0.1,
+      "fw": 0.13125,
+      "fx": 0.05,
+      "fy": 0.07778,
       "id": "ID0",
       "kind": "draw",
       "opacity": 1,
@@ -21,832 +21,12 @@
       "stroke": 2
      },
      "1": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.1,
-      "fill": "hollow",
-      "fw": 0.1,
-      "fx": 0.11875,
-      "fy": 0.3,
-      "id": "ID1",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     },
-     "10": {
-      "border": "#3F3F46",
-      "chipFx": 0.61901,
-      "chipFy": 0.2484,
-      "color": "#18181B",
-      "fontSize": 8,
-      "friendly": "Button 4",
-      "from": {
-       "fx": 0.56178,
-       "fy": 0.25109,
-       "type": "free"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotColor": "#fda500",
-      "hotFx": 0.627,
-      "hotFy": 0.26,
-      "hotSize": 4,
-      "hwId": 4,
-      "id": "ID17",
-      "kind": "btn",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "fx": 0.56178,
-         "fy": 0.25109,
-         "type": "free"
-        },
-        "id": "ID18",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.5965,
-          "fy": 0.25711
-         }
-        ],
-        "to": {
-         "id": "ID17",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.61462,
-      "ny": 0.24889,
-      "pin": "left",
-      "prefix": "",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.5965,
-        "fy": 0.25711
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID17",
-       "type": "hot"
-      }
-     },
-     "11": {
-      "border": "#3F3F46",
-      "chipFx": 0.61699,
-      "chipFy": 0.29311,
-      "color": "#18181B",
-      "fontSize": 8,
-      "friendly": "ID19",
-      "from": {
-       "id": "ID19",
-       "pin": "left",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.58913,
-      "hotFy": 0.28578,
-      "hotSize": 4,
-      "id": "ID19",
-      "kind": "stack",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID19",
-         "pin": "left",
-         "type": "chip"
-        },
-        "id": "ID20",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.60037,
-          "fy": 0.30978
-         }
-        ],
-        "to": {
-         "id": "ID19",
-         "type": "hot"
-        }
-       }
-      ],
-      "members": [
-       {
-        "friendly": "Button 21",
-        "hwId": 21,
-        "ox": 0,
-        "oy": 0,
-        "role": "push"
-       },
-       {
-        "friendly": "Button 22",
-        "hwId": 22,
-        "ox": 0,
-        "oy": 0.02151,
-        "role": "pull"
-       }
-      ],
-      "nx": 0.66328,
-      "ny": 0.28578,
-      "pin": "left",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.60037,
-        "fy": 0.30978
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID19",
-       "type": "hot"
-      }
-     },
-     "12": {
-      "border": "#3F3F46",
-      "chipFx": 0.61824,
-      "chipFy": 0.36104,
-      "color": "#18181B",
-      "fontSize": 8,
-      "friendly": "ID21",
-      "from": {
-       "id": "ID21",
-       "pin": "left",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.56912,
-      "hotFy": 0.30533,
-      "hotSize": 4,
-      "id": "ID21",
-      "kind": "stack",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID21",
-         "pin": "left",
-         "type": "chip"
-        },
-        "id": "ID22",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.59975,
-          "fy": 0.36778
-         }
-        ],
-        "to": {
-         "id": "ID21",
-         "type": "hot"
-        }
-       }
-      ],
-      "members": [
-       {
-        "friendly": "Button 1",
-        "hwId": 1,
-        "ox": 0,
-        "oy": 0,
-        "role": "half"
-       },
-       {
-        "friendly": "Button 2",
-        "hwId": 2,
-        "ox": 0,
-        "oy": 0.02151,
-        "role": "full"
-       }
-      ],
-      "nx": 0.62644,
-      "ny": 0.30978,
-      "pin": "left",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.59975,
-        "fy": 0.36778
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID21",
-       "type": "hot"
-      }
-     },
-     "13": {
-      "border": "#3F3F46",
-      "chipFx": 0.58868,
-      "chipFy": 0.42453,
-      "color": "#18181B",
-      "fontSize": 8,
-      "friendly": "Button 5",
-      "from": {
-       "fx": 0.55726,
-       "fy": 0.42289,
-       "type": "free"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.58813,
-      "hotFy": 0.43622,
-      "hotSize": 4,
-      "hwId": 5,
-      "id": "ID23",
-      "kind": "btn",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "fx": 0.55726,
-         "fy": 0.42289,
-         "type": "free"
-        },
-        "id": "ID24",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.57269,
-          "fy": 0.42956
-         }
-        ],
-        "to": {
-         "id": "ID23",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.60961,
-      "ny": 0.42222,
-      "pin": "left",
-      "prefix": "",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.57269,
-        "fy": 0.42956
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID23",
-       "type": "hot"
-      }
-     },
-     "14": {
-      "border": "#3F3F46",
-      "chipFx": 0.49635,
-      "chipFy": 0.6165,
-      "color": "#18181B",
-      "fontSize": 10,
-      "friendly": "Button 28",
-      "from": {
-       "id": "ID25",
-       "pin": "bottom",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.53912,
-      "hotFy": 0.714,
-      "hotSize": 4,
-      "hwId": 28,
-      "id": "ID25",
-      "kind": "btn",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID25",
-         "pin": "bottom",
-         "type": "chip"
-        },
-        "id": "ID26",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.52617,
-          "fy": 0.67525
-         }
-        ],
-        "to": {
-         "id": "ID25",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.57232,
-      "ny": 0.71556,
-      "pin": "bottom",
-      "prefix": "",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.52617,
-        "fy": 0.67525
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID25",
-       "type": "hot"
-      }
-     },
-     "15": {
-      "border": "#3F3F46",
-      "chipFx": 0.53168,
-      "chipFy": 0.6165,
-      "color": "#18181B",
-      "fontSize": 8,
-      "friendly": "Button 27",
-      "from": {
-       "id": "ID27",
-       "pin": "bottom",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.56363,
-      "hotFy": 0.70044,
-      "hotSize": 4,
-      "hwId": 27,
-      "id": "ID27",
-      "kind": "btn",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID27",
-         "pin": "bottom",
-         "type": "chip"
-        },
-        "id": "ID28",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.55471,
-          "fy": 0.66847
-         }
-        ],
-        "to": {
-         "id": "ID27",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.6178,
-      "ny": 0.70044,
-      "pin": "bottom",
-      "prefix": "",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.55471,
-        "fy": 0.66847
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID27",
-       "type": "hot"
-      }
-     },
-     "16": {
-      "border": "#3F3F46",
-      "chipFx": 0.56581,
-      "chipFy": 0.6165,
-      "color": "#18181B",
-      "fontSize": 8,
-      "friendly": "Button 29",
-      "from": {
-       "id": "ID29",
-       "pin": "bottom",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.58913,
-      "hotFy": 0.69444,
-      "hotSize": 4,
-      "hwId": 29,
-      "id": "ID29",
-      "kind": "btn",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID29",
-         "pin": "bottom",
-         "type": "chip"
-        },
-        "id": "ID30",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.58453,
-          "fy": 0.66547
-         }
-        ],
-        "to": {
-         "id": "ID29",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.66237,
-      "ny": 0.69511,
-      "pin": "bottom",
-      "prefix": "",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.58453,
-        "fy": 0.66547
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID29",
-       "type": "hot"
-      }
-     },
-     "17": {
-      "border": "#3F3F46",
-      "chipFx": 0.56274,
-      "chipFy": 0.84844,
-      "color": "#18181B",
-      "fontSize": 10,
-      "friendly": "ID31",
-      "from": {
-       "id": "ID31",
-       "pin": "top",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.57563,
-      "hotFy": 0.80489,
-      "hotSize": 4,
-      "id": "ID31",
-      "kind": "stack",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID31",
-         "pin": "top",
-         "type": "chip"
-        },
-        "id": "ID32",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.57778,
-          "fy": 0.82667
-         }
-        ],
-        "to": {
-         "id": "ID31",
-         "type": "hot"
-        }
-       }
-      ],
-      "members": [
-       {
-        "friendly": "Button 25",
-        "hwId": 25,
-        "ox": 0,
-        "oy": 0,
-        "role": "up"
-       },
-       {
-        "friendly": "Button 26",
-        "hwId": 26,
-        "ox": 0,
-        "oy": 0.02151,
-        "role": "down"
-       }
-      ],
-      "nx": 0.6369,
-      "ny": 0.79511,
-      "pin": "top",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.57778,
-        "fy": 0.82667
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID31",
-       "type": "hot"
-      }
-     },
-     "18": {
-      "border": "#3F3F46",
-      "chipFx": 0.32727,
-      "chipFy": 0.17733,
-      "color": "#18181B",
-      "fontSize": 10,
-      "friendly": "Axis 4",
-      "from": {
-       "id": "ID33",
-       "pin": "top",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.35613,
-      "hotFy": 0.18289,
-      "hotSize": 4,
-      "hwId": 4,
-      "id": "ID33",
-      "kind": "axis",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID33",
-         "pin": "top",
-         "type": "chip"
-        },
-        "id": "ID34",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.34732,
-          "fy": 0.18011
-         }
-        ],
-        "to": {
-         "id": "ID33",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.68239,
-      "ny": 0.78756,
-      "pin": "top",
-      "prefix": "A",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.34732,
-        "fy": 0.18011
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID33",
-       "type": "hot"
-      }
-     },
-     "19": {
-      "border": "#3F3F46",
-      "chipFx": 0.6335,
-      "chipFy": 0.84844,
-      "color": "#18181B",
-      "fontSize": 10,
-      "friendly": "ID35",
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.62787,
-      "hotFy": 0.778,
-      "hotSize": 4,
-      "id": "ID35",
-      "kind": "stack",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID35",
-         "pin": "top",
-         "type": "chip"
-        },
-        "id": "ID36",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.63928,
-          "fy": 0.81322
-         }
-        ],
-        "to": {
-         "id": "ID35",
-         "type": "hot"
-        }
-       }
-      ],
-      "members": [
-       {
-        "friendly": "Button 23",
-        "hwId": 23,
-        "ox": 0,
-        "oy": 0,
-        "role": "up"
-       },
-       {
-        "friendly": "Button 24",
-        "hwId": 24,
-        "ox": 0,
-        "oy": 0.02151,
-        "role": "down"
-       }
-      ],
-      "nx": 0.73378,
-      "ny": 0.77778,
-      "pin": "top",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.63928,
-        "fy": 0.81322
-       }
-      ],
-      "textColor": "#E4E4E7"
-     },
-     "2": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.06667,
-      "fill": "hollow",
-      "fw": 0.0625,
-      "fx": 0.05,
-      "fy": 0.55556,
-      "id": "ID2",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     },
-     "20": {
-      "border": "#3F3F46",
-      "chipFill": "filled",
-      "chipFx": 0.465,
-      "chipFy": 0.6565,
-      "chipShape": "round",
-      "chipSize": 18,
-      "color": "#18181B",
-      "curve": true,
-      "fontSize": 10,
-      "friendly": "Axis 6",
-      "from": {
-       "id": "ID37",
-       "pin": "top",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFill": "filled",
-      "hotFx": 0.47938,
-      "hotFy": 0.65644,
-      "hotShape": "round",
-      "hotSize": 9,
-      "hwId": 6,
-      "id": "ID37",
-      "kind": "axis",
-      "label": "",
-      "leaders": [
-       {
-        "curve": true,
-        "from": {
-         "id": "ID37",
-         "pin": "top",
-         "type": "chip"
-        },
-        "id": "ID38",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.47766,
-          "fy": 0.65647
-         }
-        ],
-        "to": {
-         "id": "ID37",
-         "type": "hot"
-        }
-       }
-      ],
-      "pin": "top",
-      "prefix": "A",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.47766,
-        "fy": 0.65647
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID37",
-       "type": "hot"
-      }
-     },
-     "21": {
-      "border": "#3F3F46",
-      "chipFill": "filled",
-      "chipFx": 0.3472,
-      "chipFy": 0.18911,
-      "chipShape": "round",
-      "chipSize": 18,
-      "color": "#18181B",
-      "curve": true,
-      "fontSize": 10,
-      "friendly": "Axis 5",
-      "from": {
-       "id": "ID39",
-       "pin": "top",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFill": "filled",
-      "hotFx": 0.35912,
-      "hotFy": 0.18111,
-      "hotShape": "round",
-      "hotSize": 9,
-      "hwId": 5,
-      "id": "ID39",
-      "kind": "axis",
-      "label": "",
-      "leaders": [
-       {
-        "curve": true,
-        "from": {
-         "id": "ID39",
-         "pin": "top",
-         "type": "chip"
-        },
-        "id": "ID40",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.35863,
-          "fy": 0.18511
-         }
-        ],
-        "to": {
-         "id": "ID39",
-         "type": "hot"
-        }
-       }
-      ],
-      "pin": "top",
-      "prefix": "A",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.35863,
-        "fy": 0.18511
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID39",
-       "type": "hot"
-      }
-     },
-     "3": {
       "border": "#3F3F46",
       "chipFx": 0.32727,
       "chipFy": 0.01378,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID3",
+      "friendly": "ID1",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -855,16 +35,16 @@
       "hotFx": 0.44788,
       "hotFy": 0.17467,
       "hotSize": 28,
-      "id": "ID3",
+      "id": "ID1",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID3",
+         "id": "ID1",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID4",
+        "id": "ID2",
         "spines": [
          {
           "curve": true,
@@ -873,7 +53,7 @@
          }
         ],
         "to": {
-         "id": "ID3",
+         "id": "ID1",
          "type": "hot"
         }
        }
@@ -927,13 +107,663 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "4": {
+     "10": {
+      "border": "#3F3F46",
+      "chipFx": 0.61824,
+      "chipFy": 0.36104,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "ID19",
+      "from": {
+       "id": "ID19",
+       "pin": "left",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.56912,
+      "hotFy": 0.30533,
+      "hotSize": 4,
+      "id": "ID19",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID19",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID20",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.59975,
+          "fy": 0.36778
+         }
+        ],
+        "to": {
+         "id": "ID19",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 1",
+        "hwId": 1,
+        "ox": 0,
+        "oy": 0,
+        "role": "half"
+       },
+       {
+        "friendly": "Button 2",
+        "hwId": 2,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "full"
+       }
+      ],
+      "nx": 0.62644,
+      "ny": 0.30978,
+      "pin": "left",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.59975,
+        "fy": 0.36778
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID19",
+       "type": "hot"
+      }
+     },
+     "11": {
+      "border": "#3F3F46",
+      "chipFx": 0.58868,
+      "chipFy": 0.42453,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 5",
+      "from": {
+       "fx": 0.55726,
+       "fy": 0.42289,
+       "type": "free"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58813,
+      "hotFy": 0.43622,
+      "hotSize": 4,
+      "hwId": 5,
+      "id": "ID21",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "fx": 0.55726,
+         "fy": 0.42289,
+         "type": "free"
+        },
+        "id": "ID22",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.57269,
+          "fy": 0.42956
+         }
+        ],
+        "to": {
+         "id": "ID21",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.60961,
+      "ny": 0.42222,
+      "pin": "left",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.57269,
+        "fy": 0.42956
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID21",
+       "type": "hot"
+      }
+     },
+     "12": {
+      "border": "#3F3F46",
+      "chipFx": 0.49635,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 28",
+      "from": {
+       "id": "ID23",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.53912,
+      "hotFy": 0.714,
+      "hotSize": 4,
+      "hwId": 28,
+      "id": "ID23",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID23",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID24",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.52617,
+          "fy": 0.67525
+         }
+        ],
+        "to": {
+         "id": "ID23",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.57232,
+      "ny": 0.71556,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.52617,
+        "fy": 0.67525
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID23",
+       "type": "hot"
+      }
+     },
+     "13": {
+      "border": "#3F3F46",
+      "chipFx": 0.53168,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 27",
+      "from": {
+       "id": "ID25",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.56363,
+      "hotFy": 0.70044,
+      "hotSize": 4,
+      "hwId": 27,
+      "id": "ID25",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID25",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID26",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.55471,
+          "fy": 0.66847
+         }
+        ],
+        "to": {
+         "id": "ID25",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.6178,
+      "ny": 0.70044,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.55471,
+        "fy": 0.66847
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID25",
+       "type": "hot"
+      }
+     },
+     "14": {
+      "border": "#3F3F46",
+      "chipFx": 0.56581,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 29",
+      "from": {
+       "id": "ID27",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58913,
+      "hotFy": 0.69444,
+      "hotSize": 4,
+      "hwId": 29,
+      "id": "ID27",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID27",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID28",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.58453,
+          "fy": 0.66547
+         }
+        ],
+        "to": {
+         "id": "ID27",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.66237,
+      "ny": 0.69511,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.58453,
+        "fy": 0.66547
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID27",
+       "type": "hot"
+      }
+     },
+     "15": {
+      "border": "#3F3F46",
+      "chipFx": 0.56274,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID29",
+      "from": {
+       "id": "ID29",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.57563,
+      "hotFy": 0.80489,
+      "hotSize": 4,
+      "id": "ID29",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID29",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID30",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.57778,
+          "fy": 0.82667
+         }
+        ],
+        "to": {
+         "id": "ID29",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 25",
+        "hwId": 25,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 26",
+        "hwId": 26,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       }
+      ],
+      "nx": 0.6369,
+      "ny": 0.79511,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.57778,
+        "fy": 0.82667
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID29",
+       "type": "hot"
+      }
+     },
+     "16": {
+      "border": "#3F3F46",
+      "chipFx": 0.32727,
+      "chipFy": 0.17733,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Axis 4",
+      "from": {
+       "id": "ID31",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.35613,
+      "hotFy": 0.18289,
+      "hotSize": 4,
+      "hwId": 4,
+      "id": "ID31",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID31",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID32",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.34732,
+          "fy": 0.18011
+         }
+        ],
+        "to": {
+         "id": "ID31",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.68239,
+      "ny": 0.78756,
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.34732,
+        "fy": 0.18011
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID31",
+       "type": "hot"
+      }
+     },
+     "17": {
+      "border": "#3F3F46",
+      "chipFx": 0.6335,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID33",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.62787,
+      "hotFy": 0.778,
+      "hotSize": 4,
+      "id": "ID33",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID33",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID34",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.63928,
+          "fy": 0.81322
+         }
+        ],
+        "to": {
+         "id": "ID33",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 23",
+        "hwId": 23,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 24",
+        "hwId": 24,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       }
+      ],
+      "nx": 0.73378,
+      "ny": 0.77778,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.63928,
+        "fy": 0.81322
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     "18": {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.465,
+      "chipFy": 0.6565,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 6",
+      "from": {
+       "id": "ID35",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.47938,
+      "hotFy": 0.65644,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 6,
+      "id": "ID35",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID35",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID36",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.47766,
+          "fy": 0.65647
+         }
+        ],
+        "to": {
+         "id": "ID35",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.47766,
+        "fy": 0.65647
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID35",
+       "type": "hot"
+      }
+     },
+     "19": {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.3472,
+      "chipFy": 0.18911,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 5",
+      "from": {
+       "id": "ID37",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.35912,
+      "hotFy": 0.18111,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 5,
+      "id": "ID37",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID37",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID38",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.35863,
+          "fy": 0.18511
+         }
+        ],
+        "to": {
+         "id": "ID37",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.35863,
+        "fy": 0.18511
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID37",
+       "type": "hot"
+      }
+     },
+     "2": {
       "border": "#3F3F46",
       "chipFx": 0.30175,
       "chipFy": 0.34933,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID5",
+      "friendly": "ID3",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -942,16 +772,16 @@
       "hotFx": 0.44275,
       "hotFy": 0.23244,
       "hotSize": 28,
-      "id": "ID5",
+      "id": "ID3",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID5",
+         "id": "ID3",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID6",
+        "id": "ID4",
         "spines": [
          {
           "curve": true,
@@ -960,7 +790,7 @@
          }
         ],
         "to": {
-         "id": "ID5",
+         "id": "ID3",
          "type": "hot"
         }
        }
@@ -1014,7 +844,7 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "5": {
+     "3": {
       "border": "#3F3F46",
       "chipFx": 0.32345,
       "chipFy": 0.2684,
@@ -1029,17 +859,17 @@
       "hotFy": 0.25556,
       "hotSize": 4,
       "hwId": 3,
-      "id": "ID7",
+      "id": "ID5",
       "kind": "btn",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID7",
+         "id": "ID5",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID8",
+        "id": "ID6",
         "spines": [
          {
           "curve": true,
@@ -1048,7 +878,7 @@
          }
         ],
         "to": {
-         "id": "ID7",
+         "id": "ID5",
          "type": "hot"
         }
        }
@@ -1066,13 +896,13 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "6": {
+     "4": {
       "border": "#3F3F46",
       "chipFx": 0.3755,
       "chipFy": 0.42396,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID9",
+      "friendly": "ID7",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -1082,16 +912,16 @@
       "hotFx": 0.44825,
       "hotFy": 0.37978,
       "hotSize": 28,
-      "id": "ID9",
+      "id": "ID7",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID9",
+         "id": "ID7",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID10",
+        "id": "ID8",
         "spines": [
          {
           "curve": true,
@@ -1100,7 +930,7 @@
          }
         ],
         "to": {
-         "id": "ID9",
+         "id": "ID7",
          "type": "hot"
         }
        }
@@ -1154,7 +984,7 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "7": {
+     "5": {
       "border": "#3F3F46",
       "chipFill": "filled",
       "chipFx": 0.40987,
@@ -1175,18 +1005,18 @@
       "hotShape": "round",
       "hotSize": 4,
       "hwId": 1,
-      "id": "ID11",
+      "id": "ID9",
       "kind": "axis",
       "label": "",
       "leaders": [
        {
         "curve": true,
         "from": {
-         "id": "ID11",
+         "id": "ID9",
          "pin": "left",
          "type": "chip"
         },
-        "id": "ID12",
+        "id": "ID10",
         "spines": [
          {
           "curve": true,
@@ -1195,7 +1025,7 @@
          }
         ],
         "to": {
-         "id": "ID11",
+         "id": "ID9",
          "type": "hot"
         }
        }
@@ -1211,7 +1041,7 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "8": {
+     "6": {
       "border": "#3F3F46",
       "chipFill": "filled",
       "chipFx": 0.465,
@@ -1223,7 +1053,7 @@
       "fontSize": 10,
       "friendly": "Axis 2",
       "from": {
-       "id": "ID13",
+       "id": "ID11",
        "pin": "bottom",
        "type": "chip"
       },
@@ -1237,18 +1067,18 @@
       "hotShape": "round",
       "hotSize": 4,
       "hwId": 2,
-      "id": "ID13",
+      "id": "ID11",
       "kind": "axis",
       "label": "",
       "leaders": [
        {
         "curve": true,
         "from": {
-         "id": "ID13",
+         "id": "ID11",
          "pin": "bottom",
          "type": "chip"
         },
-        "id": "ID14",
+        "id": "ID12",
         "spines": [
          {
           "curve": true,
@@ -1257,7 +1087,7 @@
          }
         ],
         "to": {
-         "id": "ID13",
+         "id": "ID11",
          "type": "hot"
         }
        }
@@ -1273,11 +1103,11 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID13",
+       "id": "ID11",
        "type": "hot"
       }
      },
-     "9": {
+     "7": {
       "border": "#3F3F46",
       "chipFill": "filled",
       "chipFx": 0.60213,
@@ -1289,7 +1119,7 @@
       "fontSize": 10,
       "friendly": "Axis 3",
       "from": {
-       "id": "ID15",
+       "id": "ID13",
        "pin": "top",
        "type": "chip"
       },
@@ -1303,18 +1133,18 @@
       "hotShape": "round",
       "hotSize": 4,
       "hwId": 3,
-      "id": "ID15",
+      "id": "ID13",
       "kind": "axis",
       "label": "",
       "leaders": [
        {
         "curve": true,
         "from": {
-         "id": "ID15",
+         "id": "ID13",
          "pin": "top",
          "type": "chip"
         },
-        "id": "ID16",
+        "id": "ID14",
         "spines": [
          {
           "curve": true,
@@ -1323,7 +1153,7 @@
          }
         ],
         "to": {
-         "id": "ID15",
+         "id": "ID13",
          "type": "hot"
         }
        }
@@ -1339,282 +1169,13 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID15",
+       "id": "ID13",
        "type": "hot"
       }
-     }
-    },
-    "cropId": "",
-    "drawTool": "",
-    "histAt": 3,
-    "histLen": 4,
-    "layers": [],
-    "menu": [],
-    "nodeCount": 22,
-    "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "props": [],
-    "selected": [
-     "ID0",
-     "ID1",
-     "ID2"
-    ]
-   },
-   "step": "three-shapes"
-  },
-  {
-   "state": {
-    "changed": {
-     "1": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.1,
-      "fill": "hollow",
-      "fw": 0.1,
-      "fx": 0.03125,
-      "fy": 0.3,
-      "id": "ID1",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
      },
-     "2": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.06667,
-      "fill": "hollow",
-      "fw": 0.0625,
-      "fx": 0.03125,
-      "fy": 0.55556,
-      "id": "ID2",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     }
-    },
-    "cropId": "",
-    "drawTool": "",
-    "histAt": 4,
-    "histLen": 5,
-    "layers": [],
-    "menu": [
-     "3 selected",
-     "Group selected",
-     "Duplicate",
-     "Delete",
-     "v Align and distribute",
-     "  Across: Left | Centre | Right",
-     "  Down: Top | Middle | Bottom",
-     "  Space out: Across | Down",
-     "> Turn together",
-     "> Saved styles",
-     "> Shape",
-     "> Fill and outline",
-     "> Rotate and flip",
-     "> Arrange"
-    ],
-    "nodeCount": 22,
-    "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "props": [],
-    "selected": [
-     "ID0",
-     "ID1",
-     "ID2"
-    ]
-   },
-   "step": "menu-left"
-  },
-  {
-   "state": {
-    "changed": {
-     "0": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.05556,
-      "fill": "hollow",
-      "fw": 0.06875,
-      "fx": 0.04688,
-      "fy": 0.1,
-      "id": "ID0",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     },
-     "2": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.06667,
-      "fill": "hollow",
-      "fw": 0.0625,
-      "fx": 0.05,
-      "fy": 0.55556,
-      "id": "ID2",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     }
-    },
-    "cropId": "",
-    "drawTool": "",
-    "histAt": 5,
-    "histLen": 6,
-    "layers": [],
-    "menu": [],
-    "nodeCount": 22,
-    "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "props": [],
-    "selected": [
-     "ID0",
-     "ID1",
-     "ID2"
-    ]
-   },
-   "step": "centre"
-  },
-  {
-   "state": {
-    "changed": {
-     "1": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.1,
-      "fill": "hollow",
-      "fw": 0.1,
-      "fx": 0.03125,
-      "fy": 0.30556,
-      "id": "ID1",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     }
-    },
-    "cropId": "",
-    "drawTool": "",
-    "histAt": 6,
-    "histLen": 7,
-    "layers": [],
-    "menu": [],
-    "nodeCount": 22,
-    "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "props": [],
-    "selected": [
-     "ID0",
-     "ID1",
-     "ID2"
-    ]
-   },
-   "step": "spaced-down"
-  },
-  {
-   "state": {
-    "changed": {
-     "1": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.1,
-      "fill": "hollow",
-      "fw": 0.1,
-      "fx": 0.03281,
-      "fy": 0.1,
-      "id": "ID1",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     },
-     "2": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.06667,
-      "fill": "hollow",
-      "fw": 0.0625,
-      "fx": 0.05,
-      "fy": 0.1,
-      "id": "ID2",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     }
-    },
-    "cropId": "",
-    "drawTool": "",
-    "histAt": 8,
-    "histLen": 9,
-    "layers": [],
-    "menu": [],
-    "nodeCount": 22,
-    "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "props": [],
-    "selected": [
-     "ID0",
-     "ID1",
-     "ID2"
-    ]
-   },
-   "step": "top-and-across"
-  },
-  {
-   "state": {
-    "changed": {
-     "10": {
+     "8": {
       "border": "#3F3F46",
-      "chipFx": 0.32345,
+      "chipFx": 0.61901,
       "chipFy": 0.2484,
       "color": "#18181B",
       "fontSize": 8,
@@ -1633,7 +1194,7 @@
       "hotFy": 0.26,
       "hotSize": 4,
       "hwId": 4,
-      "id": "ID17",
+      "id": "ID15",
       "kind": "btn",
       "label": "",
       "leaders": [
@@ -1643,7 +1204,7 @@
          "fy": 0.25109,
          "type": "free"
         },
-        "id": "ID18",
+        "id": "ID16",
         "spines": [
          {
           "curve": true,
@@ -1652,7 +1213,7 @@
          }
         ],
         "to": {
-         "id": "ID17",
+         "id": "ID15",
          "type": "hot"
         }
        }
@@ -1670,80 +1231,103 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID17",
+       "id": "ID15",
        "type": "hot"
       }
      },
-     "13": {
+     "9": {
       "border": "#3F3F46",
-      "chipFx": 0.58868,
-      "chipFy": 0.42453,
+      "chipFx": 0.61699,
+      "chipFy": 0.29311,
       "color": "#18181B",
       "fontSize": 8,
-      "friendly": "Button 5",
+      "friendly": "ID17",
       "from": {
-       "fx": 0.55726,
-       "fy": 0.42289,
-       "type": "free"
+       "id": "ID17",
+       "pin": "left",
+       "type": "chip"
       },
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
       "hlText": "#BBF7D0",
-      "hotFx": 0.58813,
-      "hotFy": 0.43622,
+      "hotFx": 0.58913,
+      "hotFy": 0.28578,
       "hotSize": 4,
-      "hwId": 5,
-      "id": "ID23",
-      "kind": "btn",
-      "label": "",
+      "id": "ID17",
+      "kind": "stack",
       "leaders": [
        {
         "from": {
-         "fx": 0.55726,
-         "fy": 0.42289,
-         "type": "free"
+         "id": "ID17",
+         "pin": "left",
+         "type": "chip"
         },
-        "id": "ID24",
+        "id": "ID18",
         "spines": [
          {
           "curve": true,
-          "fx": 0.57269,
-          "fy": 0.42956
+          "fx": 0.60037,
+          "fy": 0.30978
          }
         ],
         "to": {
-         "id": "ID23",
+         "id": "ID17",
          "type": "hot"
         }
        }
       ],
-      "locked": true,
-      "nx": 0.60961,
-      "ny": 0.42222,
+      "members": [
+       {
+        "friendly": "Button 21",
+        "hwId": 21,
+        "ox": 0,
+        "oy": 0,
+        "role": "push"
+       },
+       {
+        "friendly": "Button 22",
+        "hwId": 22,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "pull"
+       }
+      ],
+      "nx": 0.66328,
+      "ny": 0.28578,
       "pin": "left",
-      "prefix": "",
       "spines": [
        {
         "curve": true,
-        "fx": 0.57269,
-        "fy": 0.42956
+        "fx": 0.60037,
+        "fy": 0.30978
        }
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID23",
+       "id": "ID17",
        "type": "hot"
       }
      }
     },
     "cropId": "",
     "drawTool": "",
-    "histAt": 10,
-    "histLen": 11,
+    "histAt": 1,
+    "histLen": 2,
     "layers": [],
-    "menu": [],
-    "nodeCount": 22,
+    "menu": [
+     "Rectangle",
+     "Duplicate",
+     "Delete",
+     "> Shape",
+     "> Fill and outline",
+     "v Saved styles",
+     "  Save this style\u2026",
+     "  Apply Warning",
+     "> Rotate and flip",
+     "> Arrange"
+    ],
+    "nodeCount": 20,
     "pasteRequests": 0,
     "photo": [
      1,
@@ -1753,12 +1337,119 @@
     ],
     "props": [],
     "selected": [
-     "ID7",
-     "ID17",
-     "ID23"
+     "ID0"
     ]
    },
-   "step": "chips-left-one-locked"
+   "step": "menu"
+  },
+  {
+   "state": {
+    "changed": {
+     "0": {
+      "around": [],
+      "border": "#FBBF24",
+      "color": "#7C2D12",
+      "dash": "dash",
+      "fh": 0.10333,
+      "fill": "filled",
+      "fw": 0.13125,
+      "fx": 0.05,
+      "fy": 0.07778,
+      "id": "ID0",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "shape": "rect",
+      "stroke": 4
+     }
+    },
+    "cropId": "",
+    "drawTool": "",
+    "histAt": 2,
+    "histLen": 3,
+    "layers": [],
+    "menu": [],
+    "nodeCount": 20,
+    "pasteRequests": 0,
+    "photo": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "props": [],
+    "selected": [
+     "ID0"
+    ]
+   },
+   "step": "applied"
+  },
+  {
+   "state": {
+    "changed": {
+     "0": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.10333,
+      "fill": "hollow",
+      "fw": 0.13125,
+      "fx": 0.05,
+      "fy": 0.07778,
+      "id": "ID0",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "shape": "rect",
+      "stroke": 2
+     }
+    },
+    "cropId": "",
+    "drawTool": "",
+    "histAt": 1,
+    "histLen": 3,
+    "layers": [],
+    "menu": [],
+    "nodeCount": 20,
+    "pasteRequests": 0,
+    "photo": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "props": [],
+    "selected": []
+   },
+   "step": "undone"
+  },
+  {
+   "state": {
+    "changed": {},
+    "cropId": "",
+    "drawTool": "",
+    "histAt": 1,
+    "histLen": 3,
+    "layers": [],
+    "menu": [],
+    "nodeCount": 20,
+    "pasteRequests": 0,
+    "photo": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "props": [],
+    "saveAsked": [
+     "chip",
+     "{\"fontSize\":10,\"color\":\"#18181B\",\"border\":\"#3F3F46\",\"textColor\":\"#E4E4E7\",\"highlight\":true,\"hlColor\":\"#14532D\",\"hlBorder\":\"#22C55E\",\"hlText\":\"#BBF7D0\",\"hotSize\":4}"
+    ],
+    "selected": []
+   },
+   "step": "save-asked"
   }
  ],
  "warnings": [

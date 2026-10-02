@@ -1297,6 +1297,7 @@ ApplicationWindow {
             e.histCap = o["undo-steps"]
         if (o["rotate-snap"] > 0)
             e.rotateSnap = o["rotate-snap"]
+        e.savedStyles = _opts.styles
         e.findOn = o["press-to-find"] !== false
         e.findAxes = o["find-axes"] === true
         refreshActionLabels()
@@ -1694,6 +1695,76 @@ ApplicationWindow {
                         var row = _buttonMap._copyFrom
                         _copyDlg.close()
                         _buttonMap.copyLayoutFrom(row, _copyMirror.checked)
+                    }
+                }
+            }
+        }
+    }
+
+    // --- saved styles: the name for Save this style ----------------------------
+
+    property string _styleKind: ""
+    property string _styleFields: ""
+
+    function askStyleName(kind, fieldsJson) {
+        _styleKind = kind
+        _styleFields = fieldsJson
+        _styleNameDlg.open()
+    }
+
+    function saveStyleAs(name) {
+        var clean = String(name || "").trim()
+        if (!clean.length)
+            return
+        var ok = _opts.saveStyle(clean, _styleKind, _styleFields)
+        var e = _ed()
+        if (e)
+            e.showFindMessage(ok ? "Saved style " + clean + "." : "The style was not saved.")
+    }
+
+    Dialog {
+        id: _styleNameDlg
+        title: "Save style"
+        modal: true
+        anchors.centerIn: parent
+        width: Style.dp(400)
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
+        onOpened: {
+            _styleName.text = ""
+            _styleName.forceActiveFocus()
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: Style.dp(10)
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Style.fgMuted
+                text: "Keeps this look under a name, to put on other items of the same kind from their right-click menu (Saved styles). A style of the same name is replaced. Options → Button Map → Library renames and deletes them."
+            }
+            TextField {
+                id: _styleName
+                Layout.fillWidth: true
+                placeholderText: "Style name, e.g. Weapons, red"
+                onAccepted: _styleSave.clicked()
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: Style.dp(8)
+                Button {
+                    text: "Cancel"
+                    onClicked: _styleNameDlg.close()
+                }
+                Button {
+                    id: _styleSave
+                    text: "Save"
+                    highlighted: true
+                    enabled: _styleName.text.trim().length > 0
+                    onClicked: {
+                        var name = _styleName.text
+                        _styleNameDlg.close()
+                        _buttonMap.saveStyleAs(name)
                     }
                 }
             }
@@ -2666,6 +2737,7 @@ ApplicationWindow {
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
                             function onFindNotPlaced(label) { _buttonMap.poolFilter = label }
+                            function onSaveStyleRequested(kind, fieldsJson) { _buttonMap.askStyleName(kind, fieldsJson) }
                             function onOverlayImportRequested() { _overlayDialog.open() }
                             function onPastePictureRequested() { _buttonMap.pastePicture() }
                             function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }

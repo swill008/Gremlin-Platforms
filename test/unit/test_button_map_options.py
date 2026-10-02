@@ -71,3 +71,36 @@ def test_the_app_registers_the_options_before_purging() -> None:
     end = source.index("\ndef ", start + 1)
     # Everything registered there survives Configuration.purge_unused().
     assert "gremlin.ui.button_map_options.register()" in source[start:end]
+
+
+def test_saved_styles_save_replace_rename_delete() -> None:
+    bmo.register()
+    bmo._store_styles([])
+    assert bmo.save_style("Red", "shape", {"color": "#FF0000"})
+    assert bmo.save_style("Red", "chip", {"color": "#FF0000"})
+    # Same name and kind: replaced, not added.
+    assert bmo.save_style("Red", "shape", {"color": "#AA0000"})
+    rows = bmo.styles()
+    assert [(s["kind"], s["name"]) for s in rows] == [("chip", "Red"), ("shape", "Red")]
+    assert rows[1]["fields"] == {"color": "#AA0000"}
+    assert not bmo.save_style("", "shape", {"color": "#000000"})
+    assert not bmo.save_style("X", "picture", {"color": "#000000"})
+    assert not bmo.save_style("X", "shape", {})
+    assert bmo.rename_style("Red", "shape", "Warning")
+    assert not bmo.rename_style("Warning", "shape", "")
+    assert bmo.delete_style("Red", "chip")
+    assert not bmo.delete_style("Red", "chip")
+    qml = bmo.ButtonMapOptions()
+    assert [s["name"] for s in qml.styles] == ["Warning"]
+    assert qml.saveStyle("Calm", "line", '{"border": "#00FF00"}')
+    assert not qml.saveStyle("Bad", "line", "not json")
+    assert qml.renameStyle("Calm", "line", "Calmer")
+    assert qml.deleteStyle("Calmer", "line")
+    bmo._store_styles([])
+
+
+def test_library_is_listed_in_options() -> None:
+    from gremlin.ui.option import MetaConfigOption
+
+    entries = MetaConfigOption().entries(bmo.SECTION, "library")
+    assert "saved-styles-and-templates" in entries

@@ -43,7 +43,12 @@ STEPS = [
      "_modesDlg.close(); _buttonMap.openCopyLayout({name: 'Stick R', slug: 'x'})"),
     ("apply-template",
      "_copyDlg.close(); _buttonMap.openCopyLayout({name: 'Mine', template: true})"),
-    ("closed", "_copyDlg.close()"),
+    ("style-name", "_copyDlg.close(); _buttonMap.askStyleName('shape', '{}')"),
+    ("library",
+     "_styleNameDlg.close();"
+     " Qt.createComponent('OptionButtonMapLibrary.qml')"
+     ".createObject(_buttonMap.contentItem)"),
+    ("closed", "_styleNameDlg.close()"),
 ]
 
 

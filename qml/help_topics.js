@@ -331,6 +331,10 @@ function topics() {
             + "<li><b>Add snap point</b> (then click the picture) and <b>Clear snap points</b>: chips snap to these points.</li>"
             + "<li>Opacity.</li>"
             + "</ul>"),
+        topic("Button Map", "Saved styles",
+            "<p>A look you use again and again can be kept under a name. Right-click a chip, shape, line, path or text box → <b>Saved styles</b> → <b>Save this style…</b> and give it a name, such as Weapons, red. A style of the same name and kind is replaced.</p>"
+            + "<p>The same section then lists the saved styles for that kind of item: <b>Apply</b> one to put its look on everything selected of that kind, as one step for Undo. A chip's style holds its chip, text, pressed, hotspot and leader colours and sizes; a shape's its fill and outline; a line's its colour, width, outline and arrowheads; a text box's its format.</p>"
+            + "<p>Styles are shared by every device. Options → Button Map → <b>Library</b> renames and deletes them, and the layout templates too.</p>"),
         topic("Button Map", "Layers panel",
             "<p>View → <b>Layers</b> shows every item while editing, top of the stack first, then the photo.</p>"
             + "<ul>"
@@ -363,6 +367,7 @@ function topics() {
             + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
             + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size); <b>Mode title</b>, the mode's name at the top of each Export modes page.</li>"
             + "<li><b>Colours</b>: <b>Recent colours</b>, how many the colour picker keeps.</li>"
+            + "<li><b>Library</b>: the saved styles and layout templates, to rename or delete.</li>"
             + "</ul>"),
         topic("Button Map", "Selecting, undo and keys",
             "<p><b>Press to find</b>: while editing, press a button or hat on the device and its chip is selected and scrolled into view (a group member selects its group). A control that is not on the map yet is shown in the pool, filtered by name; a hidden one is pointed to the Layers panel. Turn it off, or let a pushed axis count too, in Editor options.</p>"
