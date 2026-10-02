@@ -792,71 +792,39 @@ ApplicationWindow {
             model: [
                 {
                     h: "Overview",
-                    b: "Button Map is a picture of the selected device. Each chip marks one control. File → Edit Mapping starts an edit. The live view uses the same layout, and a press still lights the matching chip. Moving a chip does not change the action bound to that control.\n\nFile → Save writes the layout to this device’s module file. A successful save says “Saved to the module file.” File → Cancel drops the edit. Closing this window asks when the edit is not saved.\nF1 opens this page."
+                    b: "Button Map is a picture of one device with a chip on each control. While the profile runs, a press lights its chip. Chips are layout only: moving or renaming one never changes the actions in the profile.\n\nFile → Edit Mapping starts editing. File → Save (Ctrl+S) writes the layout to this device's module file (“Saved to the module file.”). File → Cancel leaves without saving. Closing with unsaved edits asks first."
                 },
                 {
-                    h: "World page",
-                    b: "Layout lives on a 32000 × 18000 world page (16:9). The rig photo is a poster in the center 75% well. Nothing is measured on the JPEG.\nChips, hots, leaders, tables, and plates use page fractions only. A new hot starts on its chip; drag the ring onto the control.\nView is the camera (wheel / Reset view). Photo size / Move photo parks the poster under the overlay. File → Save writes nodes, page, photo pose, and ui. Grid / snap writes only ui."
+                    h: "File menu",
+                    b: "Edit Mapping, Save, Cancel.\nReset layout: send every chip back to the pool (asks first).\nFit to photo frame: shrink an older, oversized layout to the photo.\nChoose background… / Clear image: use another picture, or go back to the module's picture.\nExport PDF… / PNG… / JPG…: save a picture of the map.\nClose.\nTo copy a whole device setup to another computer, use Tools → Device setup → Device Pack."
                 },
                 {
-                    h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write this device’s module file. The editor stays open. A successful save says “Saved to the module file.” If the write fails, the message stays up until OK.\nCancel — leave without writing.\nReset layout — send every chip back to the pool. Inputs still light.\nFit to photo frame — used once when a saved layout is much larger than the photo. Then Save.\nChoose background… — pick a photo under the map.\nClear image — restore the picture from the module.\nExport PDF… / PNG… / JPG… — save a picture of the map. To move a map to another computer, use Tools → Device setup → Device Pack.\nClose — close the window. Unsaved work still asks."
+                    h: "View and photo",
+                    b: "Scroll to zoom (75% to 600%). Drag with the middle button to pan (before Edit Mapping, the left button pans too). View → Reset view or Ctrl+0 returns to 100%.\nView → Grid: Show grid, Snap to grid, Snap to entities, and the grid Size. Hold Alt while dragging to skip snapping.\nPhoto → Move photo drags the picture; Adjust photo… sets its size, offset, and rotation; Reset photo restores it."
                 },
                 {
-                    h: "Edit menu",
-                    b: "Undo / Redo — layout history for this session (also Ctrl+Z / Ctrl+Y).\nDuplicate (Ctrl+D) — copy the selection offset so it does not stack.\nCopy / Paste (Ctrl+C / Ctrl+V) — clipboard of chips, groups, and frames."
+                    h: "Chips and hotspots",
+                    b: "Drag a chip from the pool onto the photo. Filter the pool by name.\nEach chip has a hotspot, the dot on the photo marking the physical control, and a leader line between them. Drag the chip and the hotspot separately.\nA chip shows the control's name (Button 10, Axis 1, Hat 1) or its friendly name. Right-click → Chip: Rename, Font size, size, Round or Square, Filled or Hollow, Colors (including the pressed colors), Highlight on press, and Delete chip (back to the pool). Delete or Backspace also returns a chip to the pool.\nRight-click → Hotspot sets the dot's size, shape, fill, and color. Leader End detaches or reconnects either end of the line."
                 },
                 {
-                    h: "View, zoom, pan",
-                    b: "View is the camera. Scroll wheel zooms about the pointer, 50%–400%. View 100% frames the photo well. View 50% is the full 32000 page. Middle-button drag pans. Before Edit Mapping, left-drag also pans. View → Reset view returns View 100% and centered. Camera zoom and pan are stored in ui.\nPhoto size is the poster, not the camera. Photo → Adjust photo… has live sliders for size, offset, and rotate. Size 100% sets the poster size to 1. Photo → Move photo lets you drag the picture. Photo → Reset photo centers it and clears rotate. Pose is stored in the profile photo block and comes back on load.\nView → Grid → Show grid — the full world page. Step is world counts (200 suits 32000). Snap to grid / entities as before. Alt skips snap."
+                    h: "Right-click menu",
+                    b: "Every right-click opens the same menu: Undo, Redo, Clear Format, then Chip, Hotspot, Leader End, Group, Format, Align, Leader, and Draw. Items that do not apply to what you clicked are greyed out."
                 },
                 {
-                    h: "Reservoir",
-                    b: "The pool lists chips not on the map. Filter by friendly or hardware name. X or Reset clears the filter.\nDrag a chip from the pool onto the photo to place it. Resize the pool; the map does not zoom while the pointer is over it.\nEmpty photo right-click is Draw only — chips come from the pool."
-                },
-                {
-                    h: "Chips",
-                    b: "Left-drag moves the chip. The hotspot (dot on the photo) is the hardware contact — drag it separately.\nDefault label is the hardware id: Button 10, Axis 1, Hat 1. Hover a chip for a tooltip with that hardware id. Friendly names are optional — Rename to set one. Clear the friendly name to show the hardware id again. Plus / card / mini do not replace that with Up/Left/Push unless you type it.\nRight-click → Chip:\n  Rename — optional friendly label. Empty falls back to Button N / Axis N / Hat N.\n  Font size.\n  Chip size, Round / Square, Filled / Hollow.\n  Colors — Fill, Outline, Text, Pressed fill / outline / text. Color… opens the HSV picker.\n  Highlight on press — live fill when the stick is down.\n  Reset this cell — drop member style overrides (Edit group only).\n  Delete chip — back to the reservoir.\nHotspot (photo input) and Leader End (wire stop) are their own first-level menus, not under Chip.\nDelete / Backspace on a single chip also returns it to the pool.\nYellow ring is selection."
-                },
-                {
-                    h: "Groups",
-                    b: "Shift-click or rubber-band two or more chips, then Group → Group selected (Ctrl+G). Extra leaders drop; one remains. Table + chips: rubber-band the table and those chips, then Group — chips ride the plate, no 5-way. One table only. Break group on the table detaches chips and keeps the table.\nBreak group (Ctrl+Shift+G) or Delete on a group splits members back to singles.\nEdit group unlocks that group only. Other groups stay locked.\nDouble-click or right-click a member to target it. Drag that member to offset it. Chip style writes to that member only.\nDouble-click the member again to rename it.\nDone editing group or Esc ends the session. Double-click empty photo ends edit and clears the selection.\nSaved group style profiles are not in yet — each group keeps its own format and overrides."
-                },
-                {
-                    h: "Format and Align",
-                    b: "Format and Align are first-level drawers, not inside Group.\nFormat → 5-Way (five-member hat groups only):\n  Plus cluster — Up / Left / Push / Right / Down cross. Group name once. One leader.\n  Mini hat — compact U/D/L/R/C glyph.\n  Named card — header plus role-only rows.\n  Radial leaders — spokes from the group (can crowd three hats on this grip).\nPicking the theme that is already on re-applies it: stock layout, cell offsets and style overrides cleared, names kept.\nClear Format under Undo/Redo (group click) or Format → Clear Format strips the 5-Way theme and every cell override (size, shape, colors, offsets). Names, Align, and the group stay. Enabled when a theme or any cell override exists.\nAlign left / center / right / Free layout — only when the target is a group.\nFormat is presentation. Hardware ids stay grouped. Save writes the layout to this device’s module file."
-                },
-                {
-                    h: "Context menu",
-                    b: "The first screen follows the click target.\nUndo / Redo always.\nGroup click — Clear Format under Redo when the group has a theme or cell overrides.\nLeader or handle — Add spine, Convert spine, Delete selected spine, Clear spines, then the family drawers.\nChip / group — Chip, Hotspot, Leader End, Group, Format, Align, Leader, Draw.\nEmpty photo — Draw only.\nGray items are gated: no selection, not a group, no handle, or no spines."
-                },
-                {
-                    h: "Hotspot",
-                    b: "Hotspot is the input on the photo — the control you press — not the chip label.\nRight-click → Hotspot: Size, Round / Square, Filled / Hollow, Color… (HSV picker).\nThe yellow/white dot on the rig photo is this object."
-                },
-                {
-                    h: "Leader End",
-                    b: "Leader End is where the wire stops. It is not the hotspot fill.\nDetach chip end / Detach hotspot end — free that terminus.\nReconnect to this chip / Reconnect to this hotspot — snap it back.\nLeader (the next drawer) still owns line color, weight, extra leaders, and curve."
+                    h: "Groups and formats",
+                    b: "Select two or more chips (Shift-click or drag a box), then Group → Group selected (Ctrl+G). Break group (Ctrl+Shift+G) splits it. Edit group lets you move and style one member; Done editing group or Esc ends that.\nFormat → 5-Way styles a five-chip hat group: Plus cluster, Mini hat, Named card, or Radial leaders. Format → Clear Format removes the style.\nAlign left, center, right, or Free layout arranges a group."
                 },
                 {
                     h: "Leaders",
-                    b: "A leader is the line from chip (or group) to the hotspot.\nClick the line — select only. A click does not add a spine.\nDrag a segment — plant a curved spine at the grab point, then that handle follows the drag.\nClick a handle — select it (orange).\nShort right-click on a handle — menu. Use Delete selected spine.\nHold right-click about ½ second on a handle — delete that handle, no menu.\nFirst menu on a line or handle: Add spine, Convert spine (flip that handle curved ↔ straight, no check mark), Delete selected spine, Clear spines. Convert and Delete need a selected handle.\nLeader submenu: Color…, Weight 0.8–4.0, Add straight / curved spine, This segment or All segments Curved / Straight, Add leader, Branch from this end, Attach (detach / reconnect chip or hotspot ends), Clear all spines, Delete spine, Delete leader.\nDelete leader applies to every selected chip. Rubber-band several chips, then Leader → Delete leaders — each chip’s line is removed. One chip selected — only that chip’s current leader is removed.\nSpines show only while Edit Mapping is on. The chip-to-hotspot line stays in the live map unless you delete it."
+                    b: "Click a leader to select it. Drag a segment to bend it; that adds a curve point (a spine). Click a spine to select it. Hold the right button on a spine for about half a second to delete it.\nRight-click → Leader: Color…, Weight, Add straight spine, Add curved spine, Convert spine, This segment or All segments (Curved / Straight), Add leader, Branch from this end, Clear all spines, Delete spine, and Delete leader(s).\nSpines are shown only while editing; the lines stay on the live map."
                 },
                 {
                     h: "Draw",
-                    b: "Right-click → Draw.\nAround selection — rectangle, rounded, ellipse, triangle, or diamond around selected chips; it moves with them.\nFree drag — pick a shape, drag on empty photo. Shift locks aspect. Esc or Cancel tool drops the tool. Yellow Drawing in the toolbar means a tool is armed.\nImport overlay… — add a PNG/JPEG plate on top of the photo. Transform, lock, plant snap points, drop chips onto them.\nTable — Draw → Free drag → Table. Rubber-band the first size. A blank 1×2 lands (one row, two columns). Handles resize the whole plate; cells share the new size. Right-click the table for the table-only menu (add/insert/delete row or column, ID column, Free position, Place left/center/right/top/middle/bottom, theme, font, pin, z, delete). Free position unlocks that cell so you can drag it; Shift+drag also unlocks and moves it. Spawn empty cell adds a blank free box the same size (no text, not a grid slot). Spawned cells get their own handles and start Independent of table so plate resize does not move them. Independent of table on a free cell stores page position/size. Delete this cell removes a spawned box only. The plate can shrink to 8 px, same floor as a spawned cell. Locked cells still move the whole table. Offsets are fractions of the plate so a resize keeps the cell’s place. Double-click a cell to type. Themes: Gremlin dark, Gremlin hollow, Sheet.\nText — Draw → Free drag → Text. Rubber-band the first size; Size submenu has Caption / Small / Medium / Large / Title / Wide. Double-click to type. Right-click the box for the text-only menu: Duplicate, Delete text box, theme, font, color, opacity, align, bold, word wrap (refits the box), scale font on resize, pin, z, Copy format / Paint format, Clear formatting, Copy text (plain). Packs with a table like chips.\nCorner handles resize. Detach from chips turns an around-frame into a free frame.\nShape, Padding, Rotate (0/90/180/270, ±15), Filled / Hollow, Fill color…, Stroke color…, Stroke width, Opacity.\nBring forward / Send back. Hollow frames click through to chips inside.\nOverlay images: File → Import overlay… then transform. A pin sits at the top-left of the plate. Click the pin (or Draw → Pin overlay) to freeze it: the plus clicks through to chips and leaders; only the pin stays live. Click the pin again to unpin and move/resize. Add snap point, Clear snap points. Drop a chip on a white socket to snap. Save writes pinned."
+                    b: "Right-click → Draw.\nAround selection: a shape around the selected chips that moves with them.\nFree drag: draw a shape, a Table, or a Text box on the photo. Shift keeps the proportions. Cancel tool or Esc stops drawing.\nTables and text boxes have their own right-click menus (rows and columns, alignment, theme, font, and so on). Double-click a cell or text box to type.\nImport overlay… adds a picture on top of the photo. Pin overlay locks it; Add snap point and Clear snap points place sockets that chips snap to.\nDelete drawing removes the selected drawing."
                 },
                 {
-                    h: "Select and move",
-                    b: "Click selects. Shift-click or Ctrl-click toggles. Drag empty glass to rubber-band.\nArrows nudge one view pixel. Shift+arrows nudge by the world-grid step.\nDrag near the page center or an edge — green guide; release snaps to that line.\nDuplicate / Copy / Paste under Edit. Pasted items offset on the page so they do not stack."
-                },
-                {
-                    h: "Keyboard",
-                    b: "Ctrl+S Save\nCtrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nDelete / Backspace  chip to pool, break group, or delete selected spine\nArrows nudge    Shift+Arrows grid nudge\nEsc  cancel draw tool / end group edit / cancel rename\nF1  this help\nAlt while dragging  skip snap\nShift while drawing  lock aspect"
-                },
-                {
-                    h: "Save and live map",
-                    b: "Save writes the layout to this device’s module file. That includes the chips, the photo, and the grid settings.\nThe live view still lights the control that is pressed. Chip names and colors are layout only. They do not change the actions in the profile."
+                    h: "Selecting and keys",
+                    b: "Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrows nudge; Shift+Arrows nudge by the grid size.\n\nCtrl+S Save    Ctrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nDelete / Backspace  remove the selection\nCtrl+0  reset view    Esc  cancel tool, rename, or group edit\nF1  this help"
                 }
             ]
             delegate: Column {

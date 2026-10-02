@@ -28,18 +28,20 @@ ApplicationWindow {
         }
 
         DisplayLabel {
-            text: "R1"
+            // Version from version.json, so About always matches the build.
+            text: "R1 " + (backend ? backend.gremlinVersion : "")
             font.pixelSize: Style.dp(19)
         }
 
         DisplayLabel {
-            text: "Based on Joystick Gremlin R15."
+            text: "<html><a href='https://github.com/swill008/JoystickGremlin_'>github.com/swill008/JoystickGremlin_</a></html>"
+            font.pixelSize: Style.dp(19)
+            onLinkActivated: (url) => { Qt.openUrlExternally(url) }
+        }
+
+        DisplayLabel {
+            text: "<html>Based on <a href='https://whitemagic.github.io/JoystickGremlin/'>Joystick Gremlin</a> R15.</html>"
             font.pixelSize: Style.dp(16)
-        }
-
-        DisplayLabel {
-            text: "<html><a href='https://whitemagic.github.io/JoystickGremlin/'>https://whitemagic.github.io/JoystickGremlin/</a></html>"
-            font.pixelSize: Style.dp(19)
             onLinkActivated: (url) => { Qt.openUrlExternally(url) }
         }
     }

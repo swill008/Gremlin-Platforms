@@ -178,47 +178,68 @@ function topics() {
             + "<li>Modes are part of the profile; save the profile to keep them.</li>"
             + "</ul>"),
         topic("Tools", "Button Map",
-            "<p>Button Map is a picture of one device, with a chip on each control. Moving a chip changes the picture, not the action bound to that control. The same layout is used live, and a press still lights the matching chip.</p>"
-            + "<p>Tools → Mapping → Button Map opens a blank map. Choose the device from the menu. Right-click a device card and choose Button Map to open that device. File → Edit Mapping starts an edit. Drag chips from the pool onto the photo. Drag a chip to move it, and drag its dot to move the contact. Scroll to zoom. Drag with the middle button to pan.</p>"
-            + "<p>File → Save writes the layout to that device’s module file. A successful save says “Saved to the module file.” File → Cancel drops the edit. Closing the window asks when the edit is not saved. Right-click a chip to rename it, change its shape, or set its colors. F1 in that window opens the editor’s own help. Undo and Redo in that window apply to the picture only.</p>"),
+            "<p>Button Map is a picture of a device with a chip on each claimed control. A press lights its chip, and wires show their destination. Moving a chip changes only the picture, never the actions.</p>"
+            + "<p>Open it from a card's menu, the toolbar, or Tools → Mapping → <b>Button Map</b> (then pick the device from its File menu). <b>File → Edit Mapping</b> starts editing: drag chips from the pool onto the photo, then <b>File → Save</b> (Ctrl+S) writes the layout to the device's module file. <b>F1</b> opens the editor's own help.</p>"),
         topic("Tools", "Viewers",
-            "<p>The viewers show live values. They do not change the profile.</p>"
-            + "<p>Tools → Viewers → vJoy Viewer shows the vJoy device an input is driving. Tools → Viewers → Xbox Viewer shows the virtual Xbox control. The same viewers are on the toolbar. Leave one open while you move the stick.</p>"),
+            "<p>The viewers show live values; they change nothing. Open them from the toolbar, Tools → Viewers, or a card's menu.</p>"
+            + "<ul>"
+            + "<li><b>vJoy Viewer</b>: each physical device beside the vJoy device it drives. The physical side shows claimed inputs; the vJoy side shows what the vJoy output module sent (claimed outputs, while the profile runs).</li>"
+            + "<li><b>Xbox Viewer</b>: the Xbox 360 Controller with every control, and which inputs drive it.</li>"
+            + "</ul>"),
         topic("Tools", "Calibration",
-            "<p>Calibration sets the center and the ends of an axis so the full travel is used. It is stored in that input module’s file, not in the profile.</p>"
-            + "<p>Tools → Device setup → Calibration, or right-click an input module and choose Calibration. Choose the input module. Move the axis, or type the values. The axis shows Not saved until you press its save button. A successful save says “Saved to the module file.” Closing the window, or choosing another input module, asks when an axis is not saved. Save writes it. Discard returns to the last saved calibration. While that module is in use, the saved curve is applied to the live stick before any action sees it.</p>"),
-        topic("Tools", "Device information",
-            "<p>Device information shows the name and the identifiers Windows reports for a device.</p>"
-            + "<p>Tools → Device setup → Device Information. Select the device. Use the identifiers when two devices look alike.</p>"),
+            "<p>Sets the center and the ends of each axis so its full travel is used. It is stored in the device's input module and applied before any action sees the axis.</p>"
+            + "<p>Tools → Device setup → <b>Calibration</b>, or a card's menu. Choose the input module. For each axis, move the stick and use <b>Calibrate center</b> and <b>Calibrate extrema</b>, or type the values. An axis shows <b>Not saved</b> until you press its save button. Leaving with unsaved axes asks first.</p>"),
+        topic("Tools", "Device Information",
+            "<p>Tools → Device setup → <b>Device Information</b> lists every device Windows reports: Name, Axes, Buttons, Hats, VID, PID, Joystick ID, and Device GUID. Use it to tell identical devices apart.</p>"),
         topic("Tools", "Auto Mapper",
-            "<p>Auto Mapper builds a starting map. It copies the selected buttons, axes, and hats from an input module onto the same numbers on an output module. It does not match devices by name. It uses the order shown in the lists. The first checked input is wired to the first checked output. The second input is wired to the second output.</p>"
-            + "<p>Choose the mode before you create the map. The new wires are stored only in that mode.</p>"
-            + "<p>Combine onto Selected Outputs is for when you check more inputs than outputs. The output list starts over. Three input modules and one output module means all three inputs are wired to that one output.</p>"
-            + "<p>Leave Combine onto Selected Outputs off when each input should have its own output. You check three input modules. You check two output modules. The first input is wired to the first output. The second input is wired to the second output. The third input has no output left, so it is skipped. No wires are created for that third input. Turn the switch on if that third input should still get a map. The output list starts over, and the third input is wired to the first output.</p>"
-            + "<p>Overwrite used inputs replaces wires that already exist on those controls in the selected mode. Leave it off, and those wires stay as they are.</p>"),
+            "<p>Creates Map to vJoy actions in one step: each claimed input of an input module is wired to the same number on a vJoy output module.</p>"
+            + "<ol>"
+            + "<li>Tools → Mapping → <b>Auto Mapper</b> (or a card's menu).</li>"
+            + "<li>Tick the input modules and output modules. The first ticked input goes to the first ticked output, the second to the second, and so on.</li>"
+            + "<li>Choose <b>Select Mode</b>, then <b>Create 1:1 mappings</b>.</li>"
+            + "</ol>"
+            + "<ul>"
+            + "<li>Only outputs the output module claims are used. Skipped controls are listed with the reason (not claimed, or not on the vJoy device).</li>"
+            + "<li><b>Also claim the matching outputs on the output module</b> (off by default) claims what the mappings need first.</li>"
+            + "<li><b>Overwrite used inputs</b> replaces existing actions on those inputs; off keeps them.</li>"
+            + "<li><b>Combine onto Selected Outputs</b> reuses the outputs when you tick more inputs than outputs.</li>"
+            + "</ul>"),
         topic("Tools", "Swap Devices",
-            "<p>Swap Devices moves a profile’s bindings from one physical device to another of the same kind.</p>"
-            + "<p>Tools → Device setup → Swap Devices. Choose the device that is in the profile and the device that should take its place. Save the profile afterward.</p>"),
-        topic("Tools", "Modules",
-            "<p>A module file is the picture and the saved look for one device. Input modules are physical devices. Output modules are vJoy and the other outputs. The input module chooses the file. Button Map and both display-option panels use that same file.</p>"
-            + "<p>Tools → Device setup → Configure input module edits an input. Tools → Device setup → Configure output module edits an output. Module file opens the file controls: the files in the current folder, Browse for File, and Delete. Checks, names, and the picture ask before the window closes if they are not saved. A successful save says “Saved to the module file.”</p>"
-            + "<p>The picture set here is the one HiDHide uses until you choose a different picture for that device in HiDHide. Tools → Device setup → Device Pack saves a device, its map and pictures to a zip, or loads one onto a device you pick.</p>"),
+            "<p>Swaps every binding between two devices, for example after replacing a stick. Tools → Device setup → <b>Swap Devices</b>: choose <b>From profile device</b> and <b>To connected device</b>, then <b>Swap Bindings</b>. References inside actions and script variables are swapped too. Save the profile afterwards.</p>"),
         topic("Tools", "HiDHide",
-            "<p>HiDHide hides selected controllers from other programs. Gremlin-Platforms does not install the driver. Tools → Device setup → HiDHide opens the window. Get HiDHide opens the download page. Test HiDHide opens the Windows game-controller panel so you can see whether a controller is still visible.</p>"
-            + "<p>A new install leaves the driver alone. Gremlin control, HiDHide Enabled, Automatically Start, and Gaming devices only all start off. Each switch is saved on its own. Allow list is the starting program choice. No device starts checked, and the program list starts empty.</p>"
-            + "<p>The top row shows whether the driver was found, its version, Get HiDHide, and Test HiDHide. The next row is Gremlin control, HiDHide Enabled, and Automatically Start. Gremlin control lets this program write the device list, the program list, Allow list or Block list, and HiDHide Enabled. HiDHide Enabled means the driver enforces both lists. Off means the driver is not hiding anything. Automatically Start turns Gremlin control and HiDHide Enabled on each time this program starts, and writes the saved lists.</p>"
-            + "<p>Gaming devices only sits above the device list. On limits that list to game controllers. Off shows the wider list. A device can use the picture from its module. Change image or Add image replaces that picture for this list only, and the replacement is kept. The selector adds or removes that device. A device that is actually hidden is dimmed, and HIDDEN is drawn across the row.</p>"
-            + "<p>Allow list means only the programs in the list can see the hidden controllers. Block list means the programs in the list cannot see them. Gremlin-Platforms can still see the devices in both modes. Add Program is under the program title and adds an executable. Remove takes it off the list. The window size, and the bar between the devices and the programs, are kept. Close the window with the title-bar control. Open it again to pick up a controller that was plugged in while it was open.</p>"
-            + "<p><b>Testing.</b> Test HiDHide opens the Windows Game Controllers panel. That panel is not in the program list, so what it shows depends on the settings. With HiDHide Enabled on and Allow list chosen, a hidden controller should be missing from the panel. If it is still there, hiding is not working. With Block list chosen, the panel is not blocked, so hidden controllers still show; switch to Allow list to test. With HiDHide Enabled off, every controller shows. With Gremlin control off, the panel shows whatever the HiDHide program itself is set to. The panel reads the controller list only when it opens, so close it and open it again after a change.</p>"),
-        topic("Tools", "Options",
-            "<p>Options are program settings. They are not stored inside one profile.</p>"
-            + "<p>Tools → Options. Action sequence ordering sets the order actions run. Highlight scope and highlight speed control how a live press is shown. Log level sets how much is written to the log. OSC input host, OSC output host, and OSC auto-release set the OSC connection and how long an OSC input stays down. Profile auto-loading opens a profile when a chosen program starts. Status cards resets the Home card sizes. Text to Speech chooses the voice used by the Text to Speech action.</p>"),
-        topic("View", "Scripts",
-            "<p>Scripts are extra logic stored with the profile.</p>"
-            + "<p>View → Scripts opens the script page. Edit the script there, then save the profile.</p>"),
-        topic("View", "Profile settings",
-            "<p>Profile settings are options stored in the profile rather than for the whole program.</p>"
-            + "<p>View → Profile Settings opens that page. Change the settings, then save the profile.</p>"),
+            "<p>HiDHide hides physical controllers from games so they only see vJoy or Xbox. Gremlin-Platforms always sees them. The HiDHide driver is a separate install (<b>Get HiDHide</b>).</p>"
+            + "<p>Tools → Device setup → <b>HiDHide</b>:</p>"
+            + "<ul>"
+            + "<li><b>Gremlin control</b> lets this program write HiDHide's settings. <b>HiDHide Enabled</b> turns hiding on. <b>Automatically Start</b> applies both each time the program starts.</li>"
+            + "<li>Tick the devices to hide. <b>Gaming devices only</b> shortens the list. A hidden device is dimmed and marked HIDDEN.</li>"
+            + "<li><b>Allow list</b>: only the listed programs see hidden devices. <b>Block list</b>: the listed programs do not. Add programs with <b>Add Program</b>.</li>"
+            + "<li><b>Test HiDHide</b> opens the Windows Game Controllers panel. With Allow list on, a hidden device should be missing there. Reopen the panel after each change.</li>"
+            + "</ul>"
+            + "<p>All switches start off on a new install.</p>"),
+        topic("Tools", "Live Log Reader",
+            "<p>Debug → <b>Live Log Reader</b> follows the program's activity log (logs.txt): what was read and saved, and when. The system log (system.log) in the Logs folder records errors and blocked outputs.</p>"),
+
+        topic("Options and Profile", "Options",
+            "<p>Tools → <b>Options</b> (or the gear on the toolbar). Program settings, not stored in the profile.</p>"
+            + "<ul>"
+            + "<li><b>Global</b>: Close to tray, Minimize to tray, Check for updates, <b>Device change behavior</b> (Reload, Ignore, Disable), Hidhide on start, axis refresh on activation and mode change, Debug log level, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
+            + "<li><b>User Interface</b>: Dark mode, UI scale, Disable Windows scaling, Display mode (numbers and/or labels), Input highlighting and Highlight source.</li>"
+            + "<li><b>Action</b>: the Action list order, and settings for Axis Delta, Change Mode, Double Tap, Macro, Play Sound, Smart Toggle, Tempo, and Text-To-Speech (voice).</li>"
+            + "<li><b>Profile</b>: Enable auto loading — load a profile when a chosen program starts — and Remain active on focus loss.</li>"
+            + "<li><b>OSC Connection</b>: Enabled, Input host and port, Output address, and press timing.</li>"
+            + "<li><b>Display</b>: Home card options and <b>Reset all card sizes</b>.</li>"
+            + "<li><b>Auto Mapper</b>: Overwrite used inputs and Remember overwrite.</li>"
+            + "</ul>"),
+        topic("Options and Profile", "Profile Settings",
+            "<p>View → <b>Profile Settings</b>. Stored in the profile; save the profile to keep them.</p>"
+            + "<ul>"
+            + "<li><b>Startup Mode</b>: Use Heuristic, Last Active, or a mode by name.</li>"
+            + "<li><b>Macro Default Delay</b>: the pause between macro steps.</li>"
+            + "<li><b>vJoy Behavior</b>: treat each vJoy device as an output (default) or as an input.</li>"
+            + "<li><b>vJoy Initial Values</b>: axis values set when the profile starts.</li>"
+            + "</ul>"),
+        topic("Options and Profile", "Scripts",
+            "<p>View → <b>Scripts</b> adds Python scripts to the profile. <b>Add Script</b> picks a .py file; each script can be renamed and its variables set on that page. Scripts are saved with the profile. A script's <b>vjoy</b> object can only use outputs the vJoy output modules claim.</p>"),
         topic("Troubleshooting", "Nothing reaches vJoy",
             "<ul>"
             + "<li>Is <b>Toggle</b> on? The bottom bar should say Active.</li>"

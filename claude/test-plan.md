@@ -764,3 +764,12 @@ Decisions: Auto Mapper claim switch, off by default (1A); one Xbox pad for now (
 |---|---|---|
 | XB-FIX | FIXED (this commit) | 1.0.2 put a claim gate on Xbox (P2c), so every Map to Xbox action was blocked. The Xbox output module is a pass-through to ViGEm, as in GremlinEx (Map to GamePad: any control, any pad, no claim). Removed: Xbox claims, Claimed boxes / Claim all, "(not claimed)" Xbox labels and warnings, the claim filter on the Xbox Viewer. Map to Xbox lists all 22 controls; saved pads 2-4 still send. The output layer stays the only code touching ViGEm. |
 | XB-HANDS-ON | [U] | With Gremlin active: a Map to Xbox action drives the pad (e.g. Logical Device input -> Left Trigger), and the Xbox Viewer shows it. |
+
+## HELP: User Guide rewrite (2026-10-01)
+
+| ID | Result | Notes |
+|---|---|---|
+| HELP-A | DONE 101a0a16 | Getting Started (pipeline, First setup, Toggle and status, Profiles, What is saved where), Devices and Modules, Troubleshooting. |
+| HELP-B | DONE 602b87a8 | Configuration, Actions (one topic per action, six were missing), Logical Device (9 -> 4 topics), Modes. |
+| HELP-C | DONE (this commit) | Tools, Options and Profile, Button Map F1 help rewritten (zoom 75-600%, real right-click menu), About shows the version and this repo, orphan button_map_editor_help.md removed. Guard: test_help_guide (menu paths exist, every action has a topic, no removed features). |
+| HELP-BUG | OPEN | Profile Settings says "Choosing a mode by name always starts in that mode", but Toggle starts in the Configuring mode; Startup Mode is only a fallback (backend.py:373, code_runner.py:316-319). |
