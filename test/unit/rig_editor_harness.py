@@ -36,9 +36,11 @@ from PySide6 import (  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 QML = ROOT / "qml"
+# Fixed copies of the two Gladiator layouts, so the goldens never move with
+# the user's own module files.
 LAYOUTS = {
-    "evo_r": ROOT / "User_Data" / "modules" / "vkbsim_gladiator_evo_r.json",
-    "evo_l": ROOT / "User_Data" / "modules" / "vkbsim_gladiator_evo_ot_l.json",
+    name: Path(__file__).parent / "rig_editor_golden" / "layouts" / f"{name}.json"
+    for name in ("evo_r", "evo_l")
 }
 
 _HOST = b"""
