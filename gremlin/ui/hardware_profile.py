@@ -1366,6 +1366,8 @@ class HardwareProfile(QtCore.QObject):
     imageChanged = QtCore.Signal()
     clipboardChanged = QtCore.Signal()
     recentColoursChanged = QtCore.Signal()
+    # The profile's actions or modes changed: chip action labels are stale.
+    profileLabelsChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -1377,6 +1379,28 @@ class HardwareProfile(QtCore.QObject):
         clipboard = _clipboard()
         if clipboard is not None:
             clipboard.dataChanged.connect(self.clipboardChanged)
+        signal.profileChanged.connect(self.profileLabelsChanged)
+        signal.modesChanged.connect(self.profileLabelsChanged)
+
+    @QtCore.Slot(str, str, bool, bool, result="QVariantMap")
+    def actionLabels(
+        self, guid: str, mode: str, prefer_description: bool, join_all: bool
+    ) -> dict[str, str]:
+        """What each control of a device does in a mode: {"btn:5": "Gear up"}."""
+        from gremlin import shared_state
+        from gremlin.ui.button_map_labels import action_labels
+
+        return action_labels(
+            shared_state.current_profile, guid, mode, prefer_description, join_all
+        )
+
+    @QtCore.Slot(result=list)
+    def profileModes(self) -> list:
+        """The loaded profile's modes, parents before their children."""
+        from gremlin import shared_state
+        from gremlin.ui.button_map_labels import mode_order
+
+        return mode_order(shared_state.current_profile)
 
     @QtCore.Property(list, notify=recentColoursChanged)
     def recentColours(self) -> list:

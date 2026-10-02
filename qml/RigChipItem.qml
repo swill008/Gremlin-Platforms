@@ -42,7 +42,7 @@ Rectangle {
         font.pixelSize: { ed.tick; return ed.uiPx(node.fontSize || 10) }
         text: {
             ed.tick
-            return ed.friendlyOf(node, null)
+            return ed.chipText(node, null)
         }
     }
 }

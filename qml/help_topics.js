@@ -257,6 +257,15 @@ function topics() {
             + "<li><b>Hotspot</b> and <b>Leader ends</b> (see Hotspots and leaders), <b>Arrange</b> (stacking, Lock, Hide).</li>"
             + "</ul>"
             + "<p>Ctrl+D duplicates the selection; Ctrl+C and Ctrl+V copy and paste it inside the editor.</p>"),
+        topic("Button Map", "Action labels",
+            "<p>Chips can show what each control does in the profile instead of its name, so the map reads as a binding sheet: <b>Gear up</b> or <b>Ctrl+G</b> beside the button, not Button 23. View → <b>Chip text</b> picks <b>Name</b>, <b>Action</b>, or <b>Name and action</b> (also in Editor options → Labels). Renaming a chip still edits its name.</p>"
+            + "<p>The text comes from the control's actions in one mode. View → <b>Labels mode</b> picks the mode, or <b>Follow the program</b>: the running mode while the profile runs, otherwise the mode shown in the main window. A control with no actions in a mode shows its parent mode's, as the running profile does.</p>"
+            + "<ul>"
+            + "<li><b>Description</b>: its text. With Editor options → Labels → <b>Description first</b> on (the default), it stands for the whole binding.</li>"
+            + "<li><b>Map to Keyboard</b>: the keys, such as Ctrl+G. <b>Map to vJoy</b> and <b>Map to Xbox</b>: the output, such as vJoy 1 B5. <b>Change Mode</b>: → and the target mode, or Cycle, Previous mode, Unwind mode. <b>Text to Speech</b>: what it says. Mouse, Macro, Load profile, Run command, Sound, Pause / resume and Logical Device show those words.</li>"
+            + "<li>Actions inside Chain, Tempo, Double Tap, Condition and the like give their text; response curves and deadzones give none.</li>"
+            + "</ul>"
+            + "<p><b>Several actions</b> shows the first one's text, or all of them joined with +. <b>Unbound</b> sets what a chip shows when its control does nothing in that mode: its name, nothing, or a dash. Labels follow the profile as you edit it.</p>"),
         topic("Button Map", "Hotspots and leaders",
             "<p>Each chip has a <b>hotspot</b>, the dot on the photo marking the physical control, and a <b>leader</b> line between them. Drag the chip and the hotspot separately. A chip's <b>Hotspot</b> section sets the dot's size, shape, fill and colour.</p>"
             + "<p>Click a leader to select it. Drag a segment to bend it; that adds a curve point (a spine). Click a spine to select it; hold the right button on a spine for about half a second to delete it.</p>"
@@ -333,6 +342,7 @@ function topics() {
         topic("Button Map", "Editor options",
             "<p><b>Edit → Editor options…</b> in the Button Map opens Options at its <b>Button Map</b> section; the same settings are under Options in the main window. They apply to every device.</p>"
             + "<ul>"
+            + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>Unbound</b> (see Action labels).</li>"
             + "<li><b>Editing</b>: <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
             + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
             + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size).</li>"

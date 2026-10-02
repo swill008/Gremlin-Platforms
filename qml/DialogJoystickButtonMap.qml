@@ -1296,6 +1296,49 @@ ApplicationWindow {
             e.rotateSnap = o["rotate-snap"]
         e.findOn = o["press-to-find"] !== false
         e.findAxes = o["find-axes"] === true
+        refreshActionLabels()
+    }
+
+    // --- action labels (Options → Button Map → Labels) ------------------------
+
+    // The mode whose actions the chips show; "" follows the program: the
+    // running mode while the profile runs, else the mode shown in the main
+    // window.
+    property string labelMode: ""
+    property var profileModes: _hw.profileModes()
+    readonly property string labelModeNow: {
+        if (labelMode.length)
+            return labelMode
+        if (typeof backend !== "undefined" && backend && backend.gremlinActive)
+            return backend.currentMode
+        return (typeof uiState !== "undefined" && uiState) ? uiState.currentMode : ""
+    }
+    onLabelModeNowChanged: refreshActionLabels()
+
+    Connections {
+        target: _hw
+        function onProfileLabelsChanged() {
+            _buttonMap.profileModes = _hw.profileModes()
+            if (_buttonMap.labelMode.length && _buttonMap.profileModes.indexOf(_buttonMap.labelMode) < 0)
+                _buttonMap.labelMode = ""
+            _buttonMap.refreshActionLabels()
+        }
+    }
+
+    function labelsFor(mode) {
+        var o = _opts.values
+        return _hw.actionLabels(targetGuid, mode, o["description-first"] !== false, o["several-actions"] === "All")
+    }
+
+    function refreshActionLabels() {
+        var e = _ed()
+        if (!e)
+            return
+        var o = _opts.values
+        e.chipTextMode = String(o["chip-text"] || "Name")
+        e.unboundText = String(o["unbound"] || "Name")
+        e.actionLabels = (e.chipTextMode === "Name" || !targetGuid.length) ? ({}) : labelsFor(labelModeNow)
+        e.bump()
     }
 
     function openEditorOptions() {
@@ -1737,6 +1780,43 @@ ApplicationWindow {
             }
             Menu {
                 title: "View"
+                Menu {
+                    title: "Chip text"
+                    Repeater {
+                        model: ["Name", "Action", "Name and action"]
+                        MenuItem {
+                            required property string modelData
+                            text: modelData
+                            checkable: true
+                            checked: String(_opts.values["chip-text"] || "Name") === modelData
+                            onTriggered: _opts.set("chip-text", modelData)
+                        }
+                    }
+                }
+                Menu {
+                    id: _labelModeMenu
+                    title: "Labels mode"
+                    MenuItem {
+                        text: "Follow the program"
+                        checkable: true
+                        checked: _buttonMap.labelMode === ""
+                        onTriggered: _buttonMap.labelMode = ""
+                    }
+                    MenuSeparator {}
+                    Instantiator {
+                        model: _buttonMap.profileModes
+                        delegate: MenuItem {
+                            required property string modelData
+                            text: modelData
+                            checkable: true
+                            checked: _buttonMap.labelMode === modelData
+                            onTriggered: _buttonMap.labelMode = modelData
+                        }
+                        onObjectAdded: (index, object) => _labelModeMenu.insertItem(index + 2, object)
+                        onObjectRemoved: (index, object) => _labelModeMenu.removeItem(object)
+                    }
+                }
+                MenuSeparator {}
                 MenuItem {
                     text: "Layers"
                     checkable: true

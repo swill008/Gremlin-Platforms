@@ -36,6 +36,31 @@ GROUPS = ("labels", "editing", "autosave", "view", "export", "colours")
 # orders the entries inside their group.
 OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
     (
+        "labels", "01-chip-text", PropertyType.Selection, "Name",
+        "What chips show. Name: the control's name, or the name you gave it. "
+        "Action: what the control does in the profile, in the mode chosen under "
+        "View > Labels mode. Name and action: both.",
+        {"valid_options": ["Name", "Action", "Name and action"]},
+    ),
+    (
+        "labels", "02-description-first", PropertyType.Bool, True,
+        "When a control has a Description action, show its text instead of the "
+        "text made from its other actions.",
+        {},
+    ),
+    (
+        "labels", "03-several-actions", PropertyType.Selection, "First",
+        "A control with several actions shows the first one's text, or all of "
+        "them joined with +.",
+        {"valid_options": ["First", "All"]},
+    ),
+    (
+        "labels", "04-unbound", PropertyType.Selection, "Name",
+        "What a chip shows in Action mode when its control does nothing in that "
+        "mode: its name, nothing, or a dash.",
+        {"valid_options": ["Name", "Blank", "Dash"]},
+    ),
+    (
         "editing", "01-undo-steps", PropertyType.Int, 80,
         "How many steps Undo can go back while editing a map.",
         {"min": 20, "max": 500},

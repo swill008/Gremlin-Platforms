@@ -71,7 +71,7 @@ Rectangle {
         text: {
             ed.tick
             var m = node && node.members ? node.members[memberIndex] : null
-            return ed.memberLabel(node, m)
+            return ed.chipText(node, m)
         }
     }
 }

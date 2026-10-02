@@ -159,6 +159,11 @@ Item {
     property bool findAxes: false
     property var findPrev: ({})
     property string findMsg: ""
+    // Chip text (Options → Button Map → Labels) and the window's labels for
+    // the chosen mode: {"btn:5": "Gear up"}.
+    property string chipTextMode: "Name"
+    property string unboundText: "Name"
+    property var actionLabels: ({})
     property bool _restoring: false
     readonly property bool canUndo: histAt > 0
     readonly property bool canRedo: histAt >= 0 && hist && histAt < hist.length - 1
@@ -218,6 +223,7 @@ Item {
     function friendlyOf(n, mem) { return RigChips.friendlyOf(n, mem) }
     function fullNameOf(kind, hwId) { return RigChips.fullNameOf(kind, hwId) }
     function placedId(kind, hwId) { return RigChips.placedId(kind, hwId) }
+    function chipText(n, mem) { return RigChips.chipText(n, mem) }
     function catalog() { return RigChips.catalog() }
     function hotFxOf(n) { return RigChips.hotFxOf(n) }
     function hotFyOf(n) { return RigChips.hotFyOf(n) }

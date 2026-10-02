@@ -141,6 +141,27 @@ function fullNameOf(kind, hwId) {
     return s
 }
 
+// What a chip shows (Options → Button Map → Labels): its name, what the
+// control does in the profile (actionLabels, filled by the window for the
+// chosen mode), or both. Renaming always edits the name.
+function chipText(n, mem) {
+    var name = mem ? memberLabel(n, mem) : friendlyOf(n, null)
+    if (chipTextMode !== "Action" && chipTextMode !== "Name and action")
+        return name
+    var kind = mem ? memberKind(n, mem) : leafKind(n.kind)
+    var hwId = mem ? mem.hwId : n.hwId
+    var act = (actionLabels && actionLabels[kind + ":" + hwId]) || ""
+    if (chipTextMode === "Name and action")
+        return act.length ? name + ": " + act : name
+    if (act.length)
+        return act
+    if (unboundText === "Blank")
+        return ""
+    if (unboundText === "Dash")
+        return "—"
+    return name
+}
+
 function placedId(kind, hwId) {
     var want = leafKind(kind) + ":" + hwId
     var list = nodes || []

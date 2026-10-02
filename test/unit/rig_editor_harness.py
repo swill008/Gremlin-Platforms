@@ -105,6 +105,31 @@ Window {
         _face.liveStamp++
     }
     property string notPlaced: ""
+    // Text of a few chips and of a group's members, as shown.
+    function chipTexts() {
+        var e = ed()
+        var out = {}
+        var list = e.nodes || []
+        for (var i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (e.isDraw(n))
+                continue
+            if (e.isGroup(n)) {
+                var mem = n.members || []
+                for (var j = 0; j < mem.length; j++) {
+                    var key = e.memberKind(n, mem[j]) + ":" + mem[j].hwId
+                    out[key] = e.chipText(n, mem[j])
+                }
+            } else {
+                out[e.leafKind(n.kind) + ":" + n.hwId] = e.chipText(n, null)
+            }
+        }
+        var keep = ["btn:1", "btn:2", "btn:3", "btn:6", "btn:9", "axis:1"]
+        var picked = {}
+        for (var k = 0; k < keep.length; k++)
+            picked[keep[k]] = out[keep[k]]
+        return JSON.stringify(picked)
+    }
     function findState() {
         return JSON.stringify({
             msg: ed().findMsg,
@@ -1261,6 +1286,33 @@ def scenario_find(s: Session) -> None:
     find_step("off")
 
 
+def scenario_labels(s: Session) -> None:
+    """Chip text: name, action, both; unbound controls shown as their name,
+    nothing, or a dash; group members too."""
+    _load(s, "evo_r")
+    s.call("setSelection", [])
+    s.set_prop("actionLabels", {
+        "btn:3": "Gear up", "btn:1": "Ctrl+G", "btn:6": "→ Combat",
+        "axis:1": "vJoy 1 X",
+    })
+
+    def label_step(name: str, image: bool = False) -> None:
+        s.record(name, image=image)
+        texts = json.loads(s.js("chipTexts"))
+        s.steps[-1]["state"]["chipTexts"] = texts
+
+    label_step("name")
+    s.set_prop("chipTextMode", "Action")
+    label_step("action", image=True)
+    s.set_prop("chipTextMode", "Name and action")
+    label_step("name-and-action", image=True)
+    s.set_prop("chipTextMode", "Action")
+    s.set_prop("unboundText", "Blank")
+    label_step("unbound-blank")
+    s.set_prop("unboundText", "Dash")
+    label_step("unbound-dash")
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1308,6 +1360,7 @@ SCENARIOS = {
     "picture": scenario_picture,
     "export": scenario_export,
     "find": scenario_find,
+    "labels": scenario_labels,
 }
 
 
