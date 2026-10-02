@@ -7,6 +7,7 @@ import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Device
+import Gremlin.Menus
 import Gremlin.Style
 import "helpers.js" as Helpers
 
@@ -933,35 +934,28 @@ Item {
     }
 
     function popupEmptyMenu(pageX, pageY) {
-        Qt.callLater(function() {
-            var w = Math.max(_emptyMenu.implicitWidth, _emptyMenu.width)
-            var h = Math.max(_emptyMenu.implicitHeight, _emptyMenu.height)
-            if (w <= 0)
-                w = Style.dp(160)
-            if (h <= 0)
-                h = Style.dp(36)
-            _emptyMenu.popup(pageX - w / 2, pageY - h - Style.dp(8))
-        })
+        // After this release: opening during it reads as a click outside.
+        Qt.callLater(function() { _emptyMenu.openAt(_page, pageX, pageY) })
     }
 
-    Menu {
+    // The page's right-click menu (Gremlin.Menus), off the cards.
+    ContextMenu {
         id: _emptyMenu
-        // Keeps the menu inside the window near the bottom edge.
-        margins: Style.dp(4)
-        onAboutToShow: {
-            _unhideAll.enabled = !!( _page.model && _page.model.hiddenList().length )
-        }
-        MenuItem {
-            id: _unhideAll
-            text: "Unhide all devices"
-            onTriggered: {
-                if (_page.model)
-                    _page.model.unignoreAll()
-            }
-        }
-        MenuItem {
-            text: "Reset all card sizes"
-            onTriggered: _page.resetAllCardSizes()
+        menuWidth: Style.dp(240)
+        build: function() {
+            return MenuModel.menu("home", "Home", [
+                MenuModel.action("Unhide all devices", function() {
+                    if (_page.model)
+                        _page.model.unignoreAll()
+                }, !!(_page.model && _page.model.hiddenList().length)),
+                MenuModel.action("Reset all card sizes", function() { _page.resetAllCardSizes() }),
+                MenuModel.command("view.hidden"),
+                MenuModel.section("layout", "Layout", [
+                    MenuModel.command("view.layout.single"),
+                    MenuModel.command("view.layout.side"),
+                    MenuModel.command("view.layout.stacked")
+                ])
+            ])
         }
     }
 

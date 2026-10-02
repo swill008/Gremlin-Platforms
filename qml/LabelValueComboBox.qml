@@ -10,6 +10,7 @@ import QtQuick.Controls.Universal as U
 
 import Gremlin.Profile
 import Gremlin.Style
+import Gremlin.Menus as Menus
 
 
 Item {
@@ -45,12 +46,19 @@ Item {
     // Delegate rendering the selection item using its label but using the
     // associated value for storage
     component OptionDelegate : ItemDelegate {
+        id: _option
+        required property int index
         required property string label
         required property string value
         required property string bootstrap
         required property string imageIcon
 
         width: parent.width
+        // The menus' row look (Gremlin.Menus).
+        background: Menus.MenuRowBackground {
+            hot: _option.hovered || _selection.highlightedIndex === _option.index
+            marked: _selection.currentIndex === _option.index
+        }
         contentItem: Row {
              Label {
                  text: bootstrap

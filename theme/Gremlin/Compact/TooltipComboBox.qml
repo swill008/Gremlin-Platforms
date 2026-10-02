@@ -11,6 +11,7 @@ import QtQuick.Templates as T
 import Gremlin.Base as Base
 import Gremlin.Compact as Compact
 import Gremlin.Style
+import Gremlin.Menus as Menus
 
 Compact.ComboBox {
     id: control
@@ -18,18 +19,8 @@ Compact.ComboBox {
     property bool enableTooltips: true
     property int scrollStep: 3
 
-    delegate: ItemDelegate {
-        required property var model
-        required property int index
-
-        width: ListView.view.width
-        text: model[control.textRole]
-        font.pixelSize: Style.dp(14)
-        topPadding: Style.dp(4)
-        bottomPadding: Style.dp(4)
-        font.weight: control.currentIndex === index ? Font.DemiBold : Font.Normal
-        highlighted: control.highlightedIndex === index
-        hoverEnabled: control.hoverEnabled
+    delegate: Menus.DropdownRow {
+        combo: control
 
         Base.WrappingTooltip {
             text: parent.text
@@ -37,26 +28,9 @@ Compact.ComboBox {
         }
     }
 
-    popup: T.Popup {
-        width: control.width
-        height: Math.min(contentItem.implicitHeight, control.Window.height - topMargin - bottomMargin)
-        topMargin: Style.dp(4)
-        bottomMargin: Style.dp(4)
-
-        U.Universal.theme: control.U.Universal.theme
-        U.Universal.accent: control.U.Universal.accent
-
-        contentItem: Base.ComboBoxScrollableEntries {
-            model: control.delegateModel
-            currentIndex: control.highlightedIndex
-            scrollStep: control.scrollStep
-        }
-
-        background: Rectangle {
-            color: control.U.Universal.chromeMediumLowColor
-            border.color: control.U.Universal.chromeHighColor
-            border.width: Style.dp(1)
-        }
+    popup: Menus.DropdownPopup {
+        combo: control
+        scrollStep: control.scrollStep
     }
 
     Base.WrappingTooltip {

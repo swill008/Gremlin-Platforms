@@ -12,6 +12,7 @@ import QtQuick.Controls.Universal as U
 import QtQuick.Controls.Universal.impl
 
 import Gremlin.Style
+import Gremlin.Menus as Menus
 
 T.ComboBox {
     id: control
@@ -28,25 +29,10 @@ T.ComboBox {
 
     U.Universal.theme: editable && activeFocus ? U.Universal.Light : undefined
 
-    delegate: ItemDelegate {
-        required property var model
-        required property int index
-
-        width: ListView.view.width
-        text: model[control.textRole]
-        font.weight: control.currentIndex === index ? Font.DemiBold : Font.Normal
-        highlighted: control.highlightedIndex === index
-        hoverEnabled: control.hoverEnabled
-
-        // The current value: an accent bar as well as the bold text.
-        Rectangle {
-            visible: control.currentIndex === index
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: Style.dp(3)
-            color: control.U.Universal.accent
-        }
+    // Rows and list in the menus' style (Gremlin.Menus); long lists get a
+    // search box.
+    delegate: Menus.DropdownRow {
+        combo: control
     }
 
     indicator: ColorImage {
@@ -124,33 +110,7 @@ T.ComboBox {
         }
     }
 
-    popup: T.Popup {
-        // Open below the box. Opened on top, the first entry sat under the pointer
-        // and was highlighted instead of the current value.
-        y: control.height
-        width: control.width
-        height: Math.min(contentItem.implicitHeight, control.Window.height - topMargin - bottomMargin)
-        topMargin: Style.dp(8)
-        bottomMargin: Style.dp(8)
-        font: control.font
-
-        U.Universal.theme: control.U.Universal.theme
-        U.Universal.accent: control.U.Universal.accent
-
-        contentItem: ListView {
-            clip: true
-            implicitHeight: contentHeight
-            model: control.delegateModel
-            currentIndex: control.highlightedIndex
-            highlightMoveDuration: 0
-
-            T.ScrollIndicator.vertical: ScrollIndicator { }
-        }
-
-        background: Rectangle {
-            color: (Style.isDarkMode ? control.U.Universal.chromeMediumLowColor : Style._light.popup)
-            border.color: control.U.Universal.chromeHighColor
-            border.width: Style.dp(1) // FlyoutBorderThemeThickness
-        }
+    popup: Menus.DropdownPopup {
+        combo: control
     }
 }

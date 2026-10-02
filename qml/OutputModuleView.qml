@@ -9,6 +9,7 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 
 import Gremlin.Device
+import Gremlin.Menus
 import Gremlin.Style
 
 Item {
@@ -1144,7 +1145,7 @@ Item {
                         text: "Copy View\nfrom…"
                         onClicked: {
                             refreshCopySources()
-                            _copyMenu.popup(_copyButton, 0, _copyButton.height)
+                            _copyMenu.openBelow(_copyButton)
                         }
                         contentItem: Text {
                             text: parent.text
@@ -1173,22 +1174,18 @@ Item {
         }
     }
 
-    Menu {
+    // Copy the display settings from another module (Gremlin.Menus).
+    ContextMenu {
         id: _copyMenu
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        width: Style.dp(360)
-        Instantiator {
-            model: _copySources
-            delegate: MenuItem {
-                required property string label
-                required property string name
-                required property string guid
-                text: label
-                width: Style.dp(360)
-                onTriggered: _root.copyViewFrom(name, guid)
+        menuWidth: Style.dp(360)
+        build: function() {
+            var rows = []
+            for (var i = 0; i < _copySources.count; ++i) {
+                (function(src) {
+                    rows.push(MenuModel.action(src.label, function() { _root.copyViewFrom(src.name, src.guid) }))
+                })(_copySources.get(i))
             }
-            onObjectAdded: (index, object) => _copyMenu.insertItem(_copyMenu.count, object)
-            onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
+            return MenuModel.menu("copy-view", rows.length ? "Replace this view with the settings from" : "No other output module", rows, [])
         }
     }
 

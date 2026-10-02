@@ -15,7 +15,10 @@ import Gremlin.Profile
 import Gremlin.Style
 import Gremlin.UI
 
+import Gremlin.Menus
+
 import "helpers.js" as Helpers
+import "main_commands.js" as MainCommands
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -34,10 +37,15 @@ ApplicationWindow {
 
     WindowPlacement { id: _windowPlacement }
 
+    // The commands that have a shortcut (main_commands.js).
+    property var shortcutCommands: []
+
     Component.onCompleted: () => {
         if (backend) {
             Style.isDarkMode = backend.useDarkMode
         }
+        Commands.defineAll(MainCommands.commandList(), "main")
+        shortcutCommands = Commands.withShortcuts()
         _windowPlacement.restore(_root)
         refreshSourceModuleCount()
     }
@@ -470,6 +478,23 @@ ApplicationWindow {
         })
     }
 
+    // For the command list (main_commands.js), which keeps no window list of
+    // its own: helpers.js remembers the windows it opened per importer.
+    function openTool(spec) {
+        Helpers.createComponent(spec)
+    }
+
+    function toggleTool(spec) {
+        Helpers.toggleComponent(spec)
+    }
+
+    function loadRecent(file) {
+        if (backend)
+            leaveDisplayThen(function() {
+                guardUnsavedChanges(function() { backend.loadProfile(file) })
+            })
+    }
+
     function fileNameOf(path) {
         var text = String(path || "")
         var cut = Math.max(text.lastIndexOf("/"), text.lastIndexOf("\\"))
@@ -707,230 +732,115 @@ ApplicationWindow {
         hints: []
     }
 
-    menuBar: MenuBar {
-        Menu {
+    // The menu bar, shortcuts and command palette all come from one list of
+    // commands (main_commands.js). Menus show only what can be used now.
+    menuBar: ThemedMenuBar {
+        ThemedMenu {
             title: qsTr("File")
 
-            Action {
-                text: qsTr("New Profile")
-                shortcut: "Ctrl+N"
-                onTriggered: () => { requestNewProfile() }
-            }
-            Action {
-                text: qsTr("Load Profile")
-                shortcut: "Ctrl+O"
-                onTriggered: () => { _loadProfileFileDialog.open() }
-            }
-            AutoSizingMenu {
+            ThemedMenuItem { command: "file.new" }
+            ThemedMenuItem { command: "file.load" }
+            ThemedMenu {
+                id: _recentMenu
                 title: qsTr("Recent")
 
-                Repeater {
+                Instantiator {
                     model: backend ? backend.recentProfiles : []
-                    delegate: MenuItem {
-                        text: fileNameOf(modelData)
+                    delegate: ThemedMenuItem {
+                        required property var modelData
+                        text: _root.fileNameOf(modelData)
                         PointerTip {
                             text: modelData
                             delay: 400
                             show: true
                         }
-                        onTriggered: () => {
-                            var file = modelData
-                            if (backend)
-                                leaveDisplayThen(function() {
-                                    guardUnsavedChanges(function() { backend.loadProfile(file) })
-                                })
-                        }
+                        onTriggered: () => { _root.loadRecent(modelData) }
                     }
+                    onObjectAdded: (index, object) => _recentMenu.insertItem(index, object)
+                    onObjectRemoved: (index, object) => _recentMenu.removeItem(object)
                 }
             }
-            Action {
-                text: qsTr("Save Profile")
-                shortcut: "Ctrl+S"
-                onTriggered: () => { saveCurrentProfile() }
-            }
-            MenuItem {
-                text: qsTr("Save Profile As")
-                onTriggered: () => { _saveProfileFileDialog.open() }
-            }
-            MenuItem {
-                text: qsTr("Exit")
-                onTriggered: () => { quitGremlin() }
-            }
+            ThemedMenuItem { command: "file.save" }
+            ThemedMenuItem { command: "file.saveAs" }
+            ThemedMenuSeparator {}
+            ThemedMenuItem { command: "file.exit" }
         }
 
-        Menu {
+        ThemedMenu {
             title: qsTr("View")
 
-            MenuItem {
-                text: qsTr("Home")
-                onTriggered: () => { closeWorkRoom() }
-            }
-            MenuItem {
-                text: qsTr("Configuration")
-                onTriggered: () => { openConfigurationForFocus() }
-            }
-            MenuSeparator {}
-            Menu {
+            ThemedMenuItem { command: "view.home" }
+            ThemedMenuItem { command: "view.configuration" }
+            ThemedMenuSeparator {}
+            ThemedMenu {
                 title: qsTr("Home layout")
-                MenuItem { text: qsTr("Single list"); onTriggered: _moduleModel.setSplitMode("none") }
-                MenuItem { text: qsTr("Side by side"); onTriggered: _moduleModel.setSplitMode("vertical") }
-                MenuItem { text: qsTr("Stacked"); onTriggered: _moduleModel.setSplitMode("horizontal") }
+                ThemedMenuItem { command: "view.layout.single" }
+                ThemedMenuItem { command: "view.layout.side" }
+                ThemedMenuItem { command: "view.layout.stacked" }
             }
-            MenuItem {
-                text: qsTr("Hidden devices…")
-                onTriggered: () => { openHiddenDevices() }
-            }
-            MenuItem {
-                text: qsTr("Scripts")
-                onTriggered: () => {
-                    leaveDisplayThen(function() {
-                        if (uiState) {
-                            uiState.setCurrentRoom("scripts")
-                            uiState.setCurrentTab("scripts")
-                        }
-                    })
-                }
-            }
-            MenuItem {
-                text: qsTr("Profile Settings")
-                onTriggered: () => {
-                    leaveDisplayThen(function() {
-                        if (uiState) {
-                            uiState.setCurrentRoom("settings")
-                            uiState.setCurrentTab("settings")
-                        }
-                    })
-                }
-            }
+            ThemedMenuItem { command: "view.hidden" }
+            ThemedMenuItem { command: "view.scripts" }
+            ThemedMenuItem { command: "view.settings" }
+            ThemedMenuSeparator {}
+            ThemedMenuItem { command: "view.palette" }
         }
 
-        Menu {
+        ThemedMenu {
             title: qsTr("Tools")
 
-            Menu {
+            ThemedMenu {
                 title: qsTr("Viewers")
-
-                MenuItem {
-                    text: qsTr("vJoy Viewer")
-                    onTriggered: () => {
-                        Helpers.toggleComponent("DialogInputViewer.qml")
-                    }
-                }
-                MenuItem {
-                    text: qsTr("Xbox Viewer")
-                    onTriggered: () => {
-                        Helpers.toggleComponent("DialogXboxViewer.qml")
-                    }
-                }
+                ThemedMenuItem { command: "tools.vjoyViewer" }
+                ThemedMenuItem { command: "tools.xboxViewer" }
             }
-            Menu {
+            ThemedMenu {
                 title: qsTr("Device setup")
-
-                MenuItem {
-                    text: qsTr("Calibration")
-                    onTriggered: () => {
-                        Helpers.createComponent("DialogCalibration.qml")
-                    }
-                }
-                MenuItem {
-                    text: qsTr("HiDHide")
-                    onTriggered: () => {
-                        Helpers.createComponent("DialogHardwareHide.qml")
-                    }
-                }
-                MenuItem {
-                    text: qsTr("Configure input module")
-                    onTriggered: () => { openConfigureModule("source") }
-                }
-                MenuItem {
-                    text: qsTr("Configure output module")
-                    onTriggered: () => { openConfigureModule("dest") }
-                }
-                MenuItem {
-                    text: qsTr("Device Information")
-                    onTriggered: () => {
-                        Helpers.createComponent("DialogDeviceInformation.qml")
-                    }
-                }
-                MenuItem {
-                    text: qsTr("Swap Devices")
-                    onTriggered: () => {
-                        Helpers.createComponent("DialogSwapDevices.qml")
-                    }
-                }
-                MenuItem {
-                    text: qsTr("Device Pack")
-                    onTriggered: () => { Helpers.createComponent("DialogDevicePack.qml") }
-                }
+                ThemedMenuItem { command: "tools.calibration" }
+                ThemedMenuItem { command: "tools.hidhide" }
+                ThemedMenuItem { command: "tools.configureInput" }
+                ThemedMenuItem { command: "tools.configureOutput" }
+                ThemedMenuItem { command: "tools.deviceInfo" }
+                ThemedMenuItem { command: "tools.swapDevices" }
+                ThemedMenuItem { command: "tools.devicePack" }
             }
-            Menu {
+            ThemedMenu {
                 title: qsTr("Mapping")
-
-                MenuItem {
-                    text: qsTr("Logical Device")
-                    onTriggered: () => { openLogicalDevice() }
-                }
-                MenuItem {
-                    text: qsTr("Button Map")
-                    onTriggered: () => { openBlankButtonMap() }
-                }
-                MenuItem {
-                    text: qsTr("Auto Mapper")
-                    onTriggered: () => {
-                        Helpers.createComponent("DialogAutoMapper.qml")
-                    }
-                }
-                MenuItem {
-                    text: qsTr("Manage Modes")
-                    onTriggered: () => {
-                        Helpers.createComponent("DialogManageModes.qml")
-                    }
-                }
+                ThemedMenuItem { command: "tools.logical" }
+                ThemedMenuItem { command: "tools.buttonMap" }
+                ThemedMenuItem { command: "tools.autoMapper" }
+                ThemedMenuItem { command: "tools.manageModes" }
             }
-            MenuSeparator {}
-            MenuItem {
-                text: qsTr("Options")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogOptions.qml")
-                }
-            }
+            ThemedMenuSeparator {}
+            ThemedMenuItem { command: "tools.options" }
         }
 
-        Menu {
+        ThemedMenu {
             title: qsTr("Debug")
 
-            MenuItem {
-                text: qsTr("Live Log Reader")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogLiveLog.qml")
-                }
-            }
+            ThemedMenuItem { command: "debug.liveLog" }
         }
 
-        Menu {
+        ThemedMenu {
             title: qsTr("Help")
 
-            MenuItem {
-                text: qsTr("User Guide")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogHelp.qml")
-                }
-            }
-            MenuItem {
-                text: qsTr("Check for Updates")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogUpdate.qml")
-                    if (updater && updater.state !== "downloading" && updater.state !== "ready")
-                        updater.check(true)
-                }
-            }
-            MenuItem {
-                text: qsTr("About")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogAbout.qml")
-                }
-            }
+            ThemedMenuItem { command: "help.guide" }
+            ThemedMenuItem { command: "help.updates" }
+            ThemedMenuItem { command: "help.about" }
         }
+    }
+
+    // A shortcut for each command that has one.
+    Instantiator {
+        model: _root.shortcutCommands
+        delegate: Shortcut {
+            required property var modelData
+            sequence: modelData.shortcut
+            onActivated: Commands.trigger(modelData.id)
+        }
+    }
+
+    CommandPalette {
+        id: _commandPalette
     }
 
     header: ToolBar {
@@ -1041,21 +951,8 @@ ApplicationWindow {
                             : (Style.isDarkMode ? _modeSelector.U.Universal.altMediumLowColor : Style._light.item)
                 }
 
-                delegate: ItemDelegate {
-                    required property var model
-                    required property int index
-
-                    width: ListView.view ? ListView.view.width : implicitWidth
-                    text: model[_modeSelector.textRole]
-                    font.weight: _modeSelector.currentIndex === index ? Font.DemiBold : Font.Normal
-                    highlighted: false
-                    hoverEnabled: true
-
-                    background: Rectangle {
-                        color: (_modeSelector.highlightedIndex === index || parent.hovered)
-                                ? _modeSelector.U.Universal.listMediumColor
-                                : "transparent"
-                    }
+                delegate: DropdownRow {
+                    combo: _modeSelector
                 }
 
                 onActivated: () => {

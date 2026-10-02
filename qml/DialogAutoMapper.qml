@@ -10,6 +10,7 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Profile
 import Gremlin.Tools
+import Gremlin.Menus as Menus
 import Gremlin.Style
 import Gremlin.Config
 
@@ -143,21 +144,8 @@ ApplicationWindow {
                             : (Style.isDarkMode ? _modeSelector.U.Universal.altMediumLowColor : Style._light.item)
                 }
 
-                delegate: ItemDelegate {
-                    required property var model
-                    required property int index
-
-                    width: ListView.view ? ListView.view.width : implicitWidth
-                    text: model[_modeSelector.textRole]
-                    font.weight: _modeSelector.currentIndex === index ? Font.DemiBold : Font.Normal
-                    highlighted: false
-                    hoverEnabled: true
-
-                    background: Rectangle {
-                        color: (_modeSelector.highlightedIndex === index || parent.hovered)
-                                ? _modeSelector.U.Universal.listMediumColor
-                                : "transparent"
-                    }
+                delegate: Menus.DropdownRow {
+                    combo: _modeSelector
                 }
             }
 

@@ -10,6 +10,7 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Profile
 import Gremlin.Style
+import Gremlin.Menus as Menus
 import Gremlin.Tools
 
 ApplicationWindow {
@@ -86,12 +87,9 @@ ApplicationWindow {
                 valueRole: "guid"
 
                 displayText: currentText + " : " + currentValue
-                delegate: ItemDelegate {
-                    text: model.name + " : " + model.guid
-
-                    width: ListView.view.width
-                    font.weight: control.currentIndex === index ? Font.DemiBold : Font.Normal
-                    highlighted: control.highlightedIndex === index
+                delegate: Menus.DropdownRow {
+                    combo: _physicalDeviceSelection
+                    labelFor: (i) => _physicalDeviceSelection.textAt(i) + " : " + _physicalDeviceSelection.valueAt(i)
                 }
             }
         }

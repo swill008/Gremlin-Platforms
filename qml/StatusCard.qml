@@ -6,6 +6,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
+import Gremlin.Menus
 import Gremlin.Style
 
 Rectangle {
@@ -257,7 +258,7 @@ Rectangle {
                 // Open after this release. Opening during the release makes
                 // Qt treat it as a click outside and close the menu at once.
                 Qt.callLater(function() {
-                    _menu.popup(_grab, px, py)
+                    _menu.openAt(_grab, px, py)
                 })
                 return
             }
@@ -408,80 +409,44 @@ Rectangle {
         }
     }
 
-    Menu {
-        id: _menu
-        // Keeps the menu inside the window near the bottom edge.
-        margins: Style.dp(4)
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    // The card's right-click menu (Gremlin.Menus): the two main ways in,
+    // then sections for the module, viewers, card layout and the device.
+    function menuModel() {
+        var dest = direction === "dest"
+        var xbox = bus === "XInput" || tab === "xbox" || slug === "xbox"
+        return MenuModel.menu("card", cardName || rawName || "Device", [
+            MenuModel.action(dest ? "Output View" : "Open Configuration",
+                             function() { dest ? _card.openOutputView() : _card.openConfiguration() }),
+            MenuModel.action("Button Map", function() { _card.openButtonMap() })
+        ], [
+            MenuModel.section("module", "Module", [
+                MenuModel.action(dest ? "Configure output module" : "Configure input module",
+                                 function() { _card.configureModule() }),
+                MenuModel.action("Auto Mapper", function() { _card.autoMap() }),
+                dest ? null : MenuModel.action("Calibration", function() { _card.openCalibration() })
+            ]),
+            MenuModel.section("view", "View", [
+                MenuModel.action(xbox ? "Xbox Viewer" : "vJoy Viewer", function() { _card.openPairing() }),
+                MenuModel.action("Device Information", function() { _card.openDeviceInformation() })
+            ]),
+            MenuModel.section("cards", "Cards", [
+                MenuModel.action("Stack selected cards", function() { _card.stackSelectedCards() }, _card.canStackSelected),
+                MenuModel.action("Unstack", function() { _card.unstackCard() }, stacked),
+                MenuModel.action("Unstack all", function() { _card.unstackAllCards() }, stacked),
+                MenuModel.action("Reset size", function() { _card.resetSize() }),
+                MenuModel.action("Reset all card sizes", function() { _card.resetAllSizes() })
+            ]),
+            MenuModel.section("device", "Device", [
+                dest ? null : MenuModel.action("Assign hardware…", function() { _card.assignHardware() }),
+                MenuModel.action("Hide device", function() { _card.ignoreDevice() }),
+                MenuModel.action("Clear module settings", function() { _card.clearSettings() }),
+                MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })
+            ])
+        ])
+    }
 
-        MenuItem {
-            text: direction === "dest" ? "Output View" : "Open Configuration"
-            onTriggered: direction === "dest" ? _card.openOutputView() : _card.openConfiguration()
-        }
-        MenuItem {
-            text: "Button Map"
-            onTriggered: _card.openButtonMap()
-        }
-        MenuItem {
-            text: direction === "dest" ? "Configure output module" : "Configure input module"
-            onTriggered: _card.configureModule()
-        }
-        MenuItem { text: "Auto Mapper"; onTriggered: _card.autoMap() }
-        MenuItem {
-            text: (bus === "XInput" || tab === "xbox" || slug === "xbox") ? "Xbox Viewer" : "vJoy Viewer"
-            onTriggered: _card.openPairing()
-        }
-        MenuItem {
-            visible: direction !== "dest"
-            height: visible ? implicitHeight : 0
-            text: "Calibration"
-            onTriggered: _card.openCalibration()
-        }
-        MenuItem { text: "Device Information"; onTriggered: _card.openDeviceInformation() }
-        MenuItem {
-            visible: direction !== "dest"
-            height: visible ? implicitHeight : 0
-            text: "Assign hardware…"
-            onTriggered: _card.assignHardware()
-        }
-        MenuItem {
-            visible: _card.canStackSelected
-            height: visible ? implicitHeight : 0
-            text: "Stack selected cards"
-            onTriggered: _card.stackSelectedCards()
-        }
-        MenuItem {
-            visible: stacked
-            height: visible ? implicitHeight : 0
-            text: "Unstack"
-            onTriggered: _card.unstackCard()
-        }
-        MenuItem {
-            visible: stacked
-            height: visible ? implicitHeight : 0
-            text: "Unstack all"
-            onTriggered: _card.unstackAllCards()
-        }
-        MenuSeparator {}
-        MenuItem { text: "Reset size"; onTriggered: _card.resetSize() }
-        MenuItem { text: "Reset all card sizes"; onTriggered: _card.resetAllSizes() }
-        MenuSeparator {}
-        MenuItem { text: "Hide device"; onTriggered: _card.ignoreDevice() }
-        MenuSeparator {}
-        MenuItem { text: "Clear module settings"; onTriggered: _card.clearSettings() }
-        MenuSeparator {}
-        MenuItem {
-            id: _deleteDeviceItem
-            text: "Delete Device"
-            onTriggered: _card.deleteDevice()
-            contentItem: Label {
-                text: _deleteDeviceItem.text
-                color: Style.dangerText
-                font.bold: true
-                leftPadding: Style.dp(12)
-                rightPadding: Style.dp(12)
-                verticalAlignment: Text.AlignVCenter
-            }
-        }
+    ContextMenu {
+        id: _menu
+        build: _card.menuModel
     }
 }

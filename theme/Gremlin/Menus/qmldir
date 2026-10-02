@@ -1,0 +1,16 @@
+module Gremlin.Menus
+# Menus, dropdown lists and the command palette in one style: the Button
+# Map's. Colours and sizes come from the Style.menu* tokens.
+ContextMenu 1.0 ContextMenu.qml
+CommandPalette 1.0 CommandPalette.qml
+DropdownPopup 1.0 DropdownPopup.qml
+DropdownRow 1.0 DropdownRow.qml
+MenuRowBackground 1.0 MenuRowBackground.qml
+MenuSurface 1.0 MenuSurface.qml
+ThemedMenu 1.0 ThemedMenu.qml
+ThemedMenuBar 1.0 ThemedMenuBar.qml
+ThemedMenuBarItem 1.0 ThemedMenuBarItem.qml
+ThemedMenuItem 1.0 ThemedMenuItem.qml
+ThemedMenuSeparator 1.0 ThemedMenuSeparator.qml
+Commands 1.0 commands.js
+MenuModel 1.0 menu_model.js

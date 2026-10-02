@@ -7,6 +7,7 @@ import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Profile
+import Gremlin.Menus
 import Gremlin.Style
 import "helpers.js" as Helpers
 
@@ -256,51 +257,51 @@ Item {
         }
     }
 
-    Component {
-        id: _addItem
-        MenuItem {
-            property string actionName: ""
-            text: actionName
-            onTriggered: {
+    // What kind of action each is, for the Add sections. Anything not
+    // listed (a new action) goes under Other.
+    readonly property var _actionKinds: ({
+        "Map to vJoy": "map", "Map to Xbox": "map", "Map to Keyboard": "map",
+        "Map to Mouse": "map", "Map to Logical Device": "map",
+        "Response Curve": "axis", "Axis Delta": "axis", "Dual Axis Deadzone": "axis",
+        "Merge Axis": "axis", "Split Axis": "axis", "Hat as Buttons": "axis",
+        "Condition": "logic", "Chain": "logic", "Double Tap": "logic", "Tempo": "logic",
+        "Smart Toggle": "logic", "Macro": "logic", "Change Mode": "logic", "Reference": "logic"
+    })
+
+    // The action's right-click menu (Gremlin.Menus): the three actions used
+    // most (the order set in Options) to add straight away, the rest by kind.
+    function _menuModel() {
+        var names = (parentAction && parentAction.compatibleActions) ? parentAction.compatibleActions : []
+        var add = function(name) {
+            return MenuModel.action(name, function() {
                 if (_root.parentAction)
-                    _root.parentAction.appendAction(actionName, _root.containerName || "children")
-            }
+                    _root.parentAction.appendAction(name, _root.containerName || "children")
+            })
         }
+        var quick = names.slice(0, 3).map(function(n) { return MenuModel.action("Add " + n, add(n).run) })
+        var groups = { map: [], axis: [], logic: [], other: [] }
+        for (var i = 3; i < names.length; i++)
+            groups[_actionKinds[names[i]] || "other"].push(add(names[i]))
+        var canDelete = !!(parentAction && action) || !!(compactMode && inputItemModel && inputBinding)
+        return MenuModel.menu("action-node", action ? action.name : "Action", quick, [
+            MenuModel.section("add-map", "Add: map to", groups.map),
+            MenuModel.section("add-axis", "Add: axis and hat", groups.axis),
+            MenuModel.section("add-logic", "Add: logic and timing", groups.logic),
+            MenuModel.section("add-other", "Add: other", groups.other),
+            MenuModel.section("remove", "Remove", [
+                MenuModel.action("Delete", function() {
+                    if (_root.compactMode && _root.inputItemModel && _root.inputBinding)
+                        _root.inputItemModel.deleteActionSequnce(_root.inputBinding)
+                    else if (_root.parentAction && _root.action)
+                        _root.parentAction.removeAction(_root.action.sequenceIndex)
+                }, canDelete, { danger: true })
+            ])
+        ])
     }
 
-    Menu {
+    ContextMenu {
         id: _actionMenu
-
-        Menu {
-            id: _addMenu
-            title: "Add"
-        }
-        MenuItem {
-            text: "Delete"
-            enabled: !!(_root.parentAction && _root.action) || !!(_root.compactMode && _root.inputItemModel && _root.inputBinding)
-            onTriggered: {
-                if (_root.compactMode && _root.inputItemModel && _root.inputBinding)
-                    _root.inputItemModel.deleteActionSequnce(_root.inputBinding)
-                else if (_root.parentAction && _root.action)
-                    _root.parentAction.removeAction(_root.action.sequenceIndex)
-            }
-        }
-
-        onAboutToShow: {
-            while (_addMenu.count > 0) {
-                var old = _addMenu.takeItem(0)
-                if (old)
-                    old.destroy()
-            }
-            var names = (_root.parentAction && _root.parentAction.compatibleActions)
-                    ? _root.parentAction.compatibleActions : []
-            for (var i = 0; i < names.length; i++) {
-                var item = _addItem.createObject(_addMenu, { "actionName": names[i] })
-                if (item)
-                    _addMenu.addItem(item)
-            }
-            _addMenu.enabled = names.length > 0
-        }
+        build: _root._menuModel
     }
 
     MouseArea {
@@ -310,7 +311,7 @@ Item {
         height: _header.height
         z: 4
         acceptedButtons: Qt.RightButton
-        onClicked: _actionMenu.popup()
+        onClicked: (mouse) => _actionMenu.openAt(_header, mouse.x, mouse.y)
     }
 
     MouseArea {

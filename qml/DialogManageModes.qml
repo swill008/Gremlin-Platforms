@@ -8,6 +8,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.Profile
+import Gremlin.Menus as Menus
 import Gremlin.Style
 
 ApplicationWindow {
@@ -192,21 +193,10 @@ ApplicationWindow {
                             : (Style.isDarkMode ? _parentMode.U.Universal.altMediumLowColor : Style._light.item)
                 }
 
-                delegate: ItemDelegate {
-                    required property var model
-                    required property int index
-
-                    width: ListView.view ? ListView.view.width : implicitWidth
-                    text: model[_parentMode.textRole] === "" ? "(none)" : model[_parentMode.textRole]
-                    font.weight: _parentMode.currentIndex === index ? Font.DemiBold : Font.Normal
-                    highlighted: false
-                    hoverEnabled: true
-
-                    background: Rectangle {
-                        color: (_parentMode.highlightedIndex === index || parent.hovered)
-                                ? _parentMode.U.Universal.listMediumColor
-                                : "transparent"
-                    }
+                delegate: Menus.DropdownRow {
+                    combo: _parentMode
+                    // "" means no parent.
+                    labelFor: (i) => _parentMode.textAt(i) === "" ? "(none)" : _parentMode.textAt(i)
                 }
 
                 onActivated: (index) => {

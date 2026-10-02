@@ -17,8 +17,8 @@ function topics() {
         topic("Getting Started", "First setup",
             "<ol>"
             + "<li>Install <b>vJoy</b> and configure its devices. For an Xbox controller, install <b>ViGEmBus</b>. Neither driver ships with this program.</li>"
-            + "<li>On <b>Home</b>, right-click each physical device and choose <b>Configure input module</b>. Press the controls you will use, or tick them, then <b>Save module</b>.</li>"
-            + "<li>Right-click each vJoy device and choose <b>Configure output module</b>. Tick the outputs you will use, then <b>Save module</b>. The Xbox controller needs no setup.</li>"
+            + "<li>On <b>Home</b>, right-click each physical device and choose <b>Module</b> → <b>Configure input module</b>. Press the controls you will use, or tick them, then <b>Save module</b>.</li>"
+            + "<li>Right-click each vJoy device and choose <b>Module</b> → <b>Configure output module</b>. Tick the outputs you will use, then <b>Save module</b>. The Xbox controller needs no setup.</li>"
             + "<li>Double-click a physical device to open <b>Configuration</b>. Use <b>Add Action</b> on an input, for example Map to vJoy, then <b>OK</b>.</li>"
             + "<li><b>File → Save Profile</b> (Ctrl+S).</li>"
             + "<li>Press <b>Toggle</b> to run the profile. Use the <b>vJoy Viewer</b> or <b>Xbox Viewer</b> to watch the result.</li>"
@@ -37,6 +37,17 @@ function topics() {
             "<p><b>Toggle</b> on the toolbar runs or stops the loaded profile. While it is off you are only editing; nothing is sent to vJoy or Xbox. The button uses the accent color while the profile runs.</p>"
             + "<p>The bottom bar shows <b>Status</b> (Active, Not Running, or Paused), the <b>Executing mode</b>, and what the last save wrote.</p>"
             + "<p>Toggle does not hide controllers from games; use <b>HiDHide</b> for that. What happens when a controller is plugged in or removed while running is set by Options → Global → <b>Device change behavior</b> (Reload, Ignore, or Disable).</p>"),
+        topic("Getting Started", "Menus and the command palette",
+            "<p>Every menu in the program works the same way, in light and dark mode:</p>"
+            + "<ul>"
+            + "<li><b>Only what you can use.</b> Menus leave out what does not apply right now (View → <b>Home</b> while you are on Home, File → <b>Recent</b> before you have opened a profile). Nothing is greyed out.</li>"
+            + "<li><b>Right-click menus</b> start with the name of what you clicked and its most used commands, then <b>sections</b> (▸) that open one at a time. The section you opened last opens again next time. Some show <b>Undo</b> and <b>Redo</b> beside the name.</li>"
+            + "<li><b>Keys</b>: Up and Down move, Right and Left open or close a section or step a row of choices, Enter runs, Esc closes.</li>"
+            + "<li><b>Dropdown lists</b> of ten or more entries have a search box: type part of a name, Up and Down move, Enter picks.</li>"
+            + "<li><b>Command palette</b>: Ctrl+K (or View → <b>Command palette</b>) lists every menu command you can use now. Type part of a name and press Enter. Shortcuts show beside the commands.</li>"
+            + "<li><b>Shortcuts</b>: Ctrl+N new profile, Ctrl+O load, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+K command palette, F1 this guide.</li>"
+            + "</ul>"
+            + "<p>Options → User Interface → <b>Menu preview</b> shows each part and lets you try them.</p>"),
         topic("Getting Started", "Profiles",
             "<p>A profile holds the modes, the actions on every input, the profile settings, and the list of scripts.</p>"
             + "<ul>"
@@ -165,9 +176,9 @@ function topics() {
             + "<p>Editing is locked while the profile runs (“Running”).</p>"),
         topic("Logical Device", "Controls, groups, and the menu",
             "<ul>"
-            + "<li>Right-click empty space: <b>Add Button</b>, <b>Add Axis</b>, <b>Add Hat</b> (with a count up to 180), <b>New group</b>, the three <b>Order</b> commands, Undo/Redo, and <b>Display</b>.</li>"
-            + "<li>Right-click a control: <b>Add Action</b>, <b>Assign hardware</b>, <b>Rename</b>, <b>Group as</b>, <b>Move to group</b>, <b>Delete</b>. Shift-click selects several.</li>"
-            + "<li>Right-click a group: move it up or down, rename, or delete it (its controls go to Ungrouped). Click a group header to fold it.</li>"
+            + "<li>Right-click empty space: <b>Display</b>, then the sections <b>Add inputs</b> (Buttons, Axes and Hats, each with a count up to 180 and <b>Add</b>), <b>Groups</b> (<b>New group</b>) and <b>Order</b> (By system name, By your name, Group names A to Z). <b>Undo</b> and <b>Redo</b> sit beside the menu's title.</li>"
+            + "<li>Right-click a control: <b>Add Action</b>, <b>Rename</b> and <b>Assign hardware</b>, then <b>Row</b> (<b>Clear name</b>, <b>Delete</b>) and <b>Group</b> (<b>Group as</b>, and <b>Move to</b> each group). Shift-click selects several; the menu's title then counts them.</li>"
+            + "<li>Right-click a group: <b>Rename group</b>, then <b>Groups</b> → <b>Move group up</b>, <b>Move group down</b> or <b>Delete group</b> (its controls go to Ungrouped). Click a group header to fold it.</li>"
             + "<li>Drag a control by its grey handle onto another control (top half = before, bottom half = after) or onto a group header. Drag a header to move the group.</li>"
             + "<li><b>Find</b> filters by name, type, Ungrouped, <b>No hardware writer</b>, or <b>No actions in this mode</b>; <b>Clear</b> resets it.</li>"
             + "<li>Undo/Redo: Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z).</li>"
@@ -175,7 +186,7 @@ function topics() {
         topic("Logical Device", "Assign hardware and actions",
             "<p><b>Assign hardware</b> lists claimed physical controls of the same type (keyboard keys for a button; OSC too). Tick a control to add a Map to Logical Device action to it in the current mode; untick to remove that link. <b>Search</b> filters the list.</p>"
             + "<p>The control then shows <b>Written by</b> with the source. On that line an axis has Absolute/Relative and a scale; a button has <b>Invert</b>.</p>"
-            + "<p><b>Add Action</b> opens the action editor beside the list, the same editor as on the Configuration page. Click an action row to edit it; right-click it to delete it.</p>"),
+            + "<p><b>Add Action</b> opens the action editor beside the list, the same editor as on the Configuration page. Click an action row to edit it; right-click it to <b>Open</b> or <b>Delete</b> it.</p>"),
         topic("Logical Device", "Display",
             "<p><b>Show Editor</b> (or <b>Display</b> in the menu) opens the Logical Device display editor. Its sections — Shown, Handles, List, Group, Parent row, Action row, Text, Selection — change how the page looks. Changes are kept with <b>Save View Settings</b> (saved for this page, in the program settings); <b>Reset View to Default</b> restores the built-in look.</p>"),
         topic("Modes", "Modes",
@@ -232,7 +243,7 @@ function topics() {
             "<p>Tools → <b>Options</b> (or the gear on the toolbar). Program settings, not stored in the profile.</p>"
             + "<ul>"
             + "<li><b>Global</b>: Close to tray, Minimize to tray, <b>Check for updates</b> (when the program starts; see Installing and updating), <b>Device change behavior</b> (Reload, Ignore, Disable), Hidhide on start, axis refresh on activation and mode change, Debug log level, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
-            + "<li><b>User Interface</b>: Dark mode, UI scale, Disable Windows scaling, Display mode (numbers and/or labels), Input highlighting and Highlight source.</li>"
+            + "<li><b>User Interface</b>: Dark mode, UI scale, Disable Windows scaling, Display mode (numbers and/or labels), Input highlighting and Highlight source, and the <b>Menu preview</b>.</li>"
             + "<li><b>Action</b>: the Action list order, and settings for Axis Delta, Change Mode, Double Tap, Macro, Play Sound, Smart Toggle, Tempo, and Text-To-Speech (voice).</li>"
             + "<li><b>Profile</b>: Enable auto loading — load a profile when a chosen program starts — and Remain active on focus loss.</li>"
             + "<li><b>OSC Connection</b>: Enabled, Input host and port, Output address, and press timing.</li>"

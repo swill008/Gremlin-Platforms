@@ -1,5 +1,4 @@
 module Gremlin.Base
-ComboBoxScrollableEntries ComboBoxScrollableEntries.qml
 SpinBox SpinBox.qml
 FloatSpinBox FloatSpinBox.qml
 RecordButton RecordButton.qml

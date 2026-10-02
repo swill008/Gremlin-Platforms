@@ -11,6 +11,7 @@ import QtQuick.Controls.impl
 import QtQuick.Templates as T
 import QtQuick.Controls.Universal as U
 import Gremlin.Style
+import Gremlin.Menus as Menus
 
 T.ComboBox {
     id: control
@@ -27,18 +28,10 @@ T.ComboBox {
     U.Universal.theme: editable && activeFocus ? U.Universal.Light : undefined
     font.pixelSize: Style.dp(14)
 
-    delegate: ItemDelegate {
-        required property var model
-        required property int index
-
-        width: ListView.view.width
-        text: model[control.textRole]
-        font.pixelSize: Style.dp(14)
-        topPadding: Style.dp(4)
-        bottomPadding: Style.dp(4)
-        font.weight: control.currentIndex === index ? Font.DemiBold : Font.Normal
-        highlighted: control.highlightedIndex === index
-        hoverEnabled: control.hoverEnabled
+    // Rows and list in the menus' style (Gremlin.Menus); long lists get a
+    // search box.
+    delegate: Menus.DropdownRow {
+        combo: control
     }
 
     indicator: ColorImage {
@@ -112,29 +105,7 @@ T.ComboBox {
         }
     }
 
-    popup: T.Popup {
-        width: control.width
-        height: Math.min(contentItem.implicitHeight, control.Window.height - topMargin - bottomMargin)
-        topMargin: Style.dp(4)
-        bottomMargin: Style.dp(4)
-
-        U.Universal.theme: control.U.Universal.theme
-        U.Universal.accent: control.U.Universal.accent
-
-        contentItem: ListView {
-            clip: true
-            implicitHeight: contentHeight
-            model: control.delegateModel
-            currentIndex: control.highlightedIndex
-            highlightMoveDuration: 0
-
-            T.ScrollIndicator.vertical: ScrollIndicator { }
-        }
-
-        background: Rectangle {
-            color: control.U.Universal.chromeMediumLowColor
-            border.color: control.U.Universal.chromeHighColor
-            border.width: Style.dp(1) // FlyoutBorderThemeThickness
-        }
+    popup: Menus.DropdownPopup {
+        combo: control
     }
 }

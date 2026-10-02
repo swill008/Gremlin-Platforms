@@ -12,6 +12,7 @@ import QtQuick.Window
 import Gremlin.Config
 import Gremlin.Device
 import Gremlin.Profile
+import Gremlin.Menus
 import Gremlin.Style
 import Gremlin.UI
 
@@ -2069,7 +2070,7 @@ Item {
                         text: "Copy View\nfrom…"
                         onClicked: {
                             refreshCopySources()
-                            _copyMenu.popup(_copyButton, 0, _copyButton.height)
+                            _copyMenu.openBelow(_copyButton)
                         }
                         contentItem: Text {
                             text: parent.text
@@ -2098,35 +2099,18 @@ Item {
         }
     }
 
-    Menu {
+    // Copy the display settings from another module (Gremlin.Menus).
+    ContextMenu {
         id: _copyMenu
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
-        width: Style.dp(360)
-
-        MenuItem {
-            text: "Replace this panel with the display settings from"
-            enabled: false
-            width: Style.dp(360)
-        }
-        MenuItem {
-            text: "No other input module"
-            enabled: false
-            visible: _copySources.count === 0
-            height: visible ? implicitHeight : 0
-            width: Style.dp(360)
-        }
-        Instantiator {
-            model: _copySources
-            delegate: MenuItem {
-                required property string label
-                required property string name
-                required property string guid
-                text: label
-                width: Style.dp(360)
-                onTriggered: _root.copyCatalogFrom(name, guid)
+        menuWidth: Style.dp(360)
+        build: function() {
+            var rows = []
+            for (var i = 0; i < _copySources.count; ++i) {
+                (function(src) {
+                    rows.push(MenuModel.action(src.label, function() { _root.copyCatalogFrom(src.name, src.guid) }))
+                })(_copySources.get(i))
             }
-            onObjectAdded: (index, object) => _copyMenu.insertItem(_copyMenu.count, object)
-            onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
+            return MenuModel.menu("copy-view", rows.length ? "Replace this panel with the display settings from" : "No other input module", rows, [])
         }
     }
 

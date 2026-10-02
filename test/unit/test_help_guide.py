@@ -13,6 +13,8 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 _GUIDE = (_ROOT / "qml" / "help_topics.js").read_text(encoding="utf-8")
 _MAIN = (_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+# The main window's menu commands are named in its command list.
+_MAIN_COMMANDS = (_ROOT / "qml" / "main_commands.js").read_text(encoding="utf-8")
 _BUTTON_MAP = (_ROOT / "qml" / "DialogJoystickButtonMap.qml").read_text(
     encoding="utf-8"
 )
@@ -28,7 +30,7 @@ def _text(source: str) -> str:
 
 def _menu_labels() -> set[str]:
     labels: set[str] = set()
-    for source in (_MAIN, _BUTTON_MAP):
+    for source in (_MAIN, _MAIN_COMMANDS, _BUTTON_MAP):
         labels |= set(re.findall(r'(?:text|title): qsTr\("([^"]+)"\)', source))
         labels |= set(re.findall(r'(?:text|title): "([^"]+)"', source))
     return {label.rstrip("…").strip() for label in labels}

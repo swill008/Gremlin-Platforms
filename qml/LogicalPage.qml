@@ -9,6 +9,7 @@ import QtQuick.Window
 import QtQuick.Dialogs
 
 import Gremlin.Device
+import Gremlin.Menus
 import Gremlin.Style
 import Gremlin.UI
 
@@ -354,7 +355,7 @@ Item {
                         z: -1
                         anchors.fill: parent
                         acceptedButtons: Qt.RightButton
-                        onClicked: _root._openLayoutMenu(false, false)
+                        onClicked: (mouse) => _root._openLayoutMenu(false, false, _list, mouse.x, mouse.y)
                     }
 
                     delegate: Rectangle {
@@ -698,16 +699,17 @@ Item {
                                         _root._menuGroup = groupName
                                         if (_root._picked.indexOf(key) < 0)
                                             _root._select(key, false)
-                                        _root._openLayoutMenu(true, false)
+                                        _root._openLayoutMenu(true, false, _row, mouse.x, mouse.y)
                                     } else if (rowKind === "group" && groupName.length > 0) {
                                         _root._groupName = groupName
-                                        _root._openLayoutMenu(false, true)
+                                        _root._openLayoutMenu(false, true, _row, mouse.x, mouse.y)
                                     } else if (rowKind === "child" && !_root.editorLocked) {
                                         _root._actionParent = parentKey
                                         _root._actionSeq = sequenceIndex
-                                        _actionMenu.popup()
+                                        _root._actionTitle = title
+                                        _actionMenu.openAt(_row, mouse.x, mouse.y)
                                     } else {
-                                        _root._openLayoutMenu(false, false)
+                                        _root._openLayoutMenu(false, false, _row, mouse.x, mouse.y)
                                     }
                                     return
                                 }
@@ -1103,6 +1105,7 @@ Item {
     // Action row under the right-click menu.
     property string _actionParent: ""
     property int _actionSeq: -1
+    property string _actionTitle: ""
     property bool _menuOnGroup: false
 
     function _applyFind() {
@@ -1116,29 +1119,11 @@ Item {
         )
     }
 
-    function _openLayoutMenu(onRow, onGroup) {
+    // Opens the page's menu at a point in item's coordinates.
+    function _openLayoutMenu(onRow, onGroup, item, px, py) {
         _menuOnRow = onRow
         _menuOnGroup = onGroup
-        _showMoveMenu(onRow && !editorLocked)
-        _pageMenu.popup()
-    }
-
-    // A submenu cannot be hidden like an item, so it is taken out and put back
-    // just before Delete.
-    function _showMoveMenu(show) {
-        var at = -1
-        var before = -1
-        for (var i = 0; i < _pageMenu.count; ++i) {
-            var item = _pageMenu.itemAt(i)
-            if (item && item.subMenu === _moveMenu)
-                at = i
-            if (item === _deleteRowItem)
-                before = i
-        }
-        if (show && at < 0 && before >= 0)
-            _pageMenu.insertMenu(before, _moveMenu)
-        else if (!show && at >= 0)
-            _pageMenu.takeMenu(at)
+        _pageMenu.openAt(item, px, py)
     }
 
     // Same rule as the model: group names ignore capitals and spacing.
@@ -1160,338 +1145,132 @@ Item {
         _layout.moveSelected(name)
     }
 
-    component MenuCountRow: Item {
-        id: row
-        required property string label
-        required property string kind
-        property int count: 1
-        property bool rowHover: false
-        implicitWidth: Style.dp(300)
-        implicitHeight: visible ? Style.dp(34) : 0
-        height: implicitHeight
-
-        function parsed() {
-            var n = parseInt(_field.text)
-            if (isNaN(n))
-                n = row.count
-            return Math.max(1, Math.min(180, n))
-        }
-
-        function setCount(n) {
-            count = n
-            _field.text = String(n)
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            color: !row.enabled ? "transparent" : (row.rowHover ? U.Universal.listLowColor : "transparent")
-        }
-
-        HoverHandler { onHoveredChanged: row.rowHover = hovered }
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: Style.dp(12)
-            anchors.rightMargin: Style.dp(12)
-            spacing: Style.dp(4)
-
-            Label {
-                text: row.label
-                color: row.enabled ? U.Universal.baseHighColor : U.Universal.baseLowColor
-                Layout.fillWidth: true
-                verticalAlignment: Text.AlignVCenter
-                MouseArea {
-                    anchors.fill: parent
-                    enabled: row.enabled
-                    onClicked: _pageMenu.addCounted(row.kind, row)
-                }
-            }
-            Label {
-                text: "‹"
-                color: row.enabled && row.parsed() > 1 ? U.Universal.baseHighColor : U.Universal.baseLowColor
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -Style.dp(4)
-                    enabled: row.enabled && row.parsed() > 1
-                    onClicked: row.setCount(row.parsed() - 1)
-                }
-            }
-            TextField {
-                id: _field
-                implicitWidth: Style.dp(44)
-                padding: 0
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                color: row.enabled ? U.Universal.baseHighColor : U.Universal.baseLowColor
-                enabled: row.enabled
-                selectByMouse: true
-                validator: IntValidator { bottom: 1; top: 180 }
-                background: Item {}
-                Component.onCompleted: text = "1"
-                onAccepted: _pageMenu.addCounted(row.kind, row)
-            }
-            Label {
-                text: "›"
-                color: row.enabled && row.parsed() < 180 ? U.Universal.baseHighColor : U.Universal.baseLowColor
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -Style.dp(4)
-                    enabled: row.enabled && row.parsed() < 180
-                    onClicked: row.setCount(row.parsed() + 1)
-                }
-            }
-        }
+    // Adds n inputs of a kind from the right-click menu.
+    function _addCounted(kind, n) {
+        if (!editorLocked)
+            _layout.addMany(kind, Math.max(1, Math.min(180, n)), "", "")
     }
 
-    component MenuNameRow: Item {
-        id: nameRow
-        required property string label
-        property bool closeWhenNamed: false
-        property bool rowHover: false
-        signal named(string value)
-        implicitWidth: Style.dp(300)
-        implicitHeight: visible ? Style.dp(34) : 0
-        height: implicitHeight
-
-        Rectangle {
-            anchors.fill: parent
-            color: !nameRow.enabled ? "transparent" : (nameRow.rowHover ? U.Universal.listLowColor : "transparent")
-        }
-        HoverHandler { onHoveredChanged: nameRow.rowHover = hovered }
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: Style.dp(12)
-            anchors.rightMargin: Style.dp(12)
-            spacing: Style.dp(8)
-            Label {
-                text: nameRow.label
-                color: nameRow.enabled ? U.Universal.baseHighColor : U.Universal.baseLowColor
-            }
-            TextField {
-                Layout.fillWidth: true
-                padding: Style.dp(2)
-                placeholderText: "Name, then Enter"
-                color: nameRow.enabled ? U.Universal.baseHighColor : U.Universal.baseLowColor
-                enabled: nameRow.enabled
-                selectByMouse: true
-                background: Item {}
-                onAccepted: {
-                    var name = text.trim()
-                    if (!name.length || !nameRow.enabled)
-                        return
-                    text = ""
-                    nameRow.named(name)
-                    if (nameRow.closeWhenNamed)
-                        _pageMenu.close()
-                }
-            }
-        }
+    function _assignHardware() {
+        _hardwareKey = _menuKey
+        _hardwareTitle.text = _menuTitle
+        _search.text = ""
+        _hardware.moduleOpen = ({})
+        _loadHardware()
+        _hardware.open()
     }
 
-    Menu {
-        id: _actionMenu
-        // Keeps the menu inside the window near the bottom edge.
-        margins: Style.dp(4)
-        width: Style.dp(300)
-        popupType: Popup.Item
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        MenuItem {
-            text: "Delete"
-            onTriggered: {
-                // The pane may be editing the input this action belongs to.
-                if (_root.actionOpen && _root.paneKey === _root._actionParent)
-                    _root._finishClose()
-                _layout.deleteAction(_root._actionParent, _root._actionSeq)
-            }
-        }
+    function _renameRow() {
+        _nameDialog.lastAccepted = _menuUser
+        _nameDialog.text = _menuUser
+        _nameDialog.showOption = true
+        _nameDialog.optionText = "Hide system name"
+        _nameDialog.optionChecked = _layout.hidesSystem(_menuKey)
+        _nameDialog.visible = true
     }
 
-    Menu {
+    function _renameGroup() {
+        _groupDialog.text = _groupName
+        _groupDialog.visible = true
+    }
+
+    // The page's right-click menu (Gremlin.Menus): on a row, a group or the
+    // empty list. Quick rows first, then sections; Undo and Redo by the
+    // title.
+    function _layoutMenuModel() {
+        var locked = editorLocked
+        var onRow = _menuOnRow && !locked
+        var onGroup = _menuOnGroup && !locked
+        var many = _picked.length > 1
+        var kind = onRow ? "logical-row" : (onGroup ? "logical-group" : "logical")
+        var title = onRow ? (many ? _picked.length + " rows" : _menuTitle)
+                          : (onGroup ? _groupName : "Logical Device")
+        var header = locked ? [] : [
+            { label: "Undo", enabled: _layout.canUndo && !actionOpen, run: function() { _layout.undo() } },
+            { label: "Redo", enabled: _layout.canRedo && !actionOpen, run: function() { _layout.redo() } }
+        ]
+        var quick = []
+        if (onRow) {
+            quick.push(MenuModel.action("Add Action", function() { _openNewPane(_menuKey, _menuTitle) }))
+            quick.push(MenuModel.action("Rename", _renameRow))
+            quick.push(MenuModel.action("Assign hardware", _assignHardware))
+        }
+        if (onGroup)
+            quick.push(MenuModel.action("Rename group", _renameGroup))
+        quick.push(MenuModel.action("Display", function() { displayOpen = true }))
+
+        var moveTo = []
+        if (onRow) {
+            var groups = _layout.groups || []
+            for (var i = 0; i < groups.length; i++) {
+                (function(g) {
+                    moveTo.push(MenuModel.action("Move to " + g.title, function() {
+                        // After the menu has closed; the move rebuilds the list.
+                        Qt.callLater(function() { _layout.moveSelected(g.name) })
+                    }))
+                })(groups[i])
+            }
+        }
+        var add = function(label, what) {
+            return MenuModel.number(label, 1, 1, 180, "", function(n) { _addCounted(what, n) }, !locked,
+                                    { step: 1, go: "Add", integer: true })
+        }
+        return MenuModel.menu(kind, title, quick, [
+            onRow ? MenuModel.section("row", "Row", [
+                MenuModel.action("Clear name", function() { _layout.setUserName(_menuKey, "") }, _menuUser.length > 0),
+                // Acts on the selection, like Group as and Move to.
+                MenuModel.action(many ? "Delete " + _picked.length + " rows" : "Delete", function() {
+                    _layout.deleteParents(_picked.length > 0 ? _picked : [_menuKey])
+                }, true, { danger: true })
+            ]) : null,
+            onRow ? MenuModel.section("group", "Group", [
+                MenuModel.entry("Group as", function(name) { _groupAs(name) }, true,
+                                { placeholder: "Name, then Enter" })
+            ].concat(moveTo)) : null,
+            MenuModel.section("add", "Add inputs", [
+                add("Buttons", "button"),
+                add("Axes", "axis"),
+                add("Hats", "hat")
+            ]),
+            locked ? null : MenuModel.section("groups", "Groups", [
+                MenuModel.entry("New group", function(name) { _layout.addGroup(name) }, true,
+                                { placeholder: "Name, then Enter", keepOpen: true }),
+                onGroup ? MenuModel.action("Move group up", function() { _layout.moveGroupUp(_groupName) }) : null,
+                onGroup ? MenuModel.action("Move group down", function() { _layout.moveGroupDown(_groupName) }) : null,
+                onGroup ? MenuModel.action("Delete group", function() { _layout.removeGroup(_groupName) }, true,
+                                           { danger: true }) : null
+            ]),
+            locked ? null : MenuModel.section("order", "Order", [
+                MenuModel.action("By system name", function() { _layout.sortBySystem() }),
+                MenuModel.action("By your name", function() { _layout.sortByName() }),
+                MenuModel.action("Group names A to Z", function() { _layout.sortGroupNames() })
+            ])
+        ], header)
+    }
+
+    ContextMenu {
         id: _pageMenu
-        // Keeps the menu inside the window near the bottom edge.
-        margins: Style.dp(4)
-        width: Style.dp(300)
-        popupType: Popup.Item
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        function addCounted(kind, row) {
-            if (_root.editorLocked || !row)
-                return
-            _layout.addMany(kind, row.parsed(), "", "")
-            row.setCount(1)
-        }
-
-        function resetCounts() {
-            _addButtonRow.setCount(1)
-            _addAxisRow.setCount(1)
-            _addHatRow.setCount(1)
-        }
-
-        onOpened: resetCounts()
-
-        MenuCountRow { id: _addButtonRow; label: "Add Button"; kind: "button"; visible: !_root.editorLocked }
-        MenuCountRow { id: _addAxisRow; label: "Add Axis"; kind: "axis"; visible: !_root.editorLocked }
-        MenuCountRow { id: _addHatRow; label: "Add Hat"; kind: "hat"; visible: !_root.editorLocked }
-
-        MenuSeparator { visible: _root._menuOnRow && !_root.editorLocked; height: visible ? implicitHeight : 0 }
-
-        MenuItem {
-            text: "Add Action"
-            visible: _root._menuOnRow && !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: {
-                _root._openNewPane(_root._menuKey, _root._menuTitle)
-            }
-        }
-        MenuItem {
-            text: "Assign hardware"
-            visible: _root._menuOnRow && !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: {
-                _hardwareKey = _root._menuKey
-                _hardwareTitle.text = _root._menuTitle
-                _search.text = ""
-                _hardware.moduleOpen = ({})
-                _loadHardware()
-                _hardware.open()
-            }
-        }
-        MenuItem {
-            text: "Rename"
-            visible: _root._menuOnRow && !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: {
-                _nameDialog.lastAccepted = _root._menuUser
-                _nameDialog.text = _root._menuUser
-                _nameDialog.showOption = true
-                _nameDialog.optionText = "Hide system name"
-                _nameDialog.optionChecked = _layout.hidesSystem(_root._menuKey)
-                _nameDialog.visible = true
-            }
-        }
-        MenuItem {
-            text: "Clear name"
-            visible: _root._menuOnRow && !_root.editorLocked && _root._menuUser.length > 0
-            height: visible ? implicitHeight : 0
-            onTriggered: _layout.setUserName(_root._menuKey, "")
-        }
-        MenuNameRow {
-            label: "Group as"
-            visible: _root._menuOnRow && !_root.editorLocked
-            closeWhenNamed: true
-            onNamed: (name) => _root._groupAs(name)
-        }
-        // A real submenu, so it opens on hover. _showMoveMenu() adds or removes it.
-        Menu {
-            id: _moveMenu
-            title: "Move to group"
-            popupType: Popup.Item
-            // Same pattern as File > Recent in Main.qml.
-            Repeater {
-                model: _layout.groups
-                delegate: MenuItem {
-                    required property var modelData
-                    text: modelData.title
-                    onTriggered: {
-                        // Move after the menus have closed; the move rebuilds this list.
-                        var name = modelData.name
-                        Qt.callLater(() => _layout.moveSelected(name))
-                    }
-                }
-            }
-        }
-        MenuItem {
-            id: _deleteRowItem
-            // Acts on the selection, like Group as and Move to group.
-            text: _root._picked.length > 1 ? "Delete " + _root._picked.length + " rows" : "Delete"
-            visible: _root._menuOnRow && !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: _layout.deleteParents(_root._picked.length > 0 ? _root._picked : [_root._menuKey])
-        }
-
-        MenuSeparator { visible: !_root.editorLocked; height: visible ? implicitHeight : 0 }
-
-        MenuNameRow {
-            label: "New group"
-            visible: !_root.editorLocked
-            onNamed: (name) => _layout.addGroup(name)
-        }
-        MenuItem {
-            text: "Move group up"
-            visible: _root._menuOnGroup && !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: _layout.moveGroupUp(_root._groupName)
-        }
-        MenuItem {
-            text: "Move group down"
-            visible: _root._menuOnGroup && !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: _layout.moveGroupDown(_root._groupName)
-        }
-        MenuItem {
-            text: "Rename group"
-            visible: _root._menuOnGroup && !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: {
-                _groupDialog.text = _root._groupName
-                _groupDialog.visible = true
-            }
-        }
-        MenuItem {
-            text: "Delete group"
-            visible: _root._menuOnGroup && !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: _layout.removeGroup(_root._groupName)
-        }
-
-        MenuSeparator { visible: !_root.editorLocked; height: visible ? implicitHeight : 0 }
-
-        MenuItem {
-            text: "Order by system name"
-            visible: !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: _layout.sortBySystem()
-        }
-        MenuItem {
-            text: "Order by your name"
-            visible: !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: _layout.sortByName()
-        }
-        MenuItem {
-            text: "Order group names A to Z"
-            visible: !_root.editorLocked
-            height: visible ? implicitHeight : 0
-            onTriggered: _layout.sortGroupNames()
-        }
-
-        MenuSeparator { visible: !_root.editorLocked && (_layout.canUndo || _layout.canRedo); height: visible ? implicitHeight : 0 }
-
-        MenuItem {
-            text: "Undo  (Ctrl+Z)"
-            visible: !_root.editorLocked && _layout.canUndo
-            enabled: !_root.actionOpen
-            height: visible ? implicitHeight : 0
-            onTriggered: _layout.undo()
-        }
-        MenuItem {
-            text: "Redo  (Ctrl+Y)"
-            visible: !_root.editorLocked && _layout.canRedo
-            enabled: !_root.actionOpen
-            height: visible ? implicitHeight : 0
-            onTriggered: _layout.redo()
-        }
-
-        MenuSeparator { visible: !_root.editorLocked; height: visible ? implicitHeight : 0 }
-
-        MenuItem {
-            text: "Display"
-            onTriggered: _root.displayOpen = true
-        }
+        build: _root._layoutMenuModel
     }
 
+    // An action row's right-click menu.
+    ContextMenu {
+        id: _actionMenu
+        menuWidth: Style.dp(220)
+        build: function() {
+            return MenuModel.menu("logical-action", _root._actionTitle, [
+                MenuModel.action("Open", function() {
+                    _root._openPane(_root._actionParent, _root._actionSeq, _root._actionTitle)
+                }),
+                MenuModel.action("Delete", function() {
+                    // The pane may be editing the input this action belongs to.
+                    if (_root.actionOpen && _root.paneKey === _root._actionParent)
+                        _root._finishClose()
+                    _layout.deleteAction(_root._actionParent, _root._actionSeq)
+                }, true, { danger: true })
+            ])
+        }
+    }
 
     TextInputDialog {
         id: _nameDialog

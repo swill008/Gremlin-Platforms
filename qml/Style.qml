@@ -150,6 +150,28 @@ Item {
     // Program text size in pixels.
     readonly property int fontSize: dp(15)
 
+    // Menus, dropdown lists and the command palette (Gremlin.Menus): one look
+    // everywhere, the Button Map's. A raised surface with a strong line, rows
+    // that light up under the pointer with an accent bar on the left.
+    readonly property color menuBg: bgRaised
+    readonly property color menuLine: lineStrong
+    readonly property color menuDivider: line
+    readonly property color menuHover: bgHover
+    readonly property color menuAccent: accent
+    readonly property color menuText: fg
+    readonly property color menuTextStrong: fgStrong
+    readonly property color menuTextSoft: fgSoft
+    readonly property color menuTextOff: fgDisabled
+    readonly property color menuHint: fgMuted
+    readonly property color menuDanger: dangerText
+    readonly property int menuRowH: dp(24)
+    readonly property int menuTextPx: dp(13)
+    readonly property int menuRadius: dp(6)
+    readonly property int menuPad: dp(4)
+    readonly property int menuWidth: dp(300)
+    readonly property int menuBarW: dp(3)
+    readonly property int menuIndent: dp(22)
+
     // Various shared dimensions.
     property int tooltipMaxWidth: dp(500)
     property int tooltipDelayMs: 500
