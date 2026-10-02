@@ -749,3 +749,11 @@ Decisions: Auto Mapper claim switch, off by default (1A); one Xbox pad for now (
 | P4b | DONE 8842c54e | Map to Xbox lists Xbox output modules by name; a saved pad without one stays listed, marked. Xbox page shows its module and pad (no Pad box). |
 | P4c | DONE (this commit) | Auto Mapper maps only to claimed outputs (and ones the vJoy device has), reports skips ("Skipped vJoy 3 buttons 57-58: not claimed by the output module."); "Also claim the matching outputs" switch, off by default. Sandbox: NXT -> vJoy 3 made 59 mappings, nothing skipped. |
 | P4-HANDS-ON | [U] | Your profile: the NXT 57-126 -> vJoy 3 wires show "(not claimed)" on the Button Map chips / card hints. |
+
+## Phase 5 (cleanup, 2026-10-01)
+
+| ID | Result | Notes |
+|---|---|---|
+| P5a | DONE fb2c6e75 | Dead code removed (1,487 lines): VJoyDevices, PairDeviceModel / PairLiveState / InputPairing, ModulePairHatModel, the pre-module Auto Mapper path, 14 unused slots, 6 unused QML files (DeviceInputList + R16 leftovers). Guard: test_no_dead_qml. |
+| P5b | DONE cf17e9a3 | One copy of each rule: vJoy output-module list (output layer), axis names (wiring), destination label in the vJoy Viewer pair rows, vJoy resolver in live_input, output rule (registry). Guard: test_one_copy_of_each_rule. |
+| P5c | DONE (this commit) | Full suite and lint (no new lint since 1.0.1 in the 72 changed Python files), local PyInstaller build (no missing imports) and the built exe starts and loads the profile; sandbox tour: Home, input/output pages, Logical Device, both viewers, Button Map, Map to vJoy / Map to Xbox, Auto Mapper, Calibration, Device Pack, Manage Modes, Options. |

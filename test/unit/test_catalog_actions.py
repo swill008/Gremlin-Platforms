@@ -89,7 +89,9 @@ def _load_helpers():
             (),
             {
                 "dest_label": staticmethod(
-                    lambda a, short=False: f"vJoy {a.vjoy_device_id} · Button {a.vjoy_input_id}"
+                    lambda a, short=False: (
+                        f"vJoy {a.vjoy_device_id} · Button {a.vjoy_input_id}"
+                    )
                 )
             },
         ),
