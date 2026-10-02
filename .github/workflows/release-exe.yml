@@ -2,6 +2,11 @@ name: Release EXE installer
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish a GitHub release (off: build only, files kept as a workflow artifact)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -25,29 +30,53 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
+      # The in-app updater finds the release by these names, so they all come
+      # from version.json.
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content version.json -Raw | ConvertFrom-Json).version
+          "version=$v" >> $env:GITHUB_OUTPUT
+
       - name: Build executable
         run: poetry run pyinstaller -y --clean joystick_gremlin.spec
 
       - name: Pack portable zip
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\gremlin_platforms\* -DestinationPath dist\Gremlin-Platforms-R1-1.0.2.zip
+          Compress-Archive -Path dist\gremlin_platforms\* -DestinationPath dist\Gremlin-Platforms-R1-${{ steps.version.outputs.version }}.zip
+
+      - name: Build installer
+        shell: pwsh
+        run: installer\build_installer.ps1
+
+      - name: Keep build files
+        if: ${{ !inputs.publish }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gremlin-Platforms-R1-${{ steps.version.outputs.version }}
+          path: |
+            dist/Gremlin-Platforms-R1-${{ steps.version.outputs.version }}-Setup.exe
+            dist/Gremlin-Platforms-R1-${{ steps.version.outputs.version }}.zip
 
       - name: Create GitHub Release
+        if: ${{ inputs.publish }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: Gremlin-Platforms-R1-1.0.2
-          name: Gremlin-Platforms-R1 1.0.2
+          tag_name: Gremlin-Platforms-R1-${{ steps.version.outputs.version }}
+          name: Gremlin-Platforms-R1 ${{ steps.version.outputs.version }}
           body: |
-            Portable standalone build Gremlin-Platforms-R1 1.0.2.
+            Gremlin-Platforms-R1 ${{ steps.version.outputs.version }}.
 
-            Output and input modules are now the firewall between hardware, wiring and the vJoy / Xbox drivers; see the release notes.
+            Installer: run Gremlin-Platforms-R1-${{ steps.version.outputs.version }}-Setup.exe. It installs for your Windows user only (no administrator rights) and installed copies update themselves from Help -> Check for Updates.
 
-            Unzip anywhere (Documents, Desktop, etc). Do not put it in Program Files.
-            Run gremlin_platforms.exe from the unzipped folder.
+            Portable: unzip Gremlin-Platforms-R1-${{ steps.version.outputs.version }}.zip anywhere (Documents, Desktop, etc), not in Program Files, and run gremlin_platforms.exe. A portable copy tells you about new versions but does not update itself.
 
             Requires vJoy already installed.
-            Unsigned build — SmartScreen may warn on first run.
-          files: dist/Gremlin-Platforms-R1-1.0.2.zip
+            Unsigned build: SmartScreen may warn on first run (More info -> Run anyway).
+          files: |
+            dist/Gremlin-Platforms-R1-${{ steps.version.outputs.version }}-Setup.exe
+            dist/Gremlin-Platforms-R1-${{ steps.version.outputs.version }}.zip
           overwrite_files: true
           token: ${{ secrets.GITHUB_TOKEN }}
