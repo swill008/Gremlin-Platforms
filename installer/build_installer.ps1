@@ -12,8 +12,11 @@ if (-not $Iscc) {
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 }
 if (-not $Iscc) { throw "ISCC.exe not found: install Inno Setup 6 or pass -Iscc." }
-if (-not (Test-Path (Join-Path $root "dist\gremlin_platforms\gremlin_platforms.exe"))) {
+$dist = Join-Path $root "dist\gremlin_platforms"
+if (-not (Test-Path (Join-Path $dist "gremlin_platforms.exe"))) {
     throw "dist\gremlin_platforms is missing: run pyinstaller joystick_gremlin.spec first."
 }
-& $Iscc "/DMyAppVersion=$version" (Join-Path $PSScriptRoot "gremlin_platforms.iss")
+# A resolved path, not installer\..\dist: Qt's deepest files are close to the
+# 260 character path limit.
+& $Iscc "/DMyAppVersion=$version" "/DDistDir=$dist" (Join-Path $PSScriptRoot "gremlin_platforms.iss")
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)." }
