@@ -34,3 +34,19 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
         and not any(name in line for name in _IGNORED)
     ]
     assert problems == []
+    results = {
+        line.split(" ", 2)[1]: line.split(" ", 2)[2]
+        for line in lines
+        if line.startswith("RESULT ") and line.count(" ") >= 2
+    }
+    # Menus show only what can be used: no device, no editing tools...
+    assert results["file-menu"].split("|")[-2:] == ["---", "Close"]
+    assert "Save" not in results["file-menu"]
+    assert "Export PDF" not in results["file-menu"]
+    # ...and with a device, its exports, never two separators in a row.
+    with_device = results["file-menu-device"].split("|")
+    assert "Edit Mapping" in with_device and "Save" not in with_device
+    assert all(
+        not (a == "---" and b == "---") for a, b in zip(with_device, with_device[1:])
+    )
+    assert with_device[0] != "---" and with_device[-1] != "---"

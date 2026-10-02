@@ -67,8 +67,49 @@ ApplicationWindow {
         font.pixelSize: Style.dp(14)
     }
 
+    // A menu shows only what can be used now: unavailable items are hidden
+    // (with no gap left) and so are separators with nothing on one side.
+    // Runs each time the menu opens.
+    function compactMenu(menu) {
+        function show(item, on) {
+            item.visible = on
+            item.height = on ? item.implicitHeight : 0
+        }
+        var pendingSep = null
+        var seenItem = false
+        for (var i = 0; i < menu.count; i++) {
+            var item = menu.itemAt(i)
+            if (!item)
+                continue
+            // A MenuSeparator has no text.
+            if (item.text === undefined) {
+                show(item, false)
+                if (seenItem)
+                    pendingSep = item
+                continue
+            }
+            var on = item.enabled && !(item.subMenu && !item.subMenu.enabled)
+            show(item, on)
+            if (!on)
+                continue
+            if (pendingSep) {
+                show(pendingSep, true)
+                pendingSep = null
+            }
+            seenItem = true
+        }
+    }
+
     function growFileMenu() {
-        var labels = [
+        // As wide as its longest item showing (or all of them, before the
+        // menu is built).
+        var shown = []
+        for (var m = 0; m < _fileMenu.count; m++) {
+            var it = _fileMenu.itemAt(m)
+            if (it && it.visible && it.text !== undefined && String(it.text).length)
+                shown.push(String(it.text))
+        }
+        var labels = shown.length ? shown : [
             "Edit Mapping",
             "Fit to photo frame",
             "Choose background…",
@@ -85,10 +126,12 @@ ApplicationWindow {
             "Clear image"
         ]
         var rows = []
-        try {
-            rows = _devices.listRows() || []
-        } catch (err) {
-            rows = []
+        if (!shown.length) {
+            try {
+                rows = _devices.listRows() || []
+            } catch (err) {
+                rows = []
+            }
         }
         var i
         for (i = 0; i < rows.length; i++)
@@ -2348,10 +2391,15 @@ ApplicationWindow {
                 title: "File"
                 width: _buttonMap.fileMenuW
                 implicitWidth: _buttonMap.fileMenuW
-                onAboutToShow: _buttonMap.growFileMenu()
+                onAboutToShow: {
+                    _buttonMap.savedLayouts = _hw.savedLayouts(_buttonMap.targetName)
+                    _buttonMap.refreshTemplates()
+                    _buttonMap.compactMenu(_fileMenu)
+                    _buttonMap.growFileMenu()
+                }
                 MenuItem {
                     text: "Edit Mapping"
-                    enabled: !_buttonMap.editing
+                    enabled: !_buttonMap.editing && _buttonMap.targetName.length > 0
                     onTriggered: _buttonMap.enterEdit()
                 }
                 MenuItem { text: "Save"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
@@ -2377,27 +2425,23 @@ ApplicationWindow {
                 MenuSeparator {}
                 MenuItem {
                     text: "Export PDF…"
+                    enabled: _buttonMap.targetName.length > 0
                     onTriggered: _exportPdfDialog.open()
                 }
                 MenuItem {
                     text: "Export PNG…"
+                    enabled: _buttonMap.targetName.length > 0
                     onTriggered: _exportPngDialog.open()
                 }
                 MenuItem {
                     text: "Export JPG…"
+                    enabled: _buttonMap.targetName.length > 0
                     onTriggered: _exportJpgDialog.open()
                 }
                 Menu {
                     id: _copyMenu
                     title: "Copy layout from"
-                    enabled: _buttonMap.targetName.length > 0
-                    onAboutToShow: _buttonMap.savedLayouts = _hw.savedLayouts(_buttonMap.targetName)
-                    MenuItem {
-                        text: "No other device has a layout"
-                        enabled: false
-                        visible: _buttonMap.savedLayouts.length === 0
-                        height: visible ? implicitHeight : 0
-                    }
+                    enabled: _buttonMap.targetName.length > 0 && _buttonMap.savedLayouts.length > 0
                     Instantiator {
                         model: _buttonMap.savedLayouts
                         delegate: MenuItem {
@@ -2405,7 +2449,7 @@ ApplicationWindow {
                             text: modelData.name + "…"
                             onTriggered: _buttonMap.openCopyLayout(modelData)
                         }
-                        onObjectAdded: (index, object) => _copyMenu.insertItem(index + 1, object)
+                        onObjectAdded: (index, object) => _copyMenu.insertItem(index, object)
                         onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
                     }
                 }
@@ -2451,12 +2495,14 @@ ApplicationWindow {
                 }
                 MenuItem {
                     text: "Light page for printing"
+                    enabled: _buttonMap.targetName.length > 0
                     checkable: true
                     checked: _opts.values["light-page"] === true
                     onTriggered: _opts.set("light-page", checked)
                 }
                 Menu {
                     title: "Export size"
+                    enabled: _buttonMap.targetName.length > 0
                     Repeater {
                         model: [1, 2, 3]
                         MenuItem {
@@ -2475,7 +2521,9 @@ ApplicationWindow {
                 }
             }
             Menu {
+                id: _editMenu
                 title: "Edit"
+                onAboutToShow: _buttonMap.compactMenu(_editMenu)
                 MenuItem {
                     text: "Undo"
                     enabled: { var e = _ed(); return e ? e.canUndo : false }
@@ -2519,7 +2567,9 @@ ApplicationWindow {
                 }
             }
             Menu {
+                id: _viewMenu
                 title: "View"
+                onAboutToShow: _buttonMap.compactMenu(_viewMenu)
                 Menu {
                     title: "Chip text"
                     Repeater {
@@ -2699,7 +2749,11 @@ ApplicationWindow {
                 }
             }
             Menu {
+                id: _photoMenu
                 title: "Photo"
+                // Everything in it needs editing.
+                enabled: editing
+                onAboutToShow: _buttonMap.compactMenu(_photoMenu)
                 MenuItem {
                     text: "Move photo"
                     checkable: true

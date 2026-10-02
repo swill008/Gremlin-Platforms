@@ -47,8 +47,16 @@ STEPS = [
     ("library",
      "_styleNameDlg.close();"
      " Qt.createComponent('OptionButtonMapLibrary.qml')"
-     ".createObject(_buttonMap.contentItem)"),
-    ("photo-adjust", "_photoAdj.open()"),
+     ".createObject(_buttonMap.contentItem).destroy()"),
+    # The File menu with no device: only what can be used shows.
+    ("file-menu",
+     "_fileMenu.popup(0, 30);"
+     " var shown = [];"
+     " for (var i = 0; i < _fileMenu.count; i++) {"
+     "   var it = _fileMenu.itemAt(i);"
+     "   if (it.visible) shown.push(it.text === undefined ? '---' : it.text) }"
+     " shown.join('|')"),
+    ("photo-adjust", "_fileMenu.close(); _photoAdj.open()"),
     ("zoom",
      "_photoAdj.close(); _buttonMap.zoomToPage(); _buttonMap.zoomToSelection()"),
     ("closed", "_photoAdj.close(); _styleNameDlg.close()"),
@@ -122,9 +130,11 @@ def main() -> None:
         )
         for name, code in STEPS:
             expr = QtQml.QQmlExpression(QtQml.qmlContext(win), win, code)
-            expr.evaluate()
+            value = expr.evaluate()
             if expr.hasError():
                 print(f"ERROR {name}: {expr.error().toString()}", flush=True)
+            elif isinstance(value, tuple) and value[0] not in (None, ""):
+                print(f"RESULT {name} {value[0]}", flush=True)
             QtTest.QTest.qWait(250)
             quick.grabWindow().save(str(out / f"{name}.png"))
         # A real export on a light page: the page must come out white. A
@@ -159,6 +169,16 @@ def main() -> None:
             QtQml.qmlContext(win), win, "_opts.set('light-page', false)"
         )
         reset.evaluate()
+        menu = QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win,
+            "_fileMenu.popup(0, 30); var shown = [];"
+            " for (var i = 0; i < _fileMenu.count; i++) {"
+            "   var it = _fileMenu.itemAt(i);"
+            "   if (it.visible) shown.push(it.text === undefined ? '---' : it.text) }"
+            " _fileMenu.close(); shown.join('|')",
+        )
+        print(f"RESULT file-menu-device {menu.evaluate()[0]}", flush=True)
+        QtTest.QTest.qWait(200)
     for warning in warnings:
         print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)
     print("done", flush=True)

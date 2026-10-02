@@ -231,7 +231,8 @@ function topics() {
             + "<p><b>File → Edit Mapping</b> starts editing. The pool beside the map lists the device's controls; drag a chip from it onto the photo, and filter it by name. <b>File → Save</b> (Ctrl+S) writes the layout to the device's module file; <b>File → Cancel</b> leaves without saving. Closing with unsaved edits asks first.</p>"
             + "<p>Everything below is about editing. <b>Help → Button Map guide</b> or <b>F1</b> in the Button Map window opens this section.</p>"),
         topic("Button Map", "File menu and export",
-            "<ul>"
+            "<p>The Button Map's menus show only what you can use at that moment: before a device is chosen the File menu lists the devices, and the editing items appear once you choose File → Edit Mapping. The Photo menu works while editing.</p>"
+            + "<ul>"
             + "<li><b>Edit Mapping</b>, <b>Save</b> (Ctrl+S), <b>Cancel</b>.</li>"
             + "<li><b>Reset layout</b> sends every chip, leader and hotspot back to the pool (it asks first). The mappings are not changed; save afterwards to make the empty layout the live map.</li>"
             + "<li><b>Fit to photo frame</b> shrinks an older, oversized layout to the photo.</li>"
