@@ -46,6 +46,17 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {"min": 1, "max": 90},
     ),
     (
+        "autosave", "01-autosave", PropertyType.Bool, True,
+        "While you edit a map, keep a recovery copy of unsaved changes. After a "
+        "crash, opening the device offers to restore them.",
+        {},
+    ),
+    (
+        "autosave", "02-autosave-seconds", PropertyType.Int, 60,
+        "Seconds between recovery copies.",
+        {"min": 10, "max": 600},
+    ),
+    (
         "export", "01-export-size", PropertyType.Selection, "2x",
         "How much larger than on screen Export draws the page. Larger is sharper "
         "and makes bigger files.",

@@ -1707,6 +1707,57 @@ class HardwareProfile(QtCore.QObject):
     def setDeviceGuid(self, guid: str) -> None:
         self._device_guid = str(guid or "")
 
+    # --- recovery copies (autosave) ------------------------------------------
+
+    def _recovery_file(self, device_name: str) -> Path:
+        slug = resolve_module_slug(device_name, self._guid_for_this_device(device_name))
+        return _maps_dir() / "recovery" / f"{slug}.json"
+
+    @QtCore.Slot(str, str, result=bool)
+    def saveRecovery(self, device_name: str, payload: str) -> bool:
+        """Keeps a copy of unsaved Button Map edits, stamped with the time.
+
+        payload is the editor's {image, photo, nodes}. The module file is not
+        touched; Save or Discard removes the copy.
+        """
+        try:
+            doc = json.loads(payload)
+        except ValueError:
+            return False
+        if not isinstance(doc, dict) or not isinstance(doc.get("nodes"), list):
+            return False
+        doc["device"] = device_name
+        doc["savedAt"] = datetime.now().isoformat(timespec="seconds")
+        path = self._recovery_file(device_name)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(doc), encoding="utf-8")
+            os.replace(tmp, path)
+        except OSError:
+            return False
+        return True
+
+    @QtCore.Slot(str, result=str)
+    def loadRecovery(self, device_name: str) -> str:
+        """The recovery copy for a device as JSON text, or "" when none."""
+        path = self._recovery_file(device_name)
+        try:
+            text = path.read_text(encoding="utf-8")
+            doc = json.loads(text)
+        except (OSError, ValueError):
+            return ""
+        if not isinstance(doc, dict) or not isinstance(doc.get("nodes"), list):
+            return ""
+        return text
+
+    @QtCore.Slot(str)
+    def clearRecovery(self, device_name: str) -> None:
+        try:
+            self._recovery_file(device_name).unlink(missing_ok=True)
+        except OSError:
+            pass
+
     @QtCore.Slot(str, result=str)
     def load(self, device_name: str) -> str:
         name = device_name or self._device_name

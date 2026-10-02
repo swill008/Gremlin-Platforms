@@ -565,6 +565,7 @@ ApplicationWindow {
         liveNodes = JSON.parse(JSON.stringify(nodes))
         liveImage = image
         livePhoto = photoBag()
+        clearRecovery()
         applyImage(liveImage)
         hydrateOverlays(liveNodes)
         saveOk = true
@@ -595,7 +596,108 @@ ApplicationWindow {
         }
     }
 
+    // --- recovery copies (Options → Button Map → Autosave) -------------------
+
+    property string _lastRecovery: ""
+    property var _pendingRecovery: null
+
+    function recoveryPayload() {
+        return JSON.stringify({
+            image: storedImage.length ? storedImage : stockImage,
+            photo: photoBag(),
+            nodes: editorNodesNow()
+        })
+    }
+
+    // Writes a recovery copy when there are unsaved changes; with none left
+    // (everything undone), removes it.
+    function autosaveNow() {
+        if (!editing || !targetName.length)
+            return
+        if (!isDirty()) {
+            if (_lastRecovery.length) {
+                _hw.clearRecovery(targetName)
+                _lastRecovery = ""
+            }
+            return
+        }
+        var payload = recoveryPayload()
+        if (payload === _lastRecovery)
+            return
+        if (_hw.saveRecovery(targetName, payload))
+            _lastRecovery = payload
+    }
+
+    function clearRecovery() {
+        _lastRecovery = ""
+        if (targetName.length)
+            _hw.clearRecovery(targetName)
+    }
+
+    // After a device opens: offer unsaved edits a crash left behind.
+    function offerRecovery() {
+        if (editing || !targetName.length)
+            return
+        var text = _hw.loadRecovery(targetName)
+        if (!text.length)
+            return
+        var doc = null
+        try { doc = JSON.parse(text) } catch (e) { doc = null }
+        if (!doc || !doc.nodes)
+            return
+        var live = { image: liveImage.length ? liveImage : stockImage, photo: livePhoto || photoFromDoc(null), nodes: liveNodes }
+        var same = false
+        try {
+            same = JSON.stringify({ image: doc.image, photo: doc.photo, nodes: doc.nodes }) === JSON.stringify(live)
+        } catch (e2) {}
+        if (same) {
+            _hw.clearRecovery(targetName)
+            return
+        }
+        _pendingRecovery = doc
+        var when = String(doc.savedAt || "").replace("T", " at ")
+        _recoverGate.choose("Unsaved edits found",
+                            "Button Map has edits to " + targetName + (when.length ? " from " + when : "")
+                            + " that were never saved, probably because the program closed unexpectedly.
+
+"
+                            + "Restore opens them for editing; save to keep them. Discard deletes them.",
+                            "Restore", "Discard")
+        _recoverGate.cancelText = "Not now"
+    }
+
+    function restoreRecovery() {
+        var doc = _pendingRecovery
+        _pendingRecovery = null
+        if (!doc)
+            return
+        enterEdit()
+        var nodes = JSON.parse(JSON.stringify(doc.nodes || []))
+        hydrateOverlays(nodes)
+        workNodes = nodes
+        if (doc.image && String(doc.image).length)
+            applyImage(String(doc.image))
+        workPhoto = photoFromDoc(doc.photo)
+        applyPhoto(workPhoto)
+        Qt.callLater(function() {
+            applyPhotoToEditor()
+            var e = _ed()
+            if (e && e.seedHist)
+                e.seedHist()
+            refreshReservoir()
+        })
+    }
+
+    Timer {
+        id: _autosaveTimer
+        interval: Math.max(10, Number(_opts.values["autosave-seconds"]) || 60) * 1000
+        repeat: true
+        running: _buttonMap.editing && _opts.values["autosave"] !== false
+        onTriggered: _buttonMap.autosaveNow()
+    }
+
     function discardEdit() {
+        clearRecovery()
         editing = false
         workNodes = []
         selectedId = ""
@@ -729,6 +831,7 @@ ApplicationWindow {
         if (!loadLive())
             showBlank(initialPhoto)
         pendingDevice = ""
+        Qt.callLater(offerRecovery)
     }
 
     function openForDevice(name, photo, guid) {
@@ -775,6 +878,17 @@ ApplicationWindow {
         loadedDevice = targetName
         if (!loadLive())
             showBlank(initialPhoto)
+        Qt.callLater(offerRecovery)
+    }
+
+    DismissibleDialog {
+        id: _recoverGate
+        onConfirmed: _buttonMap.restoreRecovery()
+        onDiscarded: {
+            _buttonMap._pendingRecovery = null
+            _buttonMap.clearRecovery()
+        }
+        onCancelled: _buttonMap._pendingRecovery = null
     }
 
     DismissibleDialog {

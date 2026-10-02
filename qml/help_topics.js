@@ -334,6 +334,7 @@ function topics() {
             "<p><b>Edit → Editor options…</b> in the Button Map opens Options at its <b>Button Map</b> section; the same settings are under Options in the main window. They apply to every device.</p>"
             + "<ul>"
             + "<li><b>Editing</b>: <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line.</li>"
+            + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
             + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size).</li>"
             + "<li><b>Colours</b>: <b>Recent colours</b>, how many the colour picker keeps.</li>"
             + "</ul>"),
