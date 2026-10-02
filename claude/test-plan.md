@@ -704,3 +704,24 @@ Pipeline: hardware -> input module -> wiring -> output module -> driver. Decisio
 | P0.7 | FIXED (this commit) | Logical Device events were dropped by the input gate (no claim), so Logical Device -> vJoy/Xbox never ran; Logical Device is now always forwarded like OSC. |
 | P0-HANDS-ON | [U] | With Gremlin active: Home vJoy card last line updates and system.log has no "Invalid button index"; a Logical Device input wired to vJoy fires; a mixed Button Map group lights on the right inputs. |
 | P0-DATA | NOTE | Your profile has 70 wires from NXT buttons 57-126 to vJoy 3 buttons 57-126: neither the NXT input module nor vjoy_3 claims them. Left as is (flagged by design). |
+
+## Phase 1 (module layer, 2026-10-01)
+
+| ID | Result | Notes |
+|---|---|---|
+| P1a-P1b | DONE 613d21a5, 465ad1e3 | One GUID key and one claim API (gremlin/modules/ids.py, claim.py). |
+| P1c | DONE add3c7bc | One module registry and vJoy-id resolver; "vJoy 1 (2)" is vJoy 1 (the runtime read it as 12). |
+| P1d | DONE 506775f2 | Gate, runtime, calibration lookup and Auto Mapper lists live in gremlin/modules; core no longer imports the UI for module logic. |
+
+## Phase 2 (output modules are the firewall, 2026-10-01)
+
+Decisions: Xbox starts with nothing claimed (1A); scripts go through the firewall (2A); the vJoy Viewer shows what the output module sent (3A).
+
+| ID | Result | Notes |
+|---|---|---|
+| P2a | DONE b0709d34 | gremlin/modules/output.py: claimed reads/writes, driver status and resets. Home, live view, condition, status and Xbox pages read through it. |
+| P2b | DONE 6afb1c15 | Map to vJoy, macro, auto-release, start-up axes and scripts write through it. Unclaimed vJoy outputs are blocked and logged once per run. |
+| P2c | DONE 6d691023 | Xbox output module: claim per control on the Xbox page; Map to Xbox lists claimed controls and flags an unclaimed saved one; Xbox Viewer shows claimed controls. |
+| P2d | DONE (this commit) | vJoy Viewer cards read the vJoy output module (claimed outputs, only while Gremlin runs) instead of DirectInput readback. |
+| P2-HANDS-ON | [U] | With Gremlin active: a claimed vJoy button fires; an unclaimed one (vJoy 3 button 57+) does nothing and system.log shows one "Output blocked" line for it; claim Left Trigger on the Xbox page and Map to Xbox drives it; the vJoy Viewer card moves with the stick. |
+| P2-DATA | NOTE | The 70 NXT 57-126 -> vJoy 3 57-126 wires stop reaching vJoy until vJoy 3 claims buttons 57-126. Your 2 Map to Xbox actions need their controls claimed on the Xbox page. |

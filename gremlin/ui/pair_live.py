@@ -5,7 +5,8 @@ from __future__ import annotations
 
 from PySide6 import QtCore
 
-from gremlin import event_handler
+from gremlin import device_initialization, event_handler
+from gremlin.modules import output
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
 from gremlin.ui import input_pairing as pairing
@@ -13,6 +14,26 @@ from gremlin.modules.ids import guid_key
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
+
+
+def _vjoy_ids_by_guid() -> dict[str, int]:
+    """vJoy number for each vJoy device, keyed by its comparison GUID."""
+    try:
+        devices = list(device_initialization.vjoy_devices() or [])
+    except Exception:
+        return {}
+    return {
+        guid_key(dev.device_guid): int(dev.vjoy_id)
+        for dev in devices
+        if getattr(dev, "vjoy_id", 0)
+    }
+
+
+def _gremlin_running() -> bool:
+    try:
+        return bool(event_handler.EventListener().gremlin_active)
+    except Exception:
+        return False
 
 
 @ta.QmlElement
@@ -41,6 +62,12 @@ class PairLiveThrottle(QtCore.QObject):
         self._timer.setInterval(50)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._flush)
+        # vJoy values come from the vJoy output modules (claimed outputs only),
+        # not from reading the vJoy device back through DirectInput.
+        self._vjoy_ids: dict[str, int] = {}
+        self._vjoy_poll = QtCore.QTimer(self)
+        self._vjoy_poll.setInterval(50)
+        self._vjoy_poll.timeout.connect(self._poll_vjoy)
         event_handler.EventListener().joystick_event.connect(self._on_event)
 
     def _bump(self) -> None:
@@ -68,30 +95,54 @@ class PairLiveThrottle(QtCore.QObject):
         self._uid = pairing._guid(self._guid)
         self._hw_axis.clear()
         self._hw_button.clear()
-        self._watch = {guid_key(self._guid)} if self._guid else set()
         self._hw_hat.clear()
+        self._vj_axis.clear()
+        self._vj_button.clear()
+        self._watch = {guid_key(self._guid)} if self._guid else set()
+        watched: set[str] = set()
         for kind in (InputType.JoystickAxis, InputType.JoystickButton, InputType.JoystickHat):
             for row in pairing._mapped_rows(self._guid, kind):
                 vg = guid_key(row.get("vjoyGuid", ""))
                 if vg:
-                    self._watch.add(vg)
+                    watched.add(vg)
+        self._vjoy_ids = {
+            key: vid for key, vid in _vjoy_ids_by_guid().items() if key in watched
+        }
+        if self._vjoy_ids:
+            self._vjoy_poll.start()
+        else:
+            self._vjoy_poll.stop()
         self._bump()
+
+    def _poll_vjoy(self) -> None:
+        axes: dict[tuple[str, int], float] = {}
+        buttons: dict[tuple[str, int], float] = {}
+        if _gremlin_running():
+            for key, vid in self._vjoy_ids.items():
+                for (kind, ident), value in output.vjoy_state(vid).items():
+                    target = axes if kind == "axis" else buttons
+                    target[(key, ident)] = float(value)
+        if axes != self._vj_axis:
+            self._vj_axis = axes
+            self._bump_axis()
+        if buttons != self._vj_button:
+            self._vj_button = buttons
+            self._bump_button()
 
     def _on_event(self, event: event_handler.Event) -> None:
         ev = guid_key(event.device_guid)
         if ev not in self._watch:
             return
         is_hw = self._uid is not None and ev == guid_key(self._uid)
+        if not is_hw:
+            return
         if event.event_type == InputType.JoystickAxis:
             try:
                 value = float(event.value)
                 ident = int(event.identifier)
             except Exception:
                 return
-            if is_hw:
-                self._hw_axis[ident] = value
-            else:
-                self._vj_axis[(ev, ident)] = value
+            self._hw_axis[ident] = value
             self._axis_dirty = True
             if not self._timer.isActive():
                 self._timer.start()
@@ -102,10 +153,7 @@ class PairLiveThrottle(QtCore.QObject):
                 pressed = 1.0 if event.is_pressed else 0.0
             except Exception:
                 return
-            if is_hw:
-                self._hw_button[ident] = pressed
-            else:
-                self._vj_button[(ev, ident)] = pressed
+            self._hw_button[ident] = pressed
             self._bump_button()
             return
         if event.event_type == InputType.JoystickHat:
@@ -122,8 +170,7 @@ class PairLiveThrottle(QtCore.QObject):
                     on = 1.0
             elif val not in (None, 0, 0.0, "center", "Center", "neutral"):
                 on = 1.0
-            if is_hw:
-                self._hw_hat[ident] = on
+            self._hw_hat[ident] = on
             self._hat_stamp += 1
             self.hatStampChanged.emit()
 
