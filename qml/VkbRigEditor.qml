@@ -39,6 +39,10 @@ Item {
     property int tick: 0
     property bool seeded: false
     property bool interactive: false
+    // A picture of the page is being taken: no selection, handles, grid or
+    // guides. showChrome is what visual parts check instead of interactive.
+    property bool exporting: false
+    readonly property bool showChrome: interactive && !exporting
     property var selectedIds: []
     property bool banding: false
     property bool bandAdd: false
@@ -970,7 +974,7 @@ Item {
     TextInput {
         id: _nameEdit
         z: 12
-        visible: _ed.interactive && _ed.renameId.length > 0
+        visible: _ed.showChrome && _ed.renameId.length > 0
         x: {
             _ed.tick
             var n = _ed.nodeAt(_ed.renameId)
@@ -1041,7 +1045,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.margins: Style.dp(6)
         z: 9
-        visible: _ed.interactive && text.length
+        visible: _ed.showChrome && text.length
         color: "#A1A1AA"
         font.pixelSize: Style.dp(10)
         text: {

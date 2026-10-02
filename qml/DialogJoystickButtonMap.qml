@@ -74,6 +74,7 @@ ApplicationWindow {
             "Export PDF…",
             "Export PNG…",
             "Export JPG…",
+            "Export size",
             "Reset layout",
             "Clear image"
         ]
@@ -803,7 +804,7 @@ ApplicationWindow {
                 },
                 {
                     h: "File menu",
-                    b: "Edit Mapping, Save, Cancel.\nReset layout: send every chip back to the pool (asks first).\nFit to photo frame: shrink an older, oversized layout to the photo.\nChoose background… / Clear image: use another picture, or go back to the module's picture.\nExport PDF… / PNG… / JPG…: save a picture of the map.\nClose.\nTo copy a whole device setup to another computer, use Tools → Device setup → Device Pack."
+                    b: "Edit Mapping, Save, Cancel.\nReset layout: send every chip back to the pool (asks first).\nFit to photo frame: shrink an older, oversized layout to the photo.\nChoose background… / Clear image: use another picture, or go back to the module's picture.\nExport PDF… / PNG… / JPG…: save the whole page, whatever the zoom, without selection marks, guides or the grid; hidden items are left out. Export size picks 1×, 2× (the default) or 3× the size on screen.\nClose.\nTo copy a whole device setup to another computer, use Tools → Device setup → Device Pack."
                 },
                 {
                     h: "View and photo",
@@ -1431,17 +1432,50 @@ ApplicationWindow {
         }
     }
 
+    // Export size: the page is drawn this many times larger than on screen.
+    property int exportScale: 2
+    property var _exportJob: null
+
+    // Saves the whole page, whatever the zoom, without selection rings,
+    // handles, guides or the grid; hidden items are left out as always.
     function exportViewTo(url, format) {
-        _mapHost.grabToImage(function(result) {
+        var e = _ed()
+        if (!e)
+            return
+        _exportJob = { url: url, format: format }
+        e.exporting = true
+        // Let the editor redraw without its editing marks first.
+        _exportTimer.restart()
+    }
+
+    function _grabExport() {
+        var e = _ed()
+        var job = _exportJob
+        _exportJob = null
+        if (!e || !job) {
+            if (e)
+                e.exporting = false
+            return
+        }
+        var f = Math.max(1, exportScale)
+        var r = e.spaceRect()
+        var bg = String(Style.background)
+        var ok = e.grabToImage(function(result) {
+            e.exporting = false
             if (!result)
                 return
-            if (format === "pdf") {
-                if (backend)
-                    backend.saveImageAsPdf(result.image, url)
-            } else {
-                result.saveToFile(url)
-            }
-        })
+            if (!_hw.savePageImage(result.image, r.x * f, r.y * f, r.w * f, r.h * f,
+                                   String(job.url), job.format, bg, f))
+                console.warn("Button Map export failed: " + job.url)
+        }, Qt.size(Math.round(e.width * f), Math.round(e.height * f)))
+        if (!ok)
+            e.exporting = false
+    }
+
+    Timer {
+        id: _exportTimer
+        interval: 50
+        onTriggered: _buttonMap._grabExport()
     }
 
     FileDialog {
@@ -1583,6 +1617,19 @@ ApplicationWindow {
                 MenuItem {
                     text: "Export JPG…"
                     onTriggered: _exportJpgDialog.open()
+                }
+                Menu {
+                    title: "Export size"
+                    Repeater {
+                        model: [1, 2, 3]
+                        MenuItem {
+                            required property int modelData
+                            text: modelData + "×"
+                            checkable: true
+                            checked: _buttonMap.exportScale === modelData
+                            onTriggered: _buttonMap.exportScale = modelData
+                        }
+                    }
                 }
                 MenuSeparator {}
                 MenuItem {

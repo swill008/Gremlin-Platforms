@@ -21,7 +21,7 @@ Canvas {
             var n = list[i]
             if (ed.isDraw(n) || ed.isHidden(n))
                 continue
-            var sel = ed.interactive && ed.isSelected(n.id)
+            var sel = ed.showChrome && ed.isSelected(n.id)
             var ls = ed.leaderList(n)
             var li
             for (li = 0; li < ls.length; li++) {
@@ -42,7 +42,7 @@ Canvas {
             var hFill = n.hotFill || "filled"
             if (!ed.hotHidden(n))
                 ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : (n.hotColor || "#F4F4F5"))
-            if (ed.interactive) {
+            if (ed.showChrome) {
                 for (li = 0; li < ls.length; li++) {
                     var L2 = ls[li]
                     if (!ed.showLeaderHandles(n, li) || ed.leaderBlocked(n, li))

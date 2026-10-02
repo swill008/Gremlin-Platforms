@@ -45,7 +45,7 @@ Rectangle {
     RigSelRing {
         on: {
             ed.tick
-            return ed.isSelected(node.id)
+            return ed.isSelected(node.id) && !ed.exporting
         }
         ringColor: {
             ed.tick

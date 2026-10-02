@@ -13,7 +13,7 @@ Canvas {
     property var ed: null
     anchors.fill: parent
     z: 2
-    visible: ed.interactive && (ed.guideX >= 0 || ed.guideY >= 0)
+    visible: ed.showChrome && (ed.guideX >= 0 || ed.guideY >= 0)
     onPaint: {
         var ctx = getContext("2d")
         ctx.reset()

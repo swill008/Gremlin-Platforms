@@ -185,6 +185,35 @@ Window {
         return JSON.stringify([p.x, p.y])
     }
     function geom(id) { return JSON.stringify(ed().nodeBox(ed().nodeAt(id))) }
+    // Export as the Button Map window does it: editing marks off, a frame to
+    // redraw, then the editor drawn f times larger. exportDone gets the page
+    // rect in the picture's pixels once the file is written.
+    property string exportDone: ""
+    function exportResult() { return exportDone }
+    function exportGrab(path, f) {
+        exportDone = ""
+        ed().exporting = true
+        _exportTimer.path = path
+        _exportTimer.f = f
+        _exportTimer.restart()
+    }
+    Timer {
+        id: _exportTimer
+        property string path: ""
+        property real f: 1
+        interval: 50
+        onTriggered: {
+            var e = _win.ed()
+            var r = e.spaceRect()
+            var f = _exportTimer.f
+            var out = _exportTimer.path
+            e.grabToImage(function(result) {
+                e.exporting = false
+                result.saveToFile(out)
+                _win.exportDone = JSON.stringify([r.x * f, r.y * f, r.w * f, r.h * f])
+            }, Qt.size(Math.round(e.width * f), Math.round(e.height * f)))
+        }
+    }
     // A drawing's point in its own frame (turned, flipped) in window pixels.
     function drawPt(id, lx, ly) {
         var e = ed()
@@ -1157,6 +1186,40 @@ def scenario_picture(s: Session) -> None:
     s.record("paste-requested")
 
 
+def scenario_export(s: Session) -> None:
+    """Export: the whole page at twice the size, without the selection, its
+    handles or the grid, and without hidden items. (The window then crops
+    the page out with save_page_image, tested in test_button_map_export.)"""
+    _load(s, "evo_r")
+    chips = [n["id"] for n in s.state()["nodes"] if n["kind"] == "btn"]
+    s.call("setLayerFlag", chips[1], "", "hidden", True)
+    s.set_prop("gridOn", True)
+    s.call("setSelection", [chips[0]])
+    s.record("editing", image=True)
+
+    raw = s.out_dir / "export-raw.png"
+    s.js("exportGrab", str(raw), 2)
+    for _ in range(100):
+        if s.js("exportResult"):
+            break
+        s.wait(50)
+    x, y, w, h = json.loads(s.js("exportResult"))
+    page = s.out_dir / f"{s.name}-page.png"
+    rect = QtCore.QRect(round(x), round(y), round(w), round(h))
+    flat = QtGui.QImage(rect.size(), QtGui.QImage.Format.Format_RGB32)
+    flat.fill(QtGui.QColor("#202020"))
+    painter = QtGui.QPainter(flat)
+    painter.drawImage(0, 0, QtGui.QImage(str(raw)).copy(rect))
+    painter.end()
+    ok = flat.save(str(page))
+    raw.unlink()
+    state = s.state()
+    state["export"] = {"saved": ok, "size": [round(w), round(h)]}
+    s.steps.append({"step": "exported", "state": state})
+    # The editor is back as it was, marks and all.
+    s.record("after", image=True)
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
@@ -1168,6 +1231,7 @@ SCENARIOS = {
     "props": scenario_props,
     "align": scenario_align,
     "picture": scenario_picture,
+    "export": scenario_export,
 }
 
 

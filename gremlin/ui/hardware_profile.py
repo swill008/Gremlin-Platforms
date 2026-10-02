@@ -75,6 +75,47 @@ def _photo_pose(raw) -> dict:
 _RECENT_COLOURS = 10
 
 
+def save_page_image(
+    image: QtGui.QImage,
+    x: float,
+    y: float,
+    w: float,
+    h: float,
+    path: Path,
+    fmt: str,
+    background: str,
+    scale: float = 1.0,
+) -> bool:
+    """Crops image to the page and writes it as PNG, JPG or a one-page PDF.
+
+    scale is how much larger than on screen the picture was drawn; a PDF
+    page keeps the on-screen size and gets the extra detail.
+    """
+    if image is None or image.isNull():
+        return False
+    rect = QtCore.QRect(round(x), round(y), round(w), round(h))
+    rect = rect.intersected(image.rect())
+    if rect.isEmpty():
+        return False
+    page = image.copy(rect).convertToFormat(QtGui.QImage.Format.Format_ARGB32)
+    kind = str(fmt or "png").lower()
+    # Onto the window's background, as on screen: on a transparent PNG the
+    # light leader lines all but vanish in an image viewer.
+    flat = QtGui.QImage(page.size(), QtGui.QImage.Format.Format_RGB32)
+    flat.fill(QtGui.QColor(background or "#202020"))
+    painter = QtGui.QPainter(flat)
+    painter.drawImage(0, 0, page)
+    painter.end()
+    page = flat
+    if kind == "pdf":
+        from gremlin.ui.util import save_image_as_pdf
+
+        return save_image_as_pdf(page, path, scale)
+    if kind in ("jpg", "jpeg"):
+        return page.save(str(path), "JPG", 92)
+    return page.save(str(path), "PNG")
+
+
 def _is_hex_colour(value: object) -> bool:
     text = str(value or "")
     return (
@@ -1373,6 +1414,28 @@ class HardwareProfile(QtCore.QObject):
         if not (0 <= px < image.width() and 0 <= py < image.height()):
             return ""
         return image.pixelColor(px, py).name().upper()
+
+    @QtCore.Slot(QtGui.QImage, float, float, float, float, str, str, str, float, result=bool)
+    def savePageImage(
+        self,
+        image: QtGui.QImage,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        url: str,
+        fmt: str,
+        background: str,
+        scale: float,
+    ) -> bool:
+        """Saves the page part of a picture of the editor (Export).
+
+        x, y, w, h is the page in the picture's pixels. The page goes onto
+        the background colour, as it looks on screen. scale is the export size (1x, 2x, 3x).
+        """
+        return save_page_image(
+            image, x, y, w, h, to_local_path(url), fmt, background, scale
+        )
 
     @QtCore.Property(bool, notify=clipboardChanged)
     def clipboardHasImage(self) -> bool:

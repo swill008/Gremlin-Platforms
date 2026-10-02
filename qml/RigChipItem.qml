@@ -29,7 +29,7 @@ Rectangle {
     border.width: { ed.tick; return ed.chipIsHollow(node) ? 2 : 1 }
     antialiasing: true
     RigSelRing {
-        on: { ed.tick; return ed.isSelected(node.id) }
+        on: { ed.tick; return ed.isSelected(node.id) && !ed.exporting }
     }
     Text {
         renderType: Text.NativeRendering

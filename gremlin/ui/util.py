@@ -535,12 +535,14 @@ def updated_recent_profiles(recent: list[str], path: Path, limit: int) -> list[s
     return [str(new_path), *remaining][:limit]
 
 
-def save_image_as_pdf(image: QtGui.QImage, path: Path) -> bool:
+def save_image_as_pdf(image: QtGui.QImage, path: Path, scale: float = 1.0) -> bool:
     """Writes image to path as a one-page PDF sized to the image.
 
     Args:
         image: picture to write
         path: file to create
+        scale: how many image pixels make one point of the page; a picture
+            drawn larger for sharpness keeps the page its usual size
 
     Returns:
         True when the file was written
@@ -551,7 +553,9 @@ def save_image_as_pdf(image: QtGui.QImage, path: Path) -> bool:
     writer.setResolution(96)
     writer.setPageMargins(QtCore.QMarginsF(0, 0, 0, 0))
     writer.setPageSize(QtGui.QPageSize(
-        QtCore.QSizeF(image.width(), image.height()),
+        QtCore.QSizeF(
+            image.width() / max(1.0, scale), image.height() / max(1.0, scale)
+        ),
         QtGui.QPageSize.Unit.Point,
     ))
     painter = QtGui.QPainter()

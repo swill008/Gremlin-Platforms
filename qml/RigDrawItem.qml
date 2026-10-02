@@ -125,7 +125,7 @@ Item {
                     model: {
                         ed.tick
                         var n = node
-                        var on = ed.interactive && n && ed.isSelected(n.id) && !ed.isLocked(n)
+                        var on = ed.showChrome && n && ed.isSelected(n.id) && !ed.isLocked(n)
                         on = on && ed.tableExtra < 0 && ed.tableRow === row && ed.tableCol === col
                         on = on && ed.tableCellIsFree(n, row, col)
                         return on ? 8 : 0
@@ -223,7 +223,7 @@ Item {
                 Repeater {
                     model: {
                         ed.tick
-                        return (ed.interactive && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.tableExtra === index) ? 8 : 0
+                        return (ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.tableExtra === index) ? 8 : 0
                     }
                     Rectangle {
                         required property int index
@@ -403,7 +403,7 @@ Item {
     }
     // The rotate handle: a stem up from the top edge to a round grip.
     Item {
-        visible: { ed.tick; return !!(ed.interactive && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node) && ed.cropId !== node.id) }
+        visible: { ed.tick; return !!(ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node) && ed.cropId !== node.id) }
         x: _drawRoot.width / 2
         y: -ed.rotateHandleOffset
         z: 4
@@ -426,7 +426,7 @@ Item {
     }
     // Resize handles: eight on a box, one on each end of a line.
     Repeater {
-        model: (ed.interactive && node && ed.isSelected(node.id) && !ed.isLocked(node) && !ed.tableCellHandlesOn(node))
+        model: (ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && !ed.tableCellHandlesOn(node))
             ? (ed.isLine(node) ? 2 : 8) : 0
         Rectangle {
             required property int index
