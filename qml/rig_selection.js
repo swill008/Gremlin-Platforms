@@ -223,6 +223,9 @@ function isSelected(id) {
 function setSelection(ids) {
     selectedIds = ids || []
     selectedId = selectedIds.length ? selectedIds[selectedIds.length - 1] : ""
+    // Crop mode ends when its picture is no longer selected.
+    if (cropId && selectedIds.indexOf(cropId) < 0)
+        cropId = ""
     selectedSpine = -1
     selectedChanged()
 }
@@ -252,10 +255,7 @@ function cancelAllActions() {
     movePhoto = false
     if (_ctx)
         _ctx.close()
-    if (_tableCtx)
-        _tableCtx.close()
-    if (_textCtx)
-        _textCtx.close()
+    cropId = ""
     textPaintOn = false
     cancelRename()
     armRenameId = ""

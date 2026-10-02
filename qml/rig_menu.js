@@ -401,6 +401,8 @@ function _imageSections() {
     var n = nodeAt(selectedId)
     return [
         _sect("image", "Picture", [
+            _tog("Crop", cropId === selectedId, toggleCrop, !isLocked(n)),
+            _act("Reset crop", resetCrop, !!(n && n.crop) && !isLocked(n)),
             _act(plantSnap ? "Click the picture to place a snap point…" : "Add snap point", beginPlantSnap),
             _act("Clear snap points", clearSockets, !!(n && n.sockets && n.sockets.length)),
             _opacity("opacity")
@@ -506,6 +508,7 @@ function _canvasSections() {
         _pick("Line", ["line", "arrowline"], ["Line", "Arrow"], function(t) { return drawTool === t }, setDrawTool),
         _pick("Box", ["text", "table"], ["Text box", "Table"], function(t) { return drawTool === t }, setDrawTool),
         _act("Import picture…", function() { overlayImportRequested() }),
+        _act("Paste picture", function() { pastePictureRequested() }, canPastePicture),
         _act("Stop drawing", function() { drawTool = "" }, drawTool.length > 0)
     ]
     var out = [_sect("draw", "Draw", draw)]

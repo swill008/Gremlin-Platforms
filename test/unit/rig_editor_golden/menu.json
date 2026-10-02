@@ -1293,6 +1293,7 @@
       }
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 0,
     "histLen": 1,
@@ -1311,6 +1312,7 @@
      "> Arrange"
     ],
     "nodeCount": 19,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -1327,6 +1329,7 @@
   {
    "state": {
     "changed": {},
+    "cropId": "",
     "drawTool": "",
     "histAt": 0,
     "histLen": 1,
@@ -1351,6 +1354,7 @@
      "> Arrange"
     ],
     "nodeCount": 19,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -1421,6 +1425,7 @@
       "textColor": "#E4E4E7"
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 2,
     "histLen": 3,
@@ -1445,6 +1450,7 @@
      "> Arrange"
     ],
     "nodeCount": 19,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -1461,6 +1467,7 @@
   {
    "state": {
     "changed": {},
+    "cropId": "",
     "drawTool": "",
     "histAt": 2,
     "histLen": 3,
@@ -1483,6 +1490,7 @@
      "> Arrange"
     ],
     "nodeCount": 19,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -1499,6 +1507,7 @@
   {
    "state": {
     "changed": {},
+    "cropId": "",
     "drawTool": "",
     "histAt": 2,
     "histLen": 3,
@@ -1521,6 +1530,7 @@
      "> Arrange"
     ],
     "nodeCount": 19,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -1537,6 +1547,7 @@
   {
    "state": {
     "changed": {},
+    "cropId": "",
     "drawTool": "",
     "histAt": 2,
     "histLen": 3,
@@ -1547,6 +1558,7 @@
      "> Shape around selection"
     ],
     "nodeCount": 19,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -1563,12 +1575,14 @@
   {
    "state": {
     "changed": {},
+    "cropId": "",
     "drawTool": "",
     "histAt": 2,
     "histLen": 3,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -2901,6 +2915,7 @@
       }
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 3,
     "histLen": 4,
@@ -2915,6 +2930,7 @@
      "> Arrange"
     ],
     "nodeCount": 20,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -2931,6 +2947,7 @@
   {
    "state": {
     "changed": {},
+    "cropId": "",
     "drawTool": "",
     "histAt": 3,
     "histLen": 4,
@@ -2948,6 +2965,7 @@
      "> Arrange"
     ],
     "nodeCount": 20,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -2964,6 +2982,7 @@
   {
    "state": {
     "changed": {},
+    "cropId": "",
     "drawTool": "",
     "histAt": 3,
     "histLen": 4,
@@ -2975,10 +2994,12 @@
      "  Line: Line | Arrow",
      "  Box: Text box | Table",
      "  Import picture\u2026",
+     "  Paste picture (off)",
      "  Stop drawing (off)"
     ],
     "menuInsideWindow": true,
     "nodeCount": 20,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -2995,6 +3016,7 @@
   {
    "state": {
     "changed": {},
+    "cropId": "",
     "drawTool": "",
     "histAt": 3,
     "histLen": 4,
@@ -3005,6 +3027,7 @@
     ],
     "menuInsideWindow": true,
     "nodeCount": 20,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,

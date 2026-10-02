@@ -102,6 +102,13 @@ function propsModel() {
         fields.push(_numField("h", "Height", _pct(g.h / Math.max(1, spaceRect().h)), 0.1, 200, "%", 0.1))
         if (isRotatable(n))
             fields.push(_numField("rot", "Angle", Math.round((n.rot || 0) * 10) / 10, 0, 360, "°", 1))
+        if (isOverlay(n)) {
+            var c = n.crop || {}
+            fields.push(_numField("cropL", "Crop left", _pct(c.l || 0), 0, 98, "%", 0.1))
+            fields.push(_numField("cropT", "Crop top", _pct(c.t || 0), 0, 98, "%", 0.1))
+            fields.push(_numField("cropR", "Crop right", _pct(c.r || 0), 0, 98, "%", 0.1))
+            fields.push(_numField("cropB", "Crop bottom", _pct(c.b || 0), 0, 98, "%", 0.1))
+        }
     } else {
         fields.push(_numField("x", "X", _pct(n.chipFx), 0, 100, "%", 0.1))
         fields.push(_numField("y", "Y", _pct(n.chipFy), 0, 100, "%", 0.1))
@@ -175,6 +182,10 @@ function setProp(key, value) {
     }
     if (key === "rot") {
         setRotation(v)
+        return
+    }
+    if (key.indexOf("crop") === 0) {
+        setCropEdge({ cropL: "l", cropT: "t", cropR: "r", cropB: "b" }[key], v)
         return
     }
     if (!n || isLocked(n) || ids.length > 1)

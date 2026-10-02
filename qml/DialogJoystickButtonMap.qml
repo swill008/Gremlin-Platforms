@@ -827,7 +827,7 @@ ApplicationWindow {
                 },
                 {
                     h: "Draw",
-                    b: "Right-click empty canvas → Draw picks a tool: a shape (Rectangle, Rounded, Ellipse, Triangle, Diamond, Arrow, Double arrow), a Line or an Arrow, a Text box or a Table, then drag on the photo. Shift keeps a shape's proportions and a line on 15° steps. Stop drawing or Esc ends the tool. Import picture… adds a picture on top of the photo.\nWith chips selected, Shape around selection draws a shape around them that moves with them.\nRight-click a shape for Duplicate and Delete, then Shape, Fill and outline (Filled or Hollow, colours, Width, Outline Solid, Dashed or Dotted, Opacity), Rotate and flip, and Arrange (Bring to front, forward, back, Send to back, Lock, Hide).\nA selected shape or picture has a round handle above it: drag it to turn the item, with Shift for 15° steps. Rotate and flip takes a typed angle, quarter turns, 15° steps, and flips left to right or top to bottom. A turned item resizes along its own sides, the opposite side staying put. From a corner, a shape keeps its proportions with Shift; a picture keeps them unless Shift is held.\nA selected line has a handle on each end to drag. Its Arrowheads section sets each end to None, Solid or Hollow; Swap heads turns them round.\nText boxes and tables have their own sections (text, box, rows and columns, cells, look). Double-click a cell or text box to type. A picture's section adds and clears snap points that chips snap to."
+                    b: "Right-click empty canvas → Draw picks a tool: a shape (Rectangle, Rounded, Ellipse, Triangle, Diamond, Arrow, Double arrow), a Line or an Arrow, a Text box or a Table, then drag on the photo. Shift keeps a shape's proportions and a line on 15° steps. Stop drawing or Esc ends the tool. Import picture… adds a picture on top of the photo.\nWith chips selected, Shape around selection draws a shape around them that moves with them.\nRight-click a shape for Duplicate and Delete, then Shape, Fill and outline (Filled or Hollow, colours, Width, Outline Solid, Dashed or Dotted, Opacity), Rotate and flip, and Arrange (Bring to front, forward, back, Send to back, Lock, Hide).\nA selected shape or picture has a round handle above it: drag it to turn the item, with Shift for 15° steps. Rotate and flip takes a typed angle, quarter turns, 15° steps, and flips left to right or top to bottom. A turned item resizes along its own sides, the opposite side staying put. From a corner, a shape keeps its proportions with Shift; a picture keeps them unless Shift is held.\nA selected line has a handle on each end to drag. Its Arrowheads section sets each end to None, Solid or Hollow; Swap heads turns them round.\nText boxes and tables have their own sections (text, box, rows and columns, cells, look). Double-click a cell or text box to type. A picture's section adds and clears snap points that chips snap to.\nPictures: Crop (in the picture's section) turns its handles blue; they then cut the picture instead of scaling it, and what stays does not move. Esc or selecting something else ends it; Reset crop shows the whole picture again, and Properties takes exact crop values. Edit → Paste picture (Ctrl+Shift+V), or Paste picture in the empty canvas's Draw section, adds the picture on the clipboard as a new layer."
                 },
                 {
                     h: "Layers",
@@ -1149,6 +1149,17 @@ ApplicationWindow {
     }
 
     // Undo or redo moved the photo in the editor: the sliders follow.
+    // The clipboard's picture as a new picture layer (Edit > Paste picture,
+    // Ctrl+Shift+V, or the canvas menu).
+    function pastePicture() {
+        var e = _ed()
+        if (!editing || !e)
+            return
+        var rel = _hw.pasteClipboardImage(targetName)
+        if (rel.length)
+            e.addOverlay(rel, _hw.imageUrl(rel))
+    }
+
     function syncPhotoFromEditor() {
         var e = _ed()
         if (!e)
@@ -1580,6 +1591,11 @@ ApplicationWindow {
                     enabled: { var e = _ed(); return e && e.clip && e.clip.length }
                     onTriggered: { var e = _ed(); if (e) e.pasteClipboard() }
                 }
+                MenuItem {
+                    text: "Paste picture"
+                    enabled: editing && _hw.clipboardHasImage
+                    onTriggered: pastePicture()
+                }
             }
             Menu {
                 title: "View"
@@ -1801,6 +1817,11 @@ ApplicationWindow {
                 }
                 Shortcut {
                     enabled: editing
+                    sequence: "Ctrl+Shift+V"
+                    onActivated: pastePicture()
+                }
+                Shortcut {
+                    enabled: editing
                     sequence: "Ctrl+L"
                     onActivated: { var e = _ed(); if (e) e.toggleLockSelection() }
                 }
@@ -1902,6 +1923,7 @@ ApplicationWindow {
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
                             function onOverlayImportRequested() { _overlayDialog.open() }
+                            function onPastePictureRequested() { _buttonMap.pastePicture() }
                             function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }
                             function onDrawToolChanged() { _buttonMap.resTick++ }
                             function onPhotoRestored() { _buttonMap.syncPhotoFromEditor() }
@@ -2185,6 +2207,14 @@ ApplicationWindow {
 
                 // Layers: every item with an eye and a lock, top of the stack first.
                 // On the right, above the pool when it is docked at the bottom.
+                Binding {
+                    target: _buttonMap._ed()
+                    property: "canPastePicture"
+                    value: _hw.clipboardHasImage
+                    when: !!_buttonMap._ed()
+                    restoreMode: Binding.RestoreNone
+                }
+
                 RigLayersPanel {
                     id: _layersPanel
                     ed: _buttonMap._ed()

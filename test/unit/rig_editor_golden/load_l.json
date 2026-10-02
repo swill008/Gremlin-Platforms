@@ -1124,12 +1124,14 @@
       }
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 0,
     "histLen": 1,
     "layers": [],
     "menu": [],
     "nodeCount": 16,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,

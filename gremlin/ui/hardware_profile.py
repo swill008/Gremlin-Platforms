@@ -11,7 +11,10 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
-from PySide6 import QtCore
+from PySide6 import (
+    QtCore,
+    QtGui,
+)
 
 import gremlin.ui.type_aliases as ta
 from gremlin.modules.claim import claim_ids
@@ -66,6 +69,11 @@ def _photo_pose(raw) -> dict:
         if src.get(flag) is True:
             pose[flag] = True
     return pose
+
+
+def _clipboard() -> QtGui.QClipboard | None:
+    app = QtGui.QGuiApplication.instance()
+    return app.clipboard() if isinstance(app, QtGui.QGuiApplication) else None
 
 
 def _install_root() -> Path:
@@ -1292,6 +1300,7 @@ class HardwareProfile(QtCore.QObject):
     documentChanged = QtCore.Signal()
     pathChanged = QtCore.Signal()
     imageChanged = QtCore.Signal()
+    clipboardChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -1300,6 +1309,40 @@ class HardwareProfile(QtCore.QObject):
         self._path = ""
         self._peek_photo = ""
         self._device_guid = ""
+        clipboard = _clipboard()
+        if clipboard is not None:
+            clipboard.dataChanged.connect(self.clipboardChanged)
+
+    @QtCore.Property(bool, notify=clipboardChanged)
+    def clipboardHasImage(self) -> bool:
+        """The clipboard holds a picture the Button Map can paste."""
+        clipboard = _clipboard()
+        data = clipboard.mimeData() if clipboard is not None else None
+        return bool(data is not None and data.hasImage())
+
+    @QtCore.Slot(str, result=str)
+    def pasteClipboardImage(self, device_name: str) -> str:
+        """Saves the clipboard's picture as a layer picture for the device."""
+        clipboard = _clipboard()
+        image = clipboard.image() if clipboard is not None else QtGui.QImage()
+        return self.savePastedImage(image, device_name)
+
+    def savePastedImage(self, image: QtGui.QImage, device_name: str) -> str:
+        """Writes a pasted picture to the device's folder (and the library) as
+        pasted.png, pasted_1.png...; returns its stored path, or "" if none."""
+        if image is None or image.isNull():
+            return ""
+        folder = self._profile_dir(device_name)
+        dest = folder / "pasted.png"
+        n = 1
+        while dest.exists():
+            dest = folder / f"pasted_{n}.png"
+            n += 1
+        if not image.save(str(dest), "PNG"):
+            return ""
+        self._into_library(dest)
+        self.imageChanged.emit()
+        return _asset_ref(folder.name, dest.name)
 
     def _guid_for_this_device(self, device_name: str) -> str:
         # The object remembers one device. Do not use that id for a different name.

@@ -119,6 +119,13 @@ Item {
     property bool movePhoto: false
     // How far above a selected drawing's top edge its rotate handle sits.
     readonly property real rotateHandleOffset: 24
+    // The picture in crop mode (its handles cut), and its crop when a handle
+    // drag began.
+    property string cropId: ""
+    property var cropStart: null
+    // Set by the window: the clipboard holds a picture to paste.
+    property bool canPastePicture: false
+    signal pastePictureRequested()
     // Selection and handle colours, the same on the photo in both themes.
     readonly property color handleFill: "#FBBF24"
     readonly property color handleInk: "#18181B"
@@ -481,6 +488,9 @@ Item {
     function isFlippable(n) { return RigDraw.isFlippable(n) }
     function setRotation(deg) { return RigDraw.setRotation(deg) }
     function flipSelection(axis) { return RigDraw.flipSelection(axis) }
+    function toggleCrop() { return RigDraw.toggleCrop() }
+    function setCropEdge(edge, pct) { return RigDraw.setCropEdge(edge, pct) }
+    function resetCrop() { return RigDraw.resetCrop() }
 
     // Selection, nudging, delete, copy/paste/duplicate and stacking order (rig_selection.js)
     function deleteSelection() { return RigSelection.deleteSelection() }

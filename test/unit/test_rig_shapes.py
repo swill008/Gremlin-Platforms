@@ -172,3 +172,46 @@ def test_handle_angle_and_snap(js: QtQml.QJSEngine) -> None:
     assert call(js, "snapDeg(52, 15)") == pytest.approx(45)
     assert call(js, "snapDeg(359, 15)") == pytest.approx(0)
     assert call(js, "normDeg(-90)") == pytest.approx(270)
+
+
+@pytest.mark.parametrize("rot", [0, 35, 180])
+def test_crop_keeps_what_stays_visible_in_place(
+    js: QtQml.QJSEngine, rot: float
+) -> None:
+    box = {"x": 50, "y": 40, "w": 200, "h": 100}
+    c0 = {"l": 0, "t": 0, "r": 0, "b": 0}
+    c1 = {"l": 0.25, "t": 0.1, "r": 0, "b": 0.2}
+    new = call(
+        js, f"cropBox({json.dumps(box)}, {rot}, {json.dumps(c0)}, {json.dumps(c1)})"
+    )
+    # Half of the old width and 70% of the height remain, at the same scale.
+    assert new["w"] == pytest.approx(150)
+    assert new["h"] == pytest.approx(70)
+    # The new box's bottom-right corner is where the old one's was, less the
+    # cut-off bottom strip: picture content did not move.
+    old_corner = _corner(box, rot, 1, 1, js)
+    lift = call(js, f"rotatePt(0, {-0.2 * 100}, {rot})")
+    assert _corner(new, rot, 1, 1, js) == pytest.approx(
+        (old_corner[0] + lift["x"], old_corner[1] + lift["y"]), abs=1e-6
+    )
+
+
+def test_crop_back_to_none_restores_the_box(js: QtQml.QJSEngine) -> None:
+    box = {"x": 10, "y": 10, "w": 120, "h": 60}
+    c = {"l": 0.1, "t": 0.2, "r": 0.3, "b": 0}
+    cropped = call(js, f"cropBox({json.dumps(box)}, 20, {{}}, {json.dumps(c)})")
+    back = call(js, f"cropBox({json.dumps(cropped)}, 20, {json.dumps(c)}, {{}})")
+    assert back == pytest.approx(box)
+
+
+def test_crop_from_drag_and_clamp(js: QtQml.QJSEngine) -> None:
+    box = {"x": 0, "y": 0, "w": 200, "h": 100}
+    # Drag the right edge 50 px in: a quarter of the picture is cut off.
+    c = call(js, f"cropFromDrag({json.dumps(box)}, 0, {{}}, 'e', 150, 50)")
+    assert c == pytest.approx({"l": 0, "t": 0, "r": 0.25, "b": 0})
+    # Dragging outwards past the picture's edge uncrops only to nothing.
+    c = call(js, f"cropFromDrag({json.dumps(box)}, 0, {{}}, 'e', 400, 50)")
+    assert c["r"] == 0
+    assert call(js, "clampCrop({l: 0.7, r: 0.7})") == pytest.approx(
+        {"l": 0.7, "t": 0, "r": 0.28, "b": 0}
+    )

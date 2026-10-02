@@ -85,6 +85,13 @@ Window {
         z: 50
     }
     function showProps(on) { _props.visible = on }
+
+    // Paste picture requests (the window saves the clipboard's picture).
+    property int pasteRequests: 0
+    Connections {
+        target: _face.editorItem
+        function onPastePictureRequested() { _win.pasteRequests++ }
+    }
     function propLines() {
         return JSON.stringify(_props.visible ? _props.describe() : [])
     }
@@ -158,6 +165,8 @@ Window {
             layers: JSON.parse(layerLines()),
             props: JSON.parse(propLines()),
             photo: [e.photoScale, e.photoOffX, e.photoOffY, e.photoRot],
+            cropId: e.cropId,
+            pasteRequests: _win.pasteRequests,
             nodes: e.nodes,
             selected: e.selectedIds,
             histAt: e.histAt,
@@ -323,6 +332,12 @@ class Session:
         self.click(
             QtCore.QPoint(round(r["x"] + r["w"] / 2), round(r["y"] + r["h"] / 2))
         )
+
+    def open_menu_section(self, title: str) -> None:
+        """Opens a menu section unless it is open already (the menu reopens
+        on the section used last)."""
+        if ("v " + title) not in self.state()["menu"]:
+            self.click_menu_row(title)
 
     def menu_key(self, key: QtCore.Qt.Key) -> None:
         """A key press while the menu has focus."""
@@ -1091,6 +1106,57 @@ def scenario_align(s: Session) -> None:
     s.record("chips-left-one-locked", image=True)
 
 
+def scenario_picture(s: Session) -> None:
+    """Cropping a picture with its handles and by typing, Esc leaving crop
+    mode, Reset crop, and the canvas menu's Paste picture."""
+    Key = QtCore.Qt.Key
+    _load(s, "evo_r")
+    s.js("showProps", True)
+    icon = ROOT / "gfx" / "icon_large.png"
+    s.call("addOverlay", "test/icon", QtCore.QUrl.fromLocalFile(str(icon)).toString())
+    pic = s.state()["selected"][0]
+    s.record("picture", image=True)
+
+    # Crop mode from the menu, then drag the right and bottom handles in.
+    box = s._box(pic)
+    s.right_click(s.ed_point(box["x"] + box["w"] / 2, box["y"] + box["h"] / 2))
+    s.open_menu_section("Picture")
+    s.click_menu_row("Crop")
+    s.close_menus()
+    s.record("crop-mode")
+    right = s.ed_point(box["x"] + box["w"], box["y"] + box["h"] / 2)
+    s.drag(right, QtCore.QPoint(right.x() - round(box["w"] * 0.4), right.y()))
+    box = s._box(pic)
+    bottom = s.ed_point(box["x"] + box["w"] / 2, box["y"] + box["h"])
+    s.drag(bottom, QtCore.QPoint(bottom.x(), bottom.y() - round(box["h"] * 0.25)))
+    s.record("cropped-by-handles", image=True)
+
+    # Esc leaves crop mode (and runs the editor's whole cancel).
+    s.key(Key.Key_Escape)
+    s.record("esc")
+
+    # Typed: the left side, then Reset crop from the menu.
+    s.call("setSelection", [pic])
+    s.set_prop_field("Crop left", "20")
+    s.record("crop-left-typed", image=True)
+    box = s._box(pic)
+    s.right_click(s.ed_point(box["x"] + box["w"] / 2, box["y"] + box["h"] / 2))
+    s.open_menu_section("Picture")
+    s.click_menu_row("Reset crop")
+    s.record("crop-reset", image=True)
+
+    # Paste picture: off with nothing on the clipboard, then on.
+    s.right_click(s.point(0.1, 0.9))
+    s.open_menu_section("Draw")
+    s.record("paste-off")
+    s.close_menus()
+    s.set_prop("canPastePicture", True)
+    s.right_click(s.point(0.1, 0.9))
+    s.open_menu_section("Draw")
+    s.click_menu_row("Paste picture")
+    s.record("paste-requested")
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
@@ -1101,6 +1167,7 @@ SCENARIOS = {
     "transform": scenario_transform,
     "props": scenario_props,
     "align": scenario_align,
+    "picture": scenario_picture,
 }
 
 

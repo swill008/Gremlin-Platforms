@@ -72,6 +72,14 @@ function applyDrawResize(n, mx, my, handle, altOff) {
             setLineEnds(n, e.ax, e.ay, px, py)
         return
     }
+    if (cropId === n.id && isOverlay(n)) {
+        // Crop mode: the handles cut the picture; what stays does not move.
+        var start = { x: rzX0, y: rzY0, w: rzX1 - rzX0, h: rzY1 - rzY0 }
+        var c0 = Shapes.cropOf(cropStart)
+        var c1 = Shapes.cropFromDrag(start, n.rot || 0, c0, handle, mx, my)
+        _applyCrop(n, start, c0, c1)
+        return
+    }
     if (handle === "rotate") {
         // The handle above the top edge: the angle round the centre, 15 degree
         // steps with Shift.
@@ -144,6 +152,48 @@ function _scaleTextFont(n, oldH, newH) {
         var fs = n.fontSize > 0 ? n.fontSize : 12
         n.fontSize = Math.max(6, Math.min(72, Math.round(fs * (newH / oldH))))
     }
+}
+
+// Sets a picture's crop, moving its box so what stays visible stays put.
+function _applyCrop(n, box, c0, c1) {
+    var b = Shapes.cropBox(box, n.rot || 0, c0, c1)
+    n.fx = xToFx(b.x)
+    n.fy = yToFy(b.y)
+    n.fw = b.w / Math.max(1, spaceRect().w)
+    n.fh = b.h / Math.max(1, spaceRect().h)
+    if (c1.l || c1.t || c1.r || c1.b)
+        n.crop = { l: c1.l, t: c1.t, r: c1.r, b: c1.b }
+    else
+        delete n.crop
+    syncOverlayChips(n)
+}
+
+// Crop mode for the selected picture: its handles cut instead of scale.
+function toggleCrop() {
+    var n = nodeAt(selectedId)
+    cropId = (isOverlay(n) && cropId !== n.id && !isLocked(n)) ? n.id : ""
+    bump()
+}
+
+// One side of the selected picture's crop, in percent of the picture.
+function setCropEdge(edge, pct) {
+    var n = nodeAt(selectedId)
+    if (!isOverlay(n) || isLocked(n))
+        return
+    var c0 = Shapes.cropOf(n.crop)
+    var c1 = Shapes.cropOf(n.crop)
+    c1[edge] = Math.max(0, Number(pct) || 0) / 100
+    c1 = Shapes.clampCrop(c1)
+    _applyCrop(n, drawGeom(n), c0, c1)
+    bump()
+}
+
+function resetCrop() {
+    var n = nodeAt(selectedId)
+    if (!isOverlay(n) || isLocked(n) || !n.crop)
+        return
+    _applyCrop(n, drawGeom(n), Shapes.cropOf(n.crop), Shapes.cropOf(null))
+    bump()
 }
 
 // Shapes, lines and pictures turn; text boxes and tables stay level.

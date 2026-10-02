@@ -176,3 +176,55 @@ function rotatedResize(box, rot, handle, px, py, minW, minH, keepAspect) {
     var ncy = fy + half.y
     return { x: ncx - w / 2, y: ncy - h / 2, w: w, h: h }
 }
+
+// --- cropping a picture -----------------------------------------------------------
+
+// A crop: the fractions of the picture cut off each side.
+function cropOf(c) {
+    c = c || {}
+    return { l: Number(c.l) || 0, t: Number(c.t) || 0, r: Number(c.r) || 0, b: Number(c.b) || 0 }
+}
+
+// Keeps at least 2% of the picture each way and nothing below zero.
+function clampCrop(c) {
+    var o = cropOf(c)
+    o.l = Math.max(0, Math.min(0.98, o.l))
+    o.t = Math.max(0, Math.min(0.98, o.t))
+    o.r = Math.max(0, Math.min(0.98 - o.l, o.r))
+    o.b = Math.max(0, Math.min(0.98 - o.t, o.b))
+    return o
+}
+
+// The box showing crop c1 of a picture that box shows at crop c0, so what
+// stays visible does not move or change size on screen (rot as Item.rotation).
+function cropBox(box, rot, c0, c1) {
+    var a = cropOf(c0)
+    var z = cropOf(c1)
+    var pxX = box.w / Math.max(0.0001, 1 - a.l - a.r)
+    var pxY = box.h / Math.max(0.0001, 1 - a.t - a.b)
+    var left = -box.w / 2 + (z.l - a.l) * pxX
+    var right = box.w / 2 - (z.r - a.r) * pxX
+    var top = -box.h / 2 + (z.t - a.t) * pxY
+    var bottom = box.h / 2 - (z.b - a.b) * pxY
+    var mid = rotatePt((left + right) / 2, (top + bottom) / 2, rot || 0)
+    var w = right - left
+    var h = bottom - top
+    var cx = box.x + box.w / 2 + mid.x
+    var cy = box.y + box.h / 2 + mid.y
+    return { x: cx - w / 2, y: cy - h / 2, w: w, h: h }
+}
+
+// The crop a handle drag asks for: the handle's edges move to where
+// rotatedResize puts them, the picture staying still under them.
+function cropFromDrag(box, rot, c0, handle, px, py) {
+    var a = cropOf(c0)
+    var want = rotatedResize(box, rot, handle, px, py, 1, 1, false)
+    var pxX = box.w / Math.max(0.0001, 1 - a.l - a.r)
+    var pxY = box.h / Math.max(0.0001, 1 - a.t - a.b)
+    var c = cropOf(a)
+    if (handle.indexOf("e") >= 0) c.r = a.r + (box.w - want.w) / pxX
+    if (handle.indexOf("w") >= 0) c.l = a.l + (box.w - want.w) / pxX
+    if (handle.indexOf("s") >= 0) c.b = a.b + (box.h - want.h) / pxY
+    if (handle.indexOf("n") >= 0) c.t = a.t + (box.h - want.h) / pxY
+    return clampCrop(c)
+}

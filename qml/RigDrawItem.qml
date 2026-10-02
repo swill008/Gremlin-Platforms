@@ -340,22 +340,36 @@ Item {
         target: ed
         function onTickChanged() { if (_dc.visible) _dc.requestPaint() }
     }
-    Image {
-        id: _overlayImage
+    // A picture. Cropped, the whole picture is drawn at its uncropped size,
+    // shifted by the crop, inside a box that clips the cut-off sides.
+    Item {
+        id: _picClip
+        readonly property var crop: { ed.tick; return (_drawRoot.node && _drawRoot.node.crop) || null }
+        visible: { var n = node; return !!(n && n.shape === "image") }
+        anchors.fill: parent
+        clip: !!crop
         transform: Scale {
-            origin.x: _overlayImage.width / 2
-            origin.y: _overlayImage.height / 2
+            origin.x: _picClip.width / 2
+            origin.y: _picClip.height / 2
             xScale: { ed.tick; return _drawRoot.node && _drawRoot.node.flipH ? -1 : 1 }
             yScale: { ed.tick; return _drawRoot.node && _drawRoot.node.flipV ? -1 : 1 }
         }
-        visible: { var n = node; return !!(n && n.shape === "image") }
-        anchors.fill: parent
-        fillMode: Image.PreserveAspectFit
-        asynchronous: true
-        source: {
-            ed.tick
-            var n = node || {}
-            return n.srcUrl || ""
+
+        Image {
+            id: _overlayImage
+            readonly property real keepW: _picClip.crop ? Math.max(0.02, 1 - (_picClip.crop.l || 0) - (_picClip.crop.r || 0)) : 1
+            readonly property real keepH: _picClip.crop ? Math.max(0.02, 1 - (_picClip.crop.t || 0) - (_picClip.crop.b || 0)) : 1
+            width: _picClip.width / keepW
+            height: _picClip.height / keepH
+            x: _picClip.crop ? -(_picClip.crop.l || 0) * width : 0
+            y: _picClip.crop ? -(_picClip.crop.t || 0) * height : 0
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+            source: {
+                ed.tick
+                var n = node || {}
+                return n.srcUrl || ""
+            }
         }
     }
     Repeater {
@@ -389,7 +403,7 @@ Item {
     }
     // The rotate handle: a stem up from the top edge to a round grip.
     Item {
-        visible: { ed.tick; return !!(ed.interactive && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node)) }
+        visible: { ed.tick; return !!(ed.interactive && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node) && ed.cropId !== node.id) }
         x: _drawRoot.width / 2
         y: -ed.rotateHandleOffset
         z: 4
@@ -423,7 +437,8 @@ Item {
             width: Style.dp(8)
             height: Style.dp(8)
             radius: lineEnds ? width / 2 : Style.dp(1)
-            color: ed.handleFill
+            // Crop mode: the handles cut, so they look different.
+            color: ed.cropId !== "" && _drawRoot.node && ed.cropId === _drawRoot.node.id ? Style.accent : ed.handleFill
             border.color: ed.handleInk
             x: {
                 if (lineEnds)

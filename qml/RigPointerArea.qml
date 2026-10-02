@@ -208,6 +208,7 @@ MouseArea {
                 ed.rzY1 = crc.y + crc.h
             } else if (hit.handle && hit.handle !== "body") {
                 ed.dragKind = "draw-" + hit.handle
+                ed.cropStart = dn && dn.crop ? JSON.parse(JSON.stringify(dn.crop)) : null
                 ed.rzX0 = g.x
                 ed.rzY0 = g.y
                 ed.rzX1 = g.x + g.w

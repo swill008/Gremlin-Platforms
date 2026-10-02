@@ -1327,12 +1327,14 @@
       }
      }
     },
+    "cropId": "",
     "drawTool": "arrow2",
     "histAt": 3,
     "histLen": 4,
     "layers": [],
     "menu": [],
     "nodeCount": 21,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -2664,12 +2666,14 @@
       }
      }
     },
+    "cropId": "",
     "drawTool": "line",
     "histAt": 4,
     "histLen": 5,
     "layers": [],
     "menu": [],
     "nodeCount": 22,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -4001,12 +4005,14 @@
       }
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 5,
     "histLen": 6,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -4049,12 +4055,14 @@
       "stroke": 2
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 6,
     "histLen": 7,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -4097,12 +4105,14 @@
       "stroke": 6
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 9,
     "histLen": 10,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -4145,12 +4155,14 @@
       "stroke": 6
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 11,
     "histLen": 12,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -4230,12 +4242,14 @@
       "stroke": 2
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 15,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -4252,12 +4266,14 @@
   {
    "state": {
     "changed": {},
+    "cropId": "",
     "drawTool": "",
     "histAt": 15,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -4274,12 +4290,14 @@
   {
    "state": {
     "changed": {},
+    "cropId": "",
     "drawTool": "",
     "histAt": 15,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -4338,12 +4356,14 @@
       "stroke": 2
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 13,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,

@@ -154,7 +154,7 @@ function hitDraw(n, mx, my) {
         }
     }
     // The rotate handle sits above the top edge (rotateHandleOffset).
-    if (interactive && isSelected(n.id) && !isLocked(n) && isRotatable(n)
+    if (interactive && isSelected(n.id) && !isLocked(n) && isRotatable(n) && cropId !== n.id
             && Math.hypot(p.x - w * 0.5, p.y + rotateHandleOffset) < 9)
         return "rotate"
     if (interactive && isSelected(n.id) && !isLocked(n) && !tableCellHandlesOn(n)) {

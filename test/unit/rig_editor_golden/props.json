@@ -1293,12 +1293,14 @@
       }
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 0,
     "histLen": 1,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -2622,12 +2624,14 @@
       }
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 1,
     "histLen": 2,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -2675,12 +2679,14 @@
       "stroke": 2
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 8,
     "histLen": 9,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -2763,12 +2769,14 @@
       "textColor": "#E4E4E7"
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 9,
     "histLen": 10,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -4112,12 +4120,14 @@
       }
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 12,
     "histLen": 13,
     "layers": [],
     "menu": [],
     "nodeCount": 21,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -5470,12 +5480,14 @@
       }
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 14,
     "histLen": 15,
     "layers": [],
     "menu": [],
     "nodeCount": 22,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
@@ -5520,12 +5532,14 @@
       "stroke": 2
      }
     },
+    "cropId": "",
     "drawTool": "",
     "histAt": 15,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 22,
+    "pasteRequests": 0,
     "photo": [
      1,
      0,
