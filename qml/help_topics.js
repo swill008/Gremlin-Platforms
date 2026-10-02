@@ -188,7 +188,8 @@ function topics() {
             + "</ul>"),
         topic("Tools", "Button Map",
             "<p>Button Map is a picture of a device with a chip on each claimed control. A press lights its chip, and wires show their destination. Moving a chip changes only the picture, never the actions.</p>"
-            + "<p>Open it from a card's menu, the toolbar, or Tools → Mapping → <b>Button Map</b> (then pick the device from its File menu). <b>File → Edit Mapping</b> starts editing: drag chips from the pool onto the photo, then <b>File → Save</b> (Ctrl+S) writes the layout to the device's module file. <b>F1</b> opens the editor's own help.</p>"),
+            + "<p>Open it from a card's menu, the toolbar, or Tools → Mapping → <b>Button Map</b> (then pick the device from its File menu). <b>File → Edit Mapping</b> starts editing: drag chips from the pool onto the photo, then <b>File → Save</b> (Ctrl+S) writes the layout to the device's module file. <b>F1</b> opens the editor's own help.</p>"
+            + "<p>Right-click → <b>Draw</b> adds drawings on the photo: rectangles, ellipses, triangles, diamonds and block arrows (filled or hollow), lines and arrows with a solid or hollow head at either end, text boxes, tables and pictures. Outline makes an edge solid, dashed or dotted.</p>"),
         topic("Tools", "Viewers",
             "<p>The viewers show live values; they change nothing. Open them from the toolbar, Tools → Viewers, or a card's menu.</p>"
             + "<ul>"

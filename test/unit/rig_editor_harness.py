@@ -558,10 +558,81 @@ def scenario_api_sweep(s: Session) -> None:
     s.record("delete-drawn", image=True)
 
 
+def scenario_arrows(s: Session) -> None:
+    """Block arrows, lines and arrows with solid and hollow heads, dashed and
+    dotted outlines, dragging a line end and clicking on and beside a line."""
+    Mod = QtCore.Qt.KeyboardModifier
+    _load(s, "evo_r")
+
+    s.call("setDrawTool", "arrow")
+    s.drag(s.point(0.04, 0.06), s.point(0.20, 0.16))
+    arrow = s.state()["selected"][0]
+    s.call("setDrawTool", "arrow2")
+    s.drag(s.point(0.04, 0.24), s.point(0.24, 0.32))
+    arrow2 = s.state()["selected"][0]
+    s.call("applyField", "fill", "filled")
+    s.record("block-arrows", image=True)
+
+    s.call("setDrawTool", "line")
+    s.drag(s.point(0.75, 0.08), s.point(0.95, 0.14))
+    line = s.state()["selected"][0]
+    s.record("line")
+    s.call("setDrawTool", "arrowline")
+    s.drag(s.point(0.75, 0.24), s.point(0.93, 0.31), Mod.ShiftModifier)
+    arrowline = s.state()["selected"][0]
+    s.call("setDrawTool", "")
+    s.record("arrow-shift-snapped", image=True)
+
+    # Drag the plain line's far end down.
+    s.call("setSelection", [line])
+    ends = s.call_on_node("lineEndsAt", line)
+    s.drag(
+        s.ed_point(ends["bx"], ends["by"]),
+        s.ed_point(ends["bx"] - 30, ends["by"] + 90),
+    )
+    s.record("drag-line-end")
+
+    # Heads, outline styles and width.
+    s.call("setSelection", [arrowline])
+    s.call("applyDrawField", "headStart", "hollow")
+    s.call("applyDrawField", "headEnd", "hollow")
+    s.call("applyDrawField", "stroke", 6)
+    s.record("hollow-heads-thick")
+    s.call("applyDrawField", "headEnd", "solid")
+    s.call("swapLineHeads")
+    s.record("swap-heads")
+    s.call("setSelection", [arrow2])
+    s.call("applyDrawField", "dash", "dash")
+    s.call("setSelection", [line])
+    s.call("applyDrawField", "dash", "dot")
+    s.call("applyDrawField", "headEnd", "solid")
+    s.call("setSelection", [arrow])
+    s.call("applyDrawField", "dash", "dot")
+    s.record("outlines", image=True)
+
+    # A click on the line selects it; a click inside its box but off the
+    # line does not.
+    s.call("setSelection", [])
+    ends = s.call_on_node("lineEndsAt", line)
+    mid_x = (ends["ax"] + ends["bx"]) / 2
+    mid_y = (ends["ay"] + ends["by"]) / 2
+    s.click(s.ed_point(mid_x, mid_y))
+    s.record("click-on-line")
+    s.call("setSelection", [])
+    box = s._box(line)
+    s.click(s.ed_point(box["x"] + box["w"] - 4, box["y"] + 4))
+    s.record("click-beside-line")
+
+    s.call("undo")
+    s.call("undo")
+    s.record("undo-2", image=True)
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
     "api_sweep": scenario_api_sweep,
+    "arrows": scenario_arrows,
 }
 
 

@@ -184,7 +184,7 @@ def _run(scenario: str, out_dir: pathlib.Path) -> dict:
     return json.loads(report.read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize("scenario", ["load_l", "session_r", "api_sweep"])
+@pytest.mark.parametrize("scenario", ["load_l", "session_r", "api_sweep", "arrows"])
 def test_editor_matches_golden(scenario: str, tmp_path: pathlib.Path) -> None:
     run = _normalize(_run(scenario, tmp_path))
     images = sorted(tmp_path.glob(f"{scenario}-*.png"))

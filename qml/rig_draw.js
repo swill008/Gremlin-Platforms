@@ -5,6 +5,7 @@
 // Code-behind for VkbRigEditor.qml (imported without .pragma library): it
 // uses the editor's ids, properties and functions directly, and each
 // function here has a forwarder of the same name in the editor.
+.import "rig_shapes.js" as Shapes
 
 function isDraw(n) {
     return !!(n && n.kind === "draw")
@@ -53,6 +54,24 @@ function applyDrawResize(n, mx, my, handle, altOff) {
         return
     n.around = []
     var p = snapEnt(mx, my, altOff)
+    if (handle === "end0" || handle === "end1") {
+        // A line end: Shift keeps the line on 15 degree steps around the other end.
+        var e = lineEndsAt(n)
+        var px = p.x
+        var py = p.y
+        var ox = handle === "end0" ? e.bx : e.ax
+        var oy = handle === "end0" ? e.by : e.ay
+        if (shiftHeld) {
+            var s = Shapes.snapAngle(ox, oy, px, py, 15)
+            px = s.x
+            py = s.y
+        }
+        if (handle === "end0")
+            setLineEnds(n, px, py, e.bx, e.by)
+        else
+            setLineEnds(n, e.ax, e.ay, px, py)
+        return
+    }
     var x0 = rzX0
     var y0 = rzY0
     var x1 = rzX1
@@ -139,6 +158,10 @@ function addDrawAround(shape) {
 }
 
 function addDrawFree(shape, x0, y0, x1, y1) {
+    if (isLineTool(shape)) {
+        addLineFree(shape, x0, y0, x1, y1)
+        return
+    }
     if (shiftHeld) {
         var lp = lockAspect(x0, y0, x1, y1)
         x1 = lp.x
@@ -201,6 +224,43 @@ function addDrawFree(shape, x0, y0, x1, y1) {
     bump()
 }
 
+// The Line and Arrow tools draw a "line" drawing; Arrow starts with a solid
+// head at the end.
+function isLineTool(tool) {
+    return tool === "line" || tool === "arrowline"
+}
+
+function addLineFree(tool, x0, y0, x1, y1) {
+    if (shiftHeld) {
+        var s = Shapes.snapAngle(x0, y0, x1, y1, 15)
+        x1 = s.x
+        y1 = s.y
+    }
+    if (Math.hypot(x1 - x0, y1 - y0) < 6)
+        return
+    var ln = _drawStyle()
+    ln.id = _uid("d")
+    ln.shape = "line"
+    ln.headStart = "none"
+    ln.headEnd = tool === "arrowline" ? "solid" : "none"
+    setLineEnds(ln, x0, y0, x1, y1)
+    nodes.push(ln)
+    setSelection([ln.id])
+    bump()
+}
+
+// Pointer position while drawing with a tool: Shift snaps a line's angle to
+// 15 degree steps and keeps a shape's proportions.
+function drawToolPoint(x0, y0, x1, y1) {
+    if (!shiftHeld)
+        return Qt.point(x1, y1)
+    if (isLineTool(drawTool)) {
+        var s = Shapes.snapAngle(x0, y0, x1, y1, 15)
+        return Qt.point(s.x, s.y)
+    }
+    return lockAspect(x0, y0, x1, y1)
+}
+
 function setDrawTool(shape) {
     drawTool = (drawTool === shape) ? "" : shape
 }
@@ -249,6 +309,10 @@ function paintDraw(ctx, n, w, h) {
         ctx.restore()
         return
     }
+    if (n.shape === "line") {
+        paintLine(ctx, n, w, h)
+        return
+    }
     var stroke = n.stroke || 2
     var inset = stroke * 0.5 + 0.5
     var ww = Math.max(2, w - stroke)
@@ -286,6 +350,12 @@ function paintDraw(ctx, n, w, h) {
         ctx.lineTo(0, r)
         ctx.quadraticCurveTo(0, 0, r, 0)
         ctx.closePath()
+    } else if (shape === "arrow" || shape === "arrow2") {
+        var pts = Shapes.blockArrow(shape, ww, hh)
+        ctx.moveTo(pts[0][0], pts[0][1])
+        for (var k = 1; k < pts.length; k++)
+            ctx.lineTo(pts[k][0], pts[k][1])
+        ctx.closePath()
     } else {
         ctx.rect(0, 0, ww, hh)
     }
@@ -295,6 +365,112 @@ function paintDraw(ctx, n, w, h) {
     }
     ctx.strokeStyle = n.border || "#22C55E"
     ctx.lineWidth = stroke
+    if (n.dash)
+        ctx.setLineDash(Shapes.dashFor(n.dash, stroke))
     ctx.stroke()
     ctx.restore()
+}
+
+// A line from its stored ends, with a solid or hollow head at either end.
+// The line stops at a head's back edge so it never shows through a hollow one.
+function paintLine(ctx, n, w, h) {
+    var stroke = n.stroke || 2
+    var e = Shapes.lineEnds(n.ends, w, h)
+    var size = Shapes.headSize(stroke)
+    var headA = isHead(n.headStart) ? Shapes.arrowHead(e.ax, e.ay, e.bx, e.by, size) : null
+    var headB = isHead(n.headEnd) ? Shapes.arrowHead(e.bx, e.by, e.ax, e.ay, size) : null
+    var from = headA ? headA.base : [e.ax, e.ay]
+    var to = headB ? headB.base : [e.bx, e.by]
+    var colour = n.border || _drawStyle().border
+    ctx.save()
+    ctx.strokeStyle = colour
+    ctx.fillStyle = colour
+    ctx.lineWidth = stroke
+    ctx.lineCap = n.dash === "dot" ? "round" : "butt"
+    if (n.dash)
+        ctx.setLineDash(Shapes.dashFor(n.dash, stroke))
+    ctx.beginPath()
+    ctx.moveTo(from[0], from[1])
+    ctx.lineTo(to[0], to[1])
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.lineCap = "butt"
+    ctx.lineJoin = "miter"
+    paintHead(ctx, headA, n.headStart)
+    paintHead(ctx, headB, n.headEnd)
+    ctx.restore()
+}
+
+function isHead(style) {
+    return style === "solid" || style === "hollow"
+}
+
+function paintHead(ctx, head, style) {
+    if (!head)
+        return
+    ctx.beginPath()
+    ctx.moveTo(head.tip[0], head.tip[1])
+    ctx.lineTo(head.left[0], head.left[1])
+    ctx.lineTo(head.right[0], head.right[1])
+    ctx.closePath()
+    if (style === "hollow")
+        ctx.stroke()
+    else
+        ctx.fill()
+}
+
+function isLine(n) {
+    return isDraw(n) && n.shape === "line"
+}
+
+// A line's two ends in editor pixels.
+function lineEndsAt(n) {
+    var g = drawGeom(n)
+    var e = Shapes.lineEnds(n.ends, g.w, g.h)
+    return { ax: g.x + e.ax, ay: g.y + e.ay, bx: g.x + e.bx, by: g.y + e.by }
+}
+
+// Puts a line's ends at these editor pixels; its box follows with margin for
+// the stroke and heads.
+function setLineEnds(n, ax, ay, bx, by) {
+    var b = Shapes.lineBox(ax, ay, bx, by, Shapes.lineMargin(n.stroke || 2))
+    n.fx = xToFx(b.x)
+    n.fy = yToFy(b.y)
+    n.fw = b.w / Math.max(1, spaceRect().w)
+    n.fh = b.h / Math.max(1, spaceRect().h)
+    n.ends = b.ends
+    n.around = []
+}
+
+// Swaps the start and end heads of the selected lines.
+function swapLineHeads() {
+    var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
+    for (var i = 0; i < ids.length; i++) {
+        var n = nodeAt(ids[i])
+        if (!isLine(n))
+            continue
+        var start = n.headStart || "none"
+        n.headStart = n.headEnd || "none"
+        n.headEnd = start
+    }
+    bump()
+}
+
+// Sets a style field on the selected drawings only (chips are left alone).
+// A line's box is re-fitted when its width changes.
+function applyDrawField(key, val) {
+    var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
+    for (var i = 0; i < ids.length; i++) {
+        var n = nodeAt(ids[i])
+        if (!isDraw(n))
+            continue
+        if (isLine(n)) {
+            var e = lineEndsAt(n)
+            n[key] = val
+            setLineEnds(n, e.ax, e.ay, e.bx, e.by)
+        } else {
+            n[key] = val
+        }
+    }
+    bump()
 }

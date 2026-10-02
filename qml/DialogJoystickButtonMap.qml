@@ -820,7 +820,7 @@ ApplicationWindow {
                 },
                 {
                     h: "Draw",
-                    b: "Right-click → Draw.\nAround selection: a shape around the selected chips that moves with them.\nFree drag: draw a shape, a Table, or a Text box on the photo. Shift keeps the proportions. Cancel tool or Esc stops drawing.\nTables and text boxes have their own right-click menus (rows and columns, alignment, theme, font, and so on). Double-click a cell or text box to type.\nImport overlay… adds a picture on top of the photo. Pin overlay locks it; Add snap point and Clear snap points place sockets that chips snap to.\nDelete drawing removes the selected drawing."
+                    b: "Right-click → Draw.\nAround selection: a shape around the selected chips that moves with them.\nFree drag: draw a shape, a Table, or a Text box on the photo. Shift keeps the proportions. Cancel tool or Esc stops drawing.\nArrow shape and Double arrow shape are block arrows, Filled or Hollow like the other shapes. Line and Arrow draw a line; Shift keeps it on 15° steps. A selected line has a handle on each end to drag.\nLine ends sets each end to None, Solid arrow or Hollow arrow; Swap heads turns them round. Outline draws a shape's or line's edge Solid, Dashed or Dotted.\nTables and text boxes have their own right-click menus (rows and columns, alignment, theme, font, and so on). Double-click a cell or text box to type.\nImport overlay… adds a picture on top of the photo. Pin overlay locks it; Add snap point and Clear snap points place sockets that chips snap to.\nDelete drawing removes the selected drawing."
                 },
                 {
                     h: "Selecting and keys",

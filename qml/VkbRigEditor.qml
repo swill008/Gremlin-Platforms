@@ -408,6 +408,13 @@ Item {
     function lockAspect(x0, y0, x1, y1) { return RigDraw.lockAspect(x0, y0, x1, y1) }
     function requestDrawColor(field) { return RigDraw.requestDrawColor(field) }
     function paintDraw(ctx, n, w, h) { return RigDraw.paintDraw(ctx, n, w, h) }
+    function isLine(n) { return RigDraw.isLine(n) }
+    function isLineTool(tool) { return RigDraw.isLineTool(tool) }
+    function lineEndsAt(n) { return RigDraw.lineEndsAt(n) }
+    function setLineEnds(n, ax, ay, bx, by) { return RigDraw.setLineEnds(n, ax, ay, bx, by) }
+    function applyDrawField(key, val) { return RigDraw.applyDrawField(key, val) }
+    function swapLineHeads() { return RigDraw.swapLineHeads() }
+    function drawToolPoint(x0, y0, x1, y1) { return RigDraw.drawToolPoint(x0, y0, x1, y1) }
 
     // Selection, nudging, delete, copy/paste/duplicate and stacking order (rig_selection.js)
     function deleteSelection() { return RigSelection.deleteSelection() }
@@ -972,7 +979,7 @@ Item {
     }
 
     Canvas {
-        visible: _ed.interactive && _ed.dragKind === "drawnew"
+        visible: _ed.interactive && _ed.dragKind === "drawnew" && !_ed.isLineTool(_ed.drawTool)
         x: Math.min(_ed.drawX0, _ed.drawX1)
         y: Math.min(_ed.drawY0, _ed.drawY1)
         width: Math.max(1, Math.abs(_ed.drawX1 - _ed.drawX0))
@@ -986,6 +993,36 @@ Item {
         }
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
+    }
+
+    // Preview of a line or arrow being drawn, over the whole editor so a flat
+    // line is not clipped to its own box.
+    Canvas {
+        id: _linePreview
+        anchors.fill: parent
+        visible: _ed.interactive && _ed.dragKind === "drawnew" && _ed.isLineTool(_ed.drawTool)
+        z: 7
+        antialiasing: true
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            if (!visible)
+                return
+            var w = Math.max(1, width)
+            var h = Math.max(1, height)
+            _ed.paintDraw(ctx, {
+                shape: "line",
+                border: _ed._drawStyle().border,
+                stroke: 2,
+                headEnd: _ed.drawTool === "arrowline" ? "solid" : "none",
+                ends: [_ed.drawX0 / w, _ed.drawY0 / h, _ed.drawX1 / w, _ed.drawY1 / h]
+            }, w, h)
+        }
+        Connections {
+            target: _ed
+            function onDrawX1Changed() { _linePreview.requestPaint() }
+            function onDrawY1Changed() { _linePreview.requestPaint() }
+        }
     }
 
     Timer {
@@ -2098,6 +2135,10 @@ Item {
                 MenuItem { text: "Ellipse"; checkable: true; checked: _ed.drawTool === "ellipse"; onTriggered: _ed.setDrawTool("ellipse") }
                 MenuItem { text: "Triangle"; checkable: true; checked: _ed.drawTool === "triangle"; onTriggered: _ed.setDrawTool("triangle") }
                 MenuItem { text: "Diamond"; checkable: true; checked: _ed.drawTool === "diamond"; onTriggered: _ed.setDrawTool("diamond") }
+                MenuItem { text: "Arrow shape"; checkable: true; checked: _ed.drawTool === "arrow"; onTriggered: _ed.setDrawTool("arrow") }
+                MenuItem { text: "Double arrow shape"; checkable: true; checked: _ed.drawTool === "arrow2"; onTriggered: _ed.setDrawTool("arrow2") }
+                MenuItem { text: "Line"; checkable: true; checked: _ed.drawTool === "line"; onTriggered: _ed.setDrawTool("line") }
+                MenuItem { text: "Arrow"; checkable: true; checked: _ed.drawTool === "arrowline"; onTriggered: _ed.setDrawTool("arrowline") }
                 MenuItem { text: "Table"; checkable: true; checked: _ed.drawTool === "table"; onTriggered: _ed.setDrawTool("table") }
                 MenuItem { text: "Text"; checkable: true; checked: _ed.drawTool === "text"; onTriggered: _ed.setDrawTool("text") }
                 MenuSeparator {}
@@ -2110,13 +2151,39 @@ Item {
                 title: "Shape"
                 enabled: {
                     var n = _ed.nodeAt(_ed.selectedId)
-                    return _ed.isDraw(n) && !_ed.isTable(n) && !_ed.isText(n)
+                    return _ed.isDraw(n) && !_ed.isTable(n) && !_ed.isText(n) && !_ed.isLine(n)
                 }
                 MenuItem { text: "Rectangle"; checkable: true; checked: _ed.fieldEq("shape", "rect", "rect"); onTriggered: _ed.applyField("shape", "rect") }
                 MenuItem { text: "Rounded"; checkable: true; checked: _ed.fieldEq("shape", "roundrect", "rect"); onTriggered: _ed.applyField("shape", "roundrect") }
                 MenuItem { text: "Ellipse"; checkable: true; checked: _ed.fieldEq("shape", "ellipse", "rect"); onTriggered: _ed.applyField("shape", "ellipse") }
                 MenuItem { text: "Triangle"; checkable: true; checked: _ed.fieldEq("shape", "triangle", "rect"); onTriggered: _ed.applyField("shape", "triangle") }
                 MenuItem { text: "Diamond"; checkable: true; checked: _ed.fieldEq("shape", "diamond", "rect"); onTriggered: _ed.applyField("shape", "diamond") }
+                MenuItem { text: "Arrow"; checkable: true; checked: _ed.fieldEq("shape", "arrow", "rect"); onTriggered: _ed.applyField("shape", "arrow") }
+                MenuItem { text: "Double arrow"; checkable: true; checked: _ed.fieldEq("shape", "arrow2", "rect"); onTriggered: _ed.applyField("shape", "arrow2") }
+            }
+            Menu {
+                title: "Line ends"
+                enabled: _ed.isLine(_ed.nodeAt(_ed.selectedId))
+                Menu {
+                    title: "Start"
+                    MenuItem { text: "None"; checkable: true; checked: _ed.fieldEq("headStart", "none", "none"); onTriggered: _ed.applyDrawField("headStart", "none") }
+                    MenuItem { text: "Solid arrow"; checkable: true; checked: _ed.fieldEq("headStart", "solid", "none"); onTriggered: _ed.applyDrawField("headStart", "solid") }
+                    MenuItem { text: "Hollow arrow"; checkable: true; checked: _ed.fieldEq("headStart", "hollow", "none"); onTriggered: _ed.applyDrawField("headStart", "hollow") }
+                }
+                Menu {
+                    title: "End"
+                    MenuItem { text: "None"; checkable: true; checked: _ed.fieldEq("headEnd", "none", "none"); onTriggered: _ed.applyDrawField("headEnd", "none") }
+                    MenuItem { text: "Solid arrow"; checkable: true; checked: _ed.fieldEq("headEnd", "solid", "none"); onTriggered: _ed.applyDrawField("headEnd", "solid") }
+                    MenuItem { text: "Hollow arrow"; checkable: true; checked: _ed.fieldEq("headEnd", "hollow", "none"); onTriggered: _ed.applyDrawField("headEnd", "hollow") }
+                }
+                MenuItem { text: "Swap heads"; onTriggered: _ed.swapLineHeads() }
+            }
+            Menu {
+                title: "Outline"
+                enabled: { var n = _ed.nodeAt(_ed.selectedId); return _ed.isDraw(n) && !_ed.isTable(n) && !_ed.isText(n) && n.shape !== "image" }
+                MenuItem { text: "Solid"; checkable: true; checked: _ed.fieldEq("dash", "", ""); onTriggered: _ed.applyDrawField("dash", "") }
+                MenuItem { text: "Dashed"; checkable: true; checked: _ed.fieldEq("dash", "dash", ""); onTriggered: _ed.applyDrawField("dash", "dash") }
+                MenuItem { text: "Dotted"; checkable: true; checked: _ed.fieldEq("dash", "dot", ""); onTriggered: _ed.applyDrawField("dash", "dot") }
             }
             Menu {
                 id: _padMenu
@@ -2172,11 +2239,11 @@ Item {
             Menu {
                 title: "Stroke"
                 enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-                MenuItem { text: "1"; checkable: true; checked: _ed.fieldEq("stroke", 1, 2); onTriggered: _ed.applyField("stroke", 1) }
-                MenuItem { text: "2"; checkable: true; checked: _ed.fieldEq("stroke", 2, 2); onTriggered: _ed.applyField("stroke", 2) }
-                MenuItem { text: "3"; checkable: true; checked: _ed.fieldEq("stroke", 3, 2); onTriggered: _ed.applyField("stroke", 3) }
-                MenuItem { text: "4"; checkable: true; checked: _ed.fieldEq("stroke", 4, 2); onTriggered: _ed.applyField("stroke", 4) }
-                MenuItem { text: "6"; checkable: true; checked: _ed.fieldEq("stroke", 6, 2); onTriggered: _ed.applyField("stroke", 6) }
+                MenuItem { text: "1"; checkable: true; checked: _ed.fieldEq("stroke", 1, 2); onTriggered: _ed.applyDrawField("stroke", 1) }
+                MenuItem { text: "2"; checkable: true; checked: _ed.fieldEq("stroke", 2, 2); onTriggered: _ed.applyDrawField("stroke", 2) }
+                MenuItem { text: "3"; checkable: true; checked: _ed.fieldEq("stroke", 3, 2); onTriggered: _ed.applyDrawField("stroke", 3) }
+                MenuItem { text: "4"; checkable: true; checked: _ed.fieldEq("stroke", 4, 2); onTriggered: _ed.applyDrawField("stroke", 4) }
+                MenuItem { text: "6"; checkable: true; checked: _ed.fieldEq("stroke", 6, 2); onTriggered: _ed.applyDrawField("stroke", 6) }
             }
             Menu {
                 title: "Opacity"

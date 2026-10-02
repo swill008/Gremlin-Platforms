@@ -412,20 +412,30 @@ Item {
             }
         }
     }
+    // Resize handles: eight on a box, one on each end of a line.
     Repeater {
-        model: (ed.interactive && node && ed.isSelected(node.id) && !ed.isLocked(node) && !ed.tableCellHandlesOn(node)) ? 8 : 0
+        model: (ed.interactive && node && ed.isSelected(node.id) && !ed.isLocked(node) && !ed.tableCellHandlesOn(node))
+            ? (ed.isLine(node) ? 2 : 8) : 0
         Rectangle {
             required property int index
+            readonly property var lineEnds: {
+                ed.tick
+                return ed.isLine(_drawRoot.node) ? (_drawRoot.node.ends || [0, 0.5, 1, 0.5]).slice() : null
+            }
             width: Style.dp(8)
             height: Style.dp(8)
-            radius: Style.dp(1)
+            radius: lineEnds ? width / 2 : Style.dp(1)
             color: "#FBBF24"
             border.color: "#18181B"
             x: {
+                if (lineEnds)
+                    return lineEnds[index * 2] * _drawRoot.width - 4
                 var xs = [0, _drawRoot.width, 0, _drawRoot.width, _drawRoot.width * 0.5, _drawRoot.width * 0.5, 0, _drawRoot.width]
                 return xs[index] - 4
             }
             y: {
+                if (lineEnds)
+                    return lineEnds[index * 2 + 1] * _drawRoot.height - 4
                 var ys = [0, 0, _drawRoot.height, _drawRoot.height, 0, _drawRoot.height, _drawRoot.height * 0.5, _drawRoot.height * 0.5]
                 return ys[index] - 4
             }

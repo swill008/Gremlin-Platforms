@@ -5,6 +5,7 @@
 // Code-behind for VkbRigEditor.qml (imported without .pragma library): it
 // uses the editor's ids, properties and functions directly, and each
 // function here has a forwarder of the same name in the editor.
+.import "rig_shapes.js" as Shapes
 
 function hitTest(mx, my) {
     var list = nodes || []
@@ -122,6 +123,20 @@ function hitDraw(n, mx, my) {
     var p = it.mapFromItem(_ed, mx, my)
     var w = it.width
     var h = it.height
+    if (isLine(n)) {
+        // Ends and line in the item's own coordinates, so rotation is honoured.
+        var le = Shapes.lineEnds(n.ends, w, h)
+        if (interactive && isSelected(n.id) && !isLocked(n)) {
+            if (Math.hypot(p.x - le.ax, p.y - le.ay) < 8)
+                return "end0"
+            if (Math.hypot(p.x - le.bx, p.y - le.by) < 8)
+                return "end1"
+        }
+        if (isLocked(n))
+            return ""
+        var near = Math.max(6, (n.stroke || 2) * 0.5 + 4)
+        return Shapes.distToSegment(p.x, p.y, le.ax, le.ay, le.bx, le.by) <= near ? "body" : ""
+    }
     if (tableCellHandlesOn(n)) {
         var cr = tableCurrentRect(n)
         var chs = [

@@ -357,10 +357,7 @@ MouseArea {
         }
         if (ed.dragKind === "drawnew") {
             var p1 = ed.snapEnt(m.x, m.y, ed.altHeld)
-            if (ed.shiftHeld) {
-                var lp = ed.lockAspect(ed.drawX0, ed.drawY0, p1.x, p1.y)
-                p1 = lp
-            }
+            p1 = ed.drawToolPoint(ed.drawX0, ed.drawY0, p1.x, p1.y)
             ed.drawX1 = p1.x
             ed.drawY1 = p1.y
             return
