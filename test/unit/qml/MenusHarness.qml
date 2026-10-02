@@ -75,6 +75,11 @@ ApplicationWindow {
             model: ["Axis 1", "Axis 2", "Axis 3", "Axis 4", "Axis 5", "Axis 6", "Axis 7",
                     "Axis 8", "Slider 1", "Slider 2", "Dial 1", "Dial 2"]
         }
+        TextField {
+            id: _field
+            width: 200
+            text: "Throttle"
+        }
         ComboBox {
             id: _short
             width: 200

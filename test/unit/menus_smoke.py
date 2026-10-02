@@ -77,6 +77,15 @@ STEPS = [
      " _probe.describe().join('|')"),
     ("card-device", "_probe.activate('Device'); _probe.describe().join('|')"),
     ("card-closed", "_probe.close(); 'ok'"),
+    # A text box's right-click menu: only the edits that can be made.
+    ("text-menu",
+     "_field.select(0, 5); var m = _field.ContextMenu.menu; m.popup(_field, 0, 0);"
+     " m.describe().join('|')"),
+    ("text-menu-empty",
+     "_field.ContextMenu.menu.close(); _field.text = '';"
+     " var e = _field.ContextMenu.menu;"
+     " e.popup(_field, 0, 0); String(e.visible)"),
+    ("text-closed", "_field.ContextMenu.menu.close(); 'ok'"),
 ]
 
 

@@ -78,7 +78,7 @@ T.ComboBox {
         selectedTextColor: control.U.Universal.chromeWhiteColor
         verticalAlignment: Text.AlignVCenter
 
-        ContextMenu.menu: TextEditingContextMenu {
+        ContextMenu.menu: Menus.TextEditMenu {
             editor: parent
         }
     }

@@ -120,4 +120,9 @@ T.Menu {
     }
 
     onAboutToShow: compactNow()
+    // Nothing can be used (an empty, read-only text box): no empty box.
+    onOpened: {
+        if (compact && shownCount === 0)
+            close()
+    }
 }

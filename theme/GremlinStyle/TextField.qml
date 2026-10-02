@@ -8,6 +8,7 @@ import QtQuick.Controls.impl
 import QtQuick.Controls.Universal as U
 import QtQuick.Controls.Universal.impl
 
+import Gremlin.Menus as Menus
 import Gremlin.Style
 
 T.TextField {
@@ -35,7 +36,7 @@ T.TextField {
                                                    U.Universal.baseMediumColor
     verticalAlignment: TextInput.AlignVCenter
 
-    ContextMenu.menu: TextEditingContextMenu {
+    ContextMenu.menu: Menus.TextEditMenu {
         editor: control
     }
 

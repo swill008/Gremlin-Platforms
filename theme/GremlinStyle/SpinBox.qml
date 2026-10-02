@@ -8,6 +8,7 @@ import QtQuick.Controls.impl
 import QtQuick.Controls.Universal as U
 import QtQuick.Controls.Universal.impl
 
+import Gremlin.Menus as Menus
 import Gremlin.Style
 
 T.SpinBox {
@@ -52,7 +53,7 @@ T.SpinBox {
         inputMethodHints: control.inputMethodHints
         clip: width < implicitWidth
 
-        ContextMenu.menu: TextEditingContextMenu {
+        ContextMenu.menu: Menus.TextEditMenu {
             editor: parent
         }
     }

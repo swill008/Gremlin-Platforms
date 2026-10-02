@@ -12,5 +12,6 @@ ThemedMenuBar 1.0 ThemedMenuBar.qml
 ThemedMenuBarItem 1.0 ThemedMenuBarItem.qml
 ThemedMenuItem 1.0 ThemedMenuItem.qml
 ThemedMenuSeparator 1.0 ThemedMenuSeparator.qml
+TextEditMenu 1.0 TextEditMenu.qml
 Commands 1.0 commands.js
 MenuModel 1.0 menu_model.js

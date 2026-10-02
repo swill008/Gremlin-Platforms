@@ -138,3 +138,8 @@ def test_shared_menus_work(tmp_path: pathlib.Path) -> None:
         "|  Hide device|  Clear module settings|  Delete Device"
     )
     assert "Unstack" not in results["card-device"]
+    # A text box's menu: only the edits that can be made; none, no menu.
+    assert results["text-menu"] == (
+        "Cut (Ctrl+X)|Copy (Ctrl+C)|Delete|-|Select All (Ctrl+A)"
+    )
+    assert results["text-menu-empty"] == "false"
