@@ -106,9 +106,18 @@ Window {
     }
     property string notPlaced: ""
     function findState() {
-        return JSON.stringify({ msg: ed().findMsg, notPlaced: _win.notPlaced, pan: [Math.round(_face.panX), Math.round(_face.panY)] })
+        return JSON.stringify({
+            msg: ed().findMsg,
+            notPlaced: _win.notPlaced,
+            pan: [Math.round(_face.panX), Math.round(_face.panY)]
+        })
     }
-    function setZoom(z, px, py) { _face.zoom = z; _face.panX = px; _face.panY = py; _face.pingEditor() }
+    function setZoom(z, px, py) {
+        _face.zoom = z
+        _face.panX = px
+        _face.panY = py
+        _face.pingEditor()
+    }
 
     // Paste picture requests (the window saves the clipboard's picture).
     property int pasteRequests: 0
