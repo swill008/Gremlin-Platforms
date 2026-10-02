@@ -7,6 +7,7 @@ from PySide6 import QtCore
 
 from gremlin import device_initialization, event_handler
 from gremlin.modules import output
+from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
 from gremlin.ui import input_pairing as pairing
@@ -68,7 +69,8 @@ class PairLiveThrottle(QtCore.QObject):
         self._vjoy_poll = QtCore.QTimer(self)
         self._vjoy_poll.setInterval(50)
         self._vjoy_poll.timeout.connect(self._poll_vjoy)
-        event_handler.EventListener().joystick_event.connect(self._on_event)
+        # Claimed inputs only: the input module feed, not raw hardware.
+        InputModuleRuntime().event.connect(self._on_event)
 
     def _bump(self) -> None:
         self._stamp += 1

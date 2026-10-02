@@ -11,6 +11,7 @@ import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import event_handler, shared_state
 from gremlin.modules import output
+from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.types import InputType
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -86,7 +87,8 @@ class DeviceLiveState(QtCore.QObject):
         self._poll = QtCore.QTimer(self)
         self._poll.setInterval(33)
         self._poll.timeout.connect(self._poll_output)
-        event_handler.EventListener().joystick_event.connect(self._on_event)
+        # Claimed inputs only: the input module feed, not raw hardware.
+        InputModuleRuntime().event.connect(self._on_event)
 
     def _get_guid(self) -> str:
         return self._guid

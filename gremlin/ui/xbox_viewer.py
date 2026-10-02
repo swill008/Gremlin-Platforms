@@ -14,6 +14,7 @@ from gremlin.ui import xbox_maps
 import gremlin.ui.type_aliases as ta
 from gremlin.modules.ids import guid_key
 from gremlin.modules import ids, output
+from gremlin.modules.runtime import InputModuleRuntime
 from vigem.xbox import XboxTarget
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -336,7 +337,8 @@ class XboxLiveThrottle(QtCore.QObject):
         self._xbox_timer = QtCore.QTimer(self)
         self._xbox_timer.setInterval(50)
         self._xbox_timer.timeout.connect(self._poll_xbox)
-        event_handler.EventListener().joystick_event.connect(self._on_event)
+        # Claimed inputs only: the input module feed, not raw hardware.
+        InputModuleRuntime().event.connect(self._on_event)
 
     def _bump(self) -> None:
         self._stamp += 1
