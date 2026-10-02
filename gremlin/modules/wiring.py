@@ -7,8 +7,9 @@
 Long form, for rows and lists:  "vJoy 3 · Button 5 (Fire)",
                                 "Xbox 360 Controller · Left Trigger".
 Short form, for chips:          "vJoy 3 B5", "Xbox 1 LT".
-A destination its output module does not claim (so nothing is sent since
-Phase 2) ends in "(not claimed)"; one with no output module says so.
+A vJoy destination its output module does not claim (so nothing is sent)
+ends in "(not claimed)"; one with no output module says so. Xbox has no
+claim: every Xbox control is always sent.
 """
 
 from __future__ import annotations
@@ -102,18 +103,15 @@ def xbox_dest(pad_id: int, target: Any, short: bool = False) -> str:  # noqa: AN
             label = XboxTarget.from_string(value).label
         except Exception:
             label = value.replace("_", " ") or "Xbox"
-    module = output.xbox_module(int(pad_id))
-    flag = ""
-    if module is None:
-        flag = NO_MODULE
-    elif not output.xbox_allows(int(pad_id), value):
-        flag = NOT_CLAIMED
+    # No claim mark: the Xbox output module passes every control.
     if short:
-        text = f"Xbox {int(pad_id)} {XBOX_SHORT.get(value, value[:3] or 'xb')}"
+        return f"Xbox {int(pad_id)} {XBOX_SHORT.get(value, value[:3] or 'xb')}"
+    module = output.xbox_module(int(pad_id))
+    if module is not None:
+        name = module.name
     else:
-        name = module.name if module is not None else f"Xbox pad {int(pad_id)}"
-        text = f"{name} · {label}"
-    return f"{text} {flag}" if flag else text
+        name = "Xbox 360 Controller" if int(pad_id) == 1 else f"Xbox pad {int(pad_id)}"
+    return f"{name} · {label}"
 
 
 def dest_label(action: object, short: bool = False) -> str:

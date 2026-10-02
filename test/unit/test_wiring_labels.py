@@ -48,7 +48,6 @@ def modules() -> Iterator[None]:
         mock.patch.object(
             output, "xbox_module", side_effect=lambda p: xbox if p == 1 else None
         ),
-        mock.patch.object(output, "xbox_allows", side_effect=lambda p, t: t == "a"),
     ):
         yield
 
@@ -78,13 +77,11 @@ def test_unclaimed_and_missing_outputs_are_flagged(modules: None) -> None:
     )
 
 
-def test_xbox_labels_name_the_pad(modules: None) -> None:
+def test_xbox_labels_name_the_pad_and_carry_no_claim_mark(modules: None) -> None:
     assert wiring.xbox_dest(1, XboxTarget.A) == "Xbox 360 Controller · A"
-    assert wiring.xbox_dest(1, "left_trigger") == (
-        "Xbox 360 Controller · Left Trigger (not claimed)"
-    )
+    assert wiring.xbox_dest(1, "left_trigger") == "Xbox 360 Controller · Left Trigger"
     assert wiring.xbox_dest(1, XboxTarget.A, short=True) == "Xbox 1 A"
-    assert wiring.xbox_dest(2, XboxTarget.A) == "Xbox pad 2 · A (no output module)"
+    assert wiring.xbox_dest(2, XboxTarget.A) == "Xbox pad 2 · A"
 
 
 def test_dest_label_reads_actions(modules: None) -> None:

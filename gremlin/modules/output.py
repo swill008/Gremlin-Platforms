@@ -12,7 +12,6 @@ only, so viewers and conditions see exactly what the firewall lets through.
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 import threading
@@ -20,7 +19,7 @@ import time
 from typing import Any
 
 from gremlin.modules import registry
-from gremlin.modules.claim import claim_allows, claim_ids, claim_xbox
+from gremlin.modules.claim import claim_allows, claim_ids
 
 syslog = logging.getLogger("system")
 
@@ -387,27 +386,12 @@ def xbox_module(pad_id: int) -> registry.Module | None:
     return _xbox_modules.get(int(pad_id))
 
 
-def xbox_claim(pad_id: int) -> list[str]:
-    """Xbox controls the pad's output module claims ("a", "left_trigger", ...)."""
-    module = xbox_module(pad_id)
-    return claim_xbox(module.claim) if module else []
-
-
-def xbox_allows(pad_id: int, target: object) -> bool:
-    name = str(getattr(target, "value", target) or "").lower()
-    return name in xbox_claim(pad_id)
-
-
 def write_xbox(pad_id: int, target: Any, value: Any) -> bool:  # noqa: ANN401
-    """Send a value to a claimed Xbox control. False when it was blocked."""
-    if not xbox_allows(pad_id, target):
-        label = getattr(target, "label", target)
-        _log_once(
-            ("xbox", int(pad_id), str(getattr(target, "value", target))),
-            f"Output blocked: Xbox pad {pad_id} {label} is not claimed by its "
-            f"output module. Claim it on the Xbox output module to use it.",
-        )
-        return False
+    """Send a value to an Xbox control. False when the driver refused it.
+
+    The Xbox output module is a straight pass-through to ViGEm: every control
+    on the pad is available, nothing is claimed (as in GremlinEx).
+    """
     try:
         from vigem.xbox import XboxProxy
 
@@ -419,40 +403,14 @@ def write_xbox(pad_id: int, target: Any, value: Any) -> bool:  # noqa: ANN401
 
 
 def xbox_state(pad_id: int) -> dict[str, float]:
-    """Claimed controls of a pad Gremlin has plugged in; empty otherwise.
+    """Every control of a pad Gremlin has plugged in; empty otherwise.
     Never plugs a pad in itself."""
     try:
         from vigem.xbox import XboxProxy
 
-        snap = XboxProxy().snapshot(int(pad_id)) or {}
+        return dict(XboxProxy().snapshot(int(pad_id)) or {})
     except Exception:
         return {}
-    claimed = set(xbox_claim(pad_id))
-    return {name: value for name, value in snap.items() if name in claimed}
-
-
-def set_xbox_claim(pad_id: int, targets: list[str]) -> bool:
-    """Save which Xbox controls the pad's output module claims."""
-    module = xbox_module(pad_id)
-    if module is None:
-        return False
-    try:
-        doc = json.loads(module.path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        registry.trace("READ", "Xbox", "set_xbox_claim", module.path, "error")
-        return False
-    claim = doc.get("claim") if isinstance(doc.get("claim"), dict) else {}
-    claim["xbox"] = [str(t).lower() for t in targets]
-    doc["claim"] = claim
-    try:
-        module.path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
-    except OSError:
-        registry.trace("SAVE", "Xbox", "set_xbox_claim", module.path, "error")
-        return False
-    registry.trace("SAVE", "Xbox", "set_xbox_claim", module.path, "ok")
-    refresh()
-    return True
-
 
 
 def xbox_available() -> bool:

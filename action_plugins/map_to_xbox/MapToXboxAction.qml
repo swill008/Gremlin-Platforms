@@ -51,8 +51,7 @@ Item {
                 textRole: "label"
                 valueRole: "value"
                 model: _root.action.targetChoices
-                // The list depends on the pad's output module claim; re-select
-                // the saved control whenever it changes.
+                // Re-select the saved control whenever the list is rebuilt.
                 onModelChanged: Qt.callLater(() => {
                     currentIndex = Math.max(0, indexOfValue(_root.action.xboxTarget))
                 })
@@ -87,15 +86,6 @@ Item {
                 checked: _root.action.buttonInverted
                 onToggled: _root.action.buttonInverted = checked
             }
-        }
-
-        Label {
-            visible: _root.action.targetUnclaimed
-
-            text: "Output not claimed: this Xbox control is not claimed by the pad's Xbox output module, so nothing is sent. Claim it on the Xbox output page, or pick a claimed control."
-            color: Style.warn
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
         }
     }
 }

@@ -191,45 +191,17 @@ class MapToXboxModel(ActionModel):
         self._notify_item()
 
     def _get_target_choices(self) -> list:
-        """Controls the pad's Xbox output module claims. A saved control it
-        does not claim stays listed, marked, so the wire is not lost."""
-        pad_id = self._data.xbox_device_id
-        claimed = set(output.xbox_claim(pad_id))
-        choices = [
-            {"value": item.value, "label": item.label}
-            for item in XboxTarget
-            if item.value in claimed
-        ]
-        current = self._data.xbox_target
-        if current.value not in claimed:
-            note = (
-                "not claimed"
-                if output.xbox_module(pad_id) is not None
-                else "no output module"
-            )
-            choices.insert(
-                0, {"value": current.value, "label": f"{current.label} ({note})"}
-            )
-        return choices
+        """Every Xbox control: the Xbox output module passes them all."""
+        return [{"value": item.value, "label": item.label} for item in XboxTarget]
 
     def _get_pad_choices(self) -> list:
-        """Xbox output modules to send to. A saved pad with none stays listed,
-        marked, so the wire is not lost."""
-        choices = [
-            {"value": pad, "label": module.name}
-            for pad, module in sorted(output.xbox_modules().items())
-        ]
+        """The Xbox output module(s) by name. Pad 1 is always there; a saved
+        pad 2-4 stays listed and still sends (one pad for now, to-do 16)."""
+        names = {pad: module.name for pad, module in output.xbox_modules().items()}
+        names.setdefault(1, "Xbox 360 Controller")
         current = int(self._data.xbox_device_id)
-        if all(choice["value"] != current for choice in choices):
-            choices.insert(
-                0, {"value": current, "label": f"Xbox pad {current} (no output module)"}
-            )
-        return choices
-
-    def _get_target_unclaimed(self) -> bool:
-        return not output.xbox_allows(
-            self._data.xbox_device_id, self._data.xbox_target
-        )
+        names.setdefault(current, f"Xbox pad {current}")
+        return [{"value": pad, "label": name} for pad, name in sorted(names.items())]
 
     xboxDeviceId = QtCore.Property(
         int,
@@ -260,9 +232,6 @@ class MapToXboxModel(ActionModel):
     )
     padChoices = QtCore.Property(
         "QVariant", fget=_get_pad_choices, notify=padChoicesChanged
-    )
-    targetUnclaimed = QtCore.Property(
-        bool, fget=_get_target_unclaimed, notify=targetChoicesChanged
     )
 
 

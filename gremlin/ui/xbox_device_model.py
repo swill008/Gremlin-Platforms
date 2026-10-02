@@ -66,7 +66,6 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"target"),
         QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"kind"),
         QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(b"incoming"),
-        QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"claimed"),
     }
 
     padIdChanged = QtCore.Signal()
@@ -102,8 +101,6 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
             return target.kind
         if key == "incoming":
             return _incoming_for(self._pad_id, target)
-        if key == "claimed":
-            return target.value in output.xbox_claim(self._pad_id)
         return None
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
@@ -127,33 +124,6 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
         module = output.xbox_module(self._pad_id)
         return module.name if module is not None else f"Xbox pad {self._pad_id}"
 
-    def _get_has_module(self) -> bool:
-        return output.xbox_module(self._pad_id) is not None
-
-    def _get_claimed_count(self) -> int:
-        return len(output.xbox_claim(self._pad_id))
-
-    def _save_claim(self, targets: list[str]) -> None:
-        # Keep XboxTarget order so the file reads like the page.
-        wanted = set(targets)
-        ordered = [item.value for item in XboxTarget if item.value in wanted]
-        if output.set_xbox_claim(self._pad_id, ordered):
-            self.reload()
-
-    @QtCore.Slot(str, bool)
-    def setClaimed(self, target: str, claimed: bool) -> None:
-        """Claim or release one control on this pad's Xbox output module."""
-        current = set(output.xbox_claim(self._pad_id))
-        if claimed:
-            current.add(str(target).lower())
-        else:
-            current.discard(str(target).lower())
-        self._save_claim(sorted(current))
-
-    @QtCore.Slot(bool)
-    def setAllClaimed(self, claimed: bool) -> None:
-        self._save_claim([item.value for item in XboxTarget] if claimed else [])
-
     def _get_available(self) -> bool:
         return output.xbox_available()
 
@@ -169,6 +139,5 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
     padId = QtCore.Property(int, fget=_get_pad_id, fset=_set_pad_id, notify=padIdChanged)
     available = QtCore.Property(bool, fget=_get_available, notify=statusChanged)
     statusText = QtCore.Property(str, fget=_get_status, notify=statusChanged)
-    hasModule = QtCore.Property(bool, fget=_get_has_module, notify=statusChanged)
     moduleName = QtCore.Property(str, fget=_get_module_name, notify=statusChanged)
-    claimedCount = QtCore.Property(int, fget=_get_claimed_count, notify=statusChanged)
+

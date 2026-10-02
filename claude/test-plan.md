@@ -722,10 +722,10 @@ Decisions: Xbox starts with nothing claimed (1A); scripts go through the firewal
 |---|---|---|
 | P2a | DONE b0709d34 | gremlin/modules/output.py: claimed reads/writes, driver status and resets. Home, live view, condition, status and Xbox pages read through it. |
 | P2b | DONE 6afb1c15 | Map to vJoy, macro, auto-release, start-up axes and scripts write through it. Unclaimed vJoy outputs are blocked and logged once per run. |
-| P2c | DONE 6d691023 | Xbox output module: claim per control on the Xbox page; Map to Xbox lists claimed controls and flags an unclaimed saved one; Xbox Viewer shows claimed controls. |
+| P2c | REVERTED (XB-FIX) 6d691023 | Xbox output module: claim per control on the Xbox page; Map to Xbox lists claimed controls and flags an unclaimed saved one; Xbox Viewer shows claimed controls. |
 | P2d | DONE (this commit) | vJoy Viewer cards read the vJoy output module (claimed outputs, only while Gremlin runs) instead of DirectInput readback. |
 | P2-HANDS-ON | [U] | With Gremlin active: a claimed vJoy button fires; an unclaimed one (vJoy 3 button 57+) does nothing and system.log shows one "Output blocked" line for it; claim Left Trigger on the Xbox page and Map to Xbox drives it; the vJoy Viewer card moves with the stick. |
-| P2-DATA | NOTE | The 70 NXT 57-126 -> vJoy 3 57-126 wires stop reaching vJoy until vJoy 3 claims buttons 57-126. Your 2 Map to Xbox actions need their controls claimed on the Xbox page. |
+| P2-DATA | NOTE | The 70 NXT 57-126 -> vJoy 3 57-126 wires stop reaching vJoy until vJoy 3 claims buttons 57-126. (Xbox needs no claim, see XB-FIX.) |
 
 ## Phase 3 (input modules are the only way in, 2026-10-01)
 
@@ -757,3 +757,10 @@ Decisions: Auto Mapper claim switch, off by default (1A); one Xbox pad for now (
 | P5a | DONE fb2c6e75 | Dead code removed (1,487 lines): VJoyDevices, PairDeviceModel / PairLiveState / InputPairing, ModulePairHatModel, the pre-module Auto Mapper path, 14 unused slots, 6 unused QML files (DeviceInputList + R16 leftovers). Guard: test_no_dead_qml. |
 | P5b | DONE cf17e9a3 | One copy of each rule: vJoy output-module list (output layer), axis names (wiring), destination label in the vJoy Viewer pair rows, vJoy resolver in live_input, output rule (registry). Guard: test_one_copy_of_each_rule. |
 | P5c | DONE (this commit) | Full suite and lint (no new lint since 1.0.1 in the 72 changed Python files), local PyInstaller build (no missing imports) and the built exe starts and loads the profile; sandbox tour: Home, input/output pages, Logical Device, both viewers, Button Map, Map to vJoy / Map to Xbox, Auto Mapper, Calibration, Device Pack, Manage Modes, Options. |
+
+## XB-FIX: Xbox output is a pass-through (2026-10-01)
+
+| ID | Result | Notes |
+|---|---|---|
+| XB-FIX | FIXED (this commit) | 1.0.2 put a claim gate on Xbox (P2c), so every Map to Xbox action was blocked. The Xbox output module is a pass-through to ViGEm, as in GremlinEx (Map to GamePad: any control, any pad, no claim). Removed: Xbox claims, Claimed boxes / Claim all, "(not claimed)" Xbox labels and warnings, the claim filter on the Xbox Viewer. Map to Xbox lists all 22 controls; saved pads 2-4 still send. The output layer stays the only code touching ViGEm. |
+| XB-HANDS-ON | [U] | With Gremlin active: a Map to Xbox action drives the pad (e.g. Logical Device input -> Left Trigger), and the Xbox Viewer shows it. |

@@ -120,7 +120,6 @@ def merge_claim_into_output(dest: dict, claim: dict) -> dict:
         "axes": axes,
         "hats": hats,
         "keys": list(current.get("keys") or []),
-        "xbox": list(current.get("xbox") or []),
         "friendly": friendly,
     }
     if path is None:

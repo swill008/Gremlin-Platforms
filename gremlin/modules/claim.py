@@ -6,10 +6,9 @@
 
 A claim is the plain dict stored under "claim" in a module file:
 {"buttons": [...], "axes": [...], "hats": [...], "keys": [...],
-"xbox": ["a", "left_trigger", ...],
-"friendly": {"button:5": "Fire", ...}}.
-"xbox" holds the Xbox controls an Xbox output module passes, by name.
-Anything not claimed does not exist for the rest of the pipeline.
+"friendly": {"button:5": "Fire", ...}}. Anything not claimed does not exist
+for the rest of the pipeline. (The Xbox output module has no claim: it passes
+every control to the driver.)
 """
 
 from __future__ import annotations
@@ -47,22 +46,12 @@ def _ints(values: object) -> list[int]:
     return out
 
 
-def _names(values: object) -> list[str]:
-    out: list[str] = []
-    for raw in values if isinstance(values, (list, tuple)) else []:
-        name = str(raw or "").strip().lower()
-        if name and name not in out:
-            out.append(name)
-    return out
-
-
 def empty_claim() -> dict:
     return {
         "buttons": [],
         "axes": [],
         "hats": [],
         "keys": [],
-        "xbox": [],
         "friendly": {},
     }
 
@@ -80,7 +69,6 @@ def read_claim(doc: dict | None) -> dict:
         "axes": sorted(set(_ints(raw.get("axes")))),
         "hats": sorted(set(_ints(raw.get("hats")))),
         "keys": _ints(raw.get("keys")),
-        "xbox": _names(raw.get("xbox")),
         "friendly": dict(raw.get("friendly") or {}),
     }
 
@@ -167,11 +155,6 @@ def claim_allows_key(claim: dict | None, identifier: object) -> bool:
     return ident in keys or (ident & 0xFFFF) in keys
 
 
-def claim_xbox(claim: dict | None) -> list[str]:
-    """Xbox controls claimed by an Xbox output module ("a", "left_trigger", ...)."""
-    return _names((claim or {}).get("xbox"))
-
-
 def claim_is_empty(claim: dict | None) -> bool:
     """True when nothing at all is claimed."""
-    return not any(claim_ids(claim, kind) for kind in KINDS) and not claim_xbox(claim)
+    return not any(claim_ids(claim, kind) for kind in KINDS)
