@@ -799,3 +799,21 @@ Decisions: Auto Mapper claim switch, off by default (1A); one Xbox pad for now (
 | UPD-BUILD | PASS (local, 1.0.3) | Inno Setup 6.7.3 (per-user) built Gremlin-Platforms-R1-1.0.3-Setup.exe (46.5 MB). Silent tests: default install to %LOCALAPPDATA%\Programs\Gremlin-Platforms (Apps entry name/version/publisher right, Start menu folder), install over it removes stale _internal files and keeps the user's own files, custom /DIR remembered by the next update, uninstall removes folder/Apps entry/Start menu, user data folder untouched (135 files). Not run here: /LAUNCH=1 relaunch (would start a second Gremlin) and clicking through the wizard. Paths: Qt's deepest file is 146 chars below the install folder, so an install folder longer than ~110 chars fails (exit 5), like the zip would. |
 | UPD-HANDS-ON | [U] | Install 1.0.2 from the Setup, point update-feed-url at a local 1.0.3 release, Help -> Check for Updates -> Update now: Gremlin closes, installs without a UAC prompt, starts 1.0.3, says "Updated", profiles/settings kept. Uninstall leaves the user's Gremlin Platforms folder untouched. |
 | UPD-EXISTING-CONFIG | NOTE | Check for updates defaults to on only where it was never saved; a configuration.json that stored False (as on the dev machine) keeps it off until ticked in Options -> Global. |
+
+## BMAP: Button Map editor expansion (started 2026-10-02)
+
+Decisions (user): every element can be locked and hidden from a Layers panel (the pin goes); hidden = hidden in the editor and the live map, left out of image/PDF export, kept but still hidden in a Device Pack; locked = ignores canvas clicks (click through), edited via the Layers panel; locking a chip or group locks its hotspot, leaders and members; a locked leader's attached end still follows its chip. Arrows are high priority. All extras are in.
+
+| ID | Result | Notes |
+|---|---|---|
+| BMAP-0 | DONE (this commit) | Safety net: test/unit/rig_editor_harness.py drives VkbRigFace + VkbRigEditor off-screen (own process) through load_l and session_r (click, drag, nudge, draw ellipse/rect/text/table, resize, move, style, draw-around, group/ungroup, Ctrl+D/C/V, Delete, forward/back, locked drag, band select, Ctrl+Z, redo). test_rig_editor_golden.py compares every step's state (ids renumbered) and 6 screenshots with rig_editor_golden/. Verified it catches a 1px nudge change (data) and a half-drawn ellipse (518 px). RIG_GOLDEN_UPDATE=1 rewrites the goldens. |
+| BMAP-1 | TODO | Split VkbRigEditor.qml (7697 lines): pure logic to JS libraries with tests, chips/groups/drawings/leaders/grid/handles to components. Goldens must not change. |
+| BMAP-2 | TODO | Arrows (high priority): block arrow shape filled/hollow; lines with solid or hollow arrowheads at either/both ends; dashed and dotted outlines. |
+| BMAP-3 | TODO | Right-click menu: only what applies to the target, compact, collapsible sections (accordion), remembers the last section per type, fits on screen, keyboard. Replaces _ctx, _textCtx, _tableCtx. |
+| BMAP-4 | TODO | Layers panel: eye + lock on every element (chip rows have hotspot and leader children), rename, drag to reorder (true stacking, top item gets the click), Show all / Unlock all / filter, Ctrl+L / Ctrl+Shift+L; pin removed (pinned -> locked). |
+| BMAP-5 | TODO | Rotation-aware resize/selection/snap/guides; rotate handle (Shift 15 degree steps), typed angle, flip H/V, aspect lock for images; photo rotation around its own centre and undoable. |
+| BMAP-6 | TODO | Properties panel: X/Y/W/H, rotation, colours, outline, opacity. |
+| BMAP-7 | TODO | Align and distribute across a multi-selection. |
+| BMAP-8 | TODO | Image tools: crop; paste an image from the clipboard as a layer. |
+| BMAP-9 | TODO | Colours: recent colours and an eyedropper. |
+| BMAP-10 | TODO | Full-page, high-resolution PNG/PDF export (hidden items left out). |
