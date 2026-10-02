@@ -26,18 +26,14 @@ Item {
             spacing: Style.dp(8)
 
             Label {
-                text: "Xbox 360 Controller"
+                text: _model ? _model.moduleName : "Xbox 360 Controller"
                 font.bold: true
                 font.pixelSize: Style.dp(16)
             }
 
-            Label { text: "Pad" }
-
-            ComboBox {
-                id: _pad
-                model: [1, 2, 3, 4]
-                currentIndex: Math.max(0, (_model ? _model.padId : 1) - 1)
-                onActivated: if (_model) _model.padId = model[currentIndex]
+            Label {
+                text: "Pad " + (_model ? _model.padId : 1)
+                opacity: 0.7
             }
 
             Item { Layout.fillWidth: true }
@@ -85,7 +81,7 @@ Item {
             Layout.fillWidth: true
             visible: _model && !_model.hasModule
             wrapMode: Text.WordWrap
-            text: "Pad " + (_model ? _model.padId : 1) + " has no Xbox output module, so nothing is sent to it. Pad 1 uses \"Xbox 360 Controller\"; pad N uses \"Xbox 360 N\"."
+            text: "There is no Xbox output module (\"Xbox 360 Controller\"), so nothing is sent to the Xbox pad."
             color: Style.alert
         }
 

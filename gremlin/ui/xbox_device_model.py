@@ -123,6 +123,10 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
     def _get_guid(self) -> str:
         return XBOX_TAB_GUID
 
+    def _get_module_name(self) -> str:
+        module = output.xbox_module(self._pad_id)
+        return module.name if module is not None else f"Xbox pad {self._pad_id}"
+
     def _get_has_module(self) -> bool:
         return output.xbox_module(self._pad_id) is not None
 
@@ -166,4 +170,5 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
     available = QtCore.Property(bool, fget=_get_available, notify=statusChanged)
     statusText = QtCore.Property(str, fget=_get_status, notify=statusChanged)
     hasModule = QtCore.Property(bool, fget=_get_has_module, notify=statusChanged)
+    moduleName = QtCore.Property(str, fget=_get_module_name, notify=statusChanged)
     claimedCount = QtCore.Property(int, fget=_get_claimed_count, notify=statusChanged)

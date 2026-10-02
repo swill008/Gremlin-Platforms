@@ -110,6 +110,7 @@ class MapToXboxModel(ActionModel):
     buttonInvertedChanged = QtCore.Signal()
     triggerRangeChanged = QtCore.Signal()
     targetChoicesChanged = QtCore.Signal()
+    padChoicesChanged = QtCore.Signal()
 
     def __init__(
         self,
@@ -150,6 +151,7 @@ class MapToXboxModel(ActionModel):
         self._data.xbox_device_id = ident
         self.xboxDeviceIdChanged.emit()
         self.targetChoicesChanged.emit()
+        self.padChoicesChanged.emit()
         self._notify_item()
 
     def _get_xbox_target(self) -> str:
@@ -210,6 +212,20 @@ class MapToXboxModel(ActionModel):
             )
         return choices
 
+    def _get_pad_choices(self) -> list:
+        """Xbox output modules to send to. A saved pad with none stays listed,
+        marked, so the wire is not lost."""
+        choices = [
+            {"value": pad, "label": module.name}
+            for pad, module in sorted(output.xbox_modules().items())
+        ]
+        current = int(self._data.xbox_device_id)
+        if all(choice["value"] != current for choice in choices):
+            choices.insert(
+                0, {"value": current, "label": f"Xbox pad {current} (no output module)"}
+            )
+        return choices
+
     def _get_target_unclaimed(self) -> bool:
         return not output.xbox_allows(
             self._data.xbox_device_id, self._data.xbox_target
@@ -241,6 +257,9 @@ class MapToXboxModel(ActionModel):
     )
     targetChoices = QtCore.Property(
         "QVariant", fget=_get_target_choices, notify=targetChoicesChanged
+    )
+    padChoices = QtCore.Property(
+        "QVariant", fget=_get_pad_choices, notify=padChoicesChanged
     )
     targetUnclaimed = QtCore.Property(
         bool, fget=_get_target_unclaimed, notify=targetChoicesChanged

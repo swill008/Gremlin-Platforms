@@ -27,11 +27,20 @@ Item {
             spacing: Style.dp(8)
 
             Label { text: "Xbox" }
+            // Xbox output modules (one pad for now).
             ComboBox {
                 id: _pad
-                model: [1, 2, 3, 4]
-                currentIndex: Math.max(0, _root.action.xboxDeviceId - 1)
-                onActivated: _root.action.xboxDeviceId = model[currentIndex]
+                Layout.minimumWidth: Style.dp(120)
+                textRole: "label"
+                valueRole: "value"
+                model: _root.action.padChoices
+                onModelChanged: Qt.callLater(() => {
+                    currentIndex = Math.max(0, indexOfValue(_root.action.xboxDeviceId))
+                })
+                Component.onCompleted: {
+                    currentIndex = Math.max(0, indexOfValue(_root.action.xboxDeviceId))
+                }
+                onActivated: _root.action.xboxDeviceId = currentValue
             }
 
             Label { text: "Target" }

@@ -369,6 +369,12 @@ class ScriptVJoy:
 # --- Xbox (ViGEm) -----------------------------------------------------------
 
 
+def xbox_modules() -> dict[int, registry.Module]:
+    """Xbox output modules by pad number."""
+    _refresh_claims()
+    return dict(_xbox_modules)
+
+
 def xbox_module(pad_id: int) -> registry.Module | None:
     """The Xbox output module for this pad, or None when there is none."""
     _refresh_claims()

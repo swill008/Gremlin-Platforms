@@ -122,3 +122,30 @@ def test_only_the_output_module_holds_the_xbox_driver() -> None:
             if "XboxProxy" in line and not line.lstrip().startswith("#"):
                 hits.append(f"{path.relative_to(_ROOT)}: {line.strip()}")
     assert hits == []
+
+
+def _map_to_xbox(pad: int, target: XboxTarget) -> object:
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        _data=SimpleNamespace(xbox_device_id=pad, xbox_target=target)
+    )
+
+
+def test_map_to_xbox_lists_xbox_output_modules(folder: Path) -> None:
+    from action_plugins.map_to_xbox import MapToXboxModel
+
+    pads = MapToXboxModel._get_pad_choices(_map_to_xbox(1, XboxTarget.A))
+    assert pads == [{"value": 1, "label": "Xbox 360 Controller"}]
+    # A saved pad without an output module stays listed, marked.
+    pads = MapToXboxModel._get_pad_choices(_map_to_xbox(2, XboxTarget.A))
+    assert pads[0] == {"value": 2, "label": "Xbox pad 2 (no output module)"}
+
+
+def test_map_to_xbox_lists_claimed_controls(folder: Path) -> None:
+    from action_plugins.map_to_xbox import MapToXboxModel
+
+    claimed = MapToXboxModel._get_target_choices(_map_to_xbox(1, XboxTarget.A))
+    assert [c["value"] for c in claimed] == ["a"]
+    flagged = MapToXboxModel._get_target_choices(_map_to_xbox(1, XboxTarget.B))
+    assert flagged[0] == {"value": "b", "label": "B (not claimed)"}
