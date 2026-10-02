@@ -54,3 +54,7 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
     assert results["undo-after-cancel"] == "true false"
     # A map without a photo frame value is not rescaled or rewritten.
     assert results["plain-file"] == "true true"
+    # Ctrl+V pastes a picture copied after the last chip copy; a dropped
+    # picture is centred on the drop point with its own 4:1 shape.
+    assert results["paste-picture"] == "1 image"
+    assert results["drop-picture"] == "true 0.30 0.60 4.0"

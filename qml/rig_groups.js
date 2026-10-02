@@ -486,7 +486,7 @@ function ensureMemberOffsets(n) {
         return
     }
     // Default column. Do not keep a 5-way cross. ox/oy only used in free layout.
-    var eh = Math.max(1, height)
+    var eh = Math.max(1, spaceRect().h)
     var pitch = stackPitch(n) / eh
     for (i = 0; i < mem.length; i++) {
         mem[i].ox = 0
@@ -541,6 +541,18 @@ function _styleOf(n) {
     }
 }
 
+// Where a group member is drawn, in page fractions (its chip's top left,
+// the same point a loose chip's chipFx/chipFy names).
+function memberPageFx(n, mem) {
+    return xToFx(fxToX(n.chipFx) + groupMinX(n) + memberLocalX(n, mem))
+}
+
+function memberPageFy(n, mem) {
+    return yToFy(fyToY(n.chipFy) + groupMinY(n) + memberLocalY(n, mem))
+}
+
+// The chips a selected item brings to a new group, each where it is drawn
+// now (fx/fy), so grouping never moves anything.
 function _partsFrom(n) {
     var out = []
     if (!n)
@@ -548,9 +560,11 @@ function _partsFrom(n) {
     if (isGroup(n)) {
         var mem = n.members || []
         for (var i = 0; i < mem.length; i++)
-            out.push({ hwId: mem[i].hwId, kind: memberKind(n, mem[i]), role: mem[i].role || "", src: n, friendly: mem[i].friendly || "" })
+            out.push({ hwId: mem[i].hwId, kind: memberKind(n, mem[i]), role: mem[i].role || "", src: n, friendly: mem[i].friendly || "",
+                       fx: memberPageFx(n, mem[i]), fy: memberPageFy(n, mem[i]) })
     } else {
-        out.push({ hwId: n.hwId, kind: n.kind || "btn", role: "", src: n, friendly: n.friendly || "" })
+        out.push({ hwId: n.hwId, kind: n.kind || "btn", role: "", src: n, friendly: n.friendly || "",
+                   fx: n.chipFx || 0, fy: n.chipFy || 0 })
     }
     return out
 }
@@ -634,23 +648,27 @@ function groupSelection() {
         kind = "axis_stack"
     var first = nodeAt(chipIds[0])
     var st = _styleOf(first)
-    var fx = 0
-    var fy = 0
     var hx = 0
     var hy = 0
     for (i = 0; i < chipIds.length; i++) {
         n = nodeAt(chipIds[i])
-        fx += (n.chipFx || 0)
-        fy += (n.chipFy || 0)
         hx += hotFxOf(n)
         hy += hotFyOf(n)
     }
     var c = chipIds.length
-    var ox0 = fx / c
-    var oy0 = fy / c
+    var hx0 = hx / c
+    var hy0 = hy / c
+    // The group's anchor: the members' top-left corner, so ox/oy stay small.
+    var ox0 = 1e9
+    var oy0 = 1e9
+    for (i = 0; i < parts.length; i++) {
+        ox0 = Math.min(ox0, parts[i].fx)
+        oy0 = Math.min(oy0, parts[i].fy)
+    }
+    // Reading order: top to bottom, then left to right.
     parts.sort(function(a, b) {
-        var dy = (a.src.chipFy || 0) - (b.src.chipFy || 0)
-        return dy !== 0 ? dy : ((a.src.chipFx || 0) - (b.src.chipFx || 0))
+        var dy = a.fy - b.fy
+        return dy !== 0 ? dy : (a.fx - b.fx)
     })
     var members = []
     for (i = 0; i < parts.length; i++)
@@ -658,14 +676,15 @@ function groupSelection() {
             hwId: parts[i].hwId,
             kind: leafKind(parts[i].kind),
             role: parts[i].role || ("m" + i),
-            ox: parts[i].src.chipFx - ox0,
-            oy: parts[i].src.chipFy - oy0,
+            ox: parts[i].fx - ox0,
+            oy: parts[i].fy - oy0,
             friendly: carryFriendly(parts[i].friendly, carryFriendly(parts[i].src && parts[i].src.friendly, defaultFriendly(parts[i].kind, parts[i].hwId)))
         })
     var g = {
         id: _uid("g"), kind: kind, members: members,
-        hotFx: hx / c, hotFy: hy / c, chipFx: ox0, chipFy: oy0,
-        pin: st.pin, spines: [], curve: st.curve, alignH: "left",
+        hotFx: hx0, hotFy: hy0, chipFx: ox0, chipFy: oy0,
+        // "free": members stay exactly where they were placed by hand.
+        pin: st.pin, spines: [], curve: st.curve, alignH: "free",
         color: st.color, border: st.border, textColor: st.textColor,
         highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
         hlText: st.hlText, fontSize: st.fontSize, label: "", chipSize: st.chipSize, chipShape: st.chipShape, chipFill: st.chipFill, hotSize: st.hotSize, hotShape: st.hotShape, hotFill: st.hotFill
@@ -720,8 +739,6 @@ function ungroupSelection() {
     var created = []
     var i
     for (i = 0; i < mem.length; i++) {
-        var px = fxToX(n.chipFx) + groupMinX(n) + memberLocalX(n, mem[i])
-        var py = fyToY(n.chipFy) + groupMinY(n) + memberLocalY(n, mem[i])
         var kindOf = memberKind(n, mem[i])
         created.push({
             id: _uid(kindOf === "btn" ? "b" : kindOf.charAt(0)), kind: kindOf, hwId: mem[i].hwId,
@@ -729,8 +746,8 @@ function ungroupSelection() {
             label: "",
             friendly: carryFriendly(mem[i].friendly, defaultFriendly(kindOf, mem[i].hwId)),
             hotFx: hotFxOf(n), hotFy: hotFyOf(n),
-            chipFx: xToFx(px),
-            chipFy: yToFy(py),
+            chipFx: memberPageFx(n, mem[i]),
+            chipFy: memberPageFy(n, mem[i]),
             pin: st.pin, spines: [], curve: st.curve,
             color: st.color, border: st.border, textColor: st.textColor,
             highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,

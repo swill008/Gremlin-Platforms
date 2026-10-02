@@ -169,6 +169,10 @@ Item {
     property var cropStart: null
     // Set by the window: the clipboard holds a picture to paste.
     property bool canPastePicture: false
+    // The system clipboard's change count (set by the window) and its value
+    // at the last chip copy: Ctrl+V pastes whichever was copied last.
+    property int clipboardSerial: 0
+    property int clipSerial: -1
     signal pastePictureRequested()
     // Selection and handle colours, the same on the photo in both themes.
     readonly property color handleFill: "#FBBF24"
@@ -366,6 +370,8 @@ Item {
     function groupAlignH(n) { return RigGroups.groupAlignH(n) }
     function setAlignH(mode) { return RigGroups.setAlignH(mode) }
     function bakeAlignToFree(n) { return RigGroups.bakeAlignToFree(n) }
+    function memberPageFx(n, mem) { return RigGroups.memberPageFx(n, mem) }
+    function memberPageFy(n, mem) { return RigGroups.memberPageFy(n, mem) }
     function memberIndexOf(n, mem) { return RigGroups.memberIndexOf(n, mem) }
     function stackPitch(n) { return RigGroups.stackPitch(n) }
     function memberLocalX(n, mem) { return RigGroups.memberLocalX(n, mem) }
@@ -480,7 +486,7 @@ Item {
     function hitOverlayPin(n, mx, my) { return RigOverlays.hitOverlayPin(n, mx, my) }
     function overlayContains(n, mx, my) { return RigOverlays.overlayContains(n, mx, my) }
     function setOverlayHover(mx, my) { return RigOverlays.setOverlayHover(mx, my) }
-    function addOverlay(rel, fileUrl) { return RigOverlays.addOverlay(rel, fileUrl) }
+    function addOverlay(rel, fileUrl, opts) { return RigOverlays.addOverlay(rel, fileUrl, opts) }
     function pinTarget(id) { return RigOverlays.pinTarget(id) }
     function toggleLock(id) { return RigOverlays.toggleLock(id) }
     function beginPlantSnap() { return RigOverlays.beginPlantSnap() }

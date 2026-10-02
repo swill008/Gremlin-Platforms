@@ -7931,11 +7931,11 @@
       "wrap": true
      },
      "22": {
-      "alignH": "left",
+      "alignH": "free",
       "border": "#3F3F46",
       "chipFill": "filled",
-      "chipFx": 0.48532,
-      "chipFy": 0.38742,
+      "chipFx": 0.35164,
+      "chipFy": 0.2484,
       "chipShape": "round",
       "chipSize": 18,
       "color": "#18181B",
@@ -7979,16 +7979,16 @@
         "friendly": "Button 4",
         "hwId": 4,
         "kind": "btn",
-        "ox": 0.13368,
-        "oy": -0.13902,
+        "ox": 0.26737,
+        "oy": 0,
         "role": "m0"
        },
        {
         "friendly": "Button 3",
         "hwId": 3,
         "kind": "btn",
-        "ox": -0.13368,
-        "oy": 0.13902,
+        "ox": 0,
+        "oy": 0.27804,
         "role": "m1"
        }
       ],
@@ -8305,8 +8305,8 @@
      "22": {
       "border": "#3F3F46",
       "chipFill": "filled",
-      "chipFx": 0.48532,
-      "chipFy": 0.38742,
+      "chipFx": 0.61901,
+      "chipFy": 0.2484,
       "chipShape": "round",
       "chipSize": 18,
       "color": "#18181B",
@@ -8334,8 +8334,8 @@
      "23": {
       "border": "#3F3F46",
       "chipFill": "filled",
-      "chipFx": 0.48532,
-      "chipFy": 0.40965,
+      "chipFx": 0.35164,
+      "chipFy": 0.52645,
       "chipShape": "round",
       "chipSize": 18,
       "color": "#18181B",

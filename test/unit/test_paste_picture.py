@@ -53,3 +53,22 @@ def test_saves_under_a_free_name(
 
 def test_nothing_to_paste(profile: hardware_profile.HardwareProfile) -> None:
     assert profile.savePastedImage(QtGui.QImage(), "Test Stick") == ""
+
+
+def test_dropped_files_keep_only_pictures(
+    profile: hardware_profile.HardwareProfile, tmp_path: pathlib.Path
+) -> None:
+    source = tmp_path / "from"
+    source.mkdir()
+    picture = source / "grip.png"
+    QtGui.QImage(QtCore.QSize(30, 10), QtGui.QImage.Format.Format_RGB32).save(
+        str(picture)
+    )
+    notes = source / "notes.txt"
+    notes.write_text("not a picture", encoding="utf-8")
+    urls = [picture.as_uri(), notes.as_uri(), "https://example.com/x.png"]
+    assert profile.hasPictureFiles(urls) is True
+    assert profile.hasPictureFiles([notes.as_uri()]) is False
+    added = profile.importPictureFiles(urls, "Test Stick")
+    assert added == ["test_stick/grip.png"]
+    assert profile.imageAspect(added[0]) == 3.0

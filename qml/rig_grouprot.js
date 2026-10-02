@@ -11,6 +11,9 @@
 // angle; lines swing round with both ends; chips, groups and tables move but
 // stay upright so they still read. Hotspots stay on the photo. Locked items
 // stay where they are.
+//
+// One selected group turns too: its members swing round the group's middle
+// and stay upright (the group switches to its free layout first).
 .import "rig_shapes.js" as Shapes
 
 // The selected items that move: not locked, not following something else
@@ -31,9 +34,34 @@ function _turnItems() {
     return out
 }
 
+// The one selected group that can turn on its own, or null.
+function _turnGroup() {
+    var ids = selectedIds || []
+    if (ids.length !== 1)
+        return null
+    var n = nodeAt(ids[0])
+    if (!isGroup(n) || isLocked(n) || themeLayout(n) || tablePackOf(n))
+        return null
+    return (n.members || []).length >= 2 ? n : null
+}
+
 function canTurnTogether() {
     tick
-    return interactive && (selectedIds || []).length >= 2 && _turnItems().length >= 1
+    if (!interactive)
+        return false
+    if (_turnGroup())
+        return true
+    return (selectedIds || []).length >= 2 && _turnItems().length >= 1
+}
+
+// A member's chip box on the editor, in pixels.
+function _memberBox(n, mem) {
+    return {
+        x: fxToX(memberPageFx(n, mem)),
+        y: fyToY(memberPageFy(n, mem)),
+        w: chipWGuess(n, mem),
+        h: chipH(n, mem)
+    }
 }
 
 // The box around the whole selection, in editor pixels.
@@ -88,6 +116,11 @@ function _centre(n) {
 // The turn goes round the average of the items' middles, which a turn does
 // not change, so turning there and back ends where it started.
 function turnPivot() {
+    var g = _turnGroup()
+    if (g) {
+        var b = nodeBox(g)
+        return { x: b.x + b.w / 2, y: b.y + b.h / 2 }
+    }
     var list = _turnItems()
     var c = { x: 0, y: 0 }
     for (var i = 0; i < list.length; i++) {
@@ -99,6 +132,19 @@ function turnPivot() {
 }
 
 function beginTurn(mx, my) {
+    var g = _turnGroup()
+    if (g) {
+        bakeAlignToFree(g)
+        var gc = turnPivot()
+        var mems = []
+        var mem = g.members || []
+        for (var m = 0; m < mem.length; m++) {
+            var mb = _memberBox(g, mem[m])
+            mems.push({ x: mb.x + mb.w / 2, y: mb.y + mb.h / 2, w: mb.w, h: mb.h })
+        }
+        turnStart = { c: gc, a0: Shapes.handleAngle(gc.x, gc.y, mx, my), group: g.id, members: mems }
+        return
+    }
     var items = []
     var list = _turnItems()
     var c = turnPivot()
@@ -123,6 +169,20 @@ function _turnTo(deg) {
     if (!st)
         return
     var s = spaceRect()
+    if (st.group) {
+        // Members' middles round the group's middle; each chip upright.
+        var g = nodeAt(st.group)
+        var mem = g ? (g.members || []) : []
+        var ax = g ? fxToX(g.chipFx) : 0
+        var ay = g ? fyToY(g.chipFy) : 0
+        for (var m = 0; m < mem.length && m < st.members.length; m++) {
+            var sm = st.members[m]
+            var o = Shapes.rotatePt(sm.x - st.c.x, sm.y - st.c.y, deg)
+            mem[m].ox = (st.c.x + o.x - sm.w / 2 - ax) / Math.max(1, s.w)
+            mem[m].oy = (st.c.y + o.y - sm.h / 2 - ay) / Math.max(1, s.h)
+        }
+        return
+    }
     for (var i = 0; i < st.items.length; i++) {
         var it = st.items[i]
         var n = nodeAt(it.id)

@@ -1421,6 +1421,76 @@ def scenario_turn(s: Session) -> None:
     s.steps[-1]["state"]["textRot"] = s.node(text).get("rot")
 
 
+def scenario_group_keeps(s: Session) -> None:
+    """Grouping keeps chips where they were put by hand (no column), also
+    when a group is grouped again; one group turns about its middle with
+    its chips upright, and turning back puts every chip back."""
+    _load(s, "evo_r")
+    # A hand-made diagonal, nothing like a column.
+    s.drag(s.center("b3"), s.point(0.20, 0.30))
+    s.drag(s.center("b4"), s.point(0.32, 0.38))
+    s.drag(s.center("b5"), s.point(0.44, 0.46))
+    s.call("setSelection", [])
+
+    def where(hw_ids: list) -> dict:
+        """Each chip's drawn top-left (page fractions) by hardware id, read
+        back by breaking the selected group and grouping it again."""
+        sel = s.state()["selected"]
+        s.call("ungroupSelection")
+        loose = {
+            n["hwId"]: (n["chipFx"], n["chipFy"], n["id"])
+            for n in s.state()["nodes"]
+            if n.get("hwId") in hw_ids and "chipFx" in n
+        }
+        s.call("setSelection", [v[2] for v in loose.values()])
+        s.call("groupSelection")
+        assert sel, "nothing selected"
+        return {k: (v[0], v[1]) for k, v in loose.items()}
+
+    def moved(a: dict, b: dict) -> float:
+        gaps = (max(abs(a[k][0] - b[k][0]), abs(a[k][1] - b[k][1])) for k in a)
+        return round(max(gaps), 6)
+
+    start = {
+        n["hwId"]: (n["chipFx"], n["chipFy"])
+        for n in s.state()["nodes"]
+        if n["id"] in ("b3", "b4", "b5")
+    }
+    hw = list(start)
+    s.call("setSelection", ["b3", "b4"])
+    s.call("groupSelection")
+    first = s.state()["selected"][0]
+    s.record("grouped-two", image=True)
+    # The group and a third chip grouped again.
+    third = next(n["id"] for n in s.state()["nodes"] if n.get("hwId") == hw[2])
+    s.call("setSelection", [first, third])
+    s.call("groupSelection")
+    s.record("grouped-three", image=True)
+    group = s.node(s.state()["selected"][0])
+    s.steps[-1]["state"]["alignH"] = group.get("alignH")
+    s.steps[-1]["state"]["movedByGrouping"] = moved(start, where(hw))
+
+    s.call("turnSelectionBy", 90)
+    s.record("group-turned-90", image=True)
+    turned = where(hw)
+    s.steps[-1]["state"]["movedByTurn"] = moved(start, turned) > 0.01
+    s.call("turnSelectionBy", -90)
+    s.record("group-turned-back")
+    s.steps[-1]["state"]["movedAfterTurnBack"] = moved(start, where(hw))
+
+    # The handle above the selected group turns it too.
+    box = s.call("selectionBounds")
+    pivot = s.call("turnPivot")
+    centre = s.ed_point(pivot["x"], pivot["y"])
+    grip = s.ed_point(box["x"] + box["w"] / 2, box["y"] - 24)
+    s.drag(
+        grip,
+        QtCore.QPoint(centre.x() + 200, centre.y() + 3),
+        QtCore.Qt.KeyboardModifier.ShiftModifier,
+    )
+    s.record("group-handle-turn", image=True)
+
+
 def scenario_callout(s: Session) -> None:
     """Callouts: drawn with the tool, the tip dragged onto a chip and following
     it, one added for a chip, the pointer removed and added back."""
@@ -1946,6 +2016,7 @@ SCENARIOS = {
     "shape_tools": scenario_shape_tools,
     "hotspots": scenario_hotspots,
     "deletes": scenario_deletes,
+    "group_keeps": scenario_group_keeps,
 }
 
 

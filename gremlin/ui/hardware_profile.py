@@ -295,6 +295,18 @@ def _is_hex_colour(value: object) -> bool:
     )
 
 
+def _image_files(urls: list[QtCore.QUrl]) -> list[Path]:
+    """The local picture files among these URLs, in order."""
+    out: list[Path] = []
+    for url in urls:
+        if not url.isLocalFile():
+            continue
+        path = Path(url.toLocalFile())
+        if path.suffix.lower() in _IMAGE_EXT and path.is_file():
+            out.append(path)
+    return out
+
+
 def _clipboard() -> QtGui.QClipboard | None:
     app = QtGui.QGuiApplication.instance()
     return app.clipboard() if isinstance(app, QtGui.QGuiApplication) else None
@@ -1559,9 +1571,12 @@ class HardwareProfile(QtCore.QObject):
         self._path = ""
         self._peek_photo = ""
         self._device_guid = ""
+        # Counts clipboard changes, so Ctrl+V can tell a picture copied after
+        # the last chip copy from an old one.
+        self._clipboard_serial = 0
         clipboard = _clipboard()
         if clipboard is not None:
-            clipboard.dataChanged.connect(self.clipboardChanged)
+            clipboard.dataChanged.connect(self._clipboard_changed)
         signal.profileChanged.connect(self.profileLabelsChanged)
         signal.modesChanged.connect(self.profileLabelsChanged)
 
@@ -1724,19 +1739,72 @@ class HardwareProfile(QtCore.QObject):
         self._export_pages = []
         return len(save_pages(pages, to_local_path(url), fmt, scale))
 
+    def _clipboard_changed(self) -> None:
+        self._clipboard_serial += 1
+        self.clipboardChanged.emit()
+
+    @QtCore.Property(int, notify=clipboardChanged)
+    def clipboardSerial(self) -> int:
+        return self._clipboard_serial
+
     @QtCore.Property(bool, notify=clipboardChanged)
     def clipboardHasImage(self) -> bool:
-        """The clipboard holds a picture the Button Map can paste."""
+        """The clipboard holds a picture the Button Map can paste: picture
+        data, or picture files copied in Explorer."""
         clipboard = _clipboard()
         data = clipboard.mimeData() if clipboard is not None else None
-        return bool(data is not None and data.hasImage())
+        if data is None:
+            return False
+        return data.hasImage() or bool(_image_files(data.urls()))
 
     @QtCore.Slot(str, result=str)
     def pasteClipboardImage(self, device_name: str) -> str:
         """Saves the clipboard's picture as a layer picture for the device."""
+        pasted = self.pasteClipboardPictures(device_name)
+        return pasted[0] if pasted else ""
+
+    @QtCore.Slot(str, result=list)
+    def pasteClipboardPictures(self, device_name: str) -> list[str]:
+        """The clipboard's pictures as layer pictures for the device: copied
+        files first (each one), else the picture data. Stored paths."""
         clipboard = _clipboard()
+        data = clipboard.mimeData() if clipboard is not None else None
+        if data is None:
+            return []
+        files = _image_files(data.urls())
+        if files:
+            return self.importPictureFiles([f.as_uri() for f in files], device_name)
         image = clipboard.image() if clipboard is not None else QtGui.QImage()
-        return self.savePastedImage(image, device_name)
+        rel = self.savePastedImage(image, device_name)
+        return [rel] if rel else []
+
+    @QtCore.Slot(list, str, result=list)
+    def importPictureFiles(self, urls: list, device_name: str) -> list[str]:
+        """Copies dropped or pasted picture files in as layer pictures; skips
+        anything that is not a picture file. Stored paths."""
+        out: list[str] = []
+        for path in _image_files([QtCore.QUrl(str(u)) for u in urls or []]):
+            rel = self.copyOverlay(path.as_uri(), device_name)
+            if rel:
+                out.append(rel)
+        return out
+
+    @QtCore.Slot("QVariant", result=bool)
+    def hasPictureFiles(self, urls: object) -> bool:
+        """Some of these dropped URLs are picture files."""
+        items = list(urls) if isinstance(urls, (list, tuple)) else []
+        return bool(_image_files([QtCore.QUrl(str(u)) for u in items]))
+
+    @QtCore.Slot(str, result=float)
+    def imageAspect(self, stored: str) -> float:
+        """Width / height of a stored picture (1 when unknown)."""
+        found = self._resolve_existing(stored)
+        if not found:
+            return 1.0
+        size = QtGui.QImageReader(str(found)).size()
+        if size.width() <= 0 or size.height() <= 0:
+            return 1.0
+        return size.width() / size.height()
 
     def savePastedImage(self, image: QtGui.QImage, device_name: str) -> str:
         """Writes a pasted picture to the device's folder (and the library) as

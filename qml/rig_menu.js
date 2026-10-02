@@ -624,7 +624,7 @@ function _turnSection() {
         return null
     var step = rotateSnap || 15
     var none = function() { return false }
-    return _sect("turn-many", "Turn together", [
+    return _sect("turn-many", (selectedIds || []).length === 1 ? "Turn group" : "Turn together", [
         _pick("Turn by", [-step, step, -90, 90, 180],
               ["−" + step + "°", "+" + step + "°", "−90°", "+90°", "180°"], none, turnSelectionBy)
     ])
@@ -664,7 +664,7 @@ function menuModel() {
         quick = groupEditId !== ""
             ? [_act("Done editing group", endGroupEdit), _act("Break group", ungroupSelection)]
             : [_act("Edit group", function() { beginGroupEdit(_ctx.nodeId) }), _act("Break group", ungroupSelection)]
-        sections = [_format(), _align(), _chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _around(), _arrange()]
+        sections = [_format(), _align(), _turnSection(), _chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _around(), _arrange()]
     } else if (kind === "leader") {
         quick = [_act("Add leader", addLeader), _deleteLeaderItem()]
         if (selectedSpine >= 0)

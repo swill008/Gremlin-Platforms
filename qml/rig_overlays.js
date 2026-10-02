@@ -63,7 +63,11 @@ function setOverlayHover(mx, my) {
     bump()
 }
 
-function addOverlay(rel, fileUrl) {
+// opts (all optional): fx/fy, the picture's centre in page fractions (a drop
+// point); aspect, its width / height, so the box fits the picture; noBump to
+// add several pictures in one undo step.
+function addOverlay(rel, fileUrl, opts) {
+    opts = opts || {}
     var st = _drawStyle()
     st.id = _uid("d")
     st.shape = "image"
@@ -73,15 +77,28 @@ function addOverlay(rel, fileUrl) {
     st.pinned = false
     st.sockets = []
     st.fill = "filled"
-    st.fx = 0.36
-    st.fy = 0.28
-    st.fw = 0.28
-    st.fh = 0.28
+    var fw = 0.28
+    var fh = 0.28
+    var aspect = Number(opts.aspect || 0)
+    if (aspect > 0) {
+        // Same on-screen area, the picture's own shape.
+        var s = spaceRect()
+        var ratio = Math.max(1, s.w) / Math.max(1, s.h)
+        fh = Math.min(0.6, fw * ratio / aspect)
+        fw = Math.min(0.6, fh * aspect / ratio)
+    }
+    var cx = opts.fx === undefined ? 0.5 : clamp01(opts.fx)
+    var cy = opts.fy === undefined ? 0.42 : clamp01(opts.fy)
+    st.fx = Math.max(0, Math.min(1 - fw, cx - fw / 2))
+    st.fy = Math.max(0, Math.min(1 - fh, cy - fh / 2))
+    st.fw = fw
+    st.fh = fh
     st.rot = 0
     st.opacity = 1
     insertBelowChips(st)
     setSelection([st.id])
-    bump()
+    if (!opts.noBump)
+        bump()
     return st.id
 }
 

@@ -1176,9 +1176,44 @@ ApplicationWindow {
         var e = _ed()
         if (!editing || !e)
             return
-        var rel = _hw.pasteClipboardImage(targetName)
-        if (rel.length)
-            e.addOverlay(rel, _hw.imageUrl(rel))
+        addPictures(_hw.pasteClipboardPictures(targetName), undefined)
+    }
+
+    // New picture layers, each sized to its picture; a drop point centres
+    // them there (several step down and right). One undo step for all.
+    function addPictures(rels, at) {
+        var e = _ed()
+        if (!e || !rels || !rels.length) {
+            if (e)
+                e.showFindMessage("Nothing to add: no picture found.")
+            return
+        }
+        var ids = []
+        for (var i = 0; i < rels.length; i++) {
+            var opts = { aspect: _hw.imageAspect(rels[i]), noBump: true }
+            if (at) {
+                opts.fx = at.fx + i * 0.03
+                opts.fy = at.fy + i * 0.03
+            }
+            ids.push(e.addOverlay(rels[i], _hw.imageUrl(rels[i]), opts))
+        }
+        e.setSelection(ids)
+        e.bump()
+    }
+
+    // Picture files dropped on the map (from Explorer or another program).
+    function dropPictures(urls, x, y, from) {
+        var e = _ed()
+        if (!e)
+            return false
+        if (!editing) {
+            e.showFindMessage("Click Edit Mapping first, then drop the picture again.")
+            return false
+        }
+        var p = e.mapFromItem(from, x, y)
+        var rels = _hw.importPictureFiles(urls, targetName)
+        addPictures(rels, { fx: e.xToFx(p.x), fy: e.yToFy(p.y) })
+        return rels.length > 0
     }
 
     function syncPhotoFromEditor() {
@@ -2906,6 +2941,32 @@ ApplicationWindow {
                     }
                 }
 
+                // Drop picture files anywhere on the map to add them as layers.
+                DropArea {
+                    id: _pictureDrop
+                    anchors.fill: parent
+                    z: 40
+                    enabled: !!_buttonMap._ed()
+                    keys: ["text/uri-list"]
+                    onEntered: (drag) => {
+                        drag.accepted = drag.hasUrls && _hw.hasPictureFiles(drag.urls)
+                    }
+                    onDropped: (drop) => {
+                        if (!drop.hasUrls)
+                            return
+                        if (_buttonMap.dropPictures(drop.urls, drop.x, drop.y, _pictureDrop))
+                            drop.accept(Qt.CopyAction)
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: _pictureDrop.containsDrag
+                        color: "transparent"
+                        border.width: 3
+                        border.color: Style.info
+                        radius: 6
+                    }
+                }
+
                 Loader {
                     id: _directCard
                     anchors.fill: parent
@@ -3164,6 +3225,13 @@ ApplicationWindow {
                     target: _buttonMap._ed()
                     property: "canPastePicture"
                     value: _hw.clipboardHasImage
+                    when: !!_buttonMap._ed()
+                    restoreMode: Binding.RestoreNone
+                }
+                Binding {
+                    target: _buttonMap._ed()
+                    property: "clipboardSerial"
+                    value: _hw.clipboardSerial
                     when: !!_buttonMap._ed()
                     restoreMode: Binding.RestoreNone
                 }

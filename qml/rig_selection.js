@@ -310,9 +310,18 @@ function copySelection() {
             arr.push(JSON.parse(JSON.stringify(n)))
     }
     clip = arr
+    clipSerial = clipboardSerial
 }
 
+// Ctrl+V: a picture copied since the last chip copy (or with nothing copied
+// here) is pasted as a picture layer; otherwise the copied items.
 function pasteClipboard() {
+    var pictureNewer = canPastePicture
+        && (!(clip && clip.length) || clipboardSerial !== clipSerial)
+    if (pictureNewer) {
+        pastePictureRequested()
+        return
+    }
     pasteNodes(clip || [], 16 / Math.max(1, spaceRect().w), 16 / Math.max(1, spaceRect().h))
 }
 

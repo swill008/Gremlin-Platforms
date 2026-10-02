@@ -337,7 +337,7 @@ function buttonMapTopics() {
             + "<ul>"
             + "<li><b>Ctrl+S</b> Save</li>"
             + "<li><b>Ctrl+Z</b> Undo; <b>Ctrl+Y</b> or <b>Ctrl+Shift+Z</b> Redo</li>"
-            + "<li><b>Ctrl+D</b> Duplicate; <b>Ctrl+C</b> Copy; <b>Ctrl+V</b> Paste; <b>Ctrl+Shift+V</b> Paste picture</li>"
+            + "<li><b>Ctrl+D</b> Duplicate; <b>Ctrl+C</b> Copy; <b>Ctrl+V</b> Paste (a picture copied after the last chip copy pastes as a picture); <b>Ctrl+Shift+V</b> Paste picture</li>"
             + "<li><b>Ctrl+G</b> Group; <b>Ctrl+Shift+G</b> Break group</li>"
             + "<li><b>Ctrl+L</b> Lock or unlock the selection; <b>Ctrl+Shift+L</b> Unlock everything</li>"
             + "<li><b>Delete</b> or <b>Backspace</b> Remove the selection</li>"
@@ -374,8 +374,9 @@ function buttonMapTopics() {
             + "<p>Right-click a leader for <b>Add leader</b> (another line from the same chip) and <b>Delete leader</b>. Its <b>Leader</b> section has <b>Leader colour…</b>, <b>Weight</b>, <b>Add straight spine</b>, <b>Add curved spine</b>, <b>Convert spine</b>, <b>This segment</b> or <b>All segments</b> (Curved or Straight), <b>Branch from this end</b>, <b>Clear all spines</b> and <b>Delete spine</b>. <b>Leader ends</b> detaches the chip end or the hotspot end, and reconnects it.</p>"
             + "<p>Spines show only while editing; the lines stay on the live map. In the Layers panel, open a chip to hide or lock its hotspot or one leader on its own.</p>"),
         topic("Chips", "Groups and 5-way formats",
-            "<p>Select two or more chips (Shift-click, or drag a box on empty space) and choose <b>Group selected</b> (Ctrl+G). A group moves as one. <b>Break group</b> (Ctrl+Shift+G) splits it. <b>Edit group</b> lets you move and style one member; <b>Done editing group</b> or Esc ends that.</p>"
-            + "<p><b>Align members</b> arranges a group Left, Centre, Right or Free.</p>"
+            "<p>Select two or more chips (Shift-click, or drag a box on empty space) and choose <b>Group selected</b> (Ctrl+G). The chips stay exactly where you put them (line them up first with <b>Align</b>, the arrow keys or by dragging), and the group moves as one. <b>Break group</b> (Ctrl+Shift+G) splits it. <b>Edit group</b> lets you move and style one member; <b>Done editing group</b> or Esc ends that.</p>"
+            + "<p><b>Align members</b> arranges a group Left, Centre, Right or Free (Free keeps your own arrangement; new groups start as Free).</p>"
+            + "<p><b>Turn a group</b>: select it and drag the round handle above it, or right-click → <b>Turn group</b>. Its chips swing round the group's middle and stay upright so they still read; the hotspot stays on the photo.</p>"
             + "<p>Right-click a five-chip hat group: <b>5-way</b> styles it as <b>Plus</b>, <b>Mini hat</b>, <b>Named card</b> or <b>Radial</b>; <b>Clear format</b> removes the style.</p>"
             + "<p>Grouping chips or text boxes together with a table packs them into the table (see Tables).</p>"),
         topic("Chips", "Mirror layout",
@@ -401,7 +402,7 @@ function buttonMapTopics() {
         topic("Drawing", "Rotate, flip and resize",
             "<p>Shapes, text boxes and pictures can be turned. A selected one has a round handle above it: drag it to turn the item to any angle, with Shift for steps (15° unless Editor options → Editing → Rotate snap says otherwise). The <b>Rotate and flip</b> section has an <b>Angle</b> to type, <b>Turn to</b> 0°, 90°, 180° or 270°, <b>Rotate −15°</b> and <b>Rotate +15°</b>, and <b>Flip horizontally</b> and <b>Flip vertically</b>. Properties takes an exact Angle.</p>"
             + "<p>Drag the square handles to resize. A turned item resizes along its own sides, and the opposite side stays where it is. From a corner, a shape keeps its proportions when Shift is held; a picture keeps them unless Shift is held.</p>"
-            + "<p><b>Several items together</b>: with two or more selected, a dashed box goes round them with one round handle above it. Drag it to turn them all about their middle (the angle shows beside the handle): shapes, text boxes and pictures turn, lines swing round with both ends, and chips, groups and tables move round but stay upright so they still read. Hotspots stay on the photo; locked items stay put. The right-click menu's <b>Turn together</b> turns them by a step, a quarter turn or a half turn. Turning there and back puts them where they were.</p>"
+            + "<p><b>Several items together</b>: with two or more selected, a dashed box goes round them with one round handle above it. Drag it to turn them all about their middle (the angle shows beside the handle): shapes, text boxes and pictures turn, lines swing round with both ends, and chips, groups and tables move round but stay upright so they still read. Hotspots stay on the photo; locked items stay put. The right-click menu's <b>Turn together</b> turns them by a step, a quarter turn or a half turn. Turning there and back puts them where they were. One selected group turns the same way (see Groups and 5-way formats).</p>"
             + "<p>Lines turn by moving their ends. Tables, chips and hotspots do not turn on their own.</p>"),
         topic("Drawing", "Transform: shape, tips, bend, skew",
             "<p>Right-click a shape, picture or text box → <b>Transform</b> → <b>Handles</b> picks which handles the selected item shows. Only the choices that suit the item appear, and the choice goes back to Resize when you select something else.</p>"
@@ -433,7 +434,7 @@ function buttonMapTopics() {
             + "</ul>"
             + "<p>Select a table with chips or text boxes on it and choose <b>Group selected</b>: they are packed into the table and move with it. <b>Break group</b> takes them out again; <b>Delete table</b> removes it.</p>"),
         topic("Drawing", "Pictures",
-            "<p>Draw → <b>Import picture…</b> adds a picture file on top of the photo. Edit → <b>Paste picture</b> (Ctrl+Shift+V), or <b>Paste picture</b> in the canvas's Draw section, adds the picture on the clipboard. Pictures are saved beside the device's module file.</p>"
+            "<p>Draw → <b>Import picture…</b> adds a picture file on top of the photo. Edit → <b>Paste picture</b> (Ctrl+Shift+V), or <b>Paste picture</b> in the canvas's Draw section, adds the picture on the clipboard: a copied picture, or picture files copied in File Explorer. <b>Ctrl+V</b> pastes a picture too when it was copied after your last chip copy. You can also <b>drag picture files</b> from File Explorer onto the map while editing: each lands where you drop it, at its own shape. Pictures are saved beside the device's module file.</p>"
             + "<p>A picture moves, resizes, turns and flips like a shape (see Rotate, flip and resize). Its <b>Picture</b> section has:</p>"
             + "<ul>"
             + "<li><b>Crop</b>: the handles turn blue and cut the picture instead of scaling it; what stays does not move. Esc or selecting something else ends it. <b>Reset crop</b> shows the whole picture again; Properties takes exact crop values.</li>"

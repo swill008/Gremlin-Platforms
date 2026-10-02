@@ -233,6 +233,44 @@ def main() -> None:
             print(f"ERROR plain-file: {plain.error().toString()}", flush=True)
         else:
             print(f"RESULT plain-file {value[0]} {str(untouched).lower()}", flush=True)
+        # Pictures: a copied picture file pastes with Ctrl+V's choice (the
+        # clipboard changed after the last chip copy), and a dropped file
+        # lands centred on the drop point with the picture's own shape.
+        wide = QtGui.QImage(400, 100, QtGui.QImage.Format.Format_RGB32)
+        wide.fill(QtGui.QColor("#336699"))
+        wide_path = out / "wide.png"
+        wide.save(str(wide_path))
+        QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win,
+            "_buttonMap.enterEdit(); _ed().copySelection(); 1",
+        ).evaluate()
+        QtTest.QTest.qWait(300)
+        mime = QtCore.QMimeData()
+        mime.setUrls([QtCore.QUrl.fromLocalFile(str(wide_path))])
+        QtGui.QGuiApplication.clipboard().setMimeData(mime)
+        QtTest.QTest.qWait(300)
+        pasted = QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win,
+            "var e = _ed(); var before = e.nodes.length; e.pasteClipboard();"
+            " var n = e.nodeAt(e.selectedId);"
+            " (e.nodes.length - before) + ' ' + (n ? n.shape : '-')",
+        ).evaluate()[0]
+        print(f"RESULT paste-picture {pasted}", flush=True)
+        dropped = QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win,
+            "var e = _ed(); var at = Qt.point(e.fxToX(0.3), e.fyToY(0.6));"
+            " var ok = _buttonMap.dropPictures(['"
+            + QtCore.QUrl.fromLocalFile(str(wide_path)).toString()
+            + "'], at.x, at.y, e);"
+            " var n = e.nodeAt(e.selectedId); var s = e.spaceRect();"
+            " var cx = n.fx + n.fw / 2; var cy = n.fy + n.fh / 2;"
+            " var shape = (n.fw * s.w) / (n.fh * s.h);"
+            " ok + ' ' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + shape.toFixed(1)",
+        ).evaluate()[0]
+        print(f"RESULT drop-picture {dropped}", flush=True)
+        QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win, "_buttonMap.discardEdit(); 1"
+        ).evaluate()
     for warning in warnings:
         print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)
     print("done", flush=True)
