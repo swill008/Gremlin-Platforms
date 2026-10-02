@@ -86,6 +86,10 @@ STEPS = [
      " var e = _field.ContextMenu.menu;"
      " e.popup(_field, 0, 0); String(e.visible)"),
     ("text-closed", "_field.ContextMenu.menu.close(); 'ok'"),
+    # Tooltips sit on the menus' surface.
+    ("tooltip",
+     "_tip.open(); String(Qt.colorEqual(_tip.background.color, Style.menuBg)"
+     " && Qt.colorEqual(_tip.background.border.color, Style.menuLine))"),
 ]
 
 

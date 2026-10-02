@@ -102,6 +102,11 @@ ApplicationWindow {
         direction: "source"
     }
 
+    ToolTip {
+        id: _tip
+        text: "A tip"
+    }
+
     // Shows a page's menu model.
     ContextMenu {
         id: _probe

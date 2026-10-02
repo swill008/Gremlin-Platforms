@@ -6,6 +6,7 @@ import QtQuick
 import QtQuick.Templates as T
 import QtQuick.Controls.Universal as U
 
+import Gremlin.Menus as Menus
 import Gremlin.Style
 
 T.ToolTip {
@@ -31,12 +32,9 @@ T.ToolTip {
         font: control.font
         wrapMode: Text.Wrap
         opacity: enabled ? 1.0 : 0.2
-        color: control.U.Universal.foreground
+        color: Style.menuText
     }
 
-    background: Rectangle {
-        color: (Style.isDarkMode ? control.U.Universal.chromeMediumLowColor : Style._light.popup)
-        border.color: control.U.Universal.chromeHighColor
-        border.width: Style.dp(1) // ToolTipBorderThemeThickness
-    }
+    // The menus' surface (Gremlin.Menus), so every popup matches.
+    background: Menus.MenuSurface {}
 }

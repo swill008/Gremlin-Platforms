@@ -143,3 +143,4 @@ def test_shared_menus_work(tmp_path: pathlib.Path) -> None:
         "Cut (Ctrl+X)|Copy (Ctrl+C)|Delete|-|Select All (Ctrl+A)"
     )
     assert results["text-menu-empty"] == "false"
+    assert results["tooltip"] == "true"

@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+import Gremlin.Menus
 import Gremlin.Style
 import "helpers.js" as Helpers
 
@@ -20,11 +21,8 @@ Popup {
     implicitWidth: maxWidth
     implicitHeight: _content.implicitHeight + 2 * padding
 
-    background: Rectangle {
-        color: Style.isDarkMode ? Universal.chromeMediumLowColor : Style._light.popup
-        border.color: Universal.chromeHighColor
-        border.width: Style.dp(1)
-    }
+    // The menus' surface (Gremlin.Menus), so every popup matches.
+    background: MenuSurface {}
 
     contentItem: ColumnLayout {
         id: _content
