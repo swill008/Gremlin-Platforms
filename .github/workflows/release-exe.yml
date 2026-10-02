@@ -31,23 +31,23 @@ jobs:
       - name: Pack portable zip
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\gremlin_platforms\* -DestinationPath dist\Gremlin-Platforms-R1-1.0.1.zip
+          Compress-Archive -Path dist\gremlin_platforms\* -DestinationPath dist\Gremlin-Platforms-R1-1.0.2.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: Gremlin-Platforms-R1-1.0.1
-          name: Gremlin-Platforms-R1 1.0.1
+          tag_name: Gremlin-Platforms-R1-1.0.2
+          name: Gremlin-Platforms-R1 1.0.2
           body: |
-            Portable standalone build Gremlin-Platforms-R1 1.0.1.
+            Portable standalone build Gremlin-Platforms-R1 1.0.2.
 
-            Removed the legacy Device Viewer. Grey light mode with dark mode as the default, Xbox Viewer picture, and fixes; see the release notes.
+            Output and input modules are now the firewall between hardware, wiring and the vJoy / Xbox drivers; see the release notes.
 
             Unzip anywhere (Documents, Desktop, etc). Do not put it in Program Files.
             Run gremlin_platforms.exe from the unzipped folder.
 
             Requires vJoy already installed.
             Unsigned build — SmartScreen may warn on first run.
-          files: dist/Gremlin-Platforms-R1-1.0.1.zip
+          files: dist/Gremlin-Platforms-R1-1.0.2.zip
           overwrite_files: true
           token: ${{ secrets.GITHUB_TOKEN }}
