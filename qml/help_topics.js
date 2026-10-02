@@ -72,130 +72,111 @@ function topics() {
             "<p>Hiding a card only removes it from Home. It does not hide the device from Windows or games; use HiDHide for that.</p>"
             + "<p>Hide a card with its <b>×</b> or <b>Hide device</b> in its menu. View → <b>Hidden devices…</b> lists hidden cards with <b>Unhide</b> and <b>Unhide all</b>.</p>"),
 
-        topic("Configuration", "Actions",
-            "<p>Configuration is where one physical input gets its actions. The actions are stored in the profile. They are written to disk when you save the profile.</p>"
-            + "<p>View → Configuration opens the focused device. Add Action on an input opens the editor for that input. Build the action, then press OK. The action appears under that input. Delete removes it. Close pane after OK closes the editor when OK succeeds.</p>"
-            + "<p>Leaving an input that has changes asks you to save or discard them. Save here means keep the action in the profile. It does not replace File → Save Profile.</p>"),
-        topic("Configuration", "Containers",
-            "<p>Some actions hold other actions. Chain runs the next action in a list on each press, then starts over. Condition runs its action only when the condition is true. Tempo uses one action for a short press and another for a long press. Double Tap uses one action for a single press and another for a quick second press. Smart Toggle turns a momentary press into on, then off.</p>"
-            + "<p>Add the container first, then add the actions it should run. A hat can use Hat as Buttons so each direction is its own button. Unmapped directions do nothing.</p>"),
+        topic("Configuration", "Adding actions",
+            "<p>The Configuration page lists the claimed inputs of one device and the actions on each. Open it by double-clicking a card, or View → <b>Configuration</b>. The arrows beside the title step to the previous or next device.</p>"
+            + "<ul>"
+            + "<li><b>Add Action</b> on an input opens the action editor beside it. Build the action and press <b>OK</b>. <b>Close pane after OK</b> closes the editor when OK succeeds.</li>"
+            + "<li><b>Delete</b> removes an action. Leaving an input with unsaved editor changes asks first.</li>"
+            + "<li>Actions belong to the mode shown in <b>Configuring mode</b> on the toolbar.</li>"
+            + "<li><b>Move empty to Unmapped</b> lists inputs with no actions under an Unmapped heading.</li>"
+            + "<li>OK keeps the action in the profile; File → <b>Save Profile</b> writes it to disk.</li>"
+            + "</ul>"
+            + "<p>An output device opens its <b>Output View</b> instead: a live view of what its output module sends, labelled “View only — driven by input module mappings.”</p>"),
         topic("Configuration", "Display options",
-            "<p>Display options change how this device’s configuration list looks. They do not change the actions. The look is stored in that device’s module file. Whether the panel is open is stored with the program, separately for each device.</p>"
-            + "<p>Show Editor opens the panel. Hide Editor closes it. The sections start closed. Open one heading, or use Open all. Changes show immediately and stay on the screen until Save View Settings. A successful save says “Saved to the module file.” The bottom of the window names the file.</p>"
-            + "<p>Reset View to Default is the red button. It returns the built-in look. It does not save. Save View Settings keeps that look. Copy View from… copies the display look from another input module onto this one. That copy is not kept until Save View Settings.</p>"
-            + "<p>Hide Editor, the panel’s close mark, or opening another device asks when there are unsaved changes. Save writes the module file. Discard returns to the last save. Leave the configuration page with Home. The first visit opens the panel. After that, the program restores whether you left it open or closed.</p>"
-            + "<p><b>Screen.</b> Sets the background of the configuration list. Choose a color, or choose an image. The image covers the color. Clear removes either one.</p>"
-            + "<p><b>Shown.</b> Chooses what appears on each row. Show child rows lists the actions under a control. Show live bars draws the axis position. Its color is Live bar. Show LED dots lights a button or hat while it is pressed. Show summary lists the actions in one line. Summary size sets the size of that line.</p>"
-            + "<p><b>List.</b> Sets the space around the whole list, and the space between groups. A group is one control and the actions under it. Space between groups is the gap before the next control.</p>"
-            + "<p><b>Group.</b> Sets the card around one control and its actions. Space inside the group is the gap between that control and its actions, and between the actions. Padding is the space around the card. Alignment places the card on the left, in the center, or on the right. Corner radius rounds the card. Color is the card background. It starts clear, so the card is invisible until you choose a color.</p>"
-            + "<p><b>Parent row.</b> Sets the control row itself. Height, padding, alignment, corner radius, and name width change that row. Row color is its fill. Line around the row is its outline. The child rows use that same outline.</p>"
-            + "<p><b>Child row.</b> Sets each action row under a control. It has its own height, padding, alignment, corner, name width, and row color. It does not have its own outline. It uses the line from Parent row.</p>"
-            + "<p><b>Text.</b> Sets the words. Parent text size and Bold names change the control name. Child text size changes the action names. Text color is the main words. Muted text is the quieter words, such as the type and the destination.</p>"
-            + "<p><b>Selection.</b> Sets the row you have selected. Fill of a selected row is its background. Line around a selected row replaces the normal outline while that row is selected.</p>"
-            + "<p><b>Editor.</b> Sets the action editor that opens beside a control. Alignment, padding, and the gap below the row place it. Corner radius, border width, and the border color draw its edge. Show accent bar adds a bar on the side. Accent width and Accent bar set that bar.</p>"
-            + "<p>An output device uses Output Module View — Display Editor. That panel has its own options for pads, hats, meters, and buttons. Reset View to Default, Copy View from…, and Save View Settings work the same way. The look is stored in that device’s module file.</p>"),
+            "<p>Display options change how a Configuration page or Output View looks, not what it does. The look is saved in that device's module file.</p>"
+            + "<p><b>Show Editor</b> opens the panel. Changes show at once and are kept only with <b>Save View Settings</b>. <b>Reset View to Default</b> (red) restores the built-in look; <b>Copy View from…</b> copies another device's look. Both still need Save View Settings. Closing the panel with unsaved changes asks first.</p>"
+            + "<p>Sections: <b>Screen</b> (background color or image), <b>Shown</b> (child rows, live bars, LED dots, summary), <b>List</b> and <b>Group</b> (spacing and group cards), <b>Parent row</b> and <b>Child row</b> (row size, padding, colors), <b>Text</b>, <b>Selection</b>, and <b>Editor</b> (the action editor beside a row). Use <b>Open all</b> / <b>Close all</b> to expand them.</p>"),
+
+        topic("Actions", "Choosing an action",
+            "<p><b>Add Action</b> lists the actions that suit the input type (axis, button, hat, or key). Container actions hold other actions; add the container first, then the actions inside it.</p>"
+            + "<p>Options → Action → <b>Action list</b> sets the order of that list and can hide actions you never use.</p>"),
+        topic("Actions", "Map to vJoy",
+            "<p>Sends the input to a vJoy axis, button, or hat. Pick the vJoy device (by output module name) and the output.</p>"
+            + "<ul><li>Axis: <b>Absolute</b>, or <b>Relative</b> with <b>Scaling</b> (the axis moves while the input is held off-center).</li>"
+            + "<li>Button: <b>Invert activation</b>.</li>"
+            + "<li>Only outputs claimed by the vJoy output module are sent. An unclaimed output shows <b>Output not claimed</b>.</li></ul>"),
+        topic("Actions", "Map to Xbox",
+            "<p>Sends the input to the virtual Xbox 360 controller (needs <b>ViGEmBus</b>). Every control is available; there is nothing to claim.</p>"
+            + "<ul><li><b>Xbox</b>: the Xbox output module (Xbox 360 Controller).</li>"
+            + "<li><b>Target</b>: any of the 22 controls — sticks, triggers, buttons, D-pad.</li>"
+            + "<li>Trigger: <b>Full axis</b> (−1 → 0%, +1 → 100%) or <b>Upper half</b> (center → 0%).</li>"
+            + "<li>Button: <b>Invert</b>.</li></ul>"),
+        topic("Actions", "Map to Logical Device",
+            "<p>Sends the input to a control on the Logical Device. Pick the logical control of the same type. Axis: <b>Absolute</b> or <b>Relative</b> with <b>Scaling</b>. Button: <b>Invert activation</b>. The Logical Device page's <b>Assign hardware</b> creates these actions for you.</p>"),
+        topic("Actions", "Map to Keyboard",
+            "<p>Holds the recorded keys while the input is held and releases them when it is released. Use <b>Record Keys</b> to set the <b>Key Combination</b>; modifiers are pressed first.</p>"),
+        topic("Actions", "Map to Mouse",
+            "<p><b>Mode</b>: <b>Button</b> clicks a recorded mouse button (Wheel Up/Down included, sent once per press). <b>Motion</b> moves the pointer: <b>Minimum speed</b>, <b>Maximum speed</b>, <b>Time to maximum speed</b>, and <b>Direction</b> for a button; <b>Control motion of</b> X Axis or Y Axis for an axis.</p>"),
+        topic("Actions", "Macro",
+            "<p>Plays a list of steps: Joystick, Keyboard, Logical Device, Mouse Button, Mouse Motion, Pause, and vJoy. Add them with <b>Add Action</b>, or <b>Record Inputs</b> (choose Keyboard, Mouse, Axis, Button, Hat, and Timings, then Start/Stop Recording).</p>"
+            + "<ul><li><b>Repeat Mode</b>: Single, Count, Toggle, or Hold, with a delay between repeats.</li>"
+            + "<li><b>Exclusive</b> waits for running macros, then blocks others; <b>Pre-Emptive</b> pauses them instead.</li></ul>"),
+        topic("Actions", "Response Curve",
+            "<p>Reshapes an axis before the actions after it. Choose <b>Piecewise Linear</b>, <b>Cubic Spline</b>, or <b>Cubic Bezier Spline</b>, drag the points or type <b>X</b>/<b>Y</b>, and set the <b>Deadzone</b>. <b>Invert Curve</b> flips it; <b>Symmetric</b> mirrors edits around the center.</p>"),
+        topic("Actions", "Split Axis",
+            "<p>Splits one axis at <b>Split axis at</b> into a lower/left part and an upper/right part, each with its own action list. Each part is rescaled to the full range.</p>"),
+        topic("Actions", "Merge Axis",
+            "<p>Combines two axes into one value for the actions in its <b>Actions</b> list. Pick or create a <b>Merge axis instance</b>, the <b>First axis</b> and <b>Second axis</b>, and the <b>Merge operation</b>: Average, Minimum, Maximum, Sum, Bidirectional, or Prefercenter.</p>"),
+        topic("Actions", "Dual Axis Deadzone",
+            "<p>Applies one deadzone to a pair of axes, such as a stick's X and Y: a circular <b>Inner</b> deadzone and a square <b>Outer</b> limit. Pick or create a <b>Deadzone instance</b> and the two axes; each axis has its own action list for the result.</p>"),
+        topic("Actions", "Axis Delta",
+            "<p>Turns axis movement into button presses. Each time the axis moves by <b>Change threshold</b>, it pulses the actions under <b>Positive change</b> or <b>Negative change</b>.</p>"),
+        topic("Actions", "Condition",
+            "<p>Runs one action list when its conditions are true and another when false. Choose <b>Any</b> or <b>All</b>, then <b>Add Condition</b>: Joystick, Keyboard, Current Input, vJoy, or Logical Device state.</p>"),
+        topic("Actions", "Chain",
+            "<p>Each press runs the next <b>Chain Sequence</b> in turn. After <b>Timeout (sec)</b> without a press it starts again at the first.</p>"),
+        topic("Actions", "Double Tap",
+            "<p>Separate actions for a single tap and a double tap within <b>Double-tap threshold (sec)</b>. <b>exclusive</b> waits to see if a second tap comes; <b>combined</b> runs the single-tap actions on every press.</p>"),
+        topic("Actions", "Tempo",
+            "<p>Separate actions for a <b>Short press</b> and a <b>Long press</b> (longer than <b>Long-press threshold (sec)</b>). <b>Activate on</b> press or release.</p>"),
+        topic("Actions", "Smart Toggle",
+            "<p>A quick press (released within <b>Toggle delay</b>) latches its actions on until the next press; a longer hold acts only while held.</p>"),
+        topic("Actions", "Hat as Buttons",
+            "<p>Gives each hat direction its own action list. <b>Button mode</b>: <b>4 way</b> or <b>8 way</b>.</p>"),
+        topic("Actions", "Change Mode",
+            "<p>Changes the running mode: <b>Switch</b> to a mode, <b>Previous</b> mode, <b>Unwind</b> one step, <b>Cycle</b> through a list, or <b>Temporary</b> (only while held).</p>"),
+        topic("Actions", "Load Profile",
+            "<p>Loads another profile file when the input fires. Set <b>Profile filename</b> or use <b>Select File</b>.</p>"),
+        topic("Actions", "Pause and Resume",
+            "<p><b>Pause</b>, <b>Resume</b>, or <b>Toggle</b> the processing of all actions.</p>"),
+        topic("Actions", "Play Sound",
+            "<p>Plays a WAV, MP3, or OGG file at the chosen <b>Volume</b>. Options → Action → Play-Sound sets what happens when sounds overlap.</p>"),
+        topic("Actions", "Text to Speech",
+            "<p>Speaks the text you type. Choose <b>Interrupt</b>, <b>Queue Front</b>, or <b>Queue Back</b>, and set <b>Volume</b>, <b>Rate</b>, and <b>Pitch</b>. The voice is set in Options → Action → Text-To-Speech.</p>"),
+        topic("Actions", "Run Command",
+            "<p>Starts a program: <b>Executable</b> plus <b>Arguments</b> (split on spaces; quote values that contain spaces). It runs with your own permissions.</p>"),
+        topic("Actions", "Description",
+            "<p>A note on the input. It does nothing when the input fires.</p>"),
+        topic("Actions", "Reference",
+            "<p>Reuses an existing action of the same input type. Pick it, then either share it (both inputs use the same action) or duplicate it (an independent copy).</p>"),
 
         topic("Logical Device", "Logical Device",
-            "<p>The Logical Device page is one device you build in the profile. A physical control can be mapped to a button, axis, or hat on this page. That logical control then has its own actions, in the same way a physical input does.</p>"
-            + "<p>Open it with Logical Device on the toolbar. Help → Logical Device opens this guide on this section. Configuring mode, at the top right, chooses the mode you are editing. The buttons, axes, hats, and groups stay when you change mode. The actions on a control belong to the selected mode.</p>"
-            + "<p>The system name is fixed. A button is always Button 1, an axis is Axis 1, and a hat is Hat 1. The number is the identity. A wire uses the type and the number, not a name you type.</p>"),
-        topic("Logical Device", "Names",
-            "<p>Right-click a hardware row and choose Rename to give it a second name. The name starts empty. The row then shows the system name and the name you typed. Hide system name, on that same prompt, shows only the name you typed. The system name is still the identity. Point at the name, and the system name appears, only when a second name is set.</p>"
-            + "<p>Clear name removes the second name. It appears in the menu only when the row has one. The system name shows again. Two rows may use the same second name. That does not join them.</p>"),
-        topic("Logical Device", "Groups",
-            "<p>A group is a folder. A control belongs to one group. The list shows a header for each group, with the name and the counts. The controls sit under that header. Ungrouped has a header too. It cannot be renamed, moved, or deleted.</p>"
-            + "<p>The caret on a header appears only when the group has rows under it. Click the caret to fold the group. The header stays. Click it again to show the rows.</p>"
-            + "<p>Shift-click hardware rows to select more than one. Right-click one of them and use Group as. Type a name and press Enter. Those rows move into that group. If you do this to one row that is already in a named group, the program asks before it moves the row.</p>"
-            + "<p>Move to group sends the selection to a group that already exists. New group creates an empty group. On a named group, Move group up and Move group down change its place. Rename group changes its name. Delete group does not delete the controls. They go to Ungrouped.</p>"),
-        topic("Logical Device", "Adding controls",
-            "<p>Right-click the list. Add Button, Add Axis, and Add Hat each have a count. It starts at 1. Type a number, or use the arrows. The highest count is 180. Press Enter, or click the words, to add that many. They are created in Ungrouped and take the next free numbers of that type. The menu stays open until you click away.</p>"),
-        topic("Logical Device", "The menu",
-            "<p>The right-click menu shows only the actions that apply to what you clicked. It does not grey out the rest.</p>"
-            + "<p>On empty space the menu has Add Button, Add Axis, Add Hat, New group, Order by system name, Order by your name, Order group names A to Z, and Display. Undo and Redo appear only when there is a change to undo or redo.</p>"
-            + "<p>On a hardware row, those stay, and the row actions appear: Add Action, Assign hardware, Rename, Group as, Move to group, and Delete. Clear name appears only when that row has a second name. Delete removes the control and every hardware link that points at it.</p>"
-            + "<p>On a named group, the group actions appear: Move group up, Move group down, Rename group, and Delete group.</p>"
-            + "<p>While Toggle is on, the edit actions are hidden. Display stays.</p>"),
-        topic("Logical Device", "Assign hardware",
-            "<p>Assign hardware opens its own window for the hardware row you clicked. It lists input devices. Search limits that list. The window already shows only the same kind of control: buttons for a button, axes for an axis, and hats for a hat. The keyboard is included. The logical device is not. A vJoy device is included only while its Settings switch is Input.</p>"
-            + "<p>Each control has a checkbox. The device row checks or clears every control under it. A check adds Map to Logical Device on that physical control. It does not remove that control’s other actions. The logical row then shows Written by, with the device and the control. An axis also shows absolute or relative, and a scale. A button shows Invert. Unchecking removes only that one link.</p>"),
-        topic("Logical Device", "Actions",
-            "<p>Add Action adds one action for the current mode and opens the action editor beside the list. It is the same sequence editor used on a physical input. Press OK to keep the action in the profile. That does not replace File → Save Profile. Close pane after OK closes the editor when OK succeeds. The close mark asks when the editor has changes that are not saved.</p>"
-            + "<p>The caret on a hardware row appears only when a list opens under it: an action, or a second Written by line. The first Written by line is already on the row, so it does not add a caret. Click the caret to show or hide that list. An action row shows the action name and, under it, the target. The row grows so that target is not on the bottom edge. The target uses the same name as the editor, so an Xbox A shows as A. An action row has nothing under it, so it has no caret. Click an action row to open it in the editor.</p>"),
-        topic("Logical Device", "Find, order, and moving",
-            "<p>Find limits the list. Type a system name, your name, or a group name. All types can be limited to Buttons, Axes, or Hats. Ungrouped shows only rows in Ungrouped. No hardware writer shows rows with no physical control mapped to them. No actions in this mode shows rows with no action in the current mode. Clear turns the filters off. A hidden row is not deleted.</p>"
-            + "<p>Order by system name sorts the controls inside each group by number, with buttons, then axes, then hats. Order by your name sorts by the second name, and uses the system name when there is no second name. Order group names A to Z sorts the named groups. Ungrouped stays first.</p>"
-            + "<p>The grey box at the left of a hardware row or a group header is the drag handle. The type icon sits to the right of that box. Drag a control onto another control. Drop on the top half to place it before that control, or on the bottom half to place it after. Drop on a group header to put it in that group. Drag a group header to move that group.</p>"),
+            "<p>The Logical Device is a virtual device inside the program. Its buttons, axes, and hats are fed by physical inputs (<b>Assign hardware</b> or Map to Logical Device) and have actions of their own. Use it to combine several physical controls before sending them on.</p>"
+            + "<p>Open it with <b>Logical Device</b> on the toolbar or Tools → Mapping → Logical Device. Controls are identified by type and number (Button 1, Axis 1, Hat 1). <b>Rename</b> adds your own name; <b>Hide system name</b> shows only yours; <b>Clear name</b> removes it.</p>"
+            + "<p>Editing is locked while the profile runs (“Running”).</p>"),
+        topic("Logical Device", "Controls, groups, and the menu",
+            "<ul>"
+            + "<li>Right-click empty space: <b>Add Button</b>, <b>Add Axis</b>, <b>Add Hat</b> (with a count up to 180), <b>New group</b>, the three <b>Order</b> commands, Undo/Redo, and <b>Display</b>.</li>"
+            + "<li>Right-click a control: <b>Add Action</b>, <b>Assign hardware</b>, <b>Rename</b>, <b>Group as</b>, <b>Move to group</b>, <b>Delete</b>. Shift-click selects several.</li>"
+            + "<li>Right-click a group: move it up or down, rename, or delete it (its controls go to Ungrouped). Click a group header to fold it.</li>"
+            + "<li>Drag a control by its grey handle onto another control (top half = before, bottom half = after) or onto a group header. Drag a header to move the group.</li>"
+            + "<li><b>Find</b> filters by name, type, Ungrouped, <b>No hardware writer</b>, or <b>No actions in this mode</b>; <b>Clear</b> resets it.</li>"
+            + "<li>Undo/Redo: Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z).</li>"
+            + "</ul>"),
+        topic("Logical Device", "Assign hardware and actions",
+            "<p><b>Assign hardware</b> lists claimed physical controls of the same type (keyboard keys for a button; OSC too). Tick a control to add a Map to Logical Device action to it in the current mode; untick to remove that link. <b>Search</b> filters the list.</p>"
+            + "<p>The control then shows <b>Written by</b> with the source. On that line an axis has Absolute/Relative and a scale; a button has <b>Invert</b>.</p>"
+            + "<p><b>Add Action</b> opens the action editor beside the list, the same editor as on the Configuration page. Click an action row to edit it; right-click it to delete it.</p>"),
         topic("Logical Device", "Display",
-            "<p>Show Editor, to the right of Clear, opens Logical Device — Display Editor on the right. The button then says Hide Editor. That choice is kept. Display, at the bottom of the right-click menu, opens the same panel. It changes how this page looks. It does not change the controls or the actions. The sections start closed. Open one heading, or use Open all and Close all.</p>"
-            + "<p>Changes show immediately. They are kept only when you press Save View Settings. A save says “Saved for this page.” The look is stored with the program, for this page. It is not in the profile and not in a module file.</p>"
-            + "<p>Reset View to Default is the red button. It returns the built-in look, which is the look this page opened with. It does not save. The close mark asks when there are unsaved changes. Save writes them. Discard returns to the last save.</p>"
-            + "<p><b>Shown.</b> Show action rows lists the actions under a control. Show written by lists the physical control on the row. Written-by size sets the size of that line.</p>" + "<p><b>Handles.</b> These change the arrow and the drag box only. They do not change the parent row or the action row. An action row has no arrow and no drag box. Caret size and Caret color change the arrow. The color starts the same as the text and uses the same chooser. Pad width, pad height, Pad color, and Pad corner change the drag box. The corner starts slightly round. The extra click area around the pad stays.</p>"
-            + "<p><b>List.</b> Space between rows is the gap between every row. Padding is the space around the list. Same on all sides uses one size. Each side sets top, right, bottom, and left.</p>"
-            + "<p><b>Group.</b> Space inside the group is the gap under each row in the group. Padding, corner radius, and color change the group header.</p>"
-            + "<p><b>Parent row.</b> Height is the smallest a hardware row will be. The row grows when the caret, the drag pad, the name, the written-by line, or the padding needs more room. A group header and an action row do the same. A group header is at least 40. Padding, corner radius, and row color change that row.</p>"
-            + "<p><b>Action row.</b> Height is the smallest an action row will be. It grows to fit the action name and the target. Indent past parent is how far that row sits to the right of the hardware row. Padding, corner radius, and row color are its own. An extra Written by row uses this same box.</p>"
-            + "<p><b>Text.</b> Parent text size and Bold names change the hardware name. Group text size changes the header. Action name size changes the action name. Action target size and Action target change the line under it, such as the Xbox button. Text color is the main words. Muted text is the quieter line, such as Written by and the group counts.</p>"
-            + "<p><b>Selection.</b> Fill of a selected row is its background. Line around a selected row is its outline while it is selected.</p>"),
-        topic("Actions", "Map to Keyboard",
-            "<p>Sends one or more keyboard keys when the input fires.</p>"
-            + "<p>Choose the key, and whether the key is held while the input is held or tapped once.</p>"),
-        topic("Actions", "Map to Mouse",
-            "<p>Moves the mouse, clicks a mouse button, or turns the wheel.</p>"
-            + "<p>Choose button, motion, or wheel, then the amount.</p>"),
-        topic("Actions", "Map to vJoy",
-            "<p>Sends the input to a vJoy axis, button, or hat. vJoy must already be installed. This program does not ship vJoy.</p>"
-            + "<p>Choose the vJoy device and the output. Axes can be scaled. Buttons follow the physical press. Use the vJoy Viewer to watch the result.</p>"),
-        topic("Actions", "Map to Logical Device",
-            "<p>Sends the input to a logical output device created in this program.</p>"
-            + "<p>Choose the logical device and the control on it.</p>"),
-        topic("Actions", "Map to Xbox",
-            "<p>Sends the input to a virtual Xbox controller. That output needs its own driver. This program does not ship that driver.</p>"
-            + "<p>Choose the Xbox control. Use the Xbox Viewer to confirm the output while Gremlin-Platforms is on.</p>"),
-        topic("Actions", "Macro",
-            "<p>Plays a sequence of keys, buttons, mouse moves, and pauses.</p>"
-            + "<p>Record or insert the steps. Set whether a new press waits, interrupts, or is ignored while the macro is still running.</p>"),
-        topic("Actions", "Response Curve",
-            "<p>Changes how an axis travels from one end to the other. The curve can be straight, bent, or inverted.</p>"
-            + "<p>Add it to an axis. Edit the curve. Later actions and the mapped device see the curved output.</p>"),
-        topic("Actions", "Split Axis",
-            "<p>Turns one axis into two ranges, usually the two directions of a throttle or a split stick.</p>"
-            + "<p>Set the center, and which side goes to which output.</p>"),
-        topic("Actions", "Merge Axis",
-            "<p>Combines two inputs into one axis.</p>"
-            + "<p>Choose the two sources and how they are combined.</p>"),
-        topic("Actions", "Axis Delta",
-            "<p>Nudges an axis by a step instead of jumping to an absolute position. Use it when a button should trim an axis.</p>"
-            + "<p>Choose the axis and the size of each step.</p>"),
-        topic("Actions", "Dual Axis Deadzone",
-            "<p>Applies one deadzone to a pair of axes, such as a stick’s X and Y, so a small circular or square center is ignored.</p>"
-            + "<p>Set the size and the shape.</p>"),
-        topic("Actions", "Change Mode",
-            "<p>Switches the active mode while the input is held, or switches and stays.</p>"
-            + "<p>Choose the mode. Modes are created in Tools → Mapping → Manage Modes. Only the current mode’s actions run.</p>"),
-        topic("Actions", "Load Profile",
-            "<p>Loads another profile when the input fires.</p>"
-            + "<p>Choose the profile file.</p>"),
-        topic("Actions", "Pause and Resume",
-            "<p>Pauses Gremlin-Platforms, resumes it, or toggles that state from a button.</p>"
-            + "<p>Choose pause, resume, or toggle.</p>"),
-        topic("Actions", "Play Sound",
-            "<p>Plays a sound file when the input fires.</p>"
-            + "<p>Choose the file.</p>"),
-        topic("Actions", "Text to Speech",
-            "<p>Speaks a sentence when the input fires.</p>"
-            + "<p>Type the sentence. The voice is chosen in Options.</p>"),
-        topic("Actions", "Run Command",
-            "<p>Starts a program or command when the input fires.</p>"
-            + "<p>Choose the program. It runs on your machine with your own permissions.</p>"),
-        topic("Actions", "Description",
-            "<p>Stores a note on the input. It does not change the output.</p>"
-            + "<p>Type the note so you can remember what the binding is for.</p>"),
-        topic("Actions", "Reference",
-            "<p>Points at another action so you do not have to rebuild it.</p>"
-            + "<p>Choose the action it should follow.</p>"),
+            "<p><b>Show Editor</b> (or <b>Display</b> in the menu) opens the Logical Device display editor. Its sections — Shown, Handles, List, Group, Parent row, Action row, Text, Selection — change how the page looks. Changes are kept with <b>Save View Settings</b> (saved for this page, in the program settings); <b>Reset View to Default</b> restores the built-in look.</p>"),
         topic("Modes", "Modes",
-            "<p>A mode is a set of bindings. Only the current mode’s actions run. The same button can do different work in another mode.</p>"
-            + "<p>Tools → Mapping → Manage Modes creates, renames, and removes modes. Configuring mode, in the toolbar, chooses which map you are editing. Executing mode, at the bottom, chooses which map runs. Change Mode switches that running mode from a button. Profile Settings chooses the mode used when the program is turned on. Use Heuristic picks the first mode, in alphabetical order, that has no parent. Last Active picks the mode this profile was running the last time it was on. Save the profile to keep the modes.</p>"),
+            "<p>A mode is a set of actions. The same button can do different things in different modes. A mode can <b>inherit</b> from a parent: anything it does not map itself uses the parent's actions.</p>"
+            + "<ul>"
+            + "<li><b>Manage Modes</b> (toolbar, or Tools → Mapping): add, rename, and remove modes, and set <b>Inherits from</b>.</li>"
+            + "<li><b>Configuring mode</b> on the toolbar picks the mode you edit and the mode Toggle starts in. The bottom bar shows the <b>Executing mode</b>.</li>"
+            + "<li>The <b>Change Mode</b> action switches mode while the profile runs.</li>"
+            + "<li>Modes are part of the profile; save the profile to keep them.</li>"
+            + "</ul>"),
         topic("Tools", "Button Map",
             "<p>Button Map is a picture of one device, with a chip on each control. Moving a chip changes the picture, not the action bound to that control. The same layout is used live, and a press still lights the matching chip.</p>"
             + "<p>Tools → Mapping → Button Map opens a blank map. Choose the device from the menu. Right-click a device card and choose Button Map to open that device. File → Edit Mapping starts an edit. Drag chips from the pool onto the photo. Drag a chip to move it, and drag its dot to move the contact. Scroll to zoom. Drag with the middle button to pan.</p>"
