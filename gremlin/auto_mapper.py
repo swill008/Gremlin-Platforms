@@ -26,6 +26,7 @@ from gremlin import (
     types,
 )
 from gremlin.modules import auto_map
+from gremlin.modules.claim import claim_ids
 
 
 @dataclasses.dataclass
@@ -35,6 +36,29 @@ class AutoMapperOptions:
     mode: str = "Default"
     repeat_vjoy_inputs: bool = False
     overwrite_used_inputs: bool = False
+    # Claim the matching outputs on the output module first. Off by default:
+    # the user claims outputs; the Auto Mapper maps within what is claimed.
+    claim_outputs: bool = False
+
+
+def _ranges(numbers: list[int]) -> str:
+    """1, 2, 3, 7 -> "1-3, 7"."""
+    out: list[str] = []
+    values = sorted(set(numbers))
+    start = prev = None
+    for value in values + [None]:
+        if start is None:
+            start = prev = value
+            continue
+        if value is not None and value == prev + 1:
+            prev = value
+            continue
+        out.append(f"{start}" if start == prev else f"{start}-{prev}")
+        start = prev = value
+    return ", ".join(out)
+
+
+_PLURAL = {"axis": "axes", "button": "buttons", "hat": "hats"}
 
 
 class AutoMapper:
@@ -44,6 +68,7 @@ class AutoMapper:
         self._profile = profile
         self._created_mappings: list[map_to_vjoy.MapToVjoyData] = []
         self._num_retained_bindings = 0
+        self._skipped: dict[tuple[str, str, str], list[int]] = {}
 
     @classmethod
     def from_current_profile(cls) -> Self:
@@ -112,6 +137,7 @@ class AutoMapper:
             return "No output module selected"
         self._created_mappings = []
         self._num_retained_bindings = 0
+        self._skipped = {}
         if options.repeat_vjoy_inputs:
             dest_cycle = itertools.cycle(dests)
             pairs = [(source, next(dest_cycle)) for source in sources]
@@ -125,29 +151,25 @@ class AutoMapper:
             claim = source.get("claim") or {}
             if not (claim.get("buttons") or claim.get("axes") or claim.get("hats")):
                 continue
-            auto_map.merge_claim_into_output(dest, claim)
+            if options.claim_outputs:
+                auto_map.merge_claim_into_output(dest, claim)
             limits = self._vjoy_limits(int(dest["vjoyId"]))
             vjoy_id = int(dest["vjoyId"])
+            out_claim = dest.get("claim") or {}
             jobs = (
-                (
-                    types.InputType.JoystickAxis,
-                    claim.get("axes") or [],
-                    limits["axes"],
-                ),
-                (
-                    types.InputType.JoystickButton,
-                    claim.get("buttons") or [],
-                    limits["buttons"],
-                ),
-                (
-                    types.InputType.JoystickHat,
-                    claim.get("hats") or [],
-                    limits["hats"],
-                ),
+                (types.InputType.JoystickAxis, "axis", limits["axes"]),
+                (types.InputType.JoystickButton, "button", limits["buttons"]),
+                (types.InputType.JoystickHat, "hat", limits["hats"]),
             )
-            for input_type, ids, allowed in jobs:
-                for hid in sorted(int(x) for x in ids):
-                    if hid not in allowed:
+            for input_type, kind, on_driver in jobs:
+                claimed_out = set(claim_ids(out_claim, kind))
+                for hid in claim_ids(claim, kind):
+                    # The output module is the limit; the driver must have it too.
+                    if hid not in on_driver:
+                        self._skip(dest, kind, "not on the vJoy device", hid)
+                        continue
+                    if hid not in claimed_out:
+                        self._skip(dest, kind, "not claimed by the output module", hid)
                         continue
                     item = self._profile.get_input_item(
                         guid,
@@ -169,8 +191,25 @@ class AutoMapper:
                     self._create_new_mapping(item, target)
                     used.add(target)
         if not self._created_mappings and not self._num_retained_bindings:
-            return "Input module has no selected buttons or axes that this output module can take."
-        return self._create_mappings_report()
+            return " ".join(
+                [
+                    "Input module has no selected buttons or axes that this "
+                    "output module can take.",
+                    *self._skipped_report(),
+                ]
+            )
+        return " ".join([self._create_mappings_report(), *self._skipped_report()])
+
+    def _skip(self, dest: dict, kind: str, reason: str, hid: int) -> None:
+        key = (str(dest.get("name") or f"vJoy {dest.get('vjoyId')}"), kind, reason)
+        self._skipped.setdefault(key, []).append(int(hid))
+
+    def _skipped_report(self) -> list[str]:
+        """ "Skipped vJoy 3 buttons 57-126: not claimed by the output module." """
+        return [
+            f"Skipped {name} {_PLURAL.get(kind, kind)} {_ranges(ids)}: {reason}."
+            for (name, kind, reason), ids in sorted(self._skipped.items())
+        ]
 
     def _source_uuid(self, source: dict):
         text = str(source.get("guid") or "").strip()

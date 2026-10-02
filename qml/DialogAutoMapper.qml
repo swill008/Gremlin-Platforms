@@ -179,6 +179,17 @@ ApplicationWindow {
         }
 
         RowLayout {
+            Switch {
+                id: _claimOutputs
+
+                text: "Also claim the matching outputs on the output module"
+                checked: false
+                ToolTip.visible: hovered
+                ToolTip.text: "Off: map only to outputs the output module already claims. On: claim the outputs the mappings need on the output module first."
+            }
+        }
+
+        RowLayout {
             Layout.topMargin: Style.dp(10)
 
             Button {
@@ -190,7 +201,8 @@ ApplicationWindow {
                         selectedInputModules,
                         selectedOutputModules,
                         _overwriteNonEmpty.checked,
-                        _repeatDevices.checked
+                        _repeatDevices.checked,
+                        _claimOutputs.checked
                     )
 
                     selectedInputModules = ({})
@@ -202,6 +214,7 @@ ApplicationWindow {
                 id: _statusMessage
 
                 Layout.fillWidth: true
+                wrapMode: Text.WordWrap
                 Layout.leftMargin: Style.dp(10)
                 Layout.rightMargin: Style.dp(10)
 
@@ -217,7 +230,10 @@ ApplicationWindow {
                         + "Mode selection defaults to the default mode, change this if required for another mode.\n\n"
                         + "This tool does not match devices by name. It uses the order shown in the lists. The first checked input is wired to the first checked output. The second input is wired to the second output.\n\n"
                         + "Overwrite used inputs: Replaces wires that already exist on those controls in the selected mode. Leave it off, and those wires stay as they are.\n\n"
-                        + "Combine onto Selected Outputs: This should stay off when each input should have its own output. Turn it on when you check more inputs than outputs."
+                        + "Combine onto Selected Outputs: This should stay off when each input should have its own output. Turn it on when you check more inputs than outputs." + "
+
+"
+                        + "Also claim the matching outputs: Off, mappings are made only to outputs the output module already claims; the rest are listed as skipped. On, the outputs the mappings need are claimed on the output module first."
                     delay: 500
                 }
             }

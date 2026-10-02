@@ -738,3 +738,14 @@ Decisions: input highlighting and "Listen for input" stay as they are (no status
 | P3c | DONE 3ff17f7e | Merge Axis, Dual Axis Deadzone, Condition and script joy/keyboard read through the input modules; unclaimed inputs read neutral. |
 | P3d | DONE (this commit) | Module file lookup: saved link, then the file bound to this exact device, then name. A renamed device keeps its file; a stale id never pulls in another device's file. |
 | P3-HANDS-ON | [U] | With Gremlin active: a keyboard binding on a claimed key fires; untick that key in Configure Input Module (Keyboard), save, re-activate: it no longer fires, and typing in Notepad still works. |
+
+## Phase 4 (wiring speaks in output modules, 2026-10-01)
+
+Decisions: Auto Mapper claim switch, off by default (1A); one Xbox pad for now (to-do 16); output names shown in brackets in long labels (3A).
+
+| ID | Result | Notes |
+|---|---|---|
+| P4a | DONE d2ccb0a8 | One destination label (gremlin/modules/wiring.py): "vJoy 3 · Button 5 (Fire)", chips "vJoy 3 B5"; "(not claimed)" / "(no output module)" flags. Configuration page, Button Map chips, Device Pack export, Xbox Viewer, Condition. |
+| P4b | DONE 8842c54e | Map to Xbox lists Xbox output modules by name; a saved pad without one stays listed, marked. Xbox page shows its module and pad (no Pad box). |
+| P4c | DONE (this commit) | Auto Mapper maps only to claimed outputs (and ones the vJoy device has), reports skips ("Skipped vJoy 3 buttons 57-58: not claimed by the output module."); "Also claim the matching outputs" switch, off by default. Sandbox: NXT -> vJoy 3 made 59 mappings, nothing skipped. |
+| P4-HANDS-ON | [U] | Your profile: the NXT 57-126 -> vJoy 3 wires show "(not claimed)" on the Button Map chips / card hints. |
