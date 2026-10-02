@@ -5,6 +5,7 @@
     "drawTool": "",
     "histAt": 0,
     "histLen": 1,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -1305,6 +1306,7 @@
     "drawTool": "",
     "histAt": 0,
     "histLen": 1,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -2607,6 +2609,7 @@
     "drawTool": "",
     "histAt": 1,
     "histLen": 2,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -3909,6 +3912,7 @@
     "drawTool": "",
     "histAt": 5,
     "histLen": 6,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -5211,6 +5215,7 @@
     "drawTool": "ellipse",
     "histAt": 6,
     "histLen": 7,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -6530,6 +6535,7 @@
     "drawTool": "rect",
     "histAt": 8,
     "histLen": 9,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -7866,6 +7872,7 @@
     "drawTool": "rect",
     "histAt": 9,
     "histLen": 10,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -9202,6 +9209,7 @@
     "drawTool": "rect",
     "histAt": 10,
     "histLen": 11,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -10538,6 +10546,7 @@
     "drawTool": "rect",
     "histAt": 13,
     "histLen": 14,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -11874,6 +11883,7 @@
     "drawTool": "text",
     "histAt": 14,
     "histLen": 15,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -13239,6 +13249,7 @@
     "drawTool": "table",
     "histAt": 15,
     "histLen": 16,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -14637,8 +14648,4212 @@
   {
    "state": {
     "drawTool": "",
+    "histAt": 15,
+    "histLen": 16,
+    "menu": 12,
+    "nodes": [
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.32727,
+      "chipFy": 0.01378,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID0",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "hollow",
+      "hotFx": 0.44788,
+      "hotFy": 0.17467,
+      "hotSize": 28,
+      "id": "ID0",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID0",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID0_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.42,
+          "fy": 0.12289
+         }
+        ],
+        "to": {
+         "id": "ID0",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 11",
+        "hwId": 11,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 13",
+        "hwId": 13,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 14",
+        "hwId": 14,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 12",
+        "hwId": 12,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 15",
+        "hwId": 15,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.40722,
+      "ny": 0.17422,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.42,
+        "fy": 0.12289
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.30175,
+      "chipFy": 0.34933,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID1",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "hollow",
+      "hotFx": 0.44275,
+      "hotFy": 0.23244,
+      "hotSize": 28,
+      "id": "ID1",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID1",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID1_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.437,
+          "fy": 0.33089
+         }
+        ],
+        "to": {
+         "id": "ID1",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 6",
+        "hwId": 6,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 8",
+        "hwId": 8,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 9",
+        "hwId": 9,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 7",
+        "hwId": 7,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 10",
+        "hwId": 10,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.39812,
+      "ny": 0.232,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.437,
+        "fy": 0.33089
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.34626,
+      "chipFy": 0.52645,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.41625,
+      "hotFy": 0.25556,
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID2",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID2",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID2_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.38501,
+          "fy": 0.26698
+         }
+        ],
+        "to": {
+         "id": "ID2",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.34854,
+      "ny": 0.25467,
+      "pin": "right",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.38501,
+        "fy": 0.26698
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.3755,
+      "chipFy": 0.42396,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotColor": "#ff4f03",
+      "hotFill": "hollow",
+      "hotFx": 0.44825,
+      "hotFy": 0.37978,
+      "hotSize": 28,
+      "id": "ID3",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID3",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID3_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.4385,
+          "fy": 0.44778
+         }
+        ],
+        "to": {
+         "id": "ID3",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 16",
+        "hwId": 16,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 18",
+        "hwId": 18,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 19",
+        "hwId": 19,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 17",
+        "hwId": 17,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 20",
+        "hwId": 20,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.40631,
+      "ny": 0.38044,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.4385,
+        "fy": 0.44778
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.40987,
+      "chipFy": 0.6365,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 1",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.47925,
+      "hotFy": 0.65711,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 1,
+      "id": "ID4",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID4",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID4_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.44456,
+          "fy": 0.65181
+         }
+        ],
+        "to": {
+         "id": "ID4",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "left",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.44456,
+        "fy": 0.65181
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.465,
+      "chipFy": 0.51,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 2",
+      "from": {
+       "id": "ID5",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.4795,
+      "hotFy": 0.656,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 2,
+      "id": "ID5",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID5",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID5_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.47678,
+          "fy": 0.593
+         }
+        ],
+        "to": {
+         "id": "ID5",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "bottom",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.47678,
+        "fy": 0.593
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID5",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.60213,
+      "chipFy": 0.84089,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 3",
+      "from": {
+       "id": "ID6",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.5995,
+      "hotFy": 0.78178,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID6",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID6",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID6_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.60534,
+          "fy": 0.81133
+         }
+        ],
+        "to": {
+         "id": "ID6",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.60534,
+        "fy": 0.81133
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID6",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.61901,
+      "chipFy": 0.2484,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 4",
+      "from": {
+       "fx": 0.56178,
+       "fy": 0.25109,
+       "type": "free"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotColor": "#fda500",
+      "hotFx": 0.627,
+      "hotFy": 0.26,
+      "hotSize": 4,
+      "hwId": 4,
+      "id": "ID7",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "fx": 0.56178,
+         "fy": 0.25109,
+         "type": "free"
+        },
+        "id": "ID7_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.5965,
+          "fy": 0.25711
+         }
+        ],
+        "to": {
+         "id": "ID7",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.61462,
+      "ny": 0.24889,
+      "pin": "left",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.5965,
+        "fy": 0.25711
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID7",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.61699,
+      "chipFy": 0.29311,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "ID8",
+      "from": {
+       "id": "ID8",
+       "pin": "left",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58913,
+      "hotFy": 0.28578,
+      "hotSize": 4,
+      "id": "ID8",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID8",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID8_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.60037,
+          "fy": 0.30978
+         }
+        ],
+        "to": {
+         "id": "ID8",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 21",
+        "hwId": 21,
+        "ox": 0,
+        "oy": 0,
+        "role": "push"
+       },
+       {
+        "friendly": "Button 22",
+        "hwId": 22,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "pull"
+       }
+      ],
+      "nx": 0.66328,
+      "ny": 0.28578,
+      "pin": "left",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.60037,
+        "fy": 0.30978
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID8",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.61824,
+      "chipFy": 0.36104,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "ID9",
+      "from": {
+       "id": "ID9",
+       "pin": "left",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.56912,
+      "hotFy": 0.30533,
+      "hotSize": 4,
+      "id": "ID9",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID9",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID9_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.59975,
+          "fy": 0.36778
+         }
+        ],
+        "to": {
+         "id": "ID9",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 1",
+        "hwId": 1,
+        "ox": 0,
+        "oy": 0,
+        "role": "half"
+       },
+       {
+        "friendly": "Button 2",
+        "hwId": 2,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "full"
+       }
+      ],
+      "nx": 0.62644,
+      "ny": 0.30978,
+      "pin": "left",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.59975,
+        "fy": 0.36778
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID9",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.58868,
+      "chipFy": 0.42453,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 5",
+      "from": {
+       "fx": 0.55726,
+       "fy": 0.42289,
+       "type": "free"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58813,
+      "hotFy": 0.43622,
+      "hotSize": 4,
+      "hwId": 5,
+      "id": "ID10",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "fx": 0.55726,
+         "fy": 0.42289,
+         "type": "free"
+        },
+        "id": "ID10_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.57269,
+          "fy": 0.42956
+         }
+        ],
+        "to": {
+         "id": "ID10",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.60961,
+      "ny": 0.42222,
+      "pin": "left",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.57269,
+        "fy": 0.42956
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID10",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.49635,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 28",
+      "from": {
+       "id": "ID11",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.53912,
+      "hotFy": 0.714,
+      "hotSize": 4,
+      "hwId": 28,
+      "id": "ID11",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID11",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID11_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.52617,
+          "fy": 0.67525
+         }
+        ],
+        "to": {
+         "id": "ID11",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.57232,
+      "ny": 0.71556,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.52617,
+        "fy": 0.67525
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID11",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.53168,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 27",
+      "from": {
+       "id": "ID12",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.56363,
+      "hotFy": 0.70044,
+      "hotSize": 4,
+      "hwId": 27,
+      "id": "ID12",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID12",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID12_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.55471,
+          "fy": 0.66847
+         }
+        ],
+        "to": {
+         "id": "ID12",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.6178,
+      "ny": 0.70044,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.55471,
+        "fy": 0.66847
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID12",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.56581,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 29",
+      "from": {
+       "id": "ID13",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58913,
+      "hotFy": 0.69444,
+      "hotSize": 4,
+      "hwId": 29,
+      "id": "ID13",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID13",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID13_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.58453,
+          "fy": 0.66547
+         }
+        ],
+        "to": {
+         "id": "ID13",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.66237,
+      "ny": 0.69511,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.58453,
+        "fy": 0.66547
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID13",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.56274,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID14",
+      "from": {
+       "id": "ID14",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.57563,
+      "hotFy": 0.80489,
+      "hotSize": 4,
+      "id": "ID14",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID14",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID14_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.57778,
+          "fy": 0.82667
+         }
+        ],
+        "to": {
+         "id": "ID14",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 25",
+        "hwId": 25,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 26",
+        "hwId": 26,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       }
+      ],
+      "nx": 0.6369,
+      "ny": 0.79511,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.57778,
+        "fy": 0.82667
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID14",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.32727,
+      "chipFy": 0.17733,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Axis 4",
+      "from": {
+       "id": "ID15",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.35613,
+      "hotFy": 0.18289,
+      "hotSize": 4,
+      "hwId": 4,
+      "id": "ID15",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID15",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID15_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.34623,
+          "fy": 0.18011
+         }
+        ],
+        "to": {
+         "id": "ID15",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.68239,
+      "ny": 0.78756,
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.34623,
+        "fy": 0.18011
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID15",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.6335,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID16",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.62787,
+      "hotFy": 0.778,
+      "hotSize": 4,
+      "id": "ID16",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID16",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID16_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.63928,
+          "fy": 0.81322
+         }
+        ],
+        "to": {
+         "id": "ID16",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 23",
+        "hwId": 23,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 24",
+        "hwId": 24,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       }
+      ],
+      "nx": 0.73378,
+      "ny": 0.77778,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.63928,
+        "fy": 0.81322
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.465,
+      "chipFy": 0.6565,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 6",
+      "from": {
+       "id": "ID17",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.47938,
+      "hotFy": 0.65644,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 6,
+      "id": "ID17",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID17",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID17_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.47672,
+          "fy": 0.65647
+         }
+        ],
+        "to": {
+         "id": "ID17",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.47672,
+        "fy": 0.65647
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID17",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.3472,
+      "chipFy": 0.18911,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 5",
+      "from": {
+       "id": "ID18",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.35912,
+      "hotFy": 0.18111,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 5,
+      "id": "ID18",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID18",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID18_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.35769,
+          "fy": 0.18511
+         }
+        ],
+        "to": {
+         "id": "ID18",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.35769,
+        "fy": 0.18511
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID18",
+       "type": "hot"
+      }
+     },
+     {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.19311,
+      "fill": "hollow",
+      "fw": 0.1375,
+      "fx": 0.05,
+      "fy": 0.1,
+      "id": "ID19",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "shape": "ellipse",
+      "stroke": 2
+     },
+     {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.12907,
+      "fill": "filled",
+      "fw": 0.1,
+      "fx": 0.0875,
+      "fy": 0.43546,
+      "id": "ID20",
+      "kind": "draw",
+      "opacity": 0.5,
+      "pad": 8,
+      "rot": 90,
+      "shape": "rect",
+      "stroke": 4
+     },
+     {
+      "align": "center",
+      "around": [],
+      "bold": false,
+      "border": "#3F3F46",
+      "borderOpacity": 1,
+      "color": "#18181B",
+      "fh": 0.08111,
+      "fill": "filled",
+      "fillOpacity": 1,
+      "fontSize": 12,
+      "fw": 0.16875,
+      "fx": 0.75,
+      "fy": 0.1,
+      "id": "ID21",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "scaleFont": false,
+      "shape": "text",
+      "stroke": 1,
+      "text": "Text",
+      "textColor": "#E4E4E7",
+      "theme": "gremlin",
+      "valign": "middle",
+      "wrap": true,
+      "zLayer": 3
+     },
+     {
+      "around": [],
+      "border": "#3F3F46",
+      "color": "#18181B",
+      "cols": 2,
+      "extras": [],
+      "fh": 0.30444,
+      "fill": "filled",
+      "fontSize": 10,
+      "fw": 0.2125,
+      "fx": 0.7375,
+      "fy": 0.54645,
+      "id": "ID22",
+      "idCol": false,
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "rows": [
+       {
+        "cells": [
+         {
+          "text": ""
+         },
+         {
+          "text": ""
+         }
+        ]
+       }
+      ],
+      "shape": "table",
+      "stroke": 1,
+      "theme": "gremlin",
+      "zLayer": 2
+     }
+    ],
+    "selected": [
+     "ID7"
+    ]
+   },
+   "step": "menu-chip"
+  },
+  {
+   "state": {
+    "drawTool": "",
+    "histAt": 15,
+    "histLen": 16,
+    "menu": 21,
+    "nodes": [
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.32727,
+      "chipFy": 0.01378,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID0",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "hollow",
+      "hotFx": 0.44788,
+      "hotFy": 0.17467,
+      "hotSize": 28,
+      "id": "ID0",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID0",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID0_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.42,
+          "fy": 0.12289
+         }
+        ],
+        "to": {
+         "id": "ID0",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 11",
+        "hwId": 11,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 13",
+        "hwId": 13,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 14",
+        "hwId": 14,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 12",
+        "hwId": 12,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 15",
+        "hwId": 15,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.40722,
+      "ny": 0.17422,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.42,
+        "fy": 0.12289
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.30175,
+      "chipFy": 0.34933,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID1",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "hollow",
+      "hotFx": 0.44275,
+      "hotFy": 0.23244,
+      "hotSize": 28,
+      "id": "ID1",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID1",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID1_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.437,
+          "fy": 0.33089
+         }
+        ],
+        "to": {
+         "id": "ID1",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 6",
+        "hwId": 6,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 8",
+        "hwId": 8,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 9",
+        "hwId": 9,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 7",
+        "hwId": 7,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 10",
+        "hwId": 10,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.39812,
+      "ny": 0.232,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.437,
+        "fy": 0.33089
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.34626,
+      "chipFy": 0.52645,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.41625,
+      "hotFy": 0.25556,
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID2",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID2",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID2_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.38501,
+          "fy": 0.26698
+         }
+        ],
+        "to": {
+         "id": "ID2",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.34854,
+      "ny": 0.25467,
+      "pin": "right",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.38501,
+        "fy": 0.26698
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.3755,
+      "chipFy": 0.42396,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotColor": "#ff4f03",
+      "hotFill": "hollow",
+      "hotFx": 0.44825,
+      "hotFy": 0.37978,
+      "hotSize": 28,
+      "id": "ID3",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID3",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID3_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.4385,
+          "fy": 0.44778
+         }
+        ],
+        "to": {
+         "id": "ID3",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 16",
+        "hwId": 16,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 18",
+        "hwId": 18,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 19",
+        "hwId": 19,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 17",
+        "hwId": 17,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 20",
+        "hwId": 20,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.40631,
+      "ny": 0.38044,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.4385,
+        "fy": 0.44778
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.40987,
+      "chipFy": 0.6365,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 1",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.47925,
+      "hotFy": 0.65711,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 1,
+      "id": "ID4",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID4",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID4_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.44456,
+          "fy": 0.65181
+         }
+        ],
+        "to": {
+         "id": "ID4",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "left",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.44456,
+        "fy": 0.65181
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.465,
+      "chipFy": 0.51,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 2",
+      "from": {
+       "id": "ID5",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.4795,
+      "hotFy": 0.656,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 2,
+      "id": "ID5",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID5",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID5_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.47678,
+          "fy": 0.593
+         }
+        ],
+        "to": {
+         "id": "ID5",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "bottom",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.47678,
+        "fy": 0.593
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID5",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.60213,
+      "chipFy": 0.84089,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 3",
+      "from": {
+       "id": "ID6",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.5995,
+      "hotFy": 0.78178,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID6",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID6",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID6_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.60534,
+          "fy": 0.81133
+         }
+        ],
+        "to": {
+         "id": "ID6",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.60534,
+        "fy": 0.81133
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID6",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.61901,
+      "chipFy": 0.2484,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 4",
+      "from": {
+       "fx": 0.56178,
+       "fy": 0.25109,
+       "type": "free"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotColor": "#fda500",
+      "hotFx": 0.627,
+      "hotFy": 0.26,
+      "hotSize": 4,
+      "hwId": 4,
+      "id": "ID7",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "fx": 0.56178,
+         "fy": 0.25109,
+         "type": "free"
+        },
+        "id": "ID7_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.5965,
+          "fy": 0.25711
+         }
+        ],
+        "to": {
+         "id": "ID7",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.61462,
+      "ny": 0.24889,
+      "pin": "left",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.5965,
+        "fy": 0.25711
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID7",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.61699,
+      "chipFy": 0.29311,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "ID8",
+      "from": {
+       "id": "ID8",
+       "pin": "left",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58913,
+      "hotFy": 0.28578,
+      "hotSize": 4,
+      "id": "ID8",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID8",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID8_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.60037,
+          "fy": 0.30978
+         }
+        ],
+        "to": {
+         "id": "ID8",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 21",
+        "hwId": 21,
+        "ox": 0,
+        "oy": 0,
+        "role": "push"
+       },
+       {
+        "friendly": "Button 22",
+        "hwId": 22,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "pull"
+       }
+      ],
+      "nx": 0.66328,
+      "ny": 0.28578,
+      "pin": "left",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.60037,
+        "fy": 0.30978
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID8",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.61824,
+      "chipFy": 0.36104,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "ID9",
+      "from": {
+       "id": "ID9",
+       "pin": "left",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.56912,
+      "hotFy": 0.30533,
+      "hotSize": 4,
+      "id": "ID9",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID9",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID9_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.59975,
+          "fy": 0.36778
+         }
+        ],
+        "to": {
+         "id": "ID9",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 1",
+        "hwId": 1,
+        "ox": 0,
+        "oy": 0,
+        "role": "half"
+       },
+       {
+        "friendly": "Button 2",
+        "hwId": 2,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "full"
+       }
+      ],
+      "nx": 0.62644,
+      "ny": 0.30978,
+      "pin": "left",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.59975,
+        "fy": 0.36778
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID9",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.58868,
+      "chipFy": 0.42453,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 5",
+      "from": {
+       "fx": 0.55726,
+       "fy": 0.42289,
+       "type": "free"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58813,
+      "hotFy": 0.43622,
+      "hotSize": 4,
+      "hwId": 5,
+      "id": "ID10",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "fx": 0.55726,
+         "fy": 0.42289,
+         "type": "free"
+        },
+        "id": "ID10_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.57269,
+          "fy": 0.42956
+         }
+        ],
+        "to": {
+         "id": "ID10",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.60961,
+      "ny": 0.42222,
+      "pin": "left",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.57269,
+        "fy": 0.42956
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID10",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.49635,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 28",
+      "from": {
+       "id": "ID11",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.53912,
+      "hotFy": 0.714,
+      "hotSize": 4,
+      "hwId": 28,
+      "id": "ID11",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID11",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID11_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.52617,
+          "fy": 0.67525
+         }
+        ],
+        "to": {
+         "id": "ID11",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.57232,
+      "ny": 0.71556,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.52617,
+        "fy": 0.67525
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID11",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.53168,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 27",
+      "from": {
+       "id": "ID12",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.56363,
+      "hotFy": 0.70044,
+      "hotSize": 4,
+      "hwId": 27,
+      "id": "ID12",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID12",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID12_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.55471,
+          "fy": 0.66847
+         }
+        ],
+        "to": {
+         "id": "ID12",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.6178,
+      "ny": 0.70044,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.55471,
+        "fy": 0.66847
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID12",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.56581,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 29",
+      "from": {
+       "id": "ID13",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58913,
+      "hotFy": 0.69444,
+      "hotSize": 4,
+      "hwId": 29,
+      "id": "ID13",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID13",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID13_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.58453,
+          "fy": 0.66547
+         }
+        ],
+        "to": {
+         "id": "ID13",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.66237,
+      "ny": 0.69511,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.58453,
+        "fy": 0.66547
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID13",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.56274,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID14",
+      "from": {
+       "id": "ID14",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.57563,
+      "hotFy": 0.80489,
+      "hotSize": 4,
+      "id": "ID14",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID14",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID14_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.57778,
+          "fy": 0.82667
+         }
+        ],
+        "to": {
+         "id": "ID14",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 25",
+        "hwId": 25,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 26",
+        "hwId": 26,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       }
+      ],
+      "nx": 0.6369,
+      "ny": 0.79511,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.57778,
+        "fy": 0.82667
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID14",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.32727,
+      "chipFy": 0.17733,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Axis 4",
+      "from": {
+       "id": "ID15",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.35613,
+      "hotFy": 0.18289,
+      "hotSize": 4,
+      "hwId": 4,
+      "id": "ID15",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID15",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID15_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.34623,
+          "fy": 0.18011
+         }
+        ],
+        "to": {
+         "id": "ID15",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.68239,
+      "ny": 0.78756,
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.34623,
+        "fy": 0.18011
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID15",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.6335,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID16",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.62787,
+      "hotFy": 0.778,
+      "hotSize": 4,
+      "id": "ID16",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID16",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID16_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.63928,
+          "fy": 0.81322
+         }
+        ],
+        "to": {
+         "id": "ID16",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 23",
+        "hwId": 23,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 24",
+        "hwId": 24,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       }
+      ],
+      "nx": 0.73378,
+      "ny": 0.77778,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.63928,
+        "fy": 0.81322
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.465,
+      "chipFy": 0.6565,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 6",
+      "from": {
+       "id": "ID17",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.47938,
+      "hotFy": 0.65644,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 6,
+      "id": "ID17",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID17",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID17_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.47672,
+          "fy": 0.65647
+         }
+        ],
+        "to": {
+         "id": "ID17",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.47672,
+        "fy": 0.65647
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID17",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.3472,
+      "chipFy": 0.18911,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 5",
+      "from": {
+       "id": "ID18",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.35912,
+      "hotFy": 0.18111,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 5,
+      "id": "ID18",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID18",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID18_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.35769,
+          "fy": 0.18511
+         }
+        ],
+        "to": {
+         "id": "ID18",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.35769,
+        "fy": 0.18511
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID18",
+       "type": "hot"
+      }
+     },
+     {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.19311,
+      "fill": "hollow",
+      "fw": 0.1375,
+      "fx": 0.05,
+      "fy": 0.1,
+      "id": "ID19",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "shape": "ellipse",
+      "stroke": 2
+     },
+     {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.12907,
+      "fill": "filled",
+      "fw": 0.1,
+      "fx": 0.0875,
+      "fy": 0.43546,
+      "id": "ID20",
+      "kind": "draw",
+      "opacity": 0.5,
+      "pad": 8,
+      "rot": 90,
+      "shape": "rect",
+      "stroke": 4
+     },
+     {
+      "align": "center",
+      "around": [],
+      "bold": false,
+      "border": "#3F3F46",
+      "borderOpacity": 1,
+      "color": "#18181B",
+      "fh": 0.08111,
+      "fill": "filled",
+      "fillOpacity": 1,
+      "fontSize": 12,
+      "fw": 0.16875,
+      "fx": 0.75,
+      "fy": 0.1,
+      "id": "ID21",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "scaleFont": false,
+      "shape": "text",
+      "stroke": 1,
+      "text": "Text",
+      "textColor": "#E4E4E7",
+      "theme": "gremlin",
+      "valign": "middle",
+      "wrap": true,
+      "zLayer": 3
+     },
+     {
+      "around": [],
+      "border": "#3F3F46",
+      "color": "#18181B",
+      "cols": 2,
+      "extras": [],
+      "fh": 0.30444,
+      "fill": "filled",
+      "fontSize": 10,
+      "fw": 0.2125,
+      "fx": 0.7375,
+      "fy": 0.54645,
+      "id": "ID22",
+      "idCol": false,
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "rows": [
+       {
+        "cells": [
+         {
+          "text": ""
+         },
+         {
+          "text": ""
+         }
+        ]
+       }
+      ],
+      "shape": "table",
+      "stroke": 1,
+      "theme": "gremlin",
+      "zLayer": 2
+     }
+    ],
+    "selected": [
+     "ID21"
+    ]
+   },
+   "step": "menu-text"
+  },
+  {
+   "state": {
+    "drawTool": "",
+    "histAt": 15,
+    "histLen": 16,
+    "menu": 23,
+    "nodes": [
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.32727,
+      "chipFy": 0.01378,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID0",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "hollow",
+      "hotFx": 0.44788,
+      "hotFy": 0.17467,
+      "hotSize": 28,
+      "id": "ID0",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID0",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID0_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.42,
+          "fy": 0.12289
+         }
+        ],
+        "to": {
+         "id": "ID0",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 11",
+        "hwId": 11,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 13",
+        "hwId": 13,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 14",
+        "hwId": 14,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 12",
+        "hwId": 12,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 15",
+        "hwId": 15,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.40722,
+      "ny": 0.17422,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.42,
+        "fy": 0.12289
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.30175,
+      "chipFy": 0.34933,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID1",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "hollow",
+      "hotFx": 0.44275,
+      "hotFy": 0.23244,
+      "hotSize": 28,
+      "id": "ID1",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID1",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID1_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.437,
+          "fy": 0.33089
+         }
+        ],
+        "to": {
+         "id": "ID1",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 6",
+        "hwId": 6,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 8",
+        "hwId": 8,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 9",
+        "hwId": 9,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 7",
+        "hwId": 7,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 10",
+        "hwId": 10,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.39812,
+      "ny": 0.232,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.437,
+        "fy": 0.33089
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.34626,
+      "chipFy": 0.52645,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.41625,
+      "hotFy": 0.25556,
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID2",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID2",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID2_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.38501,
+          "fy": 0.26698
+         }
+        ],
+        "to": {
+         "id": "ID2",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.34854,
+      "ny": 0.25467,
+      "pin": "right",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.38501,
+        "fy": 0.26698
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.3755,
+      "chipFy": 0.42396,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotColor": "#ff4f03",
+      "hotFill": "hollow",
+      "hotFx": 0.44825,
+      "hotFy": 0.37978,
+      "hotSize": 28,
+      "id": "ID3",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID3",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID3_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.4385,
+          "fy": 0.44778
+         }
+        ],
+        "to": {
+         "id": "ID3",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 16",
+        "hwId": 16,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 18",
+        "hwId": 18,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 19",
+        "hwId": 19,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 17",
+        "hwId": 17,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 20",
+        "hwId": 20,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.40631,
+      "ny": 0.38044,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.4385,
+        "fy": 0.44778
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.40987,
+      "chipFy": 0.6365,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 1",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.47925,
+      "hotFy": 0.65711,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 1,
+      "id": "ID4",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID4",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID4_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.44456,
+          "fy": 0.65181
+         }
+        ],
+        "to": {
+         "id": "ID4",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "left",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.44456,
+        "fy": 0.65181
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.465,
+      "chipFy": 0.51,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 2",
+      "from": {
+       "id": "ID5",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.4795,
+      "hotFy": 0.656,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 2,
+      "id": "ID5",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID5",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID5_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.47678,
+          "fy": 0.593
+         }
+        ],
+        "to": {
+         "id": "ID5",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "bottom",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.47678,
+        "fy": 0.593
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID5",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.60213,
+      "chipFy": 0.84089,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 3",
+      "from": {
+       "id": "ID6",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.5995,
+      "hotFy": 0.78178,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID6",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID6",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID6_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.60534,
+          "fy": 0.81133
+         }
+        ],
+        "to": {
+         "id": "ID6",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.60534,
+        "fy": 0.81133
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID6",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.61901,
+      "chipFy": 0.2484,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 4",
+      "from": {
+       "fx": 0.56178,
+       "fy": 0.25109,
+       "type": "free"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotColor": "#fda500",
+      "hotFx": 0.627,
+      "hotFy": 0.26,
+      "hotSize": 4,
+      "hwId": 4,
+      "id": "ID7",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "fx": 0.56178,
+         "fy": 0.25109,
+         "type": "free"
+        },
+        "id": "ID7_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.5965,
+          "fy": 0.25711
+         }
+        ],
+        "to": {
+         "id": "ID7",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.61462,
+      "ny": 0.24889,
+      "pin": "left",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.5965,
+        "fy": 0.25711
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID7",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.61699,
+      "chipFy": 0.29311,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "ID8",
+      "from": {
+       "id": "ID8",
+       "pin": "left",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58913,
+      "hotFy": 0.28578,
+      "hotSize": 4,
+      "id": "ID8",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID8",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID8_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.60037,
+          "fy": 0.30978
+         }
+        ],
+        "to": {
+         "id": "ID8",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 21",
+        "hwId": 21,
+        "ox": 0,
+        "oy": 0,
+        "role": "push"
+       },
+       {
+        "friendly": "Button 22",
+        "hwId": 22,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "pull"
+       }
+      ],
+      "nx": 0.66328,
+      "ny": 0.28578,
+      "pin": "left",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.60037,
+        "fy": 0.30978
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID8",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.61824,
+      "chipFy": 0.36104,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "ID9",
+      "from": {
+       "id": "ID9",
+       "pin": "left",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.56912,
+      "hotFy": 0.30533,
+      "hotSize": 4,
+      "id": "ID9",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID9",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID9_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.59975,
+          "fy": 0.36778
+         }
+        ],
+        "to": {
+         "id": "ID9",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 1",
+        "hwId": 1,
+        "ox": 0,
+        "oy": 0,
+        "role": "half"
+       },
+       {
+        "friendly": "Button 2",
+        "hwId": 2,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "full"
+       }
+      ],
+      "nx": 0.62644,
+      "ny": 0.30978,
+      "pin": "left",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.59975,
+        "fy": 0.36778
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID9",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.58868,
+      "chipFy": 0.42453,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 5",
+      "from": {
+       "fx": 0.55726,
+       "fy": 0.42289,
+       "type": "free"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58813,
+      "hotFy": 0.43622,
+      "hotSize": 4,
+      "hwId": 5,
+      "id": "ID10",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "fx": 0.55726,
+         "fy": 0.42289,
+         "type": "free"
+        },
+        "id": "ID10_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.57269,
+          "fy": 0.42956
+         }
+        ],
+        "to": {
+         "id": "ID10",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.60961,
+      "ny": 0.42222,
+      "pin": "left",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.57269,
+        "fy": 0.42956
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID10",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.49635,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 28",
+      "from": {
+       "id": "ID11",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.53912,
+      "hotFy": 0.714,
+      "hotSize": 4,
+      "hwId": 28,
+      "id": "ID11",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID11",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID11_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.52617,
+          "fy": 0.67525
+         }
+        ],
+        "to": {
+         "id": "ID11",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.57232,
+      "ny": 0.71556,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.52617,
+        "fy": 0.67525
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID11",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.53168,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 27",
+      "from": {
+       "id": "ID12",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.56363,
+      "hotFy": 0.70044,
+      "hotSize": 4,
+      "hwId": 27,
+      "id": "ID12",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID12",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID12_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.55471,
+          "fy": 0.66847
+         }
+        ],
+        "to": {
+         "id": "ID12",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.6178,
+      "ny": 0.70044,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.55471,
+        "fy": 0.66847
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID12",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.56581,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 29",
+      "from": {
+       "id": "ID13",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58913,
+      "hotFy": 0.69444,
+      "hotSize": 4,
+      "hwId": 29,
+      "id": "ID13",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID13",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID13_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.58453,
+          "fy": 0.66547
+         }
+        ],
+        "to": {
+         "id": "ID13",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.66237,
+      "ny": 0.69511,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.58453,
+        "fy": 0.66547
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID13",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.56274,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID14",
+      "from": {
+       "id": "ID14",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.57563,
+      "hotFy": 0.80489,
+      "hotSize": 4,
+      "id": "ID14",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID14",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID14_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.57778,
+          "fy": 0.82667
+         }
+        ],
+        "to": {
+         "id": "ID14",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 25",
+        "hwId": 25,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 26",
+        "hwId": 26,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       }
+      ],
+      "nx": 0.6369,
+      "ny": 0.79511,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.57778,
+        "fy": 0.82667
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID14",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.32727,
+      "chipFy": 0.17733,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Axis 4",
+      "from": {
+       "id": "ID15",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.35613,
+      "hotFy": 0.18289,
+      "hotSize": 4,
+      "hwId": 4,
+      "id": "ID15",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID15",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID15_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.34623,
+          "fy": 0.18011
+         }
+        ],
+        "to": {
+         "id": "ID15",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.68239,
+      "ny": 0.78756,
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.34623,
+        "fy": 0.18011
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID15",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFx": 0.6335,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID16",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.62787,
+      "hotFy": 0.778,
+      "hotSize": 4,
+      "id": "ID16",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID16",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID16_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.63928,
+          "fy": 0.81322
+         }
+        ],
+        "to": {
+         "id": "ID16",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 23",
+        "hwId": 23,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 24",
+        "hwId": 24,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       }
+      ],
+      "nx": 0.73378,
+      "ny": 0.77778,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.63928,
+        "fy": 0.81322
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.465,
+      "chipFy": 0.6565,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 6",
+      "from": {
+       "id": "ID17",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.47938,
+      "hotFy": 0.65644,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 6,
+      "id": "ID17",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID17",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID17_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.47672,
+          "fy": 0.65647
+         }
+        ],
+        "to": {
+         "id": "ID17",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.47672,
+        "fy": 0.65647
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID17",
+       "type": "hot"
+      }
+     },
+     {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.3472,
+      "chipFy": 0.18911,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 5",
+      "from": {
+       "id": "ID18",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.35912,
+      "hotFy": 0.18111,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 5,
+      "id": "ID18",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID18",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID18_L0",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.35769,
+          "fy": 0.18511
+         }
+        ],
+        "to": {
+         "id": "ID18",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.35769,
+        "fy": 0.18511
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID18",
+       "type": "hot"
+      }
+     },
+     {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.19311,
+      "fill": "hollow",
+      "fw": 0.1375,
+      "fx": 0.05,
+      "fy": 0.1,
+      "id": "ID19",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "shape": "ellipse",
+      "stroke": 2
+     },
+     {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.12907,
+      "fill": "filled",
+      "fw": 0.1,
+      "fx": 0.0875,
+      "fy": 0.43546,
+      "id": "ID20",
+      "kind": "draw",
+      "opacity": 0.5,
+      "pad": 8,
+      "rot": 90,
+      "shape": "rect",
+      "stroke": 4
+     },
+     {
+      "align": "center",
+      "around": [],
+      "bold": false,
+      "border": "#3F3F46",
+      "borderOpacity": 1,
+      "color": "#18181B",
+      "fh": 0.08111,
+      "fill": "filled",
+      "fillOpacity": 1,
+      "fontSize": 12,
+      "fw": 0.16875,
+      "fx": 0.75,
+      "fy": 0.1,
+      "id": "ID21",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "scaleFont": false,
+      "shape": "text",
+      "stroke": 1,
+      "text": "Text",
+      "textColor": "#E4E4E7",
+      "theme": "gremlin",
+      "valign": "middle",
+      "wrap": true,
+      "zLayer": 3
+     },
+     {
+      "around": [],
+      "border": "#3F3F46",
+      "color": "#18181B",
+      "cols": 2,
+      "extras": [],
+      "fh": 0.30444,
+      "fill": "filled",
+      "fontSize": 10,
+      "fw": 0.2125,
+      "fx": 0.7375,
+      "fy": 0.54645,
+      "id": "ID22",
+      "idCol": false,
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "rows": [
+       {
+        "cells": [
+         {
+          "text": ""
+         },
+         {
+          "text": ""
+         }
+        ]
+       }
+      ],
+      "shape": "table",
+      "stroke": 1,
+      "theme": "gremlin",
+      "zLayer": 2
+     }
+    ],
+    "selected": [
+     "ID22"
+    ]
+   },
+   "step": "menu-table"
+  },
+  {
+   "state": {
+    "drawTool": "",
     "histAt": 16,
     "histLen": 17,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -16058,6 +20273,7 @@
     "drawTool": "",
     "histAt": 17,
     "histLen": 18,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -17433,6 +21649,7 @@
     "drawTool": "",
     "histAt": 18,
     "histLen": 19,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -18794,6 +23011,7 @@
     "drawTool": "",
     "histAt": 19,
     "histLen": 20,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -20174,6 +24392,7 @@
     "drawTool": "",
     "histAt": 20,
     "histLen": 21,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -21571,6 +25790,7 @@
     "drawTool": "",
     "histAt": 21,
     "histLen": 22,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -22949,6 +27169,7 @@
     "drawTool": "",
     "histAt": 22,
     "histLen": 23,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -24330,6 +28551,7 @@
     "drawTool": "",
     "histAt": 23,
     "histLen": 24,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -25711,6 +29933,7 @@
     "drawTool": "",
     "histAt": 24,
     "histLen": 25,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -27092,6 +31315,7 @@
     "drawTool": "",
     "histAt": 25,
     "histLen": 26,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -28475,6 +32699,7 @@
     "drawTool": "",
     "histAt": 21,
     "histLen": 26,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",
@@ -29853,6 +34078,7 @@
     "drawTool": "",
     "histAt": 22,
     "histLen": 26,
+    "menu": 0,
     "nodes": [
      {
       "border": "#3F3F46",

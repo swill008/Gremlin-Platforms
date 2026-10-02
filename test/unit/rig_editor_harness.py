@@ -89,9 +89,29 @@ Window {
         var r = e[name].apply(e, JSON.parse(argsJson))
         return JSON.stringify(r === undefined ? null : r)
     }
+    // The open right-click menu, told apart by its number of entries; 0 when
+    // none is open.
+    function openMenuSize() {
+        var list = ed().data
+        for (var i = 0; i < list.length; i++) {
+            var o = list[i]
+            if (o && o.popup !== undefined && o.opened)
+                return o.count
+        }
+        return 0
+    }
+    function closeMenus() {
+        var list = ed().data
+        for (var i = 0; i < list.length; i++) {
+            var o = list[i]
+            if (o && o.popup !== undefined && o.opened)
+                o.close()
+        }
+    }
     function state() {
         var e = ed()
         return JSON.stringify({
+            menu: openMenuSize(),
             nodes: e.nodes,
             selected: e.selectedIds,
             histAt: e.histAt,
@@ -216,6 +236,14 @@ class Session:
         button = button or QtCore.Qt.MouseButton.LeftButton
         mods = mods or QtCore.Qt.KeyboardModifier.NoModifier
         getattr(QtTest.QTest, kind)(self.win, button, mods, pos)
+
+    def right_click(self, pos: QtCore.QPoint) -> None:
+        self._mouse("mouseClick", pos, button=QtCore.Qt.MouseButton.RightButton)
+        self.wait(120)
+
+    def close_menus(self) -> None:
+        self.js("closeMenus")
+        self.wait(120)
 
     def click(
         self, pos: QtCore.QPoint, mods: QtCore.Qt.KeyboardModifier | None = None
@@ -350,6 +378,19 @@ def scenario_session_r(s: Session) -> None:
     s.drag(s.point(0.74, 0.55), s.point(0.95, 0.85))
     s.record("draw-table", image=True)
     s.call("setDrawTool", "")
+
+    # Right-click menus: chip, text box and table each open their own.
+    text = s.state()["nodes"][-2]["id"]
+    table = s.state()["nodes"][-1]["id"]
+    s.right_click(s.center(second))
+    s.record("menu-chip")
+    s.close_menus()
+    s.right_click(s.center(text))
+    s.record("menu-text")
+    s.close_menus()
+    s.right_click(s.center(table, dx=-40, dy=-40))
+    s.record("menu-table")
+    s.close_menus()
 
     # Shape around a selected chip.
     s.call("setSelection", [second])
