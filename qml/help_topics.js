@@ -262,6 +262,7 @@ function topics() {
             + "<p>Right-click a chip for:</p>"
             + "<ul>"
             + "<li><b>Rename</b> and <b>Delete chip</b> (back to the pool; Delete or Backspace does the same).</li>"
+            + "<li>Or drag a chip back onto the pool: the pool lights up, and letting go takes the chip off the map. With several chips selected, they all go; a group goes whole, and while a group is being edited the member you drag leaves it. Locked chips stay. Undo brings them back.</li>"
             + "<li><b>Chip style</b>: font size, chip size, Round or Square, Filled or Hollow, and <b>Highlight on press</b>.</li>"
             + "<li><b>Colours</b>: Fill colour…, Outline colour… and Text colour…, and <b>Pressed fill…</b>, <b>Pressed outline…</b> and <b>Pressed text…</b> used while the control is held.</li>"
             + "<li><b>Hotspot</b> and <b>Leader ends</b> (see Hotspots and leaders), <b>Arrange</b> (stacking, Lock, Hide).</li>"

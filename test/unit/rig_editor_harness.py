@@ -142,6 +142,9 @@ Window {
     }
     function setPhotoUrl(url) { _face.photoOverride = url }
     function setRulers(on) { _face.rulersOn = on }
+    function setPoolStrip(width) {
+        ed().poolHit = function(wx, wy) { return wx < width }
+    }
     function getProp(name) { return JSON.stringify(ed()[name]) }
     function zoomToPage() { _face.zoomToPage() }
     function viewState() {
@@ -1633,6 +1636,79 @@ def scenario_rulers(s: Session) -> None:
         s.call_prop("rulerGuidesX"), s.call_prop("rulerGuidesY")]
 
 
+def scenario_to_pool(s: Session) -> None:
+    """Dragging chips onto the pool takes them off the map: one chip, several
+    selected, a whole group, one member of a group being edited; a locked
+    chip stays."""
+    _load(s, "evo_r")
+    # A stand-in pool: the window's left 120 pixels.
+    s.js("setPoolStrip", 120)
+
+    def pool_step(name: str, image: bool = False) -> None:
+        s.record(name, image=image)
+        s.steps[-1]["state"]["placed"] = {
+            key: bool(s.call("placedId", *key.split(":")))
+            for key in ("btn:3", "btn:4", "btn:5", "btn:1", "btn:2", "btn:6")
+        }
+
+    def drag_to_pool(start: QtCore.QPoint, hover_image: str = "") -> None:
+        s._mouse("mousePress", start)
+        s.wait(20)
+        target = QtCore.QPoint(40, start.y())
+        for i in range(1, 7):
+            p = QtCore.QPoint(start.x() + (target.x() - start.x()) * i // 6, start.y())
+            event = QtGui.QMouseEvent(
+                QtCore.QEvent.Type.MouseMove, QtCore.QPointF(p),
+                QtCore.QPointF(s.win.mapToGlobal(p)), QtCore.Qt.MouseButton.NoButton,
+                QtCore.Qt.MouseButton.LeftButton, QtCore.Qt.KeyboardModifier.NoModifier,
+            )
+            QtCore.QCoreApplication.sendEvent(s.win, event)
+            s.wait(15)
+        if hover_image:
+            pool_step(hover_image, image=True)
+            s.steps[-1]["state"]["poolHover"] = s.call_prop("poolHover")
+        s._mouse("mouseRelease", target)
+        s.wait(80)
+
+    pool_step("start")
+    drag_to_pool(s.center("b3"), hover_image="over-pool")
+    pool_step("chip-gone", image=True)
+    s.key(QtCore.Qt.Key.Key_Z, QtCore.Qt.KeyboardModifier.ControlModifier)
+    pool_step("undo-brings-it-back")
+
+    # Locked: it cannot be dragged, so it stays.
+    s.call("setSelection", ["b3"])
+    s.key(QtCore.Qt.Key.Key_L, QtCore.Qt.KeyboardModifier.ControlModifier)
+    drag_to_pool(s.center("b3"))
+    pool_step("locked-stays")
+    s.call("setSelection", ["b3"])
+    s.key(QtCore.Qt.Key.Key_L, QtCore.Qt.KeyboardModifier.ControlModifier)
+
+    # Several selected: all of them go.
+    b4 = s.call("placedId", "btn", 4)
+    b5 = s.call("placedId", "btn", 5)
+    s.call("setSelection", [b4, b5])
+    drag_to_pool(s.center(b4))
+    pool_step("several-gone")
+
+    # A whole group (Buttons 1 and 2).
+    group = s.call("placedId", "btn", 1)
+    s.call("setSelection", [group])
+    drag_to_pool(s.center(group))
+    pool_step("group-gone")
+
+    # One member of a group being edited (Button 6 in its stack).
+    stack = s.call("placedId", "btn", 6)
+    s.call("setSelection", [stack])
+    s.call("beginGroupEdit", stack)
+    members = s.node(stack)["members"]
+    s.set_prop("selectedMember", next(
+        i for i, m in enumerate(members) if m.get("hwId") == 6))
+    s.call("returnToPool")
+    pool_step("member-gone")
+    s.steps[-1]["state"]["stackSize"] = len(s.node(stack)["members"])
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1690,6 +1766,7 @@ SCENARIOS = {
     "light_page": scenario_light_page,
     "zoom": scenario_zoom,
     "rulers": scenario_rulers,
+    "to_pool": scenario_to_pool,
 }
 
 

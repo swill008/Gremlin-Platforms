@@ -69,6 +69,10 @@ Item {
     property var rulerGuidesY: []
     property bool guidesOn: true
     property var guideDrag: null
+    // The window's pool panel: poolHit(wx, wy) says whether a window point
+    // is over it; poolHover is on while a dragged chip is over it.
+    property var poolHit: null
+    property bool poolHover: false
     property var selectedIds: []
     property bool banding: false
     property bool bandAdd: false
@@ -655,6 +659,8 @@ Item {
     function setSelection(ids) { return RigSelection.setSelection(ids) }
     function toggleSelected(id) { return RigSelection.toggleSelected(id) }
     function cancelAllActions() { return RigSelection.cancelAllActions() }
+    function overPool(mx, my) { return RigSelection.overPool(mx, my) }
+    function returnToPool() { return RigSelection.returnToPool() }
 
     // What a pointer drag does to the item being dragged (rig_pointer.js)
     function applyPointer(mx, my, altOff) { return RigPointer.applyPointer(mx, my, altOff) }

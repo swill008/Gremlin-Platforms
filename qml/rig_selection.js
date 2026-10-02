@@ -48,6 +48,67 @@ function deleteChip(id) {
     return true
 }
 
+// --- back to the pool by dragging -----------------------------------------------
+
+// Whether editor point (mx, my) is over the window's pool panel (poolHit,
+// set by the window, takes window coordinates).
+function overPool(mx, my) {
+    if (typeof poolHit !== "function")
+        return false
+    var w = _ed.mapToItem(null, mx, my)
+    return !!poolHit(w.x, w.y)
+}
+
+// What dragging the chip under the pointer onto the pool takes back: the
+// selected chips and groups when it is one of them, else that one; while a
+// group is being edited, the dragged member.
+function returnToPool() {
+    var n = nodeAt(selectedId)
+    if (!n || isDraw(n))
+        return false
+    var mem = targetMember()
+    if (groupEditId === n.id && mem) {
+        if (isLocked(n))
+            return false
+        var list = n.members || []
+        var at = list.indexOf(mem)
+        if (at < 0)
+            return false
+        list.splice(at, 1)
+        selectedMember = -1
+        if (!list.length)
+            _removeChipNode(n)
+        bump()
+        return true
+    }
+    var ids = isSelected(n.id) && (selectedIds || []).length > 1 ? selectedIds.slice() : [n.id]
+    var done = false
+    for (var i = 0; i < ids.length; i++) {
+        var o = nodeAt(ids[i])
+        if (o && !isDraw(o) && !isLocked(o))
+            done = _removeChipNode(o) || done
+    }
+    groupEditId = ""
+    selectedMember = -1
+    setSelection([])
+    bump()
+    return done
+}
+
+// Takes a chip or a whole group off the map; its controls show in the pool
+// again.
+function _removeChipNode(n) {
+    var idx = nodeIndex(n.id)
+    if (idx < 0)
+        return false
+    if (tableIsPacked(n))
+        detachTablePacked(n)
+    else
+        detachChipFromTable(n)
+    nodes.splice(idx, 1)
+    return true
+}
+
 function nudge(dx, dy) {
     var ids = (selectedIds && selectedIds.length) ? selectedIds.slice() : (selectedId ? [selectedId] : [])
     if (!ids.length)

@@ -390,6 +390,8 @@ MouseArea {
             ed.penMove(m.x, m.y)
             return
         }
+        if (ed.dragKind === "chip" || ed.dragKind === "member")
+            ed.poolHover = ed.overPool(m.x, m.y)
         if (ed.dragKind === "rulerguide" && ed.guideDrag) {
             ed.dragRulerGuide(ed.guideDrag.axis, ed.guideDrag.index, m.x, m.y)
             return
@@ -503,6 +505,15 @@ MouseArea {
             ed.bump()
             return
         }
+        // Dropped on the pool: back off the map.
+        if ((ed.dragKind === "chip" || ed.dragKind === "member") && ed.poolHover) {
+            ed.poolHover = false
+            ed.dragKind = ""
+            ed.clearMoveGuides()
+            ed.returnToPool()
+            return
+        }
+        ed.poolHover = false
         if (ed.dragKind) {
             if (ed.dragKind === "chip" || ed.dragKind === "member")
                 ed.snapChipToSocket(ed.selectedId, m.x, m.y)

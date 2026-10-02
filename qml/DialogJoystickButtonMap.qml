@@ -1388,6 +1388,12 @@ ApplicationWindow {
         if (o["rotate-snap"] > 0)
             e.rotateSnap = o["rotate-snap"]
         e.savedStyles = _opts.styles
+        e.poolHit = function(wx, wy) {
+            if (!_poolFloat.visible)
+                return false
+            var p = _poolFloat.mapFromItem(null, wx, wy)
+            return p.x >= 0 && p.y >= 0 && p.x <= _poolFloat.width && p.y <= _poolFloat.height
+        }
         var f = e.face
         if (f && o["zoom-speed"] > 0)
             f.zoomSpeed = o["zoom-speed"]
@@ -3107,12 +3113,29 @@ ApplicationWindow {
                         onWheel: (w) => { w.accepted = true }
                     }
 
+                    // A chip dragged over the pool lights it: let go to take the
+                    // chip off the map.
+                    readonly property bool dropHot: {
+                        var e = _buttonMap._ed()
+                        return !!(e && e.poolHover)
+                    }
                     Rectangle {
                         anchors.fill: parent
                         z: 1
                         radius: Style.dp(12)
                         color: "#CC0C0C0E"
-                        border.color: "#3F3F46"
+                        border.color: _poolFloat.dropHot ? Style.accent : "#3F3F46"
+                        border.width: _poolFloat.dropHot ? Style.dp(3) : 1
+                    }
+                    Label {
+                        z: 3
+                        visible: _poolFloat.dropHot
+                        anchors.centerIn: parent
+                        text: "Let go to take it off the map"
+                        color: Style.fg
+                        font.bold: true
+                        background: Rectangle { color: Style.bgCard; radius: Style.dp(4) }
+                        padding: Style.dp(6)
                     }
                     ColumnLayout {
                         z: 2
