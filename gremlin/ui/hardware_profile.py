@@ -14,6 +14,7 @@ from pathlib import Path
 from PySide6 import (
     QtCore,
     QtGui,
+    QtQuick,
 )
 
 import gremlin.ui.type_aliases as ta
@@ -69,6 +70,18 @@ def _photo_pose(raw) -> dict:
         if src.get(flag) is True:
             pose[flag] = True
     return pose
+
+
+_RECENT_COLOURS = 10
+
+
+def _is_hex_colour(value: object) -> bool:
+    text = str(value or "")
+    return (
+        len(text) == 7
+        and text.startswith("#")
+        and all(ch in "0123456789abcdefABCDEF" for ch in text[1:])
+    )
 
 
 def _clipboard() -> QtGui.QClipboard | None:
@@ -1301,6 +1314,7 @@ class HardwareProfile(QtCore.QObject):
     pathChanged = QtCore.Signal()
     imageChanged = QtCore.Signal()
     clipboardChanged = QtCore.Signal()
+    recentColoursChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -1312,6 +1326,53 @@ class HardwareProfile(QtCore.QObject):
         clipboard = _clipboard()
         if clipboard is not None:
             clipboard.dataChanged.connect(self.clipboardChanged)
+
+    @QtCore.Property(list, notify=recentColoursChanged)
+    def recentColours(self) -> list:
+        """Colours last applied in the editor, newest first (all devices)."""
+        from gremlin.config import Configuration
+
+        stored = Configuration().value(
+            "global", "internal", "button-map-recent-colours"
+        )
+        return [str(c) for c in (stored or []) if _is_hex_colour(c)][:_RECENT_COLOURS]
+
+    @QtCore.Slot(str)
+    def noteColour(self, hex_colour: str) -> None:
+        """Puts a colour first in the recent colours (once, at most ten)."""
+        from gremlin.config import Configuration
+
+        colour = str(hex_colour or "").strip().upper()
+        if not _is_hex_colour(colour):
+            return
+        recent = [c for c in self.recentColours if c.upper() != colour]
+        recent = [colour, *recent][:_RECENT_COLOURS]
+        Configuration().set("global", "internal", "button-map-recent-colours", recent)
+        self.recentColoursChanged.emit()
+
+    @QtCore.Slot(QtCore.QObject, float, float, result=str)
+    def colorAt(self, window: QtCore.QObject, x: float, y: float) -> str:
+        """The colour on screen at a point of a window (the eyedropper)."""
+        import shiboken6
+
+        try:
+            quick = window
+            if not isinstance(quick, QtQuick.QQuickWindow):
+                # A wrapper made before QtQuick loaded: view it as one.
+                quick = shiboken6.wrapInstance(
+                    shiboken6.getCppPointer(window)[0], QtQuick.QQuickWindow
+                )
+            image = quick.grabWindow()
+        except Exception:
+            return ""
+        if image.isNull():
+            return ""
+        ratio = image.devicePixelRatio() or 1.0
+        px = int(x * ratio)
+        py = int(y * ratio)
+        if not (0 <= px < image.width() and 0 <= py < image.height()):
+            return ""
+        return image.pixelColor(px, py).name().upper()
 
     @QtCore.Property(bool, notify=clipboardChanged)
     def clipboardHasImage(self) -> bool:

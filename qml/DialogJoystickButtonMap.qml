@@ -838,6 +838,10 @@ ApplicationWindow {
                     b: "View → Properties shows the selected item's exact values while editing. Positions and sizes are in percent of the page.\nA shape or picture: X, Y, Width, Height and Angle, then fill, colours, line width, outline and opacity. A line: its start and end points, colour, width, outline and arrowheads. A chip: its place and its hotspot's, font and chip size, and colours. With several items selected, only the style shows, and a change applies to all of them.\nType a number and press Enter, click a value, or click a colour to open the colour picker. A locked item's values show but do not change."
                 },
                 {
+                    h: "Colours",
+                    b: "The colour picker opens from Colours, Fill colour…, Outline colour… and the Properties swatches. Drag in the square and the bar, or click a swatch; the change shows at once.\nRecent shows the colours you used last, on any device. Pick from map closes the picker; click anywhere in the window to take the colour there (right-click or Esc gives up)."
+                },
+                {
                     h: "Selecting and keys",
                     b: "Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrows nudge; Shift+Arrows nudge by the grid size.\n\nCtrl+S Save    Ctrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nCtrl+L Lock or unlock the selection    Ctrl+Shift+L Unlock everything\nDelete / Backspace  remove the selection\nCtrl+0  reset view    Esc  cancel tool, rename, or group edit\nF1  this help"
                 }
@@ -1149,6 +1153,29 @@ ApplicationWindow {
     }
 
     // Undo or redo moved the photo in the editor: the sliders follow.
+    // Eyedropper: the next click anywhere in the window takes the colour
+    // under it for the picker's field; Esc gives up.
+    property string eyedropField: ""
+
+    function startEyedropper(field) {
+        eyedropField = field
+        _colorPop.close()
+        _eyedrop.forceActiveFocus()
+    }
+
+    function takeEyedrop(wx, wy) {
+        var field = eyedropField
+        eyedropField = ""
+        var hex = _hw.colorAt(_buttonMap, wx, wy)
+        if (!hex.length)
+            return
+        var e = _ed()
+        if (e)
+            e.applyField(field, hex)
+        _hw.noteColour(hex)
+        _colorPop.openField(field, hex, null)
+    }
+
     // The clipboard's picture as a new picture layer (Edit > Paste picture,
     // Ctrl+Shift+V, or the canvas menu).
     function pastePicture() {
@@ -2331,16 +2358,37 @@ ApplicationWindow {
         return "#" + rs + gs + bs
     }
 
+    MouseArea {
+        id: _eyedrop
+        parent: _buttonMap.contentItem
+        anchors.fill: parent
+        z: 1000
+        visible: _buttonMap.eyedropField !== ""
+        cursorShape: Qt.CrossCursor
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onClicked: (m) => {
+            if (m.button === Qt.RightButton) {
+                _buttonMap.eyedropField = ""
+                return
+            }
+            var p = mapToItem(null, m.x, m.y)
+            _buttonMap.takeEyedrop(p.x, p.y)
+        }
+        Keys.onEscapePressed: _buttonMap.eyedropField = ""
+    }
+
     Popup {
         id: _colorPop
         parent: _buttonMap.contentItem
         width: Style.dp(248)
-        height: Style.dp(330)
+        height: Style.dp(400)
         modal: false
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         padding: Style.dp(10)
         property string field: "color"
+        // A colour was applied while open: it goes into the recent colours.
+        property bool changed: false
         property real hh: 0
         property real ss: 0
         property real vv: 0.12
@@ -2353,6 +2401,7 @@ ApplicationWindow {
 
         function openField(field, hex, anchorItem) {
             _colorPop.field = field
+            changed = false
             var c = Qt.color(hex && hex.length ? hex : "#18181B")
             hh = c.hsvHue < 0 ? 0 : c.hsvHue
             ss = c.hsvSaturation
@@ -2372,8 +2421,23 @@ ApplicationWindow {
             if (!visible)
                 return
             var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-            if (e)
+            if (e) {
                 e.applyField(field, _buttonMap._toHex(live))
+                changed = true
+            }
+        }
+
+        function takeHex(hex) {
+            var c = Qt.color(hex)
+            hh = c.hsvHue < 0 ? 0 : c.hsvHue
+            ss = c.hsvSaturation
+            vv = c.hsvValue
+        }
+
+        onClosed: {
+            if (changed)
+                _hw.noteColour(_buttonMap._toHex(live))
+            changed = false
         }
 
         onHhChanged: pushLive()
@@ -2507,15 +2571,42 @@ ApplicationWindow {
                         border.color: "#52525B"
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: {
-                                var c = Qt.color(modelData)
-                                _colorPop.hh = c.hsvHue < 0 ? 0 : c.hsvHue
-                                _colorPop.ss = c.hsvSaturation
-                                _colorPop.vv = c.hsvValue
-                            }
+                            onClicked: _colorPop.takeHex(modelData)
                         }
                     }
                 }
+            }
+            // The colours last applied (any device), newest first.
+            Label {
+                visible: _hw.recentColours.length > 0
+                text: "Recent"
+                color: Style.fgMuted
+                font.pixelSize: Style.dp(11)
+            }
+            Flow {
+                visible: _hw.recentColours.length > 0
+                Layout.fillWidth: true
+                spacing: Style.dp(4)
+                Repeater {
+                    model: _hw.recentColours
+                    Rectangle {
+                        required property string modelData
+                        width: Style.dp(16)
+                        height: Style.dp(16)
+                        radius: Style.dp(3)
+                        color: modelData
+                        border.color: Style.lineStrong
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: _colorPop.takeHex(modelData)
+                        }
+                    }
+                }
+            }
+            Button {
+                text: "Pick from map"
+                Layout.fillWidth: true
+                onClicked: _buttonMap.startEyedropper(_colorPop.field)
             }
         }
     }

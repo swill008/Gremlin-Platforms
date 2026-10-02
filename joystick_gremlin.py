@@ -476,6 +476,10 @@ def register_config_options() -> None:
         "Release the user chose to skip in the Update dialog.", {},
     )
     cfg.register(
+        "global", "internal", "button-map-recent-colours", PropertyType.List, [],
+        "Colours last applied in the Button Map editor, newest first.", {},
+    )
+    cfg.register(
         "global", "internal", "last-run-version", PropertyType.String, "",
         "Version that ran last, to say so once after an update.", {},
     )
