@@ -54,9 +54,39 @@ Item {
         Label {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            text: "This tab is the labeled 360 layout. Mapping is done from a hardware / Keyboard / OSC tab with the Map to Xbox action. Rows below show who already targets each control."
+            text: "This is the Xbox output module for the pad. Only claimed controls reach the Xbox driver, and only they can be picked in Map to Xbox. Rows show who already targets each control."
             opacity: 0.7
             font.pixelSize: Style.dp(12)
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.dp(8)
+            visible: _model && _model.hasModule
+
+            Label {
+                text: _model ? ("Claimed " + _model.claimedCount + " of " + _list.count) : ""
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Button {
+                text: "Claim all"
+                onClicked: _model.setAllClaimed(true)
+            }
+
+            Button {
+                text: "Clear all"
+                onClicked: _model.setAllClaimed(false)
+            }
+        }
+
+        Label {
+            Layout.fillWidth: true
+            visible: _model && !_model.hasModule
+            wrapMode: Text.WordWrap
+            text: "Pad " + (_model ? _model.padId : 1) + " has no Xbox output module, so nothing is sent to it. Pad 1 uses \"Xbox 360 Controller\"; pad N uses \"Xbox 360 N\"."
+            color: Style.alert
         }
 
         JGListView {
@@ -71,6 +101,8 @@ Item {
                 required property string label
                 required property string kind
                 required property string incoming
+                required property string target
+                required property bool claimed
                 required property int index
 
                 width: _list.width - Style.dp(16)
@@ -79,6 +111,7 @@ Item {
                 color: Style.background
                 border.color: incoming.length ? Style.accent : Style.lowColor
                 border.width: Style.dp(1)
+                opacity: claimed ? 1.0 : 0.6
 
                 ColumnLayout {
                     id: _row
@@ -104,6 +137,20 @@ Item {
                             opacity: 0.55
                             font.pixelSize: Style.dp(11)
                         }
+
+                        CheckBox {
+                            text: "Claimed"
+                            enabled: _model && _model.hasModule
+                            checked: claimed
+                            onToggled: _model.setClaimed(target, checked)
+                        }
+                    }
+
+                    Label {
+                        visible: incoming.length > 0 && !claimed
+                        text: "Not claimed: these wires send nothing"
+                        color: Style.alert
+                        font.pixelSize: Style.dp(11)
                     }
 
                     Label {

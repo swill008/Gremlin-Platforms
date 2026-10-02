@@ -11,7 +11,13 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import event_handler, signal, util
-from gremlin.base_classes import AbstractActionData, AbstractFunctor, UserFeedback, Value
+from gremlin.base_classes import (
+    AbstractActionData,
+    AbstractFunctor,
+    UserFeedback,
+    Value,
+)
+from gremlin.modules import output
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
@@ -20,7 +26,7 @@ from gremlin.types import (
     PropertyType,
 )
 from gremlin.ui.action_model import ActionModel, SequenceIndex
-from vigem.xbox import XboxError, XboxProxy, XboxTarget
+from vigem.xbox import XboxError, XboxTarget
 
 if TYPE_CHECKING:
     from gremlin.ui.profile import InputItemBindingModel
@@ -80,19 +86,20 @@ class MapToXboxFunctor(AbstractFunctor):
     ) -> None:
         if not self._should_execute(value):
             return
+        # The Xbox output module passes only the controls it claims.
+        pad_id = self.data.xbox_device_id
+        target = self.data.xbox_target
         try:
-            pad = XboxProxy()[self.data.xbox_device_id]
-            target = self.data.xbox_target
             if target.kind == "button":
                 pressed = _is_pressed(value.current)
                 if self.data.button_inverted:
                     pressed = not pressed
-                pad.apply(target, pressed)
+                output.write_xbox(pad_id, target, pressed)
             elif target.kind == "trigger":
                 raw = _trigger_value(value.current, self.data.trigger_range)
-                pad.apply(target, raw)
+                output.write_xbox(pad_id, target, raw)
             else:
-                pad.apply(target, value.current)
+                output.write_xbox(pad_id, target, value.current)
         except Exception as exc:
             _LOG.error("Map to Xbox failed: %s", exc)
 
@@ -102,6 +109,7 @@ class MapToXboxModel(ActionModel):
     xboxTargetChanged = QtCore.Signal()
     buttonInvertedChanged = QtCore.Signal()
     triggerRangeChanged = QtCore.Signal()
+    targetChoicesChanged = QtCore.Signal()
 
     def __init__(
         self,
@@ -141,6 +149,7 @@ class MapToXboxModel(ActionModel):
             return
         self._data.xbox_device_id = ident
         self.xboxDeviceIdChanged.emit()
+        self.targetChoicesChanged.emit()
         self._notify_item()
 
     def _get_xbox_target(self) -> str:
@@ -152,6 +161,7 @@ class MapToXboxModel(ActionModel):
             return
         self._data.xbox_target = parsed
         self.xboxTargetChanged.emit()
+        self.targetChoicesChanged.emit()
         self._notify_item()
 
     def _get_xbox_target_kind(self) -> str:
@@ -179,7 +189,31 @@ class MapToXboxModel(ActionModel):
         self._notify_item()
 
     def _get_target_choices(self) -> list:
-        return [{"value": item.value, "label": item.label} for item in XboxTarget]
+        """Controls the pad's Xbox output module claims. A saved control it
+        does not claim stays listed, marked, so the wire is not lost."""
+        pad_id = self._data.xbox_device_id
+        claimed = set(output.xbox_claim(pad_id))
+        choices = [
+            {"value": item.value, "label": item.label}
+            for item in XboxTarget
+            if item.value in claimed
+        ]
+        current = self._data.xbox_target
+        if current.value not in claimed:
+            note = (
+                "not claimed"
+                if output.xbox_module(pad_id) is not None
+                else "no output module"
+            )
+            choices.insert(
+                0, {"value": current.value, "label": f"{current.label} ({note})"}
+            )
+        return choices
+
+    def _get_target_unclaimed(self) -> bool:
+        return not output.xbox_allows(
+            self._data.xbox_device_id, self._data.xbox_target
+        )
 
     xboxDeviceId = QtCore.Property(
         int,
@@ -205,7 +239,12 @@ class MapToXboxModel(ActionModel):
         fset=_set_trigger_range,
         notify=triggerRangeChanged,
     )
-    targetChoices = QtCore.Property("QVariant", fget=_get_target_choices, constant=True)
+    targetChoices = QtCore.Property(
+        "QVariant", fget=_get_target_choices, notify=targetChoicesChanged
+    )
+    targetUnclaimed = QtCore.Property(
+        bool, fget=_get_target_unclaimed, notify=targetChoicesChanged
+    )
 
 
 class MapToXboxData(AbstractActionData):
@@ -293,7 +332,7 @@ class MapToXboxData(AbstractActionData):
     def user_feedback(self) -> List[UserFeedback]:
         # Warning only. An Error makes is_valid() false, and an explicit
         # profile save then drops the action. A warning does not.
-        if not XboxProxy().available():
+        if not output.xbox_available():
             return [
                 UserFeedback(
                     UserFeedback.FeedbackType.Warning,

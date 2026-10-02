@@ -2004,11 +2004,14 @@ class DriverInputModel(QtCore.QAbstractListModel):
             doc["boundName"] = name
             # GUID stays local-only; stored for this machine bind, not exported.
             doc["boundGuidLocal"] = self._guid
+        old_claim = doc.get("claim") if isinstance(doc.get("claim"), dict) else {}
         doc["claim"] = {
             "buttons": buttons,
             "axes": axes,
             "hats": hats,
             "keys": keys,
+            # Xbox controls are claimed on the Xbox output page; keep them.
+            "xbox": list(old_claim.get("xbox") or []),
             "friendly": friendly,
         }
         doc.setdefault("space", "world")

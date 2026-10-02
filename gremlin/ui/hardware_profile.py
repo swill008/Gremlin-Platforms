@@ -328,6 +328,7 @@ def prepare_imported_doc(
         "axes": sorted(kept_axes),
         "hats": sorted(kept_hats),
         "keys": sorted(kept_keys),
+        "xbox": list(claim.get("xbox") or []),
         "friendly": _filter_friendly(
             claim.get("friendly") if isinstance(claim.get("friendly"), dict) else {},
             kept_buttons,

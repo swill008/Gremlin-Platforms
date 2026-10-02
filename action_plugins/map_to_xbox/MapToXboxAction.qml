@@ -16,58 +16,77 @@ Item {
     property MapToXboxModel action
     implicitHeight: _content.height
 
-    RowLayout {
+    ColumnLayout {
         id: _content
         anchors.left: parent.left
         anchors.right: parent.right
-        spacing: Style.dp(8)
+        spacing: Style.dp(4)
 
-        Label { text: "Xbox" }
-        ComboBox {
-            id: _pad
-            model: [1, 2, 3, 4]
-            currentIndex: Math.max(0, _root.action.xboxDeviceId - 1)
-            onActivated: _root.action.xboxDeviceId = model[currentIndex]
-        }
-
-        Label { text: "Target" }
-        ComboBox {
-            id: _target
+        RowLayout {
             Layout.fillWidth: true
-            Layout.minimumWidth: Style.dp(60)
-            textRole: "label"
-            valueRole: "value"
-            model: _root.action.targetChoices
-            Component.onCompleted: {
-                currentIndex = Math.max(0, indexOfValue(_root.action.xboxTarget))
+            spacing: Style.dp(8)
+
+            Label { text: "Xbox" }
+            ComboBox {
+                id: _pad
+                model: [1, 2, 3, 4]
+                currentIndex: Math.max(0, _root.action.xboxDeviceId - 1)
+                onActivated: _root.action.xboxDeviceId = model[currentIndex]
             }
-            onActivated: {
-                _root.action.xboxTarget = currentValue
+
+            Label { text: "Target" }
+            ComboBox {
+                id: _target
+                Layout.fillWidth: true
+                Layout.minimumWidth: Style.dp(60)
+                textRole: "label"
+                valueRole: "value"
+                model: _root.action.targetChoices
+                // The list depends on the pad's output module claim; re-select
+                // the saved control whenever it changes.
+                onModelChanged: Qt.callLater(() => {
+                    currentIndex = Math.max(0, indexOfValue(_root.action.xboxTarget))
+                })
+                Component.onCompleted: {
+                    currentIndex = Math.max(0, indexOfValue(_root.action.xboxTarget))
+                }
+                onActivated: {
+                    _root.action.xboxTarget = currentValue
+                }
+            }
+
+            ComboBox {
+                visible: _root.action.xboxTargetKind === "trigger"
+                textRole: "label"
+                valueRole: "value"
+                model: [
+                    { value: "full", label: "Full axis" },
+                    { value: "upper", label: "Upper half" }
+                ]
+                Component.onCompleted: currentIndex = Math.max(0, indexOfValue(_root.action.triggerRange))
+                onActivated: _root.action.triggerRange = currentValue
+                PointerTip {
+                    text: "Full axis: -1 is 0%, +1 is 100%. Upper half: centre is 0%, +1 is 100%."
+                    delay: 300
+                    show: true
+                }
+            }
+
+            Switch {
+                visible: _root.action.xboxTargetKind === "button"
+                text: "Invert"
+                checked: _root.action.buttonInverted
+                onToggled: _root.action.buttonInverted = checked
             }
         }
 
-        ComboBox {
-            visible: _root.action.xboxTargetKind === "trigger"
-            textRole: "label"
-            valueRole: "value"
-            model: [
-                { value: "full", label: "Full axis" },
-                { value: "upper", label: "Upper half" }
-            ]
-            Component.onCompleted: currentIndex = Math.max(0, indexOfValue(_root.action.triggerRange))
-            onActivated: _root.action.triggerRange = currentValue
-            PointerTip {
-                text: "Full axis: -1 is 0%, +1 is 100%. Upper half: centre is 0%, +1 is 100%."
-                delay: 300
-                show: true
-            }
-        }
+        Label {
+            visible: _root.action.targetUnclaimed
 
-        Switch {
-            visible: _root.action.xboxTargetKind === "button"
-            text: "Invert"
-            checked: _root.action.buttonInverted
-            onToggled: _root.action.buttonInverted = checked
+            text: "Output not claimed: this Xbox control is not claimed by the pad's Xbox output module, so nothing is sent. Claim it on the Xbox output page, or pick a claimed control."
+            color: Style.warn
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
         }
     }
 }

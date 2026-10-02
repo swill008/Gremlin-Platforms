@@ -12,13 +12,15 @@ only, so viewers and conditions see exactly what the firewall lets through.
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 import threading
 import time
 from typing import Any
 
 from gremlin.modules import registry
-from gremlin.modules.claim import claim_allows, claim_ids
+from gremlin.modules.claim import claim_allows, claim_ids, claim_xbox
 
 syslog = logging.getLogger("system")
 
@@ -28,6 +30,7 @@ _CLAIM_TTL = 1.0
 _lock = threading.Lock()
 _claims_at = 0.0
 _vjoy_claims: dict[int, dict] = {}
+_xbox_modules: dict[int, registry.Module] = {}
 _blocked: set[tuple] = set()
 
 
@@ -35,7 +38,7 @@ _blocked: set[tuple] = set()
 
 
 def _refresh_claims(force: bool = False) -> None:
-    global _claims_at, _vjoy_claims
+    global _claims_at, _vjoy_claims, _xbox_modules
     now = time.monotonic()
     if not force and now - _claims_at < _CLAIM_TTL:
         return
@@ -43,17 +46,20 @@ def _refresh_claims(force: bool = False) -> None:
         if not force and now - _claims_at < _CLAIM_TTL:
             return
         vjoy: dict[int, dict] = {}
+        xbox: dict[int, registry.Module] = {}
         try:
             outputs = registry.outputs()
         except Exception:
             outputs = []
         for module in outputs:
             if is_xbox_module(module.name):
+                xbox.setdefault(xbox_pad_of(module.name), module)
                 continue
             vjoy_id = registry.resolve_vjoy_id(module.name, module.bound_guid)
             if vjoy_id and vjoy_id not in vjoy:
                 vjoy[vjoy_id] = module.claim
         _vjoy_claims = vjoy
+        _xbox_modules = xbox
         _claims_at = time.monotonic()
 
 
@@ -74,6 +80,15 @@ def vjoy_allows(vjoy_id: int, kind: str, input_id: int) -> bool:
 
 def is_xbox_module(name: str) -> bool:
     return "xbox" in str(name or "").lower()
+
+
+def xbox_pad_of(name: str) -> int:
+    """Pad number of an Xbox output module: "Xbox 360 Controller" is pad 1,
+    "Xbox 360 2" is pad 2 (the "360" is part of the name, not a number)."""
+    text = re.sub(r"360", " ", str(name or ""))
+    match = re.search(r"(\d+)", text)
+    pad = int(match.group(1)) if match else 1
+    return pad if 1 <= pad <= 4 else 1
 
 
 # --- logging ----------------------------------------------------------------
@@ -342,6 +357,80 @@ class ScriptVJoy:
 
 
 # --- Xbox (ViGEm) -----------------------------------------------------------
+
+
+def xbox_module(pad_id: int) -> registry.Module | None:
+    """The Xbox output module for this pad, or None when there is none."""
+    _refresh_claims()
+    return _xbox_modules.get(int(pad_id))
+
+
+def xbox_claim(pad_id: int) -> list[str]:
+    """Xbox controls the pad's output module claims ("a", "left_trigger", ...)."""
+    module = xbox_module(pad_id)
+    return claim_xbox(module.claim) if module else []
+
+
+def xbox_allows(pad_id: int, target: object) -> bool:
+    name = str(getattr(target, "value", target) or "").lower()
+    return name in xbox_claim(pad_id)
+
+
+def write_xbox(pad_id: int, target: Any, value: Any) -> bool:  # noqa: ANN401
+    """Send a value to a claimed Xbox control. False when it was blocked."""
+    if not xbox_allows(pad_id, target):
+        label = getattr(target, "label", target)
+        _log_once(
+            ("xbox", int(pad_id), str(getattr(target, "value", target))),
+            f"Output blocked: Xbox pad {pad_id} {label} is not claimed by its "
+            f"output module. Claim it on the Xbox output module to use it.",
+        )
+        return False
+    try:
+        from vigem.xbox import XboxProxy
+
+        XboxProxy()[int(pad_id)].apply(target, value)
+    except Exception as exc:
+        _log_once(("xbox-error", int(pad_id)), f"Xbox pad {pad_id} write failed: {exc}")
+        return False
+    return True
+
+
+def xbox_state(pad_id: int) -> dict[str, float]:
+    """Claimed controls of a pad Gremlin has plugged in; empty otherwise.
+    Never plugs a pad in itself."""
+    try:
+        from vigem.xbox import XboxProxy
+
+        snap = XboxProxy().snapshot(int(pad_id)) or {}
+    except Exception:
+        return {}
+    claimed = set(xbox_claim(pad_id))
+    return {name: value for name, value in snap.items() if name in claimed}
+
+
+def set_xbox_claim(pad_id: int, targets: list[str]) -> bool:
+    """Save which Xbox controls the pad's output module claims."""
+    module = xbox_module(pad_id)
+    if module is None:
+        return False
+    try:
+        doc = json.loads(module.path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        registry.trace("READ", "Xbox", "set_xbox_claim", module.path, "error")
+        return False
+    claim = doc.get("claim") if isinstance(doc.get("claim"), dict) else {}
+    claim["xbox"] = [str(t).lower() for t in targets]
+    doc["claim"] = claim
+    try:
+        module.path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        registry.trace("SAVE", "Xbox", "set_xbox_claim", module.path, "error")
+        return False
+    registry.trace("SAVE", "Xbox", "set_xbox_claim", module.path, "ok")
+    refresh()
+    return True
+
 
 
 def xbox_available() -> bool:

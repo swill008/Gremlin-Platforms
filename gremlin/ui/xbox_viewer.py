@@ -13,8 +13,8 @@ from gremlin.ui import input_pairing as pairing
 from gremlin.ui import xbox_maps
 import gremlin.ui.type_aliases as ta
 from gremlin.modules.ids import guid_key
-from gremlin.modules import ids
-from vigem.xbox import XboxProxy, XboxTarget
+from gremlin.modules import ids, output
+from vigem.xbox import XboxTarget
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -399,9 +399,9 @@ class XboxLiveThrottle(QtCore.QObject):
 
     def _poll_xbox(self) -> None:
         changed = False
-        proxy = XboxProxy()
         for pad_id in self._xbox_pads:
-            snap = proxy.snapshot(pad_id) or {}
+            # Through the Xbox output module: claimed controls only.
+            snap = output.xbox_state(pad_id)
             if self._xbox.get(pad_id) != snap:
                 self._xbox[pad_id] = snap
                 changed = True
