@@ -153,6 +153,10 @@ function hitDraw(n, mx, my) {
                 return chs[ct][2]
         }
     }
+    // The rotate handle sits above the top edge (rotateHandleOffset).
+    if (interactive && isSelected(n.id) && !isLocked(n) && isRotatable(n)
+            && Math.hypot(p.x - w * 0.5, p.y + rotateHandleOffset) < 9)
+        return "rotate"
     if (interactive && isSelected(n.id) && !isLocked(n) && !tableCellHandlesOn(n)) {
         var hs = [
             [0, 0, "nw"], [w, 0, "ne"], [0, h, "sw"], [w, h, "se"],

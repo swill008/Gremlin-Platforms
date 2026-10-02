@@ -12,6 +12,8 @@
 //   { kind: "toggle", text, checked, enabled, run() }    stays open
 //   { kind: "choice", text, options: [{ text, value, checked }], enabled,
 //     run(value) }                                       stays open
+//   { kind: "number", text, value, min, max, suffix, enabled, run(value) }
+//                                                        stays open
 // RigContextMenu.qml draws it; only what applies to the target is listed.
 
 function _act(text, run, enabled) {
@@ -28,6 +30,12 @@ function _pick(text, values, labels, isOn, run, enabled) {
     for (var i = 0; i < values.length; i++)
         options.push({ text: labels ? labels[i] : "" + values[i], value: values[i], checked: !!isOn(values[i]) })
     return { kind: "choice", text: text, options: options, run: run, enabled: enabled === undefined ? true : !!enabled }
+}
+
+// A value typed into a box and applied with Enter; the menu stays open.
+function _num(text, value, min, max, suffix, run, enabled) {
+    return { kind: "number", text: text, value: value, min: min, max: max, suffix: suffix || "",
+             run: run, enabled: enabled === undefined ? true : !!enabled }
 }
 
 function _field(key, fallback) {
@@ -285,18 +293,32 @@ function _width() {
     return _pick("Width", [1, 2, 3, 4, 6], null, _field("stroke", 2), _setDraw("stroke"))
 }
 
+// Rotate and flip: an angle to type, quarter turns, 15 degree steps, and the
+// two flips. A line only flips; it turns by dragging its ends.
 function _rotate() {
-    function by(step) {
-        return function() {
-            var n = nodeAt(selectedId)
-            applyField("rot", ((n && n.rot) ? n.rot : 0) + step)
+    var n = nodeAt(selectedId)
+    var items = []
+    if (isRotatable(n)) {
+        var rot = n && n.rot ? n.rot : 0
+        var by = function(step) {
+            return function() {
+                var t = nodeAt(selectedId)
+                setRotation(((t && t.rot) ? t.rot : 0) + step)
+            }
         }
+        items.push(_num("Angle", Math.round(rot * 10) / 10, 0, 360, "°", setRotation))
+        items.push(_pick("Turn to", [0, 90, 180, 270], ["0°", "90°", "180°", "270°"],
+                         function(v) { return Math.abs(rot - v) < 0.05 }, setRotation))
+        items.push(_act("Rotate −15°", by(-15)))
+        items.push(_act("Rotate +15°", by(15)))
     }
-    return _sect("rotate", "Rotate", [
-        _pick("Angle", [0, 90, 180, 270], ["0°", "90°", "180°", "270°"], _field("rot", 0), _set("rot")),
-        _act("Rotate −15°", by(-15)),
-        _act("Rotate +15°", by(15))
-    ])
+    if (isFlippable(n)) {
+        items.push(_act("Flip horizontally", function() { flipSelection("h") }))
+        items.push(_act("Flip vertically", function() { flipSelection("v") }))
+    }
+    if (!items.length)
+        return null
+    return _sect("rotate", isRotatable(n) ? "Rotate and flip" : "Flip", items)
 }
 
 // Locked items ignore clicks on the map; the Layers panel unlocks them.

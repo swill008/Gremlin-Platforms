@@ -825,7 +825,7 @@ ApplicationWindow {
                 },
                 {
                     h: "Draw",
-                    b: "Right-click empty canvas → Draw picks a tool: a shape (Rectangle, Rounded, Ellipse, Triangle, Diamond, Arrow, Double arrow), a Line or an Arrow, a Text box or a Table, then drag on the photo. Shift keeps a shape's proportions and a line on 15° steps. Stop drawing or Esc ends the tool. Import picture… adds a picture on top of the photo.\nWith chips selected, Shape around selection draws a shape around them that moves with them.\nRight-click a shape for Duplicate and Delete, then Shape, Fill and outline (Filled or Hollow, colours, Width, Outline Solid, Dashed or Dotted, Opacity), Rotate, and Arrange (Bring forward, Send back, Lock).\nA selected line has a handle on each end to drag. Its Arrowheads section sets each end to None, Solid or Hollow; Swap heads turns them round.\nText boxes and tables have their own sections (text, box, rows and columns, cells, look). Double-click a cell or text box to type. A picture's section adds and clears snap points that chips snap to."
+                    b: "Right-click empty canvas → Draw picks a tool: a shape (Rectangle, Rounded, Ellipse, Triangle, Diamond, Arrow, Double arrow), a Line or an Arrow, a Text box or a Table, then drag on the photo. Shift keeps a shape's proportions and a line on 15° steps. Stop drawing or Esc ends the tool. Import picture… adds a picture on top of the photo.\nWith chips selected, Shape around selection draws a shape around them that moves with them.\nRight-click a shape for Duplicate and Delete, then Shape, Fill and outline (Filled or Hollow, colours, Width, Outline Solid, Dashed or Dotted, Opacity), Rotate and flip, and Arrange (Bring to front, forward, back, Send to back, Lock, Hide).\nA selected shape or picture has a round handle above it: drag it to turn the item, with Shift for 15° steps. Rotate and flip takes a typed angle, quarter turns, 15° steps, and flips left to right or top to bottom. A turned item resizes along its own sides, the opposite side staying put. From a corner, a shape keeps its proportions with Shift; a picture keeps them unless Shift is held.\nA selected line has a handle on each end to drag. Its Arrowheads section sets each end to None, Solid or Hollow; Swap heads turns them round.\nText boxes and tables have their own sections (text, box, rows and columns, cells, look). Double-click a cell or text box to type. A picture's section adds and clears snap points that chips snap to."
                 },
                 {
                     h: "Layers",
@@ -1105,6 +1105,7 @@ ApplicationWindow {
     function setPhotoScale(v) {
         photoScale = photoFromDoc({ scale: v }).scale
         applyPhotoToEditor()
+        notePhotoChange()
     }
 
     function setPhotoOff(x, y) {
@@ -1112,6 +1113,7 @@ ApplicationWindow {
         photoOffX = p.offX
         photoOffY = p.offY
         applyPhotoToEditor()
+        notePhotoChange()
     }
 
     function setPhotoRot(v) {
@@ -1120,12 +1122,35 @@ ApplicationWindow {
             r = 0
         photoRot = r
         applyPhotoToEditor()
+        notePhotoChange()
     }
 
+    // The pose returns to the frame; hidden and locked stay as they are.
     function resetPhoto() {
-        applyPhoto({ scale: 1, offX: 0, offY: 0, rot: 0 })
+        var e = _ed()
+        applyPhoto({ scale: 1, offX: 0, offY: 0, rot: 0,
+                     hidden: e ? e.photoHidden : photoHidden, locked: e ? e.photoLocked : photoLocked })
         movePhoto = false
         applyPhotoToEditor()
+        notePhotoChange()
+    }
+
+    // An undo step for a photo change, while editing.
+    function notePhotoChange() {
+        var e = _ed()
+        if (editing && e && e.notePhotoChange)
+            e.notePhotoChange()
+    }
+
+    // Undo or redo moved the photo in the editor: the sliders follow.
+    function syncPhotoFromEditor() {
+        var e = _ed()
+        if (!e)
+            return
+        photoScale = e.photoScale
+        photoOffX = e.photoOffX
+        photoOffY = e.photoOffY
+        photoRot = e.photoRot
     }
 
     function fitPhotoWell() {
@@ -1867,6 +1892,7 @@ ApplicationWindow {
                             function onOverlayImportRequested() { _overlayDialog.open() }
                             function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }
                             function onDrawToolChanged() { _buttonMap.resTick++ }
+                            function onPhotoRestored() { _buttonMap.syncPhotoFromEditor() }
                             function onHistoryChanged() { _buttonMap.deferHistory() }
                             function onNodesChanged() { _buttonMap.deferHistory() }
                         }

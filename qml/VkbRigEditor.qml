@@ -115,6 +115,11 @@ Item {
     property real photoOffY: 0
     property real photoRot: 0
     property bool movePhoto: false
+    // How far above a selected drawing's top edge its rotate handle sits.
+    readonly property real rotateHandleOffset: 24
+    // Selection and handle colours, the same on the photo in both themes.
+    readonly property color handleFill: "#FBBF24"
+    readonly property color handleInk: "#18181B"
     // Layers panel flags for the background photo (saved with its pose).
     property bool photoHidden: false
     property bool photoLocked: false
@@ -125,6 +130,8 @@ Item {
     signal overlayImportRequested()
     signal historyChanged()
     signal colorPickRequested(string field, string hex)
+    // Undo or redo put the photo back; the window's sliders follow.
+    signal photoRestored()
 
     property var hist
     property int histAt: -1
@@ -445,6 +452,8 @@ Item {
     function menuModel() { return RigMenu.menuModel() }
     function menuLines() { return _menu.opened ? _menu.describe() : [] }
     function closeMenu() { _menu.close() }
+    // The delegate drawing node i (for tests that need its frame).
+    function _chipsItem(i) { return _chips.itemAt(i) }
     function menuRowRect(text) { return _menu.rowRect(_menu.rowIndexOf(text)) }
     function menuBox() { var p = _menu.contentItem.mapToItem(null, 0, 0); return { x: p.x, y: p.y, w: _menu.width, h: _menu.height, open: _menu.opened } }
 
@@ -456,6 +465,10 @@ Item {
     function applyDrawField(key, val) { return RigDraw.applyDrawField(key, val) }
     function swapLineHeads() { return RigDraw.swapLineHeads() }
     function drawToolPoint(x0, y0, x1, y1) { return RigDraw.drawToolPoint(x0, y0, x1, y1) }
+    function isRotatable(n) { return RigDraw.isRotatable(n) }
+    function isFlippable(n) { return RigDraw.isFlippable(n) }
+    function setRotation(deg) { return RigDraw.setRotation(deg) }
+    function flipSelection(axis) { return RigDraw.flipSelection(axis) }
 
     // Selection, nudging, delete, copy/paste/duplicate and stacking order (rig_selection.js)
     function deleteSelection() { return RigSelection.deleteSelection() }
@@ -488,9 +501,10 @@ Item {
             pushHist()
     }
 
+    // An undo step: the nodes and the photo's pose and flags.
     function snapJson() {
         try {
-            return JSON.stringify(nodes || [])
+            return JSON.stringify({ nodes: nodes || [], photo: photoBag() })
         } catch (e) {
             return "[]"
         }
@@ -519,18 +533,29 @@ Item {
     }
 
     function applySnap(s) {
-        var next = []
+        var doc = null
         try {
-            next = JSON.parse(s)
+            doc = JSON.parse(s)
         } catch (e) {
             return
         }
+        var next = Array.isArray(doc) ? doc : (doc.nodes || [])
         var list = nodes
         if (!list)
             return
         list.splice(0, list.length)
         for (var i = 0; i < next.length; i++)
             list.push(next[i])
+        if (!Array.isArray(doc) && doc.photo) {
+            applyPhotoPose(Object.assign({ hidden: false, locked: false }, doc.photo))
+            photoRestored()
+        }
+    }
+
+    // Photo changes from the Adjust photo sliders come many per drag: one undo
+    // step once they stop.
+    function notePhotoChange() {
+        _photoHist.restart()
     }
 
     function undo() {
@@ -1064,6 +1089,13 @@ Item {
             function onDrawX1Changed() { _linePreview.requestPaint() }
             function onDrawY1Changed() { _linePreview.requestPaint() }
         }
+    }
+
+    Timer {
+        id: _photoHist
+        interval: 400
+        repeat: false
+        onTriggered: _ed.pushHist()
     }
 
     Timer {

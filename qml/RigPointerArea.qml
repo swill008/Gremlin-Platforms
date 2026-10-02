@@ -176,7 +176,10 @@ MouseArea {
         if (hit.kind === "draw") {
             var dnPre = ed.nodeAt(hit.id)
             var shiftCell = shift && ed.isTable(dnPre) && hit.handle === "body"
-            if (shift && !shiftCell)
+            // Shift on a handle changes what the drag does (proportions, 15
+            // degree steps), not the selection.
+            var onHandle = !!(hit.handle && hit.handle !== "body")
+            if (shift && !shiftCell && !onHandle)
                 ed.toggleSelected(hit.id)
             else if (!ed.isSelected(hit.id))
                 ed.setSelection([hit.id])

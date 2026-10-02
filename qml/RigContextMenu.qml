@@ -127,6 +127,8 @@ Popup {
                 t += it.checked ? " [x]" : " [ ]"
             if (it.kind === "choice")
                 t += ": " + it.options.map(function(o) { return o.checked ? "*" + o.text : o.text }).join(" | ")
+            if (it.kind === "number")
+                t += ": " + it.value + it.suffix
             if (!it.enabled)
                 t += " (off)"
             out.push(t)
@@ -203,7 +205,11 @@ Popup {
             } else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) {
                 if (r && r.type === "header")
                     _menu.toggleSection(r.key)
-                else if (r && r.item.kind !== "choice")
+                else if (r && r.item.kind === "number") {
+                    var row = _repeater.itemAt(_menu.focusRow)
+                    if (row && row.item)
+                        row.item.editValue()
+                } else if (r && r.item.kind !== "choice")
                     _menu.run(r.item)
             } else if (e.key === Qt.Key_Right || e.key === Qt.Key_Left) {
                 var step = e.key === Qt.Key_Right ? 1 : -1
@@ -308,7 +314,8 @@ Popup {
                             required property int index
                             width: _rowsColumn.width
                             sourceComponent: modelData.type === "header" ? _header
-                                : (modelData.item.kind === "choice" ? _choice : _plain)
+                                : (modelData.item.kind === "choice" ? _choice
+                                   : (modelData.item.kind === "number" ? _number : _plain))
                             onLoaded: {
                                 item.row = Qt.binding(function() { return modelData })
                                 item.rowIndex = Qt.binding(function() { return index })
@@ -392,6 +399,65 @@ Popup {
                     _menu.focusRow = rowIndex
                     _menu.run(it)
                 }
+            }
+        }
+    }
+
+    // A value to type: a label, a small box and its unit; Enter applies it.
+    Component {
+        id: _number
+        Rectangle {
+            property var row: null
+            property int rowIndex: -1
+            readonly property var it: row ? row.item : null
+            implicitHeight: _menu.rowH + Style.dp(4)
+            color: _menu.focusRow === rowIndex ? Style.bgSelected : Style.clear
+
+            function editValue() {
+                _numField.forceActiveFocus()
+                _numField.selectAll()
+            }
+
+            Label {
+                id: _numLabel
+                x: row && row.indent ? Style.dp(22) : Style.dp(6)
+                anchors.verticalCenter: parent.verticalCenter
+                width: Style.dp(78)
+                text: it ? it.text : ""
+                font.pixelSize: _menu.textPx
+                color: it && it.enabled ? Style.fgSoft : Style.fgDisabled
+            }
+            TextField {
+                id: _numField
+                x: _numLabel.x + _numLabel.width + Style.dp(4)
+                anchors.verticalCenter: parent.verticalCenter
+                width: Style.dp(64)
+                height: _menu.rowH
+                topPadding: 0
+                bottomPadding: 0
+                font.pixelSize: _menu.textPx
+                enabled: !!(it && it.enabled)
+                text: it ? "" + it.value : ""
+                selectByMouse: true
+                validator: DoubleValidator {
+                    bottom: it ? it.min : -1e9
+                    top: it ? it.max : 1e9
+                    notation: DoubleValidator.StandardNotation
+                }
+                onAccepted: {
+                    var v = Number(text)
+                    if (it && v === v)
+                        _menu.run(it, v)
+                    _keys.forceActiveFocus()
+                }
+                Keys.onEscapePressed: _keys.forceActiveFocus()
+            }
+            Label {
+                x: _numField.x + _numField.width + Style.dp(4)
+                anchors.verticalCenter: parent.verticalCenter
+                text: it ? it.suffix : ""
+                font.pixelSize: _menu.textPx
+                color: Style.fgSoft
             }
         }
     }

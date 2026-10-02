@@ -23,21 +23,23 @@ Item {
     Item {
         id: _photoXform
         anchors.fill: parent
+        // Scale and turn about the photo's own centre, then move it: moving
+        // first turned an offset photo round the frame's centre instead.
         transform: [
-            Translate {
-                x: ed.photoOffX * ed.spaceRect().w
-                y: ed.photoOffY * ed.spaceRect().h
+            Scale {
+                origin.x: _photoXform.width * 0.5
+                origin.y: _photoXform.height * 0.5
+                xScale: ed.photoScale
+                yScale: ed.photoScale
             },
             Rotation {
                 origin.x: _photoXform.width * 0.5
                 origin.y: _photoXform.height * 0.5
                 angle: ed.photoRot
             },
-            Scale {
-                origin.x: _photoXform.width * 0.5
-                origin.y: _photoXform.height * 0.5
-                xScale: ed.photoScale
-                yScale: ed.photoScale
+            Translate {
+                x: ed.photoOffX * ed.spaceRect().w
+                y: ed.photoOffY * ed.spaceRect().h
             }
         ]
 

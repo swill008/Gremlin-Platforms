@@ -186,7 +186,7 @@ def _run(scenario: str, out_dir: pathlib.Path) -> dict:
 
 @pytest.mark.parametrize(
     "scenario",
-    ["load_l", "session_r", "api_sweep", "arrows", "menu", "layers"],
+    ["load_l", "session_r", "api_sweep", "arrows", "menu", "layers", "transform"],
 )
 def test_editor_matches_golden(scenario: str, tmp_path: pathlib.Path) -> None:
     run = _normalize(_run(scenario, tmp_path))

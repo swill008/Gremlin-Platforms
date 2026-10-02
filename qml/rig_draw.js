@@ -72,6 +72,29 @@ function applyDrawResize(n, mx, my, handle, altOff) {
             setLineEnds(n, e.ax, e.ay, px, py)
         return
     }
+    if (handle === "rotate") {
+        // The handle above the top edge: the angle round the centre, 15 degree
+        // steps with Shift.
+        var gr = drawGeom(n)
+        var a = Shapes.handleAngle(gr.x + gr.w / 2, gr.y + gr.h / 2, mx, my)
+        n.rot = shiftHeld ? Shapes.snapDeg(a, 15) : Math.round(a * 10) / 10
+        return
+    }
+    // Pictures keep their proportions from a corner unless Shift is held;
+    // shapes the other way round.
+    var keep = isOverlay(n) !== shiftHeld
+    if (Shapes.normDeg(n.rot || 0) !== 0) {
+        // A turned box resizes along its own axes, the opposite side fixed.
+        var oldRotH = fhToH(n.fh || 0)
+        var b = Shapes.rotatedResize({ x: rzX0, y: rzY0, w: rzX1 - rzX0, h: rzY1 - rzY0 }, n.rot, handle,
+                                     mx, my, 8, 8, keep && handle.length === 2)
+        n.fx = xToFx(b.x)
+        n.fy = yToFy(b.y)
+        n.fw = b.w / Math.max(1, spaceRect().w)
+        n.fh = b.h / Math.max(1, spaceRect().h)
+        _scaleTextFont(n, oldRotH, b.h)
+        return
+    }
     var x0 = rzX0
     var y0 = rzY0
     var x1 = rzX1
@@ -84,7 +107,7 @@ function applyDrawResize(n, mx, my, handle, altOff) {
         x0 = p.x
     if (handle.indexOf("e") >= 0)
         x1 = p.x
-    if (shiftHeld && handle.length === 2) {
+    if (keep && handle.length === 2) {
         var fx0 = (handle.indexOf("w") >= 0) ? x1 : x0
         var fy0 = (handle.indexOf("n") >= 0) ? y1 : y0
         var mx1 = (handle.indexOf("w") >= 0) ? x0 : x1
@@ -112,10 +135,57 @@ function applyDrawResize(n, mx, my, handle, altOff) {
     n.fy = yToFy(ny)
     n.fw = nw / Math.max(1, spaceRect().w)
     n.fh = nh / Math.max(1, spaceRect().h)
+    _scaleTextFont(n, oldH, nh)
+}
+
+// A text box set to scale its font follows its new height.
+function _scaleTextFont(n, oldH, newH) {
     if (isText(n) && n.scaleFont && oldH > 1) {
         var fs = n.fontSize > 0 ? n.fontSize : 12
-        n.fontSize = Math.max(6, Math.min(72, Math.round(fs * (nh / oldH))))
+        n.fontSize = Math.max(6, Math.min(72, Math.round(fs * (newH / oldH))))
     }
+}
+
+// Shapes, lines and pictures turn; text boxes and tables stay level.
+function isRotatable(n) {
+    return isDraw(n) && !isTable(n) && !isText(n) && !isLine(n)
+}
+
+function isFlippable(n) {
+    return isDraw(n) && !isTable(n) && !isText(n)
+}
+
+// Sets the selected drawings' angle (typed in the menu).
+function setRotation(deg) {
+    var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
+    for (var i = 0; i < ids.length; i++) {
+        var n = nodeAt(ids[i])
+        if (isRotatable(n) && !isLocked(n))
+            n.rot = Shapes.normDeg(deg)
+    }
+    bump()
+}
+
+// Mirrors the selected drawings left to right ("h") or top to bottom ("v").
+// A line's ends move; shapes and pictures keep a flag their drawing follows.
+function flipSelection(axis) {
+    var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
+    for (var i = 0; i < ids.length; i++) {
+        var n = nodeAt(ids[i])
+        if (!isFlippable(n) || isLocked(n))
+            continue
+        if (isLine(n)) {
+            var e = (n.ends && n.ends.length === 4) ? n.ends : [0, 0.5, 1, 0.5]
+            n.ends = axis === "h" ? [1 - e[0], e[1], 1 - e[2], e[3]] : [e[0], 1 - e[1], e[2], 1 - e[3]]
+            continue
+        }
+        var key = axis === "h" ? "flipH" : "flipV"
+        if (n[key])
+            delete n[key]
+        else
+            n[key] = true
+    }
+    bump()
 }
 
 function _drawStyle() {

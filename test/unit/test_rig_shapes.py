@@ -114,3 +114,61 @@ def test_angle_snap_keeps_length(js: QtQml.QJSEngine) -> None:
     angle = math.degrees(math.atan2(p["y"] - 10, p["x"] - 10))
     assert angle == pytest.approx(45)
     assert math.hypot(p["x"] - 10, p["y"] - 10) == pytest.approx(math.hypot(70, 60))
+
+
+def _corner(box: dict, rot: float, sx: int, sy: int, js: QtQml.QJSEngine) -> tuple:
+    """Screen position of a box corner (sx, sy in -1/0/1) when turned by rot."""
+    p = call(js, f"rotatePt({sx * box['w'] / 2}, {sy * box['h'] / 2}, {rot})")
+    return (box["x"] + box["w"] / 2 + p["x"], box["y"] + box["h"] / 2 + p["y"])
+
+
+@pytest.mark.parametrize("rot", [0, 30, 90, 135, 250])
+@pytest.mark.parametrize(
+    "handle, sx, sy",
+    [("se", 1, 1), ("nw", -1, -1), ("ne", 1, -1), ("e", 1, 0), ("n", 0, -1)],
+)
+def test_rotated_resize_keeps_the_opposite_side(
+    js: QtQml.QJSEngine, rot: float, handle: str, sx: int, sy: int
+) -> None:
+    box = {"x": 100, "y": 80, "w": 120, "h": 60}
+    fixed = _corner(box, rot, -sx, -sy, js)
+    # Drag the handle to a point 40 px further out along the box's own axes.
+    start = _corner(box, rot, sx, sy, js)
+    push = call(js, f"rotatePt({sx * 40}, {sy * 40}, {rot})")
+    px, py = start[0] + push["x"], start[1] + push["y"]
+    new = call(
+        js,
+        f"rotatedResize({json.dumps(box)}, {rot}, '{handle}', {px}, {py}, 8, 8, false)",
+    )
+    assert _corner(new, rot, -sx, -sy, js) == pytest.approx(fixed, abs=1e-6)
+    assert new["w"] == pytest.approx(box["w"] + (40 if sx else 0))
+    assert new["h"] == pytest.approx(box["h"] + (40 if sy else 0))
+
+
+def test_rotated_resize_minimum_and_aspect(js: QtQml.QJSEngine) -> None:
+    box = {"x": 0, "y": 0, "w": 100, "h": 50}
+    # Dragged past the opposite corner: the minimum size, not a negative one.
+    small = call(
+        js, f"rotatedResize({json.dumps(box)}, 0, 'se', -50, -50, 8, 8, false)"
+    )
+    assert (small["w"], small["h"]) == (8, 8)
+    # Keeping the aspect: 2 to 1 stays 2 to 1.
+    kept = call(js, f"rotatedResize({json.dumps(box)}, 45, 'se', 300, 300, 8, 8, true)")
+    assert kept["w"] / kept["h"] == pytest.approx(2)
+
+
+def test_unturned_resize_matches_a_plain_one(js: QtQml.QJSEngine) -> None:
+    box = {"x": 10, "y": 20, "w": 100, "h": 50}
+    new = call(js, f"rotatedResize({json.dumps(box)}, 0, 'se', 150, 90, 8, 8, false)")
+    assert new == pytest.approx({"x": 10, "y": 20, "w": 140, "h": 70})
+
+
+def test_handle_angle_and_snap(js: QtQml.QJSEngine) -> None:
+    # Straight up is 0, growing clockwise on screen.
+    assert call(js, "handleAngle(0, 0, 0, -10)") == pytest.approx(0)
+    assert call(js, "handleAngle(0, 0, 10, 0)") == pytest.approx(90)
+    assert call(js, "handleAngle(0, 0, 0, 10)") == pytest.approx(180)
+    assert call(js, "handleAngle(0, 0, -10, 0)") == pytest.approx(270)
+    assert call(js, "snapDeg(52, 15)") == pytest.approx(45)
+    assert call(js, "snapDeg(359, 15)") == pytest.approx(0)
+    assert call(js, "normDeg(-90)") == pytest.approx(270)

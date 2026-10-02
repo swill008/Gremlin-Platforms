@@ -114,3 +114,65 @@ function snapAngle(ax, ay, bx, by, stepDeg) {
     var a = Math.round(Math.atan2(dy, dx) / step) * step
     return { x: ax + Math.cos(a) * len, y: ay + Math.sin(a) * len }
 }
+
+// --- rotation ------------------------------------------------------------------
+
+// (x, y) turned by deg degrees (clockwise on screen, as Item.rotation).
+function rotatePt(x, y, deg) {
+    var a = deg * Math.PI / 180
+    var c = Math.cos(a)
+    var s = Math.sin(a)
+    return { x: x * c - y * s, y: x * s + y * c }
+}
+
+// An angle in [0, 360).
+function normDeg(a) {
+    var d = Number(a) || 0
+    d = d % 360
+    return d < 0 ? d + 360 : d
+}
+
+// The angle of (px, py) seen from the centre, 0 straight up and growing
+// clockwise: what a rotate handle above the top edge sets.
+function handleAngle(cx, cy, px, py) {
+    return normDeg(Math.atan2(px - cx, -(py - cy)) * 180 / Math.PI)
+}
+
+function snapDeg(a, step) {
+    var s = step || 15
+    return normDeg(Math.round(a / s) * s)
+}
+
+// Resizes a box drawn turned by rot degrees about its centre, from one of its
+// handles (n, s, e, w, ne, nw, se, sw), keeping the opposite side or corner
+// where it is on screen. box is the unturned box (x, y, w, h); the pointer is
+// on screen. keepAspect keeps the width to height ratio (corner handles).
+// Returns the new unturned box.
+function rotatedResize(box, rot, handle, px, py, minW, minH, keepAspect) {
+    var sx = handle.indexOf("e") >= 0 ? 1 : (handle.indexOf("w") >= 0 ? -1 : 0)
+    var sy = handle.indexOf("s") >= 0 ? 1 : (handle.indexOf("n") >= 0 ? -1 : 0)
+    var cx = box.x + box.w / 2
+    var cy = box.y + box.h / 2
+    // The fixed point: the opposite corner, or the middle of the opposite edge.
+    var fixedLocal = { x: -sx * box.w / 2, y: -sy * box.h / 2 }
+    var f = rotatePt(fixedLocal.x, fixedLocal.y, rot)
+    var fx = cx + f.x
+    var fy = cy + f.y
+    // The pointer in the box's own axes, measured from the fixed point.
+    var d = rotatePt(px - fx, py - fy, -rot)
+    var w = sx ? Math.max(minW, d.x * sx) : box.w
+    var h = sy ? Math.max(minH, d.y * sy) : box.h
+    if (keepAspect && sx && sy && box.w > 0 && box.h > 0) {
+        var ratio = box.w / box.h
+        if (w / ratio > h)
+            h = w / ratio
+        else
+            w = h * ratio
+    }
+    // New centre: from the fixed point, half the new size towards the handle
+    // (along one axis only for an edge handle).
+    var half = rotatePt(sx * w / 2, sy * h / 2, rot)
+    var ncx = fx + half.x
+    var ncy = fy + half.y
+    return { x: ncx - w / 2, y: ncy - h / 2, w: w, h: h }
+}

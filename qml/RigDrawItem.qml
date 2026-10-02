@@ -15,6 +15,12 @@ Item {
     anchors.fill: parent
     Canvas {
         id: _dc
+        transform: Scale {
+            origin.x: _dc.width / 2
+            origin.y: _dc.height / 2
+            xScale: { ed.tick; return _drawRoot.node && _drawRoot.node.flipH ? -1 : 1 }
+            yScale: { ed.tick; return _drawRoot.node && _drawRoot.node.flipV ? -1 : 1 }
+        }
         visible: {
             var n = node
             return !!(n && n.shape !== "image" && n.shape !== "table" && n.shape !== "text")
@@ -86,7 +92,7 @@ Item {
                 border.color: {
                     ed.tick
                     var sel = ed.isSelected(node.id) && ed.tableRow === row && ed.tableCol === col
-                    return sel ? "#FBBF24" : ed.tableCellStyle(node, col).border
+                    return sel ? ed.handleFill : ed.tableCellStyle(node, col).border
                 }
                 border.width: {
                     ed.tick
@@ -130,8 +136,8 @@ Item {
                         height: Style.dp(8)
                         radius: Style.dp(1)
                         z: 6
-                        color: "#FBBF24"
-                        border.color: "#18181B"
+                        color: ed.handleFill
+                        border.color: ed.handleInk
                         x: {
                             var xs = [0, parent.width, 0, parent.width, parent.width * 0.5, parent.width * 0.5, 0, parent.width]
                             return xs[index] - 4
@@ -185,7 +191,7 @@ Item {
                 border.color: {
                     ed.tick
                     var sel = ed.isSelected(node.id) && ed.tableExtra === index
-                    return sel ? "#FBBF24" : ed.tableCellStyle(node, -1).border
+                    return sel ? ed.handleFill : ed.tableCellStyle(node, -1).border
                 }
                 border.width: {
                     ed.tick
@@ -225,8 +231,8 @@ Item {
                         height: Style.dp(8)
                         radius: Style.dp(1)
                         z: 6
-                        color: "#FBBF24"
-                        border.color: "#18181B"
+                        color: ed.handleFill
+                        border.color: ed.handleInk
                         x: {
                             var xs = [0, parent.width, 0, parent.width, parent.width * 0.5, parent.width * 0.5, 0, parent.width]
                             return xs[index] - 4
@@ -335,6 +341,13 @@ Item {
         function onTickChanged() { if (_dc.visible) _dc.requestPaint() }
     }
     Image {
+        id: _overlayImage
+        transform: Scale {
+            origin.x: _overlayImage.width / 2
+            origin.y: _overlayImage.height / 2
+            xScale: { ed.tick; return _drawRoot.node && _drawRoot.node.flipH ? -1 : 1 }
+            yScale: { ed.tick; return _drawRoot.node && _drawRoot.node.flipV ? -1 : 1 }
+        }
         visible: { var n = node; return !!(n && n.shape === "image") }
         anchors.fill: parent
         fillMode: Image.PreserveAspectFit
@@ -374,6 +387,29 @@ Item {
             }
         }
     }
+    // The rotate handle: a stem up from the top edge to a round grip.
+    Item {
+        visible: { ed.tick; return !!(ed.interactive && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node)) }
+        x: _drawRoot.width / 2
+        y: -ed.rotateHandleOffset
+        z: 4
+        Rectangle {
+            x: -0.5
+            width: 1
+            height: ed.rotateHandleOffset - 4
+            color: ed.handleFill
+        }
+        Rectangle {
+            x: -5
+            y: -5
+            width: 10
+            height: 10
+            radius: 5
+            color: ed.handleInk
+            border.color: ed.handleFill
+            border.width: 2
+        }
+    }
     // Resize handles: eight on a box, one on each end of a line.
     Repeater {
         model: (ed.interactive && node && ed.isSelected(node.id) && !ed.isLocked(node) && !ed.tableCellHandlesOn(node))
@@ -387,8 +423,8 @@ Item {
             width: Style.dp(8)
             height: Style.dp(8)
             radius: lineEnds ? width / 2 : Style.dp(1)
-            color: "#FBBF24"
-            border.color: "#18181B"
+            color: ed.handleFill
+            border.color: ed.handleInk
             x: {
                 if (lineEnds)
                     return lineEnds[index * 2] * _drawRoot.width - 4

@@ -155,6 +155,13 @@ Window {
         return JSON.stringify([p.x, p.y])
     }
     function geom(id) { return JSON.stringify(ed().nodeBox(ed().nodeAt(id))) }
+    // A drawing's point in its own frame (turned, flipped) in window pixels.
+    function drawPt(id, lx, ly) {
+        var e = ed()
+        var it = e._chipsItem(e.nodeIndex(id))
+        var p = it.mapToItem(null, lx, ly)
+        return JSON.stringify([p.x, p.y, it.width, it.height])
+    }
 }
 """
 
@@ -847,6 +854,96 @@ def scenario_layers(s: Session) -> None:
     s.record("photo-locked")
 
 
+def scenario_transform(s: Session) -> None:
+    """Rotate handle, resizing a turned shape, a typed angle, flips, a
+    picture keeping its proportions, and undoing a photo change."""
+    Mod = QtCore.Qt.KeyboardModifier
+    Key = QtCore.Qt.Key
+    _load(s, "evo_r")
+
+    def local(id_: str, fx: float, fy: float) -> QtCore.QPoint:
+        x, y, w, h = json.loads(s.js("drawPt", id_, 0, 0))
+        x, y, w, h = json.loads(s.js("drawPt", id_, w * fx, h * fy))
+        return QtCore.QPoint(round(x), round(y))
+
+    def handle(id_: str) -> QtCore.QPoint:
+        x, y, w, h = json.loads(s.js("drawPt", id_, 0, 0))
+        x, y, _w, _h = json.loads(s.js("drawPt", id_, w / 2, -24))
+        return QtCore.QPoint(round(x), round(y))
+
+    s.call("setDrawTool", "arrow")
+    s.drag(s.point(0.05, 0.12), s.point(0.20, 0.22))
+    s.call("setDrawTool", "")
+    arrow = s.state()["selected"][0]
+    # Filled, so a click anywhere on it (not only its outline) finds it.
+    s.call("applyField", "fill", "filled")
+    s.record("arrow", image=True)
+
+    # Drag the rotate handle round to the right: about 90 degrees.
+    centre = local(arrow, 0.5, 0.5)
+    s.drag(handle(arrow), QtCore.QPoint(centre.x() + 120, centre.y() + 9))
+    s.record("rotated-free")
+    # With Shift it lands on a 15 degree step.
+    s.drag(
+        handle(arrow),
+        QtCore.QPoint(centre.x() + 100, centre.y() + 60),
+        Mod.ShiftModifier,
+    )
+    s.record("rotated-shift", image=True)
+
+    # Resize the turned arrow from its bottom-right corner: the top-left
+    # corner stays where it is on screen.
+    before = local(arrow, 0, 0)
+    corner = local(arrow, 1, 1)
+    s.drag(corner, QtCore.QPoint(corner.x() + 30, corner.y() + 40))
+    after = local(arrow, 0, 0)
+    s.record("resized-turned", image=True)
+    s.steps[-1]["state"]["fixedCornerMoved"] = round(
+        abs(after.x() - before.x()) + abs(after.y() - before.y())
+    )
+
+    # A typed angle and flips, from the menu.
+    s.right_click(local(arrow, 0.5, 0.5))
+    s.click_menu_row("Rotate and flip")
+    r = json.loads(s.js("menuRowRect", "Angle"))
+    s.click(QtCore.QPoint(round(r["x"] + 120), round(r["y"] + r["h"] / 2)))
+    QtTest.QTest.keyClick(s.win, Key.Key_A, Mod.ControlModifier)
+    s.type_text("30")
+    QtTest.QTest.keyClick(s.win, Key.Key_Return)
+    s.wait(150)
+    s.record("typed-angle")
+    s.click_menu_row("Flip horizontally")
+    s.record("flipped", image=True)
+
+    # A line flips by moving its ends.
+    s.call("setDrawTool", "arrowline")
+    s.drag(s.point(0.05, 0.60), s.point(0.20, 0.70))
+    s.call("setDrawTool", "")
+    s.call("flipSelection", "h")
+    s.record("line-flipped")
+
+    # A picture keeps its proportions from a corner; Shift stretches it.
+    icon = ROOT / "gfx" / "icon.png"
+    s.call("addOverlay", "test/icon", QtCore.QUrl.fromLocalFile(str(icon)).toString())
+    pic = s.state()["selected"][0]
+    corner = s.corner(pic)
+    s.drag(corner, QtCore.QPoint(corner.x() + 80, corner.y() + 10))
+    s.record("picture-kept")
+    corner = s.corner(pic)
+    s.drag(corner, QtCore.QPoint(corner.x() + 60, corner.y() - 30), Mod.ShiftModifier)
+    s.record("picture-stretched")
+
+    # The photo: a change is one undo step, and undo puts it back.
+    s.call("applyPhotoPose", {"scale": 1.2, "offX": 0.2, "offY": 0.1, "rot": 20})
+    s.call("notePhotoChange")
+    s.wait(600)
+    s.record("photo-changed")
+    s.call("undo")
+    s.record("photo-undone")
+    s.call("redo")
+    s.record("photo-redone")
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
@@ -854,6 +951,7 @@ SCENARIOS = {
     "arrows": scenario_arrows,
     "menu": scenario_menu,
     "layers": scenario_layers,
+    "transform": scenario_transform,
 }
 
 
