@@ -117,7 +117,12 @@ Item {
                     text: modelData.name
                     onAccepted: {
                         _library.renaming = ""
-                        _hw.renameTemplate(modelData.name, text)
+                        var to = text.trim()
+                        if (to.length && to !== modelData.name && !_hw.renameTemplate(modelData.name, to)) {
+                            _failNotice.announce(false, "Could not rename " + modelData.name + " to " + to
+                                + ". A template may have that name already, or its file could not be written.")
+                            _failNotice.titleText = "Rename failed"
+                        }
                         _library.refreshTemplates()
                     }
                 }
@@ -151,5 +156,9 @@ Item {
     // Asks before a style or template is deleted.
     DismissibleDialog {
         id: _deleteGate
+    }
+
+    DismissibleDialog {
+        id: _failNotice
     }
 }

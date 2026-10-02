@@ -12,6 +12,7 @@ import sys
 
 sys.path.append(".")
 
+import pathlib
 import types
 
 from gremlin.logical_device import LogicalDevice
@@ -69,3 +70,21 @@ def test_dual_deadzone_takes_the_nearest_allowed_value() -> None:
     assert data.outer_deadzone == 0.8
     inner(model, 0.3)
     assert data.inner_deadzone == 0.3
+
+
+def test_hidhide_device_photo_copy_exists_and_caps_size(
+    tmp_path: pathlib.Path,
+) -> None:
+    # The HiDHide photo picker imports this; it was missing, so picking failed.
+    from PySide6 import QtGui
+
+    from gremlin.ui.hardware_profile import limit_image_file
+
+    big = QtGui.QImage(2000, 1000, QtGui.QImage.Format.Format_RGB32)
+    big.fill(0x336699)
+    src = tmp_path / "big.png"
+    assert big.save(str(src))
+    dest = tmp_path / "out" / "small.png"
+    limit_image_file(src, dest)
+    out = QtGui.QImage(str(dest))
+    assert (out.width(), out.height()) == (1600, 800)

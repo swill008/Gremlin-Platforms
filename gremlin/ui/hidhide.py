@@ -237,6 +237,16 @@ def _load_games() -> list[dict]:
     return out
 
 
+# The last HiDHide setting that could not be written ("" when all were).
+_settings_error = ""
+
+
+def _settings_write_failed(exc: Exception) -> None:
+    global _settings_error
+    _settings_error = f"Could not save the HiDHide settings: {exc}"
+    _hh_log(_settings_error, logging.WARNING)
+
+
 def _save_games(rows: list[dict]) -> None:
     _ensure_options()
     packed = json.dumps(
@@ -247,7 +257,7 @@ def _save_games(rows: list[dict]) -> None:
         config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_GAMES, packed)
         _hh_log(f"saved games count={len(rows)}")
     except Exception as exc:
-        _hh_log(f"save games failed: {exc}", logging.WARNING)
+        _settings_write_failed(exc)
 
 
 
@@ -269,8 +279,8 @@ def _save_photos(rows: dict[str, str]) -> None:
         config.Configuration().set(
             _CFG_SECTION, _CFG_GROUP, _CFG_PHOTOS, json.dumps(rows, ensure_ascii=True)
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        _settings_write_failed(exc)
 
 
 def _load_links() -> dict[str, str]:
@@ -291,8 +301,8 @@ def _save_links(rows: dict[str, str]) -> None:
         config.Configuration().set(
             _CFG_SECTION, _CFG_GROUP, _CFG_LINKS, json.dumps(rows, ensure_ascii=True)
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        _settings_write_failed(exc)
 
 
 def _saved_block_list() -> bool | None:
@@ -312,8 +322,8 @@ def _save_list_mode(block: bool) -> None:
         config.Configuration().set(
             _CFG_SECTION, _CFG_GROUP, _CFG_LIST_MODE, "block" if block else "allow"
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        _settings_write_failed(exc)
 
 
 def _apply_saved_list_mode() -> bool:
@@ -358,8 +368,8 @@ def _save_hidden(ids: list[str]) -> None:
         config.Configuration().set(
             _CFG_SECTION, _CFG_GROUP, _CFG_HIDDEN, json.dumps(kept, ensure_ascii=True)
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        _settings_write_failed(exc)
 
 
 def _apply_saved_hidden() -> None:
@@ -385,8 +395,8 @@ def _save_cloak(on: bool) -> None:
     _ensure_options()
     try:
         config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_CLOAK, "on" if on else "off")
-    except Exception:
-        pass
+    except Exception as exc:
+        _settings_write_failed(exc)
 
 
 def _start_enabled() -> bool:
@@ -398,8 +408,8 @@ def _save_start(on: bool) -> None:
     _ensure_options()
     try:
         config.Configuration().set("global", "general", "hidhide-on-start", bool(on))
-    except Exception:
-        pass
+    except Exception as exc:
+        _settings_write_failed(exc)
 
 
 def _saved_gaming_only() -> bool:
@@ -411,8 +421,8 @@ def _save_gaming_only(on: bool) -> None:
     _ensure_options()
     try:
         config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_GAMING, "on" if on else "off")
-    except Exception:
-        pass
+    except Exception as exc:
+        _settings_write_failed(exc)
 
 
 def _hidhide_managed() -> bool:
@@ -432,8 +442,8 @@ def _set_managed(on: bool) -> None:
     _ensure_options()
     try:
         config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_MANAGED, "yes" if on else "")
-    except Exception:
-        pass
+    except Exception as exc:
+        _settings_write_failed(exc)
 
 
 def _apply_saved_cloak() -> bool:
@@ -1511,6 +1521,9 @@ class HidHideModel(QtCore.QObject):
         self._gaming_only = _saved_gaming_only()
         self._generation = 0
         self._last_error = ""
+        # A new window starts clean; a failed setting write shows until then.
+        global _settings_error
+        _settings_error = ""
         self._inverse = False
         self._version = ""
         _ensure_options()
@@ -1640,7 +1653,7 @@ class HidHideModel(QtCore.QObject):
 
     @QtCore.Property(str, notify=changed)
     def lastError(self) -> str:
-        return self._last_error
+        return self._last_error or _settings_error
 
     @QtCore.Property(int, notify=changed)
     def deviceCount(self) -> int:

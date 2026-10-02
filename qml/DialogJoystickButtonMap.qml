@@ -879,6 +879,16 @@ ApplicationWindow {
         id: _deleteGate
     }
 
+    // Something the user asked for did not happen: say so.
+    DismissibleDialog {
+        id: _failNotice
+    }
+
+    function tellFailure(title, message) {
+        _failNotice.announce(false, message)
+        _failNotice.titleText = title
+    }
+
     DismissibleDialog {
         id: _saveGate
         onSaveChosen: _buttonMap.confirmLeaveSave()
@@ -1931,11 +1941,10 @@ ApplicationWindow {
                             var from = modelData.name
                             var to = text.trim()
                             _templatesDlg.renaming = ""
-                            if (to.length && to !== from && !_hw.renameTemplate(from, to)) {
-                                var e = _buttonMap._ed()
-                                if (e)
-                                    e.showFindMessage("A template called " + to + " exists already.")
-                            }
+                            if (to.length && to !== from && !_hw.renameTemplate(from, to))
+                                _buttonMap.tellFailure("Rename failed", "Could not rename "
+                                    + from + " to " + to + ". A template may have that name already,"
+                                    + " or its file could not be written.")
                             _buttonMap.refreshTemplates()
                         }
                     }
@@ -1994,7 +2003,11 @@ ApplicationWindow {
         fileMode: FileDialog.SaveFile
         defaultSuffix: "json"
         nameFilters: ["Button Map template (*.json)"]
-        onAccepted: _hw.exportTemplate(templateName, selectedFile)
+        onAccepted: {
+            if (!_hw.exportTemplate(templateName, selectedFile))
+                _buttonMap.tellFailure("Export failed",
+                    "Could not write " + templateName + " to that file.")
+        }
     }
 
     FileDialog {
@@ -2319,7 +2332,13 @@ ApplicationWindow {
                     onTriggered: {
                         // Cancel can put the current photo back.
                         _hw.stashPhoto(targetName)
-                        _hw.clearImage(targetName)
+                        if (!_hw.clearImage(targetName)) {
+                            // It may have stopped part way: put the photo back.
+                            _hw.restorePhoto(targetName)
+                            tellFailure("Clear image failed",
+                                "The photo file could not be removed (it may be open in another program).")
+                            return
+                        }
                         applyImage(stockImage)
                         resetPhoto()
                     }
