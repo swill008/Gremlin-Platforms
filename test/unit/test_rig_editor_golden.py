@@ -210,6 +210,7 @@ def _run(scenario: str, out_dir: pathlib.Path) -> dict:
         "zoom",
         "rulers",
         "to_pool",
+        "shape_tools",
     ],
 )
 def test_editor_matches_golden(scenario: str, tmp_path: pathlib.Path) -> None:

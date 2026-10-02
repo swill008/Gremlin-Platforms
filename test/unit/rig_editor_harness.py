@@ -142,6 +142,23 @@ Window {
     }
     function setPhotoUrl(url) { _face.photoOverride = url }
     function setRulers(on) { _face.rulersOn = on }
+    // A transform handle's window point.
+    function xfHandlePt(id, name) {
+        var e = ed()
+        var n = e.nodeAt(id)
+        var it = e._chipsItem(e.nodeIndex(id))
+        var hs = e.transformHandles(n, it.width, it.height)
+        for (var i = 0; i < hs.length; i++) {
+            if (hs[i].name !== name)
+                continue
+            var k = n.skew || [0, 0]
+            var dx = hs[i].x - it.width / 2
+            var dy = hs[i].y - it.height / 2
+            var p = it.mapToItem(null, it.width / 2 + dx + k[0] * dy, it.height / 2 + dy + k[1] * dx)
+            return JSON.stringify([p.x, p.y])
+        }
+        return "null"
+    }
     function setPoolStrip(width) {
         ed().poolHit = function(wx, wy) { return wx < width }
     }
@@ -1709,6 +1726,63 @@ def scenario_to_pool(s: Session) -> None:
     s.steps[-1]["state"]["stackSize"] = len(s.node(stack)["members"])
 
 
+def scenario_shape_tools(s: Session) -> None:
+    """Transform handles on a double arrow: shape (head and shaft), tips,
+    bend and skew; Reset shape; Edit points on a triangle."""
+    _load(s, "evo_r")
+    s.call("setDrawTool", "arrow2")
+    s.drag(s.point(0.05, 0.10), s.point(0.30, 0.18))
+    s.call("setDrawTool", "")
+    arrow = s.state()["selected"][0]
+    s.record("double-arrow", image=True)
+
+    def handle(name: str) -> QtCore.QPoint:
+        x, y = json.loads(s.js("xfHandlePt", arrow, name))
+        return QtCore.QPoint(round(x), round(y))
+
+    def xf_step(name: str, image: bool = False) -> None:
+        s.record(name, image=image)
+        n = s.node(arrow)
+        s.steps[-1]["state"]["shaping"] = {
+            k: n.get(k) for k in ("adj", "bend", "skew", "rot", "shape")}
+
+    s.call("setTransformMode", "shape")
+    h = handle("head")
+    s.drag(h, QtCore.QPoint(h.x() - 40, h.y() - 10))
+    sh = handle("shaft")
+    s.drag(sh, QtCore.QPoint(sh.x(), sh.y() + 8))
+    xf_step("shaped", image=True)
+
+    s.call("setTransformMode", "tips")
+    tip = handle("tipB")
+    s.drag(tip, QtCore.QPoint(tip.x() + 60, tip.y() + 120))
+    xf_step("tip-moved", image=True)
+
+    s.call("setTransformMode", "bend")
+    bend = handle("bend")
+    s.drag(bend, QtCore.QPoint(bend.x() + 20, bend.y() - 40))
+    xf_step("bent", image=True)
+
+    s.call("setTransformMode", "skew")
+    sk = handle("skewX")
+    s.drag(sk, QtCore.QPoint(sk.x() + 30, sk.y()))
+    xf_step("skewed", image=True)
+
+    s.call("resetShape")
+    xf_step("reset", image=True)
+
+    # Edit points: a skewed triangle becomes a path through its corners.
+    s.call("setDrawTool", "triangle")
+    s.drag(s.point(0.60, 0.10), s.point(0.75, 0.25))
+    s.call("setDrawTool", "")
+    tri = s.state()["selected"][0]
+    s.call("applyField", "fill", "filled")
+    s.call("convertToPath")
+    s.record("triangle-points", image=True)
+    n = s.node(tri)
+    s.steps[-1]["state"]["path"] = [n.get("shape"), len(n.get("pts", [])), n.get("closed")]
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1767,6 +1841,7 @@ SCENARIOS = {
     "zoom": scenario_zoom,
     "rulers": scenario_rulers,
     "to_pool": scenario_to_pool,
+    "shape_tools": scenario_shape_tools,
 }
 
 

@@ -13,6 +13,11 @@ function applyPointer(mx, my, altOff) {
         dragTurn(mx, my)
         return
     }
+    if (dragKind.indexOf("draw-xf-") === 0) {
+        dragTransform(nodeAt(selectedId), dragKind.slice(8), mx, my)
+        tick++
+        return
+    }
     if (dragKind.indexOf("draw-pt") === 0) {
         dragPathPoint(parseInt(dragKind.slice(7), 10), mx, my)
         tick++

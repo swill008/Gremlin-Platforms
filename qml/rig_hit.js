@@ -128,6 +128,14 @@ function hitDraw(n, mx, my) {
     var p = it.mapFromItem(_ed, mx, my)
     var w = it.width
     var h = it.height
+    // Transform handles (shape, tips, skew, bend) instead of the box's.
+    var xfOn = transformMode !== "resize" && interactive && isSelected(n.id) && !isLocked(n)
+               && !canTurnTogether()
+    if (xfOn) {
+        var xf = transformHandleAt(n, p.x, p.y, w, h)
+        if (xf)
+            return "xf-" + xf
+    }
     if (isLine(n)) {
         // Ends and line in the item's own coordinates, so rotation is honoured.
         var le = Shapes.lineEnds(n.ends, w, h)
@@ -164,9 +172,9 @@ function hitDraw(n, mx, my) {
     }
     // The rotate handle sits above the top edge (rotateHandleOffset).
     if (interactive && isSelected(n.id) && !isLocked(n) && isRotatable(n) && cropId !== n.id
-            && !canTurnTogether() && Math.hypot(p.x - w * 0.5, p.y + rotateHandleOffset) < 9)
+            && !canTurnTogether() && !xfOn && Math.hypot(p.x - w * 0.5, p.y + rotateHandleOffset) < 9)
         return "rotate"
-    if (interactive && isSelected(n.id) && !isLocked(n) && !tableCellHandlesOn(n)) {
+    if (interactive && isSelected(n.id) && !isLocked(n) && !tableCellHandlesOn(n) && !xfOn) {
         var hs = [
             [0, 0, "nw"], [w, 0, "ne"], [0, h, "sw"], [w, h, "se"],
             [w * 0.5, 0, "n"], [w * 0.5, h, "s"], [0, h * 0.5, "w"], [w, h * 0.5, "e"]

@@ -282,7 +282,10 @@ function isSelected(id) {
 }
 
 function setSelection(ids) {
-    selectedIds = ids || []
+    var next = ids || []
+    if (JSON.stringify(next) !== JSON.stringify(selectedIds || []))
+        transformMode = "resize"
+    selectedIds = next
     selectedId = selectedIds.length ? selectedIds[selectedIds.length - 1] : ""
     // Crop mode ends when its picture is no longer selected.
     if (cropId && selectedIds.indexOf(cropId) < 0)

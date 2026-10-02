@@ -464,7 +464,7 @@ function paintDraw(ctx, n, w, h) {
         ctx.arc(0, 0, 1, 0, 6.2832)
         ctx.restore()
     } else if (shape === "triangle") {
-        ctx.moveTo(ww * 0.5, 0)
+        ctx.moveTo(ww * Shapes.triangleApex(n), 0)
         ctx.lineTo(ww, hh)
         ctx.lineTo(0, hh)
         ctx.closePath()
@@ -475,7 +475,7 @@ function paintDraw(ctx, n, w, h) {
         ctx.lineTo(0, hh * 0.5)
         ctx.closePath()
     } else if (shape === "roundrect") {
-        var r = Math.min(14, ww * 0.2, hh * 0.2)
+        var r = Shapes.roundRadius(n, ww, hh)
         ctx.moveTo(r, 0)
         ctx.lineTo(ww - r, 0)
         ctx.quadraticCurveTo(ww, 0, ww, r)
@@ -487,7 +487,7 @@ function paintDraw(ctx, n, w, h) {
         ctx.quadraticCurveTo(0, 0, r, 0)
         ctx.closePath()
     } else if (shape === "arrow" || shape === "arrow2") {
-        var pts = Shapes.blockArrow(shape, ww, hh)
+        var pts = Shapes.arrowOutline(shape, ww, hh, n.adj, n.bend)
         ctx.moveTo(pts[0][0], pts[0][1])
         for (var k = 1; k < pts.length; k++)
             ctx.lineTo(pts[k][0], pts[k][1])

@@ -390,6 +390,16 @@ function buttonMapTopics() {
             + "<p>Drag the square handles to resize. A turned item resizes along its own sides, and the opposite side stays where it is. From a corner, a shape keeps its proportions when Shift is held; a picture keeps them unless Shift is held.</p>"
             + "<p><b>Several items together</b>: with two or more selected, a dashed box goes round them with one round handle above it. Drag it to turn them all about their middle (the angle shows beside the handle): shapes, text boxes and pictures turn, lines swing round with both ends, and chips, groups and tables move round but stay upright so they still read. Hotspots stay on the photo; locked items stay put. The right-click menu's <b>Turn together</b> turns them by a step, a quarter turn or a half turn. Turning there and back puts them where they were.</p>"
             + "<p>Lines turn by moving their ends. Tables, chips and hotspots do not turn on their own.</p>"),
+        topic("Drawing", "Transform: shape, tips, bend, skew",
+            "<p>Right-click a shape, picture or text box → <b>Transform</b> → <b>Handles</b> picks which handles the selected item shows. Only the choices that suit the item appear, and the choice goes back to Resize when you select something else.</p>"
+            + "<ul>"
+            + "<li><b>Resize</b>: the box's eight handles and the rotate handle, as usual.</li>"
+            + "<li><b>Shape</b>: blue diamonds that reshape the item. On a block arrow or double arrow, one at the head sets the head's length (drag along) and width (drag out), one on the shaft sets its thickness. On a rounded rectangle it sets the corners' roundness; on a triangle, where its point is.</li>"
+            + "<li><b>Tips</b> (block arrows): a diamond on each end. Drag one anywhere and the arrow stretches and turns to reach it; Shift keeps to angle steps.</li>"
+            + "<li><b>Bend</b> (block arrows): a diamond on the middle of the shaft. Drag it to curve the arrow; the box grows so the arrow keeps its thickness.</li>"
+            + "<li><b>Skew</b>: a diamond on the top edge leans the item sideways, one on the right edge leans it up or down.</li>"
+            + "</ul>"
+            + "<p><b>Edit points</b> turns a shape into a path with a handle on every corner, looking as it does now (shaped, bent, skewed, turned), so any corner can be moved; it is then a path, not an arrow. <b>Reset shape</b> takes away the shaping, bend and skew. Undo steps back through all of it.</p>"),
         topic("Drawing", "Text boxes",
             "<p>Draw → <b>Box</b> → <b>Text box</b>, then drag. Double-click a text box (or <b>Edit text…</b>) to type.</p>"
             + "<ul>"

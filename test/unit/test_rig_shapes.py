@@ -291,3 +291,39 @@ def test_invert_lightness(js: QtQml.QJSEngine) -> None:
     assert all(abs(int(back[i:i + 2], 16) - int("#22C55E"[i:i + 2], 16)) <= 2
                for i in (1, 3, 5))
     assert call(js, 'invertLightness("transparent")') == "transparent"
+
+
+def test_arrow_outline_unshaped_is_the_block_arrow(js: QtQml.QJSEngine) -> None:
+    for shape in ("arrow", "arrow2"):
+        assert call(js, f'arrowOutline("{shape}", 200, 60, {{}}, 0)') == call(
+            js, f'blockArrow("{shape}", 200, 60)'
+        )
+
+
+def test_arrow_outline_shaped(js: QtQml.QJSEngine) -> None:
+    adj = "{headLen: 0.25, headW: 0.8, shaft: 0.3}"
+    pts = call(js, f'arrowOutline("arrow", 200, 60, {adj}, 0)')
+    rounded = [[round(x, 3), round(y, 3)] for x, y in pts]
+    # Head 80% of the thickness, shaft 30%, both about the middle line.
+    assert sorted({y for _, y in rounded}) == [6, 21, 30, 39, 54]
+    assert [200, 30] in rounded
+    assert {x for x, y in rounded if y in (6, 54)} == {150}
+
+
+def test_bent_arrow_keeps_inside_its_box_and_its_tips(js: QtQml.QJSEngine) -> None:
+    for bend in (0.3, -0.3):
+        pts = call(js, f'arrowOutline("arrow2", 300, 100, {{}}, {bend})')
+        assert all(-0.5 <= x <= 300.5 and -0.5 <= y <= 100.5 for x, y in pts)
+        rounded = [[round(x, 2), round(y, 2)] for x, y in pts]
+        assert [0, 50] in rounded and [300, 50] in rounded
+
+
+def test_shape_outlines(js: QtQml.QJSEngine) -> None:
+    tri = call(js, 'shapeOutline({shape: "triangle", adj: {apex: 0.25}}, 100, 50)')
+    assert tri["pts"][0] == [25, 0]
+    ell = call(js, 'shapeOutline({shape: "ellipse"}, 100, 50)')
+    assert ell["smooth"] is True and len(ell["pts"]) == 12
+    rr = call(js, 'shapeOutline({shape: "roundrect", adj: {r: 0.5}}, 100, 50)')
+    assert len(rr["pts"]) == 12
+    assert call(js, "roundRadius({adj: {r: 0.2}}, 100, 50)") == 10
+    assert call(js, "skewPt(50, 0, 100, 50, 0.5, 0)") == [37.5, 0]

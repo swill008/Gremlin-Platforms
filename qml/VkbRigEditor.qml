@@ -31,6 +31,7 @@ import "rig_callout.js" as RigCallout
 import "rig_path.js" as RigPath
 import "rig_styles.js" as RigStyles
 import "rig_rulers.js" as RigRulers
+import "rig_transform.js" as RigTransform
 
 Item {
     id: _ed
@@ -73,6 +74,9 @@ Item {
     // is over it; poolHover is on while a dragged chip is over it.
     property var poolHit: null
     property bool poolHover: false
+    // The selected drawing's handles (rig_transform.js): resize, shape, tips,
+    // skew or bend. Back to resize whenever the selection changes.
+    property string transformMode: "resize"
     property var selectedIds: []
     property bool banding: false
     property bool bandAdd: false
@@ -609,6 +613,18 @@ Item {
     function dragRulerGuide(axis, index, mx, my) { return RigRulers.dragRulerGuide(axis, index, mx, my) }
     function dropRulerGuide(axis, index, mx, my) { return RigRulers.dropRulerGuide(axis, index, mx, my) }
     function rulerGuideLines() { return RigRulers.rulerGuideLines() }
+
+    // Transform handles (rig_transform.js)
+    function transformModesFor(n) { return RigTransform.transformModesFor(n) }
+    function setTransformMode(mode) { return RigTransform.setTransformMode(mode) }
+    function canEditPoints(n) { return RigTransform.canEditPoints(n) }
+    function hasShaping(n) { return RigTransform.hasShaping(n) }
+    function skewMatrix(n, w, h) { return RigTransform.skewMatrix(n, w, h) }
+    function transformHandles(n, w, h) { return RigTransform.transformHandles(n, w, h) }
+    function transformHandleAt(n, px, py, w, h) { return RigTransform.transformHandleAt(n, px, py, w, h) }
+    function dragTransform(n, name, mx, my) { return RigTransform.dragTransform(n, name, mx, my) }
+    function convertToPath() { return RigTransform.convertToPath() }
+    function resetShape() { return RigTransform.resetShape() }
     function distributeSelection(axis) { return RigAlign.distributeSelection(axis) }
 
     // The Properties panel's fields (rig_props.js)

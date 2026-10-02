@@ -13,6 +13,10 @@ Item {
     property var ed: null
     property var node: ({ kind: "draw" })
     anchors.fill: parent
+    // Skew (Transform → Skew) about the middle, before the item is turned.
+    transform: Matrix4x4 {
+        matrix: { ed.tick; return ed.skewMatrix(_drawRoot.node, _drawRoot.width, _drawRoot.height) }
+    }
     Canvas {
         id: _dc
         transform: Scale {
@@ -446,7 +450,7 @@ Item {
     // The rotate handle: a stem up from the top edge to a round grip.
     Item {
         // With several selected, one handle above them all turns them together.
-        visible: { ed.tick; return !!(ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node) && ed.cropId !== node.id && !ed.canTurnTogether()) }
+        visible: { ed.tick; return !!(ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node) && ed.cropId !== node.id && !ed.canTurnTogether() && ed.transformMode === "resize") }
         x: _drawRoot.width / 2
         y: -ed.rotateHandleOffset
         z: 4
@@ -488,9 +492,32 @@ Item {
             border.width: 1.5
         }
     }
+    // Transform handles (shape, tips, skew, bend): accent diamonds.
+    Repeater {
+        model: {
+            ed.tick
+            var n = node
+            return (ed.showChrome && n && ed.transformMode !== "resize" && ed.isSelected(n.id)
+                    && !ed.isLocked(n) && !ed.canTurnTogether())
+                ? ed.transformHandles(n, _drawRoot.width, _drawRoot.height) : []
+        }
+        Rectangle {
+            required property var modelData
+            z: 6
+            x: modelData.x - 5
+            y: modelData.y - 5
+            width: 10
+            height: 10
+            rotation: 45
+            color: Style.accent
+            border.color: ed.handleInk
+            border.width: 1
+        }
+    }
     // Resize handles: eight on a box, one on each end of a line.
     Repeater {
-        model: (ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && !ed.tableCellHandlesOn(node))
+        model: (ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && !ed.tableCellHandlesOn(node)
+                && (ed.transformMode === "resize" || ed.isLine(node)))
             ? (ed.isLine(node) ? 2 : 8) : 0
         Rectangle {
             required property int index

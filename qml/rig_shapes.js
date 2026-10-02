@@ -402,3 +402,177 @@ function invertLightness(c) {
     }
     return "#" + alpha + two(out[0]) + two(out[1]) + two(out[2])
 }
+
+// --- shaping block arrows and other shapes (Transform in the menu) -----------------
+
+// A block arrow's measures in a w x h box. adj: headLen (fraction of the
+// width), headW and shaft (fractions of the arrow's thickness); bend: how
+// far the shaft's middle leaves the straight line, as a fraction of the
+// box's height (-0.4..0.4). A bent arrow keeps its thickness, T, in the
+// part of the box the bend leaves.
+function arrowMeasures(shape, w, h, adj, bend) {
+    var a = adj || {}
+    var b = Math.max(-0.4, Math.min(0.4, Number(bend) || 0))
+    var T = h * (1 - 2 * Math.abs(b))
+    var two = shape === "arrow2"
+    var defLen = Math.min(h, w * (two ? 0.3 : 0.45)) / Math.max(1, w)
+    var headLen = a.headLen > 0 ? a.headLen : defLen
+    headLen = Math.min(headLen, two ? 0.48 : 0.95)
+    var headW = a.headW > 0 ? Math.min(1, a.headW) : 1
+    var shaft = a.shaft > 0 ? a.shaft : 0.5
+    var H = headW * T
+    var S = Math.min(shaft * T, H)
+    return { L: headLen * w, H: H, S: S, T: T, off: b * h, mid: h / 2, two: two }
+}
+
+// The middle line of an arrow: from (0, mid) to (w, mid), through
+// (w / 2, mid - off) at its middle.
+function arrowCurve(w, m) {
+    var cy = m.mid - 2 * m.off
+    function at(t) {
+        var u = 1 - t
+        return [2 * u * t * (w / 2) + t * t * w, u * u * m.mid + 2 * u * t * cy + t * t * m.mid]
+    }
+    function up(t) {
+        var tx = w
+        var ty = 2 * (1 - t) * (cy - m.mid) + 2 * t * (m.mid - cy)
+        var len = Math.hypot(tx, ty) || 1
+        return [ty / len, -tx / len]
+    }
+    return { at: at, up: up }
+}
+
+// Where along the curve (t) the arc length from the start is s.
+function _tAtLength(curve, s, total, samples) {
+    if (s <= 0)
+        return 0
+    if (s >= total)
+        return 1
+    var prev = curve.at(0)
+    var run = 0
+    for (var i = 1; i <= samples; i++) {
+        var p = curve.at(i / samples)
+        var d = Math.hypot(p[0] - prev[0], p[1] - prev[1])
+        if (run + d >= s)
+            return (i - 1 + (s - run) / (d || 1)) / samples
+        run += d
+        prev = p
+    }
+    return 1
+}
+
+function _curveLength(curve, samples) {
+    var prev = curve.at(0)
+    var run = 0
+    for (var i = 1; i <= samples; i++) {
+        var p = curve.at(i / samples)
+        run += Math.hypot(p[0] - prev[0], p[1] - prev[1])
+        prev = p
+    }
+    return run
+}
+
+// Where along the arrow its heads meet the shaft: {tStart, tEnd}.
+function arrowHeadTs(shape, w, h, adj, bend) {
+    var m = arrowMeasures(shape, w, h, adj, bend)
+    var c = arrowCurve(w, m)
+    var N = 48
+    var total = _curveLength(c, N)
+    return {
+        tStart: m.two ? _tAtLength(c, m.L, total, N) : 0,
+        tEnd: _tAtLength(c, total - m.L, total, N)
+    }
+}
+
+// The outline of a block arrow, shaped and bent. Unshaped and straight, it
+// is blockArrow's outline.
+function arrowOutline(shape, w, h, adj, bend) {
+    var hasAdj = adj && (adj.headLen > 0 || adj.headW > 0 || adj.shaft > 0)
+    if (!hasAdj && !Number(bend))
+        return blockArrow(shape, w, h)
+    var m = arrowMeasures(shape, w, h, adj, bend)
+    var c = arrowCurve(w, m)
+    var ts = arrowHeadTs(shape, w, h, adj, bend)
+    function off(t, d) {
+        var p = c.at(t)
+        var u = c.up(t)
+        return [p[0] + u[0] * d, p[1] + u[1] * d]
+    }
+    var steps = Number(bend) ? 16 : 1
+    var top = []
+    var bottom = []
+    for (var i = 0; i <= steps; i++) {
+        var t = ts.tStart + (ts.tEnd - ts.tStart) * i / steps
+        top.push(off(t, m.S / 2))
+        bottom.push(off(t, -m.S / 2))
+    }
+    var out = []
+    if (m.two) {
+        out.push(c.at(0))
+        out.push(off(ts.tStart, m.H / 2))
+    }
+    out = out.concat(top)
+    out.push(off(ts.tEnd, m.H / 2))
+    out.push(c.at(1))
+    out.push(off(ts.tEnd, -m.H / 2))
+    out = out.concat(bottom.reverse())
+    if (m.two)
+        out.push(off(ts.tStart, -m.H / 2))
+    return out
+}
+
+// A rounded rectangle's corner radius: adj.r as a fraction of the shorter
+// side (0..0.5), else as it has always been drawn.
+function roundRadius(n, w, h) {
+    var adj = (n && n.adj) || {}
+    if (adj.r >= 0)
+        return Math.max(0, Math.min(0.5, adj.r)) * Math.min(w, h)
+    return Math.min(14, w * 0.2, h * 0.2)
+}
+
+// A triangle's apex across its top, 0..1 (0.5 unless shaped).
+function triangleApex(n) {
+    var a = n && n.adj ? n.adj.apex : undefined
+    return a >= 0 && a <= 1 ? a : 0.5
+}
+
+// A shape's outline as points in its w x h box, for Edit points (turning it
+// into a path). smooth: the path is drawn as a curve.
+function shapeOutline(n, w, h) {
+    var shape = n.shape || "rect"
+    if (shape === "arrow" || shape === "arrow2")
+        return { pts: arrowOutline(shape, w, h, n.adj, n.bend), smooth: false }
+    if (shape === "triangle")
+        return { pts: [[triangleApex(n) * w, 0], [w, h], [0, h]], smooth: false }
+    if (shape === "diamond")
+        return { pts: [[w / 2, 0], [w, h / 2], [w / 2, h], [0, h / 2]], smooth: false }
+    if (shape === "ellipse") {
+        var e = []
+        for (var k = 0; k < 12; k++) {
+            var a = k / 12 * 2 * Math.PI
+            e.push([w / 2 + Math.cos(a) * w / 2, h / 2 + Math.sin(a) * h / 2])
+        }
+        return { pts: e, smooth: true }
+    }
+    if (shape === "roundrect") {
+        var r = roundRadius(n, w, h)
+        var pts = []
+        var corners = [[w - r, r, -90], [w - r, h - r, 0], [r, h - r, 90], [r, r, 180]]
+        for (var q = 0; q < 4; q++) {
+            for (var j = 0; j <= 2; j++) {
+                var ang = (corners[q][2] + j * 45) * Math.PI / 180
+                pts.push([corners[q][0] + Math.cos(ang) * r, corners[q][1] + Math.sin(ang) * r])
+            }
+        }
+        return { pts: pts, smooth: false }
+    }
+    return { pts: [[0, 0], [w, 0], [w, h], [0, h]], smooth: false }
+}
+
+// Skewing: (x, y) about the middle of a w x h box, sideways by kx for each
+// pixel down and down by ky for each pixel across.
+function skewPt(x, y, w, h, kx, ky) {
+    var dx = x - w / 2
+    var dy = y - h / 2
+    return [w / 2 + dx + (kx || 0) * dy, h / 2 + dy + (ky || 0) * dx]
+}

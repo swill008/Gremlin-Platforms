@@ -57,6 +57,8 @@ function _mirrorDrawing(n, pictures) {
     }
     if (n.tail && n.tail.fx !== undefined)
         n.tail.fx = _mirrorX(n.tail.fx)
+    if (n.skew)
+        n.skew = [-(Number(n.skew[0]) || 0), -(Number(n.skew[1]) || 0)]
     if (isText(n) || isTable(n))
         return
     if (isOverlay(n) && !pictures) {

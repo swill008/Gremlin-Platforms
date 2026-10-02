@@ -325,6 +325,22 @@ function _rotate() {
     return _sect("rotate", title, items)
 }
 
+// Transform: which handles the drawing shows, Edit points and Reset shape.
+function _transform() {
+    var n = nodeAt(selectedId)
+    var modes = transformModesFor(n)
+    if (!modes.length)
+        return null
+    var labels = modes.map(function(m) { return { resize: "Resize", shape: "Shape", tips: "Tips", skew: "Skew", bend: "Bend" }[m] })
+    var items = [
+        _pick("Handles", modes, labels, function(m) { return transformMode === m }, setTransformMode, !isLocked(n))
+    ]
+    if (canEditPoints(n))
+        items.push(_act("Edit points", convertToPath, !isLocked(n)))
+    items.push(_act("Reset shape", resetShape, hasShaping(n) && !isLocked(n)))
+    return _sect("transform", "Transform", items)
+}
+
 // Locked items ignore clicks on the map; the Layers panel unlocks them.
 function _lockItem() {
     var n = nodeAt(selectedId)
@@ -376,6 +392,7 @@ function _shapeSections() {
             _pick("Shape", _SHAPES, _SHAPE_LABELS, _field("shape", "rect"), _set("shape"))
         ]),
         _sect("style", "Fill and outline", style),
+        _transform(),
         _rotate(),
         _arrange()
     ]
@@ -444,6 +461,7 @@ function _imageSections() {
             _act("Clear snap points", clearSockets, !!(n && n.sockets && n.sockets.length)),
             _opacity("opacity")
         ]),
+        _transform(),
         _rotate(),
         _arrange()
     ]
@@ -501,6 +519,7 @@ function _textSections() {
         ] : [
             _act("Add pointer", addCalloutTail)
         ]),
+        _transform(),
         _rotate(),
         _arrange()
     ]
