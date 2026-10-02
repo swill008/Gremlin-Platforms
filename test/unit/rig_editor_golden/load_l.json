@@ -1133,7 +1133,7 @@
   }
  ],
  "warnings": [
-  "qml/VkbRigEditor.qml: QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg",
-  "qml/VkbRigFace.qml: QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg"
+  "QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg",
+  "QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg"
  ]
 }

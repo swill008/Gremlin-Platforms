@@ -69,12 +69,15 @@ def _normalize(doc: dict) -> dict:
         return value
 
     out = walk(doc)
-    # File names stay, line numbers do not: moving code must not fail this.
-    out["warnings"] = sorted(
-        re.sub(r":\d+(:\d+)?:", ":", re.sub(r"file:///\S*?/qml/", "qml/", w))
-        for w in out.get("warnings", [])
-    )
+    out["warnings"] = sorted(_warning_text(w) for w in out.get("warnings", []))
     return out
+
+
+def _warning_text(warning: str) -> str:
+    """The message without where it came from: code moves between files and
+    lines as the editor is split up, and the checkout path differs."""
+    warning = re.sub(r"file:///\S*?/qml/", "qml/", warning)
+    return re.sub(r"^qml/[\w/]+\.qml(:\d+)*:\s*", "", warning)
 
 
 def _first_difference(want: object, got: object, path: str = "") -> str:

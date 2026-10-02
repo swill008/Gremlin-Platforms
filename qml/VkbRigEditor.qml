@@ -891,7 +891,7 @@ Item {
         if (!(r === r))
             r = 0
         photoRot = r
-        if (_pagePhoto)
+        if (_photoWell)
             repaint()
     }
 
@@ -4990,201 +4990,13 @@ Item {
         }
     }
 
-    Item {
-        id: _photoWell
-        z: 0
-        x: _ed.innerPageRect().x
-        y: _ed.innerPageRect().y
-        width: _ed.innerPageRect().w
-        height: _ed.innerPageRect().h
-        clip: false
+    RigPhotoLayer { id: _photoWell; ed: _ed; linesCanvas: _lines }
 
-        Item {
-            id: _photoXform
-            anchors.fill: parent
-            transform: [
-                Translate {
-                    x: _ed.photoOffX * _ed.spaceRect().w
-                    y: _ed.photoOffY * _ed.spaceRect().h
-                },
-                Rotation {
-                    origin.x: _photoXform.width * 0.5
-                    origin.y: _photoXform.height * 0.5
-                    angle: _ed.photoRot
-                },
-                Scale {
-                    origin.x: _photoXform.width * 0.5
-                    origin.y: _photoXform.height * 0.5
-                    xScale: _ed.photoScale
-                    yScale: _ed.photoScale
-                }
-            ]
+    RigGuides { id: _guides; ed: _ed }
 
-            Image {
-                id: _pagePhoto
-                anchors.fill: parent
-                fillMode: Image.PreserveAspectFit
-                asynchronous: true
-                cache: true
-                source: (_ed.face && _ed.face.photoOverride && _ed.face.photoOverride.length)
-                        ? _ed.face.photoOverride
-                        : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
-                onStatusChanged: {
-                    if (status === Image.Ready && _lines)
-                        _lines.requestPaint()
-                }
-            }
-        }
-    }
+    RigGrid { id: _grid; ed: _ed }
 
-    Canvas {
-        id: _guides
-        anchors.fill: parent
-        z: 2
-        visible: _ed.interactive && (_ed.guideX >= 0 || _ed.guideY >= 0)
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            ctx.strokeStyle = "#22C55E"
-            ctx.lineWidth = 1
-            ctx.setLineDash([5, 4])
-            if (_ed.guideX >= 0) {
-                ctx.beginPath()
-                ctx.moveTo(_ed.guideX + 0.5, 0)
-                ctx.lineTo(_ed.guideX + 0.5, height)
-                ctx.stroke()
-            }
-            if (_ed.guideY >= 0) {
-                ctx.beginPath()
-                ctx.moveTo(0, _ed.guideY + 0.5)
-                ctx.lineTo(width, _ed.guideY + 0.5)
-                ctx.stroke()
-            }
-        }
-        Connections {
-            target: _ed
-            function onGuideXChanged() { _guides.requestPaint() }
-            function onGuideYChanged() { _guides.requestPaint() }
-        }
-    }
-
-    Canvas {
-        id: _grid
-        anchors.fill: parent
-        z: 1
-        visible: _ed.interactive && _ed.gridOn
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            var s = _ed.spaceRect()
-            var pageW = _ed.worldPageW
-            var pageH = _ed.worldPageH
-            var step = Math.max(1, _ed.gridSize)
-            if (pageW / step > 80)
-                step = Math.ceil(pageW / 80)
-            if (pageH / step > 80)
-                step = Math.max(step, Math.ceil(pageH / 80))
-            var major = step * 4
-            ctx.save()
-            ctx.beginPath()
-            ctx.rect(s.x, s.y, s.w, s.h)
-            ctx.clip()
-            ctx.lineWidth = 1
-            ctx.strokeStyle = "#14FFFFFF"
-            ctx.beginPath()
-            var w
-            var px
-            var py
-            for (w = 0; w <= pageW; w += step) {
-                if (Math.round(w) % major === 0)
-                    continue
-                px = _ed.worldToX(w) + 0.5
-                ctx.moveTo(px, s.y)
-                ctx.lineTo(px, s.y + s.h)
-            }
-            for (w = 0; w <= pageH; w += step) {
-                if (Math.round(w) % major === 0)
-                    continue
-                py = _ed.worldToY(w) + 0.5
-                ctx.moveTo(s.x, py)
-                ctx.lineTo(s.x + s.w, py)
-            }
-            ctx.stroke()
-            ctx.strokeStyle = "#28FFFFFF"
-            ctx.beginPath()
-            for (w = 0; w <= pageW; w += major) {
-                px = _ed.worldToX(w) + 0.5
-                ctx.moveTo(px, s.y)
-                ctx.lineTo(px, s.y + s.h)
-            }
-            for (w = 0; w <= pageH; w += major) {
-                py = _ed.worldToY(w) + 0.5
-                ctx.moveTo(s.x, py)
-                ctx.lineTo(s.x + s.w, py)
-            }
-            ctx.stroke()
-            ctx.strokeStyle = "#40A1A1AA"
-            ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1)
-            ctx.restore()
-        }
-    }
-
-    Canvas {
-        id: _lines
-        anchors.fill: parent
-        z: 2
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            var list = _ed.nodes || []
-            for (var i = 0; i < list.length; i++) {
-                var n = list[i]
-                if (_ed.isDraw(n))
-                    continue
-                var sel = _ed.interactive && _ed.isSelected(n.id)
-                var ls = _ed.leaderList(n)
-                var li
-                for (li = 0; li < ls.length; li++) {
-                    var L = ls[li]
-                    var leadSel = sel && _ed.selectedLeader === li
-                    var lw = _ed.leaderWidthOf(n)
-                    ctx.strokeStyle = leadSel ? "#FBBF24" : (sel ? "#D4D4D8" : (n.leaderColor || "#A1A1AA"))
-                    ctx.lineWidth = leadSel ? Math.max(lw, lw + 0.4) : lw
-                    ctx.lineJoin = "round"
-                    ctx.lineCap = "round"
-                    _ed.strokeLeader(ctx, n, _ed.pathPtsL(L), L)
-                }
-                var hot = _ed.hotPt(n)
-                var hs = _ed.hotSz(n)
-                var hShape = n.hotShape || "round"
-                var hFill = n.hotFill || "filled"
-                _ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : (n.hotColor || "#F4F4F5"))
-                if (_ed.interactive) {
-                    for (li = 0; li < ls.length; li++) {
-                        var L2 = ls[li]
-                        if (!_ed.showLeaderHandles(n, li))
-                            continue
-                        var leadSel2 = true
-                        var a = _ed.endPt(L2.from)
-                        _ed.drawMark(ctx, a.x, a.y, 8, "round", "filled", "#38BDF8")
-                        if (L2.to && L2.to.type !== "hot") {
-                            var tp = _ed.endPt(L2.to)
-                            _ed.drawMark(ctx, tp.x, tp.y, 8, "round", "filled", "#FB923C")
-                        }
-                        var spines = L2.spines || []
-                        for (var s = 0; s < spines.length; s++) {
-                            var sx = _ed.fxToX(spines[s].fx)
-                            var sy = _ed.fyToY(spines[s].fy)
-                            ctx.beginPath()
-                            ctx.arc(sx, sy, 5, 0, 6.3)
-                            ctx.fillStyle = (_ed.selectedSpine === s || (_ed.dragKind === "spine" && _ed.dragSpine === s)) ? "#F59E0B" : "#94A3B8"
-                            ctx.fill()
-                        }
-                    }
-                }
-            }
-        }
-    }
+    RigLeaderLayer { id: _lines; ed: _ed }
 
     MouseArea {
         anchors.fill: parent
