@@ -517,6 +517,16 @@ function _canvasSections() {
     return out
 }
 
+// Lining up several items; the menu stays open to try another.
+function _alignSection() {
+    var none = function() { return false }
+    return _sect("align-many", "Align and distribute", [
+        _pick("Across", ["left", "center", "right"], ["Left", "Centre", "Right"], none, alignSelection, canAlign()),
+        _pick("Down", ["top", "middle", "bottom"], ["Top", "Middle", "Bottom"], none, alignSelection, canAlign()),
+        _pick("Space out", ["h", "v"], ["Across", "Down"], none, distributeSelection, canDistribute())
+    ])
+}
+
 // --- the menu ----------------------------------------------------------------
 
 function _compact(list) {
@@ -556,8 +566,8 @@ function menuModel() {
     } else if (kind === "multi") {
         quick = [_act("Group selected", groupSelection, canGroup()), _act("Duplicate", duplicateSelection), _act("Delete", deleteChip)]
         var first = nodeAt(_ctx.nodeId)
-        sections = isDraw(first) ? (isLine(first) ? _lineSections() : _shapeSections())
-                                 : [_chipStyle(), _chipColours(), _hotspot(), _leader(), _around()]
+        sections = [_alignSection()].concat(isDraw(first) ? (isLine(first) ? _lineSections() : _shapeSections())
+                                 : [_chipStyle(), _chipColours(), _hotspot(), _leader(), _around()])
     } else {
         if (clip && clip.length)
             quick.push(_act("Paste", pasteClipboard))

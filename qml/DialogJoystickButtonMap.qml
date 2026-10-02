@@ -819,7 +819,7 @@ ApplicationWindow {
                 },
                 {
                     h: "Groups and formats",
-                    b: "Select two or more chips (Shift-click or drag a box), then Group selected (Ctrl+G) from the right-click menu. Break group (Ctrl+Shift+G) splits it. Edit group lets you move and style one member; Done editing group or Esc ends that.\nRight-click a five-chip hat group: 5-way format styles it as Plus, Mini hat, Named card, or Radial; Clear format removes the style.\nAlign members arranges a group Left, Centre, Right, or Free."
+                    b: "Select two or more chips (Shift-click or drag a box), then Group selected (Ctrl+G) from the right-click menu. Break group (Ctrl+Shift+G) splits it. Edit group lets you move and style one member; Done editing group or Esc ends that.\nRight-click a five-chip hat group: 5-way format styles it as Plus, Mini hat, Named card, or Radial; Clear format removes the style.\nAlign members arranges a group Left, Centre, Right, or Free.\nWith several items selected, right-click one of them: Align and distribute lines them up Across (Left, Centre, Right) or Down (Top, Middle, Bottom) by their edges or middles, and Space out leaves equal gaps between three or more. Locked items stay where they are."
                 },
                 {
                     h: "Leaders",

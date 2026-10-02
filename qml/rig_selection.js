@@ -53,47 +53,49 @@ function nudge(dx, dy) {
     if (!ids.length)
         return
     var seenPack = {}
-    var i
-    for (i = 0; i < ids.length; i++) {
-        var n = nodeAt(ids[i])
-        if (!n || isLocked(n))
-            continue
-        var pack = tablePackOf(n)
-        if (pack) {
-            if (!seenPack[pack.id]) {
-                seenPack[pack.id] = true
-                moveTablePack(pack, dx, dy)
-            }
-            continue
-        }
-        if (isDraw(n)) {
-            if (isLocked(n))
-                continue
-            var around = n.around || []
-            if (around.length) {
-                var ai
-                for (ai = 0; ai < around.length; ai++) {
-                    var qn = nodeAt(around[ai])
-                    if (!qn || isDraw(qn))
-                        continue
-                    qn.chipFx = Math.max(0.01, Math.min(0.92, qn.chipFx + dx))
-                    qn.chipFy = Math.max(0.01, Math.min(0.92, qn.chipFy + dy))
-                }
-            } else {
-                var oldFx = n.fx || 0
-                var oldFy = n.fy || 0
-                n.fx = Math.max(0, Math.min(0.98, oldFx + dx))
-                n.fy = Math.max(0, Math.min(0.98, oldFy + dy))
-                shiftIndependentParts(n, n.fx - oldFx, n.fy - oldFy)
-            }
-            followTablePacked(n)
-        } else {
-            n.chipFx = Math.max(0.01, Math.min(0.92, (n.chipFx || 0) + dx))
-            n.chipFy = Math.max(0.01, Math.min(0.92, (n.chipFy || 0) + dy))
-            refreshChipPack(n)
-        }
-    }
+    for (var i = 0; i < ids.length; i++)
+        moveNodeBy(nodeAt(ids[i]), dx, dy, seenPack)
     bump()
+}
+
+// Moves one item by a page fraction: a table pack once (seenPack), a shape
+// drawn around chips by its chips, a drawing by its box, a chip by itself.
+// Locked items stay put. Nudging and aligning both use it.
+function moveNodeBy(n, dx, dy, seenPack) {
+    if (!n || isLocked(n))
+        return
+    var pack = tablePackOf(n)
+    if (pack) {
+        if (!seenPack[pack.id]) {
+            seenPack[pack.id] = true
+            moveTablePack(pack, dx, dy)
+        }
+        return
+    }
+    if (isDraw(n)) {
+        var around = n.around || []
+        if (around.length) {
+            var ai
+            for (ai = 0; ai < around.length; ai++) {
+                var qn = nodeAt(around[ai])
+                if (!qn || isDraw(qn))
+                    continue
+                qn.chipFx = Math.max(0.01, Math.min(0.92, qn.chipFx + dx))
+                qn.chipFy = Math.max(0.01, Math.min(0.92, qn.chipFy + dy))
+            }
+        } else {
+            var oldFx = n.fx || 0
+            var oldFy = n.fy || 0
+            n.fx = Math.max(0, Math.min(0.98, oldFx + dx))
+            n.fy = Math.max(0, Math.min(0.98, oldFy + dy))
+            shiftIndependentParts(n, n.fx - oldFx, n.fy - oldFy)
+        }
+        followTablePacked(n)
+    } else {
+        n.chipFx = Math.max(0.01, Math.min(0.92, (n.chipFx || 0) + dx))
+        n.chipFy = Math.max(0.01, Math.min(0.92, (n.chipFy || 0) + dy))
+        refreshChipPack(n)
+    }
 }
 
 function _newId(n) {

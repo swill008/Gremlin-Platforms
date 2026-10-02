@@ -1046,6 +1046,51 @@ def scenario_props(s: Session) -> None:
     s.record("locked")
 
 
+def scenario_align(s: Session) -> None:
+    """Aligning and spacing out shapes and chips, from the menu and directly;
+    a locked item stays where it is."""
+    Key = QtCore.Qt.Key
+    _load(s, "evo_r")
+    shapes = []
+    # The tool stays on after each shape (setDrawTool toggles it).
+    s.call("setDrawTool", "rect")
+    corners = [
+        (0.03, 0.10, 0.10, 0.16),
+        (0.12, 0.30, 0.22, 0.40),
+        (0.05, 0.55, 0.11, 0.62),
+    ]
+    for x0, y0, x1, y1 in corners:
+        s.drag(s.point(x0, y0), s.point(x1, y1))
+        shapes.append(s.state()["selected"][0])
+    s.call("setDrawTool", "")
+    s.call("setSelection", shapes)
+    s.record("three-shapes", image=True)
+
+    # From the menu: open Align and distribute, Across row, step to Left.
+    box = s._box(shapes[1])
+    s.right_click(s.ed_point(box["x"] + 2, box["y"] + box["h"] / 2))
+    s.click_menu_row("Align and distribute")
+    s.menu_key(Key.Key_Down)
+    s.menu_key(Key.Key_Right)
+    s.record("menu-left")
+    s.close_menus()
+
+    s.call("alignSelection", "center")
+    s.record("centre")
+    s.call("distributeSelection", "v")
+    s.record("spaced-down", image=True)
+    s.call("alignSelection", "top")
+    s.call("distributeSelection", "h")
+    s.record("top-and-across", image=True)
+
+    # Chips line up too; a locked one stays put.
+    chips = [n["id"] for n in s.state()["nodes"] if n["kind"] == "btn"][:3]
+    s.call("toggleLock", chips[2])
+    s.call("setSelection", chips)
+    s.call("alignSelection", "left")
+    s.record("chips-left-one-locked", image=True)
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
@@ -1055,6 +1100,7 @@ SCENARIOS = {
     "layers": scenario_layers,
     "transform": scenario_transform,
     "props": scenario_props,
+    "align": scenario_align,
 }
 
 

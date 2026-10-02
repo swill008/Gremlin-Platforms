@@ -23,6 +23,7 @@ import "rig_pointer.js" as RigPointer
 import "rig_menu.js" as RigMenu
 import "rig_layers.js" as RigLayers
 import "rig_props.js" as RigProps
+import "rig_align.js" as RigAlign
 
 Item {
     id: _ed
@@ -447,6 +448,12 @@ Item {
     function layerRows(filter, expanded) { return RigLayers.layerRows(filter, expanded) }
     function setPhotoFlag(flag, on) { return RigLayers.setPhotoFlag(flag, on) }
 
+    // Lining up and spacing out the selection (rig_align.js)
+    function canAlign() { return RigAlign.canAlign() }
+    function canDistribute() { return RigAlign.canDistribute() }
+    function alignSelection(mode) { return RigAlign.alignSelection(mode) }
+    function distributeSelection(axis) { return RigAlign.distributeSelection(axis) }
+
     // The Properties panel's fields (rig_props.js)
     function propsModel() { return RigProps.propsModel() }
     function setProp(key, value) { return RigProps.setProp(key, value) }
@@ -479,6 +486,7 @@ Item {
     function deleteSelection() { return RigSelection.deleteSelection() }
     function deleteChip(id) { return RigSelection.deleteChip(id) }
     function nudge(dx, dy) { return RigSelection.nudge(dx, dy) }
+    function moveNodeBy(n, dx, dy, seenPack) { return RigSelection.moveNodeBy(n, dx, dy, seenPack) }
     function _newId(n) { return RigSelection._newId(n) }
     function shiftClone(n, dx, dy) { return RigSelection.shiftClone(n, dx, dy) }
     function pasteNodes(src, dx, dy) { return RigSelection.pasteNodes(src, dx, dy) }
