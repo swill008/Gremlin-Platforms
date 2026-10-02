@@ -725,3 +725,15 @@ Decisions: Xbox starts with nothing claimed (1A); scripts go through the firewal
 | P2d | DONE (this commit) | vJoy Viewer cards read the vJoy output module (claimed outputs, only while Gremlin runs) instead of DirectInput readback. |
 | P2-HANDS-ON | [U] | With Gremlin active: a claimed vJoy button fires; an unclaimed one (vJoy 3 button 57+) does nothing and system.log shows one "Output blocked" line for it; claim Left Trigger on the Xbox page and Map to Xbox drives it; the vJoy Viewer card moves with the stick. |
 | P2-DATA | NOTE | The 70 NXT 57-126 -> vJoy 3 57-126 wires stop reaching vJoy until vJoy 3 claims buttons 57-126. Your 2 Map to Xbox actions need their controls claimed on the Xbox page. |
+
+## Phase 3 (input modules are the only way in, 2026-10-01)
+
+Decisions: input highlighting and "Listen for input" stay as they are (no status note, no one-click claim); Configure Input Module, calibration and the axis graph keep raw hardware access.
+
+| ID | Result | Notes |
+|---|---|---|
+| P3a | DONE 3339c788 | Keyboard bindings take events from the input runtime; only keys the Keyboard module claims reach the profile. No saved keyboard claim = every key (matches the Configure dialog). Typing in Windows is never affected. |
+| P3b | DONE e423428d | Configuration page live values and both viewers' hardware side use the claimed feed. Macro recording stays raw (it records what a macro sends). |
+| P3c | DONE 3ff17f7e | Merge Axis, Dual Axis Deadzone, Condition and script joy/keyboard read through the input modules; unclaimed inputs read neutral. |
+| P3d | DONE (this commit) | Module file lookup: saved link, then the file bound to this exact device, then name. A renamed device keeps its file; a stale id never pulls in another device's file. |
+| P3-HANDS-ON | [U] | With Gremlin active: a keyboard binding on a claimed key fires; untick that key in Configure Input Module (Keyboard), save, re-activate: it no longer fires, and typing in Notepad still works. |

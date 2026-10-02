@@ -166,10 +166,40 @@ def _name_key(device_name: str) -> str:
     return f"name:{slug}" if slug else ""
 
 
+def _bound_to_device(device_name: str, key: str) -> str:
+    """Slug of the module file bound to this exact device (boundGuidLocal).
+
+    Used only when that file names this device, or when there is no file of
+    this device's own name (the device was renamed). So a stale id never pulls
+    in another device's file.
+    """
+    want = guid_key(key)
+    if not want:
+        return ""
+    own = plain_slug(device_name) or "device"
+    wanted_name = " ".join(str(device_name or "").split()).casefold()
+    own_exists = (_folder() / f"{own}.json").is_file()
+    for module in modules():
+        if guid_key(module.bound_guid) != want:
+            continue
+        names = {module.name.casefold(), module.bound_name.casefold()}
+        if module.slug == own or wanted_name in names or not own_exists:
+            return module.slug
+    return ""
+
+
 def resolve_module_slug(device_name: str, guid: str = "") -> str:
+    """The module file a device uses, device first:
+    1. the file saved for this device (its GUID);
+    2. the file bound to this exact device (boundGuidLocal);
+    3. the file saved for this device name;
+    4. the file named after the device.
+    """
     data = _binding_store()
     key = stored_guid_key(guid) or _guid_for_name(device_name)
     bound = data.get(key, "") if key else ""
+    if not bound and key:
+        bound = _bound_to_device(device_name, key)
     name_key = _name_key(device_name)
     if not bound and name_key:
         bound = data.get(name_key, "")
