@@ -27,7 +27,7 @@ from gremlin.base_classes import (
     UserFeedback,
     Value,
 )
-from gremlin.input_cache import Joystick
+from gremlin.modules import inputs
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
@@ -55,8 +55,6 @@ class DualAxisDeadzoneFunctor(AbstractFunctor):
     def __init__(self, action: DualAxisDeadzoneData) -> None:
         super().__init__(action)
 
-        self.joy = Joystick()
-
     @override
     def __call__(
         self,
@@ -65,12 +63,10 @@ class DualAxisDeadzoneFunctor(AbstractFunctor):
         properties: list[ActionProperty] = [],
     ) -> None:
         # Retrieve current joystick values
-        x_value = (
-            self.joy[self.data.axis1.device_guid].axis(self.data.axis1.input_id).value
-        )
-        y_value = (
-            self.joy[self.data.axis2.device_guid].axis(self.data.axis2.input_id).value
-        )
+        # Through the input modules: an unclaimed axis reads as centred.
+        axis1, axis2 = self.data.axis1, self.data.axis2
+        x_value = inputs.axis_value(axis1.device_guid, axis1.input_id)
+        y_value = inputs.axis_value(axis2.device_guid, axis2.input_id)
 
         # Apply the deadzones, a circular one around the center and a
         # rectangular around the outside.

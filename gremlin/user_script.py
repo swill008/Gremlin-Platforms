@@ -37,12 +37,8 @@ from gremlin import (
     shared_state,
     util,
 )
-from gremlin.input_cache import (
-    Joystick,
-    Keyboard,
-)
 from gremlin.logical_device import LogicalDevice
-from gremlin.modules import output
+from gremlin.modules import inputs, output
 from gremlin.types import (
     HatDirection,
     InputType,
@@ -297,7 +293,7 @@ class JoystickPlugin:
     to be named "joy".
     """
 
-    joystick = Joystick()
+    joystick = inputs.ScriptJoystick()
 
     def __init__(self) -> None:
         self.keyword = "joy"
@@ -326,7 +322,7 @@ class KeyboardPlugin:
     to be named "keyboard".
     """
 
-    keyboard = Keyboard()
+    keyboard = inputs.ScriptKeyboard()
 
     def __init__(self) -> None:
         self.keyword = "keyboard"

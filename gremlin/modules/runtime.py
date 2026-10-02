@@ -114,6 +114,17 @@ class InputModuleRuntime(QtCore.QObject):
                 continue
             claims[guid] = module.claim
 
+    def allows(self, guid: object, event_type: object, identifier: object) -> bool:
+        """True when this input's input module passes it (same rule as events)."""
+        return should_forward(
+            guid,
+            event_type,
+            identifier,
+            claims=self._claims,
+            dest_guids=self._dest_guids,
+            passthrough=self._passthrough,
+        )
+
     def _on_key(self, event: Event) -> None:
         if event is None or getattr(event, "event_type", None) != InputType.Keyboard:
             return

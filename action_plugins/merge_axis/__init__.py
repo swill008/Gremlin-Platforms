@@ -27,7 +27,7 @@ from gremlin.base_classes import (
     Value,
 )
 from gremlin.error import GremlinError
-from gremlin.input_cache import Joystick
+from gremlin.modules import inputs
 from gremlin.plugin_manager import PluginManager
 from gremlin.profile import Library
 from gremlin.types import (
@@ -102,13 +102,10 @@ class MergeAxisFunctor(AbstractFunctor):
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
-        joy = Joystick()
-        axis1 = (
-            joy[self.data.axis_in1.device_guid].axis(self.data.axis_in1.input_id).value
-        )
-        axis2 = (
-            joy[self.data.axis_in2.device_guid].axis(self.data.axis_in2.input_id).value
-        )
+        # Through the input modules: an unclaimed axis reads as centred.
+        in1, in2 = self.data.axis_in1, self.data.axis_in2
+        axis1 = inputs.axis_value(in1.device_guid, in1.input_id)
+        axis2 = inputs.axis_value(in2.device_guid, in2.input_id)
 
         value.current = MergeAxisFunctor.actions[self.data.operation](axis1, axis2)
 

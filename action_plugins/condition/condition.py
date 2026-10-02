@@ -38,11 +38,10 @@ from gremlin.base_classes import Value
 from gremlin.input_cache import (
     DeviceDatabase,
     Joystick,
-    Keyboard,
 )
 from gremlin.keyboard import key_from_code
 from gremlin.logical_device import LogicalDevice
-from gremlin.modules import output
+from gremlin.modules import inputs, output
 from gremlin.types import (
     ConditionType,
     HatDirection,
@@ -447,10 +446,9 @@ class KeyboardCondition(AbstractCondition):
     class State(AbstractState):
         def __init__(self, scan_code: int, is_extended: bool) -> None:
             self.key = key_from_code(scan_code, is_extended)
-            self.keyboard = Keyboard()
 
         def get(self, value: Value) -> bool:
-            return self.keyboard.is_pressed(self.key)
+            return inputs.key_pressed(self.key)
 
         def display_name(self) -> str:
             return self.key.name
@@ -554,13 +552,15 @@ class JoystickCondition(AbstractCondition):
                     f"ConditionAction: Joystick with UUID {self.device_uuid} "
                     "not present."
                 )
+            # Through the input modules: an unclaimed input reads as neutral.
+            guid, ident = self.device_uuid, self.input_id
             match self.input_type:
                 case InputType.JoystickAxis:
-                    return self.joystick.axis(self.input_id).value
+                    return inputs.axis_value(guid, ident)
                 case InputType.JoystickButton:
-                    return self.joystick.button(self.input_id).is_pressed
+                    return inputs.button_pressed(guid, ident)
                 case InputType.JoystickHat:
-                    return self.joystick.hat(self.input_id).direction
+                    return inputs.hat_direction(guid, ident)
                 case _:
                     raise error.GremlinError(
                         f"ConditionAction: Invalid InputType {self.input_type} "
