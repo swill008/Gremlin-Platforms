@@ -197,8 +197,9 @@ function resetCrop() {
 }
 
 // Shapes, lines and pictures turn; text boxes and tables stay level.
+// Lines turn by their ends; tables stay upright.
 function isRotatable(n) {
-    return isDraw(n) && !isTable(n) && !isText(n) && !isLine(n)
+    return isDraw(n) && !isTable(n) && !isLine(n)
 }
 
 function isFlippable(n) {

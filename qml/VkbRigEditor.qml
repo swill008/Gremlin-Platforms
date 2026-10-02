@@ -26,6 +26,7 @@ import "rig_props.js" as RigProps
 import "rig_align.js" as RigAlign
 import "rig_find.js" as RigFind
 import "rig_mirror.js" as RigMirror
+import "rig_grouprot.js" as RigGroupRot
 
 Item {
     id: _ed
@@ -47,6 +48,10 @@ Item {
     readonly property bool showChrome: interactive && !exporting
     // Export modes: the mode's name, drawn at the top of the page while exporting.
     property string exportTitle: ""
+    // Turning several items together (rig_grouprot.js): where they started,
+    // and the angle so far.
+    property var turnStart: null
+    property real turnAngle: 0
     property var selectedIds: []
     property bool banding: false
     property bool bandAdd: false
@@ -490,6 +495,16 @@ Item {
 
     // Mirroring the whole layout (rig_mirror.js)
     function mirrorLayout(pictures) { return RigMirror.mirrorLayout(pictures) }
+
+    // Turning several items together (rig_grouprot.js)
+    function canTurnTogether() { return RigGroupRot.canTurnTogether() }
+    function selectionBounds() { return RigGroupRot.selectionBounds() }
+    function onTurnHandle(mx, my) { return RigGroupRot.onTurnHandle(mx, my) }
+    function turnPivot() { return RigGroupRot.turnPivot() }
+    function beginTurn(mx, my) { return RigGroupRot.beginTurn(mx, my) }
+    function dragTurn(mx, my) { return RigGroupRot.dragTurn(mx, my) }
+    function endTurn() { return RigGroupRot.endTurn() }
+    function turnSelectionBy(deg) { return RigGroupRot.turnSelectionBy(deg) }
     function distributeSelection(axis) { return RigAlign.distributeSelection(axis) }
 
     // The Properties panel's fields (rig_props.js)
@@ -1026,6 +1041,12 @@ Item {
             var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
             return Math.max(18, _ed.chipScreenRect(n, mem).height)
         }
+        transformOrigin: Item.Center
+        rotation: {
+            _ed.tick
+            var n = _ed.nodeAt(_ed.renameId)
+            return (n && _ed.isText(n) && n.rot) ? n.rot : 0
+        }
         text: _ed.renameDraft
         color: "#E4E4E7"
         font.pixelSize: {
@@ -1065,6 +1086,51 @@ Item {
         color: "#33FBBF24"
         border.color: "#FBBF24"
         border.width: Style.dp(1)
+    }
+
+    // Several items selected: a dashed box round them and one rotate handle
+    // above it, to turn them together.
+    Item {
+        id: _turnFrame
+        z: 8
+        visible: { _ed.tick; return _ed.showChrome && _ed.canTurnTogether() && _ed.dragKind !== "band" }
+        readonly property var box: { _ed.tick; return _ed.selectionBounds() }
+        x: box.x
+        y: box.y
+        width: box.w
+        height: box.h
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            border.color: _ed.handleFill
+            border.width: 1
+            opacity: 0.5
+        }
+        Rectangle {
+            x: parent.width / 2 - 0.5
+            y: -_ed.rotateHandleOffset + 4
+            width: 1
+            height: _ed.rotateHandleOffset - 4
+            color: _ed.handleFill
+        }
+        Rectangle {
+            x: parent.width / 2 - 6
+            y: -_ed.rotateHandleOffset - 6
+            width: 12
+            height: 12
+            radius: 6
+            color: _ed.handleFill
+            border.color: _ed.handleInk
+            border.width: 2
+        }
+        Text {
+            visible: _ed.dragKind === "turn"
+            x: parent.width / 2 + 10
+            y: -_ed.rotateHandleOffset - 10
+            color: _ed.handleFill
+            font.pixelSize: Style.dp(11)
+            text: Math.round(_ed.turnAngle) + "°"
+        }
     }
 
     // The mode's name on each page of File → Export modes.

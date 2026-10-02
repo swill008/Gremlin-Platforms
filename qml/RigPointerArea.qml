@@ -93,6 +93,11 @@ MouseArea {
         forceActiveFocus()
         ed.altHeld = !!(m.modifiers & Qt.AltModifier)
         ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
+        if (ed.interactive && m.button === Qt.LeftButton && ed.onTurnHandle(m.x, m.y)) {
+            ed.beginTurn(m.x, m.y)
+            ed.dragKind = "turn"
+            return
+        }
         if (ed.interactive && ed.movePhoto && !ed.photoLocked && m.button === Qt.LeftButton) {
             ed.dragKind = "photo"
             ed.dragOffX = ed.photoOffX
@@ -397,6 +402,11 @@ MouseArea {
                 ed.chipMenuRequested(ed.spineHoldX, ed.spineHoldY)
                 menu.openAt(ed.spineHoldX, ed.spineHoldY)
             }
+            return
+        }
+        if (ed.dragKind === "turn") {
+            ed.dragKind = ""
+            ed.endTurn()
             return
         }
         if (ed.dragKind === "linearm") {

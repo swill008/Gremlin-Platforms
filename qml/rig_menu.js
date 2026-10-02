@@ -319,7 +319,8 @@ function _rotate() {
     }
     if (!items.length)
         return null
-    return _sect("rotate", isRotatable(n) ? "Rotate and flip" : "Flip", items)
+    var title = isRotatable(n) ? (isFlippable(n) ? "Rotate and flip" : "Rotate") : "Flip"
+    return _sect("rotate", title, items)
 }
 
 // Locked items ignore clicks on the map; the Layers panel unlocks them.
@@ -459,6 +460,7 @@ function _textSections() {
             _act("Clear formatting", clearTextFormat),
             _act("Copy text", copyTextPlain)
         ]),
+        _rotate(),
         _arrange()
     ]
 }
@@ -531,6 +533,18 @@ function _alignSection() {
     ])
 }
 
+// Several items turned together about the middle of the selection.
+function _turnSection() {
+    if (!canTurnTogether())
+        return null
+    var step = rotateSnap || 15
+    var none = function() { return false }
+    return _sect("turn-many", "Turn together", [
+        _pick("Turn by", [-step, step, -90, 90, 180],
+              ["−" + step + "°", "+" + step + "°", "−90°", "+90°", "180°"], none, turnSelectionBy)
+    ])
+}
+
 // --- the menu ----------------------------------------------------------------
 
 function _compact(list) {
@@ -570,7 +584,7 @@ function menuModel() {
     } else if (kind === "multi") {
         quick = [_act("Group selected", groupSelection, canGroup()), _act("Duplicate", duplicateSelection), _act("Delete", deleteChip)]
         var first = nodeAt(_ctx.nodeId)
-        sections = [_alignSection()].concat(isDraw(first) ? (isLine(first) ? _lineSections() : _shapeSections())
+        sections = [_alignSection(), _turnSection()].concat(isDraw(first) ? (isLine(first) ? _lineSections() : _shapeSections())
                                  : [_chipStyle(), _chipColours(), _hotspot(), _leader(), _around()])
     } else {
         if (clip && clip.length)

@@ -7,107 +7,53 @@
       "around": [],
       "border": "#22C55E",
       "color": "#14532D",
-      "fh": 0.05556,
+      "fh": 0.08111,
       "fill": "hollow",
-      "fw": 0.06875,
-      "fx": 0.03125,
+      "fw": 0.13125,
+      "fx": 0.05,
       "fy": 0.1,
       "id": "ID0",
       "kind": "draw",
       "opacity": 1,
       "pad": 8,
       "rot": 0,
-      "shape": "rect",
+      "shape": "arrow",
       "stroke": 2
      },
      "1": {
       "around": [],
       "border": "#22C55E",
       "color": "#14532D",
-      "fh": 0.1,
+      "ends": [
+       0.0354,
+       0.5,
+       0.9646,
+       0.5
+      ],
+      "fh": 0.01778,
       "fill": "hollow",
-      "fw": 0.1,
-      "fx": 0.11875,
-      "fy": 0.3,
+      "fw": 0.14125,
+      "fx": 0.045,
+      "fy": 0.25111,
+      "headEnd": "solid",
+      "headStart": "none",
       "id": "ID1",
       "kind": "draw",
       "opacity": 1,
       "pad": 8,
       "rot": 0,
-      "shape": "rect",
+      "shape": "line",
       "stroke": 2
      },
      "10": {
-      "border": "#3F3F46",
-      "chipFx": 0.61901,
-      "chipFy": 0.2484,
-      "color": "#18181B",
-      "fontSize": 8,
-      "friendly": "Button 4",
-      "from": {
-       "fx": 0.56178,
-       "fy": 0.25109,
-       "type": "free"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotColor": "#fda500",
-      "hotFx": 0.627,
-      "hotFy": 0.26,
-      "hotSize": 4,
-      "hwId": 4,
-      "id": "ID17",
-      "kind": "btn",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "fx": 0.56178,
-         "fy": 0.25109,
-         "type": "free"
-        },
-        "id": "ID18",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.5965,
-          "fy": 0.25711
-         }
-        ],
-        "to": {
-         "id": "ID17",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.61462,
-      "ny": 0.24889,
-      "pin": "left",
-      "prefix": "",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.5965,
-        "fy": 0.25711
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID17",
-       "type": "hot"
-      }
-     },
-     "11": {
       "border": "#3F3F46",
       "chipFx": 0.61699,
       "chipFy": 0.29311,
       "color": "#18181B",
       "fontSize": 8,
-      "friendly": "ID19",
+      "friendly": "ID18",
       "from": {
-       "id": "ID19",
+       "id": "ID18",
        "pin": "left",
        "type": "chip"
       },
@@ -118,16 +64,16 @@
       "hotFx": 0.58913,
       "hotFy": 0.28578,
       "hotSize": 4,
-      "id": "ID19",
+      "id": "ID18",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID19",
+         "id": "ID18",
          "pin": "left",
          "type": "chip"
         },
-        "id": "ID20",
+        "id": "ID19",
         "spines": [
          {
           "curve": true,
@@ -136,7 +82,7 @@
          }
         ],
         "to": {
-         "id": "ID19",
+         "id": "ID18",
          "type": "hot"
         }
        }
@@ -169,19 +115,19 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID19",
+       "id": "ID18",
        "type": "hot"
       }
      },
-     "12": {
+     "11": {
       "border": "#3F3F46",
       "chipFx": 0.61824,
       "chipFy": 0.36104,
       "color": "#18181B",
       "fontSize": 8,
-      "friendly": "ID21",
+      "friendly": "ID20",
       "from": {
-       "id": "ID21",
+       "id": "ID20",
        "pin": "left",
        "type": "chip"
       },
@@ -192,16 +138,16 @@
       "hotFx": 0.56912,
       "hotFy": 0.30533,
       "hotSize": 4,
-      "id": "ID21",
+      "id": "ID20",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID21",
+         "id": "ID20",
          "pin": "left",
          "type": "chip"
         },
-        "id": "ID22",
+        "id": "ID21",
         "spines": [
          {
           "curve": true,
@@ -210,7 +156,7 @@
          }
         ],
         "to": {
-         "id": "ID21",
+         "id": "ID20",
          "type": "hot"
         }
        }
@@ -243,11 +189,11 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID21",
+       "id": "ID20",
        "type": "hot"
       }
      },
-     "13": {
+     "12": {
       "border": "#3F3F46",
       "chipFx": 0.58868,
       "chipFy": 0.42453,
@@ -267,7 +213,7 @@
       "hotFy": 0.43622,
       "hotSize": 4,
       "hwId": 5,
-      "id": "ID23",
+      "id": "ID22",
       "kind": "btn",
       "label": "",
       "leaders": [
@@ -277,7 +223,7 @@
          "fy": 0.42289,
          "type": "free"
         },
-        "id": "ID24",
+        "id": "ID23",
         "spines": [
          {
           "curve": true,
@@ -286,7 +232,7 @@
          }
         ],
         "to": {
-         "id": "ID23",
+         "id": "ID22",
          "type": "hot"
         }
        }
@@ -304,11 +250,11 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID23",
+       "id": "ID22",
        "type": "hot"
       }
      },
-     "14": {
+     "13": {
       "border": "#3F3F46",
       "chipFx": 0.49635,
       "chipFy": 0.6165,
@@ -316,7 +262,7 @@
       "fontSize": 10,
       "friendly": "Button 28",
       "from": {
-       "id": "ID25",
+       "id": "ID24",
        "pin": "bottom",
        "type": "chip"
       },
@@ -328,17 +274,17 @@
       "hotFy": 0.714,
       "hotSize": 4,
       "hwId": 28,
-      "id": "ID25",
+      "id": "ID24",
       "kind": "btn",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID25",
+         "id": "ID24",
          "pin": "bottom",
          "type": "chip"
         },
-        "id": "ID26",
+        "id": "ID25",
         "spines": [
          {
           "curve": true,
@@ -347,7 +293,7 @@
          }
         ],
         "to": {
-         "id": "ID25",
+         "id": "ID24",
          "type": "hot"
         }
        }
@@ -365,11 +311,11 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID25",
+       "id": "ID24",
        "type": "hot"
       }
      },
-     "15": {
+     "14": {
       "border": "#3F3F46",
       "chipFx": 0.53168,
       "chipFy": 0.6165,
@@ -377,7 +323,7 @@
       "fontSize": 8,
       "friendly": "Button 27",
       "from": {
-       "id": "ID27",
+       "id": "ID26",
        "pin": "bottom",
        "type": "chip"
       },
@@ -389,17 +335,17 @@
       "hotFy": 0.70044,
       "hotSize": 4,
       "hwId": 27,
-      "id": "ID27",
+      "id": "ID26",
       "kind": "btn",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID27",
+         "id": "ID26",
          "pin": "bottom",
          "type": "chip"
         },
-        "id": "ID28",
+        "id": "ID27",
         "spines": [
          {
           "curve": true,
@@ -408,7 +354,7 @@
          }
         ],
         "to": {
-         "id": "ID27",
+         "id": "ID26",
          "type": "hot"
         }
        }
@@ -426,11 +372,11 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID27",
+       "id": "ID26",
        "type": "hot"
       }
      },
-     "16": {
+     "15": {
       "border": "#3F3F46",
       "chipFx": 0.56581,
       "chipFy": 0.6165,
@@ -438,7 +384,7 @@
       "fontSize": 8,
       "friendly": "Button 29",
       "from": {
-       "id": "ID29",
+       "id": "ID28",
        "pin": "bottom",
        "type": "chip"
       },
@@ -450,17 +396,17 @@
       "hotFy": 0.69444,
       "hotSize": 4,
       "hwId": 29,
-      "id": "ID29",
+      "id": "ID28",
       "kind": "btn",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID29",
+         "id": "ID28",
          "pin": "bottom",
          "type": "chip"
         },
-        "id": "ID30",
+        "id": "ID29",
         "spines": [
          {
           "curve": true,
@@ -469,7 +415,7 @@
          }
         ],
         "to": {
-         "id": "ID29",
+         "id": "ID28",
          "type": "hot"
         }
        }
@@ -487,19 +433,19 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID29",
+       "id": "ID28",
        "type": "hot"
       }
      },
-     "17": {
+     "16": {
       "border": "#3F3F46",
       "chipFx": 0.56274,
       "chipFy": 0.84844,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID31",
+      "friendly": "ID30",
       "from": {
-       "id": "ID31",
+       "id": "ID30",
        "pin": "top",
        "type": "chip"
       },
@@ -510,16 +456,16 @@
       "hotFx": 0.57563,
       "hotFy": 0.80489,
       "hotSize": 4,
-      "id": "ID31",
+      "id": "ID30",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID31",
+         "id": "ID30",
          "pin": "top",
          "type": "chip"
         },
-        "id": "ID32",
+        "id": "ID31",
         "spines": [
          {
           "curve": true,
@@ -528,7 +474,7 @@
          }
         ],
         "to": {
-         "id": "ID31",
+         "id": "ID30",
          "type": "hot"
         }
        }
@@ -561,11 +507,11 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID31",
+       "id": "ID30",
        "type": "hot"
       }
      },
-     "18": {
+     "17": {
       "border": "#3F3F46",
       "chipFx": 0.32727,
       "chipFy": 0.17733,
@@ -573,7 +519,7 @@
       "fontSize": 10,
       "friendly": "Axis 4",
       "from": {
-       "id": "ID33",
+       "id": "ID32",
        "pin": "top",
        "type": "chip"
       },
@@ -585,17 +531,17 @@
       "hotFy": 0.18289,
       "hotSize": 4,
       "hwId": 4,
-      "id": "ID33",
+      "id": "ID32",
       "kind": "axis",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID33",
+         "id": "ID32",
          "pin": "top",
          "type": "chip"
         },
-        "id": "ID34",
+        "id": "ID33",
         "spines": [
          {
           "curve": true,
@@ -604,7 +550,7 @@
          }
         ],
         "to": {
-         "id": "ID33",
+         "id": "ID32",
          "type": "hot"
         }
        }
@@ -622,17 +568,17 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID33",
+       "id": "ID32",
        "type": "hot"
       }
      },
-     "19": {
+     "18": {
       "border": "#3F3F46",
       "chipFx": 0.6335,
       "chipFy": 0.84844,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID35",
+      "friendly": "ID34",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -640,16 +586,16 @@
       "hotFx": 0.62787,
       "hotFy": 0.778,
       "hotSize": 4,
-      "id": "ID35",
+      "id": "ID34",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID35",
+         "id": "ID34",
          "pin": "top",
          "type": "chip"
         },
-        "id": "ID36",
+        "id": "ID35",
         "spines": [
          {
           "curve": true,
@@ -658,7 +604,7 @@
          }
         ],
         "to": {
-         "id": "ID35",
+         "id": "ID34",
          "type": "hot"
         }
        }
@@ -691,24 +637,7 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "2": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.06667,
-      "fill": "hollow",
-      "fw": 0.0625,
-      "fx": 0.05,
-      "fy": 0.55556,
-      "id": "ID2",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     },
-     "20": {
+     "19": {
       "border": "#3F3F46",
       "chipFill": "filled",
       "chipFx": 0.465,
@@ -720,7 +649,7 @@
       "fontSize": 10,
       "friendly": "Axis 6",
       "from": {
-       "id": "ID37",
+       "id": "ID36",
        "pin": "top",
        "type": "chip"
       },
@@ -734,18 +663,18 @@
       "hotShape": "round",
       "hotSize": 9,
       "hwId": 6,
-      "id": "ID37",
+      "id": "ID36",
       "kind": "axis",
       "label": "",
       "leaders": [
        {
         "curve": true,
         "from": {
-         "id": "ID37",
+         "id": "ID36",
          "pin": "top",
          "type": "chip"
         },
-        "id": "ID38",
+        "id": "ID37",
         "spines": [
          {
           "curve": true,
@@ -754,7 +683,7 @@
          }
         ],
         "to": {
-         "id": "ID37",
+         "id": "ID36",
          "type": "hot"
         }
        }
@@ -770,83 +699,17 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID37",
+       "id": "ID36",
        "type": "hot"
       }
      },
-     "21": {
-      "border": "#3F3F46",
-      "chipFill": "filled",
-      "chipFx": 0.3472,
-      "chipFy": 0.18911,
-      "chipShape": "round",
-      "chipSize": 18,
-      "color": "#18181B",
-      "curve": true,
-      "fontSize": 10,
-      "friendly": "Axis 5",
-      "from": {
-       "id": "ID39",
-       "pin": "top",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFill": "filled",
-      "hotFx": 0.35912,
-      "hotFy": 0.18111,
-      "hotShape": "round",
-      "hotSize": 9,
-      "hwId": 5,
-      "id": "ID39",
-      "kind": "axis",
-      "label": "",
-      "leaders": [
-       {
-        "curve": true,
-        "from": {
-         "id": "ID39",
-         "pin": "top",
-         "type": "chip"
-        },
-        "id": "ID40",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.35863,
-          "fy": 0.18511
-         }
-        ],
-        "to": {
-         "id": "ID39",
-         "type": "hot"
-        }
-       }
-      ],
-      "pin": "top",
-      "prefix": "A",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.35863,
-        "fy": 0.18511
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID39",
-       "type": "hot"
-      }
-     },
-     "3": {
+     "2": {
       "border": "#3F3F46",
       "chipFx": 0.32727,
       "chipFy": 0.01378,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID3",
+      "friendly": "ID2",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -855,16 +718,16 @@
       "hotFx": 0.44788,
       "hotFy": 0.17467,
       "hotSize": 28,
-      "id": "ID3",
+      "id": "ID2",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID3",
+         "id": "ID2",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID4",
+        "id": "ID3",
         "spines": [
          {
           "curve": true,
@@ -873,7 +736,7 @@
          }
         ],
         "to": {
-         "id": "ID3",
+         "id": "ID2",
          "type": "hot"
         }
        }
@@ -927,13 +790,79 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "4": {
+     "20": {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.3472,
+      "chipFy": 0.18911,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 5",
+      "from": {
+       "id": "ID38",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.35912,
+      "hotFy": 0.18111,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 5,
+      "id": "ID38",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID38",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID39",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.35863,
+          "fy": 0.18511
+         }
+        ],
+        "to": {
+         "id": "ID38",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.35863,
+        "fy": 0.18511
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID38",
+       "type": "hot"
+      }
+     },
+     "3": {
       "border": "#3F3F46",
       "chipFx": 0.30175,
       "chipFy": 0.34933,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID5",
+      "friendly": "ID4",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -942,16 +871,16 @@
       "hotFx": 0.44275,
       "hotFy": 0.23244,
       "hotSize": 28,
-      "id": "ID5",
+      "id": "ID4",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID5",
+         "id": "ID4",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID6",
+        "id": "ID5",
         "spines": [
          {
           "curve": true,
@@ -960,7 +889,7 @@
          }
         ],
         "to": {
-         "id": "ID5",
+         "id": "ID4",
          "type": "hot"
         }
        }
@@ -1014,7 +943,7 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "5": {
+     "4": {
       "border": "#3F3F46",
       "chipFx": 0.32345,
       "chipFy": 0.2684,
@@ -1029,17 +958,17 @@
       "hotFy": 0.25556,
       "hotSize": 4,
       "hwId": 3,
-      "id": "ID7",
+      "id": "ID6",
       "kind": "btn",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID7",
+         "id": "ID6",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID8",
+        "id": "ID7",
         "spines": [
          {
           "curve": true,
@@ -1048,7 +977,7 @@
          }
         ],
         "to": {
-         "id": "ID7",
+         "id": "ID6",
          "type": "hot"
         }
        }
@@ -1066,13 +995,13 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "6": {
+     "5": {
       "border": "#3F3F46",
       "chipFx": 0.3755,
       "chipFy": 0.42396,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID9",
+      "friendly": "ID8",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -1082,16 +1011,16 @@
       "hotFx": 0.44825,
       "hotFy": 0.37978,
       "hotSize": 28,
-      "id": "ID9",
+      "id": "ID8",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID9",
+         "id": "ID8",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID10",
+        "id": "ID9",
         "spines": [
          {
           "curve": true,
@@ -1100,7 +1029,7 @@
          }
         ],
         "to": {
-         "id": "ID9",
+         "id": "ID8",
          "type": "hot"
         }
        }
@@ -1154,7 +1083,7 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "7": {
+     "6": {
       "border": "#3F3F46",
       "chipFill": "filled",
       "chipFx": 0.40987,
@@ -1175,18 +1104,18 @@
       "hotShape": "round",
       "hotSize": 4,
       "hwId": 1,
-      "id": "ID11",
+      "id": "ID10",
       "kind": "axis",
       "label": "",
       "leaders": [
        {
         "curve": true,
         "from": {
-         "id": "ID11",
+         "id": "ID10",
          "pin": "left",
          "type": "chip"
         },
-        "id": "ID12",
+        "id": "ID11",
         "spines": [
          {
           "curve": true,
@@ -1195,7 +1124,7 @@
          }
         ],
         "to": {
-         "id": "ID11",
+         "id": "ID10",
          "type": "hot"
         }
        }
@@ -1211,7 +1140,7 @@
       ],
       "textColor": "#E4E4E7"
      },
-     "8": {
+     "7": {
       "border": "#3F3F46",
       "chipFill": "filled",
       "chipFx": 0.465,
@@ -1223,7 +1152,7 @@
       "fontSize": 10,
       "friendly": "Axis 2",
       "from": {
-       "id": "ID13",
+       "id": "ID12",
        "pin": "bottom",
        "type": "chip"
       },
@@ -1237,18 +1166,18 @@
       "hotShape": "round",
       "hotSize": 4,
       "hwId": 2,
-      "id": "ID13",
+      "id": "ID12",
       "kind": "axis",
       "label": "",
       "leaders": [
        {
         "curve": true,
         "from": {
-         "id": "ID13",
+         "id": "ID12",
          "pin": "bottom",
          "type": "chip"
         },
-        "id": "ID14",
+        "id": "ID13",
         "spines": [
          {
           "curve": true,
@@ -1257,7 +1186,7 @@
          }
         ],
         "to": {
-         "id": "ID13",
+         "id": "ID12",
          "type": "hot"
         }
        }
@@ -1273,11 +1202,11 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID13",
+       "id": "ID12",
        "type": "hot"
       }
      },
-     "9": {
+     "8": {
       "border": "#3F3F46",
       "chipFill": "filled",
       "chipFx": 0.60213,
@@ -1289,7 +1218,7 @@
       "fontSize": 10,
       "friendly": "Axis 3",
       "from": {
-       "id": "ID15",
+       "id": "ID14",
        "pin": "top",
        "type": "chip"
       },
@@ -1303,18 +1232,18 @@
       "hotShape": "round",
       "hotSize": 4,
       "hwId": 3,
-      "id": "ID15",
+      "id": "ID14",
       "kind": "axis",
       "label": "",
       "leaders": [
        {
         "curve": true,
         "from": {
-         "id": "ID15",
+         "id": "ID14",
          "pin": "top",
          "type": "chip"
         },
-        "id": "ID16",
+        "id": "ID15",
         "spines": [
          {
           "curve": true,
@@ -1323,7 +1252,7 @@
          }
         ],
         "to": {
-         "id": "ID15",
+         "id": "ID14",
          "type": "hot"
         }
        }
@@ -1339,281 +1268,13 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID15",
+       "id": "ID14",
        "type": "hot"
       }
-     }
-    },
-    "cropId": "",
-    "drawTool": "",
-    "histAt": 3,
-    "histLen": 4,
-    "layers": [],
-    "menu": [],
-    "nodeCount": 22,
-    "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "props": [],
-    "selected": [
-     "ID0",
-     "ID1",
-     "ID2"
-    ]
-   },
-   "step": "three-shapes"
-  },
-  {
-   "state": {
-    "changed": {
-     "1": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.1,
-      "fill": "hollow",
-      "fw": 0.1,
-      "fx": 0.03125,
-      "fy": 0.3,
-      "id": "ID1",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
      },
-     "2": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.06667,
-      "fill": "hollow",
-      "fw": 0.0625,
-      "fx": 0.03125,
-      "fy": 0.55556,
-      "id": "ID2",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     }
-    },
-    "cropId": "",
-    "drawTool": "",
-    "histAt": 4,
-    "histLen": 5,
-    "layers": [],
-    "menu": [
-     "3 selected",
-     "Group selected",
-     "Duplicate",
-     "Delete",
-     "v Align and distribute",
-     "  Across: Left | Centre | Right",
-     "  Down: Top | Middle | Bottom",
-     "  Space out: Across | Down",
-     "> Turn together",
-     "> Shape",
-     "> Fill and outline",
-     "> Rotate and flip",
-     "> Arrange"
-    ],
-    "nodeCount": 22,
-    "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "props": [],
-    "selected": [
-     "ID0",
-     "ID1",
-     "ID2"
-    ]
-   },
-   "step": "menu-left"
-  },
-  {
-   "state": {
-    "changed": {
-     "0": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.05556,
-      "fill": "hollow",
-      "fw": 0.06875,
-      "fx": 0.04688,
-      "fy": 0.1,
-      "id": "ID0",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     },
-     "2": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.06667,
-      "fill": "hollow",
-      "fw": 0.0625,
-      "fx": 0.05,
-      "fy": 0.55556,
-      "id": "ID2",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     }
-    },
-    "cropId": "",
-    "drawTool": "",
-    "histAt": 5,
-    "histLen": 6,
-    "layers": [],
-    "menu": [],
-    "nodeCount": 22,
-    "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "props": [],
-    "selected": [
-     "ID0",
-     "ID1",
-     "ID2"
-    ]
-   },
-   "step": "centre"
-  },
-  {
-   "state": {
-    "changed": {
-     "1": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.1,
-      "fill": "hollow",
-      "fw": 0.1,
-      "fx": 0.03125,
-      "fy": 0.30556,
-      "id": "ID1",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     }
-    },
-    "cropId": "",
-    "drawTool": "",
-    "histAt": 6,
-    "histLen": 7,
-    "layers": [],
-    "menu": [],
-    "nodeCount": 22,
-    "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "props": [],
-    "selected": [
-     "ID0",
-     "ID1",
-     "ID2"
-    ]
-   },
-   "step": "spaced-down"
-  },
-  {
-   "state": {
-    "changed": {
-     "1": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.1,
-      "fill": "hollow",
-      "fw": 0.1,
-      "fx": 0.03281,
-      "fy": 0.1,
-      "id": "ID1",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     },
-     "2": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.06667,
-      "fill": "hollow",
-      "fw": 0.0625,
-      "fx": 0.05,
-      "fy": 0.1,
-      "id": "ID2",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "rect",
-      "stroke": 2
-     }
-    },
-    "cropId": "",
-    "drawTool": "",
-    "histAt": 8,
-    "histLen": 9,
-    "layers": [],
-    "menu": [],
-    "nodeCount": 22,
-    "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "props": [],
-    "selected": [
-     "ID0",
-     "ID1",
-     "ID2"
-    ]
-   },
-   "step": "top-and-across"
-  },
-  {
-   "state": {
-    "changed": {
-     "10": {
+     "9": {
       "border": "#3F3F46",
-      "chipFx": 0.32345,
+      "chipFx": 0.61901,
       "chipFy": 0.2484,
       "color": "#18181B",
       "fontSize": 8,
@@ -1632,7 +1293,7 @@
       "hotFy": 0.26,
       "hotSize": 4,
       "hwId": 4,
-      "id": "ID17",
+      "id": "ID16",
       "kind": "btn",
       "label": "",
       "leaders": [
@@ -1642,7 +1303,7 @@
          "fy": 0.25109,
          "type": "free"
         },
-        "id": "ID18",
+        "id": "ID17",
         "spines": [
          {
           "curve": true,
@@ -1651,7 +1312,7 @@
          }
         ],
         "to": {
-         "id": "ID17",
+         "id": "ID16",
          "type": "hot"
         }
        }
@@ -1669,77 +1330,429 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID17",
-       "type": "hot"
-      }
-     },
-     "13": {
-      "border": "#3F3F46",
-      "chipFx": 0.58868,
-      "chipFy": 0.42453,
-      "color": "#18181B",
-      "fontSize": 8,
-      "friendly": "Button 5",
-      "from": {
-       "fx": 0.55726,
-       "fy": 0.42289,
-       "type": "free"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.58813,
-      "hotFy": 0.43622,
-      "hotSize": 4,
-      "hwId": 5,
-      "id": "ID23",
-      "kind": "btn",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "fx": 0.55726,
-         "fy": 0.42289,
-         "type": "free"
-        },
-        "id": "ID24",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.57269,
-          "fy": 0.42956
-         }
-        ],
-        "to": {
-         "id": "ID23",
-         "type": "hot"
-        }
-       }
-      ],
-      "locked": true,
-      "nx": 0.60961,
-      "ny": 0.42222,
-      "pin": "left",
-      "prefix": "",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.57269,
-        "fy": 0.42956
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID23",
+       "id": "ID16",
        "type": "hot"
       }
      }
     },
     "cropId": "",
     "drawTool": "",
-    "histAt": 10,
-    "histLen": 11,
+    "histAt": 2,
+    "histLen": 3,
+    "layers": [],
+    "menu": [],
+    "nodeCount": 21,
+    "pasteRequests": 0,
+    "photo": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "props": [],
+    "selected": [
+     "ID0",
+     "ID1",
+     "ID6"
+    ]
+   },
+   "step": "three-selected"
+  },
+  {
+   "state": {
+    "changed": {
+     "0": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.08111,
+      "fill": "hollow",
+      "fw": 0.13125,
+      "fx": 0.17252,
+      "fy": 0.05372,
+      "id": "ID0",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 90,
+      "shape": "arrow",
+      "stroke": 2
+     },
+     "1": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "ends": [
+       0.5,
+       0.0354,
+       0.5,
+       0.9646
+      ],
+      "fh": 0.25111,
+      "fill": "hollow",
+      "fw": 0.01,
+      "fx": 0.16596,
+      "fy": -0.03128,
+      "headEnd": "solid",
+      "headStart": "none",
+      "id": "ID1",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "shape": "line",
+      "stroke": 2
+     },
+     "4": {
+      "border": "#3F3F46",
+      "chipFx": 0.1456,
+      "chipFy": 0.48041,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.41625,
+      "hotFy": 0.25556,
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID6",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID6",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID7",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.38501,
+          "fy": 0.26698
+         }
+        ],
+        "to": {
+         "id": "ID6",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.34854,
+      "ny": 0.25467,
+      "pin": "right",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.38501,
+        "fy": 0.26698
+       }
+      ],
+      "textColor": "#E4E4E7"
+     }
+    },
+    "cropId": "",
+    "drawTool": "",
+    "histAt": 3,
+    "histLen": 4,
+    "layers": [],
+    "menu": [],
+    "nodeCount": 21,
+    "pasteRequests": 0,
+    "photo": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "props": [],
+    "selected": [
+     "ID0",
+     "ID1",
+     "ID6"
+    ]
+   },
+   "step": "turned-90"
+  },
+  {
+   "state": {
+    "changed": {
+     "0": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.08111,
+      "fill": "hollow",
+      "fw": 0.13125,
+      "fx": 0.05,
+      "fy": 0.1,
+      "id": "ID0",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "shape": "arrow",
+      "stroke": 2
+     },
+     "1": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "ends": [
+       0.0354,
+       0.5,
+       0.9646,
+       0.5
+      ],
+      "fh": 0.01778,
+      "fill": "hollow",
+      "fw": 0.14125,
+      "fx": 0.045,
+      "fy": 0.25111,
+      "headEnd": "solid",
+      "headStart": "none",
+      "id": "ID1",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "shape": "line",
+      "stroke": 2
+     },
+     "4": {
+      "border": "#3F3F46",
+      "chipFx": 0.32345,
+      "chipFy": 0.2684,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.41625,
+      "hotFy": 0.25556,
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID6",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID6",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID7",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.38501,
+          "fy": 0.26698
+         }
+        ],
+        "to": {
+         "id": "ID6",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.34854,
+      "ny": 0.25467,
+      "pin": "right",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.38501,
+        "fy": 0.26698
+       }
+      ],
+      "textColor": "#E4E4E7"
+     }
+    },
+    "cropId": "",
+    "drawTool": "",
+    "histAt": 4,
+    "histLen": 5,
+    "layers": [],
+    "menu": [],
+    "nodeCount": 21,
+    "pasteRequests": 0,
+    "photo": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "props": [],
+    "selected": [
+     "ID0",
+     "ID1",
+     "ID6"
+    ]
+   },
+   "step": "turned-back"
+  },
+  {
+   "state": {
+    "changed": {
+     "0": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.08111,
+      "fill": "hollow",
+      "fw": 0.13125,
+      "fx": 0.17252,
+      "fy": 0.05372,
+      "id": "ID0",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 90,
+      "shape": "arrow",
+      "stroke": 2
+     },
+     "1": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "ends": [
+       0.5,
+       0.0354,
+       0.5,
+       0.9646
+      ],
+      "fh": 0.25111,
+      "fill": "hollow",
+      "fw": 0.01,
+      "fx": 0.16596,
+      "fy": -0.03128,
+      "headEnd": "solid",
+      "headStart": "none",
+      "id": "ID1",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "shape": "line",
+      "stroke": 2
+     },
+     "4": {
+      "border": "#3F3F46",
+      "chipFx": 0.1456,
+      "chipFy": 0.48041,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.41625,
+      "hotFy": 0.25556,
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID6",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID6",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID7",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.38501,
+          "fy": 0.26698
+         }
+        ],
+        "to": {
+         "id": "ID6",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.34854,
+      "ny": 0.25467,
+      "pin": "right",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.38501,
+        "fy": 0.26698
+       }
+      ],
+      "textColor": "#E4E4E7"
+     }
+    },
+    "cropId": "",
+    "drawTool": "",
+    "histAt": 3,
+    "histLen": 5,
+    "layers": [],
+    "menu": [],
+    "nodeCount": 21,
+    "pasteRequests": 0,
+    "photo": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "props": [],
+    "selected": []
+   },
+   "step": "undo"
+  },
+  {
+   "state": {
+    "changed": {
+     "21": {
+      "align": "center",
+      "around": [],
+      "bold": false,
+      "border": "#3F3F46",
+      "borderOpacity": 1,
+      "color": "#18181B",
+      "fh": 0.08111,
+      "fill": "filled",
+      "fillOpacity": 1,
+      "fontSize": 12,
+      "fw": 0.18125,
+      "fx": 0.71875,
+      "fy": 0.1,
+      "id": "ID40",
+      "kind": "draw",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 30,
+      "scaleFont": false,
+      "shape": "text",
+      "stroke": 1,
+      "text": "Text",
+      "textColor": "#E4E4E7",
+      "theme": "gremlin",
+      "valign": "middle",
+      "wrap": true
+     }
+    },
+    "cropId": "",
+    "drawTool": "",
+    "histAt": 5,
+    "histLen": 6,
     "layers": [],
     "menu": [],
     "nodeCount": 22,
@@ -1752,12 +1765,11 @@
     ],
     "props": [],
     "selected": [
-     "ID7",
-     "ID17",
-     "ID23"
-    ]
+     "ID40"
+    ],
+    "textRot": 30
    },
-   "step": "chips-left-one-locked"
+   "step": "text-turned"
   }
  ],
  "warnings": [

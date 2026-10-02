@@ -9,6 +9,10 @@
 function applyPointer(mx, my, altOff) {
     if (!dragKind || dragKind === "band")
         return
+    if (dragKind === "turn") {
+        dragTurn(mx, my)
+        return
+    }
     var n = nodeAt(selectedId)
     if (!n)
         return

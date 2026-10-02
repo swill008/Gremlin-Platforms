@@ -403,7 +403,8 @@ Item {
     }
     // The rotate handle: a stem up from the top edge to a round grip.
     Item {
-        visible: { ed.tick; return !!(ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node) && ed.cropId !== node.id) }
+        // With several selected, one handle above them all turns them together.
+        visible: { ed.tick; return !!(ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node) && ed.cropId !== node.id && !ed.canTurnTogether()) }
         x: _drawRoot.width / 2
         y: -ed.rotateHandleOffset
         z: 4

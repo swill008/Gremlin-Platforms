@@ -1340,6 +1340,47 @@ def scenario_mirror(s: Session) -> None:
     s.record("twice")
 
 
+def scenario_turn(s: Session) -> None:
+    """Turning several items together with the selection's handle and by a
+    typed turn; turning a text box with its own handle."""
+    _load(s, "evo_r")
+    s.call("setDrawTool", "arrow")
+    s.drag(s.point(0.05, 0.10), s.point(0.18, 0.18))
+    arrow = s.state()["selected"][0]
+    s.call("setDrawTool", "arrowline")
+    s.drag(s.point(0.05, 0.26), s.point(0.18, 0.26))
+    line = s.state()["selected"][0]
+    s.call("setDrawTool", "")
+    chip = "b3"
+    s.call("setSelection", [arrow, line, chip])
+    s.record("three-selected", image=True)
+
+    box = s.call("selectionBounds")
+    pivot = s.call("turnPivot")
+    centre = s.ed_point(pivot["x"], pivot["y"])
+    grip = s.ed_point(box["x"] + box["w"] / 2, box["y"] - 24)
+    # Round to the right of the middle: a quarter turn, snapped with Shift.
+    s.drag(
+        grip,
+        QtCore.QPoint(centre.x() + 200, centre.y() + 3),
+        QtCore.Qt.KeyboardModifier.ShiftModifier,
+    )
+    s.record("turned-90", image=True)
+    s.call("turnSelectionBy", -90)
+    s.record("turned-back")
+    s.key(QtCore.Qt.Key.Key_Z, QtCore.Qt.KeyboardModifier.ControlModifier)
+    s.record("undo")
+
+    # A text box has its own rotate handle now.
+    s.call("setDrawTool", "text")
+    s.drag(s.point(0.72, 0.10), s.point(0.90, 0.18))
+    text = s.state()["selected"][0]
+    s.call("setDrawTool", "")
+    s.call("setRotation", 30)
+    s.record("text-turned", image=True)
+    s.steps[-1]["state"]["textRot"] = s.node(text).get("rot")
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1389,6 +1430,7 @@ SCENARIOS = {
     "find": scenario_find,
     "labels": scenario_labels,
     "mirror": scenario_mirror,
+    "turn": scenario_turn,
 }
 
 
