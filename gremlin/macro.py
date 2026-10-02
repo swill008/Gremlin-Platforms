@@ -1075,8 +1075,9 @@ Configuration().register(
     "default-delay",
     PropertyType.Float,
     0.05,
-    "The default time (in seconds) the macro system waits between emitting "
-    + "subsequent actions when no pauses are present.",
+    "The time (in seconds) macros wait between actions when no pauses are "
+    + "present. Used by every profile that does not set its own delay "
+    + "(Profile settings).",
     {"min": 0.0, "max": 10.0},
     True,
 )

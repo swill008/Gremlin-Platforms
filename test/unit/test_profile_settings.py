@@ -7,6 +7,8 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from gremlin.profile import Profile
 
 
@@ -31,7 +33,7 @@ def _roundtrip_profile(profile: Profile) -> Profile:
 def test_settings_defaults_roundtrip() -> None:
     p = Profile()
     assert p.settings.startup_mode == "Use Heuristic"
-    assert p.settings.macro_default_delay == 0.05
+    assert p.settings.macro_default_delay is None  # Follows Options.
     assert p.settings.vjoy_as_input == {}
     assert p.settings.vjoy_initial_values == {}
 
@@ -89,7 +91,54 @@ def test_load_profile_settings_from_existing_xml(xml_dir: Path) -> None:
     p.from_xml(str(xml_path))
 
     assert p.settings.startup_mode == "Default"
-    assert p.settings.macro_default_delay == 0.05
+    # The old automatic 0.05 means "not set": it follows Options.
+    assert p.settings.macro_default_delay is None
 
     assert p.settings.vjoy_as_input == {}
     assert p.settings.vjoy_initial_values == {}
+
+
+def test_macro_delay_follows_options_unless_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gremlin import profile
+
+    monkeypatch.setattr(profile, "options_macro_delay", lambda: 0.2)
+    p = Profile()
+    assert p.settings.effective_macro_delay() == 0.2
+
+    # Saved following Options: older builds still get a number to read.
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out = Path(tmpdir) / "follow.xml"
+        p.to_xml(str(out))
+        text = out.read_text(encoding="utf-8")
+        assert "<macro-default-delay>0.2</macro-default-delay>" in text
+        assert "<macro-delay-source>options</macro-delay-source>" in text
+        again = Profile()
+        again.from_xml(str(out))
+        assert again.settings.macro_default_delay is None
+
+    p.settings.macro_default_delay = 0.3
+    p2 = _roundtrip_profile(p)
+    assert p2.settings.macro_default_delay == 0.3
+    assert p2.settings.effective_macro_delay() == 0.3
+
+
+def test_settings_model_switches_between_options_and_own(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gremlin import profile, shared_state
+    from gremlin.ui.profile import ProfileSettingsModel
+
+    monkeypatch.setattr(profile, "options_macro_delay", lambda: 0.2)
+    p = Profile()
+    monkeypatch.setattr(shared_state, "current_profile", p)
+    model = ProfileSettingsModel()
+    assert model.property("macroDelayFromOptions") is True
+    assert model.property("macroDefaultDelay") == 0.2
+    model.setProperty("macroDelayFromOptions", False)  # Starts from today's value.
+    assert p.settings.macro_default_delay == 0.2
+    model.setProperty("macroDefaultDelay", 0.5)
+    assert model.property("macroDelayFromOptions") is False
+    model.setProperty("macroDelayFromOptions", True)
+    assert p.settings.macro_default_delay is None

@@ -82,6 +82,8 @@ Item {
                         Layout.preferredWidth: userEntryColumnWidth
                         Layout.rightMargin: userEntryColumnPadding
 
+                        // Following Options: shows that value, greyed out.
+                        enabled: settingsModel ? !settingsModel.macroDelayFromOptions : false
                         minValue: 0.0
                         maxValue: 10.0
                         stepSize: 0.1
@@ -100,6 +102,17 @@ Item {
 
                         text: "Delay inserted between macro actions in " +
                             "seconds if no pause action is present."
+                    }
+                }
+
+                CheckBox {
+                    text: "Use the Options default (Options → Action → Macro)"
+                    property bool shown: settingsModel ? settingsModel.macroDelayFromOptions : true
+                    onShownChanged: checked = shown
+                    Component.onCompleted: checked = shown
+                    onToggled: {
+                        if (settingsModel)
+                            settingsModel.macroDelayFromOptions = checked
                     }
                 }
             }

@@ -155,6 +155,22 @@ class VirtualHatButton(AbstractVirtualButton):
         return node
 
 
+
+# Every profile saved before the Options fallback carried this value.
+_OLD_MACRO_DELAY = 0.05
+
+
+def options_macro_delay() -> float:
+    """Options > Action > Macro > Default delay (registered by gremlin.macro)."""
+    from gremlin import macro  # noqa: F401  (registers the option)
+    from gremlin.config import Configuration
+
+    try:
+        return float(Configuration().value("action", "macro", "default-delay"))
+    except (error.GremlinError, TypeError, ValueError):
+        return _OLD_MACRO_DELAY
+
+
 class Settings:
     """Stores general profile specific settings."""
 
@@ -168,7 +184,14 @@ class Settings:
         self.vjoy_as_input = {}
         self.vjoy_initial_values = {}
         self.startup_mode: str = "Use Heuristic"
-        self.macro_default_delay: float = 0.05
+        # None: use the Options default (Action > Macro > Default delay).
+        self.macro_default_delay: float | None = None
+
+    def effective_macro_delay(self) -> float:
+        """The profile's own macro delay, or the Options default."""
+        if self.macro_default_delay is not None:
+            return self.macro_default_delay
+        return options_macro_delay()
 
     def from_xml(self, node: ElementTree.Element) -> None:
         """Populates the data storage with the XML node's contents.
@@ -184,9 +207,17 @@ class Settings:
             settings_node, "startup-mode", lambda x: str(x.text)
         )
 
-        self.macro_default_delay = read_subelement_custom(
+        delay = read_subelement_custom(
             settings_node, "macro-default-delay", lambda x: float(x.text)
         )
+        source = settings_node.find("macro-delay-source")
+        if source is not None and (source.text or "").strip() == "options":
+            self.macro_default_delay = None
+        elif abs(delay - _OLD_MACRO_DELAY) < 1e-9:
+            # Older profiles always saved 0.05, chosen or not: follow Options.
+            self.macro_default_delay = None
+        else:
+            self.macro_default_delay = delay
 
         # vJoy as input settings
         self.vjoy_as_input = {}
@@ -216,11 +247,17 @@ class Settings:
         node.append(
             create_subelement_node_custom("startup-mode", self.startup_mode, str)
         )
+        # Always write a number so older Gremlin builds can still open the
+        # profile; the source element says it follows Options.
         node.append(
             create_subelement_node_custom(
-                "macro-default-delay", self.macro_default_delay, str
+                "macro-default-delay", self.effective_macro_delay(), str
             )
         )
+        if self.macro_default_delay is None:
+            node.append(
+                create_subelement_node_custom("macro-delay-source", "options", str)
+            )
 
         # Process vJoy as input settings.
         for vid, value in self.vjoy_as_input.items():

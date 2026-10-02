@@ -299,7 +299,8 @@ class CodeRunner:
         if str(start_mode or "") not in names:
             start_mode = mode_manager.resolve_start_mode(self._profile)
 
-        macro.MacroManager().default_delay = settings.macro_default_delay
+        # The profile's own delay, or Options > Action > Macro when it has none.
+        macro.MacroManager().default_delay = settings.effective_macro_delay()
         syslog = logging.getLogger("system")
         # Each run reads the output modules fresh and logs blocked outputs anew.
         output.refresh()

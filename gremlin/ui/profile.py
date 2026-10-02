@@ -1270,20 +1270,41 @@ class ProfileSettingsModel(QtCore.QObject):
 
         self._profile = shared_state.current_profile
         signal.profileChanged.connect(self._reset)
+        # The Options macro delay shows here while the profile follows it.
+        signal.configChanged.connect(self.settingsChanged)
 
     def _reset(self) -> None:
         self._profile = shared_state.current_profile
         self.settingsChanged.emit()
 
     def _set_macro_default_delay(self, delay: float) -> None:
+        """Gives the profile its own delay (it stops following Options)."""
         if delay >= 0.0 and delay != self._profile.settings.macro_default_delay:
             self._profile.settings.macro_default_delay = delay
             self.settingsChanged.emit()
 
+    # The delay macros use: the profile's own, or the Options default.
     macroDefaultDelay = QtCore.Property(
         float,
-        fget=lambda self: self._profile.settings.macro_default_delay,
+        fget=lambda self: self._profile.settings.effective_macro_delay(),
         fset=_set_macro_default_delay,
+        notify=settingsChanged,
+    )
+
+    def _set_macro_delay_from_options(self, follow: bool) -> None:
+        settings = self._profile.settings
+        if follow == (settings.macro_default_delay is None):
+            return
+        # Leaving Options keeps today's value as the profile's own start.
+        settings.macro_default_delay = (
+            None if follow else settings.effective_macro_delay()
+        )
+        self.settingsChanged.emit()
+
+    macroDelayFromOptions = QtCore.Property(
+        bool,
+        fget=lambda self: self._profile.settings.macro_default_delay is None,
+        fset=_set_macro_delay_from_options,
         notify=settingsChanged,
     )
 
