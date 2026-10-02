@@ -98,6 +98,28 @@ Item {
         return false
     }
 
+    // Pans, without zooming, so an editor rect is in view (press to find).
+    // Editor and world coordinates are the same; the world is scaled by
+    // zoom about its centre and moved by panX and panY.
+    function showEditorRect(x, y, w, h) {
+        var vw = _viewport.width
+        var vh = _viewport.height
+        if (vw < 8 || vh < 8)
+            return
+        var W = _world.width
+        var H = _world.height
+        var z = zoom
+        var left = panX + W / 2 + (x - W / 2) * z
+        var top = panY + H / 2 + (y - H / 2) * z
+        var margin = Math.min(vw, vh) * 0.05
+        if (left >= margin && top >= margin && left + w * z <= vw - margin && top + h * z <= vh - margin)
+            return
+        panX = vw / 2 - W / 2 - (x + w / 2 - W / 2) * z
+        panY = vh / 2 - H / 2 - (y + h / 2 - H / 2) * z
+        clampPan()
+        pingEditor()
+    }
+
     function recoverView() {
         if (panX !== panX || panY !== panY || !(zoom >= zoomMin && zoom <= zoomMax))
             resetView()

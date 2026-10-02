@@ -86,11 +86,36 @@ Window {
     }
     function showProps(on) { _props.visible = on }
 
+    // A stand-in device for press to find: buttons and hats held down.
+    QtObject {
+        id: _fakeDevice
+        property var held: ({})
+        function hwButton(id) { return held["btn:" + id] ? 1 : 0 }
+        function hwAxis(id) { return held["axis:" + id] || 0 }
+        function hwHat(id) { return held["hat:" + id] ? 1 : 0 }
+    }
+    function useFakeDevice(rowsJson) {
+        _face.host = _fakeDevice
+        _face.chipRows = JSON.parse(rowsJson)
+    }
+    function hold(key, value) {
+        var h = _fakeDevice.held
+        h[key] = value
+        _fakeDevice.held = h
+        _face.liveStamp++
+    }
+    property string notPlaced: ""
+    function findState() {
+        return JSON.stringify({ msg: ed().findMsg, notPlaced: _win.notPlaced, pan: [Math.round(_face.panX), Math.round(_face.panY)] })
+    }
+    function setZoom(z, px, py) { _face.zoom = z; _face.panX = px; _face.panY = py; _face.pingEditor() }
+
     // Paste picture requests (the window saves the clipboard's picture).
     property int pasteRequests: 0
     Connections {
         target: _face.editorItem
         function onPastePictureRequested() { _win.pasteRequests++ }
+        function onFindNotPlaced(label) { _win.notPlaced = label }
     }
     function propLines() {
         return JSON.stringify(_props.visible ? _props.describe() : [])
@@ -1186,6 +1211,47 @@ def scenario_picture(s: Session) -> None:
     s.record("paste-requested")
 
 
+def scenario_find(s: Session) -> None:
+    """Press to find: a press selects the chip and scrolls to it; a control
+    not on the map is pointed to the pool; axes only when asked; off is off."""
+    _load(s, "evo_r")
+    rows = [{"kind": "btn", "hwId": i} for i in (1, 3, 5, 40)]
+    rows.append({"kind": "axis", "hwId": 1})
+    s.js("useFakeDevice", json.dumps(rows))
+    s.call("setSelection", [])
+
+    def find_step(name: str, image: bool = False) -> None:
+        s.record(name, image=image)
+        s.steps[-1]["state"]["find"] = json.loads(s.js("findState"))
+
+    s.js("hold", "btn:3", 1)
+    find_step("press-b3", image=True)
+    s.js("hold", "btn:3", 0)
+    # Zoomed in far from Button 1: the press brings it into view.
+    s.js("setZoom", 6, 2500, 1500)
+    s.js("hold", "btn:1", 1)
+    find_step("press-b1-scrolls")
+    s.js("hold", "btn:1", 0)
+    s.js("resetView")
+    s.js("hold", "btn:40", 1)
+    find_step("not-on-map")
+    s.js("hold", "btn:40", 0)
+    # Axes: ignored by default, found when asked.
+    s.call("setSelection", [])
+    s.js("hold", "axis:1", 0.9)
+    find_step("axis-ignored")
+    s.js("hold", "axis:1", 0)
+    s.set_prop("findAxes", True)
+    s.js("hold", "axis:1", 0.9)
+    find_step("axis-found")
+    s.js("hold", "axis:1", 0)
+    # Off: a press changes nothing.
+    s.set_prop("findOn", False)
+    s.call("setSelection", [])
+    s.js("hold", "btn:5", 1)
+    find_step("off")
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1232,6 +1298,7 @@ SCENARIOS = {
     "align": scenario_align,
     "picture": scenario_picture,
     "export": scenario_export,
+    "find": scenario_find,
 }
 
 

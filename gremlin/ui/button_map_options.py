@@ -46,6 +46,17 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {"min": 1, "max": 90},
     ),
     (
+        "editing", "03-press-to-find", PropertyType.Bool, True,
+        "While editing, pressing a button or hat on the device selects its chip "
+        "and scrolls to it. A control not on the map is shown in the pool.",
+        {},
+    ),
+    (
+        "editing", "04-find-axes", PropertyType.Bool, False,
+        "Press to find also reacts to an axis pushed past halfway.",
+        {},
+    ),
+    (
         "autosave", "01-autosave", PropertyType.Bool, True,
         "While you edit a map, keep a recovery copy of unsaved changes. After a "
         "crash, opening the device offers to restore them.",

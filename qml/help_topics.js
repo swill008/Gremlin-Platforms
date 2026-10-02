@@ -333,13 +333,14 @@ function topics() {
         topic("Button Map", "Editor options",
             "<p><b>Edit → Editor options…</b> in the Button Map opens Options at its <b>Button Map</b> section; the same settings are under Options in the main window. They apply to every device.</p>"
             + "<ul>"
-            + "<li><b>Editing</b>: <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line.</li>"
+            + "<li><b>Editing</b>: <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
             + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
             + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size).</li>"
             + "<li><b>Colours</b>: <b>Recent colours</b>, how many the colour picker keeps.</li>"
             + "</ul>"),
         topic("Button Map", "Selecting, undo and keys",
-            "<p>Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrow keys nudge the selection; Shift+Arrow nudges by the grid size. Undo and Redo are also at the top of every right-click menu.</p>"
+            "<p><b>Press to find</b>: while editing, press a button or hat on the device and its chip is selected and scrolled into view (a group member selects its group). A control that is not on the map yet is shown in the pool, filtered by name; a hidden one is pointed to the Layers panel. Turn it off, or let a pushed axis count too, in Editor options.</p>"
+            + "<p>Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrow keys nudge the selection; Shift+Arrow nudges by the grid size. Undo and Redo are also at the top of every right-click menu.</p>"
             + "<ul>"
             + "<li><b>Ctrl+S</b> Save</li>"
             + "<li><b>Ctrl+Z</b> Undo; <b>Ctrl+Y</b> or <b>Ctrl+Shift+Z</b> Redo</li>"

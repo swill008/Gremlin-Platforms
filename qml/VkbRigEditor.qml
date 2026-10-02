@@ -24,6 +24,7 @@ import "rig_menu.js" as RigMenu
 import "rig_layers.js" as RigLayers
 import "rig_props.js" as RigProps
 import "rig_align.js" as RigAlign
+import "rig_find.js" as RigFind
 
 Item {
     id: _ed
@@ -145,12 +146,19 @@ Item {
     signal colorPickRequested(string field, string hex)
     // Undo or redo put the photo back; the window's sliders follow.
     signal photoRestored()
+    // Press to find: a pressed control that has no chip on the map.
+    signal findNotPlaced(string label)
 
     property var hist
     property int histAt: -1
     property int histCap: 80
     // Degrees per Shift step when turning an item or drawing a line (Options).
     property int rotateSnap: 15
+    // Press to find (Options → Button Map → Editing).
+    property bool findOn: true
+    property bool findAxes: false
+    property var findPrev: ({})
+    property string findMsg: ""
     property bool _restoring: false
     readonly property bool canUndo: histAt > 0
     readonly property bool canRedo: histAt >= 0 && hist && histAt < hist.length - 1
@@ -465,6 +473,11 @@ Item {
     function canAlign() { return RigAlign.canAlign() }
     function canDistribute() { return RigAlign.canDistribute() }
     function alignSelection(mode) { return RigAlign.alignSelection(mode) }
+
+    // Press to find (rig_find.js)
+    function findTick() { return RigFind.findTick() }
+    function findControl(kind, hwId) { return RigFind.findControl(kind, hwId) }
+    function showFindMessage(text) { return RigFind.showFindMessage(text) }
     function distributeSelection(axis) { return RigAlign.distributeSelection(axis) }
 
     // The Properties panel's fields (rig_props.js)
@@ -1051,6 +1064,8 @@ Item {
         color: "#A1A1AA"
         font.pixelSize: Style.dp(10)
         text: {
+            if (_ed.findMsg.length)
+                return _ed.findMsg
             if (_ed.packWarn.length)
                 return _ed.packWarn
             if (_ed.dragKind === "tablecell")
@@ -1118,6 +1133,17 @@ Item {
             function onDrawX1Changed() { _linePreview.requestPaint() }
             function onDrawY1Changed() { _linePreview.requestPaint() }
         }
+    }
+
+    Timer {
+        id: _findMsgTimer
+        interval: 3000
+        onTriggered: _ed.findMsg = ""
+    }
+
+    Connections {
+        target: _ed.face
+        function onLiveStampChanged() { _ed.findTick() }
     }
 
     Timer {

@@ -1294,6 +1294,8 @@ ApplicationWindow {
             e.histCap = o["undo-steps"]
         if (o["rotate-snap"] > 0)
             e.rotateSnap = o["rotate-snap"]
+        e.findOn = o["press-to-find"] !== false
+        e.findAxes = o["find-axes"] === true
     }
 
     function openEditorOptions() {
@@ -2062,6 +2064,7 @@ ApplicationWindow {
                             function onSelectedChanged() { _buttonMap.deferSelected() }
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
+                            function onFindNotPlaced(label) { _buttonMap.poolFilter = label }
                             function onOverlayImportRequested() { _overlayDialog.open() }
                             function onPastePictureRequested() { _buttonMap.pastePicture() }
                             function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }
