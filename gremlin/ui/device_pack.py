@@ -18,6 +18,7 @@ from xml.etree import ElementTree
 
 from gremlin.ui.live_debug import trace
 from gremlin.modules.claim import claim_ids
+from gremlin.modules.registry import is_output_name
 from gremlin.ui.hardware_profile import (
     _IMAGE_EXT,
     _asset_ref,
@@ -26,7 +27,6 @@ from gremlin.ui.hardware_profile import (
     _doc_direction,
     _maps_dir,
     _match_pack_device,
-    _name_direction,
     _outside_maps,
     _read_json_dict,
     _replace_file,
@@ -480,7 +480,7 @@ def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]
     packed.pop("boundGuidLocal", None)
     packed.pop("boundName", None)
     packed["device"] = name
-    if _name_direction(name) == "dest":
+    if is_output_name(name):
         packed["direction"] = "dest"
     packed["pack"] = {"exportedName": name, "exportedGuid": guid, "slug": slug}
     return packed, pictures

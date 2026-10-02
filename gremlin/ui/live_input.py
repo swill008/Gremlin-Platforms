@@ -11,6 +11,7 @@ import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import event_handler, shared_state
 from gremlin.modules import output
+from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.types import InputType
 
@@ -24,7 +25,6 @@ _UUID_RE = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
     re.I,
 )
-_VJOY_NAME_RE = re.compile(r"vjoy\s*(\d+)", re.I)
 
 
 def _extract_uuid(value: object) -> str:
@@ -219,17 +219,18 @@ class DeviceLiveState(QtCore.QObject):
             self._vjoy_id = 0
         if self._vjoy_id:
             return
-        hit = _VJOY_NAME_RE.search(self._device_name or "")
-        if hit:
-            self._vjoy_id = int(hit.group(1))
+        from gremlin.modules import registry
+
+        if "vjoy" in (self._device_name or "").lower():
+            self._vjoy_id = registry.vjoy_id_from_name(self._device_name)
             return
-        target = _extract_uuid(self._guid)
+        target = guid_key(self._guid)
         if not target:
             return
         try:
             from gremlin import device_initialization
             for vdev in device_initialization.vjoy_devices():
-                if _extract_uuid(vdev.device_guid) == target:
+                if guid_key(vdev.device_guid) == target:
                     self._vjoy_id = int(vdev.vjoy_id)
                     return
         except Exception:
@@ -343,7 +344,7 @@ class DeviceLiveState(QtCore.QObject):
             nested = getattr(raw, "uuid", None)
             if isinstance(nested, uuid.UUID) and nested == self._device_uuid:
                 return True
-        return _extract_uuid(event.device_guid) == _extract_uuid(self._guid)
+        return guid_key(event.device_guid) == guid_key(self._guid)
 
     def _on_event(self, event: event_handler.Event) -> None:
         if self._live_while_active:

@@ -7,6 +7,7 @@ from PySide6 import QtCore
 
 from gremlin import device_initialization, event_handler, shared_state
 from gremlin.modules import registry
+from gremlin.modules import wiring
 from gremlin.modules.ids import guid_key
 from gremlin.signal import signal
 from gremlin.types import InputType
@@ -63,7 +64,7 @@ def _src_label(input_type: InputType, hid: int, claim: dict) -> str:
     if custom:
         return custom
     if input_type == InputType.JoystickAxis:
-        return pairing.AXIS_LABELS.get(int(hid), f"A{int(hid)}")
+        return wiring.AXIS_SHORT.get(int(hid), f"A{int(hid)}")
     if input_type == InputType.JoystickHat:
         return f"H{int(hid)}"
     return str(int(hid))
@@ -95,17 +96,11 @@ def _module_pair_rows(guid: str, device_name: str, input_type: InputType) -> lis
         dest_kind = kind_of(vjoy_maps[0][1] or input_type)
         dest_claimed = claim_allows(dest["claim"], dest_kind, vinput)
         dest_custom = claim_friendly(dest["claim"], dest_kind, vinput)
-        if dest_claimed:
-            if dest_custom:
-                vjoy_label = dest_custom
-            elif input_type == InputType.JoystickAxis or vjoy_maps[0][1] == InputType.JoystickAxis:
-                vjoy_label = f"{dest['name']} {pairing.AXIS_LABELS.get(vinput, f'A{vinput}')}"
-            elif vjoy_maps[0][1] == InputType.JoystickHat:
-                vjoy_label = f"{dest['name']} H{vinput}"
-            else:
-                vjoy_label = f"{dest['name']} B{vinput}"
-        else:
-            vjoy_label = ""
+        # The output's own name when it has one; otherwise the shared short
+        # label, which also says "(not claimed)".
+        vjoy_label = (dest_claimed and dest_custom) or wiring.vjoy_dest(
+            vjoy_id, vjoy_maps[0][1] or input_type, vinput, short=True
+        )
         rows.append(
             {
                 "identifier": identifier,

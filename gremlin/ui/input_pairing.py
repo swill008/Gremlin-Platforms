@@ -17,18 +17,6 @@ import gremlin.ui.type_aliases as ta
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
-AXIS_LABELS = {
-    1: "X",
-    2: "Y",
-    3: "Z",
-    4: "Rx",
-    5: "Ry",
-    6: "Rz",
-    7: "S1",
-    8: "S2",
-}
-
-
 def _guid(value: object) -> uuid.UUID | None:
     try:
         return uuid.UUID(str(value or "").strip().strip("{}"))
@@ -166,7 +154,7 @@ def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
             continue
         seen.add(identifier)
         if input_type == InputType.JoystickAxis:
-            src = AXIS_LABELS.get(identifier, f"A{identifier}")
+            src = wiring.AXIS_SHORT.get(identifier, f"A{identifier}")
         elif input_type == InputType.JoystickHat:
             src = f"H{identifier}"
         else:

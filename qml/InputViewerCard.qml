@@ -190,7 +190,7 @@ ColumnLayout {
                     }
 
                     Label {
-                        text: destClaimed ? vjoyLabel : "—"
+                        text: vjoyLabel.length ? vjoyLabel : "—"
                         color: destClaimed ? Style.accent : Style.fgDisabled
                         Layout.preferredWidth: Style.dp(88)
                         font.pixelSize: Style.dp(12)

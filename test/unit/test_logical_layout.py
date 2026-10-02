@@ -156,10 +156,11 @@ def test_claimed_ids_are_sorted_and_unique() -> None:
 
 
 def test_named_vjoy_cannot_be_a_source_module() -> None:
-    from gremlin.ui.logical_layout import _module_direction
+    from gremlin.modules.registry import module_direction
 
-    assert _module_direction({"direction": "source"}, "vJoy 1") == "dest"
-    assert _module_direction({"direction": "source"}, "VKBsim Gladiator EVO R") == "source"
+    assert module_direction({"direction": "source"}, name="vJoy 1") == "dest"
+    source = {"direction": "source"}
+    assert module_direction(source, name="VKBsim Gladiator EVO R") == "source"
 
 
 def test_ok_on_one_sequence_keeps_the_pane_on_that_sequence(qapp) -> None:

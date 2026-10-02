@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import json
 
-from gremlin.modules import registry
+from gremlin.modules import output, registry
+from gremlin.modules.claim import claim_ids
 from gremlin.modules.ids import guid_key
 from gremlin.modules.registry import plain_slug, resolve_module_slug, trace
 
@@ -16,23 +17,18 @@ def _norm_guid(value: object) -> str:
     return str(value or "").strip().strip("{}")
 
 
-def _scan_modules() -> list[dict]:
-    rows: list[dict] = []
-    for module in registry.modules():
-        rows.append(
-            {
-                "slug": module.slug,
-                "name": module.name,
-                "path": module.path,
-                "doc": module.doc,
-                "claim": module.claim,
-                "guid": _norm_guid(module.bound_guid),
-                "boundName": module.bound_name,
-                "isDest": module.is_output,
-                "vjoyId": registry.resolve_vjoy_id(module.name, module.bound_guid),
-            }
-        )
-    return rows
+def _row(module: registry.Module, vjoy_id: int = 0) -> dict:
+    return {
+        "slug": module.slug,
+        "name": module.name,
+        "path": module.path,
+        "doc": module.doc,
+        "claim": module.claim,
+        "guid": _norm_guid(module.bound_guid),
+        "boundName": module.bound_name,
+        "isDest": module.is_output,
+        "vjoyId": int(vjoy_id),
+    }
 
 
 def _display_key(name: str) -> str:
@@ -87,30 +83,17 @@ def _collapse_inputs(rows: list[dict]) -> list[dict]:
 
 
 def input_modules() -> list[dict]:
-    rows = []
-    for row in _scan_modules():
-        if row["isDest"]:
-            continue
-        claim = row["claim"]
-        if not (claim.get("buttons") or claim.get("axes") or claim.get("hats")):
-            continue
-        rows.append(row)
+    rows = [
+        _row(module)
+        for module in registry.inputs()
+        if any(claim_ids(module.claim, kind) for kind in ("axis", "button", "hat"))
+    ]
     return _collapse_inputs(rows)
 
 
 def output_modules() -> list[dict]:
-    rows = []
-    seen: set[int] = set()
-    for row in _scan_modules():
-        if not row["isDest"]:
-            continue
-        vjoy_id = int(row["vjoyId"] or 0)
-        if not vjoy_id or vjoy_id in seen:
-            continue
-        seen.add(vjoy_id)
-        rows.append(row)
-    rows.sort(key=lambda row: (int(row["vjoyId"]), str(row["name"]).lower()))
-    return rows
+    """vJoy output modules, one per vJoy device (from the output layer)."""
+    return [_row(module, vjoy_id) for vjoy_id, module in output.vjoy_modules()]
 
 
 def merge_claim_into_output(dest: dict, claim: dict) -> dict:
@@ -137,6 +120,7 @@ def merge_claim_into_output(dest: dict, claim: dict) -> dict:
         "axes": axes,
         "hats": hats,
         "keys": list(current.get("keys") or []),
+        "xbox": list(current.get("xbox") or []),
         "friendly": friendly,
     }
     if path is None:

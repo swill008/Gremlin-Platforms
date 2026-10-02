@@ -30,6 +30,7 @@ from gremlin.modules.claim import (
     kind_of,
     read_claim,
 )
+from gremlin.modules.registry import is_output_name, resolve_module_slug
 from gremlin.ui.hardware_profile import (
     HardwareProfile,
     _maps_dir,
@@ -49,8 +50,6 @@ from gremlin.ui.hardware_profile import (
     module_file_choices,
     module_json_path,
     persist_log,
-    _name_direction,
-    resolve_module_slug,
 )
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -1940,7 +1939,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 friendly[f"{r['kind']}:{int(r['hwId'])}"] = str(r["friendly"])
         doc["kind"] = "control.hardware"
         doc["device"] = name
-        doc["direction"] = "dest" if _name_direction(name) == "dest" else (direction or "source")
+        doc["direction"] = "dest" if is_output_name(name) else (direction or "source")
         if self._guid:
             doc["boundName"] = name
             # GUID stays local-only; stored for this machine bind, not exported.

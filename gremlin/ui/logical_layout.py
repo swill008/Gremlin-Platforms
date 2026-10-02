@@ -50,10 +50,6 @@ _KIND_WORD = {
 }
 
 
-def _module_direction(doc: dict, name: str) -> str:
-    return module_direction(doc, name=name)
-
-
 def _assign_input_modules() -> list[dict]:
     """Saved source input modules. Logical Device is never a writer source."""
     rows: list[dict] = []
@@ -67,7 +63,7 @@ def _assign_input_modules() -> list[dict]:
         if not module_exists(name):
             return
         doc = _load_module_doc(name, guid)
-        if _module_direction(doc, name) == "dest" and bus != "vjoy-input":
+        if module_direction(doc, name=name) == "dest" and bus != "vjoy-input":
             return
         seen.add(key)
         rows.append(

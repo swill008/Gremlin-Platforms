@@ -67,7 +67,7 @@ def _pair_label(items) -> str:
 
 def _source_label(input_type: InputType, identifier: int) -> str:
     if input_type == InputType.JoystickAxis:
-        return pairing.AXIS_LABELS.get(identifier, f"A{identifier}")
+        return wiring.AXIS_SHORT.get(identifier, f"A{identifier}")
     if input_type == InputType.JoystickHat:
         return f"H{identifier}"
     return str(identifier)

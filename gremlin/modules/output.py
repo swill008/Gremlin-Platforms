@@ -32,6 +32,7 @@ _claims_at = 0.0
 _vjoy_claims: dict[int, dict] = {}
 _vjoy_names: dict[int, str] = {}
 _xbox_modules: dict[int, registry.Module] = {}
+_vjoy_modules: dict[int, registry.Module] = {}
 _blocked: set[tuple] = set()
 
 
@@ -39,15 +40,14 @@ _blocked: set[tuple] = set()
 
 
 def _refresh_claims(force: bool = False) -> None:
-    global _claims_at, _vjoy_claims, _vjoy_names, _xbox_modules
+    global _claims_at, _vjoy_claims, _vjoy_names, _vjoy_modules, _xbox_modules
     now = time.monotonic()
     if not force and now - _claims_at < _CLAIM_TTL:
         return
     with _lock:
         if not force and now - _claims_at < _CLAIM_TTL:
             return
-        vjoy: dict[int, dict] = {}
-        names: dict[int, str] = {}
+        found: dict[int, registry.Module] = {}
         xbox: dict[int, registry.Module] = {}
         try:
             outputs = registry.outputs()
@@ -58,11 +58,11 @@ def _refresh_claims(force: bool = False) -> None:
                 xbox.setdefault(xbox_pad_of(module.name), module)
                 continue
             vjoy_id = registry.resolve_vjoy_id(module.name, module.bound_guid)
-            if vjoy_id and vjoy_id not in vjoy:
-                vjoy[vjoy_id] = module.claim
-                names[vjoy_id] = module.name
-        _vjoy_claims = vjoy
-        _vjoy_names = names
+            if vjoy_id and vjoy_id not in found:
+                found[vjoy_id] = module
+        _vjoy_modules = found
+        _vjoy_claims = {vid: module.claim for vid, module in found.items()}
+        _vjoy_names = {vid: module.name for vid, module in found.items()}
         _xbox_modules = xbox
         _claims_at = time.monotonic()
 
@@ -76,6 +76,12 @@ def vjoy_claim(vjoy_id: int) -> dict:
     """The claim of the output module that drives this vJoy device."""
     _refresh_claims()
     return _vjoy_claims.get(int(vjoy_id), {})
+
+
+def vjoy_modules() -> list[tuple[int, registry.Module]]:
+    """vJoy output modules, one per vJoy device, by vJoy number (read fresh)."""
+    _refresh_claims(force=True)
+    return sorted(_vjoy_modules.items())
 
 
 def vjoy_module_name(vjoy_id: int) -> str:

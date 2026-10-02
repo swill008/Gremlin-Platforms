@@ -107,7 +107,7 @@ class AutoMapper:
             if guid is None:
                 continue
             claim = source.get("claim") or {}
-            if not (claim.get("buttons") or claim.get("axes") or claim.get("hats")):
+            if not any(claim_ids(claim, kind) for kind in ("axis", "button", "hat")):
                 continue
             if options.claim_outputs:
                 auto_map.merge_claim_into_output(dest, claim)

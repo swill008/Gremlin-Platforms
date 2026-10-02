@@ -86,11 +86,10 @@ def _module_relative(stored: str) -> str:
     return text
 
 
-_plain_slug = plain_slug
 
 
 def _slug(device_name: str) -> str:
-    return _plain_slug(device_name) or "device"
+    return plain_slug(device_name) or "device"
 
 
 def guid_for_module(device_name: str, guid: str) -> str:
@@ -395,7 +394,7 @@ def _resolve_import_source(file_name: str) -> Path | None:
     if rel.lower().startswith("imported/"):
         path = _maps_dir() / "imported" / f"{Path(rel).name}.json"
         return path if path.is_file() else None
-    path = _maps_dir() / f"{_plain_slug(rel)}.json"
+    path = _maps_dir() / f"{plain_slug(rel)}.json"
     return path if path.is_file() else None
 
 
@@ -428,8 +427,8 @@ def _replace_file(path: Path, data: bytes) -> None:
 
 def _clear_bindings_to(slug: str) -> None:
     data = _binding_store()
-    want = _plain_slug(slug)
-    keys = [key for key, value in data.items() if _plain_slug(value) == want]
+    want = plain_slug(slug)
+    keys = [key for key, value in data.items() if plain_slug(value) == want]
     if not keys:
         return
     for key in keys:
@@ -619,7 +618,7 @@ def _clear_device_binding(device_name: str, guid: str) -> None:
 
 
 def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
-    slug = _plain_slug(file_name)
+    slug = plain_slug(file_name)
     key = stored_guid_key(guid) or _guid_for_name(device_name)
     if not slug or not key:
         return ""
@@ -651,7 +650,7 @@ def _live_devices() -> list:
 def _users_of_slug(slug: str) -> set[str]:
     users: set[str] = set()
     for key, value in _binding_store().items():
-        if _plain_slug(value) == slug:
+        if plain_slug(value) == slug:
             users.add(key)
     for dev in _live_devices():
         guid = stored_guid_key(getattr(dev, "device_guid", ""))
@@ -680,10 +679,10 @@ def delete_module_file(device_name: str, guid: str) -> str:
         trace("SAVE", "Configure Module", "delete_module_file", path, "removed")
     data = _binding_store()
     changed = False
-    if key and _plain_slug(str(data.get(key, ""))) == slug:
+    if key and plain_slug(str(data.get(key, ""))) == slug:
         data.pop(key, None)
         changed = True
-    if name_key and _plain_slug(str(data.get(name_key, ""))) == slug:
+    if name_key and plain_slug(str(data.get(name_key, ""))) == slug:
         data.pop(name_key, None)
         changed = True
     if changed:
@@ -734,9 +733,6 @@ def _active_module_path(device_name: str, guid: str) -> Path:
     return _maps_dir() / f"{(slug or _slug(device_name))}.json"
 
 
-def _is_protected_output(device_name: str) -> bool:
-    """vJoy and Xbox module files stay. Delete Device removes their wires only."""
-    return is_output_name(device_name)
 
 
 def _own_file_shared(device_name: str, guid: str) -> bool:
@@ -779,7 +775,7 @@ def delete_preview(device_name: str, guid: str) -> str:
         "shared": _own_file_shared(name, guid),
         "foreign": bool(foreign_module_file(name, guid)),
         "listed": _device_stays_listed(name),
-        "keepModule": _is_protected_output(name),
+        "keepModule": is_output_name(name),
     })
 
 
@@ -920,7 +916,7 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
                 pass
         return json.dumps({"ok": False, "error": wire_error})
     shared = _own_file_shared(name, guid)
-    protected = _is_protected_output(name)
+    protected = is_output_name(name)
     file_error = ""
     if not shared and not protected:
         file_error = _delete_own_module_files(name)
@@ -999,20 +995,15 @@ def _collapsed_name(value: str) -> str:
     return " ".join(str(value or "").split()).lower()
 
 
-def _name_direction(name: str) -> str:
-    """A vJoy or Xbox is an output. The stored direction field cannot change that."""
-    return "dest" if _is_protected_output(name) else "source"
-
-
 def _doc_direction(doc: dict, exported_name: str) -> str:
     label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
     named = str(doc.get("device") or label.get("exportedName") or exported_name or "")
-    if _name_direction(named) == "dest":
+    if is_output_name(named):
         return "dest"
     raw = str(doc.get("direction") or "").strip().lower()
     if raw in ("source", "dest"):
         return raw
-    return _name_direction(exported_name)
+    return "dest" if is_output_name(exported_name) else "source"
 
 
 def _read_json_dict(path: Path) -> dict | None:
@@ -1112,7 +1103,7 @@ def _suggest_pack_name(exported: str, devices: list[dict] | None = None) -> str:
 
 
 def _target_direction(name: str) -> str:
-    if _name_direction(name) == "dest":
+    if is_output_name(name):
         return "dest"
     path = _maps_dir() / f"{_slug(name)}.json"
     doc = _read_json_dict(path) if path.is_file() else None
@@ -1586,7 +1577,7 @@ class HardwareProfile(QtCore.QObject):
                 ):
                     if key in existing and key not in payload:
                         payload[key] = existing[key]
-        if _name_direction(name) == "dest":
+        if is_output_name(name):
             payload["direction"] = "dest"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

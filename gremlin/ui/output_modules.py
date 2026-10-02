@@ -11,7 +11,7 @@ from gremlin import common, event_handler
 from gremlin.signal import signal
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
-from gremlin.modules import registry
+from gremlin.modules import output
 from gremlin.modules.claim import claim_friendly, claim_ids, kind_of
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -31,16 +31,10 @@ _AXIS_WORDS = {
 
 def _dest_modules() -> list[dict]:
     """vJoy output modules, one per vJoy device, by vJoy number."""
-    rows: list[dict] = []
-    seen: set[int] = set()
-    for module in registry.outputs():
-        vjoy_id = registry.resolve_vjoy_id(module.name, module.bound_guid)
-        if not vjoy_id or vjoy_id in seen:
-            continue
-        seen.add(vjoy_id)
-        rows.append({"name": module.name, "vjoy_id": vjoy_id, "claim": module.claim})
-    rows.sort(key=lambda row: (row["vjoy_id"], row["name"].lower()))
-    return rows
+    return [
+        {"name": module.name, "vjoy_id": vjoy_id, "claim": module.claim}
+        for vjoy_id, module in output.vjoy_modules()
+    ]
 
 
 @ta.QmlElement
