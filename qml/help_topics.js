@@ -5,28 +5,73 @@
 
 function topics() {
     return [
-        topic("Start", "Overview",
-            "<p>Gremlin-Platforms reads your physical controllers and runs the actions in the loaded profile. A game or another program then sees the result, usually through vJoy, a logical device, or an Xbox controller.</p>"
-            + "<p>Start from Home, or open a profile with File → Load Profile. Open Configuration for a device and use Add Action on an input. Turn Gremlin-Platforms on with Toggle when those actions should run. Turn it off when the physical devices should be left alone.</p>"),
-        topic("Start", "What is saved where",
-            "<p>Three stores are kept separate. Saving one does not save the others.</p>"
-            + "<p><b>Profile.</b> Modes, bindings, and actions. File → Save Profile writes this file. File → Save Profile As writes a new one. Closing the program asks when the profile has changes that are not saved.</p>"
-            + "<p><b>Module file.</b> One file for each device. It holds the device picture, the configuration list’s look, an output device’s look, and the calibration for an input stick. The input module chooses which file that device uses. Button Map, Configure input module, Configure output module, and Calibration write this file. The display look is written only when you press Save View Settings on that panel.</p>"
-            + "<p><b>Program settings.</b> Options, the Home layout, window sizes, and HiDHide choices. These are kept for the program, not inside one profile. The Logical Device display look is kept here too, for that page, when you press Save View Settings on its display editor.</p>"
-            + "<p>After a save, the bottom of the window names the file. That line is after Executing mode. It names the profile, the module file, the display look, the output look, or the calibration, depending on which save you used.</p>"),
-        topic("Start", "Toggle",
-            "<p>Toggle makes the loaded profile live. While it is off, you are only editing. While it is on, inputs run their actions.</p>"
-            + "<p>Use Toggle on the toolbar. It uses the accent color while Gremlin-Platforms is on. Turn it off before you change hardware, or before you close a game, if you want the physical devices visible again.</p>"),
-        topic("Start", "Profiles",
-            "<p>A profile stores modes and the actions bound to each device.</p>"
-            + "<p>File → New Profile starts an empty profile. File → Load Profile opens one. File → Recent lists profiles you have opened. File → Save Profile writes the current file. A successful save says “Saved to the profile.” Options can also open a profile when a chosen program starts. File → Exit closes Gremlin-Platforms.</p>"),
-        topic("Home", "Home",
-            "<p>Home lists input devices and output devices. Each card is one device.</p>"
-            + "<p>View → Home, or Home on the toolbar, returns here. Select a card to work on that device. Right-click a card for Button Map and the other actions for that device.</p>"
-            + "<p>View → Home layout sets the arrangement: Single list, Side by side, or Stacked. The choice is kept.</p>"),
-        topic("Home", "Hidden devices",
-            "<p>Hidden devices removes a card from Home. It does not hide the device from Windows or from other programs. Use HiDHide for that.</p>"
-            + "<p>View → Hidden devices. Turn a device off to take its card off Home. Turn it on to put the card back.</p>"),
+        topic("Getting Started", "Overview",
+            "<p>Gremlin-Platforms turns your physical controllers into the virtual devices a game reads. Every input follows one path:</p>"
+            + "<p><b>Physical device → input module → actions (profile) → output module → vJoy or Xbox driver → game</b></p>"
+            + "<ul>"
+            + "<li><b>Input module.</b> One per physical device. It claims the buttons, axes, and hats Gremlin-Platforms may use. An input that is not claimed is ignored.</li>"
+            + "<li><b>Actions.</b> Stored in the profile. They say what each claimed input does: send it to vJoy or Xbox, press keys, run a macro, change mode, and so on.</li>"
+            + "<li><b>Output module.</b> One per vJoy device, plus one for the Xbox controller. It is the only part that talks to the driver.</li>"
+            + "</ul>"
+            + "<p>Actions can also press keys, move the mouse, or send to the Logical Device, a virtual device that lives inside the program and has actions of its own.</p>"),
+        topic("Getting Started", "First setup",
+            "<ol>"
+            + "<li>Install <b>vJoy</b> and configure its devices. For an Xbox controller, install <b>ViGEmBus</b>. Neither driver ships with this program.</li>"
+            + "<li>On <b>Home</b>, right-click each physical device and choose <b>Configure input module</b>. Press the controls you will use, or tick them, then <b>Save module</b>.</li>"
+            + "<li>Right-click each vJoy device and choose <b>Configure output module</b>. Tick the outputs you will use, then <b>Save module</b>. The Xbox controller needs no setup.</li>"
+            + "<li>Double-click a physical device to open <b>Configuration</b>. Use <b>Add Action</b> on an input, for example Map to vJoy, then <b>OK</b>.</li>"
+            + "<li><b>File → Save Profile</b> (Ctrl+S).</li>"
+            + "<li>Press <b>Toggle</b> to run the profile. Use the <b>vJoy Viewer</b> or <b>Xbox Viewer</b> to watch the result.</li>"
+            + "</ol>"
+            + "<p>Tools → Mapping → <b>Auto Mapper</b> can create the Map to vJoy actions for a whole device in one step.</p>"),
+        topic("Getting Started", "Toggle and status",
+            "<p><b>Toggle</b> on the toolbar runs or stops the loaded profile. While it is off you are only editing; nothing is sent to vJoy or Xbox. The button uses the accent color while the profile runs.</p>"
+            + "<p>The bottom bar shows <b>Status</b> (Active, Not Running, or Paused), the <b>Executing mode</b>, and what the last save wrote.</p>"
+            + "<p>Toggle does not hide controllers from games; use <b>HiDHide</b> for that. What happens when a controller is plugged in or removed while running is set by Options → Global → <b>Device change behavior</b> (Reload, Ignore, or Disable).</p>"),
+        topic("Getting Started", "Profiles",
+            "<p>A profile holds the modes, the actions on every input, the profile settings, and the list of scripts.</p>"
+            + "<ul>"
+            + "<li><b>File → New Profile</b> (Ctrl+N), <b>Load Profile</b> (Ctrl+O), <b>Recent</b>, <b>Save Profile</b> (Ctrl+S), <b>Save Profile As</b>.</li>"
+            + "<li>Closing the program or loading another profile asks first when there are unsaved changes.</li>"
+            + "<li>Options → Profile → <b>Enable auto loading</b> loads a profile when a chosen program starts.</li>"
+            + "</ul>"),
+        topic("Getting Started", "What is saved where",
+            "<p>Three separate stores. Saving one does not save the others, except where noted.</p>"
+            + "<ul>"
+            + "<li><b>Profile</b> (File → Save Profile): modes, actions, profile settings, scripts.</li>"
+            + "<li><b>Module file</b>, one per device: claims, friendly names, the device picture, the Button Map layout, the display look of its Configuration page or Output View, and its calibration. Configure input/output module, Button Map, Calibration, and the display editors write it. Saving an output module also saves the profile when the profile already has a file.</li>"
+            + "<li><b>Program settings</b>: Options, Home layout and card sizes, window sizes, HiDHide choices, and the Logical Device display look.</li>"
+            + "</ul>"
+            + "<p>After every save the bottom bar names the file that was written.</p>"),
+
+        topic("Devices and Modules", "Home",
+            "<p>Home shows one card per device: your physical devices, each vJoy device, and the Xbox controller.</p>"
+            + "<ul>"
+            + "<li><b>Double-click</b> a card to open its Configuration page (or <b>Output View</b> for an output).</li>"
+            + "<li><b>Right-click</b> a card for: Open Configuration, Button Map, Configure input/output module, Auto Mapper, the viewer, Calibration, Device Information, Assign hardware…, stacking, Reset size, Hide device, Clear module settings, and Delete Device.</li>"
+            + "<li><b>Shift-click</b> cards, then <b>Stack selected cards</b>, to group them.</li>"
+            + "<li>Each card's <b>last:</b> line shows the latest input it passed or output it sent.</li>"
+            + "<li><b>Compact view</b> and <b>Split</b> (None, Vertical, Horizontal) change the layout; View → <b>Home layout</b> chooses Single list, Side by side, or Stacked. Right-click empty space for <b>Unhide all devices</b> and <b>Reset all card sizes</b>.</li>"
+            + "</ul>"),
+        topic("Devices and Modules", "Input modules",
+            "<p>An input module decides which controls of a physical device exist for Gremlin-Platforms. Only <b>claimed</b> controls reach your actions, the viewers, and the Auto Mapper.</p>"
+            + "<p>Open it from the card menu or Tools → Device setup → <b>Configure input module</b>. Press a control on the device to claim it, or tick it; untick to release it. Give a control a <b>Friendly name</b> if you like. <b>Save module</b> writes the module file; <b>Cancel</b> discards.</p>"
+            + "<p><b>Keyboard</b> is an input module too. Key bindings only fire for keys it claims. Until you save a choice, every key is claimed. Typing in Windows and games is never affected.</p>"
+            + "<p>Calibration for a stick is stored in its input module (see Calibration).</p>"),
+        topic("Devices and Modules", "vJoy output modules",
+            "<p>Each vJoy device has an output module. It is the firewall in front of the vJoy driver: only outputs it <b>claims</b> are sent.</p>"
+            + "<p>Open it from the card menu or Tools → Device setup → <b>Configure output module</b>. Tick the axes, buttons, and hats you will use, then <b>Save module</b>. The vJoy driver sets the maximum; the output module sets what Gremlin-Platforms may use.</p>"
+            + "<p>A wire to an output that is not claimed sends nothing. It is kept, and shown as <b>(not claimed)</b> on the Configuration page, Button Map chips, the viewers, and in Map to vJoy, and the log notes it once. Claim the output to make it work.</p>"),
+        topic("Devices and Modules", "Xbox output module",
+            "<p>The Xbox controller (<b>Xbox 360 Controller</b>, pad 1) is a virtual Xbox 360 pad provided by the <b>ViGEmBus</b> driver. Its output module passes every control straight to the driver; there is nothing to claim.</p>"
+            + "<p>Send to it with the <b>Map to Xbox</b> action. Its page (double-click the card) shows whether ViGEmBus is ready and which inputs drive each control. The <b>Xbox Viewer</b> shows the live pad. The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when Toggle is turned off.</p>"),
+        topic("Devices and Modules", "Module files and Device Pack",
+            "<p>Each device has its own module file, found by the device first and then by its name. In Configure input/output module, <b>Module file</b> shows the current file and offers <b>Import from</b> (copy another file into this device's file), <b>Browse for File</b>, <b>Open configuration folder</b>, and <b>Delete file</b>. <b>Import image…</b> sets the device picture.</p>"
+            + "<p>Tools → Device setup → <b>Device Pack</b> shares a device setup. <b>Export</b> saves a device's module file and pictures to a zip. <b>Import</b> loads a zip onto a device you choose under <b>Put this pack on</b>.</p>"),
+        topic("Devices and Modules", "Hidden devices",
+            "<p>Hiding a card only removes it from Home. It does not hide the device from Windows or games; use HiDHide for that.</p>"
+            + "<p>Hide a card with its <b>×</b> or <b>Hide device</b> in its menu. View → <b>Hidden devices…</b> lists hidden cards with <b>Unhide</b> and <b>Unhide all</b>.</p>"),
+
         topic("Configuration", "Actions",
             "<p>Configuration is where one physical input gets its actions. The actions are stored in the profile. They are written to disk when you save the profile.</p>"
             + "<p>View → Configuration opens the focused device. Add Action on an input opens the editor for that input. Build the action, then press OK. The action appears under that input. Delete removes it. Close pane after OK closes the editor when OK succeeds.</p>"
@@ -192,7 +237,29 @@ function topics() {
             + "<p>View → Scripts opens the script page. Edit the script there, then save the profile.</p>"),
         topic("View", "Profile settings",
             "<p>Profile settings are options stored in the profile rather than for the whole program.</p>"
-            + "<p>View → Profile Settings opens that page. Change the settings, then save the profile.</p>")
+            + "<p>View → Profile Settings opens that page. Change the settings, then save the profile.</p>"),
+        topic("Troubleshooting", "Nothing reaches vJoy",
+            "<ul>"
+            + "<li>Is <b>Toggle</b> on? The bottom bar should say Active.</li>"
+            + "<li>Is the input <b>claimed</b> in its input module? Unclaimed inputs are ignored.</li>"
+            + "<li>Does the wire show <b>(not claimed)</b>? Claim that output in Configure output module.</li>"
+            + "<li>Is the action in the <b>Executing mode</b>? Only that mode's actions (and its parents') run.</li>"
+            + "<li><b>system.log</b> in the Logs folder (Options → Global → Files) notes each blocked output once.</li>"
+            + "</ul>"),
+        topic("Troubleshooting", "Xbox does nothing",
+            "<ul>"
+            + "<li>Open the Xbox page: it must say <b>ViGEmBus ready</b>. If not, install ViGEmBus.</li>"
+            + "<li>The pad exists only while the profile runs (Toggle on) and after a Map to Xbox action has sent.</li>"
+            + "<li>Check the action uses <b>Map to Xbox</b> with <b>Xbox 360 Controller</b> and the right Target.</li>"
+            + "</ul>"),
+        topic("Troubleshooting", "A key binding does not fire",
+            "<p>Open Configure input module on <b>Keyboard</b> and check the key is claimed. Once you save a keyboard choice, only claimed keys fire.</p>"),
+        topic("Troubleshooting", "A device is missing or seen twice",
+            "<ul>"
+            + "<li>Not on Home: check View → <b>Hidden devices…</b>.</li>"
+            + "<li>A game sees both the physical stick and vJoy: hide the physical stick with <b>HiDHide</b>.</li>"
+            + "<li>Bindings belong to a device that was replaced: use <b>Swap Devices</b>.</li>"
+            + "</ul>")
     ]
 }
 
