@@ -107,6 +107,8 @@ ApplicationWindow {
     property bool editing: false
     // The Layers panel shows while editing; View > Layers turns it off and on.
     property bool layersOn: true
+    // The Properties panel shows the selection's exact values; View > Properties.
+    property bool propsOn: true
     onEditingChanged: {
         poolDrag = false
         if (editing)
@@ -830,6 +832,10 @@ ApplicationWindow {
                 {
                     h: "Layers",
                     b: "View → Layers shows the Layers panel while editing: every item, top of the stack first, then the background photo.\nThe eye hides an item: it is not drawn, on the live map either, and is left out of picture and PDF exports (a Device Pack keeps it, still hidden). The lock keeps an item in place: clicks on the map pass through it, and it is not moved, nudged or deleted. Unlock it here, or press Ctrl+Shift+L to unlock everything.\nOpen a chip (the arrow) to hide or lock its hotspot or each leader on its own; locking or hiding the chip covers them all.\nDrag a row up or down to change what is on top; the right-click menu's Arrange section does the same one step at a time. Click a row to select the item (Ctrl or Shift to add); double-click a drawing's row to name it. Show all and Unlock all undo every hide and lock; the filter shows only chips, drawings, pictures, or text and tables."
+                },
+                {
+                    h: "Properties",
+                    b: "View → Properties shows the selected item's exact values while editing. Positions and sizes are in percent of the page.\nA shape or picture: X, Y, Width, Height and Angle, then fill, colours, line width, outline and opacity. A line: its start and end points, colour, width, outline and arrowheads. A chip: its place and its hotspot's, font and chip size, and colours. With several items selected, only the style shows, and a change applies to all of them.\nType a number and press Enter, click a value, or click a colour to open the colour picker. A locked item's values show but do not change."
                 },
                 {
                     h: "Selecting and keys",
@@ -1584,6 +1590,12 @@ ApplicationWindow {
                     onTriggered: layersOn = !layersOn
                 }
                 MenuItem {
+                    text: "Properties"
+                    checkable: true
+                    checked: propsOn
+                    onTriggered: propsOn = !propsOn
+                }
+                MenuItem {
                     text: "Reset view (View 100%)"
                     onTriggered: {
                         var f = _cardLoader.item
@@ -2188,6 +2200,19 @@ ApplicationWindow {
                         return Math.max(Style.dp(120), bottom - y)
                     }
                     onCloseRequested: layersOn = false
+                }
+
+                // Properties: the selected item's place, size, angle and style.
+                RigPropsPanel {
+                    id: _propsPanel
+                    ed: _buttonMap._ed()
+                    visible: editing && propsOn && !!ed && ((ed.selectedIds || []).length > 0 || ed.selectedId !== "")
+                    z: 31
+                    width: Style.dp(300)
+                    x: Style.dp(12)
+                    y: Style.dp(12)
+                    height: Math.min(implicitHeight, parent.height - Style.dp(24))
+                    onCloseRequested: propsOn = false
                 }
 
                 Connections {

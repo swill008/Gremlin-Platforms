@@ -22,6 +22,7 @@ import "rig_selection.js" as RigSelection
 import "rig_pointer.js" as RigPointer
 import "rig_menu.js" as RigMenu
 import "rig_layers.js" as RigLayers
+import "rig_props.js" as RigProps
 
 Item {
     id: _ed
@@ -445,6 +446,10 @@ Item {
     function layerType(n) { return RigLayers.layerType(n) }
     function layerRows(filter, expanded) { return RigLayers.layerRows(filter, expanded) }
     function setPhotoFlag(flag, on) { return RigLayers.setPhotoFlag(flag, on) }
+
+    // The Properties panel's fields (rig_props.js)
+    function propsModel() { return RigProps.propsModel() }
+    function setProp(key, value) { return RigProps.setProp(key, value) }
 
     // What the right-click menu offers (rig_menu.js)
     function menuKind() { return RigMenu.menuKind() }

@@ -1339,6 +1339,7 @@
      0,
      0
     ],
+    "props": [],
     "selected": [
      "ID1"
     ]
@@ -2675,6 +2676,7 @@
      0,
      0
     ],
+    "props": [],
     "selected": [
      "ID40"
     ]
@@ -4011,6 +4013,7 @@
      0,
      0
     ],
+    "props": [],
     "selected": [
      "ID41"
     ]
@@ -4058,6 +4061,7 @@
      0,
      0
     ],
+    "props": [],
     "selected": [
      "ID40"
     ]
@@ -4105,6 +4109,7 @@
      0,
      0
     ],
+    "props": [],
     "selected": [
      "ID41"
     ]
@@ -4152,6 +4157,7 @@
      0,
      0
     ],
+    "props": [],
     "selected": [
      "ID41"
     ]
@@ -4236,6 +4242,7 @@
      0,
      0
     ],
+    "props": [],
     "selected": [
      "ID0"
     ]
@@ -4257,6 +4264,7 @@
      0,
      0
     ],
+    "props": [],
     "selected": [
      "ID40"
     ]
@@ -4278,6 +4286,7 @@
      0,
      0
     ],
+    "props": [],
     "selected": []
    },
    "step": "click-beside-line"
@@ -4341,6 +4350,7 @@
      0,
      0
     ],
+    "props": [],
     "selected": []
    },
    "step": "undo-2"

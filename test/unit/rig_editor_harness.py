@@ -46,6 +46,8 @@ LAYOUTS = {
 _HOST = b"""
 import QtQuick
 import QtQuick.Window
+import QtQuick.Controls.Universal as U
+import Gremlin.Style
 
 Window {
     id: _win
@@ -53,6 +55,8 @@ Window {
     height: 900
     visible: true
     color: "#202020"
+    // As the Button Map window: left unset, the controls' theme varied.
+    U.Universal.theme: Style.theme
 
     VkbRigFace { id: _face; anchors.fill: parent }
 
@@ -69,6 +73,22 @@ Window {
         z: 50
     }
     function showLayers(on) { _layers.visible = on }
+
+    RigPropsPanel {
+        id: _props
+        ed: _face.editorItem
+        visible: false
+        width: 300
+        x: 12
+        y: 12
+        height: implicitHeight
+        z: 50
+    }
+    function showProps(on) { _props.visible = on }
+    function propLines() {
+        return JSON.stringify(_props.visible ? _props.describe() : [])
+    }
+    function propFieldRect(label) { return JSON.stringify(_props.fieldRect(label)) }
     function layerLines() {
         return JSON.stringify(_layers.visible ? _layers.describe() : [])
     }
@@ -136,6 +156,7 @@ Window {
         return JSON.stringify({
             menu: menuLines(),
             layers: JSON.parse(layerLines()),
+            props: JSON.parse(propLines()),
             photo: [e.photoScale, e.photoOffX, e.photoOffY, e.photoRot],
             nodes: e.nodes,
             selected: e.selectedIds,
@@ -331,6 +352,37 @@ class Session:
                 QtCore.QCoreApplication.sendEvent(self.win, event)
         self.wait(60)
 
+    def set_prop_field(self, label: str, text: str) -> None:
+        """Types a value into a Properties field and presses Enter."""
+        r = json.loads(self.js("propFieldRect", label))
+        assert r, f"no property {label!r}"
+        self.click(
+            QtCore.QPoint(round(r["x"] + r["w"] / 2), round(r["y"] + r["h"] / 2))
+        )
+        QtTest.QTest.keyClick(
+            self.win, QtCore.Qt.Key.Key_A, QtCore.Qt.KeyboardModifier.ControlModifier
+        )
+        self.type_text(text)
+        QtTest.QTest.keyClick(self.win, QtCore.Qt.Key.Key_Return)
+        # Focus back on the map and the mouse off the panel: a blinking text
+        # cursor or a hovered box would differ from run to run.
+        self.js("focusEditor")
+        self._park_mouse()
+
+    def _park_mouse(self) -> None:
+        """Moves the mouse to an empty corner and lets hover looks settle."""
+        corner = QtCore.QPoint(self.win.width() // 2, self.win.height() - 3)
+        event = QtGui.QMouseEvent(
+            QtCore.QEvent.Type.MouseMove,
+            QtCore.QPointF(corner),
+            QtCore.QPointF(self.win.mapToGlobal(corner)),
+            QtCore.Qt.MouseButton.NoButton,
+            QtCore.Qt.MouseButton.NoButton,
+            QtCore.Qt.KeyboardModifier.NoModifier,
+        )
+        QtCore.QCoreApplication.sendEvent(self.win, event)
+        self.wait(300)
+
     def click(
         self, pos: QtCore.QPoint, mods: QtCore.Qt.KeyboardModifier | None = None
     ) -> None:
@@ -395,6 +447,9 @@ def _load(s: Session, layout: str) -> None:
     s.js("resetView")
     s.js("setEditing", True)
     s.wait(300)
+    # Loading can leave one extra undo step or not, depending on timing:
+    # start every scenario from a single one.
+    s.call("seedHist")
 
 
 def scenario_load_l(s: Session) -> None:
@@ -944,6 +999,53 @@ def scenario_transform(s: Session) -> None:
     s.record("photo-redone")
 
 
+def scenario_props(s: Session) -> None:
+    """The Properties panel: typed position, size, angle and opacity for a
+    shape, a chip's place, a line's end, several items, and a locked one."""
+    _load(s, "evo_r")
+    s.js("showProps", True)
+    s.record("nothing-selected")
+
+    s.call("setDrawTool", "rect")
+    s.drag(s.point(0.30, 0.60), s.point(0.40, 0.70))
+    s.call("setDrawTool", "")
+    rect = s.state()["selected"][0]
+    s.record("rect")
+    s.set_prop_field("X", "5")
+    s.set_prop_field("Y", "10")
+    s.set_prop_field("Width", "15")
+    s.set_prop_field("Height", "12.5")
+    s.set_prop_field("Angle", "30")
+    s.set_prop_field("Opacity", "50")
+    s.call("setProp", "fill", "filled")
+    s.record("rect-typed", image=True)
+
+    chips = [n["id"] for n in s.state()["nodes"] if n["kind"] == "btn"]
+    s.call("setSelection", [chips[0]])
+    s.set_prop_field("X", "45")
+    s.record("chip-moved")
+
+    s.call("setDrawTool", "arrowline")
+    s.drag(s.point(0.05, 0.80), s.point(0.20, 0.85))
+    s.call("setDrawTool", "")
+    s.set_prop_field("End X", "25")
+    s.set_prop_field("End Y", "95")
+    s.record("line-end", image=True)
+
+    s.call("setDrawTool", "ellipse")
+    s.drag(s.point(0.02, 0.40), s.point(0.10, 0.50))
+    s.call("setDrawTool", "")
+    ellipse = s.state()["selected"][0]
+    s.call("setSelection", [rect, ellipse])
+    s.set_prop_field("Opacity", "25")
+    s.record("several")
+
+    s.call("setSelection", [rect])
+    s.call("toggleLock", rect)
+    s.set_prop_field("X", "60")
+    s.record("locked")
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
@@ -952,6 +1054,7 @@ SCENARIOS = {
     "menu": scenario_menu,
     "layers": scenario_layers,
     "transform": scenario_transform,
+    "props": scenario_props,
 }
 
 
