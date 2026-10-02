@@ -26,6 +26,19 @@ ApplicationWindow {
     property ModeHierarchyModel modeHierarchy : ModeHierarchyModel {}
     property ModeListModel modeList : ModeListModel {}
 
+    function confirmDelete(mode) {
+        var n = modeHierarchy.bindingCount(mode)
+        var what = n === 0 ? "It has no bindings."
+            : "Its " + (n === 1 ? "binding" : n + " bindings") + " will be deleted too."
+        _deleteGate.confirmThen("Delete mode \"" + mode + "\"?",
+            what + " Modes under it move up one level.",
+            "Delete mode", function() { modeHierarchy.deleteMode(mode) }, null, true)
+    }
+
+    DismissibleDialog {
+        id: _deleteGate
+    }
+
     TextInputDialog {
         id: _textInput
 
@@ -214,7 +227,7 @@ ApplicationWindow {
 
                 Layout.rightMargin: Style.dp(10)
 
-                onClicked: () => { modeHierarchy.deleteMode(name) }
+                onClicked: () => { _root.confirmDelete(name) }
             }
         }
     }

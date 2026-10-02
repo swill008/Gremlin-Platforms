@@ -26,6 +26,9 @@ ApplicationWindow {
 
     readonly property string state_: updater ? updater.state : "idle"
 
+    // Closing the window is the same as Cancel: no download left running unseen.
+    onClosing: if (updater && state_ === "downloading") updater.cancel()
+
     function message() {
         if (!updater)
             return ""

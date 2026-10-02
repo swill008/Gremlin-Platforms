@@ -578,6 +578,7 @@ Item {
                                 }
                             }
                             ComboBox {
+                                property bool ownsPress: true
                                 visible: writerId.length > 0 && axisMode.length > 0
                                 enabled: !_root.editorLocked
                                 Layout.alignment: Qt.AlignVCenter
@@ -587,6 +588,7 @@ Item {
                                 onActivated: _layout.setAxisMode(writerId, currentText)
                             }
                             SpinBox {
+                                property bool ownsPress: true
                                 visible: writerId.length > 0 && axisMode.length > 0
                                 enabled: !_root.editorLocked
                                 Layout.alignment: Qt.AlignVCenter
@@ -599,6 +601,7 @@ Item {
                                 onValueModified: _layout.setAxisScale(writerId, value / 100.0)
                             }
                             CheckBox {
+                                property bool ownsPress: true
                                 visible: writerId.length > 0 && canInvert
                                 enabled: !_root.editorLocked
                                 Layout.alignment: Qt.AlignVCenter
@@ -682,12 +685,12 @@ Item {
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             propagateComposedEvents: true
                             onPressed: (mouse) => {
-                                // Leave presses on the caret and the grip to them; they move with the indent.
+                                // Leave presses on the caret, the grip and the axis controls to them.
                                 if (mouse.button !== Qt.LeftButton)
                                     return
                                 var at = mapToItem(_line, mouse.x, mouse.y)
                                 var hit = _line.childAt(at.x, at.y)
-                                if (hit && (hit === _caret || hit === _grip.parent))
+                                if (hit && (hit === _caret || hit === _grip.parent || hit.ownsPress))
                                     mouse.accepted = false
                             }
                             onClicked: (mouse) => {

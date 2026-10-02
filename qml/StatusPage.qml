@@ -23,6 +23,17 @@ Item {
     }
 
     property var model: null
+    // Cards on show, kept current as the model reloads.
+    property int shownCount: 0
+    function recountShown() { shownCount = model ? model.visibleCount() : 0 }
+    onModelChanged: recountShown()
+    Connections {
+        target: _page.model
+        ignoreUnknownSignals: true
+        function onModelReset() { _page.recountShown() }
+        function onRowsInserted() { _page.recountShown() }
+        function onRowsRemoved() { _page.recountShown() }
+    }
     readonly property bool splitOn: model && model.splitMode !== "none"
     property var _liveCards: []
     property var slotSnap: []
@@ -1159,7 +1170,7 @@ Item {
 
     Label {
         anchors.centerIn: parent
-        visible: model && model.visibleCount() === 0
+        visible: model !== null && shownCount === 0
         text: "No devices to show. Plug in hardware or unhide a card from View → Hidden devices…"
         color: Style.fgMuted
     }

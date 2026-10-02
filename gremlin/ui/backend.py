@@ -207,6 +207,8 @@ class Backend(QtCore.QObject):
         # Read by main() after the event loop ends; set only by the quit path.
         self.restart_on_exit = False
         self._action_state = {}
+        # Auto-load target held back by unsaved edits (said once).
+        self._autoload_held: str | None = None
         self.runner = code_runner.CodeRunner()
         self.ui_state = UIState(self)
         self.process_monitor = process_monitor.ProcessMonitor()
@@ -318,6 +320,18 @@ class Backend(QtCore.QObject):
         profile_path = config.get_profile_with_regex(path)
         if profile_path:
             if self.profile.fpath != profile_path:
+                if self.profile.has_unsaved_changes():
+                    # Never switch over unsaved edits; say so once per profile.
+                    if self._autoload_held != profile_path:
+                        self._autoload_held = profile_path
+                        signal.showNotification.emit(
+                            "Auto-load waited",
+                            f"{Path(profile_path).name} was not loaded because "
+                            "the open profile has unsaved changes. Save or "
+                            "discard them and auto-load switches next time.",
+                        )
+                    return
+                self._autoload_held = None
                 self.activate_gremlin(False)
                 self.loadProfile(profile_path)
             if not self.gremlinActive:

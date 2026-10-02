@@ -331,9 +331,18 @@ class Configuration(metaclass=common.SingletonMetaclass):
         return self._last_reload is not None and time.time() - self._last_reload < 1.0
 
 
+def _same_program(a: str, b: str) -> bool:
+    """Paths name the same program whichever slashes or case were typed."""
+
+    def clean(path: str) -> str:
+        return os.path.normcase(os.path.normpath(path.strip())).replace("\\", "/")
+
+    return bool(a.strip()) and clean(a) == clean(b)
+
+
 def get_profile(exec_path: str) -> str | None:
     for entry in Configuration().value("profile", "automation", "entries-auto-loading"):
-        if entry[1] == exec_path and entry[2]:
+        if entry[2] and _same_program(entry[1], exec_path):
             return entry[0]
     return None
 
@@ -351,12 +360,20 @@ def get_profile_with_regex(exec_path: str) -> str | None:
     ):
         profile_path = entry[0]
         entry_path = entry[1]
-        if not entry[2] or os.path.exists(entry_path):
+        # Off, blank (would match every program) or a real file (exact only).
+        if not entry[2] or not entry_path.strip() or os.path.exists(entry_path):
             continue
-        if re.search(entry_path, exec_path) is not None:
+        try:
+            found = re.search(entry_path, exec_path, re.IGNORECASE) is not None
+        except re.error:
+            logging.getLogger("system").warning(
+                f"Auto-load pattern {entry_path!r} is not a valid pattern"
+            )
+            continue
+        if found:
             logging.getLogger("system").info(
                 f"Found regex match in {entry_path} for {exec_path}, "
                 f"returning {profile_path}"
             )
             return profile_path
-        return None
+    return None

@@ -1172,6 +1172,15 @@ class ModeHierarchy:
             )
         self._hierarchy.add_child(TreeNode(mode_name))
 
+    def bindings_in_mode(self, mode_name: str) -> int:
+        """Returns how many bindings deleting the given mode would remove."""
+        return sum(
+            len(item.action_sequences)
+            for items in self._profile.inputs.values()
+            for item in items
+            if item.mode == mode_name
+        )
+
     def delete_mode(self, mode_name: str) -> None:
         """Deletes the mode with the given name from the hierarchy.
 

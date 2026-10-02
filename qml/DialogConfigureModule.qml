@@ -141,7 +141,8 @@ ApplicationWindow {
             moduleModel.notifyClaims()
         claimDirty = false
         refreshModuleFileLabel()
-        _saveGate.announce(true, "Saved to the module file.")
+        _saveGate.announce(true, direction === "dest" && profilePath !== ""
+            ? "Saved to the module file and the profile." : "Saved to the module file.")
         if (backend) {
             var note = "Saved the module file to " + _driver.lastSavedPath()
             if (direction === "dest" && profilePath !== "")
@@ -350,7 +351,9 @@ ApplicationWindow {
                 onClicked: _win.close()
             }
             Button {
-                text: "Save module"
+                // Output modules keep their claims in the profile too.
+                text: direction === "dest" && backend && backend.profilePath() !== ""
+                    ? "Save module and profile" : "Save module"
                 focusPolicy: Qt.NoFocus
                 onClicked: {
                     saveIntent = "stay"

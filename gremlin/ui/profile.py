@@ -578,6 +578,11 @@ class InputItemBindingModel(QtCore.QObject):
     def input_item_binding(self) -> gremlin.profile.InputItemBinding:
         return self._input_item_binding
 
+    @QtCore.Slot(result=int)
+    def actionCount(self) -> int:
+        """Actions a change of behavior would remove."""
+        return len(self.root_action.get_actions()[0])
+
     def _get_behavior(self) -> str:
         if self._input_item_binding.behavior == InputType.Keyboard:
             return InputType.to_string(InputType.JoystickButton)
@@ -880,6 +885,10 @@ class ModeHierarchyModel(QtCore.QObject):
             self._follow_editor(old_name, new_name)
             self.modesChanged.emit()
             signal.modesChanged.emit()
+
+    @QtCore.Slot(str, result=int)
+    def bindingCount(self, name: str) -> int:
+        return self.current_modes.bindings_in_mode(name)
 
     @QtCore.Slot(str)
     def deleteMode(self, name: str) -> None:
