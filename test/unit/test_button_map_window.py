@@ -52,3 +52,5 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
     assert with_device[0] != "---" and with_device[-1] != "---"
     # An edit can be undone; after Cancel there is nothing left to undo.
     assert results["undo-after-cancel"] == "true false"
+    # A map without a photo frame value is not rescaled or rewritten.
+    assert results["plain-file"] == "true true"

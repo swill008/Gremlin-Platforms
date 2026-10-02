@@ -13,6 +13,7 @@ process.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -199,6 +200,39 @@ def main() -> None:
             QtQml.qmlContext(win), win, "String(_ed().canUndo)"
         ).evaluate()[0]
         print(f"RESULT undo-after-cancel {before} {after}", flush=True)
+        # A map file without a photo frame value opens as it is: no
+        # rescale, and the file is not rewritten. Written here directly,
+        # since the program's own save always adds the frame value.
+        where = QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win,
+            "_hw.load(_buttonMap.targetName); _hw.path",
+        ).evaluate()[0]
+        plain_doc = {
+            "kind": "control.hardware",
+            "device": "Smoke Stick",
+            "image": "",
+            "nodes": [{
+                "id": "p1", "kind": "draw", "shape": "rect",
+                "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.1, "fx": 0.1, "fy": 0.2,
+            }],
+        }
+        plain_text = json.dumps(plain_doc)
+        Path(where).parent.mkdir(parents=True, exist_ok=True)
+        Path(where).write_text(plain_text, encoding="utf-8")
+        plain = QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win,
+            "_buttonMap.loadLive();"
+            " String(JSON.stringify(_buttonMap.liveNodes) === "
+            + json.dumps(json.dumps(plain_doc["nodes"], separators=(",", ":")))
+            + ")",
+        )
+        value = plain.evaluate()
+        QtTest.QTest.qWait(200)
+        untouched = Path(where).read_text(encoding="utf-8") == plain_text
+        if plain.hasError():
+            print(f"ERROR plain-file: {plain.error().toString()}", flush=True)
+        else:
+            print(f"RESULT plain-file {value[0]} {str(untouched).lower()}", flush=True)
     for warning in warnings:
         print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)
     print("done", flush=True)
