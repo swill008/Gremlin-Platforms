@@ -71,13 +71,13 @@ Popup {
 
     function pauseHighlight() {
         if (backend) {
-            backend.pauseInputHighlighting()
+            backend.pauseInputHighlighting("osc-add")
         }
     }
 
     function resumeHighlight() {
         if (backend) {
-            backend.resumeInputHighlighting()
+            backend.resumeInputHighlighting("osc-add")
         }
     }
 

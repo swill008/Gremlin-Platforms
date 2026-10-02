@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import collections
 import re
-import time
 from typing import cast
 
 import dill
@@ -216,9 +215,12 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         # Generate a valid label if none has been provided.
         if label is None:
             # Create a key and check it is valid and if not, make it valid.
-            label = f"{InputType.to_string(type).capitalize()} {input_id}"
-            if label in self.labels_of_type():
-                label = f"{label} - {time.time()}"
+            base = f"{InputType.to_string(type).capitalize()} {input_id}"
+            # A rename may have taken the plain name: add the lowest free (2), (3)...
+            label, copy = base, 1
+            while label in self._label_lookup:
+                copy += 1
+                label = f"{base} ({copy})"
 
         # Create input store information and return it.
         new_input = do_create[type](label, input_id)

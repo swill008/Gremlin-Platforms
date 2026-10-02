@@ -209,6 +209,8 @@ class Backend(QtCore.QObject):
         self._action_state = {}
         # Auto-load target held back by unsaved edits (said once).
         self._autoload_held: str | None = None
+        # Windows holding input highlighting paused (OSC Add, Calibration).
+        self._highlight_holders: set[str] = set()
         self.runner = code_runner.CodeRunner()
         self.ui_state = UIState(self)
         self.process_monitor = process_monitor.ProcessMonitor()
@@ -410,13 +412,17 @@ class Backend(QtCore.QObject):
         except error.ProfileError:
             pass
 
-    @QtCore.Slot()
-    def pauseInputHighlighting(self) -> None:
+    @QtCore.Slot(str)
+    def pauseInputHighlighting(self, holder: str) -> None:
+        """Pauses input highlighting until every holder has resumed it."""
+        self._highlight_holders.add(holder)
         shared_state.set_suspend_input_highlighting(True)
 
-    @QtCore.Slot()
-    def resumeInputHighlighting(self) -> None:
-        shared_state.set_suspend_input_highlighting(False)
+    @QtCore.Slot(str)
+    def resumeInputHighlighting(self, holder: str) -> None:
+        self._highlight_holders.discard(holder)
+        if not self._highlight_holders:
+            shared_state.set_suspend_input_highlighting(False)
 
     @QtCore.Slot(str, int, result=bool)
     def isActionExpanded(self, uuid_str: str, index: int) -> bool:

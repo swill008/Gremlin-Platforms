@@ -49,6 +49,9 @@ if TYPE_CHECKING:
 Vector2 = collections.namedtuple("Vector2", ["x", "y"])
 
 
+# Smallest gap kept between the inner and outer deadzone.
+_MIN_GAP = 0.01
+
 class DualAxisDeadzoneFunctor(AbstractFunctor):
     """Implements the function executed of the Description action at runtime."""
 
@@ -193,10 +196,12 @@ class DualAxisDeadzoneModel(ActionModel):
 
     @innerDeadzone.setter
     def innerDeadzone(self, value: float) -> None:
+        # Keep inner at least _MIN_GAP below outer; take the nearest allowed
+        # value instead of ignoring the edit.
+        value = min(value, round(self._data.outer_deadzone - _MIN_GAP, 4))
         if value != self._data.inner_deadzone:
-            if (self._data.outer_deadzone - value) > 0.01:
-                self._data.inner_deadzone = value
-            self.modelChanged.emit()
+            self._data.inner_deadzone = value
+        self.modelChanged.emit()
 
     @QtCore.Property(str, notify=modelChanged)
     def label(self) -> str:
@@ -214,10 +219,10 @@ class DualAxisDeadzoneModel(ActionModel):
 
     @outerDeadzone.setter
     def outerDeadzone(self, value: float) -> None:
+        value = max(value, round(self._data.inner_deadzone + _MIN_GAP, 4))
         if value != self._data.outer_deadzone:
-            if (value - self._data.inner_deadzone) > 0.01:
-                self._data.outer_deadzone = value
-            self.modelChanged.emit()
+            self._data.outer_deadzone = value
+        self.modelChanged.emit()
 
     axis1 = QtCore.Property(
         InputIdentifier,

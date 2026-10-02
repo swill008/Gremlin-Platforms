@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 import xml.etree.ElementTree as ElementTree
 
@@ -211,7 +212,11 @@ def summarize_action(action) -> tuple[str, str]:
     elif tag == "map-to-mouse":
         mode = getattr(action, "mode", None)
         button = getattr(action, "button", None)
-        dest = str(getattr(button, "name", None) or button or mode or "Mouse")
+        # A motion mapping keeps a default button it never uses.
+        if getattr(mode, "name", "") == "Motion":
+            dest = "Motion"
+        else:
+            dest = str(getattr(button, "name", None) or button or "Mouse")
     elif tag == "map-to-logical-device":
         dest = str(getattr(action, "action_label", None) or "Logical device")
     elif tag == "macro":
@@ -221,13 +226,16 @@ def summarize_action(action) -> tuple[str, str]:
         modes = getattr(action, "_target_modes", None) or []
         dest = ", ".join(str(m) for m in modes) if modes else "Mode"
     elif tag == "load-profile":
-        dest = str(getattr(action, "profile_path", None) or getattr(action, "path", None) or "Profile")
+        path = str(getattr(action, "profile_filename", "") or "")
+        dest = os.path.basename(path) if path else "Profile"
     elif tag == "text-to-speech":
         dest = str(getattr(action, "text", None) or "Speech")[:40]
     elif tag == "run-command":
-        dest = str(getattr(action, "command", None) or "Command")
+        exe = str(getattr(action, "executable", "") or "")
+        dest = os.path.basename(exe) if exe else "Command"
     elif tag == "play-sound":
-        dest = str(getattr(action, "sound_file", None) or getattr(action, "filename", None) or "Sound")
+        sound = str(getattr(action, "sound_filename", "") or "")
+        dest = os.path.basename(sound) if sound else "Sound"
     else:
         dest = str(getattr(action, "action_label", None) or label)
     return label, dest

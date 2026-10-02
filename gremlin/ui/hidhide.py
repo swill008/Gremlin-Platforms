@@ -1694,7 +1694,12 @@ class HidHideModel(QtCore.QObject):
         if not self._present or not _hidhide_managed():
             return False
         if not set_active(bool(on)):
+            # Same as the per-device switches: say why and show the real state.
+            self._last_error = _ioctl_error or "HiDHide driver call failed."
+            _hh_log(f"set active failed: {self._last_error}", logging.WARNING)
+            self.reload()
             return False
+        self._last_error = ""
         _save_cloak(bool(on))
         self.reload()
         return True

@@ -339,6 +339,12 @@ class ActionSequenceOrdering(QtCore.QAbstractListModel, BaseMetaConfigOptionWidg
 
     @QtCore.Slot(int, int)
     def move(self, source_index: int, target_index: int) -> None:
+        """Moves the row to sit just before target_index (as shown before the move)."""
+        if source_index < target_index:
+            # The rows below the source shift up once it is taken out.
+            target_index -= 1
+        if source_index == target_index:
+            return
         self.layoutAboutToBeChanged.emit()
         data = self._config.value(*self._cfg_key)
         item = data.pop(source_index)

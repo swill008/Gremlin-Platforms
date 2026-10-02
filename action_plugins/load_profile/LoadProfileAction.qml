@@ -35,7 +35,7 @@ Item {
 
             Layout.fillWidth: true
 
-            placeholderText: null !== action ? null : "Enter a profile filename"
+            placeholderText: "Enter a profile filename"
             text: action.profile_filename
             selectByMouse: true
 

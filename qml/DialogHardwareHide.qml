@@ -34,10 +34,10 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        var w = _hh.windowWidth
-        var h = _hh.windowHeight
-        width = w >= 640 ? w : Style.dp(720)
-        height = h >= 480 ? h : Style.dp(640)
+        // The saved size, never below this window's own minimum (the one
+        // limit that counts; the stored value only guards against nonsense).
+        width = Math.max(_hh.windowWidth, minimumWidth)
+        height = Math.max(_hh.windowHeight, minimumHeight)
     }
     onWidthChanged: if (visible) _sizeSave.restart()
     onHeightChanged: if (visible) _sizeSave.restart()
@@ -165,7 +165,8 @@ ApplicationWindow {
                     onShownChanged: if (!pressed) checked = shown
                     Component.onCompleted: checked = shown
                     text: "HiDHide Enabled"
-                    onClicked: _hh.setCloak(checked)
+                    // A refused change puts the switch back (shown may not change).
+                    onClicked: if (!_hh.setCloak(checked)) checked = shown
                 }
                 Switch {
                     id: startSwitch

@@ -1178,9 +1178,9 @@ ApplicationWindow {
                     id: _savedHover
                 }
                 PointerTip {
-                    text: text
+                    text: _savedLine.text
                     delay: 400
-                    show: text.length > 0
+                    show: _savedLine.text.length > 0
                 }
             }
         }

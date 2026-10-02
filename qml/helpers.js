@@ -1,7 +1,11 @@
 // -*- coding: utf-8; -*-
 // SPDX-License-Identifier: GPL-3.0-only
 
-var _openWindows = {}
+.import "window_registry.js" as Registry
+
+// One list for the whole program (each file that imports this script gets
+// its own copy of it), so the Button Map's Options is the main window's.
+var _openWindows = Registry.openWindows
 
 function _applyProps(window, properties)
 {
@@ -25,11 +29,13 @@ function createComponent(componentSpec, properties)
     }
 
     let component = Qt.createComponent(componentSpec);
-    if(component.status == Component.Error) {
+    // 3 = Component.Error, 1 = Component.Ready (QML types aren't visible in a
+    // script that imports another script).
+    if(component.status == 3) {
         console.log(component.errorString())
         return null
     }
-    else if((component.status == Component.Ready))
+    else if(component.status == 1)
     {
         // Keep a JS reference so axis-event churn cannot GC the window.
         // Parent null + transientParent null: stays up if the main window is minimized.

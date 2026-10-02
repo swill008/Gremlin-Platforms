@@ -98,14 +98,14 @@ ApplicationWindow {
             _axisView.destroy()
         if (_modules)
             _modules.destroy()
-        backend.resumeInputHighlighting()
+        backend.resumeInputHighlighting("calibration")
     }
 
     property bool _ready: false
 
     Component.onCompleted: () => {
         _ready = true
-        backend.pauseInputHighlighting()
+        backend.pauseInputHighlighting("calibration")
         if (initialSlug.length)
             chooseModule(initialSlug)
     }
@@ -368,9 +368,12 @@ ApplicationWindow {
                                     : "The calibration was not written.")
                         }
 
+                        // A gold ring, so the save icon stays visible.
                         Rectangle {
                             anchors.fill: parent
-                            color: unsavedChanges ? "gold" : "transparent"
+                            color: "transparent"
+                            border.width: Style.dp(2)
+                            border.color: unsavedChanges ? "gold" : "transparent"
                         }
                     }
                 }
@@ -391,9 +394,14 @@ ApplicationWindow {
                     visible: model.withCenter
 
                     checkable: true
+                    // One calibration at a time: turn the other one off for real,
+                    // not only its button (setting checked doesn't run onToggled).
                     onToggled: () => {
+                        if (checked && _btnExtremaCalibration.checked) {
+                            _btnExtremaCalibration.checked = false
+                            _axisView.model.calibrateExtrema(index, false)
+                        }
                         _axisView.model.calibrateCenter(index, checked)
-                        _btnExtremaCalibration.checked = false
                     }
                 }
                 LayoutVerticalSpacer {
@@ -407,8 +415,11 @@ ApplicationWindow {
 
                     checkable: true
                     onToggled: {
+                        if (checked && _btnCenterCalibration.checked) {
+                            _btnCenterCalibration.checked = false
+                            _axisView.model.calibrateCenter(index, false)
+                        }
                         _axisView.model.calibrateExtrema(index, checked)
-                        _btnCenterCalibration.checked = false
                     }
                 }
             }

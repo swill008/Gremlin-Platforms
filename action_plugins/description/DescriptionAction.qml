@@ -36,7 +36,7 @@ Item {
 
             Layout.fillWidth: true
 
-            placeholderText: null !== action ? null : "Enter description"
+            placeholderText: "Enter description"
             text: action.description
             selectByMouse: true
 

@@ -35,7 +35,7 @@ Item {
             Layout.fillWidth: true
 
             text: action.soundFilename
-            placeholderText: null !== action ? null : "Input the name of the audio file to play."
+            placeholderText: "Input the name of the audio file to play."
 
             selectByMouse: true
 

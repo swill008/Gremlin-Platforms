@@ -46,20 +46,16 @@ Item {
         sourceComponent: _root.spinboxComponent
 
         onLoaded: () => {
-            item.from = toInt(_root.minValue)
-            item.to = toInt(_root.maxValue)
-            item.stepSize = toInt(_root.stepSize)
             item.editable = true
 
             item.validator = Qt.createQmlObject(
                 "import QtQuick; DoubleValidator { " +
-                    "bottom: " + toInt(_root.minValue) + "; " +
-                    "top: " + toInt(_root.maxValue) + "; " +
                     "decimals: " + _root.decimals + "; " +
                     "notation: DoubleValidator.StandardNotation " +
                 "}",
                 _loader
             )
+            _root._applyLimits()
 
             // Set conversion functions before value so the initial displayText
             // is formatted correctly (setting value triggers displayText to
@@ -88,6 +84,26 @@ Item {
             })
         }
     }
+
+    // Limits can follow other values (a lower bound that must stay below an
+    // upper one), so re-apply them whenever they change, not only at load.
+    function _applyLimits() {
+        var box = _loader.item
+        if (!box)
+            return
+        box.from = toInt(minValue)
+        box.to = toInt(maxValue)
+        box.stepSize = toInt(stepSize)
+        if (box.validator) {
+            box.validator.bottom = toInt(minValue)
+            box.validator.top = toInt(maxValue)
+        }
+    }
+
+    onMinValueChanged: _applyLimits()
+    onMaxValueChanged: _applyLimits()
+    onStepSizeChanged: _applyLimits()
+    onDecimalsChanged: _applyLimits()
 
     onValueChanged: () => {
         if (_loader.item && !_root._internalUpdate) {
