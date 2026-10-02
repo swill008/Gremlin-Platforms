@@ -1323,6 +1323,9 @@ ApplicationWindow {
         if (o["rotate-snap"] > 0)
             e.rotateSnap = o["rotate-snap"]
         e.savedStyles = _opts.styles
+        var f = e.face
+        if (f && o["zoom-speed"] > 0)
+            f.zoomSpeed = o["zoom-speed"]
         e.findOn = o["press-to-find"] !== false
         e.findAxes = o["find-axes"] === true
         refreshActionLabels()
@@ -1368,6 +1371,24 @@ ApplicationWindow {
         e.unboundText = String(o["unbound"] || "Name")
         e.actionLabels = (e.chipTextMode === "Name" || !targetGuid.length) ? ({}) : labelsFor(labelModeNow)
         e.bump()
+    }
+
+    function zoomToPage() {
+        var e = _ed()
+        var f = e ? e.face : null
+        if (!f || !f.zoomToPage)
+            return
+        f.zoomToPage()
+        captureView()
+        persistUi()
+    }
+
+    function zoomToSelection() {
+        var e = _ed()
+        if (e && e.zoomToSelection()) {
+            captureView()
+            persistUi()
+        }
     }
 
     function openEditorOptions() {
@@ -2504,6 +2525,15 @@ ApplicationWindow {
                     onTriggered: propsOn = !propsOn
                 }
                 MenuItem {
+                    text: "Zoom to fit page"
+                    onTriggered: _buttonMap.zoomToPage()
+                }
+                MenuItem {
+                    text: "Zoom to selection"
+                    enabled: { var e = _ed(); return !!(e && e.selectedIds && e.selectedIds.length) }
+                    onTriggered: _buttonMap.zoomToSelection()
+                }
+                MenuItem {
                     text: "Reset view (View 100%)"
                     onTriggered: {
                         var f = _cardLoader.item
@@ -2759,6 +2789,14 @@ ApplicationWindow {
                     enabled: editing
                     sequence: "Ctrl+S"
                     onActivated: saveEdit()
+                }
+                Shortcut {
+                    sequence: "Ctrl+1"
+                    onActivated: _buttonMap.zoomToPage()
+                }
+                Shortcut {
+                    sequence: "Ctrl+2"
+                    onActivated: _buttonMap.zoomToSelection()
                 }
                 Shortcut {
                     enabled: editing

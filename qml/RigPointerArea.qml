@@ -566,7 +566,7 @@ MouseArea {
             w.accepted = false
             return
         }
-        ed.face.zoomAtItem(this, w.x, w.y, Math.pow(1.0012, dy))
+        ed.face.zoomAtItem(this, w.x, w.y, Math.pow(ed.face.wheelBase || 1.0012, dy))
         w.accepted = true
     }
 }

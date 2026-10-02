@@ -49,6 +49,8 @@ STEPS = [
      " Qt.createComponent('OptionButtonMapLibrary.qml')"
      ".createObject(_buttonMap.contentItem)"),
     ("photo-adjust", "_photoAdj.open()"),
+    ("zoom",
+     "_photoAdj.close(); _buttonMap.zoomToPage(); _buttonMap.zoomToSelection()"),
     ("closed", "_photoAdj.close(); _styleNameDlg.close()"),
 ]
 

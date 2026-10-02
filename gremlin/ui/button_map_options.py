@@ -101,6 +101,11 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {"min": 10, "max": 600},
     ),
     (
+        "view", "01-zoom-speed", PropertyType.Int, 100,
+        "How fast the mouse wheel zooms the map, in percent of the usual speed.",
+        {"min": 25, "max": 300},
+    ),
+    (
         "export", "01-export-size", PropertyType.Selection, "2x",
         "How much larger than on screen Export draws the page. Larger is sharper "
         "and makes bigger files.",

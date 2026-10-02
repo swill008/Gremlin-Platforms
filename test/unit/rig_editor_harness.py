@@ -141,6 +141,13 @@ Window {
         })
     }
     function setPhotoUrl(url) { _face.photoOverride = url }
+    function zoomToPage() { _face.zoomToPage() }
+    function viewState() {
+        return JSON.stringify({
+            zoom: Math.round(_face.zoom * 100) / 100,
+            pan: [Math.round(_face.panX), Math.round(_face.panY)]
+        })
+    }
     function setZoom(z, px, py) {
         _face.zoom = z
         _face.panX = px
@@ -1561,6 +1568,25 @@ def scenario_light_page(s: Session) -> None:
     s.record("back")
 
 
+def scenario_zoom(s: Session) -> None:
+    """Zoom to selection fills the view with the selection; zoom to fit
+    shows the whole page."""
+    _load(s, "evo_r")
+    s.call("setSelection", ["b3"])
+
+    def view_step(name: str) -> None:
+        s.record(name, image=True)
+        s.steps[-1]["state"]["view"] = json.loads(s.js("viewState"))
+
+    s.call("zoomToSelection")
+    view_step("selection")
+    s.js("zoomToPage")
+    view_step("page")
+    s.call("setSelection", [])
+    s.steps.append({"step": "nothing-selected", "state": {
+        **s.state(), "zoomed": s.call("zoomToSelection")}})
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1616,6 +1642,7 @@ SCENARIOS = {
     "styles": scenario_styles,
     "photo_look": scenario_photo_look,
     "light_page": scenario_light_page,
+    "zoom": scenario_zoom,
 }
 
 

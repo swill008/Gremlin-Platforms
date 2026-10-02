@@ -29,6 +29,9 @@ Item {
     readonly property real zoomMin: 1.0
     readonly property real zoomMax: 8.0
     readonly property real zoomFit: 4 / 3
+    // Wheel zoom speed in percent (Options → Button Map → View).
+    property real zoomSpeed: 100
+    readonly property real wheelBase: 1 + 0.0012 * Math.max(0.25, zoomSpeed / 100)
     readonly property real viewPct: zoom / zoomFit
 
     readonly property real _pw: _img.paintedWidth
@@ -117,6 +120,31 @@ Item {
         panX = vw / 2 - W / 2 - (x + w / 2 - W / 2) * z
         panY = vh / 2 - H / 2 - (y + h / 2 - H / 2) * z
         clampPan()
+        pingEditor()
+    }
+
+    // Zooms and pans so an editor rect fills the view, with a margin; never
+    // smaller than the whole page (zoomMin) or past zoomMax.
+    function fitEditorRect(x, y, w, h) {
+        var vw = _viewport.width
+        var vh = _viewport.height
+        if (vw < 8 || vh < 8 || !(w > 0) || !(h > 0))
+            return
+        var W = _world.width
+        var H = _world.height
+        var z = Math.min(vw / (w * 1.25), vh / (h * 1.25))
+        zoom = Math.max(zoomMin, Math.min(zoomMax, z))
+        panX = vw / 2 - W / 2 - (x + w / 2 - W / 2) * zoom
+        panY = vh / 2 - H / 2 - (y + h / 2 - H / 2) * zoom
+        clampPan()
+        pingEditor()
+    }
+
+    // The whole page in view.
+    function zoomToPage() {
+        zoom = zoomMin
+        panX = 0
+        panY = 0
         pingEditor()
     }
 
@@ -650,7 +678,7 @@ Item {
                     w.accepted = false
                     return
                 }
-                _face.zoomAt(w.x, w.y, Math.pow(1.0012, dy))
+                _face.zoomAt(w.x, w.y, Math.pow(_face.wheelBase, dy))
                 w.accepted = true
             }
         }

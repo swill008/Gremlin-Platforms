@@ -531,6 +531,23 @@ Item {
     function endTurn() { return RigGroupRot.endTurn() }
     function turnSelectionBy(deg) { return RigGroupRot.turnSelectionBy(deg) }
 
+    // View → Zoom to selection: the selected items fill the view.
+    function zoomToSelection() {
+        var ids = selectedIds || []
+        if (!ids.length || !face || !face.fitEditorRect)
+            return false
+        var b = selectionBounds()
+        if (ids.length === 1) {
+            var n = nodeAt(ids[0])
+            if (n)
+                b = nodeBox(n)
+        }
+        if (!(b.w > 0 && b.h > 0))
+            return false
+        face.fitEditorRect(b.x, b.y, b.w, b.h)
+        return true
+    }
+
     // Callouts (rig_callout.js)
     function isCallout(n) { return RigCallout.isCallout(n) }
     function calloutTip(n) { return RigCallout.calloutTip(n) }
