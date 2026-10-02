@@ -1807,6 +1807,43 @@ class HardwareProfile(QtCore.QObject):
     def setDeviceGuid(self, guid: str) -> None:
         self._device_guid = str(guid or "")
 
+    # --- layouts of other devices (File > Copy layout from) ---------------------
+
+    @QtCore.Slot(str, result=list)
+    def savedLayouts(self, device_name: str) -> list:
+        """Other devices' module files that hold a Button Map layout, as
+        [{name, slug}] by name; device_name's own file is left out."""
+        own = ""
+        if device_name:
+            own = self._file_for(device_name).stem
+        rows = []
+        for path in sorted(_maps_dir().glob("*.json")):
+            if path.stem == own:
+                continue
+            try:
+                doc = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if not isinstance(doc, dict) or not doc.get("nodes"):
+                continue
+            name = str(doc.get("device") or path.stem)
+            rows.append({"name": name, "slug": path.stem})
+        rows.sort(key=lambda row: row["name"].lower())
+        return rows
+
+    @QtCore.Slot(str, result=str)
+    def layoutNodes(self, slug: str) -> str:
+        """The layout (nodes) in another device's module file, as JSON text;
+        "" when there is none."""
+        if not slug or any(c in slug for c in ("/", "\\", ":")):
+            return ""
+        try:
+            doc = json.loads((_maps_dir() / f"{slug}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return ""
+        nodes = doc.get("nodes") if isinstance(doc, dict) else None
+        return json.dumps(nodes) if isinstance(nodes, list) and nodes else ""
+
     # --- recovery copies (autosave) ------------------------------------------
 
     def _recovery_file(self, device_name: str) -> Path:

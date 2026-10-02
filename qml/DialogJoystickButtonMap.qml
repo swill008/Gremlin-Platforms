@@ -77,6 +77,7 @@ ApplicationWindow {
             "Export JPG…",
             "Export modes…",
             "Export size",
+            "Copy layout from",
             "Reset layout",
             "Clear image"
         ]
@@ -1597,6 +1598,103 @@ ApplicationWindow {
         nameFilters: ["JPEG image (*.jpg *.jpeg)"]
         onAccepted: exportViewTo(selectedFile, "jpg")
     }
+    // --- mirror, and copy another device's layout ------------------------------
+
+    property var savedLayouts: []
+    property var _copyFrom: null
+
+    function mirrorNow() {
+        var e = _ed()
+        if (!e || !editing)
+            return
+        e.mirrorLayout(_opts.values["mirror-pictures"] === true)
+        e.showFindMessage("Mirrored left to right. Undo puts it back.")
+    }
+
+    function openCopyLayout(row) {
+        _copyFrom = row
+        _copyDlg.open()
+    }
+
+    function copyLayoutFrom(slug, mirror) {
+        var text = _hw.layoutNodes(slug)
+        if (!text.length)
+            return
+        var nodes = []
+        try { nodes = JSON.parse(text) } catch (e) { return }
+        if (!editing)
+            enterEdit()
+        hydrateOverlays(nodes)
+        workNodes = nodes
+        Qt.callLater(function() {
+            var e = _ed()
+            if (!e)
+                return
+            if (mirror)
+                e.mirrorLayout(_opts.values["mirror-pictures"] === true)
+            else
+                e.bump()
+            refreshReservoir()
+            e.showFindMessage("Layout copied. Save to keep it; Undo puts the old one back.")
+        })
+    }
+
+    Dialog {
+        id: _copyDlg
+        title: "Copy layout"
+        modal: true
+        anchors.centerIn: parent
+        width: Style.dp(460)
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: Style.dp(10)
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Style.fg
+                text: "Replace this map's chips, leaders and drawings with the layout of "
+                      + (_buttonMap._copyFrom ? _buttonMap._copyFrom.name : "") + "?"
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Style.fgMuted
+                text: "This device's photo stays. Nothing is saved until you save; Undo puts the old layout back."
+            }
+            CheckBox {
+                id: _copyMirror
+                checked: true
+                text: "Mirror left to right (for the other hand's stick)"
+            }
+            CheckBox {
+                text: "Mirror pictures too"
+                enabled: _copyMirror.checked
+                checked: _opts.values["mirror-pictures"] === true
+                onToggled: _opts.set("mirror-pictures", checked)
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: Style.dp(8)
+                Button {
+                    text: "Cancel"
+                    onClicked: _copyDlg.close()
+                }
+                Button {
+                    text: "Copy layout"
+                    highlighted: true
+                    onClicked: {
+                        var row = _buttonMap._copyFrom
+                        _copyDlg.close()
+                        if (row)
+                            _buttonMap.copyLayoutFrom(row.slug, _copyMirror.checked)
+                    }
+                }
+            }
+        }
+    }
+
     // --- File → Export modes: one page per mode -----------------------------
 
     property var _modesJob: null
@@ -1874,6 +1972,28 @@ ApplicationWindow {
                     text: "Export JPG…"
                     onTriggered: _exportJpgDialog.open()
                 }
+                Menu {
+                    id: _copyMenu
+                    title: "Copy layout from"
+                    enabled: _buttonMap.targetName.length > 0
+                    onAboutToShow: _buttonMap.savedLayouts = _hw.savedLayouts(_buttonMap.targetName)
+                    MenuItem {
+                        text: "No other device has a layout"
+                        enabled: false
+                        visible: _buttonMap.savedLayouts.length === 0
+                        height: visible ? implicitHeight : 0
+                    }
+                    Instantiator {
+                        model: _buttonMap.savedLayouts
+                        delegate: MenuItem {
+                            required property var modelData
+                            text: modelData.name + "…"
+                            onTriggered: _buttonMap.openCopyLayout(modelData)
+                        }
+                        onObjectAdded: (index, object) => _copyMenu.insertItem(index + 1, object)
+                        onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
+                    }
+                }
                 MenuItem {
                     text: "Export modes…"
                     enabled: _buttonMap.profileModes.length > 0 && _buttonMap.targetGuid.length > 0
@@ -1930,6 +2050,11 @@ ApplicationWindow {
                     text: "Paste picture"
                     enabled: editing && _hw.clipboardHasImage
                     onTriggered: pastePicture()
+                }
+                MenuItem {
+                    text: "Mirror layout"
+                    enabled: editing
+                    onTriggered: _buttonMap.mirrorNow()
                 }
                 MenuSeparator {}
                 MenuItem {

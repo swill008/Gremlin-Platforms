@@ -1320,6 +1320,26 @@ def scenario_labels(s: Session) -> None:
     s.set_prop("exporting", False)
 
 
+def scenario_mirror(s: Session) -> None:
+    """Mirror layout: chips, hotspots and leaders to the other side, a block
+    arrow and an arrow line pointing the other way; twice is the start."""
+    _load(s, "evo_r")
+    s.call("setDrawTool", "arrow")
+    s.drag(s.point(0.04, 0.06), s.point(0.20, 0.16))
+    s.call("setDrawTool", "arrowline")
+    s.drag(s.point(0.06, 0.24), s.point(0.22, 0.30))
+    s.call("setDrawTool", "")
+    s.call("setSelection", [])
+    s.record("before", image=True)
+    s.call("mirrorLayout", False)
+    s.record("mirrored", image=True)
+    s.key(QtCore.Qt.Key.Key_Z, QtCore.Qt.KeyboardModifier.ControlModifier)
+    s.record("undo")
+    s.call("mirrorLayout", False)
+    s.call("mirrorLayout", False)
+    s.record("twice")
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1368,6 +1388,7 @@ SCENARIOS = {
     "export": scenario_export,
     "find": scenario_find,
     "labels": scenario_labels,
+    "mirror": scenario_mirror,
 }
 
 

@@ -25,6 +25,7 @@ import "rig_layers.js" as RigLayers
 import "rig_props.js" as RigProps
 import "rig_align.js" as RigAlign
 import "rig_find.js" as RigFind
+import "rig_mirror.js" as RigMirror
 
 Item {
     id: _ed
@@ -486,6 +487,9 @@ Item {
     function findTick() { return RigFind.findTick() }
     function findControl(kind, hwId) { return RigFind.findControl(kind, hwId) }
     function showFindMessage(text) { return RigFind.showFindMessage(text) }
+
+    // Mirroring the whole layout (rig_mirror.js)
+    function mirrorLayout(pictures) { return RigMirror.mirrorLayout(pictures) }
     function distributeSelection(axis) { return RigAlign.distributeSelection(axis) }
 
     // The Properties panel's fields (rig_props.js)

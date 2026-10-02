@@ -237,6 +237,7 @@ function topics() {
             + "<li><b>Fit to photo frame</b> shrinks an older, oversized layout to the photo.</li>"
             + "<li><b>Choose background…</b> uses another picture as the photo; <b>Clear image</b> goes back to the module's picture.</li>"
             + "<li><b>Export PDF…</b>, <b>Export PNG…</b>, <b>Export JPG…</b> save the whole page, whatever the zoom, on the window's background colour. Selection marks, handles, guides and the grid are left off, and so are hidden items. <b>Export size</b> picks 1×, 2× (the default) or 3× the size on screen; a PDF page keeps the on-screen size and gets the extra detail.</li>"
+            + "<li><b>Copy layout from</b> lists the other devices that have a layout. Pick one to replace this map's chips, leaders and drawings with it, mirrored left to right if you like (for the other hand's stick). This device's photo stays; Undo puts the old layout back, and nothing is saved until you save.</li>"
             + "<li><b>Export modes…</b> writes one page per mode, each chip showing what its control does in that mode (Action labels; if chips show names, the export shows actions). Tick the modes, choose PDF (one file, a page per mode), PNG or JPG (a file per mode, named after the file you choose plus the mode). Each page can carry its mode's name at the top.</li>"
             + "<li><b>Close</b>. The last row shows the device's module file.</li>"
             + "</ul>"
@@ -277,6 +278,9 @@ function topics() {
             + "<p><b>Align members</b> arranges a group Left, Centre, Right or Free.</p>"
             + "<p>Right-click a five-chip hat group: <b>5-way</b> styles it as <b>Plus</b>, <b>Mini hat</b>, <b>Named card</b> or <b>Radial</b>; <b>Clear format</b> removes the style.</p>"
             + "<p>Grouping chips or text boxes together with a table packs them into the table (see Tables).</p>"),
+        topic("Button Map", "Mirror layout",
+            "<p><b>Edit → Mirror layout</b> turns the whole map left to right while editing: every chip, group, drawing and picture goes to the other side of the page, with its hotspot, leader bends and loose leader ends. Shapes and lines are mirrored, so an arrow points the other way; text boxes, tables and the arrangement inside a group stay as they are, so they still read. Pictures move but are only flipped when Editor options → Editing → Mirror pictures is on. Undo puts it back.</p>"
+            + "<p>To lay out a left-hand stick from a right-hand one, open the left stick and use <b>File → Copy layout from</b> with Mirror left to right ticked.</p>"),
         topic("Button Map", "Right-click menu",
             "<p>While editing, the menu shows only what applies to what you right-clicked: a chip, a group, a leader, a shape, a line, a picture, a text box, a table, several selected items, or empty canvas.</p>"
             + "<p>It opens small: the item's name with <b>Undo</b> and <b>Redo</b>, a few actions, then sections such as Chip style or Arrowheads. Click a section to open it; one is open at a time, and the menu reopens on the section you used last for that kind of item. Rows of values (sizes, widths, opacity) change straight away and leave the menu open; other actions close it.</p>"
@@ -344,7 +348,7 @@ function topics() {
             "<p><b>Edit → Editor options…</b> in the Button Map opens Options at its <b>Button Map</b> section; the same settings are under Options in the main window. They apply to every device.</p>"
             + "<ul>"
             + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>Unbound</b> (see Action labels).</li>"
-            + "<li><b>Editing</b>: <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
+            + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror layout and Copy layout from also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
             + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
             + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size); <b>Mode title</b>, the mode's name at the top of each Export modes page.</li>"
             + "<li><b>Colours</b>: <b>Recent colours</b>, how many the colour picker keeps.</li>"

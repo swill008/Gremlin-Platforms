@@ -82,6 +82,12 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {},
     ),
     (
+        "editing", "05-mirror-pictures", PropertyType.Bool, False,
+        "Mirror layout and Copy layout from also mirror pictures. Off, pictures "
+        "only move, so text in them still reads.",
+        {},
+    ),
+    (
         "autosave", "01-autosave", PropertyType.Bool, True,
         "While you edit a map, keep a recovery copy of unsaved changes. After a "
         "crash, opening the device offers to restore them.",
