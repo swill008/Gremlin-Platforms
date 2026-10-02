@@ -9,7 +9,12 @@ import sys
 sys.path.append(".")
 
 
-from gremlin.spline import CubicBezierSpline
+import pytest
+
+from gremlin.spline import (
+    CubicBezierSpline,
+    CubicSpline,
+)
 
 
 def cbs(
@@ -69,3 +74,11 @@ def test_cubic_bezier_spline_curve() -> None:
     assert s(r[0]) == r[1]
     r = cbs(0.91, *cps)
     assert s(r[0]) == r[1]
+
+
+def test_cubic_spline_three_points_passes_through_them() -> None:
+    points = [(-1.0, -1.0), (0.0, 0.5), (1.0, 1.0)]
+    curve = CubicSpline(points)
+    for x, y in points:
+        assert curve(x) == pytest.approx(y, abs=1e-4)
+    assert -1.0 < curve(-0.5) < 0.5

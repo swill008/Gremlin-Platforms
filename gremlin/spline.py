@@ -293,12 +293,18 @@ class CubicSpline(AbstractCurve):
         u[1] = 2 * (h[0] + h[1])
         v[1] = 6 * (b[1] - b[0])
         for i in range(2, n):
-            u[i] = 2 * (h[i] + h[i - 1]) - h[i - 1] ** 2 / max(u[i - 1], self._MIN_SEGMENT_WIDTH)
-            v[i] = 6 * (b[i] - b[i - 1]) - (h[i - 1] * v[i - 1]) / max(u[i - 1], self._MIN_SEGMENT_WIDTH)
+            u[i] = 2 * (h[i] + h[i - 1]) - h[i - 1] ** 2 / max(
+                u[i - 1], self._MIN_SEGMENT_WIDTH
+            )
+            v[i] = 6 * (b[i] - b[i - 1]) - (h[i - 1] * v[i - 1]) / max(
+                u[i - 1], self._MIN_SEGMENT_WIDTH
+            )
 
         self.z[n] = 0.0
         for i in range(n - 1, 0, -1):
-            self.z[i] = (v[i] - h[i] * self.z[i + 1]) / (u[i] + eps)
+            self.z[i] = (v[i] - h[i] * self.z[i + 1]) / max(
+                u[i], self._MIN_SEGMENT_WIDTH
+            )
         self.z[0] = 0.0
 
     def _default_points(self) -> CoordinateList:
