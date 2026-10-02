@@ -432,6 +432,16 @@ class Backend(QtCore.QObject):
         signal.reloadCurrentInputItem.emit()
         signal.reloadUi.emit()
 
+    @QtCore.Slot(result=list)
+    def unfinishedActions(self) -> list[str]:
+        """Unfinished actions a save would leave out of the file, so the
+        screens can ask before saving."""
+        try:
+            return self.profile.library.unfinished_actions()
+        except Exception:
+            logging.getLogger("system").exception("Listing unfinished actions")
+            return []
+
     @QtCore.Slot(str, result=bool)
     def saveProfile(self, qml_url: str) -> bool:
         try:

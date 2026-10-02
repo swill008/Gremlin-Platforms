@@ -111,6 +111,20 @@ ApplicationWindow {
             return false
         }
         var profilePath = backend ? backend.profilePath() : ""
+        // A profile save would leave out unfinished actions without asking:
+        // keep the profile unsaved and say so; the main window's Save asks.
+        var unfinished = (direction === "dest" && profilePath !== "") ? backend.unfinishedActions() : []
+        if (unfinished.length) {
+            if (moduleModel && moduleModel.notifyClaims)
+                moduleModel.notifyClaims()
+            claimDirty = false
+            refreshModuleFileLabel()
+            _saveGate.announce(true, "Saved to the module file. The profile was not saved: "
+                + (unfinished.length === 1 ? "1 action is" : unfinished.length + " actions are")
+                + " not finished. Save the profile from the main window to choose what to do.")
+            backend.noteSave("Saved the module file to " + _driver.lastSavedPath() + ". The profile was not saved (unfinished actions).")
+            return true
+        }
         if (direction === "dest" && profilePath !== "") {
             if (!backend.saveProfile(profilePath)) {
                 _saveGate.announce(false, "Saved to the module file. The profile was not written.")
@@ -426,11 +440,16 @@ ApplicationWindow {
                 onClicked: {
                     if (!moduleModel)
                         return
-                    moduleFileMessage = moduleModel.deleteModuleFile(deviceGuid, deviceName)
-                    moduleFileError = moduleFileMessage.length > 0
-                    refreshModuleFileLabel()
-                    if (!moduleFileMessage.length)
-                        reloadModuleControls()
+                    _deleteGate.confirmThen("Delete module file",
+                        "Delete " + moduleFileLabel + "? It holds this device's claimed inputs, calibration and Button Map layout.\n\n"
+                        + "A copy is kept in the deleted devices folder, so you can import it back.",
+                        "Delete file", function() {
+                            moduleFileMessage = moduleModel.deleteModuleFile(deviceGuid, deviceName)
+                            moduleFileError = moduleFileMessage.length > 0
+                            refreshModuleFileLabel()
+                            if (!moduleFileMessage.length)
+                                reloadModuleControls()
+                        }, null, true)
                 }
             }
             Label {
@@ -531,6 +550,11 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    // Asks before Delete file.
+    DismissibleDialog {
+        id: _deleteGate
     }
 
     DismissibleDialog {

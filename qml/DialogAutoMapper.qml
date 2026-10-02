@@ -184,17 +184,30 @@ ApplicationWindow {
                 text: "Create 1:1 mappings"
 
                 onClicked: () => {
-                    _statusMessage.text = tools.createMappings(
-                        _modeSelector.currentText,
-                        selectedInputModules,
-                        selectedOutputModules,
-                        _overwriteNonEmpty.checked,
-                        _repeatDevices.checked,
-                        _claimOutputs.checked
-                    )
+                    var run = function() {
+                        _statusMessage.text = tools.createMappings(
+                            _modeSelector.currentText,
+                            selectedInputModules,
+                            selectedOutputModules,
+                            _overwriteNonEmpty.checked,
+                            _repeatDevices.checked,
+                            _claimOutputs.checked
+                        )
 
-                    selectedInputModules = ({})
-                    selectedOutputModules = ({})
+                        selectedInputModules = ({})
+                        selectedOutputModules = ({})
+                    }
+                    if (!_overwriteNonEmpty.checked) {
+                        run()
+                        return
+                    }
+                    // Overwrite removes every action already on those inputs.
+                    _overwriteGate.confirmThen("Replace existing actions",
+                        "Overwrite used inputs is on. Every action already on the selected inputs in the "
+                        + _modeSelector.currentText + " mode, macros included, will be removed and replaced "
+                        + "with the new mappings.\n\nNothing is saved yet: to undo, load the profile again "
+                        + "without saving.",
+                        "Replace them", run, null, true)
                 }
             }
 
@@ -218,13 +231,16 @@ ApplicationWindow {
                         + "Mode selection defaults to the default mode, change this if required for another mode.\n\n"
                         + "This tool does not match devices by name. It uses the order shown in the lists. The first checked input is wired to the first checked output. The second input is wired to the second output.\n\n"
                         + "Overwrite used inputs: Replaces wires that already exist on those controls in the selected mode. Leave it off, and those wires stay as they are.\n\n"
-                        + "Combine onto Selected Outputs: This should stay off when each input should have its own output. Turn it on when you check more inputs than outputs." + "
-
-"
+                        + "Combine onto Selected Outputs: This should stay off when each input should have its own output. Turn it on when you check more inputs than outputs.\n\n"
                         + "Also claim the matching outputs: Off, mappings are made only to outputs the output module already claims; the rest are listed as skipped. On, the outputs the mappings need are claimed on the output module first."
                     delay: 500
                 }
             }
         }
+    }
+
+    // Asks before Overwrite used inputs replaces existing actions.
+    DismissibleDialog {
+        id: _overwriteGate
     }
 }

@@ -879,8 +879,16 @@ def delete_module_file(device_name: str, guid: str) -> str:
         return "Another stick is using this file."
     path = _maps_dir() / f"{slug}.json"
     if path.is_file():
+        # The file holds claims, calibration and the Button Map layout: keep
+        # a copy in the deleted devices folder, or do not delete it.
+        kept = _keep_deleted_copy(path)
+        if kept is None:
+            return "Could not keep a copy of the module file, so it was not deleted."
         path.unlink()
-        trace("SAVE", "Configure Module", "delete_module_file", path, "removed")
+        trace(
+            "SAVE", "Configure Module", "delete_module_file", path,
+            f"removed, copy at {kept}",
+        )
     data = _binding_store()
     changed = False
     if key and plain_slug(str(data.get(key, ""))) == slug:
@@ -898,6 +906,21 @@ def _deleted_dir() -> Path:
     from gremlin.util import deleted_devices_dir
 
     return deleted_devices_dir()
+
+
+def _keep_deleted_copy(path: Path) -> Path | None:
+    """Copy a module file about to be deleted into the deleted devices folder
+    as "<name> <date time>.json", so it can be imported back. None when the
+    copy could not be made."""
+    try:
+        folder = _deleted_dir()
+        folder.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y-%m-%d %H%M%S")
+        dest = folder / f"{path.stem} {stamp}.json"
+        shutil.copy2(path, dest)
+        return dest
+    except OSError:
+        return None
 
 
 def _pack_file_name(device_name: str) -> str:
@@ -2384,6 +2407,101 @@ class HardwareProfile(QtCore.QObject):
                     return False
         self.imageChanged.emit()
         return True
+
+    # Photo safety copy for one Button Map editing session. Choose
+    # background… and Clear image change the photo files at once; Cancel
+    # puts the session's starting photo (files and the module file's
+    # "image") back, Save drops the copy.
+
+    def _photo_files(self, slug: str) -> list[Path]:
+        folder = _maps_dir() / slug
+        files = []
+        if folder.is_dir():
+            # photo.<ext>, and copyImage's fallback photo_<name>.<ext>.
+            files = [
+                p
+                for pattern in ("photo.*", "photo_*")
+                for p in folder.glob(pattern)
+                if p.is_file()
+            ]
+        for ext in _IMAGE_EXT:
+            legacy = _maps_dir() / f"{slug}_photo{ext}"
+            if legacy.is_file():
+                files.append(legacy)
+        return files
+
+    @staticmethod
+    def _stash_dir(slug: str) -> Path:
+        return _maps_dir() / "cache" / "photo-stash" / slug
+
+    @QtCore.Slot(str)
+    def stashPhoto(self, device_name: str) -> None:
+        """Keep the current photo before this session first changes it."""
+        slug = _slug(device_name or self._device_name)
+        stash = self._stash_dir(slug)
+        if (stash / "manifest.json").is_file():
+            return  # This session's starting photo is already kept.
+        try:
+            stash.mkdir(parents=True, exist_ok=True)
+            files = []
+            for i, p in enumerate(self._photo_files(slug)):
+                kept = stash / f"{i}{p.suffix}"
+                shutil.copy2(p, kept)
+                files.append({"kept": kept.name, "to": str(p.relative_to(_maps_dir()))})
+            image = None
+            doc_path = _maps_dir() / f"{slug}.json"
+            if doc_path.is_file():
+                try:
+                    loaded = json.loads(doc_path.read_text(encoding="utf-8"))
+                    if isinstance(loaded, dict):
+                        image = loaded.get("image")
+                except (OSError, json.JSONDecodeError):
+                    pass
+            (stash / "manifest.json").write_text(
+                json.dumps({"files": files, "image": image}), encoding="utf-8"
+            )
+        except OSError:
+            persist_log(f"Persist photo stash failed slug={slug!r}")
+
+    @QtCore.Slot(str, result=bool)
+    def restorePhoto(self, device_name: str) -> bool:
+        """Put the session's starting photo back. False when none was kept."""
+        slug = _slug(device_name or self._device_name)
+        stash = self._stash_dir(slug)
+        manifest = stash / "manifest.json"
+        if not manifest.is_file():
+            return False
+        try:
+            kept = json.loads(manifest.read_text(encoding="utf-8"))
+            for p in self._photo_files(slug):
+                p.unlink()
+            for entry in kept.get("files", []):
+                dest = _maps_dir() / entry["to"]
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(stash / entry["kept"], dest)
+            doc_path = _maps_dir() / f"{slug}.json"
+            if doc_path.is_file():
+                loaded = json.loads(doc_path.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    if kept.get("image") is None:
+                        loaded.pop("image", None)
+                    else:
+                        loaded["image"] = kept["image"]
+                    text = json.dumps(loaded, indent=2) + "\n"
+                    doc_path.write_text(text, encoding="utf-8")
+        except (OSError, json.JSONDecodeError, KeyError):
+            persist_log(f"Persist photo restore failed slug={slug!r}")
+            return False
+        shutil.rmtree(stash, ignore_errors=True)
+        trace("SAVE", "Button Map", "restorePhoto", slug, "ok")
+        self.imageChanged.emit()
+        return True
+
+    @QtCore.Slot(str)
+    def dropPhotoStash(self, device_name: str) -> None:
+        """The session was saved: its starting photo is no longer needed."""
+        slug = _slug(device_name or self._device_name)
+        shutil.rmtree(self._stash_dir(slug), ignore_errors=True)
 
     @QtCore.Slot(result=str)
     def imagesFolderUrl(self) -> str:

@@ -294,9 +294,16 @@ ApplicationWindow {
         }
     }
 
+    // Set when a photo file is replaced or put back under the same name, so
+    // the photo reloads instead of showing Qt's cached copy.
+    property double _photoStamp: 0
+
     function applyImage(rel) {
         storedImage = rel && rel.length ? rel : stockImage
-        photoOverride = _hw.imageUrl(storedImage)
+        var url = _hw.imageUrl(storedImage)
+        if (_photoStamp > 0 && url.indexOf("file:") === 0)
+            url += (url.indexOf("?") < 0 ? "?" : "&") + "t=" + _photoStamp
+        photoOverride = url
     }
 
     function sceneShiftList(list) {
@@ -452,6 +459,9 @@ ApplicationWindow {
     function enterEdit() {
         if (editing)
             return
+        // A photo kept by an editing session that never finished (a crash)
+        // is stale; this session keeps its own on its first photo change.
+        _hw.dropPhotoStash(targetName)
         try {
             loadLive()
         } catch (e) {
@@ -530,6 +540,8 @@ ApplicationWindow {
         liveImage = image
         livePhoto = photoBag()
         clearRecovery()
+        // Saved: the photo this session started with is no longer needed.
+        _hw.dropPhotoStash(targetName)
         applyImage(liveImage)
         hydrateOverlays(liveNodes)
         saveOk = true
@@ -622,9 +634,7 @@ ApplicationWindow {
         var when = String(doc.savedAt || "").replace("T", " at ")
         _recoverGate.choose("Unsaved edits found",
                             "Button Map has edits to " + targetName + (when.length ? " from " + when : "")
-                            + " that were never saved, probably because the program closed unexpectedly.
-
-"
+                            + " that were never saved, probably because the program closed unexpectedly.\n\n"
                             + "Restore opens them for editing; save to keep them. Discard deletes them.",
                             "Restore", "Discard")
         _recoverGate.cancelText = "Not now"
@@ -662,6 +672,9 @@ ApplicationWindow {
 
     function discardEdit() {
         clearRecovery()
+        // Photo files changed in this session go back to how they were.
+        if (_hw.restorePhoto(targetName))
+            _photoStamp = Date.now()
         editing = false
         workNodes = []
         selectedId = ""
@@ -1488,8 +1501,11 @@ ApplicationWindow {
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
         currentFolder: _hw.imagesFolderUrl()
         onAccepted: {
+            // Cancel can put the current photo back.
+            _hw.stashPhoto(targetName)
             var rel = _hw.copyImage(selectedFile, targetName)
             if (rel.length) {
+                _photoStamp = Date.now()
                 applyImage(rel)
                 resetPhoto()
             }
@@ -2275,6 +2291,8 @@ ApplicationWindow {
                     text: "Clear image"
                     enabled: editing
                     onTriggered: {
+                        // Cancel can put the current photo back.
+                        _hw.stashPhoto(targetName)
                         _hw.clearImage(targetName)
                         applyImage(stockImage)
                         resetPhoto()

@@ -373,34 +373,55 @@ ApplicationWindow {
             want = "dest"
         if (!want)
             want = "source"
+        var name = card ? moduleFileName(card) : ""
+        var guid = card ? (card.guid || "") : ""
         if (configureWin) {
-            configureWin.direction = want
-            configureWin.deviceName = card ? moduleFileName(card) : ""
-            configureWin.deviceGuid = card ? (card.guid || "") : ""
-            configureWin.moduleModel = _moduleModel
-            configureWin.raise()
-            configureWin.requestActivate()
-            return
+            var old = configureWin
+            if (old.deviceName === name && old.deviceGuid === guid && old.direction === want) {
+                old.raise()
+                old.requestActivate()
+                return
+            }
+            // Another device: the open window's controls and photo belong to
+            // its own device, so close it (it asks about unsaved changes
+            // first) and open a fresh one. If it stays open, the user is
+            // answering that question; leave it in front.
+            old.close()
+            if (old.visible) {
+                old.raise()
+                old.requestActivate()
+                return
+            }
+            configureWin = null
         }
         var comp = Qt.createComponent("DialogConfigureModule.qml")
         if (comp.status !== Component.Ready) {
             console.log(comp.errorString())
             return
         }
-        configureWin = comp.createObject(_root, {
+        var win = comp.createObject(_root, {
             "direction": want,
-            "deviceName": card ? moduleFileName(card) : "",
-            "deviceGuid": card ? (card.guid || "") : "",
+            "deviceName": name,
+            "deviceGuid": guid,
             "moduleModel": _moduleModel
         })
-        if (!configureWin)
+        if (!win)
             return
-        configureWin.closing.connect(function() {
-            Qt.callLater(function() { _root.configureWin = null })
+        configureWin = win
+        // Runs after the window's own onClosing: a close it held open (to
+        // ask about unsaved changes) keeps it.
+        win.closing.connect(function(close) {
+            if (close && !close.accepted)
+                return
+            Qt.callLater(function() {
+                if (_root.configureWin === win)
+                    _root.configureWin = null
+                win.destroy()
+            })
         })
-        configureWin.show()
-        configureWin.raise()
-        configureWin.requestActivate()
+        win.show()
+        win.raise()
+        win.requestActivate()
     }
 
     function openHiddenDevices() {
@@ -458,10 +479,49 @@ ApplicationWindow {
         }
         var fpath = backend.profilePath()
         if (fpath === "") {
-            _saveProfileFileDialog.open()
+            openSaveAs()
         } else {
-            showSaveResult(backend.saveProfile(fpath), fpath)
+            saveProfileChecked(fpath, function(ok) { showSaveResult(ok, fpath) })
         }
+    }
+
+    // File > Save As: never carries a follow-up left from an earlier quit.
+    function openSaveAs() {
+        _saveProfileFileDialog.afterSave = null
+        _saveProfileFileDialog.afterSaveQuitting = false
+        _saveProfileFileDialog.open()
+    }
+
+    // Saves the profile to path, asking first when the save would leave
+    // out unfinished actions (an action with an error is not written).
+    // then(ok) runs after the save; onCancel when the user goes back to
+    // finish them instead.
+    function saveProfileChecked(path, then, onCancel) {
+        var doSave = function() { then(backend.saveProfile(path)) }
+        var unfinished = backend.unfinishedActions()
+        if (!unfinished.length) {
+            doSave()
+            return
+        }
+        _unfinishedGate.confirmThen("Unfinished actions", unfinishedMessage(unfinished),
+                                    "Save without them", doSave, onCancel || null, true)
+    }
+
+    function unfinishedMessage(list) {
+        var shown = list.slice(0, 6).map(function(t) { return "• " + t }).join("\n")
+        var more = list.length > 6 ? "\n…and " + (list.length - 6) + " more." : ""
+        var head = list.length === 1 ? "1 action is not finished. It" : list.length + " actions are not finished. They"
+        return head + " will be left out of the saved profile:\n\n" + shown + more
+            + "\n\nCancel to go back and finish them."
+    }
+
+    // A quit (or restart, or update install) that waited on a save is
+    // called off.
+    function cancelQuitRequest() {
+        if (backend)
+            backend.setRestartOnExit(false)
+        if (updater)
+            updater.setInstallOnExit(false)
     }
 
     function buttonMapWindow() {
@@ -644,13 +704,24 @@ ApplicationWindow {
             if (!backend || !action)
                 return
             var fpath = backend.profilePath()
+            var wasQuitting = quitting
             if (fpath === "") {
                 _saveProfileFileDialog.afterSave = action
+                _saveProfileFileDialog.afterSaveQuitting = wasQuitting
                 _saveProfileFileDialog.open()
-            } else if (backend.saveProfile(fpath)) {
-                action()
             } else {
-                showSaveResult(false, fpath)
+                saveProfileChecked(fpath, function(ok) {
+                    if (ok) {
+                        action()
+                    } else {
+                        showSaveResult(false, fpath)
+                        if (wasQuitting)
+                            cancelQuitRequest()
+                    }
+                }, function() {
+                    if (wasQuitting)
+                        cancelQuitRequest()
+                })
             }
         }
         onDiscardChosen: {
@@ -660,11 +731,14 @@ ApplicationWindow {
         }
         onCancelled: {
             takeAction()
-            if (quitting && backend)
-                backend.setRestartOnExit(false)
-            if (quitting && updater)
-                updater.setInstallOnExit(false)
+            if (quitting)
+                cancelQuitRequest()
         }
+    }
+
+    // Asks before a save leaves out unfinished actions (saveProfileChecked).
+    DismissibleDialog {
+        id: _unfinishedGate
     }
 
     DismissibleDialog {
@@ -698,6 +772,8 @@ ApplicationWindow {
 
         // Set by guardUnsavedChanges: runs after a successful save.
         property var afterSave: null
+        // That follow-up is a quit: cancelling calls it off.
+        property bool afterSaveQuitting: false
 
         acceptLabel: "Save"
         defaultSuffix: "xml"
@@ -709,18 +785,35 @@ ApplicationWindow {
             if (!backend) {
                 return
             }
-            var ok = backend.saveProfile(currentFile)
             var next = afterSave
+            var wasQuitting = afterSaveQuitting
             afterSave = null
-            if (next) {
-                if (ok) {
-                    next()
+            afterSaveQuitting = false
+            saveProfileChecked(currentFile, function(ok) {
+                if (next) {
+                    if (ok) {
+                        next()
+                    } else {
+                        showSaveResult(false, "")
+                        if (wasQuitting)
+                            cancelQuitRequest()
+                    }
                 } else {
-                    showSaveResult(false, "")
+                    showSaveResult(ok, backend.profilePath())
                 }
-            } else {
-                showSaveResult(ok, backend.profilePath())
-            }
+            }, function() {
+                if (wasQuitting)
+                    cancelQuitRequest()
+            })
+        }
+        // Closing the file window without saving calls off what waited on
+        // the save, quit included; the next Save As starts clean.
+        onRejected: () => {
+            var wasQuitting = afterSaveQuitting
+            afterSave = null
+            afterSaveQuitting = false
+            if (wasQuitting)
+                cancelQuitRequest()
         }
     }
 

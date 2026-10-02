@@ -34,6 +34,8 @@ Popup {
     property bool _resultOk: false
 
     function ask(message) {
+        _onYes = null
+        _onNo = null
         if (message !== undefined && message !== null && String(message).length)
             detail = String(message)
         _mode = "ask"
@@ -49,6 +51,8 @@ Popup {
     }
 
     function confirm(title, message, acceptLabel) {
+        _onYes = null
+        _onNo = null
         _mode = "confirm"
         _choice = ""
         _resultOk = false
@@ -62,8 +66,34 @@ Popup {
         open()
     }
 
+    // confirm() with its follow-up as functions: onYes runs after the
+    // confirm button, onNo (optional) after Cancel. destructive: a red
+    // confirm button, for deletes.
+    property var _onYes: null
+    property var _onNo: null
+
+    function confirmThen(title, message, acceptLabel, onYes, onNo, isDestructive) {
+        confirm(title, message, acceptLabel)
+        destructive = !!isDestructive
+        _onYes = onYes || null
+        _onNo = onNo || null
+    }
+
+    function _runThen(yes) {
+        var fn = yes ? _onYes : _onNo
+        _onYes = null
+        _onNo = null
+        if (typeof fn === "function")
+            fn()
+    }
+
+    onConfirmed: _runThen(true)
+    onCancelled: _runThen(false)
+
     // Three choices: confirmed(), discarded() for the middle button, cancelled().
     function choose(title, message, acceptLabel, middleLabel) {
+        _onYes = null
+        _onNo = null
         _mode = "choice"
         _choice = ""
         _resultOk = false
@@ -78,6 +108,8 @@ Popup {
     }
 
     function announce(ok, message) {
+        _onYes = null
+        _onNo = null
         _mode = "result"
         _resultOk = !!ok
         titleText = ok ? "Saved" : "Save failed"

@@ -446,6 +446,21 @@ class Library:
             fid: self._actions[fid] for fid in file_ids if fid in self._actions
         }
 
+    def unfinished_actions(self) -> list[str]:
+        """What a save would leave out: "<action>: <first error>" for each
+        unfinished action, so the user can be asked first."""
+        out = []
+        for action in self._actions.values():
+            errors = [
+                uf.message
+                for uf in action.user_feedback()
+                # By name: base_classes imports this module.
+                if uf.feedback_type.name == "Error"
+            ]
+            if errors:
+                out.append(f"{action.name}: {errors[0]}")
+        return out
+
     def drop_invalid_actions(self) -> None:
         """Remove unfinished actions from the open profile.
 

@@ -34,7 +34,7 @@ function commandList() {
         { id: "file.save", text: "Save Profile", group: "File", shortcut: "Ctrl+S",
           run: function() { saveCurrentProfile() } },
         { id: "file.saveAs", text: "Save Profile As…", group: "File", shortcut: "Ctrl+Shift+S",
-          run: function() { _saveProfileFileDialog.open() } },
+          run: function() { openSaveAs() } },
         { id: "file.exit", text: "Exit", group: "File", keywords: "quit close",
           run: function() { quitGremlin() } },
 
