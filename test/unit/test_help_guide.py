@@ -75,9 +75,34 @@ def test_removed_or_wrong_things_are_not_in_the_help() -> None:
         "tapped once",  # Map to Keyboard has no tap option
     ):
         assert phrase not in text, phrase
-    bm = _text(_BUTTON_MAP[_BUTTON_MAP.index("Button Map — Help") :])
     for phrase in ("50%–400%", "World page", "not in yet", "Empty photo — Draw only"):
-        assert phrase not in bm, phrase
+        assert phrase not in text, phrase
+
+
+def test_button_map_help_is_the_guide_section() -> None:
+    """Button Map's Help menu and F1 open the User Guide at its own section,
+    which covers every part of the editor."""
+    assert "Button Map — Help" not in _BUTTON_MAP
+    assert _BUTTON_MAP.count('openGuide("Button Map")') == 2  # menu and F1
+    found = _TOPIC.findall(_GUIDE)
+    titles = [title for section, title in found if section == "Button Map"]
+    assert len(titles) >= 15
+    start = _GUIDE.index('topic("Button Map", ')
+    end = _GUIDE.index('topic("Options and Profile", ')
+    section = _text(_GUIDE[start:end])
+    for feature in (
+        "Edit Mapping", "Export size", "Snap to entities", "Adjust photo",
+        "Highlight on press", "Pressed fill", "Hotspot", "spine", "Leader ends",
+        "Group selected", "Mini hat", "Radial", "Undo", "Rounded", "Double arrow",
+        "Shape around selection", "Arrowheads", "Swap heads", "Dashed",
+        "Rotate and flip", "Flip vertically", "Turn to", "Text box",
+        "Scale font with box", "Paint format", "Table", "ID column",
+        "Independent of table", "Spawn empty cell", "Import picture",
+        "Paste picture", "Crop", "Reset crop", "snap point", "Layers",
+        "Unlock all", "Properties", "Align and distribute", "Space out",
+        "Recent", "Pick from map", "Ctrl+Shift+L", "F1", "Device Pack",
+    ):
+        assert feature in section, feature
 
 
 def test_every_action_plugin_has_a_topic() -> None:

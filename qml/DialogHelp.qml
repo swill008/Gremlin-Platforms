@@ -44,6 +44,16 @@ ApplicationWindow {
         }
     }
 
+    // Shows a section's first topic, also when the window is already open.
+    function showSection(name) {
+        _showSection(name)
+        // The section's heading at the top of the contents, its topics below.
+        Qt.callLater(function() {
+            _contents.positionViewAtIndex(_index, ListView.Beginning)
+            _contents.contentY = Math.max(_contents.originY, _contents.contentY - Style.dp(48))
+        })
+    }
+
     Component.onCompleted: _showSection(initialSection)
     onInitialSectionChanged: _showSection(initialSection)
 
@@ -66,6 +76,9 @@ ApplicationWindow {
                 clip: true
                 model: _win._topics
                 currentIndex: _win._index
+                // Jumping to a section (Button Map's F1) scrolls the list to it.
+                onCurrentIndexChanged: Qt.callLater(function() { _contents.positionViewAtIndex(currentIndex, ListView.Contain) })
+                Component.onCompleted: Qt.callLater(function() { _contents.positionViewAtIndex(currentIndex, ListView.Contain) })
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                 section.property: "section"

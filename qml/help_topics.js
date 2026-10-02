@@ -186,12 +186,6 @@ function topics() {
             + "<li>The <b>Change Mode</b> action switches mode while the profile runs.</li>"
             + "<li>Modes are part of the profile; save the profile to keep them.</li>"
             + "</ul>"),
-        topic("Tools", "Button Map",
-            "<p>Button Map is a picture of a device with a chip on each claimed control. A press lights its chip, and wires show their destination. Moving a chip changes only the picture, never the actions.</p>"
-            + "<p>Open it from a card's menu, the toolbar, or Tools → Mapping → <b>Button Map</b> (then pick the device from its File menu). <b>File → Edit Mapping</b> starts editing: drag chips from the pool onto the photo, then <b>File → Save</b> (Ctrl+S) writes the layout to the device's module file. <b>F1</b> opens the editor's own help.</p>"
-            + "<p>View → <b>Layers</b> lists every item with an eye to hide it and a lock to keep it in place; drag a row to change what is on top. Hidden items are left out of picture exports; locked ones let clicks pass through (Ctrl+L locks the selection, Ctrl+Shift+L unlocks everything).</p>"
-            + "<p>While editing, the right-click menu shows only what applies to what you clicked. It opens small, with a few actions and collapsed sections; click a section to open it, and the next menu for the same kind of item reopens on it.</p>"
-            + "<p>Right-click empty canvas → <b>Draw</b> adds drawings on the photo: rectangles, ellipses, triangles, diamonds and block arrows (filled or hollow), lines and arrows with a solid or hollow head at either end, text boxes, tables and pictures. A shape's or line's outline can be solid, dashed or dotted. Drag the round handle above a selected shape or picture to turn it (Shift for 15° steps); the right-click menu types an angle and flips it. View → <b>Properties</b> shows and sets the selected item's exact position, size, angle and style. With several items selected, the right-click menu lines them up or spaces them out evenly. Pictures can be cropped, and Edit → Paste picture (Ctrl+Shift+V) adds the picture on the clipboard. The colour picker keeps your recent colours and can pick a colour from the map. File → Export saves the whole page, at 1×, 2× or 3× (Export size), without editing marks or hidden items.</p>"),
         topic("Tools", "Viewers",
             "<p>The viewers show live values; they change nothing. Open them from the toolbar, Tools → Viewers, or a card's menu.</p>"
             + "<ul>"
@@ -231,6 +225,124 @@ function topics() {
         topic("Tools", "Live Log Reader",
             "<p>Debug → <b>Live Log Reader</b> follows the program's activity log (logs.txt): what was read and saved, and when. The system log (system.log) in the Logs folder records errors and blocked outputs.</p>"),
 
+        topic("Button Map", "Overview",
+            "<p>Button Map is a picture of one device with a chip on each control. While the profile runs, a press lights its chip, and wires show where the control goes (shown as <b>(not claimed)</b> when the output is not claimed). Chips are layout only: moving, renaming or deleting one never changes the actions in the profile.</p>"
+            + "<p>Open it from a device card's right-click menu, the toolbar, or Tools → Mapping → <b>Button Map</b>, then pick the device from its File menu. Before you edit, the map is live: hover a chip to see which control it is, and drag with the left or middle button to pan.</p>"
+            + "<p><b>File → Edit Mapping</b> starts editing. The pool beside the map lists the device's controls; drag a chip from it onto the photo, and filter it by name. <b>File → Save</b> (Ctrl+S) writes the layout to the device's module file; <b>File → Cancel</b> leaves without saving. Closing with unsaved edits asks first.</p>"
+            + "<p>Everything below is about editing. <b>Help → Button Map guide</b> or <b>F1</b> in the Button Map window opens this section.</p>"),
+        topic("Button Map", "File menu and export",
+            "<ul>"
+            + "<li><b>Edit Mapping</b>, <b>Save</b> (Ctrl+S), <b>Cancel</b>.</li>"
+            + "<li><b>Reset layout</b> sends every chip, leader and hotspot back to the pool (it asks first). The mappings are not changed; save afterwards to make the empty layout the live map.</li>"
+            + "<li><b>Fit to photo frame</b> shrinks an older, oversized layout to the photo.</li>"
+            + "<li><b>Choose background…</b> uses another picture as the photo; <b>Clear image</b> goes back to the module's picture.</li>"
+            + "<li><b>Export PDF…</b>, <b>Export PNG…</b>, <b>Export JPG…</b> save the whole page, whatever the zoom, on the window's background colour. Selection marks, handles, guides and the grid are left off, and so are hidden items. <b>Export size</b> picks 1×, 2× (the default) or 3× the size on screen; a PDF page keeps the on-screen size and gets the extra detail.</li>"
+            + "<li><b>Close</b>. The last row shows the device's module file.</li>"
+            + "</ul>"
+            + "<p>To copy a whole device setup, layout included, to another computer, use Tools → Device setup → <b>Device Pack</b>. Hidden items travel in the pack and stay hidden.</p>"),
+        topic("Button Map", "View, zoom and grid",
+            "<p>Scroll to zoom (75% to 600%). Drag with the middle button to pan. View → <b>Reset view (View 100%)</b> or Ctrl+0 returns to 100%.</p>"
+            + "<p>View → <b>Grid</b>: <b>Show grid</b>, <b>Snap to grid</b>, <b>Snap to entities</b> (edges and middles of other items, with guide lines), and the grid <b>Size</b>. Hold <b>Alt</b> while dragging to skip snapping.</p>"
+            + "<p>View → <b>Layers</b> and View → <b>Properties</b> show the two side panels (see Layers and Properties panel).</p>"),
+        topic("Button Map", "The photo",
+            "<p>The photo is the device picture under everything else. Photo → <b>Move photo</b> drags it (Esc leaves the tool); <b>Adjust photo…</b> sets its size, offset and rotation; <b>Reset photo</b> puts it back.</p>"
+            + "<p>File → <b>Choose background…</b> uses another picture; <b>Clear image</b> returns to the module's picture. The photo has its own row at the bottom of the Layers panel, so it can be hidden or locked like any item.</p>"),
+        topic("Button Map", "Chips",
+            "<p>A chip shows a control's name (Button 10, Axis 1, Hat 1) or its friendly name. Drag one from the pool onto the photo; drag it again to move it.</p>"
+            + "<p>Right-click a chip for:</p>"
+            + "<ul>"
+            + "<li><b>Rename</b> and <b>Delete chip</b> (back to the pool; Delete or Backspace does the same).</li>"
+            + "<li><b>Chip style</b>: font size, chip size, Round or Square, Filled or Hollow, and <b>Highlight on press</b>.</li>"
+            + "<li><b>Colours</b>: Fill colour…, Outline colour… and Text colour…, and <b>Pressed fill…</b>, <b>Pressed outline…</b> and <b>Pressed text…</b> used while the control is held.</li>"
+            + "<li><b>Hotspot</b> and <b>Leader ends</b> (see Hotspots and leaders), <b>Arrange</b> (stacking, Lock, Hide).</li>"
+            + "</ul>"
+            + "<p>Ctrl+D duplicates the selection; Ctrl+C and Ctrl+V copy and paste it inside the editor.</p>"),
+        topic("Button Map", "Hotspots and leaders",
+            "<p>Each chip has a <b>hotspot</b>, the dot on the photo marking the physical control, and a <b>leader</b> line between them. Drag the chip and the hotspot separately. A chip's <b>Hotspot</b> section sets the dot's size, shape, fill and colour.</p>"
+            + "<p>Click a leader to select it. Drag a segment to bend it; that adds a curve point (a spine). Click a spine to select it; hold the right button on a spine for about half a second to delete it.</p>"
+            + "<p>Right-click a leader for <b>Add leader</b> (another line from the same chip) and <b>Delete leader</b>. Its <b>Leader</b> section has <b>Leader colour…</b>, <b>Weight</b>, <b>Add straight spine</b>, <b>Add curved spine</b>, <b>Convert spine</b>, <b>This segment</b> or <b>All segments</b> (Curved or Straight), <b>Branch from this end</b>, <b>Clear all spines</b> and <b>Delete spine</b>. <b>Leader ends</b> detaches the chip end or the hotspot end, and reconnects it.</p>"
+            + "<p>Spines show only while editing; the lines stay on the live map. In the Layers panel, open a chip to hide or lock its hotspot or one leader on its own.</p>"),
+        topic("Button Map", "Groups and 5-way formats",
+            "<p>Select two or more chips (Shift-click, or drag a box on empty space) and choose <b>Group selected</b> (Ctrl+G). A group moves as one. <b>Break group</b> (Ctrl+Shift+G) splits it. <b>Edit group</b> lets you move and style one member; <b>Done editing group</b> or Esc ends that.</p>"
+            + "<p><b>Align members</b> arranges a group Left, Centre, Right or Free.</p>"
+            + "<p>Right-click a five-chip hat group: <b>5-way</b> styles it as <b>Plus</b>, <b>Mini hat</b>, <b>Named card</b> or <b>Radial</b>; <b>Clear format</b> removes the style.</p>"
+            + "<p>Grouping chips or text boxes together with a table packs them into the table (see Tables).</p>"),
+        topic("Button Map", "Right-click menu",
+            "<p>While editing, the menu shows only what applies to what you right-clicked: a chip, a group, a leader, a shape, a line, a picture, a text box, a table, several selected items, or empty canvas.</p>"
+            + "<p>It opens small: the item's name with <b>Undo</b> and <b>Redo</b>, a few actions, then sections such as Chip style or Arrowheads. Click a section to open it; one is open at a time, and the menu reopens on the section you used last for that kind of item. Rows of values (sizes, widths, opacity) change straight away and leave the menu open; other actions close it.</p>"
+            + "<p>Keys: Up and Down move, Enter acts, Right and Left open or close a section or step a row of values, Esc closes. Near a window edge the menu opens the other way, and it scrolls when it is taller than the window.</p>"),
+        topic("Button Map", "Drawing shapes",
+            "<p>Right-click empty canvas → <b>Draw</b> and pick a <b>Shape</b>: Rectangle, Rounded, Ellipse, Triangle, Diamond, Arrow or Double arrow. Drag on the photo to draw it; hold Shift to keep its proportions. The tool stays on for the next one until <b>Stop drawing</b> or Esc.</p>"
+            + "<p>With chips selected, <b>Shape around selection</b> draws a shape around them that moves with them; its <b>Padding</b> sets the gap, and Arrange → <b>Detach from chips</b> frees it.</p>"
+            + "<p>Right-click a shape for <b>Duplicate</b> and <b>Delete</b>, then sections: <b>Shape</b> (change the kind), <b>Fill and outline</b> (Filled or Hollow, Fill colour…, Outline colour…, Width, outline Solid, Dashed or Dotted, Opacity), <b>Rotate and flip</b> and <b>Arrange</b>.</p>"),
+        topic("Button Map", "Lines and arrows",
+            "<p>Draw → <b>Line</b> picks <b>Line</b> or <b>Arrow</b>. Drag from one end to the other; hold Shift to keep to 15° steps.</p>"
+            + "<p>A selected line has a handle on each end; drag one to move that end (Shift for 15° steps). To turn a line, move its ends.</p>"
+            + "<p>Its <b>Arrowheads</b> section sets the <b>Start</b> and <b>End</b> to None, Solid or Hollow; <b>Swap heads</b> turns them round. Its <b>Line</b> section has Colour…, Width, Outline (Solid, Dashed or Dotted) and Opacity, and <b>Flip</b> mirrors it.</p>"),
+        topic("Button Map", "Rotate, flip and resize",
+            "<p>Shapes and pictures can be turned. A selected one has a round handle above it: drag it to turn the item, with Shift for 15° steps. The <b>Rotate and flip</b> section has an <b>Angle</b> to type, <b>Turn to</b> 0°, 90°, 180° or 270°, <b>Rotate −15°</b> and <b>Rotate +15°</b>, and <b>Flip horizontally</b> and <b>Flip vertically</b>. Properties takes an exact Angle.</p>"
+            + "<p>Drag the square handles to resize. A turned item resizes along its own sides, and the opposite side stays where it is. From a corner, a shape keeps its proportions when Shift is held; a picture keeps them unless Shift is held.</p>"
+            + "<p>Lines turn by moving their ends. Text boxes and tables, chips and hotspots do not turn.</p>"),
+        topic("Button Map", "Text boxes",
+            "<p>Draw → <b>Box</b> → <b>Text box</b>, then drag. Double-click a text box (or <b>Edit text…</b>) to type.</p>"
+            + "<ul>"
+            + "<li><b>Text</b>: Font size, Bold, Word wrap, <b>Scale font with box</b>, and alignment Across (Left, Centre, Right) and Down (Top, Middle, Bottom).</li>"
+            + "<li><b>Box</b>: preset Size (Caption, Small, Medium, Large, Title, Wide), Theme (Dark, Hollow, Sheet), Text colour…, Fill colour…, Outline colour…, Fill opacity and Outline opacity.</li>"
+            + "<li><b>Copy and paint format</b>: <b>Copy format</b> takes this box's look; <b>Paint format</b> puts it on the next boxes you click; <b>Clear formatting</b> resets it; <b>Copy text</b> copies the words.</li>"
+            + "</ul>"),
+        topic("Button Map", "Tables",
+            "<p>Draw → <b>Box</b> → <b>Table</b>, then drag. Double-click a cell to type in it.</p>"
+            + "<ul>"
+            + "<li><b>Rows and columns</b>: Insert row above, Delete this row, Insert column left, Delete this column, and an <b>ID column</b>.</li>"
+            + "<li><b>Cell</b>: <b>Free position</b> lets a cell be dragged out of the grid; <b>Independent of table</b> keeps it still when the table moves; <b>Spawn empty cell</b> adds a loose cell; <b>Delete this cell</b>; <b>Place across</b> and <b>Place down</b> park a cell at a side.</li>"
+            + "<li><b>Look</b>: Theme (Dark, Hollow, Sheet) and font size.</li>"
+            + "</ul>"
+            + "<p>Select a table with chips or text boxes on it and choose <b>Group selected</b>: they are packed into the table and move with it. <b>Break group</b> takes them out again; <b>Delete table</b> removes it.</p>"),
+        topic("Button Map", "Pictures",
+            "<p>Draw → <b>Import picture…</b> adds a picture file on top of the photo. Edit → <b>Paste picture</b> (Ctrl+Shift+V), or <b>Paste picture</b> in the canvas's Draw section, adds the picture on the clipboard. Pictures are saved beside the device's module file.</p>"
+            + "<p>A picture moves, resizes, turns and flips like a shape (see Rotate, flip and resize). Its <b>Picture</b> section has:</p>"
+            + "<ul>"
+            + "<li><b>Crop</b>: the handles turn blue and cut the picture instead of scaling it; what stays does not move. Esc or selecting something else ends it. <b>Reset crop</b> shows the whole picture again; Properties takes exact crop values.</li>"
+            + "<li><b>Add snap point</b> (then click the picture) and <b>Clear snap points</b>: chips snap to these points.</li>"
+            + "<li>Opacity.</li>"
+            + "</ul>"),
+        topic("Button Map", "Layers panel",
+            "<p>View → <b>Layers</b> shows every item while editing, top of the stack first, then the photo.</p>"
+            + "<ul>"
+            + "<li>The <b>eye</b> hides an item: it is not drawn, on the live map either, and is left out of exports. A Device Pack keeps it, still hidden.</li>"
+            + "<li>The <b>lock</b> keeps an item in place: clicks pass through it, and it is not moved, nudged or deleted. Ctrl+L locks or unlocks the selection; Ctrl+Shift+L unlocks everything.</li>"
+            + "<li>Open a chip (the arrow) to hide or lock its hotspot or each leader on its own. Locking or hiding the chip covers them all.</li>"
+            + "<li>Drag a row up or down to change what is on top. The right-click menu's <b>Arrange</b> section does the same a step at a time: Bring to front, Bring forward, Send back, Send to back.</li>"
+            + "<li>Click a row to select the item (Ctrl or Shift to add); double-click a drawing's row to name it.</li>"
+            + "<li><b>Show all</b> and <b>Unlock all</b> undo every hide and lock. The filter shows only Chips, Drawings, Pictures, or Text &amp; tables.</li>"
+            + "</ul>"),
+        topic("Button Map", "Properties panel",
+            "<p>View → <b>Properties</b> shows the selected item's exact values while editing. Positions and sizes are in percent of the page.</p>"
+            + "<ul>"
+            + "<li>A shape or picture: X, Y, Width, Height and Angle, then fill, colours, line width, outline and opacity; a picture also has Crop left, top, right and bottom.</li>"
+            + "<li>A line: Start and End X and Y, colour, width, outline and the Start and End heads.</li>"
+            + "<li>A chip: its place and its hotspot's, font size, chip size and colours.</li>"
+            + "<li>Several items: only the style shows, and a change applies to all of them.</li>"
+            + "</ul>"
+            + "<p>Type a number and press Enter, or click a colour to open the colour picker. A locked item's values show but do not change.</p>"),
+        topic("Button Map", "Align and distribute",
+            "<p>Select several items and right-click one of them. <b>Align and distribute</b> lines them up <b>Across</b> (Left, Centre, Right) or <b>Down</b> (Top, Middle, Bottom) by their edges or middles. <b>Space out</b> leaves equal gaps between three or more. Locked items stay where they are.</p>"),
+        topic("Button Map", "Colours",
+            "<p>The colour picker opens from Colours, Fill colour…, Outline colour… and the Properties swatches. Drag in the square and the bar, or click a swatch; the change shows at once.</p>"
+            + "<p><b>Recent</b> shows the colours you used last, on any device. <b>Pick from map</b> closes the picker; click anywhere in the window to take the colour there (right-click or Esc gives up).</p>"),
+        topic("Button Map", "Selecting, undo and keys",
+            "<p>Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrow keys nudge the selection; Shift+Arrow nudges by the grid size. Undo and Redo are also at the top of every right-click menu.</p>"
+            + "<ul>"
+            + "<li><b>Ctrl+S</b> Save</li>"
+            + "<li><b>Ctrl+Z</b> Undo; <b>Ctrl+Y</b> or <b>Ctrl+Shift+Z</b> Redo</li>"
+            + "<li><b>Ctrl+D</b> Duplicate; <b>Ctrl+C</b> Copy; <b>Ctrl+V</b> Paste; <b>Ctrl+Shift+V</b> Paste picture</li>"
+            + "<li><b>Ctrl+G</b> Group; <b>Ctrl+Shift+G</b> Break group</li>"
+            + "<li><b>Ctrl+L</b> Lock or unlock the selection; <b>Ctrl+Shift+L</b> Unlock everything</li>"
+            + "<li><b>Delete</b> or <b>Backspace</b> Remove the selection</li>"
+            + "<li><b>Ctrl+0</b> Reset view to 100%; <b>Alt</b> while dragging: no snapping; <b>Shift</b> while drawing: keep proportions or 15° steps</li>"
+            + "<li><b>Esc</b> Cancel the tool, crop, rename or group edit</li>"
+            + "<li><b>F1</b> This guide</li>"
+            + "</ul>"),
         topic("Options and Profile", "Options",
             "<p>Tools → <b>Options</b> (or the gear on the toolbar). Program settings, not stored in the profile.</p>"
             + "<ul>"

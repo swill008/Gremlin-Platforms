@@ -10,6 +10,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import "helpers.js" as Helpers
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -780,97 +781,6 @@ ApplicationWindow {
     }
 
     Dialog {
-        id: _helpDlg
-        title: "Button Map — Help"
-        modal: true
-        anchors.centerIn: parent
-        width: Style.dp(640)
-        height: Style.dp(680)
-        standardButtons: Dialog.Close
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        ListView {
-            id: _helpList
-            anchors.fill: parent
-            anchors.margins: Style.dp(4)
-            clip: true
-            spacing: Style.dp(14)
-            boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-            model: [
-                {
-                    h: "Overview",
-                    b: "Button Map is a picture of one device with a chip on each control. While the profile runs, a press lights its chip. Chips are layout only: moving or renaming one never changes the actions in the profile.\n\nFile → Edit Mapping starts editing. File → Save (Ctrl+S) writes the layout to this device's module file (“Saved to the module file.”). File → Cancel leaves without saving. Closing with unsaved edits asks first."
-                },
-                {
-                    h: "File menu",
-                    b: "Edit Mapping, Save, Cancel.\nReset layout: send every chip back to the pool (asks first).\nFit to photo frame: shrink an older, oversized layout to the photo.\nChoose background… / Clear image: use another picture, or go back to the module's picture.\nExport PDF… / PNG… / JPG…: save the whole page, whatever the zoom, without selection marks, guides or the grid; hidden items are left out. Export size picks 1×, 2× (the default) or 3× the size on screen.\nClose.\nTo copy a whole device setup to another computer, use Tools → Device setup → Device Pack."
-                },
-                {
-                    h: "View and photo",
-                    b: "Scroll to zoom (75% to 600%). Drag with the middle button to pan (before Edit Mapping, the left button pans too). View → Reset view or Ctrl+0 returns to 100%.\nView → Grid: Show grid, Snap to grid, Snap to entities, and the grid Size. Hold Alt while dragging to skip snapping.\nPhoto → Move photo drags the picture; Adjust photo… sets its size, offset, and rotation; Reset photo restores it."
-                },
-                {
-                    h: "Chips and hotspots",
-                    b: "Drag a chip from the pool onto the photo. Filter the pool by name.\nEach chip has a hotspot, the dot on the photo marking the physical control, and a leader line between them. Drag the chip and the hotspot separately.\nA chip shows the control's name (Button 10, Axis 1, Hat 1) or its friendly name. Right-click a chip for Rename and Delete chip (back to the pool); Chip style sets the font size, size, Round or Square, Filled or Hollow and Highlight on press; Colours sets the fill, outline and text, and their pressed colours. Delete or Backspace also returns a chip to the pool.\nHotspot sets the dot's size, shape, fill and colour. Leader ends detaches or reconnects either end of the line."
-                },
-                {
-                    h: "Right-click menu",
-                    b: "The menu shows only what applies to what you right-clicked: a chip, a group, a leader, a shape, a line, a picture, a text box, a table, several selected items, or empty canvas.\nIt opens small: the item's name with Undo and Redo, a few actions, then sections such as Chip style or Arrowheads. Click a section to open it; one is open at a time, and the menu reopens on the section you used last for that kind of item. Rows of values (sizes, widths, opacity) change straight away and leave the menu open; other actions close it.\nKeys: Up and Down move, Enter acts, Right and Left open or close a section or step a row of values, Esc closes. Near a window edge the menu opens the other way, and it scrolls when taller than the window."
-                },
-                {
-                    h: "Groups and formats",
-                    b: "Select two or more chips (Shift-click or drag a box), then Group selected (Ctrl+G) from the right-click menu. Break group (Ctrl+Shift+G) splits it. Edit group lets you move and style one member; Done editing group or Esc ends that.\nRight-click a five-chip hat group: 5-way format styles it as Plus, Mini hat, Named card, or Radial; Clear format removes the style.\nAlign members arranges a group Left, Centre, Right, or Free.\nWith several items selected, right-click one of them: Align and distribute lines them up Across (Left, Centre, Right) or Down (Top, Middle, Bottom) by their edges or middles, and Space out leaves equal gaps between three or more. Locked items stay where they are."
-                },
-                {
-                    h: "Leaders",
-                    b: "Click a leader to select it. Drag a segment to bend it; that adds a curve point (a spine). Click a spine to select it. Hold the right button on a spine for about half a second to delete it.\nRight-click a leader for Add leader and Delete leader; its Leader section has Leader colour…, Weight, Add straight spine, Add curved spine, Convert spine, This segment or All segments (Curved or Straight), Branch from this end, Clear all spines, and Delete spine.\nSpines are shown only while editing; the lines stay on the live map."
-                },
-                {
-                    h: "Draw",
-                    b: "Right-click empty canvas → Draw picks a tool: a shape (Rectangle, Rounded, Ellipse, Triangle, Diamond, Arrow, Double arrow), a Line or an Arrow, a Text box or a Table, then drag on the photo. Shift keeps a shape's proportions and a line on 15° steps. Stop drawing or Esc ends the tool. Import picture… adds a picture on top of the photo.\nWith chips selected, Shape around selection draws a shape around them that moves with them.\nRight-click a shape for Duplicate and Delete, then Shape, Fill and outline (Filled or Hollow, colours, Width, Outline Solid, Dashed or Dotted, Opacity), Rotate and flip, and Arrange (Bring to front, forward, back, Send to back, Lock, Hide).\nA selected shape or picture has a round handle above it: drag it to turn the item, with Shift for 15° steps. Rotate and flip takes a typed angle, quarter turns, 15° steps, and flips left to right or top to bottom. A turned item resizes along its own sides, the opposite side staying put. From a corner, a shape keeps its proportions with Shift; a picture keeps them unless Shift is held.\nA selected line has a handle on each end to drag. Its Arrowheads section sets each end to None, Solid or Hollow; Swap heads turns them round.\nText boxes and tables have their own sections (text, box, rows and columns, cells, look). Double-click a cell or text box to type. A picture's section adds and clears snap points that chips snap to.\nPictures: Crop (in the picture's section) turns its handles blue; they then cut the picture instead of scaling it, and what stays does not move. Esc or selecting something else ends it; Reset crop shows the whole picture again, and Properties takes exact crop values. Edit → Paste picture (Ctrl+Shift+V), or Paste picture in the empty canvas's Draw section, adds the picture on the clipboard as a new layer."
-                },
-                {
-                    h: "Layers",
-                    b: "View → Layers shows the Layers panel while editing: every item, top of the stack first, then the background photo.\nThe eye hides an item: it is not drawn, on the live map either, and is left out of picture and PDF exports (a Device Pack keeps it, still hidden). The lock keeps an item in place: clicks on the map pass through it, and it is not moved, nudged or deleted. Unlock it here, or press Ctrl+Shift+L to unlock everything.\nOpen a chip (the arrow) to hide or lock its hotspot or each leader on its own; locking or hiding the chip covers them all.\nDrag a row up or down to change what is on top; the right-click menu's Arrange section does the same one step at a time. Click a row to select the item (Ctrl or Shift to add); double-click a drawing's row to name it. Show all and Unlock all undo every hide and lock; the filter shows only chips, drawings, pictures, or text and tables."
-                },
-                {
-                    h: "Properties",
-                    b: "View → Properties shows the selected item's exact values while editing. Positions and sizes are in percent of the page.\nA shape or picture: X, Y, Width, Height and Angle, then fill, colours, line width, outline and opacity. A line: its start and end points, colour, width, outline and arrowheads. A chip: its place and its hotspot's, font and chip size, and colours. With several items selected, only the style shows, and a change applies to all of them.\nType a number and press Enter, click a value, or click a colour to open the colour picker. A locked item's values show but do not change."
-                },
-                {
-                    h: "Colours",
-                    b: "The colour picker opens from Colours, Fill colour…, Outline colour… and the Properties swatches. Drag in the square and the bar, or click a swatch; the change shows at once.\nRecent shows the colours you used last, on any device. Pick from map closes the picker; click anywhere in the window to take the colour there (right-click or Esc gives up)."
-                },
-                {
-                    h: "Selecting and keys",
-                    b: "Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrows nudge; Shift+Arrows nudge by the grid size.\n\nCtrl+S Save    Ctrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nCtrl+L Lock or unlock the selection    Ctrl+Shift+L Unlock everything\nDelete / Backspace  remove the selection\nCtrl+0  reset view    Esc  cancel tool, rename, or group edit\nF1  this help"
-                }
-            ]
-            delegate: Column {
-                width: _helpList.width
-                spacing: Style.dp(4)
-                required property var modelData
-                Label {
-                    width: parent.width
-                    text: modelData.h
-                    color: Style.warn
-                    font.pixelSize: Style.dp(15)
-                    font.bold: true
-                }
-                Label {
-                    width: parent.width
-                    text: modelData.b
-                    color: Style.fg
-                    wrapMode: Text.WordWrap
-                    font.pixelSize: Style.dp(13)
-                    lineHeight: 1.25
-                }
-            }
-        }
-    }
-
-    Dialog {
         id: _resetDlg
         title: "Reset layout"
         modal: true
@@ -911,6 +821,13 @@ ApplicationWindow {
             }
         }
         onRejected: close()
+    }
+
+    // The program's User Guide window, at a section ("" for where it was).
+    function openGuide(section) {
+        var w = Helpers.createComponent("DialogHelp.qml")
+        if (w && section)
+            w.showSection(section)
     }
 
     function _ed() {
@@ -1812,8 +1729,12 @@ ApplicationWindow {
             Menu {
                 title: "Help"
                 MenuItem {
-                    text: "Editor help"
-                    onTriggered: _helpDlg.open()
+                    text: "Button Map guide"
+                    onTriggered: _buttonMap.openGuide("Button Map")
+                }
+                MenuItem {
+                    text: "User Guide"
+                    onTriggered: _buttonMap.openGuide("")
                 }
             }
         }
@@ -1931,7 +1852,7 @@ ApplicationWindow {
                 }
                 Shortcut {
                     sequence: "F1"
-                    onActivated: _helpDlg.open()
+                    onActivated: _buttonMap.openGuide("Button Map")
                 }
                 Shortcut {
                     enabled: editing
