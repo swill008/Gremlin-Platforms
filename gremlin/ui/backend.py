@@ -202,6 +202,7 @@ class Backend(QtCore.QObject):
         self.engine = engine
         self.config = config.Configuration()
         self.profile = profile.Profile()
+        self.profile.mark_clean()
         shared_state.current_profile = self.profile
         self._last_error = ""
         # Read by main() after the event loop ends; set only by the quit path.
@@ -448,7 +449,9 @@ class Backend(QtCore.QObject):
     def newProfile(self) -> None:
         self.activate_gremlin(False)
         self.profile = profile.Profile()
+        self.profile.mark_clean()
         self.profileChanged.emit()
+        self.windowTitleChanged.emit()
         signal.reloadCurrentInputItem.emit()
         signal.reloadUi.emit()
 
@@ -531,9 +534,11 @@ class Backend(QtCore.QObject):
 
     @QtCore.Property(type=str, notify=windowTitleChanged)
     def windowTitle(self) -> str:
+        """The profile's file name (the full path is in File → Save As and
+        the footer), or "Untitled" before its first save."""
         if self.profile and self.profile.fpath:
-            return str(self.profile.fpath)
-        return ""
+            return Path(self.profile.fpath).name
+        return "Untitled"
 
     def _record_profile_use(self, path: Path) -> None:
         """Records the given profile as the most recently used one.

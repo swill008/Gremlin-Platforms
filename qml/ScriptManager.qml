@@ -41,6 +41,10 @@ Item {
     }
 
     // Dialog to rename a script
+    DismissibleDialog {
+        id: _removeGate
+    }
+
     TextInputDialog {
         id: _renameScriptDialog
 
@@ -198,12 +202,19 @@ Item {
             text: bsi.icons.trash
 
             onClicked: () => {
-                if (_root.shownPath === path && _root.shownName === name) {
-                    _config.model = []
-                    _root.shownPath = ""
-                    _root.shownName = ""
-                }
-                scriptListModel.removeScript(path, name)
+                var p = path
+                var n = name
+                _removeGate.confirmThen("Remove script?",
+                    "Remove " + n + " from this profile? Its settings here go with it."
+                        + " The script file itself is not deleted.",
+                    "Remove", function() {
+                        if (_root.shownPath === p && _root.shownName === n) {
+                            _config.model = []
+                            _root.shownPath = ""
+                            _root.shownName = ""
+                        }
+                        scriptListModel.removeScript(p, n)
+                    }, null, true)
             }
         }
     }

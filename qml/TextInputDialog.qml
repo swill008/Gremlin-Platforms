@@ -28,7 +28,9 @@ Popup {
     // A blank value is accepted where it means something (a device alias:
     // back to the device's own name); names that must exist turn it off.
     property bool allowBlank: true
-    property bool clearOnClick: true
+    // Off: the name opens selected, so typing replaces it and a click
+    // only places the cursor (it used to wipe the name).
+    property bool clearOnClick: false
     property bool _clearedOnClick: false
     property bool _committed: false
     property bool showOption: false

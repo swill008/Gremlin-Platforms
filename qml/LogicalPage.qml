@@ -327,7 +327,8 @@ Item {
                     }
                 }
                 Label {
-                    text: _root.editorLocked ? "Running" : ""
+                    // Why nothing here can be changed, and how to change it.
+                    text: _root.editorLocked ? "Profile running: stop it to edit" : ""
                     color: Style.fgMuted
                 }
             }

@@ -40,3 +40,11 @@ def test_an_edit_is_unsaved_until_saved(
 
 def test_a_new_profile_counts_as_unsaved() -> None:
     assert Profile().has_unsaved_changes()
+
+
+def test_a_new_profile_marked_clean_has_nothing_to_lose() -> None:
+    profile = Profile()
+    profile.mark_clean()
+    assert not profile.has_unsaved_changes()
+    profile.modes.add_mode("Combat")
+    assert profile.has_unsaved_changes()

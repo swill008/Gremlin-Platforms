@@ -148,8 +148,12 @@ ApplicationWindow {
             Button {
                 text: qsTr("Clear log")
                 onClicked: {
-                    _win._follow = true
-                    _log.clear()
+                    _clearGate.confirmThen("Clear log?",
+                        "Clear everything shown here? (The log starts empty at every start anyway.)",
+                        "Clear", function() {
+                            _win._follow = true
+                            _log.clear()
+                        }, null, true)
                 }
             }
             Button {
@@ -157,5 +161,9 @@ ApplicationWindow {
                 onClicked: _log.copyAll()
             }
         }
+    }
+
+    DismissibleDialog {
+        id: _clearGate
     }
 }

@@ -844,9 +844,14 @@ class Profile:
         Returns:
             True if there are unsaved changes, False otherwise
         """
-        if self.fpath is None or self._saved_snapshot is None:
+        if self._saved_snapshot is None:
             return True
         return self._xml_text() != self._saved_snapshot
+
+    def mark_clean(self) -> None:
+        """A new, untouched profile has nothing to lose: only edits after
+        this count as unsaved changes."""
+        self._saved_snapshot = self._xml_text()
 
     def _process_input(self, node: ElementTree.Element) -> None:
         """Processes an InputItem XML node and stores it.

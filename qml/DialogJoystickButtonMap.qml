@@ -221,11 +221,12 @@ ApplicationWindow {
             checked: name === _buttonMap.targetName
             onTriggered: _buttonMap.openForDevice(name, "", guid)
         }
+        // File → Device: the devices to switch to, under their own heading.
         onObjectAdded: function(index, object) {
-            _fileMenu.insertItem(4 + index, object)
+            _deviceMenu.insertItem(index, object)
         }
         onObjectRemoved: function(index, object) {
-            _fileMenu.removeItem(object)
+            _deviceMenu.removeItem(object)
         }
     }
 
@@ -2286,6 +2287,10 @@ ApplicationWindow {
                 ThemedMenuItem { text: "Save"; hint: "Ctrl+S"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
                 ThemedMenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
                 ThemedMenuSeparator {}
+                ThemedMenu {
+                    id: _deviceMenu
+                    title: "Device"
+                }
                 ThemedMenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
                 ThemedMenuItem {
                     text: "Fit to photo frame"

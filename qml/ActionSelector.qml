@@ -36,22 +36,26 @@ Item {
 
         anchors.fill: parent
 
-        Button {
-            id: _button
-
-            text: "Add Action"
-
-            onClicked: {
-                _root.callback(_combobox.currentText)
-            }
-        }
-
+        // Pick the action, then add it (reads left to right).
         ComboBox {
             id: _combobox
 
             Layout.fillWidth: true
             Layout.minimumWidth: Style.dp(72)
             popup.width: Math.max(width, Style.dp(240))
+        }
+
+        Button {
+            id: _button
+
+            text: "Add Action"
+            // Nothing to add when no action fits here.
+            enabled: _combobox.count > 0 && _combobox.currentText.length > 0
+
+            onClicked: {
+                if (_combobox.currentText.length)
+                    _root.callback(_combobox.currentText)
+            }
         }
     }
 }

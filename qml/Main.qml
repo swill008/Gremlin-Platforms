@@ -23,7 +23,26 @@ import "main_commands.js" as MainCommands
 ApplicationWindow {
     font.pixelSize: Style.fontSize
 
-    title: backend ? backend.windowTitle : "Gremlin-Platforms R1"
+    // "* name - Gremlin-Platforms R1"; the * means unsaved changes.
+    title: (profileDirty ? "* " : "") + (backend ? backend.windowTitle : "Untitled") + " - Gremlin-Platforms R1"
+
+    // Unsaved changes, checked while the window is in front (edits only
+    // happen then) and right after a load or save.
+    property bool profileDirty: false
+    function refreshProfileDirty() {
+        profileDirty = !!(backend && backend.profileContainsUnsavedChanges)
+    }
+    Timer {
+        interval: 1500
+        repeat: true
+        running: Qt.application.state === Qt.ApplicationActive
+        onTriggered: refreshProfileDirty()
+    }
+    Connections {
+        target: backend
+        function onWindowTitleChanged() { Qt.callLater(refreshProfileDirty) }
+        function onProfileChanged() { Qt.callLater(refreshProfileDirty) }
+    }
     // Never narrower than the toolbar row, so Manage Modes stays in the window.
     minimumWidth: Math.max(Style.dp(1300), Math.ceil(_toolbarRow.implicitWidth + _toolbarRow.anchors.leftMargin))
     minimumHeight: Style.dp(700)
@@ -430,13 +449,15 @@ ApplicationWindow {
         })
     }
 
+    // Opens (or brings forward) the card's viewer; it never closes one that
+    // is already open (the toolbar's Toggle buttons do that).
     function pairingForCard(card) {
         if (!card)
             return
         if (card.bus === "XInput" || card.tab === "xbox" || card.slug === "xbox")
-            Helpers.toggleComponent("DialogXboxViewer.qml")
+            Helpers.createComponent("DialogXboxViewer.qml")
         else
-            Helpers.toggleComponent("DialogInputViewer.qml")
+            Helpers.createComponent("DialogInputViewer.qml")
     }
 
     function closeWorkRoomNow() {
@@ -469,8 +490,12 @@ ApplicationWindow {
             configureWin.close()
     }
 
+    // Same as opening a profile: asks only when there is something to lose,
+    // and offers Save.
     function requestNewProfile() {
-        _newProfileDialog.open()
+        guardUnsavedChanges(function() {
+            leaveDisplayThen(function() { backend.newProfile() })
+        }, false)
     }
 
     function saveCurrentProfile() {
@@ -556,7 +581,7 @@ ApplicationWindow {
     }
 
     // For the command list (main_commands.js), which keeps no window list of
-    // its own: helpers.js remembers the windows it opened per importer.
+    // its own (helpers.js keeps one list for the whole program).
     function openTool(spec) {
         Helpers.createComponent(spec)
     }
@@ -767,21 +792,6 @@ ApplicationWindow {
     // Asks before a save leaves out unfinished actions (saveProfileChecked).
     DismissibleDialog {
         id: _unfinishedGate
-    }
-
-    DismissibleDialog {
-        id: _newProfileDialog
-
-        titleText: "New Profile"
-        messageText: "Creating a new profile will replace the current profile. Unsaved mappings will be lost.\n\nProgram Options and OSC Settings will Persist"
-        confirmText: "Create new profile"
-        cancelText: "Cancel"
-        destructive: true
-
-        onConfirmed: {
-            if (backend)
-                leaveDisplayThen(function() { backend.newProfile() })
-        }
     }
 
     DismissibleDialog {
