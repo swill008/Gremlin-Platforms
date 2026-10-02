@@ -154,7 +154,8 @@ Window {
             var k = n.skew || [0, 0]
             var dx = hs[i].x - it.width / 2
             var dy = hs[i].y - it.height / 2
-            var p = it.mapToItem(null, it.width / 2 + dx + k[0] * dy, it.height / 2 + dy + k[1] * dx)
+            var p = it.mapToItem(null, it.width / 2 + dx + k[0] * dy,
+                                 it.height / 2 + dy + k[1] * dx)
             return JSON.stringify([p.x, p.y])
         }
         return "null"
@@ -1780,7 +1781,8 @@ def scenario_shape_tools(s: Session) -> None:
     s.call("convertToPath")
     s.record("triangle-points", image=True)
     n = s.node(tri)
-    s.steps[-1]["state"]["path"] = [n.get("shape"), len(n.get("pts", [])), n.get("closed")]
+    s.steps[-1]["state"]["path"] = [
+        n.get("shape"), len(n.get("pts", [])), n.get("closed")]
 
 
 def scenario_export(s: Session) -> None:
