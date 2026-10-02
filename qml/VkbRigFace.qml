@@ -494,7 +494,8 @@ Item {
                 Image {
                     id: _img
                     anchors.fill: parent
-                    source: _face.photoOverride.length ? _face.photoOverride : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
+                    // No photo chosen shows none (not the Gladiator).
+                    source: _face.photoOverride.length ? _face.photoOverride : ""
                     fillMode: Image.PreserveAspectFit
                     visible: !_editorLoader.item
                     asynchronous: true

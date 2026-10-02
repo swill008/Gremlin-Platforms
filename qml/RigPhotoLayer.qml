@@ -13,9 +13,11 @@ Item {
     property var ed: null
     property var linesCanvas: null
     // The photo as chosen, before any look is applied.
+    // No photo chosen: nothing (the stock Gladiator photo comes in as an
+    // override, only for Gladiator devices).
     readonly property url baseUrl: (ed.face && ed.face.photoOverride && ed.face.photoOverride.length)
                                    ? ed.face.photoOverride
-                                   : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
+                                   : ""
     z: 0
     visible: !ed.photoHidden
     x: ed.innerPageRect().x

@@ -21,7 +21,17 @@ Item {
     property int itemSpacing : Style.dp(10)
     property bool compactMode: false
     property var inputItemModel
-    property var inputBinding
+    // Containers (Tempo, Chain, Condition...) don't pass it on: a nested node
+    // takes the enclosing node's, so editors like Map to Mouse know the input.
+    property var inputBinding: _enclosingBinding()
+
+    function _enclosingBinding() {
+        for (var p = parent; p; p = p.parent) {
+            if (p.inputBinding !== undefined)
+                return p.inputBinding
+        }
+        return null
+    }
 
     implicitHeight: _content.height
 

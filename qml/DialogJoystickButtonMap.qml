@@ -66,9 +66,8 @@ ApplicationWindow {
             return "qml/images/vkb_gladiator_evo_l.jpg"
         if (/gladiator/i.test(targetName))
             return "qml/images/vkb_gladiator_rig.jpg"
-        if (initialPhoto.length)
-            return initialPhoto
-        return "qml/images/vkb_gladiator_rig.jpg"
+        // Any other device: its own card photo, or no photo at all.
+        return initialPhoto
     }
     property int _nameTick: 0
     property bool editing: false
@@ -808,7 +807,8 @@ ApplicationWindow {
             return
         }
         discardEdit()
-        initialPhoto = pendingPhoto.length ? pendingPhoto : initialPhoto
+        // This device's photo only; never the previous device's.
+        initialPhoto = pendingPhoto
         targetName = name
         targetGuid = pendingGuid
         loadedDevice = name
@@ -936,6 +936,18 @@ ApplicationWindow {
 
     function _ed() {
         return _cardLoader.item ? _cardLoader.item.editorItem : null
+    }
+
+    // The editor leaves Move photo on its own (Esc, picking a node, layers);
+    // follow it, or the hint stays up and the next photo change turns it back on.
+    Connections {
+        target: _cardLoader.item ? _cardLoader.item.editorItem : null
+        ignoreUnknownSignals: true
+        function onMovePhotoChanged() {
+            var e = _buttonMap._ed()
+            if (e && !e.movePhoto)
+                _buttonMap.movePhoto = false
+        }
     }
 
     function poolHaystack(row) {
@@ -1239,6 +1251,7 @@ ApplicationWindow {
     function fitPhotoWell() {
         photoScale = 1
         applyPhotoToEditor()
+        notePhotoChange()
     }
 
     function applyViewToFace() {
@@ -1450,7 +1463,10 @@ ApplicationWindow {
         var e = _ed()
         sceneShiftList(editing ? workNodes : liveNodes)
         fittedThisEdit = true
-        if (e && e.repaint)
+        // An undo step for the moved nodes (bump repaints too).
+        if (editing && e && e.bump)
+            e.bump()
+        else if (e && e.repaint)
             e.repaint()
     }
 

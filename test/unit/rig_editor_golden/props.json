@@ -5567,8 +5567,5 @@
    "step": "locked"
   }
  ],
- "warnings": [
-  "QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg",
-  "QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg"
- ]
+ "warnings": []
 }

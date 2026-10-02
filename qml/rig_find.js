@@ -61,7 +61,8 @@ function findTick() {
             hit = c
     }
     findPrev = next
-    if (hit)
+    // Not mid-drag: selecting would pull the dragged node out from under it.
+    if (hit && !dragKind)
         findControl(hit.kind, hit.hwId)
 }
 
@@ -85,7 +86,9 @@ function findControl(kind, hwId) {
     if (face && face.showEditorRect)
         face.showEditorRect(b.x, b.y, b.w, b.h)
     showFindMessage("Found " + label + ".")
-    bump()
+    // Selecting is not an edit: redraw without an undo step.
+    repaint()
+    selectedChanged()
 }
 
 function showFindMessage(text) {
