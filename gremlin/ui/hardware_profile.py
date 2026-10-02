@@ -1413,10 +1413,6 @@ class HardwareProfile(QtCore.QObject):
             node.pop("srcUrl", None)
         return payload
 
-    @QtCore.Slot(str, result=str)
-    def defaultPath(self, device_name: str) -> str:
-        return str(self._file_for(device_name))
-
     @QtCore.Slot(result=str)
     def exportFolderUrl(self) -> str:
         return _export_dir().as_uri()
@@ -1429,71 +1425,6 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(result=str)
     def packDevices(self) -> str:
         return json.dumps({"ok": True, "devices": _known_pack_devices()})
-
-    @QtCore.Slot(str, result=str)
-    def packTarget(self, device_name: str) -> str:
-        name = " ".join(str(device_name or "").split())
-        match = _match_pack_device(name)
-        slug = _slug(name) if name else ""
-        path = _maps_dir() / f"{slug}.json" if slug else None
-        guid = str(match["guid"]) if match and match.get("guid") else ""
-        return json.dumps({
-            "ok": True,
-            "name": name,
-            "guid": guid,
-            "connected": bool(match and match.get("connected")),
-            "hasFile": bool(path and path.is_file()),
-            "fileName": f"{slug}.json" if slug else "",
-        })
-
-    def _build_pack(self, device_name: str) -> tuple[dict, list[tuple[Path, str]]] | str:
-        name = " ".join(str(device_name or "").split())
-        if not name:
-            return "Choose a device."
-        path = self._file_for(name)
-        doc = _read_json_dict(path) if path.is_file() else None
-        if not doc:
-            return "This device has no module file yet."
-        packed = json.loads(json.dumps(doc))
-        packed.pop("boundGuidLocal", None)
-        packed.pop("boundName", None)
-        match = _match_pack_device(name)
-        guid = str(match["guid"]) if match and match.get("guid") else ""
-        packed["device"] = name
-        packed["pack"] = {"exportedName": name, "exportedGuid": guid}
-        files: list[tuple[Path, str]] = []
-        used: set[str] = set()
-
-        def take(stored: str) -> str:
-            found = self._resolve_existing(stored)
-            if not found or not found.is_file():
-                return ""
-            arc = _safe_name(found.name, "photo" + found.suffix.lower())
-            if arc in used:
-                stem, ext = Path(arc).stem, Path(arc).suffix
-                number = 1
-                while f"{stem}_{number}{ext}" in used:
-                    number += 1
-                arc = f"{stem}_{number}{ext}"
-            used.add(arc)
-            files.append((found, arc))
-            return arc
-
-        image = str(packed.get("image") or "")
-        if image:
-            arc = take(image)
-            if arc:
-                packed["image"] = arc
-            else:
-                packed.pop("image", None)
-        for node in packed.get("nodes") or []:
-            if not isinstance(node, dict) or node.get("shape") != "image":
-                continue
-            arc = take(str(node.get("src") or ""))
-            if arc:
-                node["src"] = arc
-            node.pop("srcUrl", None)
-        return packed, files
 
     @QtCore.Slot(str, result=str)
     def peekPackDevice(self, device_name: str) -> str:

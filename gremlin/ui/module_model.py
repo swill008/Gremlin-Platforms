@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-import uuid
 from pathlib import Path
 
 from PySide6 import QtCore
@@ -868,18 +867,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def hiddenList(self) -> list[str]:
         return sorted(_hidden_slugs())
 
-    @QtCore.Slot(str, int)
-    def moveSlug(self, slug: str, to_index: int) -> None:
-        current = [row.slug for row in self._rows]
-        if slug not in current:
-            return
-        current.remove(slug)
-        dest = max(0, min(int(to_index), len(current)))
-        current.insert(dest, slug)
-        extras = [s for s in _order_slugs() if s not in current and s not in _hidden_slugs()]
-        _set_order(current + extras)
-        self._reload()
-
     @QtCore.Slot(str, str)
     def moveSlugBefore(self, slug: str, before_slug: str) -> None:
         groups = {g[0]: g for g in self._stacks()}
@@ -1055,31 +1042,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self.panesChanged.emit()
 
     @QtCore.Slot(str, str)
-    def stackSlugs(self, src: str, dst: str) -> None:
-        if not src or not dst or src == dst:
-            return
-        dirs = {row.slug: row.direction for row in self._rows}
-        if dirs.get(src) and dirs.get(dst) and dirs[src] != dirs[dst]:
-            return
-        groups = self._stacks()
-        src_group = next((g for g in groups if src in g), [src])
-        dst_group = next((g for g in groups if dst in g), [dst])
-        groups = [g for g in groups if src not in g and dst not in g]
-        merged = [s for s in dst_group if s != src] + [s for s in src_group if s not in dst_group]
-        if src not in merged:
-            merged.append(src)
-        groups.append(merged)
-        self._set_stacks(groups)
-        sizes = _sizes()
-        shared = sizes.get(dst) or sizes.get(src)
-        if shared:
-            for member in merged:
-                sizes[member] = shared
-            _set_sizes(sizes)
-        self._reload()
-        self.panesChanged.emit()
-
-    @QtCore.Slot(str, str)
     def stackSelected(self, leader: str, slugs_csv: str) -> None:
         """Stack the listed slugs onto leader. Leader keeps the pile slot."""
         if not leader:
@@ -1217,17 +1179,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return self._row_map(self._rows[0])
         return {}
 
-    @QtCore.Slot(str, str, int, result=bool)
-    def isClaimedInput(self, device_name: str, kind: str, hw_id: int) -> bool:
-        # Configuration left list is module claim only — never dump raw DILL.
-        doc = _load_module_doc(device_name)
-        if not doc:
-            return False
-        claim = read_claim(doc)
-        if claim_is_empty(claim):
-            return False
-        return claim_allows(claim, kind, hw_id)
-
     @QtCore.Slot(str, result=int)
     def claimedCount(self, device_name: str) -> int:
         doc = _load_module_doc(device_name)
@@ -1303,13 +1254,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def foreignModuleFile(self, guid: str, device_name: str) -> str:
         return foreign_module_file(device_name, guid)
 
-    @QtCore.Slot(str, str, str)
-    def bindModuleFile(self, guid: str, device_name: str, file_name: str) -> None:
-        if not bind_module_file(device_name, guid, file_name):
-            return
-        signal.configChanged.emit()
-        self._refresh_inplace()
-
     @QtCore.Slot(result=str)
     def mapsFolderUrl(self) -> str:
         return maps_folder_url()
@@ -1346,10 +1290,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
             signal.configChanged.emit()
             self._refresh_inplace()
         return message
-
-    @QtCore.Slot(str, str, str, result=str)
-    def loadModuleFile(self, guid: str, device_name: str, source_url: str) -> str:
-        return self.importModuleFile(guid, device_name, source_url, "source")
 
     @QtCore.Slot(str, str, result=str)
     def deletePreview(self, device_name: str, guid: str) -> str:

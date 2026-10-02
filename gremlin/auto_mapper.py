@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
-from collections.abc import Iterable
 from typing import Self
 
 import dill
@@ -73,47 +72,6 @@ class AutoMapper:
     @classmethod
     def from_current_profile(cls) -> Self:
         return cls(shared_state.current_profile)
-
-    def generate_mappings(
-        self,
-        input_devices_guids: list[dill.GUID],
-        output_vjoy_ids: list[int],
-        options: AutoMapperOptions,
-    ) -> str:
-        """Legacy HID path. Prefer generate_module_mappings."""
-        if not input_devices_guids:
-            return "No input devices selected"
-        if not output_vjoy_ids:
-            return "No vJoy devices selected"
-        input_devices = [
-            dev
-            for dev in device_initialization.physical_devices()
-            if dev.device_guid in input_devices_guids
-        ]
-
-        self._prepare_profile(input_devices, options)
-        self._num_retained_bindings = 0
-        used_vjoy_inputs = set(self._get_used_vjoy_inputs(options.mode))
-        vjoy_axes = self._iter_unused_vjoy_axes(output_vjoy_ids, used_vjoy_inputs)
-        vjoy_buttons = self._iter_unused_vjoy_buttons(output_vjoy_ids, used_vjoy_inputs)
-        vjoy_hats = self._iter_unused_vjoy_hats(output_vjoy_ids, used_vjoy_inputs)
-        if options.repeat_vjoy_inputs:
-            vjoy_axes = itertools.cycle(vjoy_axes)
-            vjoy_buttons = itertools.cycle(vjoy_buttons)
-            vjoy_hats = itertools.cycle(vjoy_hats)
-        for physical_axis, vjoy_axis in zip(
-            self._iter_physical_axes(input_devices, options), vjoy_axes
-        ):
-            self._create_new_mapping(physical_axis, vjoy_axis)
-        for physical_button, vjoy_button in zip(
-            self._iter_physical_buttons(input_devices, options), vjoy_buttons
-        ):
-            self._create_new_mapping(physical_button, vjoy_button)
-        for physical_hat, vjoy_hat in zip(
-            self._iter_physical_hats(input_devices, options), vjoy_hats
-        ):
-            self._create_new_mapping(physical_hat, vjoy_hat)
-        return self._create_mappings_report()
 
     def generate_module_mappings(
         self,
@@ -235,71 +193,6 @@ class AutoMapper:
             return {"axes": axes, "buttons": buttons, "hats": hats}
         return empty
 
-    def _prepare_profile(
-        self, input_devices: list[dill.DeviceSummary], options: AutoMapperOptions
-    ) -> None:
-        if options.overwrite_used_inputs:
-            for dev in input_devices:
-                self._profile.inputs.pop(dev.device_guid.uuid, None)
-
-    def _iter_physical_axes(
-        self,
-        input_devices: list[dill.DeviceSummary],
-        options: AutoMapperOptions,
-    ) -> Iterable[profile.InputItem]:
-        for dev in input_devices:
-            for linear_index in range(dev.axis_count):
-                axis_index = dev.axis_map[linear_index].axis_index
-                input_item = self._profile.get_input_item(
-                    dev.device_guid.uuid,
-                    types.InputType.JoystickAxis,
-                    axis_index,
-                    options.mode,
-                    create_if_missing=True,
-                )
-                if not input_item.action_sequences:
-                    yield input_item
-                else:
-                    self._num_retained_bindings += 1
-
-    def _iter_physical_buttons(
-        self,
-        input_devices: list[dill.DeviceSummary],
-        options: AutoMapperOptions,
-    ) -> Iterable[profile.InputItem]:
-        for dev in input_devices:
-            for button in range(1, dev.button_count + 1):
-                input_item = self._profile.get_input_item(
-                    dev.device_guid.uuid,
-                    types.InputType.JoystickButton,
-                    button,
-                    options.mode,
-                    create_if_missing=True,
-                )
-                if not input_item.action_sequences:
-                    yield input_item
-                else:
-                    self._num_retained_bindings += 1
-
-    def _iter_physical_hats(
-        self,
-        input_devices: list[dill.DeviceSummary],
-        options: AutoMapperOptions,
-    ) -> Iterable[profile.InputItem]:
-        for dev in input_devices:
-            for hat in range(1, dev.hat_count + 1):
-                input_item = self._profile.get_input_item(
-                    dev.device_guid.uuid,
-                    types.InputType.JoystickHat,
-                    hat,
-                    options.mode,
-                    create_if_missing=True,
-                )
-                if not input_item.action_sequences:
-                    yield input_item
-                else:
-                    self._num_retained_bindings += 1
-
     def _get_used_vjoy_inputs(self, mode: str) -> list[types.VjoyInput]:
         used_vjoy_inputs = []
         connected_device_uuids = [
@@ -323,46 +216,6 @@ class AutoMapper:
                                 )
                             )
         return used_vjoy_inputs
-
-    def _iter_unused_vjoy_axes(
-        self, vjoy_ids: list[int], used_vjoy_inputs: set[types.VjoyInput]
-    ) -> Iterable[types.VjoyInput]:
-        for vjoy_dev in device_initialization.vjoy_devices():
-            if vjoy_dev.vjoy_id not in vjoy_ids:
-                continue
-            for linear_index in range(vjoy_dev.axis_count):
-                axis_index = vjoy_dev.axis_map[linear_index].axis_index
-                vjoy_axis = types.VjoyInput(
-                    vjoy_dev.vjoy_id, types.InputType.JoystickAxis, axis_index
-                )
-                if vjoy_axis not in used_vjoy_inputs:
-                    yield vjoy_axis
-
-    def _iter_unused_vjoy_buttons(
-        self, vjoy_ids: list[int], used_vjoy_inputs: set[types.VjoyInput]
-    ) -> Iterable[types.VjoyInput]:
-        for vjoy_dev in device_initialization.vjoy_devices():
-            if vjoy_dev.vjoy_id not in vjoy_ids:
-                continue
-            for button_id in range(1, vjoy_dev.button_count + 1):
-                vjoy_button = types.VjoyInput(
-                    vjoy_dev.vjoy_id, types.InputType.JoystickButton, button_id
-                )
-                if vjoy_button not in used_vjoy_inputs:
-                    yield vjoy_button
-
-    def _iter_unused_vjoy_hats(
-        self, vjoy_ids: list[int], used_vjoy_inputs: set[types.VjoyInput]
-    ) -> Iterable[types.VjoyInput]:
-        for vjoy_dev in device_initialization.vjoy_devices():
-            if vjoy_dev.vjoy_id not in vjoy_ids:
-                continue
-            for hat_id in range(1, vjoy_dev.hat_count + 1):
-                vjoy_hat = types.VjoyInput(
-                    vjoy_dev.vjoy_id, types.InputType.JoystickHat, hat_id
-                )
-                if vjoy_hat not in used_vjoy_inputs:
-                    yield vjoy_hat
 
     def _create_new_mapping(
         self, physical_input: profile.InputItem, vjoy_input: types.VjoyInput

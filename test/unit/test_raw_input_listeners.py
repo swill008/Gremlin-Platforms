@@ -19,7 +19,6 @@ _ALLOWED = {
     "gremlin/ui/device.py": "calibration and the axis graph (input module setup)",
     "gremlin/ui/backend.py": "input highlighting (kept as is by choice)",
     "gremlin/ui/util.py": "Listen for input (kept as is) and macro recording",
-    "gremlin/ui/input_pairing.py": "unused PairLiveState, removed in Phase 5",
 }
 
 _RAW = re.compile(r"\.(joystick_event|keyboard_event)\.connect\(")

@@ -16,7 +16,6 @@ from gremlin.modules.claim import type_of
 from gremlin.profile import InputItem, InputItemBinding
 from gremlin.signal import signal
 from gremlin.ui.module_inputs import ModuleClaimedInputModel
-from gremlin.ui.module_model import _load_module_doc
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -606,12 +605,6 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             return int(self._rows[row]["deviceIndex"])
         return -1
 
-    @QtCore.Slot(int, result=str)
-    def rowKindAt(self, row: int) -> str:
-        if 0 <= row < len(self._rows):
-            return str(self._rows[row]["rowKind"])
-        return ""
-
     def _parent_row(self, device_index: int) -> dict | None:
         want = int(device_index)
         for row in self._rows:
@@ -625,16 +618,6 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     def controlLabel(self, device_index: int) -> str:
         row = self._parent_row(device_index)
         return str(row["name"]) if row else ""
-
-    @QtCore.Slot(int, result=str)
-    def controlSummary(self, device_index: int) -> str:
-        row = self._parent_row(device_index)
-        if row is None:
-            return ""
-        text = str(row.get("summary") or "")
-        if row["rowKind"] == "unmapped":
-            return "Not bound"
-        return text
 
     @QtCore.Slot(int, result=int)
     def leafRun(self, row: int) -> int:
@@ -852,86 +835,6 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         for dev in output_vjoy_devices():
             rows.append(f"{int(dev.vjoy_id)}|{dev.name}")
         return rows
-
-    def _apply_simple_map(self, action, vjoy_id: int, button_id: int, press: bool, release: bool) -> None:
-        from gremlin.types import ActionActivationMode, InputType
-
-        action.vjoy_device_id = int(vjoy_id)
-        action.vjoy_input_id = max(1, int(button_id))
-        action.vjoy_input_type = InputType.JoystickButton
-        if press and release:
-            action.activation_mode = ActionActivationMode.Both
-        elif press:
-            action.activation_mode = ActionActivationMode.Press
-        elif release:
-            action.activation_mode = ActionActivationMode.Release
-        else:
-            action.activation_mode = ActionActivationMode.Deactivated
-
-    @QtCore.Slot(int, int, int, int, bool, bool, result=int)
-    def writeSimpleMap(
-        self,
-        device_index: int,
-        sequence_index: int,
-        vjoy_id: int,
-        button_id: int,
-        press: bool,
-        release: bool,
-    ) -> int:
-        """Add or update one plain Map to vJoy button on this control.
-
-        sequence_index below zero adds a new sequence. Actions stay in the profile.
-        """
-        from action_plugins.map_to_vjoy import MapToVjoyData
-        from gremlin.types import InputType
-
-        want = int(device_index)
-        item = self._input_item_for(want, True)
-        if item is None:
-            return -1
-        seq = int(sequence_index)
-        if seq < 0:
-            item.add_item_binding()
-            seq = len(item.action_sequences) - 1
-        sequences = item.action_sequences
-        if seq >= len(sequences):
-            return -1
-        if not sequence_is_simple(item, seq):
-            return -1
-        root = sequences[seq].root_action
-        kids = _action_children(root)
-        if len(kids) == 1 and str(getattr(kids[0], "tag", "") or "") != "map-to-vjoy":
-            return -1
-        if len(kids) == 1:
-            self._apply_simple_map(kids[0], vjoy_id, button_id, press, release)
-        else:
-            action = MapToVjoyData(InputType.JoystickButton)
-            self._apply_simple_map(action, vjoy_id, button_id, press, release)
-            root.insert_action(action, "children")
-        signal.inputItemChanged.emit(want)
-        signal.reloadCurrentInputItem.emit()
-        return seq
-
-    @QtCore.Slot(int, int, result=str)
-    def simpleMap(self, device_index: int, sequence_index: int) -> str:
-        """id|button|press|release for a plain vJoy map, or empty."""
-        from gremlin.types import ActionActivationMode
-
-        item = self._input_item_for(int(device_index), False)
-        seq = int(sequence_index)
-        if item is None or not sequence_is_simple(item, seq):
-            return ""
-        sequences = getattr(item, "action_sequences", None) or []
-        if not (0 <= seq < len(sequences)):
-            return ""
-        kids = _action_children(sequences[seq].root_action)
-        if len(kids) != 1 or str(getattr(kids[0], "tag", "") or "") != "map-to-vjoy":
-            return ""
-        action = kids[0]
-        mode = action.activation_mode
-        press = mode in (ActionActivationMode.Press, ActionActivationMode.Both)
-        release = mode in (ActionActivationMode.Release, ActionActivationMode.Both)
-        return f"{int(action.vjoy_device_id)}|{int(action.vjoy_input_id)}|{int(press)}|{int(release)}"
 
     @QtCore.Slot(int, result=int)
     def addSequence(self, device_index: int) -> int:

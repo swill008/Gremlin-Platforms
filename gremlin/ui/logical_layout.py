@@ -665,16 +665,6 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._mode = mode or "Default"
         self._rebuild()
 
-    @QtCore.Slot(str)
-    def addOne(self, type_name: str) -> None:
-        kind = InputType.to_enum(type_name)
-
-        def fn():
-            self._logical.create(kind)
-            return []
-
-        self._apply(fn)
-
     @QtCore.Slot(str, int, result=bool)
     def deleteAction(self, parent_key: str, sequence_index: int) -> bool:
         """Remove one action sequence from the parent in the current mode."""
@@ -751,21 +741,6 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             current = self._item_for(key)
             if current is not None:
                 current.hide_system = bool(hide_system) and bool(current.second_name)
-            return []
-
-        self._apply(fn)
-
-    @QtCore.Slot(str)
-    def setSelectedName(self, name: str) -> None:
-        keys = [key for key in self._selected if key.startswith("parent:")]
-        if not keys:
-            return
-
-        def fn():
-            for key in keys:
-                item = self._item_for(key)
-                if item is not None:
-                    self._logical.set_user_label(item.identifier, name)
             return []
 
         self._apply(fn)
@@ -1355,10 +1330,6 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         if 0 <= row < len(self._rows):
             return str(self._rows[row]["key"])
         return ""
-
-    @QtCore.Slot(result="QStringList")
-    def selectionKeys(self) -> list[str]:
-        return list(self._selected)
 
     @QtCore.Property("QVariantList", notify=groupsChanged)
     def groups(self) -> list:

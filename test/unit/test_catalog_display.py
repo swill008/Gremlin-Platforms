@@ -52,7 +52,7 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "def refreshOpenRow" in py
     assert "def noteOpenRow" in py
     assert "def sequences_for_item" in py
-    assert "def writeSimpleMap" in py
+    assert "def writeSimpleMap" not in py  # unused, removed in Phase 5
     assert "function openAdvancedPane" in qml
     main = Path(__file__).resolve().parents[2].joinpath("qml/Main.qml").read_text(encoding="utf-8")
     assert "DialogActionEditor.qml" not in main

@@ -323,12 +323,6 @@ class ModulePairButtonModel(_ModulePairMappedModel):
         super().__init__(InputType.JoystickButton, parent)
 
 
-@ta.QmlElement
-class ModulePairHatModel(_ModulePairMappedModel):
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(InputType.JoystickHat, parent)
-
-
 import gremlin.ui.module_inputs  # noqa: F401
 import gremlin.ui.output_modules  # noqa: F401
 import gremlin.ui.auto_map_modules  # noqa: F401
