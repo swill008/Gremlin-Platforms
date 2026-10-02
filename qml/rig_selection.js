@@ -243,6 +243,8 @@ function toggleSelected(id) {
 function cancelAllActions() {
     endGroupEdit()
     drawTool = ""
+    pathDraft = []
+    pathHover = null
     dragKind = ""
     clearMoveGuides()
     dragSpine = -1

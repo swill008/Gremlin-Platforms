@@ -13,6 +13,11 @@ function applyPointer(mx, my, altOff) {
         dragTurn(mx, my)
         return
     }
+    if (dragKind.indexOf("draw-pt") === 0) {
+        dragPathPoint(parseInt(dragKind.slice(7), 10), mx, my)
+        tick++
+        return
+    }
     if (dragKind === "draw-tail") {
         dragCalloutTip(nodeAt(selectedId), mx, my)
         tick++

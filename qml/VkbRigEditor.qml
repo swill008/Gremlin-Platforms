@@ -28,6 +28,7 @@ import "rig_find.js" as RigFind
 import "rig_mirror.js" as RigMirror
 import "rig_grouprot.js" as RigGroupRot
 import "rig_callout.js" as RigCallout
+import "rig_path.js" as RigPath
 
 Item {
     id: _ed
@@ -53,6 +54,10 @@ Item {
     // and the angle so far.
     property var turnStart: null
     property real turnAngle: 0
+    // The Path and Freehand tools' points so far (editor pixels), and the
+    // pointer for the Path tool's next segment.
+    property var pathDraft: []
+    property var pathHover: null
     property var selectedIds: []
     property bool banding: false
     property bool bandAdd: false
@@ -519,6 +524,26 @@ Item {
     function removeCalloutTail() { return RigCallout.removeCalloutTail() }
     function detachCalloutTail() { return RigCallout.detachCalloutTail() }
     function addCalloutFor(chipId) { return RigCallout.addCalloutFor(chipId) }
+
+    // Paths and freehand lines (rig_path.js)
+    function isPath(n) { return RigPath.isPath(n) }
+    function isPathTool(tool) { return RigPath.isPathTool(tool) }
+    function pathLocal(n, w, h) { return RigPath.pathLocal(n, w, h) }
+    function pathPointsAt(n) { return RigPath.pathPointsAt(n) }
+    function setPathPoints(n, pts) { return RigPath.setPathPoints(n, pts) }
+    function pathClick(mx, my) { return RigPath.pathClick(mx, my) }
+    function pathHoverAt(mx, my) { return RigPath.pathHoverAt(mx, my) }
+    function finishPath(closed) { return RigPath.finishPath(closed) }
+    function cancelPath() { return RigPath.cancelPath() }
+    function penStart(mx, my) { return RigPath.penStart(mx, my) }
+    function penMove(mx, my) { return RigPath.penMove(mx, my) }
+    function penEnd() { return RigPath.penEnd() }
+    function paintPathDraft(ctx) { return RigPath.paintPathDraft(ctx) }
+    function paintPath(ctx, n, w, h) { return RigPath.paintPath(ctx, n, w, h) }
+    function hitPath(n, px, py, w, h) { return RigPath.hitPath(n, px, py, w, h) }
+    function dragPathPoint(i, mx, my) { return RigPath.dragPathPoint(i, mx, my) }
+    function togglePathClosed() { return RigPath.togglePathClosed() }
+    function togglePathSmooth() { return RigPath.togglePathSmooth() }
     function distributeSelection(axis) { return RigAlign.distributeSelection(axis) }
 
     // The Properties panel's fields (rig_props.js)
@@ -538,6 +563,8 @@ Item {
 
     function paintDraw(ctx, n, w, h) { return RigDraw.paintDraw(ctx, n, w, h) }
     function isLine(n) { return RigDraw.isLine(n) }
+    function isHead(style) { return RigDraw.isHead(style) }
+    function paintHead(ctx, head, style) { return RigDraw.paintHead(ctx, head, style) }
     function isLineTool(tool) { return RigDraw.isLineTool(tool) }
     function lineEndsAt(n) { return RigDraw.lineEndsAt(n) }
     function setLineEnds(n, ax, ay, bx, by) { return RigDraw.setLineEnds(n, ax, ay, bx, by) }
@@ -1180,6 +1207,12 @@ Item {
                 return "Draw text — drag a box. Double-click to edit. Esc cancels."
             if (_ed.drawTool === "table")
                 return "Draw table — drag a box. Blank 1×2. Esc cancels."
+            if (_ed.drawTool === "path")
+                return "Path — click each point. Click the first point to close; double-click, Enter or right-click to finish. Shift: angle steps. Esc cancels."
+            if (_ed.drawTool === "pen")
+                return "Freehand — draw with the button held down. Esc stops."
+            if (_ed.drawTool === "callout")
+                return "Callout — drag a box, then drag the pointer's tip. Esc cancels."
             if (_ed.drawTool.length)
                 return "Draw " + _ed.drawTool + " — drag on empty. Esc cancels."
             if (_ed.groupEditId.length) {
@@ -1207,6 +1240,25 @@ Item {
         }
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
+    }
+
+    // The Path and Freehand tools' line so far.
+    Canvas {
+        id: _pathPreview
+        anchors.fill: parent
+        visible: _ed.interactive && _ed.pathDraft.length > 0
+        z: 7
+        antialiasing: true
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            _ed.paintPathDraft(ctx)
+        }
+        Connections {
+            target: _ed
+            function onTickChanged() { if (_pathPreview.visible) _pathPreview.requestPaint() }
+            function onPathDraftChanged() { _pathPreview.requestPaint() }
+        }
     }
 
     // Preview of a line or arrow being drawn, over the whole editor so a flat

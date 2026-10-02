@@ -245,3 +245,31 @@ def test_callout_tip_inside_is_just_the_box(js: QtQml.QJSEngine) -> None:
     assert call(js, "calloutOutline(100, 40, 50, 20, 20)") == [
         [0, 0], [100, 0], [100, 40], [0, 40]
     ]
+
+
+def test_simplify_path_keeps_corners_and_drops_wobble(js: QtQml.QJSEngine) -> None:
+    # A wobbly line to (100, 0), then straight up: the corner and both ends stay.
+    wobble = [[x, 0.4 if x % 20 else 0] for x in range(0, 101, 5)]
+    pts = [*wobble, [100, 50], [100, 100]]
+    kept = call(js, f"simplifyPath({json.dumps(pts)}, 1)")
+    assert kept[0] == [0, 0] and kept[-1] == [100, 100]
+    assert [100, 0] in kept
+    assert len(kept) == 3
+    assert call(js, "simplifyPath([[0, 0], [5, 5]], 1)") == [[0, 0], [5, 5]]
+
+
+def test_path_box_and_fractions(js: QtQml.QJSEngine) -> None:
+    box = call(js, "pathBox([[10, 20], [50, 20], [30, 60]], 5)")
+    assert (box["x"], box["y"], box["w"], box["h"]) == (5, 15, 50, 50)
+    assert box["rel"][0] == [0.1, 0.1]
+    assert box["rel"][2] == [0.5, 0.9]
+
+
+def test_distance_to_path_and_inside(js: QtQml.QJSEngine) -> None:
+    square = "[[0, 0], [10, 0], [10, 10], [0, 10]]"
+    assert call(js, f"distToPath(5, -3, {square}, false)") == 3
+    # Open, the left side is not part of the path; closed, it is.
+    assert call(js, f"distToPath(-2, 5, {square}, false)") > 2
+    assert call(js, f"distToPath(-2, 5, {square}, true)") == 2
+    assert call(js, f"insidePolygon(5, 5, {square})") is True
+    assert call(js, f"insidePolygon(15, 5, {square})") is False

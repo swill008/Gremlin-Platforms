@@ -286,7 +286,7 @@ function unlockAll() {
 
 var _KIND_NAMES = {
     rect: "Rectangle", roundrect: "Rounded rectangle", ellipse: "Ellipse", triangle: "Triangle",
-    diamond: "Diamond", arrow: "Arrow", arrow2: "Double arrow", line: "Line", table: "Table"
+    diamond: "Diamond", arrow: "Arrow", arrow2: "Double arrow", line: "Line", path: "Path", table: "Table"
 }
 
 // The name shown for an item: its own name, else what it is.

@@ -156,6 +156,12 @@ function hitDraw(n, mx, my) {
                 return chs[ct][2]
         }
     }
+    // A path's own points come before its box's handles.
+    if (isPath(n)) {
+        var onPt = hitPath(n, p.x, p.y, w, h)
+        if (onPt.indexOf("pt") === 0)
+            return onPt
+    }
     // The rotate handle sits above the top edge (rotateHandleOffset).
     if (interactive && isSelected(n.id) && !isLocked(n) && isRotatable(n) && cropId !== n.id
             && !canTurnTogether() && Math.hypot(p.x - w * 0.5, p.y + rotateHandleOffset) < 9)
@@ -181,6 +187,8 @@ function hitDraw(n, mx, my) {
     }
     if (p.x < 0 || p.y < 0 || p.x > w || p.y > h)
         return ""
+    if (isPath(n))
+        return hitPath(n, p.x, p.y, w, h)
     if (isLocked(n))
         return ""
     if (n.shape === "image" || n.shape === "table" || n.shape === "text" || n.fill === "filled")

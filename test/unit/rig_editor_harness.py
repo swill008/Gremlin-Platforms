@@ -15,6 +15,7 @@ per checkpoint. test_rig_editor_golden.py compares them with the goldens.
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -1415,6 +1416,63 @@ def scenario_callout(s: Session) -> None:
     s.steps[-1]["state"]["tails"] = [s.node(box).get("tail"), s.node(added).get("tail")]
 
 
+def scenario_paths(s: Session) -> None:
+    """The Path tool (clicks, Enter, closing on the first point), the
+    Freehand tool, dragging a point, and a path's menu."""
+    Key = QtCore.Qt.Key
+    _load(s, "evo_r")
+    s.call("setDrawTool", "path")
+    for fx, fy in ((0.05, 0.08), (0.20, 0.06), (0.24, 0.20)):
+        s.click(s.point(fx, fy))
+    s.record("path-drafting", image=True)
+    s.key(Key.Key_Return)
+    s.record("path-open")
+    open_path = s.state()["selected"][0]
+
+    # Closed: back on the first point (the tool stays on for the next path).
+    corners = ((0.05, 0.40), (0.18, 0.36), (0.22, 0.52), (0.08, 0.56), (0.05, 0.40))
+    for fx, fy in corners:
+        s.click(s.point(fx, fy))
+    closed = s.state()["selected"][0]
+    s.call("applyField", "fill", "filled")
+    s.record("path-closed", image=True)
+
+    # Freehand: a wavy stroke, simplified and smooth.
+    s.call("setDrawTool", "pen")
+    start = s.point(0.76, 0.30)
+    s._mouse("mousePress", start)
+    for i in range(1, 25):
+        p = QtCore.QPoint(start.x() + i * 10, start.y() + round(30 * math.sin(i / 3)))
+        event = QtGui.QMouseEvent(
+            QtCore.QEvent.Type.MouseMove, QtCore.QPointF(p),
+            QtCore.QPointF(s.win.mapToGlobal(p)), QtCore.Qt.MouseButton.NoButton,
+            QtCore.Qt.MouseButton.LeftButton, QtCore.Qt.KeyboardModifier.NoModifier,
+        )
+        QtCore.QCoreApplication.sendEvent(s.win, event)
+        s.wait(10)
+    s._mouse("mouseRelease", p)
+    s.wait(80)
+    s.call("setDrawTool", "")
+    pen = s.state()["selected"][0]
+    s.record("freehand", image=True)
+    s.steps[-1]["state"]["penPoints"] = len(s.node(pen)["pts"])
+
+    # Drag the open path's middle point down.
+    s.call("setSelection", [open_path])
+    pts = s.call_on_node("pathPointsAt", open_path)
+    mid = s.ed_point(pts[1][0], pts[1][1])
+    s.drag(mid, QtCore.QPoint(mid.x(), mid.y() + 80))
+    s.record("point-dragged", image=True)
+
+    # Its menu: Path section, then Arrowheads (open) or Fill (closed).
+    s.right_click(s.ed_point(pts[0][0], pts[0][1]))
+    s.record("menu-open-path")
+    s.close_menus()
+    s.call("setSelection", [closed])
+    s.call("togglePathSmooth")
+    s.record("closed-smooth", image=True)
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1466,6 +1524,7 @@ SCENARIOS = {
     "mirror": scenario_mirror,
     "turn": scenario_turn,
     "callout": scenario_callout,
+    "paths": scenario_paths,
 }
 
 

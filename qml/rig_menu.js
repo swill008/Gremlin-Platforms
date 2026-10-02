@@ -86,6 +86,8 @@ function menuKind() {
         return "image"
     if (isLine(n))
         return "line"
+    if (isPath(n))
+        return "path"
     if (isDraw(n))
         return "shape"
     if (isGroup(n))
@@ -96,7 +98,7 @@ function menuKind() {
 var _SHAPE_NAMES = {
     rect: "Rectangle", roundrect: "Rounded rectangle", ellipse: "Ellipse",
     triangle: "Triangle", diamond: "Diamond", arrow: "Arrow", arrow2: "Double arrow",
-    line: "Line", text: "Text box", table: "Table", image: "Picture"
+    line: "Line", path: "Path", text: "Text box", table: "Table", image: "Picture"
 }
 
 function _hasHead(style) {
@@ -399,6 +401,39 @@ function _lineSections() {
     ]
 }
 
+function _pathSections() {
+    var n = nodeAt(selectedId)
+    var heads = ["none", "solid", "hollow"]
+    var headLabels = ["None", "Solid", "Hollow"]
+    var closed = !!(n && n.closed)
+    var out = [
+        _sect("path", "Path", [
+            _tog("Closed", closed, togglePathClosed, !!(n && (n.pts || []).length >= 3)),
+            _tog("Smooth", !!(n && n.smooth), togglePathSmooth)
+        ]),
+        _sect("style", "Line", [
+            _act("Colour…", function() { requestDrawColor("border") }),
+            _width(),
+            _outline(),
+            _opacity("opacity")
+        ])
+    ]
+    if (closed) {
+        out.push(_sect("fill", "Fill", [
+            _pick("Fill", ["filled", "hollow"], ["Filled", "Hollow"], _field("fill", "hollow"), _set("fill")),
+            _act("Fill colour…", function() { requestDrawColor("color") })
+        ]))
+    } else {
+        out.push(_sect("heads", "Arrowheads", [
+            _pick("Start", heads, headLabels, _field("headStart", "none"), _setDraw("headStart")),
+            _pick("End", heads, headLabels, _field("headEnd", "none"), _setDraw("headEnd"))
+        ]))
+    }
+    out.push(_rotate())
+    out.push(_arrange())
+    return out
+}
+
 function _imageSections() {
     var n = nodeAt(selectedId)
     return [
@@ -514,7 +549,7 @@ function _canvasSections() {
     var tools = ["rect", "roundrect", "ellipse", "triangle", "diamond", "arrow", "arrow2"]
     var draw = [
         _pick("Shape", tools, _SHAPE_LABELS, function(t) { return drawTool === t }, setDrawTool),
-        _pick("Line", ["line", "arrowline"], ["Line", "Arrow"], function(t) { return drawTool === t }, setDrawTool),
+        _pick("Line", ["line", "arrowline", "path", "pen"], ["Line", "Arrow", "Path", "Freehand"], function(t) { return drawTool === t }, setDrawTool),
         _pick("Box", ["text", "callout", "table"], ["Text box", "Callout", "Table"], function(t) { return drawTool === t }, setDrawTool),
         _act("Import picture…", function() { overlayImportRequested() }),
         _act("Paste picture", function() { pastePictureRequested() }, canPastePicture),
@@ -574,9 +609,10 @@ function menuModel() {
         if (selectedSpine >= 0)
             quick.unshift(_act("Delete spine", function() { selectedLeader = _ctx.leader; deleteSelection() }))
         sections = [_leader(), _leaderEnds(), _chipStyle(), _chipColours(), _hotspot()]
-    } else if (kind === "shape" || kind === "line" || kind === "image") {
+    } else if (kind === "shape" || kind === "line" || kind === "image" || kind === "path") {
         quick = [_act("Duplicate", duplicateSelection), _act("Delete", deleteChip)]
-        sections = kind === "shape" ? _shapeSections() : (kind === "line" ? _lineSections() : _imageSections())
+        sections = kind === "shape" ? _shapeSections()
+            : (kind === "line" ? _lineSections() : (kind === "path" ? _pathSections() : _imageSections()))
     } else if (kind === "text") {
         quick = [
             _act("Edit text…", function() { var t = nodeAt(selectedId); if (isText(t)) beginTextRename(t.id) }),

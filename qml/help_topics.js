@@ -294,6 +294,11 @@ function topics() {
             "<p>Draw → <b>Line</b> picks <b>Line</b> or <b>Arrow</b>. Drag from one end to the other; hold Shift to keep to 15° steps.</p>"
             + "<p>A selected line has a handle on each end; drag one to move that end (Shift for 15° steps). To turn a line, move its ends.</p>"
             + "<p>Its <b>Arrowheads</b> section sets the <b>Start</b> and <b>End</b> to None, Solid or Hollow; <b>Swap heads</b> turns them round. Its <b>Line</b> section has Colour…, Width, Outline (Solid, Dashed or Dotted) and Opacity, and <b>Flip</b> mirrors it.</p>"),
+        topic("Button Map", "Paths and freehand",
+            "<p>Draw → <b>Line</b> → <b>Path</b> draws through several points: click each point; click the first point again to close the shape, or double-click, press Enter or right-click to finish an open path. Shift keeps each segment to angle steps. The tool stays on for the next path; Esc stops it.</p>"
+            + "<p>Draw → <b>Line</b> → <b>Freehand</b> draws while the button is held down. When you let go, the stroke is tidied (fewer points, same shape) and smoothed.</p>"
+            + "<p>A selected path shows a small round handle on each point: drag one to move it. Its box's handles resize the whole path, and it turns and flips like a shape.</p>"
+            + "<p>Right-click a path: <b>Path</b> → <b>Closed</b> and <b>Smooth</b>; <b>Line</b> → colour, width, Solid, Dashed or Dotted, opacity; an open path has <b>Arrowheads</b> at its start and end, a closed one a <b>Fill</b> (Filled or Hollow, Fill colour…).</p>"),
         topic("Button Map", "Rotate, flip and resize",
             "<p>Shapes, text boxes and pictures can be turned. A selected one has a round handle above it: drag it to turn the item to any angle, with Shift for steps (15° unless Editor options → Editing → Rotate snap says otherwise). The <b>Rotate and flip</b> section has an <b>Angle</b> to type, <b>Turn to</b> 0°, 90°, 180° or 270°, <b>Rotate −15°</b> and <b>Rotate +15°</b>, and <b>Flip horizontally</b> and <b>Flip vertically</b>. Properties takes an exact Angle.</p>"
             + "<p>Drag the square handles to resize. A turned item resizes along its own sides, and the opposite side stays where it is. From a corner, a shape keeps its proportions when Shift is held; a picture keeps them unless Shift is held.</p>"

@@ -41,6 +41,9 @@ MouseArea {
             else
                 ed.deleteChip()
             e.accepted = true
+        } else if ((e.key === Qt.Key_Return || e.key === Qt.Key_Enter) && ed.drawTool === "path" && ed.pathDraft.length) {
+            ed.finishPath(false)
+            e.accepted = true
         } else if (e.key === Qt.Key_Escape) {
             if (ed.renameId)
                 ed.cancelRename()
@@ -93,6 +96,18 @@ MouseArea {
         forceActiveFocus()
         ed.altHeld = !!(m.modifiers & Qt.AltModifier)
         ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
+        if (ed.interactive && ed.drawTool === "path") {
+            if (m.button === Qt.RightButton)
+                ed.finishPath(false)
+            else
+                ed.pathClick(m.x, m.y)
+            return
+        }
+        if (ed.interactive && ed.drawTool === "pen" && m.button === Qt.LeftButton) {
+            ed.penStart(m.x, m.y)
+            ed.dragKind = "pen"
+            return
+        }
         if (ed.interactive && m.button === Qt.LeftButton && ed.onTurnHandle(m.x, m.y)) {
             ed.beginTurn(m.x, m.y)
             ed.dragKind = "turn"
@@ -360,6 +375,12 @@ MouseArea {
         ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
         ed.setOverlayHover(m.x, m.y)
         ed.setChipTip(m.x, m.y)
+        if (ed.drawTool === "path" && ed.pathDraft.length)
+            ed.pathHoverAt(m.x, m.y)
+        if (ed.dragKind === "pen") {
+            ed.penMove(m.x, m.y)
+            return
+        }
         if (!ed.dragKind) {
             return
         }
@@ -407,6 +428,11 @@ MouseArea {
         if (ed.dragKind === "turn") {
             ed.dragKind = ""
             ed.endTurn()
+            return
+        }
+        if (ed.dragKind === "pen") {
+            ed.dragKind = ""
+            ed.penEnd()
             return
         }
         if (ed.dragKind === "draw-tail") {
@@ -467,6 +493,10 @@ MouseArea {
         }
     }
     onDoubleClicked: (m) => {
+        if (ed.drawTool === "path") {
+            ed.finishPath(false)
+            return
+        }
         var hit = ed.hitTest(m.x, m.y)
         if (!hit.kind || !hit.id) {
             ed.cancelAllActions()

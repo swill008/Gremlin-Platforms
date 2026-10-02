@@ -393,6 +393,8 @@ function drawToolPoint(x0, y0, x1, y1) {
 
 function setDrawTool(shape) {
     drawTool = (drawTool === shape) ? "" : shape
+    pathDraft = []
+    pathHover = null
 }
 
 function lockAspect(x0, y0, x1, y1) {
@@ -441,6 +443,10 @@ function paintDraw(ctx, n, w, h) {
     }
     if (n.shape === "line") {
         paintLine(ctx, n, w, h)
+        return
+    }
+    if (n.shape === "path") {
+        paintPath(ctx, n, w, h)
         return
     }
     var stroke = n.stroke || 2
@@ -598,6 +604,11 @@ function applyDrawField(key, val) {
             var e = lineEndsAt(n)
             n[key] = val
             setLineEnds(n, e.ax, e.ay, e.bx, e.by)
+        } else if (isPath(n) && key === "stroke") {
+            // A wider line needs more room round its points.
+            var pts = pathPointsAt(n)
+            n[key] = val
+            setPathPoints(n, pts)
         } else {
             n[key] = val
         }

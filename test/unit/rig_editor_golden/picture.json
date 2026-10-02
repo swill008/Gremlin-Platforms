@@ -1609,7 +1609,7 @@
      "Canvas",
      "v Draw",
      "  Shape: Rectangle | Rounded | Ellipse | Triangle | Diamond | Arrow | Double arrow",
-     "  Line: Line | Arrow",
+     "  Line: Line | Arrow | Path | Freehand",
      "  Box: Text box | Callout | Table",
      "  Import picture\u2026",
      "  Paste picture (off)",

@@ -258,3 +258,86 @@ function calloutOutline(w, h, tx, ty, base) {
         return [[0, 0], [w, 0], [w, by.a], [tx, ty], [w, by.b], [w, h], [0, h]]
     return [[0, 0], [w, 0], [w, h], [0, h], [0, by.b], [tx, ty], [0, by.a]]
 }
+
+// --- paths (several points, and freehand) -------------------------------------------
+
+// Fewer points along the same line (Ramer-Douglas-Peucker): every point
+// dropped is within tol of the line kept. pts are [[x, y], ...].
+function simplifyPath(pts, tol) {
+    if (!pts || pts.length < 3)
+        return (pts || []).slice()
+    var keep = []
+    for (var k = 0; k < pts.length; k++)
+        keep.push(false)
+    keep[0] = true
+    keep[pts.length - 1] = true
+    var stack = [[0, pts.length - 1]]
+    while (stack.length) {
+        var span = stack.pop()
+        var a = pts[span[0]]
+        var b = pts[span[1]]
+        var far = -1
+        var best = tol
+        for (var i = span[0] + 1; i < span[1]; i++) {
+            var d = distToSegment(pts[i][0], pts[i][1], a[0], a[1], b[0], b[1])
+            if (d > best) {
+                best = d
+                far = i
+            }
+        }
+        if (far >= 0) {
+            keep[far] = true
+            stack.push([span[0], far])
+            stack.push([far, span[1]])
+        }
+    }
+    return pts.filter(function(_p, idx) { return keep[idx] })
+}
+
+// The box round some points with margin on every side, and the points as
+// fractions of it (as a path drawing stores them).
+function pathBox(pts, margin) {
+    var m = Math.max(1, margin || 8)
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9
+    for (var i = 0; i < pts.length; i++) {
+        x0 = Math.min(x0, pts[i][0])
+        y0 = Math.min(y0, pts[i][1])
+        x1 = Math.max(x1, pts[i][0])
+        y1 = Math.max(y1, pts[i][1])
+    }
+    var x = x0 - m
+    var y = y0 - m
+    var w = x1 - x0 + 2 * m
+    var h = y1 - y0 + 2 * m
+    return {
+        x: x, y: y, w: w, h: h,
+        rel: pts.map(function(p) { return [(p[0] - x) / w, (p[1] - y) / h] })
+    }
+}
+
+// Shortest distance from (px, py) to a path through pts (closed: back to
+// the first point too).
+function distToPath(px, py, pts, closed) {
+    var best = 1e9
+    var n = pts.length
+    var last = closed ? n : n - 1
+    for (var i = 0; i < last; i++) {
+        var a = pts[i]
+        var b = pts[(i + 1) % n]
+        best = Math.min(best, distToSegment(px, py, a[0], a[1], b[0], b[1]))
+    }
+    return n === 1 ? Math.hypot(px - pts[0][0], py - pts[0][1]) : best
+}
+
+// Whether (px, py) is inside the polygon through pts.
+function insidePolygon(px, py, pts) {
+    var inside = false
+    for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        var a = pts[i]
+        var b = pts[j]
+        if ((a[1] > py) !== (b[1] > py)
+                && px < (b[0] - a[0]) * (py - a[1]) / (b[1] - a[1]) + a[0])
+            inside = !inside
+    }
+    return inside
+}

@@ -467,6 +467,27 @@ Item {
             border.width: 2
         }
     }
+    // A path's points, to drag one by one.
+    Repeater {
+        model: {
+            ed.tick
+            var n = node
+            return (ed.showChrome && n && ed.isPath(n) && ed.isSelected(n.id) && !ed.isLocked(n) && !ed.canTurnTogether())
+                ? ed.pathLocal(n, _drawRoot.width, _drawRoot.height) : []
+        }
+        Rectangle {
+            required property var modelData
+            z: 5
+            x: modelData[0] - 4
+            y: modelData[1] - 4
+            width: 8
+            height: 8
+            radius: 4
+            color: ed.handleInk
+            border.color: ed.handleFill
+            border.width: 1.5
+        }
+    }
     // Resize handles: eight on a box, one on each end of a line.
     Repeater {
         model: (ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && !ed.tableCellHandlesOn(node))
