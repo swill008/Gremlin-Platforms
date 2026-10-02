@@ -22,15 +22,19 @@ ApplicationWindow {
     color: Style.background
     U.Universal.theme: Style.theme
 
+    // "" for the program's User Guide; "buttonmap" for the Button Map's own
+    // guide (DialogButtonMapGuide.qml), which covers only the Button Map.
+    property string guide: ""
+
     ToolWindowMemory {
         host: _win
-        name: "help"
+        name: _win.guide.length ? "help-" + _win.guide : "help"
         defaultWidth: Style.dp(920)
         defaultHeight: Style.dp(640)
     }
 
     property string initialSection: ""
-    property var _topics: HelpTopics.topics()
+    property var _topics: guide === "buttonmap" ? HelpTopics.buttonMapTopics() : HelpTopics.topics()
     property int _index: 0
 
     function _showSection(name) {

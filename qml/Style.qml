@@ -30,7 +30,7 @@ Item {
     // every screen.
     readonly property var _dark: ({
         bgWell: "#09090B", bgPage: "#111113", bgCard: "#18181B",
-        bgRaised: "#27272A", bgSelected: "#1F2A37",
+        bgRaised: "#27272A", bgSelected: "#1F2A37", bgHover: "#2F4B6B",
         line: "#3F3F46", lineStrong: "#52525B",
         fgStrong: "#F4F4F5", fg: "#E4E4E7", fgSoft: "#D4D4D8",
         fgMuted: "#A1A1AA", fgDisabled: "#71717A",
@@ -50,7 +50,7 @@ Item {
     readonly property var _light: ({
         window: "#AAAAAD",
         bgWell: "#A0A0A4", bgPage: "#A4A4A8", bgCard: "#B5B5B8",
-        bgRaised: "#ADADB0", bgSelected: "#99A6B8",
+        bgRaised: "#ADADB0", bgSelected: "#99A6B8", bgHover: "#8FA6C4",
         line: "#86868D", lineStrong: "#6A6A72",
         fgStrong: "#09090B", fg: "#18181B", fgSoft: "#303036",
         fgMuted: "#36363C", fgDisabled: "#5A5A62",
@@ -76,6 +76,9 @@ Item {
     readonly property color bgCard: _scheme.bgCard
     readonly property color bgRaised: _scheme.bgRaised
     readonly property color bgSelected: _scheme.bgSelected
+    // Under the pointer (or the keyboard) in menus: clearly set apart from
+    // the raised surface they sit on.
+    readonly property color bgHover: _scheme.bgHover
     readonly property color line: _scheme.line
     readonly property color lineStrong: _scheme.lineStrong
     // Text.

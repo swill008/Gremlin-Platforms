@@ -22,6 +22,17 @@ Popup {
     property var lastSection: ({})
     property string current: ""
     property int focusRow: -1
+    // Where the pointer last was on screen: Qt also reports hover when rows
+    // move under a still pointer, which must not take the keyboard's row.
+    property point _lastHover: Qt.point(-1, -1)
+
+    function hoverRow(area, m, index) {
+        var g = area.mapToGlobal(m.x, m.y)
+        if (Math.abs(g.x - _lastHover.x) < 0.5 && Math.abs(g.y - _lastHover.y) < 0.5)
+            return
+        _lastHover = Qt.point(g.x, g.y)
+        focusRow = index
+    }
     property real anchorX: 0
     property real anchorY: 0
     readonly property real edge: Style.dp(4)
@@ -277,8 +288,8 @@ Popup {
                             implicitWidth: _undoText.implicitWidth + Style.dp(12)
                             implicitHeight: _menu.rowH - Style.dp(4)
                             radius: Style.dp(4)
-                            color: _undoArea.containsMouse && modelData.on ? Style.bgSelected : Style.clear
-                            border.color: Style.line
+                            color: _undoArea.containsMouse && modelData.on ? Style.bgHover : Style.clear
+                            border.color: _undoArea.containsMouse && modelData.on ? Style.accent : Style.line
                             Label {
                                 id: _undoText
                                 anchors.centerIn: parent
@@ -291,6 +302,7 @@ Popup {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 enabled: modelData.on
+                                cursorShape: Qt.PointingHandCursor
                                 onClicked: modelData.run()
                             }
                         }
@@ -334,7 +346,16 @@ Popup {
             property var row: null
             property int rowIndex: -1
             implicitHeight: _menu.rowH
-            color: (_headArea.containsMouse || _menu.focusRow === rowIndex) ? Style.bgSelected : Style.clear
+            // One row lights at a time: the pointer moves the keyboard's row.
+            readonly property bool hot: _menu.focusRow === rowIndex
+            color: hot ? Style.bgHover : Style.clear
+            // An accent bar on the row under the pointer.
+            Rectangle {
+                visible: parent.hot
+                width: Style.dp(3)
+                height: parent.height
+                color: Style.accent
+            }
             Rectangle {
                 anchors.top: parent.top
                 width: parent.width
@@ -355,6 +376,9 @@ Popup {
                 id: _headArea
                 anchors.fill: parent
                 hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                // Only a moving pointer: rows that slide under a still one keep the keyboard's row.
+                onPositionChanged: (m) => _menu.hoverRow(this, m, rowIndex)
                 onClicked: {
                     _menu.focusRow = rowIndex
                     _menu.toggleSection(row.key)
@@ -371,7 +395,14 @@ Popup {
             property int rowIndex: -1
             readonly property var it: row ? row.item : null
             implicitHeight: _menu.rowH
-            color: (it && it.enabled && (_plainArea.containsMouse || _menu.focusRow === rowIndex)) ? Style.bgSelected : Style.clear
+            readonly property bool hot: !!(it && it.enabled && _menu.focusRow === rowIndex)
+            color: hot ? Style.bgHover : Style.clear
+            Rectangle {
+                visible: parent.hot
+                width: Style.dp(3)
+                height: parent.height
+                color: Style.accent
+            }
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 x: row && row.indent ? Style.dp(22) : Style.dp(6)
@@ -394,6 +425,9 @@ Popup {
                 id: _plainArea
                 anchors.fill: parent
                 hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                // Only a moving pointer: rows that slide under a still one keep the keyboard's row.
+                onPositionChanged: (m) => _menu.hoverRow(this, m, rowIndex)
                 enabled: !!(it && it.enabled)
                 onClicked: {
                     _menu.focusRow = rowIndex
@@ -411,7 +445,7 @@ Popup {
             property int rowIndex: -1
             readonly property var it: row ? row.item : null
             implicitHeight: _menu.rowH + Style.dp(4)
-            color: _menu.focusRow === rowIndex ? Style.bgSelected : Style.clear
+            color: _menu.focusRow === rowIndex ? Style.bgHover : Style.clear
 
             function editValue() {
                 _numField.forceActiveFocus()
@@ -466,11 +500,12 @@ Popup {
     Component {
         id: _choice
         Rectangle {
+            id: _choiceRow
             property var row: null
             property int rowIndex: -1
             readonly property var it: row ? row.item : null
             implicitHeight: _flow.implicitHeight + Style.dp(8)
-            color: _menu.focusRow === rowIndex ? Style.bgSelected : Style.clear
+            color: _menu.focusRow === rowIndex ? Style.bgHover : Style.clear
             Label {
                 id: _choiceLabel
                 x: row && row.indent ? Style.dp(22) : Style.dp(6)
@@ -494,8 +529,9 @@ Popup {
                         implicitWidth: _optText.implicitWidth + Style.dp(10)
                         implicitHeight: _menu.rowH - Style.dp(4)
                         radius: Style.dp(4)
-                        color: modelData.checked ? Style.accent : (_optArea.containsMouse ? Style.bgSelected : Style.clear)
-                        border.color: modelData.checked ? Style.accent : Style.line
+                        color: modelData.checked ? Style.accent : (_optArea.containsMouse ? Style.bgRaised : Style.clear)
+                        border.color: (modelData.checked || _optArea.containsMouse) ? Style.accent : Style.line
+                        border.width: _optArea.containsMouse ? 2 : 1
                         Label {
                             id: _optText
                             anchors.centerIn: parent
@@ -508,6 +544,8 @@ Popup {
                             anchors.fill: parent
                             hoverEnabled: true
                             enabled: !!(it && it.enabled)
+                            cursorShape: Qt.PointingHandCursor
+                            onPositionChanged: (m) => _menu.hoverRow(this, m, _choiceRow.rowIndex)
                             onClicked: {
                                 _menu.focusRow = rowIndex
                                 _menu.run(it, modelData.value)

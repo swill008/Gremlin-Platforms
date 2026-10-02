@@ -989,11 +989,9 @@ ApplicationWindow {
         onRejected: close()
     }
 
-    // The program's User Guide window, at a section ("" for where it was).
-    function openGuide(section) {
-        var w = Helpers.createComponent("DialogHelp.qml")
-        if (w && section)
-            w.showSection(section)
+    // The Button Map Guide: only the Button Map's topics.
+    function openGuide() {
+        Helpers.createComponent("DialogButtonMapGuide.qml")
     }
 
     function _ed() {
@@ -2789,11 +2787,7 @@ ApplicationWindow {
                 title: "Help"
                 MenuItem {
                     text: "Button Map guide"
-                    onTriggered: _buttonMap.openGuide("Button Map")
-                }
-                MenuItem {
-                    text: "User Guide"
-                    onTriggered: _buttonMap.openGuide("")
+                    onTriggered: _buttonMap.openGuide()
                 }
             }
         }
@@ -2911,7 +2905,7 @@ ApplicationWindow {
                 }
                 Shortcut {
                     sequence: "F1"
-                    onActivated: _buttonMap.openGuide("Button Map")
+                    onActivated: _buttonMap.openGuide()
                 }
                 Shortcut {
                     enabled: editing

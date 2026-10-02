@@ -79,17 +79,27 @@ def test_removed_or_wrong_things_are_not_in_the_help() -> None:
         assert phrase not in text, phrase
 
 
-def test_button_map_help_is_the_guide_section() -> None:
-    """Button Map's Help menu and F1 open the User Guide at its own section,
-    which covers every part of the editor."""
+def _button_map_guide() -> str:
+    start = _GUIDE.index("function buttonMapTopics()")
+    end = _GUIDE.index("function topic(section, title, body)")
+    return _GUIDE[start:end]
+
+
+def test_button_map_help_is_its_own_guide() -> None:
+    """Button Map's Help menu and F1 open the Button Map Guide, which covers
+    every part of the editor and nothing else."""
     assert "Button Map — Help" not in _BUTTON_MAP
-    assert _BUTTON_MAP.count('openGuide("Button Map")') == 2  # menu and F1
-    found = _TOPIC.findall(_GUIDE)
-    titles = [title for section, title in found if section == "Button Map"]
-    assert len(titles) >= 15
-    start = _GUIDE.index('topic("Button Map", ')
-    end = _GUIDE.index('topic("Options and Profile", ')
-    section = _text(_GUIDE[start:end])
+    assert _BUTTON_MAP.count("_buttonMap.openGuide()") == 2  # menu and F1
+    assert 'createComponent("DialogButtonMapGuide.qml")' in _BUTTON_MAP
+    wrapper = (_ROOT / "qml" / "DialogButtonMapGuide.qml").read_text(encoding="utf-8")
+    assert 'guide: "buttonmap"' in wrapper
+    guide = _button_map_guide()
+    assert len(_TOPIC.findall(guide)) >= 20
+    # The main User Guide keeps one pointer to it, not the whole section.
+    main_titles = [title for _section, title in _TOPIC.findall(_GUIDE[: _GUIDE.index(
+        "function buttonMapTopics()")])]
+    assert main_titles.count("Button Map") == 1
+    section = _text(guide)
     for feature in (
         "Edit Mapping", "Export size", "Snap to entities", "Adjust photo",
         "Highlight on press", "Pressed fill", "Hotspot", "spine", "Leader ends",
@@ -100,9 +110,13 @@ def test_button_map_help_is_the_guide_section() -> None:
         "Independent of table", "Spawn empty cell", "Import picture",
         "Paste picture", "Crop", "Reset crop", "snap point", "Layers",
         "Unlock all", "Properties", "Align and distribute", "Space out",
-        "Recent", "Pick from map", "Ctrl+Shift+L", "F1", "Device Pack",
+        "Recent", "Pick from map", "Ctrl+Shift+L", "F1", "Callout", "Freehand",
+        "Rulers", "Saved styles", "Export modes", "Print", "Mirror layout",
     ):
         assert feature in section, feature
+    # Only the Button Map: no other screens or features.
+    for elsewhere in ("Device Pack", "Tools →", "main window", "Options →"):
+        assert elsewhere not in section, elsewhere
 
 
 def test_every_action_plugin_has_a_topic() -> None:

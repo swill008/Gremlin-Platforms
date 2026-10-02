@@ -57,6 +57,7 @@ STEPS = [
      "   if (it.visible) shown.push(it.text === undefined ? '---' : it.text) }"
      " shown.join('|')"),
     ("photo-adjust", "_fileMenu.close(); _photoAdj.open()"),
+    ("guide", "_photoAdj.close(); _buttonMap.openGuide()"),
     ("zoom",
      "_photoAdj.close(); _buttonMap.zoomToPage(); _buttonMap.zoomToSelection()"),
     ("closed", "_photoAdj.close(); _styleNameDlg.close()"),
