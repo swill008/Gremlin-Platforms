@@ -21,9 +21,9 @@ from urllib.parse import urlparse
 from gremlin import util
 
 LATEST_RELEASE_URL = (
-    "https://api.github.com/repos/swill008/JoystickGremlin_/releases/latest"
+    "https://api.github.com/repos/swill008/Gremlin-Platforms/releases/latest"
 )
-RELEASES_PAGE_URL = "https://github.com/swill008/JoystickGremlin_/releases"
+RELEASES_PAGE_URL = "https://github.com/swill008/Gremlin-Platforms/releases"
 
 INSTALLED = "installed"
 PORTABLE = "portable"

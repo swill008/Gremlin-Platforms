@@ -13,7 +13,7 @@
 
 #define MyAppName "Gremlin-Platforms R1"
 #define MyAppPublisher "swill008"
-#define MyAppURL "https://github.com/swill008/JoystickGremlin_"
+#define MyAppURL "https://github.com/swill008/Gremlin-Platforms"
 #define MyAppExeName "gremlin_platforms.exe"
 
 [Setup]

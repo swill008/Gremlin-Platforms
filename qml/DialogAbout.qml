@@ -34,7 +34,7 @@ ApplicationWindow {
         }
 
         DisplayLabel {
-            text: "<html><a href='https://github.com/swill008/JoystickGremlin_'>github.com/swill008/JoystickGremlin_</a></html>"
+            text: "<html><a href='https://github.com/swill008/Gremlin-Platforms'>github.com/swill008/Gremlin-Platforms</a></html>"
             font.pixelSize: Style.dp(19)
             onLinkActivated: (url) => { Qt.openUrlExternally(url) }
         }

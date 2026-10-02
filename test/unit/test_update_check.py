@@ -140,7 +140,7 @@ def test_feed_url(configured: str, expected: str) -> None:
 
 
 def test_feed_is_this_repository() -> None:
-    assert "swill008/JoystickGremlin_" in updater.LATEST_RELEASE_URL
+    assert "swill008/Gremlin-Platforms" in updater.LATEST_RELEASE_URL
 
 
 def test_silent_update_restarts_the_program() -> None:
