@@ -133,6 +133,40 @@ def claim_friendly(claim: dict | None, kind: str, hid: object) -> str:
     return str(names.get(f"{kind}:{number}") or "").strip()
 
 
+def key_id(scan_code: int, extended: bool) -> int:
+    """A key as stored in a Keyboard claim: scan code, extended flag in bit 16."""
+    return (int(scan_code) & 0xFFFF) | ((1 if extended else 0) << 16)
+
+
+def key_id_of(identifier: object) -> int | None:
+    """Key id of a keyboard event identifier ((scan_code, extended) or an id)."""
+    if isinstance(identifier, (tuple, list)) and len(identifier) >= 2:
+        try:
+            return key_id(int(identifier[0]), bool(identifier[1]))
+        except (TypeError, ValueError):
+            return None
+    try:
+        return int(identifier)
+    except (TypeError, ValueError):
+        return None
+
+
+def claim_allows_key(claim: dict | None, identifier: object) -> bool:
+    """True when a Keyboard claim passes this key.
+
+    A Keyboard module with no saved keys passes every key: that is what its
+    Configure dialog shows (all keys ticked) until the user saves a choice.
+    Older files stored the bare scan code; that still counts.
+    """
+    keys = set(claim_ids(claim, "key"))
+    if not keys:
+        return True
+    ident = key_id_of(identifier)
+    if ident is None:
+        return False
+    return ident in keys or (ident & 0xFFFF) in keys
+
+
 def claim_xbox(claim: dict | None) -> list[str]:
     """Xbox controls claimed by an Xbox output module ("a", "left_trigger", ...)."""
     return _names((claim or {}).get("xbox"))

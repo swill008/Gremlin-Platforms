@@ -42,9 +42,15 @@ def _vjoy_as_input_ids() -> set[int]:
 
 @SingletonDecorator
 class InputModuleRuntime(QtCore.QObject):
-    """DILL joystick events in; claimed source-module events out."""
+    """Hardware events in; claimed input-module events out.
+
+    event carries joystick events, key_event keyboard events. Only what the
+    device's input module claims gets through (OSC, the Logical Device and a
+    vJoy read back as input pass unfiltered).
+    """
 
     event = QtCore.Signal(Event)
+    key_event = QtCore.Signal(Event)
 
     def __init__(self) -> None:
         super().__init__()
@@ -52,6 +58,7 @@ class InputModuleRuntime(QtCore.QObject):
         self._dest_guids: set[str] = set()
         self._passthrough: set[str] = always_forwarded()
         EventListener().joystick_event.connect(self._on_hid)
+        EventListener().keyboard_event.connect(self._on_key)
         try:
             signal.configChanged.connect(self.reload)
             signal.profileChanged.connect(self.reload)
@@ -106,6 +113,19 @@ class InputModuleRuntime(QtCore.QObject):
                 dest.add(guid)
                 continue
             claims[guid] = module.claim
+
+    def _on_key(self, event: Event) -> None:
+        if event is None or getattr(event, "event_type", None) != InputType.Keyboard:
+            return
+        if should_forward(
+            event.device_guid,
+            event.event_type,
+            getattr(event, "identifier", None),
+            claims=self._claims,
+            dest_guids=self._dest_guids,
+            passthrough=self._passthrough,
+        ):
+            self.key_event.emit(event)
 
     def _on_hid(self, event: Event) -> None:
         if event is None:

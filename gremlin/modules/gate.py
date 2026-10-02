@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from gremlin.modules.claim import claim_allows, kind_of
+from gremlin.modules.claim import claim_allows, claim_allows_key, kind_of
 from gremlin.modules.ids import guid_key
 
 
@@ -25,6 +25,8 @@ def should_forward(
         return True
     if key in dest_guids:
         return False
+    if kind_of(event_type) == "key":
+        return claim_allows_key(claims.get(key), hid)
     try:
         ident = int(hid)
     except (TypeError, ValueError):

@@ -353,8 +353,10 @@ class CodeRunner:
             evt_listener = event_handler.EventListener()
             module_bus = InputModuleRuntime()
             module_bus.reload()
-            evt_listener.keyboard_event.connect(self.event_handler.process_event)
+            # Joystick and keyboard events both come through the input
+            # modules: only claimed inputs reach the profile.
             module_bus.event.connect(self.event_handler.process_event)
+            module_bus.key_event.connect(self.event_handler.process_event)
             evt_listener.virtual_event.connect(self.event_handler.process_event)
             evt_listener.gremlin_active = True
 
@@ -383,11 +385,12 @@ class CodeRunner:
     def stop(self) -> None:
         if self._running:
             evt_lst = event_handler.EventListener()
-            evt_lst.keyboard_event.disconnect(self.event_handler.process_event)
-            try:
-                InputModuleRuntime().event.disconnect(self.event_handler.process_event)
-            except (TypeError, RuntimeError):
-                pass
+            bus = InputModuleRuntime()
+            for sig in (bus.event, bus.key_event):
+                try:
+                    sig.disconnect(self.event_handler.process_event)
+                except (TypeError, RuntimeError):
+                    pass
             evt_lst.virtual_event.disconnect(self.event_handler.process_event)
             evt_lst.gremlin_active = False
         self._running = False

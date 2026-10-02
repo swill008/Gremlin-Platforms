@@ -27,6 +27,7 @@ from gremlin.modules.claim import (
     claim_allows,
     claim_friendly,
     claim_is_empty,
+    key_id,
     kind_of,
     read_claim,
 )
@@ -1756,7 +1757,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         rows = []
 
         def add_key(key) -> None:
-            hid = (int(key.scan_code) & 0xFFFF) | ((1 if key.is_extended else 0) << 16)
+            hid = key_id(key.scan_code, key.is_extended)
             if hid in seen:
                 return
             seen.add(hid)
@@ -1813,7 +1814,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             scan, ext = ident[0], ident[1]
         except Exception:
             return
-        hid = (int(scan) & 0xFFFF) | ((1 if ext else 0) << 16)
+        hid = key_id(int(scan), bool(ext))
         try:
             label = gremlin_keyboard.key_from_code(int(scan), bool(ext)).name
         except Exception:

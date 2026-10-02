@@ -26,7 +26,7 @@ from gremlin.profile import InputItem
 from gremlin.signal import signal
 from gremlin.types import AxisMode, InputType
 from gremlin.modules.ids import guid_key
-from gremlin.modules.claim import claim_friendly, claim_ids, read_claim
+from gremlin.modules.claim import claim_friendly, claim_ids, key_id, read_claim
 from gremlin.ui.binding_catalog import (
     _attach_binding,
     _clone_binding,
@@ -1049,7 +1049,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     continue
                 saved = set(claim_ids(claim, "key"))
                 for key in keyboard.g_name_to_key.values():
-                    hid = (int(key.scan_code) & 0xFFFF) | ((1 if key.is_extended else 0) << 16)
+                    hid = key_id(key.scan_code, key.is_extended)
                     if saved and hid not in saved and int(key.scan_code) not in saved:
                         continue
                     if not saved:
