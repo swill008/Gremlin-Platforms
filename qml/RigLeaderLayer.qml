@@ -30,7 +30,7 @@ Canvas {
                     continue
                 var leadSel = sel && ed.selectedLeader === li
                 var lw = ed.leaderWidthOf(n)
-                ctx.strokeStyle = leadSel ? "#FBBF24" : (sel ? "#D4D4D8" : (n.leaderColor || "#A1A1AA"))
+                ctx.strokeStyle = leadSel ? "#FBBF24" : (sel ? "#D4D4D8" : ed.ink(n.leaderColor || "#A1A1AA"))
                 ctx.lineWidth = leadSel ? Math.max(lw, lw + 0.4) : lw
                 ctx.lineJoin = "round"
                 ctx.lineCap = "round"
@@ -41,7 +41,7 @@ Canvas {
             var hShape = n.hotShape || "round"
             var hFill = n.hotFill || "filled"
             if (!ed.hotHidden(n))
-                ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : (n.hotColor || "#F4F4F5"))
+                ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : ed.ink(n.hotColor || "#F4F4F5"))
             if (ed.showChrome) {
                 for (li = 0; li < ls.length; li++) {
                     var L2 = ls[li]

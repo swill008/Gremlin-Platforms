@@ -21,12 +21,12 @@ Item {
         color: {
             ed.tick
             var n = _grp.node || {}
-            return n.color || "#18181B"
+            return ed.ink(n.color || "#18181B")
         }
         border.color: {
             ed.tick
             var n = _grp.node || {}
-            return n.border || "#3F3F46"
+            return ed.ink(n.border || "#3F3F46")
         }
         border.width: Style.dp(1)
     }
@@ -34,7 +34,7 @@ Item {
         renderType: Text.NativeRendering
         visible: { ed.tick; return ed.captionH(_grp.node) > 0 }
         text: { ed.tick; return ed.fiveWayCaption(_grp.node) }
-        color: "#E4E4E7"
+        color: { ed.tick; return ed.ink("#E4E4E7") }
         font.pixelSize: { ed.tick; return ed.uiPx((_grp.node && _grp.node.fontSize) ? _grp.node.fontSize : 10) }
         x: Style.dp(2)
         y: 0

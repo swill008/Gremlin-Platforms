@@ -5,6 +5,15 @@
 // Code-behind for VkbRigEditor.qml (imported without .pragma library): it
 // uses the editor's ids, properties and functions directly, and each
 // function here has a forwarder of the same name in the editor.
+.import "rig_shapes.js" as Shapes
+
+// A colour as drawn: while exporting a light page for printing, with its
+// lightness turned over (dark fills light, light text dark); otherwise as is.
+function ink(c) {
+    if (!exporting || !printLight)
+        return c
+    return Shapes.invertLightness(String(c))
+}
 
 function isStyleKey(key) {
     return key === "chipShape" || key === "chipSize" || key === "chipFill" || key === "fontSize"

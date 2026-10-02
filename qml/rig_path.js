@@ -205,7 +205,7 @@ function paintPath(ctx, n, w, h) {
     if (pts.length < 2)
         return
     var stroke = n.stroke || 2
-    var colour = n.border || _drawStyle().border
+    var colour = ink(n.border || _drawStyle().border)
     var size = Shapes.headSize(stroke)
     var open = !n.closed
     var headA = open && isHead(n.headStart) ? Shapes.arrowHead(pts[0][0], pts[0][1], pts[1][0], pts[1][1], size) : null
@@ -222,7 +222,7 @@ function paintPath(ctx, n, w, h) {
     ctx.beginPath()
     _trace(ctx, line, !!n.smooth, !!n.closed)
     if (n.closed && n.fill === "filled") {
-        ctx.fillStyle = n.color || _drawStyle().color
+        ctx.fillStyle = ink(n.color || _drawStyle().color)
         ctx.fill()
     }
     ctx.strokeStyle = colour

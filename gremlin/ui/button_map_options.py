@@ -107,6 +107,13 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {"valid_options": ["1x", "2x", "3x"]},
     ),
     (
+        "export", "03-light-page", PropertyType.Bool, False,
+        "Export on a white page for printing: dark colours turn light and light "
+        "ones dark, keeping their hue. The photo is not changed. Also in File > "
+        "Light page for printing.",
+        {},
+    ),
+    (
         "export", "02-mode-title", PropertyType.Bool, True,
         "File > Export modes writes each mode's name at the top of its page.",
         {},

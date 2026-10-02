@@ -273,3 +273,21 @@ def test_distance_to_path_and_inside(js: QtQml.QJSEngine) -> None:
     assert call(js, f"distToPath(-2, 5, {square}, true)") == 2
     assert call(js, f"insidePolygon(5, 5, {square})") is True
     assert call(js, f"insidePolygon(15, 5, {square})") is False
+
+
+def test_invert_lightness(js: QtQml.QJSEngine) -> None:
+    assert call(js, 'invertLightness("#000000")') == "#FFFFFF"
+    assert call(js, 'invertLightness("#FFF")') == "#000000"
+    # The editor's dark chip and light text swap.
+    dark = call(js, 'invertLightness("#18181B")')
+    assert int(dark[1:3], 16) > 0xE0
+    # A dark red stays red, now light; alpha is kept.
+    red = call(js, 'invertLightness("#807F1D1D")')
+    assert red.startswith("#80")
+    r, g, b = (int(red[i:i + 2], 16) for i in (3, 5, 7))
+    assert r > g and r > b and min(r, g, b) >= 0x80
+    # Twice is the start (to rounding).
+    back = call(js, 'invertLightness(invertLightness("#22C55E"))')
+    assert all(abs(int(back[i:i + 2], 16) - int("#22C55E"[i:i + 2], 16)) <= 2
+               for i in (1, 3, 5))
+    assert call(js, 'invertLightness("transparent")') == "transparent"

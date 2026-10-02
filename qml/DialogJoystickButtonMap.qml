@@ -77,6 +77,7 @@ ApplicationWindow {
             "Export JPG…",
             "Export modes…",
             "Export size",
+            "Light page for printing",
             "Copy layout from",
             "Templates",
             "Reset layout",
@@ -1573,7 +1574,9 @@ ApplicationWindow {
         if (!e)
             return
         _exportJob = { url: url, format: format }
+        e.printLight = _opts.values["light-page"] === true
         e.exporting = true
+        e.repaint()
         // Let the editor redraw without its editing marks first.
         _exportTimer.restart()
     }
@@ -1585,13 +1588,17 @@ ApplicationWindow {
         if (!e || !job) {
             if (e)
                 e.exporting = false
+                e.printLight = false
+                e.repaint()
             return
         }
         var f = Math.max(1, exportScale)
         var r = e.spaceRect()
-        var bg = String(Style.background)
+        var bg = e.printLight ? "white" : String(Style.background)
         var ok = e.grabToImage(function(result) {
             e.exporting = false
+            e.printLight = false
+            e.repaint()
             if (!result)
                 return
             if (!_hw.savePageImage(result.image, r.x * f, r.y * f, r.w * f, r.h * f,
@@ -1600,6 +1607,8 @@ ApplicationWindow {
         }, Qt.size(Math.round(e.width * f), Math.round(e.height * f)))
         if (!ok)
             e.exporting = false
+            e.printLight = false
+            e.repaint()
     }
 
     Timer {
@@ -2030,7 +2039,9 @@ ApplicationWindow {
         // Pages that all read the same would be no use: show the actions.
         if (e.chipTextMode === "Name")
             e.chipTextMode = "Action"
+        e.printLight = _opts.values["light-page"] === true
         e.exporting = true
+        e.repaint()
         _nextModePage()
     }
 
@@ -2043,6 +2054,8 @@ ApplicationWindow {
             var written = _hw.finishExportPages(job.url, job.format, job.f)
             _modesJob = null
             e.exporting = false
+            e.printLight = false
+            e.repaint()
             e.exportTitle = ""
             e.chipTextMode = job.keepText
             refreshActionLabels()
@@ -2067,7 +2080,7 @@ ApplicationWindow {
                 return
             var r = e.spaceRect()
             var f = job.f
-            var bg = String(Style.background)
+            var bg = e.printLight ? "white" : String(Style.background)
             var mode = job.modes[job.i]
             var ok = e.grabToImage(function(result) {
                 if (result)
@@ -2369,6 +2382,12 @@ ApplicationWindow {
                     text: "Export modes…"
                     enabled: _buttonMap.profileModes.length > 0 && _buttonMap.targetGuid.length > 0
                     onTriggered: _buttonMap.openExportModes()
+                }
+                MenuItem {
+                    text: "Light page for printing"
+                    checkable: true
+                    checked: _opts.values["light-page"] === true
+                    onTriggered: _opts.set("light-page", checked)
                 }
                 Menu {
                     title: "Export size"

@@ -49,6 +49,8 @@ Item {
     // guides. showChrome is what visual parts check instead of interactive.
     property bool exporting: false
     readonly property bool showChrome: interactive && !exporting
+    // Export on a light page for printing: colours drawn through ink().
+    property bool printLight: false
     // Export modes: the mode's name, drawn at the top of the page while exporting.
     property string exportTitle: ""
     // Turning several items together (rig_grouprot.js): where they started,
@@ -215,6 +217,7 @@ Item {
 
     // Chip, hotspot and leader styling (rig_style.js)
     function isStyleKey(key) { return RigStyle.isStyleKey(key) }
+    function ink(c) { return RigStyle.ink(c) }
     function targetMember() { return RigStyle.targetMember() }
     function styleVal(n, mem, key, fallback) { return RigStyle.styleVal(n, mem, key, fallback) }
     function applyField(key, val) { return RigStyle.applyField(key, val) }
@@ -1206,7 +1209,7 @@ Item {
         visible: _ed.exporting && _ed.exportTitle.length > 0
         x: { _ed.tick; return _ed.spaceRect().x + _ed.spaceRect().w * 0.02 }
         y: { _ed.tick; return _ed.spaceRect().y + _ed.spaceRect().h * 0.02 }
-        color: Style.fg
+        color: _ed.printLight ? "black" : Style.fg
         font.pixelSize: { _ed.tick; return _ed.uiPx(28) }
         font.bold: true
         text: _ed.exportTitle

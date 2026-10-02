@@ -427,9 +427,9 @@ function paintDraw(ctx, n, w, h) {
         return
     if (n.shape === "table") {
         ctx.save()
-        ctx.strokeStyle = n.border || "#3F3F46"
+        ctx.strokeStyle = ink(n.border || "#3F3F46")
         ctx.lineWidth = 1
-        ctx.fillStyle = n.color || "#18181B"
+        ctx.fillStyle = ink(n.color || "#18181B")
         ctx.fillRect(0.5, 0.5, Math.max(1, w - 1), Math.max(1, h - 1))
         ctx.strokeRect(0.5, 0.5, Math.max(1, w - 1), Math.max(1, h - 1))
         ctx.beginPath()
@@ -496,10 +496,10 @@ function paintDraw(ctx, n, w, h) {
         ctx.rect(0, 0, ww, hh)
     }
     if (n.fill !== "hollow") {
-        ctx.fillStyle = n.color || "#14532D"
+        ctx.fillStyle = ink(n.color || "#14532D")
         ctx.fill()
     }
-    ctx.strokeStyle = n.border || "#22C55E"
+    ctx.strokeStyle = ink(n.border || "#22C55E")
     ctx.lineWidth = stroke
     if (n.dash)
         ctx.setLineDash(Shapes.dashFor(n.dash, stroke))
@@ -517,7 +517,7 @@ function paintLine(ctx, n, w, h) {
     var headB = isHead(n.headEnd) ? Shapes.arrowHead(e.bx, e.by, e.ax, e.ay, size) : null
     var from = headA ? headA.base : [e.ax, e.ay]
     var to = headB ? headB.base : [e.bx, e.by]
-    var colour = n.border || _drawStyle().border
+    var colour = ink(n.border || _drawStyle().border)
     ctx.save()
     ctx.strokeStyle = colour
     ctx.fillStyle = colour

@@ -341,3 +341,64 @@ function insidePolygon(px, py, pts) {
     }
     return inside
 }
+
+// --- light page for printing ------------------------------------------------------
+
+// A colour with its lightness turned over (HSL): dark becomes light and light
+// dark, keeping its hue, saturation and alpha. Takes and gives "#RGB",
+// "#RRGGBB" or "#AARRGGBB"; anything else (a name, "transparent") as it is.
+function invertLightness(c) {
+    var s = String(c || "")
+    var m = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec(s)
+    if (!m)
+        return c
+    var hex = m[1]
+    if (hex.length === 3)
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
+    var alpha = ""
+    if (hex.length === 8) {
+        alpha = hex.slice(0, 2)
+        hex = hex.slice(2)
+    }
+    var r = parseInt(hex.slice(0, 2), 16) / 255
+    var g = parseInt(hex.slice(2, 4), 16) / 255
+    var b = parseInt(hex.slice(4, 6), 16) / 255
+    var max = Math.max(r, g, b)
+    var min = Math.min(r, g, b)
+    var l = (max + min) / 2
+    var h = 0
+    var sat = 0
+    if (max !== min) {
+        var d = max - min
+        sat = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+        if (max === r)
+            h = (g - b) / d + (g < b ? 6 : 0)
+        else if (max === g)
+            h = (b - r) / d + 2
+        else
+            h = (r - g) / d + 4
+        h /= 6
+    }
+    l = 1 - l
+    function channel(p, q, t) {
+        if (t < 0) t += 1
+        if (t > 1) t -= 1
+        if (t < 1 / 6) return p + (q - p) * 6 * t
+        if (t < 1 / 2) return q
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
+        return p
+    }
+    var out
+    if (sat === 0) {
+        out = [l, l, l]
+    } else {
+        var q = l < 0.5 ? l * (1 + sat) : l + sat - l * sat
+        var p = 2 * l - q
+        out = [channel(p, q, h + 1 / 3), channel(p, q, h), channel(p, q, h - 1 / 3)]
+    }
+    function two(v) {
+        var t = Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).toUpperCase()
+        return t.length < 2 ? "0" + t : t
+    }
+    return "#" + alpha + two(out[0]) + two(out[1]) + two(out[2])
+}

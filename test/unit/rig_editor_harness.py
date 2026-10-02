@@ -1534,6 +1534,33 @@ def scenario_photo_look(s: Session) -> None:
     s.steps[-1]["state"]["bag"] = s.call("photoBag")
 
 
+def scenario_light_page(s: Session) -> None:
+    """A light page for printing: while exporting, every colour has its
+    lightness turned over (shapes, lines, text, callouts, chips, leaders);
+    on screen nothing changes."""
+    _load(s, "evo_r")
+    s.call("setDrawTool", "rect")
+    s.drag(s.point(0.05, 0.08), s.point(0.18, 0.18))
+    s.call("applyField", "fill", "filled")
+    s.call("setDrawTool", "arrowline")
+    s.drag(s.point(0.05, 0.26), s.point(0.18, 0.26))
+    s.call("setDrawTool", "callout")
+    s.drag(s.point(0.05, 0.40), s.point(0.18, 0.46))
+    s.call("setDrawTool", "")
+    s.call("setSelection", [])
+    s.set_prop("gridOn", False)
+    s.set_prop("printLight", True)
+    s.record("on-screen-unchanged", image=True)
+    s.set_prop("exporting", True)
+    s.call("repaint")
+    s.record("light-export", image=True)
+    s.steps[-1]["state"]["ink"] = [s.call("ink", "#18181B"), s.call("ink", "#22C55E")]
+    s.set_prop("exporting", False)
+    s.set_prop("printLight", False)
+    s.call("repaint")
+    s.record("back")
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1588,6 +1615,7 @@ SCENARIOS = {
     "paths": scenario_paths,
     "styles": scenario_styles,
     "photo_look": scenario_photo_look,
+    "light_page": scenario_light_page,
 }
 
 

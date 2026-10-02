@@ -87,12 +87,12 @@ Item {
                 }
                 color: {
                     ed.tick
-                    return ed.tableCellStyle(node, col).fill
+                    return ed.ink(ed.tableCellStyle(node, col).fill)
                 }
                 border.color: {
                     ed.tick
                     var sel = ed.isSelected(node.id) && ed.tableRow === row && ed.tableCol === col
-                    return sel ? ed.handleFill : ed.tableCellStyle(node, col).border
+                    return sel ? ed.handleFill : ed.ink(ed.tableCellStyle(node, col).border)
                 }
                 border.width: {
                     ed.tick
@@ -113,7 +113,7 @@ Item {
                     }
                     color: {
                         ed.tick
-                        return ed.tableCellStyle(node, col).text
+                        return ed.ink(ed.tableCellStyle(node, col).text)
                     }
                     font.pixelSize: { ed.tick; return ed.uiPx((node && node.fontSize) ? node.fontSize : 10) }
                     elide: Text.ElideRight
@@ -186,12 +186,12 @@ Item {
                 }
                 color: {
                     ed.tick
-                    return ed.tableCellStyle(node, -1).fill
+                    return ed.ink(ed.tableCellStyle(node, -1).fill)
                 }
                 border.color: {
                     ed.tick
                     var sel = ed.isSelected(node.id) && ed.tableExtra === index
-                    return sel ? ed.handleFill : ed.tableCellStyle(node, -1).border
+                    return sel ? ed.handleFill : ed.ink(ed.tableCellStyle(node, -1).border)
                 }
                 border.width: {
                     ed.tick
@@ -212,7 +212,7 @@ Item {
                     }
                     color: {
                         ed.tick
-                        return ed.tableCellStyle(node, -1).text
+                        return ed.ink(ed.tableCellStyle(node, -1).text)
                     }
                     font.pixelSize: { ed.tick; return ed.uiPx((node && node.fontSize) ? node.fontSize : 10) }
                     elide: Text.ElideRight
@@ -301,8 +301,8 @@ Item {
                 if (!n)
                     return "#18181B"
                 if (n.theme)
-                    return ed.textThemeStyle(n).fill
-                return n.color || "#18181B"
+                    return ed.ink(ed.textThemeStyle(n).fill)
+                return ed.ink(n.color || "#18181B")
             }
             opacity: {
                 ed.tick
@@ -322,8 +322,8 @@ Item {
                 if (!n)
                     return "#3F3F46"
                 if (n.theme)
-                    return ed.textThemeStyle(n).border
-                return n.border || "#3F3F46"
+                    return ed.ink(ed.textThemeStyle(n).border)
+                return ed.ink(n.border || "#3F3F46")
             }
             border.width: { ed.tick; return (node && node.stroke) ? node.stroke : 1 }
             opacity: {
@@ -352,8 +352,8 @@ Item {
                 if (!n)
                     return "#E4E4E7"
                 if (n.theme)
-                    return ed.textThemeStyle(n).text
-                return n.textColor || "#E4E4E7"
+                    return ed.ink(ed.textThemeStyle(n).text)
+                return ed.ink(n.textColor || "#E4E4E7")
             }
             font.pixelSize: { ed.tick; return ed.uiPx((node && node.fontSize) ? node.fontSize : 12) }
             font.bold: { ed.tick; return !!(node && node.bold) }

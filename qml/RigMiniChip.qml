@@ -28,17 +28,17 @@ Rectangle {
         ed.tick
         var hl = ed.styleVal(node, mem, "highlight", true)
         if (ed.fiveWayFormat(node) === "mini") {
-            return on && hl ? ed.styleVal(node, mem, "hlColor", "#14532D") : "transparent"
+            return on && hl ? ed.ink(ed.styleVal(node, mem, "hlColor", "#14532D")) : "transparent"
         }
         if (ed.chipIsHollow(node, mem)) return "transparent"
-        return on && hl ? ed.styleVal(node, mem, "hlColor", "#14532D") : ed.styleVal(node, mem, "color", "#18181B")
+        return ed.ink(on && hl ? ed.styleVal(node, mem, "hlColor", "#14532D") : ed.styleVal(node, mem, "color", "#18181B"))
     }
     border.color: {
         ed.tick
         var hl = ed.styleVal(node, mem, "highlight", true)
         if (ed.fiveWayFormat(node) === "mini")
-            return on && hl ? ed.styleVal(node, mem, "hlBorder", "#22C55E") : "transparent"
-        return on && hl ? ed.styleVal(node, mem, "hlBorder", "#22C55E") : ed.styleVal(node, mem, "border", "#3F3F46")
+            return on && hl ? ed.ink(ed.styleVal(node, mem, "hlBorder", "#22C55E")) : "transparent"
+        return ed.ink(on && hl ? ed.styleVal(node, mem, "hlBorder", "#22C55E") : ed.styleVal(node, mem, "border", "#3F3F46"))
     }
     border.width: { ed.tick; return ed.chipIsHollow(node, mem) ? 2 : 1 }
     antialiasing: true
@@ -61,7 +61,7 @@ Rectangle {
         color: {
             ed.tick
             var hl = ed.styleVal(node, mem, "highlight", true)
-            return parent.on && hl ? ed.styleVal(node, mem, "hlText", "#BBF7D0") : ed.styleVal(node, mem, "textColor", "#E4E4E7")
+            return ed.ink(parent.on && hl ? ed.styleVal(node, mem, "hlText", "#BBF7D0") : ed.styleVal(node, mem, "textColor", "#E4E4E7"))
         }
         font.pixelSize: { ed.tick; return ed.uiPx(ed.styleVal(node, mem, "fontSize", 10)) }
         visible: {

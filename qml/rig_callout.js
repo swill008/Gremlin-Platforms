@@ -64,7 +64,7 @@ function paintCallout(ctx, n, w, h, ox, oy) {
     var fa = (n.fillOpacity !== undefined && n.fillOpacity !== null) ? n.fillOpacity : 1
     if (fa > 0) {
         ctx.globalAlpha = fa
-        ctx.fillStyle = n.theme ? themed.fill : (n.color || themed.fill)
+        ctx.fillStyle = ink(n.theme ? themed.fill : (n.color || themed.fill))
         ctx.fill()
     }
     var ba = (n.borderOpacity !== undefined && n.borderOpacity !== null) ? n.borderOpacity : 1
@@ -72,7 +72,7 @@ function paintCallout(ctx, n, w, h, ox, oy) {
         ctx.globalAlpha = ba
         ctx.lineJoin = "round"
         ctx.lineWidth = n.stroke || 1
-        ctx.strokeStyle = n.theme ? themed.border : (n.border || themed.border)
+        ctx.strokeStyle = ink(n.theme ? themed.border : (n.border || themed.border))
         ctx.stroke()
     }
     ctx.restore()
