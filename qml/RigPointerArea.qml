@@ -47,6 +47,13 @@ MouseArea {
             else
                 ed.cancelAllActions()
             e.accepted = true
+        } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_L) {
+            // Ctrl+L locks or unlocks the selection; Ctrl+Shift+L unlocks everything.
+            if (e.modifiers & Qt.ShiftModifier)
+                ed.unlockAll()
+            else
+                ed.toggleLockSelection()
+            e.accepted = true
         } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Z) {
             if (e.modifiers & Qt.ShiftModifier)
                 ed.redo()
@@ -86,7 +93,7 @@ MouseArea {
         forceActiveFocus()
         ed.altHeld = !!(m.modifiers & Qt.AltModifier)
         ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
-        if (ed.interactive && ed.movePhoto && m.button === Qt.LeftButton) {
+        if (ed.interactive && ed.movePhoto && !ed.photoLocked && m.button === Qt.LeftButton) {
             ed.dragKind = "photo"
             ed.dragOffX = ed.photoOffX
             ed.dragOffY = ed.photoOffY

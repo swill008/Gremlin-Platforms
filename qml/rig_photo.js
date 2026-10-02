@@ -33,6 +33,11 @@ function applyPhotoPose(pose) {
     if (!(r === r))
         r = 0
     photoRot = r
+    // Hidden and locked come only with a loaded pose; slider changes leave them.
+    if (pose.hidden !== undefined)
+        photoHidden = !!pose.hidden
+    if (pose.locked !== undefined)
+        photoLocked = !!pose.locked
     if (_photoWell)
         repaint()
 }
@@ -51,13 +56,19 @@ function fitPhotoWell() {
     repaint()
 }
 
+// The photo's pose as saved; hidden and locked only when on.
 function photoBag() {
-    return {
+    var bag = {
         scale: photoScale,
         offX: photoOffX,
         offY: photoOffY,
         rot: photoRot
     }
+    if (photoHidden)
+        bag.hidden = true
+    if (photoLocked)
+        bag.locked = true
+    return bag
 }
 
 function pagePhotoRect() {

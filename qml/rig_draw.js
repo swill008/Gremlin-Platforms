@@ -152,11 +152,13 @@ function addDrawAround(shape) {
     st.fy = yToFy(g.y)
     st.fw = g.w / Math.max(1, spaceRect().w)
     st.fh = g.h / Math.max(1, spaceRect().h)
-    nodes.push(st)
+    insertBelowChips(st)
     setSelection([st.id])
     bump()
 }
 
+// New drawings go on top of the other drawings, under the chips; a text box
+// goes on top of everything.
 function addDrawFree(shape, x0, y0, x1, y1) {
     if (isLineTool(shape)) {
         addLineFree(shape, x0, y0, x1, y1)
@@ -190,7 +192,6 @@ function addDrawFree(shape, x0, y0, x1, y1) {
         st.idCol = false
         st.fontSize = 10
         st.rows = [emptyTableRow(2)]
-        st.zLayer = 2
         var minW = tableMinW(st)
         var minH = tableMinH(st)
         if (w < minW)
@@ -214,9 +215,11 @@ function addDrawFree(shape, x0, y0, x1, y1) {
         st.borderOpacity = 1
         st.wrap = true
         st.scaleFont = false
-        st.zLayer = 3
     }
-    nodes.push(st)
+    if (shape === "text")
+        nodes.push(st)
+    else
+        insertBelowChips(st)
     setSelection([st.id])
     tableRow = 0
     tableCol = 0
@@ -244,7 +247,7 @@ function addLineFree(tool, x0, y0, x1, y1) {
     ln.headStart = "none"
     ln.headEnd = tool === "arrowline" ? "solid" : "none"
     setLineEnds(ln, x0, y0, x1, y1)
-    nodes.push(ln)
+    insertBelowChips(ln)
     setSelection([ln.id])
     bump()
 }

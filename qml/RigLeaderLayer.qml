@@ -19,13 +19,15 @@ Canvas {
         var list = ed.nodes || []
         for (var i = 0; i < list.length; i++) {
             var n = list[i]
-            if (ed.isDraw(n))
+            if (ed.isDraw(n) || ed.isHidden(n))
                 continue
             var sel = ed.interactive && ed.isSelected(n.id)
             var ls = ed.leaderList(n)
             var li
             for (li = 0; li < ls.length; li++) {
                 var L = ls[li]
+                if (L.hidden)
+                    continue
                 var leadSel = sel && ed.selectedLeader === li
                 var lw = ed.leaderWidthOf(n)
                 ctx.strokeStyle = leadSel ? "#FBBF24" : (sel ? "#D4D4D8" : (n.leaderColor || "#A1A1AA"))
@@ -38,11 +40,12 @@ Canvas {
             var hs = ed.hotSz(n)
             var hShape = n.hotShape || "round"
             var hFill = n.hotFill || "filled"
-            ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : (n.hotColor || "#F4F4F5"))
+            if (!ed.hotHidden(n))
+                ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : (n.hotColor || "#F4F4F5"))
             if (ed.interactive) {
                 for (li = 0; li < ls.length; li++) {
                     var L2 = ls[li]
-                    if (!ed.showLeaderHandles(n, li))
+                    if (!ed.showLeaderHandles(n, li) || ed.leaderBlocked(n, li))
                         continue
                     var leadSel2 = true
                     var a = ed.endPt(L2.from)

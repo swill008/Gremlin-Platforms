@@ -299,9 +299,10 @@ function _rotate() {
     ])
 }
 
+// Locked items ignore clicks on the map; the Layers panel unlocks them.
 function _lockItem() {
-    var n = pinTarget()
-    return _tog("Lock", isLocked(n), function() { var t = pinTarget(); if (t) toggleLock(t.id) }, !!n)
+    var n = nodeAt(selectedId)
+    return _tog("Lock", isLocked(n), function() { toggleLock(selectedId) }, !!n)
 }
 
 function _detachFromChips() {
@@ -320,9 +321,12 @@ function _detachFromChips() {
 function _arrange(extra) {
     var n = nodeAt(selectedId)
     var items = [
+        _act("Bring to front", bringToFront),
         _act("Bring forward", bringForward),
         _act("Send back", sendBack),
-        _lockItem()
+        _act("Send to back", sendToBack),
+        _lockItem(),
+        _act("Hide", function() { setLayerFlag(selectedId, "", "hidden", true) })
     ]
     if (n && n.around && n.around.length)
         items.push(_act("Detach from chips", _detachFromChips))
@@ -503,12 +507,12 @@ function menuModel() {
     var sections = []
     if (kind === "chip") {
         quick = [_act("Rename", _renameChip), _act("Delete chip", deleteChip)]
-        sections = [_chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _group(), _format(), _around()]
+        sections = [_chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _group(), _format(), _around(), _arrange()]
     } else if (kind === "group") {
         quick = groupEditId !== ""
             ? [_act("Done editing group", endGroupEdit), _act("Break group", ungroupSelection)]
             : [_act("Edit group", function() { beginGroupEdit(_ctx.nodeId) }), _act("Break group", ungroupSelection)]
-        sections = [_format(), _align(), _chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _around()]
+        sections = [_format(), _align(), _chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _around(), _arrange()]
     } else if (kind === "leader") {
         quick = [_act("Add leader", addLeader), _deleteLeaderItem()]
         if (selectedSpine >= 0)

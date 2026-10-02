@@ -13,6 +13,7 @@ Item {
     property var ed: null
     property var linesCanvas: null
     z: 0
+    visible: !ed.photoHidden
     x: ed.innerPageRect().x
     y: ed.innerPageRect().y
     width: ed.innerPageRect().w

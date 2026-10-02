@@ -189,6 +189,7 @@ function topics() {
         topic("Tools", "Button Map",
             "<p>Button Map is a picture of a device with a chip on each claimed control. A press lights its chip, and wires show their destination. Moving a chip changes only the picture, never the actions.</p>"
             + "<p>Open it from a card's menu, the toolbar, or Tools → Mapping → <b>Button Map</b> (then pick the device from its File menu). <b>File → Edit Mapping</b> starts editing: drag chips from the pool onto the photo, then <b>File → Save</b> (Ctrl+S) writes the layout to the device's module file. <b>F1</b> opens the editor's own help.</p>"
+            + "<p>View → <b>Layers</b> lists every item with an eye to hide it and a lock to keep it in place; drag a row to change what is on top. Hidden items are left out of picture exports; locked ones let clicks pass through (Ctrl+L locks the selection, Ctrl+Shift+L unlocks everything).</p>"
             + "<p>While editing, the right-click menu shows only what applies to what you clicked. It opens small, with a few actions and collapsed sections; click a section to open it, and the next menu for the same kind of item reopens on it.</p>"
             + "<p>Right-click empty canvas → <b>Draw</b> adds drawings on the photo: rectangles, ellipses, triangles, diamonds and block arrows (filled or hollow), lines and arrows with a solid or hollow head at either end, text boxes, tables and pictures. A shape's or line's outline can be solid, dashed or dotted.</p>"),
         topic("Tools", "Viewers",

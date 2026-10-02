@@ -29,6 +29,8 @@ function applyPointer(mx, my, altOff) {
         n.hotFx = xToFx(hp.x)
         n.hotFy = yToFy(hp.y)
     } else if (dragKind === "photo") {
+        if (photoLocked)
+            return
         var sPhoto = spaceRect()
         var dw = Math.max(1, sPhoto.w)
         var dh = Math.max(1, sPhoto.h)
@@ -54,7 +56,7 @@ function applyPointer(mx, my, altOff) {
             var ids = (selectedIds && selectedIds.length) ? selectedIds : [selectedId]
             for (var i = 0; i < ids.length; i++) {
                 var q = nodeAt(ids[i])
-                if (!q)
+                if (!q || isLocked(q))
                     continue
                 q.chipFx = clamp01(q.chipFx + dFx)
                 q.chipFy = clamp01(q.chipFy + dFy)

@@ -21,6 +21,7 @@ import "rig_draw.js" as RigDraw
 import "rig_selection.js" as RigSelection
 import "rig_pointer.js" as RigPointer
 import "rig_menu.js" as RigMenu
+import "rig_layers.js" as RigLayers
 
 Item {
     id: _ed
@@ -114,6 +115,9 @@ Item {
     property real photoOffY: 0
     property real photoRot: 0
     property bool movePhoto: false
+    // Layers panel flags for the background photo (saved with its pose).
+    property bool photoHidden: false
+    property bool photoLocked: false
     property real photoDragX0: 0
     property real photoDragY0: 0
     signal selectedChanged()
@@ -408,6 +412,33 @@ Item {
     function setDrawTool(shape) { return RigDraw.setDrawTool(shape) }
     function lockAspect(x0, y0, x1, y1) { return RigDraw.lockAspect(x0, y0, x1, y1) }
     function requestDrawColor(field) { return RigDraw.requestDrawColor(field) }
+    // Layers: stacking, hiding and locking, names (rig_layers.js)
+    function normalizeStacking() { return RigLayers.normalizeStacking() }
+    function insertBelowChips(n) { return RigLayers.insertBelowChips(n) }
+    function leaderLayerZ() { return RigLayers.leaderLayerZ() }
+    function moveNodeTo(id, index) { return RigLayers.moveNodeTo(id, index) }
+    function bringForward() { return RigLayers.bringForward() }
+    function sendBack() { return RigLayers.sendBack() }
+    function bringToFront() { return RigLayers.bringToFront() }
+    function sendToBack() { return RigLayers.sendToBack() }
+    function isHidden(n) { return RigLayers.isHidden(n) }
+    function hotBlocked(n) { return RigLayers.hotBlocked(n) }
+    function hotHidden(n) { return RigLayers.hotHidden(n) }
+    function leaderBlocked(n, li) { return RigLayers.leaderBlocked(n, li) }
+    function leaderHidden(n, li) { return RigLayers.leaderHidden(n, li) }
+    function layerFlag(id, part, flag) { return RigLayers.layerFlag(id, part, flag) }
+    function layerFlagInherited(id, part, flag) { return RigLayers.layerFlagInherited(id, part, flag) }
+    function setLayerFlag(id, part, flag, on) { return RigLayers.setLayerFlag(id, part, flag, on) }
+    function toggleLayerFlag(id, part, flag) { return RigLayers.toggleLayerFlag(id, part, flag) }
+    function toggleLockSelection() { return RigLayers.toggleLockSelection() }
+    function showAll() { return RigLayers.showAll() }
+    function unlockAll() { return RigLayers.unlockAll() }
+    function layerName(n) { return RigLayers.layerName(n) }
+    function renameLayer(id, name) { return RigLayers.renameLayer(id, name) }
+    function layerType(n) { return RigLayers.layerType(n) }
+    function layerRows(filter, expanded) { return RigLayers.layerRows(filter, expanded) }
+    function setPhotoFlag(flag, on) { return RigLayers.setPhotoFlag(flag, on) }
+
     // What the right-click menu offers (rig_menu.js)
     function menuKind() { return RigMenu.menuKind() }
     function menuTitle(kind) { return RigMenu.menuTitle(kind) }
@@ -436,8 +467,6 @@ Item {
     function duplicateSelection() { return RigSelection.duplicateSelection() }
     function copySelection() { return RigSelection.copySelection() }
     function pasteClipboard() { return RigSelection.pasteClipboard() }
-    function bringForward() { return RigSelection.bringForward() }
-    function sendBack() { return RigSelection.sendBack() }
     function isSelected(id) { return RigSelection.isSelected(id) }
     function setSelection(ids) { return RigSelection.setSelection(ids) }
     function toggleSelected(id) { return RigSelection.toggleSelected(id) }
@@ -696,6 +725,13 @@ Item {
         function onHeightChanged() { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
     }
 
+    // Every node in list order (the last on top) and the leader canvas, which
+    // sits just under the lowest chip.
+    Item {
+        id: _stack
+        anchors.fill: parent
+        z: 2
+
     Repeater {
         id: _chips
         model: { _ed.tick; return (_ed.nodes || []).length }
@@ -707,7 +743,8 @@ Item {
                 var list = _ed.nodes || []
                 return (index >= 0 && index < list.length) ? list[index] : null
             }
-            visible: node !== null
+            // tick: hiding changes the node in place, not the node object.
+            visible: { _ed.tick; return node !== null && !node.hidden }
             x: {
                 _ed.tick
                 if (!node)
@@ -730,14 +767,7 @@ Item {
                     y += _ed.groupMinY(node)
                 return y
             }
-            z: {
-                _ed.tick
-                if (!node)
-                    return 0
-                if (node.zLayer !== undefined && node.zLayer !== null)
-                    return node.zLayer
-                return _ed.isDraw(node) ? 2 : 3
-            }
+            z: index
             rotation: { _ed.tick; return (_ed.isDraw(node) && node.rot) ? node.rot : 0 }
             opacity: { _ed.tick; return (_ed.isDraw(node) && node.opacity !== undefined && node.opacity !== null) ? node.opacity : 1 }
             transformOrigin: Item.Center
@@ -795,6 +825,9 @@ Item {
         }
     }
 
+    RigLeaderLayer { id: _lines; ed: _ed; z: _ed.leaderLayerZ() }
+    }
+
     Component {
         id: _groupComp
         RigGroupItem { ed: _ed }
@@ -827,6 +860,7 @@ Item {
         repeat: false
         onTriggered: {
             var list = _ed.nodes || []
+            _ed.normalizeStacking()
             _ed.demoteSpecialKinds()
             for (var i = 0; i < list.length; i++) {
                 _ed.ensureFriendly(list[i])
@@ -839,11 +873,9 @@ Item {
 
     RigPhotoLayer { id: _photoWell; ed: _ed; linesCanvas: _lines }
 
-    RigGuides { id: _guides; ed: _ed }
+    RigGuides { id: _guides; ed: _ed; z: 3 }
 
     RigGrid { id: _grid; ed: _ed }
-
-    RigLeaderLayer { id: _lines; ed: _ed }
 
     RigPointerArea {
         ed: _ed

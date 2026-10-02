@@ -24,7 +24,7 @@ function deleteSelection() {
 function deleteChip(id) {
     var nid = id || selectedId
     var n = nodeAt(nid)
-    if (!n || isGroup(n))
+    if (!n || isGroup(n) || isLocked(n))
         return false
     var idx = nodeIndex(nid)
     if (idx < 0)
@@ -56,7 +56,7 @@ function nudge(dx, dy) {
     var i
     for (i = 0; i < ids.length; i++) {
         var n = nodeAt(ids[i])
-        if (!n)
+        if (!n || isLocked(n))
             continue
         var pack = tablePackOf(n)
         if (pack) {
@@ -203,40 +203,6 @@ function copySelection() {
 
 function pasteClipboard() {
     pasteNodes(clip || [], 16 / Math.max(1, spaceRect().w), 16 / Math.max(1, spaceRect().h))
-}
-
-function bringForward() {
-    var list = nodes || []
-    var i
-    for (i = list.length - 2; i >= 0; i--) {
-        if (isSelected(list[i].id) && !isSelected(list[i + 1].id)) {
-            var t = list[i]
-            list[i] = list[i + 1]
-            list[i + 1] = t
-        }
-    }
-    for (i = 0; i < list.length; i++) {
-        if (isSelected(list[i].id) && isDraw(list[i]))
-            list[i].zLayer = 4
-    }
-    bump()
-}
-
-function sendBack() {
-    var list = nodes || []
-    var i
-    for (i = 1; i < list.length; i++) {
-        if (isSelected(list[i].id) && !isSelected(list[i - 1].id)) {
-            var t = list[i]
-            list[i] = list[i - 1]
-            list[i - 1] = t
-        }
-    }
-    for (i = 0; i < list.length; i++) {
-        if (isSelected(list[i].id) && isDraw(list[i]))
-            list[i].zLayer = 1
-    }
-    bump()
 }
 
 function isSelected(id) {

@@ -40,7 +40,7 @@ QML = ROOT / "qml"
 # the user's own module files.
 LAYOUTS = {
     name: Path(__file__).parent / "rig_editor_golden" / "layouts" / f"{name}.json"
-    for name in ("evo_r", "evo_l")
+    for name in ("evo_r", "evo_l", "legacy")
 }
 
 _HOST = b"""
@@ -55,6 +55,34 @@ Window {
     color: "#202020"
 
     VkbRigFace { id: _face; anchors.fill: parent }
+
+    // The Layers panel, as the Button Map window places it; shown only by
+    // scenarios that use it, so other screenshots are unchanged.
+    RigLayersPanel {
+        id: _layers
+        ed: _face.editorItem
+        visible: false
+        width: 260
+        x: parent.width - width - 12
+        y: 12
+        height: parent.height - 24
+        z: 50
+    }
+    function showLayers(on) { _layers.visible = on }
+    function layerLines() {
+        return JSON.stringify(_layers.visible ? _layers.describe() : [])
+    }
+    function layerRowRect(i) { return JSON.stringify(_layers.rowRect(i)) }
+    function layerRowIndex(text) {
+        var rows = _layers.rows
+        for (var i = 0; i < rows.length; i++) {
+            if (rows[i].name === text)
+                return i
+        }
+        return -1
+    }
+    function setLayerFilter(f) { _layers.filter = f }
+    function openLayer(id) { _layers.toggleOpen(id) }
 
     function ed() { return _face.editorItem }
     function setNodes(json) { _face.editorNodes = JSON.parse(json) }
@@ -107,6 +135,7 @@ Window {
         var e = ed()
         return JSON.stringify({
             menu: menuLines(),
+            layers: JSON.parse(layerLines()),
             photo: [e.photoScale, e.photoOffX, e.photoOffY, e.photoRot],
             nodes: e.nodes,
             selected: e.selectedIds,
@@ -145,6 +174,15 @@ class Session:
         self.name = name
         self.steps: list[dict] = []
         self.app = QtGui.QGuiApplication(sys.argv[:1])
+        # The app's default font (JoystickGremlinApp sets it). Left unset, Qt's
+        # fallback choice varies between runs and so would the screenshots.
+        font = QtGui.QFont("Segoe UI")
+        font.setPixelSize(15)
+        self.app.setFont(font)
+        # The app loads the icon font at start; the Layers panel uses it.
+        QtGui.QFontDatabase.addApplicationFont(
+            str(ROOT / "gfx" / "bootstrap-icons.otf")
+        )
         QtQml.qmlRegisterSingletonType(
             QtCore.QUrl.fromLocalFile(str(QML / "Style.qml")),
             "Gremlin.Style",
@@ -261,6 +299,29 @@ class Session:
     def menu_key(self, key: QtCore.Qt.Key) -> None:
         """A key press while the menu has focus."""
         QtTest.QTest.keyClick(self.win, key)
+        self.wait(60)
+
+    def layer_row(self, name: str) -> dict:
+        i = self.js("layerRowIndex", name)
+        assert i >= 0, f"no layer row {name!r}"
+        return json.loads(self.js("layerRowRect", i))
+
+    def click_layer(self, name: str, part: str = "name") -> None:
+        """Clicks a Layers panel row: its name, or its "eye" or "lock"."""
+        r = self.layer_row(name)
+        right = r["x"] + r["w"] - 2
+        x = {"lock": right - 11, "eye": right - 35}.get(part, r["x"] + r["w"] / 2)
+        self.click(QtCore.QPoint(round(x), round(r["y"] + r["h"] / 2)))
+
+    def type_text(self, text: str) -> None:
+        """Types text into whatever has focus (QTest.keyClicks wants a widget)."""
+        for ch in text:
+            key = QtCore.Qt.Key(ord(ch.upper()))
+            for kind in (QtCore.QEvent.Type.KeyPress, QtCore.QEvent.Type.KeyRelease):
+                event = QtGui.QKeyEvent(
+                    kind, key, QtCore.Qt.KeyboardModifier.NoModifier, ch
+                )
+                QtCore.QCoreApplication.sendEvent(self.win, event)
         self.wait(60)
 
     def click(
@@ -391,15 +452,15 @@ def scenario_session_r(s: Session) -> None:
     # Text box and table with the draw tool.
     s.call("setDrawTool", "text")
     s.drag(s.point(0.75, 0.10), s.point(0.92, 0.18))
+    text = s.state()["selected"][0]
     s.record("draw-text")
     s.call("setDrawTool", "table")
     s.drag(s.point(0.74, 0.55), s.point(0.95, 0.85))
+    table = s.state()["selected"][0]
     s.record("draw-table", image=True)
     s.call("setDrawTool", "")
 
     # Right-click menus: chip, text box and table each open their own.
-    text = s.state()["nodes"][-2]["id"]
-    table = s.state()["nodes"][-1]["id"]
     s.right_click(s.center(second))
     s.record("menu-chip", image=True)
     s.close_menus()
@@ -699,12 +760,100 @@ def scenario_menu(s: Session) -> None:
     s.close_menus()
 
 
+def scenario_layers(s: Session) -> None:
+    """Stacking from old layouts, and the Layers panel: hide, lock, open a
+    chip's hotspot and leaders, restack by dragging, rename, filter."""
+    Mod = QtCore.Qt.KeyboardModifier
+    Key = QtCore.Qt.Key
+
+    # An old layout: zLayer sorts the stack once, pinned becomes locked.
+    _load(s, "legacy")
+    s.js("showLayers", True)
+    s.record("legacy-normalised", image=True)
+
+    _load(s, "evo_r")
+    chips = [n["id"] for n in s.state()["nodes"] if n["kind"] == "btn"]
+    # A filled rectangle over the Button 6 to 10 chips: drawn under them.
+    s.call("setDrawTool", "rect")
+    s.drag(s.point(0.24, 0.33), s.point(0.38, 0.48))
+    s.call("setDrawTool", "")
+    rect = s.state()["selected"][0]
+    s.call("applyField", "fill", "filled")
+    s.record("panel", image=True)
+
+    # Hide the rectangle: gone from the map, and a click there selects nothing.
+    s.click_layer("Rectangle", "eye")
+    s.call("setSelection", [])
+    s.click(s.point(0.26, 0.35))
+    s.record("hidden-click-through", image=True)
+    s.click_layer("Rectangle", "eye")
+
+    # Lock a chip: a click on it, a drag and a band all pass it by.
+    first = s.node(chips[0])
+    name = s.call_on_node("layerName", chips[0])
+    s.click_layer(name, "lock")
+    s.call("setSelection", [])
+    s.click(s.center(chips[0]))
+    s.drag(s.center(chips[0]), s.center(chips[0], dx=60))
+    s.record("locked-chip")
+    assert s.node(chips[0])["chipFx"] == first["chipFx"]
+    # Selected from the panel, Delete and arrow keys leave it alone.
+    s.click_layer(name)
+    s.key(Key.Key_Delete)
+    s.key(Key.Key_Right)
+    s.record("locked-chip-keys")
+
+    # Ctrl+L locks the selection, Ctrl+Shift+L unlocks everything.
+    s.call("setSelection", [rect])
+    s.key(Key.Key_L, Mod.ControlModifier)
+    s.record("ctrl-l")
+    s.key(Key.Key_L, Mod.ControlModifier | Mod.ShiftModifier)
+    s.record("ctrl-shift-l")
+
+    # A chip's own rows: hide a leader, lock the hotspot.
+    s.call("toggleLayerFlag", chips[1], "leader:0", "hidden")
+    s.call("toggleLayerFlag", chips[1], "hot", "locked")
+    s.js("setLayerFilter", "chips")
+    s.js("openLayer", chips[1])
+    s.record("chip-parts", image=True)
+    s.js("setLayerFilter", "all")
+    s.wait(100)
+
+    # Drag the rectangle's row to the top: it now covers the chips.
+    top = json.loads(s.js("layerRowRect", 0))
+    r = s.layer_row("Rectangle")
+    s.drag(
+        QtCore.QPoint(round(r["x"] + 60), round(r["y"] + r["h"] / 2)),
+        QtCore.QPoint(round(top["x"] + 60), round(top["y"] + 2)),
+    )
+    s.record("restacked", image=True)
+
+    # Rename it by double-clicking its row.
+    r = s.layer_row("Rectangle")
+    QtTest.QTest.mouseDClick(
+        s.win,
+        QtCore.Qt.MouseButton.LeftButton,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+        QtCore.QPoint(round(r["x"] + 80), round(r["y"] + r["h"] / 2)),
+    )
+    s.wait(150)
+    s.type_text("Cover")
+    QtTest.QTest.keyClick(s.win, Key.Key_Return)
+    s.wait(150)
+    s.record("renamed")
+
+    # The photo's own row.
+    s.call("setPhotoFlag", "locked", True)
+    s.record("photo-locked")
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
     "api_sweep": scenario_api_sweep,
     "arrows": scenario_arrows,
     "menu": scenario_menu,
+    "layers": scenario_layers,
 }
 
 

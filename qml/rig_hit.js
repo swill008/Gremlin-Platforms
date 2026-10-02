@@ -7,18 +7,17 @@
 // function here has a forwarder of the same name in the editor.
 .import "rig_shapes.js" as Shapes
 
+// What is under the pointer. Small targets win over bodies: group members,
+// leader ends, hotspots and spines first, then the topmost item, then leader
+// lines. Each pass looks from the top of the stack down and skips anything
+// hidden or locked, so clicks pass through to what is underneath.
 function hitTest(mx, my) {
     var list = nodes || []
     var i
     var n
-    for (i = 0; i < list.length; i++) {
+    for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
-        if (isPinnable(n) && hitOverlayPin(n, mx, my))
-            return { kind: "overlayPin", id: n.id, spine: -1 }
-    }
-    for (i = 0; i < list.length; i++) {
-        n = list[i]
-        if (!isGroup(n))
+        if (!isGroup(n) || isHidden(n) || isLocked(n))
             continue
         var mi0 = memberHit(n, mx, my)
         if (mi0 < 0)
@@ -27,90 +26,93 @@ function hitTest(mx, my) {
             return { kind: "member", id: n.id, spine: -1, member: mi0 }
         return { kind: "chip", id: n.id, spine: -1 }
     }
-    for (i = 0; i < list.length; i++) {
+    for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
         if (n.kind === "draw")
             continue
         var ls = leaderList(n)
         for (var li = 0; li < ls.length; li++) {
+            if (leaderBlocked(n, li))
+                continue
             var fp = endPt(ls[li].from)
-            if (Math.hypot(mx - fp.x, my - fp.y) < 9) {
+            if (Math.hypot(mx - fp.x, my - fp.y) < 9)
                 return { kind: "from", id: n.id, spine: -1, leader: li }
-            }
         }
     }
-    for (i = 0; i < list.length; i++) {
+    for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
         var ls2 = leaderList(n)
         for (var lj = 0; lj < ls2.length; lj++) {
+            if (leaderBlocked(n, lj))
+                continue
             var te = ls2[lj].to || { type: "hot", id: n.id }
             var tp = endPt(te)
-            if (te.type !== "hot" && Math.hypot(mx - tp.x, my - tp.y) < 9) {
+            if (te.type !== "hot" && Math.hypot(mx - tp.x, my - tp.y) < 9)
                 return { kind: "to", id: n.id, spine: -1, leader: lj }
-            }
         }
     }
-    for (i = 0; i < list.length; i++) {
+    for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
-        if (n.kind === "draw")
+        if (n.kind === "draw" || hotBlocked(n))
             continue
         var h = hotPt(n)
-        if (Math.hypot(mx - h.x, my - h.y) < (hotSz(n) * 0.5 + 5)) {
+        if (Math.hypot(mx - h.x, my - h.y) < (hotSz(n) * 0.5 + 5))
             return { kind: "hot", id: n.id, spine: -1 }
-        }
     }
-    for (i = 0; i < list.length; i++) {
+    for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
         var lss = leaderList(n)
         for (var lk = 0; lk < lss.length; lk++) {
-            if (!showLeaderHandles(n, lk))
+            if (!showLeaderHandles(n, lk) || leaderBlocked(n, lk))
                 continue
             var spines = lss[lk].spines || []
             for (var s = 0; s < spines.length; s++) {
                 var sx = fxToX(spines[s].fx)
                 var sy = fyToY(spines[s].fy)
-                if (Math.hypot(mx - sx, my - sy) < 9) {
+                if (Math.hypot(mx - sx, my - sy) < 9)
                     return { kind: "spine", id: n.id, spine: s, leader: lk }
-                }
             }
         }
     }
-    for (i = 0; i < list.length; i++) {
+    // A selected drawing's handles, even when another item covers them.
+    for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
-        if (isGroup(n) && groupEditId === n.id) {
+        if (!isDraw(n) || isHidden(n) || isLocked(n) || !isSelected(n.id))
+            continue
+        var hd = hitDraw(n, mx, my)
+        if (hd && hd !== "body")
+            return { kind: "draw", id: n.id, spine: -1, handle: hd }
+    }
+    // The topmost chip, group or drawing under the pointer.
+    for (i = list.length - 1; i >= 0; i--) {
+        n = list[i]
+        if (isHidden(n) || isLocked(n))
+            continue
+        if (isDraw(n)) {
+            var dh = hitDraw(n, mx, my)
+            if (dh)
+                return { kind: "draw", id: n.id, spine: -1, handle: dh }
+            continue
+        }
+        if (isGroup(n)) {
             var mi = memberHit(n, mx, my)
-            if (mi >= 0)
+            if (mi >= 0 && groupEditId === n.id)
                 return { kind: "member", id: n.id, spine: -1, member: mi }
+            if (mi >= 0)
+                return { kind: "chip", id: n.id, spine: -1 }
         }
-    }
-    for (i = 0; i < list.length; i++) {
-        n = list[i]
-        if (isDraw(n))
-            continue
-        if (isGroup(n) && memberHit(n, mx, my) >= 0)
-            return { kind: "chip", id: n.id, spine: -1 }
         var it = _chips.itemAt(i)
-        if (!it) {
+        if (!it)
             continue
-        }
         var p = it.mapFromItem(_ed, mx, my)
-        if (p.x >= 0 && p.y >= 0 && p.x <= it.width && p.y <= it.height) {
-            return { kind: "chip", id: list[i].id, spine: -1 }
-        }
+        if (p.x >= 0 && p.y >= 0 && p.x <= it.width && p.y <= it.height)
+            return { kind: "chip", id: n.id, spine: -1 }
     }
-    for (i = 0; i < list.length; i++) {
+    for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
-        if (!isDraw(n))
-            continue
-        var dh = hitDraw(n, mx, my)
-        if (dh)
-            return { kind: "draw", id: n.id, spine: -1, handle: dh }
-    }
-    for (i = 0; i < list.length; i++) {
-        var seg = _nearLeader(list[i], mx, my)
-        if (seg && seg.seg >= 0) {
-            return { kind: "line", id: list[i].id, spine: -1, leader: seg.leader, seg: seg.seg }
-        }
+        var seg = _nearLeader(n, mx, my)
+        if (seg && seg.seg >= 0 && !leaderBlocked(n, seg.leader))
+            return { kind: "line", id: n.id, spine: -1, leader: seg.leader, seg: seg.seg }
     }
     return { kind: "", id: "", spine: -1 }
 }
@@ -270,6 +272,8 @@ function selectBand(add) {
     var list = nodes || []
     for (var i = 0; i < list.length; i++) {
         var n = list[i]
+        if (isHidden(n) || isLocked(n))
+            continue
         var hit = false
         if (isTable(n)) {
             hit = tableHitsBand(n, x0, y0, x1, y1)

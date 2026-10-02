@@ -25,7 +25,7 @@ _REMAINING = {
     # Drawn on the device photo, which looks the same in both modes. The
     # Rig*.qml parts were split out of VkbRigEditor.qml with their colours.
     "qml/RigChipItem.qml": 6,
-    "qml/RigDrawItem.qml": 22,
+    "qml/RigDrawItem.qml": 16,
     "qml/RigGrid.qml": 3,
     "qml/RigGroupItem.qml": 3,
     "qml/RigGuides.qml": 1,

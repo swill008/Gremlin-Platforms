@@ -105,6 +105,8 @@ ApplicationWindow {
     }
     property int _nameTick: 0
     property bool editing: false
+    // The Layers panel shows while editing; View > Layers turns it off and on.
+    property bool layersOn: true
     onEditingChanged: {
         poolDrag = false
         if (editing)
@@ -124,6 +126,9 @@ ApplicationWindow {
     property real photoOffX: 0
     property real photoOffY: 0
     property real photoRot: 0
+    // The photo's Layers panel flags as loaded; the editor keeps the live ones.
+    property bool photoHidden: false
+    property bool photoLocked: false
     property bool movePhoto: false
     property var livePhoto
     property var workPhoto
@@ -823,8 +828,12 @@ ApplicationWindow {
                     b: "Right-click empty canvas → Draw picks a tool: a shape (Rectangle, Rounded, Ellipse, Triangle, Diamond, Arrow, Double arrow), a Line or an Arrow, a Text box or a Table, then drag on the photo. Shift keeps a shape's proportions and a line on 15° steps. Stop drawing or Esc ends the tool. Import picture… adds a picture on top of the photo.\nWith chips selected, Shape around selection draws a shape around them that moves with them.\nRight-click a shape for Duplicate and Delete, then Shape, Fill and outline (Filled or Hollow, colours, Width, Outline Solid, Dashed or Dotted, Opacity), Rotate, and Arrange (Bring forward, Send back, Lock).\nA selected line has a handle on each end to drag. Its Arrowheads section sets each end to None, Solid or Hollow; Swap heads turns them round.\nText boxes and tables have their own sections (text, box, rows and columns, cells, look). Double-click a cell or text box to type. A picture's section adds and clears snap points that chips snap to."
                 },
                 {
+                    h: "Layers",
+                    b: "View → Layers shows the Layers panel while editing: every item, top of the stack first, then the background photo.\nThe eye hides an item: it is not drawn, on the live map either, and is left out of picture and PDF exports (a Device Pack keeps it, still hidden). The lock keeps an item in place: clicks on the map pass through it, and it is not moved, nudged or deleted. Unlock it here, or press Ctrl+Shift+L to unlock everything.\nOpen a chip (the arrow) to hide or lock its hotspot or each leader on its own; locking or hiding the chip covers them all.\nDrag a row up or down to change what is on top; the right-click menu's Arrange section does the same one step at a time. Click a row to select the item (Ctrl or Shift to add); double-click a drawing's row to name it. Show all and Unlock all undo every hide and lock; the filter shows only chips, drawings, pictures, or text and tables."
+                },
+                {
                     h: "Selecting and keys",
-                    b: "Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrows nudge; Shift+Arrows nudge by the grid size.\n\nCtrl+S Save    Ctrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nDelete / Backspace  remove the selection\nCtrl+0  reset view    Esc  cancel tool, rename, or group edit\nF1  this help"
+                    b: "Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrows nudge; Shift+Arrows nudge by the grid size.\n\nCtrl+S Save    Ctrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nCtrl+L Lock or unlock the selection    Ctrl+Shift+L Unlock everything\nDelete / Backspace  remove the selection\nCtrl+0  reset view    Esc  cancel tool, rename, or group edit\nF1  this help"
                 }
             ]
             delegate: Column {
@@ -1026,12 +1035,18 @@ ApplicationWindow {
         if (!(ox === ox)) ox = 0
         if (!(oy === oy)) oy = 0
         if (!(r === r)) r = 0
-        return {
+        var pose = {
             scale: Math.max(0.25, Math.min(4, s)),
             offX: Math.max(-1, Math.min(1, ox)),
             offY: Math.max(-1, Math.min(1, oy)),
             rot: r
         }
+        // Layers panel flags, kept only when on (as the editor saves them).
+        if (p.hidden === true)
+            pose.hidden = true
+        if (p.locked === true)
+            pose.locked = true
+        return pose
     }
 
     function photoBag() {
@@ -1042,7 +1057,9 @@ ApplicationWindow {
             scale: photoScale,
             offX: photoOffX,
             offY: photoOffY,
-            rot: photoRot
+            rot: photoRot,
+            hidden: photoHidden,
+            locked: photoLocked
         })
     }
 
@@ -1052,7 +1069,13 @@ ApplicationWindow {
         photoOffX = p.offX
         photoOffY = p.offY
         photoRot = p.rot
+        photoHidden = !!p.hidden
+        photoLocked = !!p.locked
         applyPhotoToEditor()
+        var e = _ed()
+        if (faceLive && e && e.applyPhotoPose)
+            e.applyPhotoPose({ scale: photoScale, offX: photoOffX, offY: photoOffY, rot: photoRot,
+                               hidden: photoHidden, locked: photoLocked })
     }
 
     function applyPhotoToEditor() {
@@ -1530,6 +1553,12 @@ ApplicationWindow {
             Menu {
                 title: "View"
                 MenuItem {
+                    text: "Layers"
+                    checkable: true
+                    checked: layersOn
+                    onTriggered: layersOn = !layersOn
+                }
+                MenuItem {
                     text: "Reset view (View 100%)"
                     onTriggered: {
                         var f = _cardLoader.item
@@ -1732,6 +1761,16 @@ ApplicationWindow {
                     enabled: editing
                     sequence: "Ctrl+Y"
                     onActivated: { var e = _ed(); if (e) e.redo() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+L"
+                    onActivated: { var e = _ed(); if (e) e.toggleLockSelection() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+Shift+L"
+                    onActivated: { var e = _ed(); if (e) e.unlockAll() }
                 }
                 Shortcut {
                     enabled: editing
@@ -2104,6 +2143,25 @@ ApplicationWindow {
                         Rectangle { width: Style.dp(8); height: Style.dp(1); color: "#A1A1AA"; rotation: -45; x: Style.dp(2); y: Style.dp(7) }
                         Rectangle { width: Style.dp(5); height: Style.dp(1); color: "#A1A1AA"; rotation: -45; x: Style.dp(5); y: Style.dp(8) }
                     }
+                }
+
+                // Layers: every item with an eye and a lock, top of the stack first.
+                // On the right, above the pool when it is docked at the bottom.
+                RigLayersPanel {
+                    id: _layersPanel
+                    ed: _buttonMap._ed()
+                    visible: editing && layersOn && !!ed
+                    z: 31
+                    width: Style.dp(260)
+                    x: parent.width - width - Style.dp(12)
+                    y: Style.dp(12)
+                    height: {
+                        var bottom = parent.height - Style.dp(12)
+                        if (_poolFloat.visible && _poolFloat.y > height * 0.5)
+                            bottom = Math.min(bottom, _poolFloat.y - Style.dp(8))
+                        return Math.max(Style.dp(120), bottom - y)
+                    }
+                    onCloseRequested: layersOn = false
                 }
 
                 Connections {

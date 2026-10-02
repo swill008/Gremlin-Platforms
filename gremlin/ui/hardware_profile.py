@@ -55,12 +55,17 @@ def _photo_pose(raw) -> dict:
     scale = _num("scale", 1.0)
     if scale <= 0:
         scale = 1.0
-    return {
+    pose = {
         "scale": max(0.25, min(4.0, scale)),
         "offX": max(-1.0, min(1.0, _num("offX", 0.0))),
         "offY": max(-1.0, min(1.0, _num("offY", 0.0))),
         "rot": _num("rot", 0.0),
     }
+    # Set from the Button Map's Layers panel; written only when on.
+    for flag in ("hidden", "locked"):
+        if src.get(flag) is True:
+            pose[flag] = True
+    return pose
 
 
 def _install_root() -> Path:

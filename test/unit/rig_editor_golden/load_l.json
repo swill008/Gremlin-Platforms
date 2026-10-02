@@ -1127,6 +1127,7 @@
     "drawTool": "",
     "histAt": 0,
     "histLen": 1,
+    "layers": [],
     "menu": [],
     "nodeCount": 16,
     "photo": [
@@ -1141,7 +1142,7 @@
   }
  ],
  "warnings": [
-  "QML Image: Cannot open: qml/images/vkb_gladiator_rig.jpg",
-  "QML Image: Cannot open: qml/images/vkb_gladiator_rig.jpg"
+  "QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg",
+  "QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg"
  ]
 }

@@ -374,44 +374,6 @@ Item {
             }
         }
     }
-    Repeater {
-        model: (ed.interactive && node && ed.isPinnable(node)) ? 1 : 0
-        Rectangle {
-            visible: {
-            ed.tick
-            if (!node)
-                return false
-            if (ed.overlayHoverId === node.id)
-                return true
-            return (ed.isTable(node) || ed.isText(node)) && ed.isSelected(node.id)
-        }
-        width: Style.dp(16)
-            height: Style.dp(16)
-            x: -Style.dp(2)
-            y: -Style.dp(18)
-            radius: Style.dp(3)
-            z: 8
-            color: {
-                ed.tick
-                return ed.isLocked(node) ? "#FBBF24" : "#18181B"
-            }
-            border.color: {
-                ed.tick
-                return ed.isLocked(node) ? "#18181B" : "#A1A1AA"
-            }
-            border.width: Style.dp(1)
-            Rectangle {
-                width: Style.dp(6)
-                height: Style.dp(6)
-                radius: Style.dp(1)
-                anchors.centerIn: parent
-                color: {
-                    ed.tick
-                    return ed.isLocked(node) ? "#18181B" : "#A1A1AA"
-                }
-            }
-        }
-    }
     // Resize handles: eight on a box, one on each end of a line.
     Repeater {
         model: (ed.interactive && node && ed.isSelected(node.id) && !ed.isLocked(node) && !ed.tableCellHandlesOn(node))

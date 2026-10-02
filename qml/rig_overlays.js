@@ -72,7 +72,6 @@ function addOverlay(rel, fileUrl) {
     st.locked = false
     st.pinned = false
     st.sockets = []
-    st.zLayer = 2
     st.fill = "filled"
     st.fx = 0.36
     st.fy = 0.28
@@ -80,7 +79,7 @@ function addOverlay(rel, fileUrl) {
     st.fh = 0.28
     st.rot = 0
     st.opacity = 1
-    nodes.push(st)
+    insertBelowChips(st)
     setSelection([st.id])
     bump()
     return st.id
@@ -100,13 +99,16 @@ function pinTarget(id) {
     return null
 }
 
+// Locks or unlocks an item (any kind); old layouts' "pinned" becomes locked.
 function toggleLock(id) {
-    var n = pinTarget(id)
-    if (!isDraw(n))
+    var n = pinTarget(id) || nodeAt(id || selectedId)
+    if (!n)
         return
-    var on = !isLocked(n)
-    n.pinned = on
-    n.locked = on
+    if (isLocked(n))
+        delete n.locked
+    else
+        n.locked = true
+    delete n.pinned
     plantSnap = false
     bump()
 }
