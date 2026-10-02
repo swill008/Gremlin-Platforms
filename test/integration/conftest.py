@@ -8,13 +8,16 @@ import sys
 
 sys.path.append(".")
 
+import json
 import logging
 import pathlib
+import shutil
 import tempfile
 from collections.abc import Iterator
 from typing import Generator
 
 import pytest
+from PySide6 import QtCore
 
 import dill
 import gremlin.config
@@ -24,8 +27,10 @@ import gremlin.event_handler
 import gremlin.logical_device
 import gremlin.profile
 import gremlin.ui.backend
+import gremlin.util
 import joystick_gremlin
 from action_plugins import map_to_vjoy
+from gremlin.modules.ids import stored_guid_key
 from vjoy import vjoy
 
 pytest.register_assert_rewrite("test.integration.app_tester")
@@ -81,6 +86,49 @@ def edited_profile(
         action.vjoy_device_id = vjoy_control_device_id
 
     return profile_from_file
+
+
+def _claim_everything() -> dict:
+    return {
+        "buttons": list(range(1, 129)),
+        "axes": list(range(1, 9)),
+        "hats": list(range(1, 5)),
+        "keys": [],
+        "friendly": {},
+    }
+
+
+@pytest.fixture(scope="module")
+def device_modules(
+    vjoy_di_device: dill.DeviceSummary, vjoy_control_device_id: int
+) -> Iterator[None]:
+    """Writes the modules the test vJoy device needs to pass the layer rule.
+
+    The same vJoy device is the test input (read back through DirectInput) and
+    the output. The input module is bound to its DirectInput GUID; the output
+    module is found by its "vJoy N" name and left unbound, so the gate does not
+    treat the device as an output and drop its input events.
+    """
+    folder = gremlin.util.modules_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    files = {
+        folder / "integration_test_input.json": {
+            "device": "Integration Test Input",
+            "direction": "source",
+            "boundGuidLocal": stored_guid_key(vjoy_di_device.device_guid),
+            "claim": _claim_everything(),
+        },
+        folder / f"vjoy_{vjoy_control_device_id}.json": {
+            "device": f"vJoy {vjoy_control_device_id}",
+            "direction": "dest",
+            "claim": _claim_everything(),
+        },
+    }
+    for path, doc in files.items():
+        path.write_text(json.dumps(doc), encoding="utf-8")
+    yield
+    for path in files:
+        path.unlink(missing_ok=True)
 
 
 # +-------------------------------------------------------------------------
@@ -165,8 +213,9 @@ def vjoy_ids_or_skip() -> list[int]:
 
 # Do not use directly, see app_tester fixture instead.
 @pytest.fixture(scope="module", autouse=True)
-def _activate_gremlin(edited_profile_path: str) -> Iterator[None]:
+def _activate_gremlin(edited_profile_path: str, device_modules: None) -> Iterator[None]:
     """Activates Gremlin."""
+    del device_modules
     assert gremlin.event_handler.EventListener()._running
     backend = gremlin.ui.backend.Backend()
     backend.loadProfile(edited_profile_path)
@@ -174,6 +223,36 @@ def _activate_gremlin(edited_profile_path: str) -> Iterator[None]:
     backend.minimize()
     yield
     backend.activate_gremlin(False)
+
+
+@pytest.fixture(scope="package", autouse=True)
+def _own_process() -> None:
+    """Fails clearly when run in the same process as the unit tests.
+
+    A unit test makes a plain QCoreApplication while being collected, so
+    pytest-qt never creates JoystickGremlinApp and the Backend has no engine.
+    """
+    app = QtCore.QCoreApplication.instance()
+    if app is not None and not isinstance(app, joystick_gremlin.JoystickGremlinApp):
+        pytest.fail(
+            "Run the integration tests in their own pytest process "
+            "(pytest test/integration), not together with test/unit.",
+            pytrace=False,
+        )
+
+
+@pytest.fixture(scope="package", autouse=True)
+def _bundled_user_scripts() -> None:
+    """Copies the bundled user scripts into the scripts folder.
+
+    Relative script paths in a profile resolve against the user's scripts
+    folder, which is an empty temporary folder in tests.
+    """
+    source = pathlib.Path(__file__).parents[2] / "user_scripts"
+    target = gremlin.util.scripts_dir()
+    target.mkdir(parents=True, exist_ok=True)
+    for script in source.glob("*.py"):
+        shutil.copy(script, target / script.name)
 
 
 @pytest.fixture(scope="module", autouse=True)

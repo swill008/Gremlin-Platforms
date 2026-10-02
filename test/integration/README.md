@@ -20,8 +20,15 @@ The integration test is a standard pytest suite. The rough ordering of steps is:
         a real DirectInput device.
     2.  In most test modules, it should be sufficient to partition some axes, buttons and hats as
         test inputs, and the rest as outputs (multiple vJoy devices not needed).
-5.  The modified profile is loaded into Joystick Gremlin, which is then activated.
-6.  Inputs are written to some axes, buttons and hats, and outputs are verified per the action
+5.  Once per test module, the `device_modules` fixture writes module files into the (temporary)
+    modules folder: an input module bound to the test vJoy device's DirectInput GUID and a
+    `vJoy N` output module, both claiming every axis, button and hat. Without them the layer
+    rule drops the test inputs and blocks every vJoy output. The output module is left unbound
+    so the same vJoy device can be both the test input and the output.
+6.  Once per session, the bundled `user_scripts` are copied into the (temporary) scripts folder,
+    where relative script paths in a profile resolve.
+7.  The modified profile is loaded into Joystick Gremlin, which is then activated.
+8.  Inputs are written to some axes, buttons and hats, and outputs are verified per the action
     expectations.
 
 ## Code Layout
@@ -64,6 +71,10 @@ It is recommended to run the integration tests using `-v`, e.g.:
 ```
 JoystickGremlin> pytest -v test/integration
 ```
+
+Run them in their own pytest process, not together with `test/unit`: a unit test creates a plain
+`QCoreApplication` while being collected, so the Gremlin app the integration tests need is never
+created. The `_own_process` fixture fails with a message saying so.
 
 # Action Plugin Integration Tests
 
