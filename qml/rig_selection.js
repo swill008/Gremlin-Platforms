@@ -21,8 +21,9 @@ function deleteSelection() {
     }
 }
 
-function deleteChip(id) {
-    var nid = id || selectedId
+// Takes one item off the map without a history step; false for a group, a
+// locked item or one not on the map.
+function _removeNode(nid) {
     var n = nodeAt(nid)
     if (!n || isGroup(n) || isLocked(n))
         return false
@@ -35,6 +36,13 @@ function deleteChip(id) {
         detachChipFromTable(n)
     var list = nodes || []
     list.splice(idx, 1)
+    return true
+}
+
+function deleteChip(id) {
+    var nid = id || selectedId
+    if (!_removeNode(nid))
+        return false
     var keep = []
     var s = selectedIds || []
     for (var i = 0; i < s.length; i++) {
@@ -46,6 +54,46 @@ function deleteChip(id) {
     setSelection(keep)
     bump()
     return true
+}
+
+// The Delete key. Deletes the most specific thing selected: a leader spine,
+// a table cell, or else every selected item, as one undo step. A selected
+// group is broken apart instead; groups and locked items in a wider
+// selection stay (and stay selected). Returns what it did.
+function deleteSelected() {
+    var n = nodeAt(selectedId)
+    if (n && selectedSpine >= 0) {
+        var L = currentLeader(n)
+        if (L && L.spines && selectedSpine < L.spines.length) {
+            deleteSelection()
+            return "spine"
+        }
+    }
+    if (n && isTable(n) && tableExtra >= 0) {
+        deleteThisTableCell()
+        return "cell"
+    }
+    var ids = (selectedIds && selectedIds.length) ? selectedIds.slice() : (selectedId ? [selectedId] : [])
+    // One group, or a packed table anywhere in the selection: break it up.
+    if ((ids.length <= 1 || packTableFromSelection()) && canUngroup()) {
+        ungroupSelection()
+        return "ungroup"
+    }
+    var kept = []
+    var removed = 0
+    for (var i = 0; i < ids.length; i++) {
+        if (_removeNode(ids[i]))
+            removed++
+        else if (nodeAt(ids[i]))
+            kept.push(ids[i])
+    }
+    if (!removed)
+        return ""
+    groupEditId = ""
+    selectedMember = -1
+    setSelection(kept)
+    bump()
+    return "items"
 }
 
 // --- back to the pool by dragging -----------------------------------------------

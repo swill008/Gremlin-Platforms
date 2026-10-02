@@ -298,7 +298,7 @@ function buttonMapTopics() {
             "<p>The Button Map's menus show only what you can use at that moment: before a device is chosen the File menu lists the devices, and the editing items appear once you choose File → Edit Mapping. The Photo menu works while editing.</p>"
             + "<ul>"
             + "<li><b>Edit Mapping</b>, <b>Save</b> (Ctrl+S), <b>Cancel</b>.</li>"
-            + "<li><b>Reset layout</b> sends every chip, leader and hotspot back to the pool (it asks first). The mappings are not changed; save afterwards to make the empty layout the live map.</li>"
+            + "<li><b>Reset layout</b> clears everything from the map: chips go back to the pool, and leaders, hotspots, drawings, text boxes, pictures and tables are removed (it asks first). Actions are not changed. Ctrl+Z brings the layout back; save afterwards to make the empty map the live one.</li>"
             + "<li><b>Fit to photo frame</b> shrinks an older, oversized layout to the photo.</li>"
             + "<li><b>Choose background…</b> uses another picture as the photo; <b>Clear image</b> goes back to the module's picture.</li>"
             + "<li><b>Export PDF…</b>, <b>Export PNG…</b>, <b>Export JPG…</b> save the whole page, whatever the zoom, on the window's background colour. Selection marks, handles, guides and the grid are left off, and so are hidden items. <b>Export size</b> picks 1×, 2× (the default) or 3× the size on screen; a PDF page keeps the on-screen size and gets the extra detail. <b>Light page for printing</b> exports on white instead: every colour has its lightness turned over, so dark chips come out light with dark text and a dark red becomes a light red, while the photo stays as it is. The screen does not change.</li>"

@@ -45,6 +45,7 @@ Item {
         id: _renameScriptDialog
 
         visible: false
+        allowBlank: false
         width: Style.dp(300)
 
         property var callback: null

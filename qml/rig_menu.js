@@ -688,7 +688,7 @@ function menuModel() {
         quick = [_act("Add row below", function() { addTableRow(true) }), _act("Add column right", function() { addTableCol(true) })]
         sections = _tableSections()
     } else if (kind === "multi") {
-        quick = [_act("Group selected", groupSelection, canGroup()), _act("Duplicate", duplicateSelection), _act("Delete", deleteChip)]
+        quick = [_act("Group selected", groupSelection, canGroup()), _act("Duplicate", duplicateSelection), _act("Delete", function() { deleteSelected() })]
         var first = nodeAt(_ctx.nodeId)
         sections = [_alignSection(), _turnSection(), _savedStyles()].concat(isDraw(first) ? (isLine(first) ? _lineSections() : _shapeSections())
                                  : [_chipStyle(), _chipColours(), _hotspot(), _leader(), _around()])

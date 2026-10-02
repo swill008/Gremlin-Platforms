@@ -22,24 +22,10 @@ MouseArea {
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     cursorShape: ed.drawTool.length ? Qt.CrossCursor : Qt.ArrowCursor
     focus: true
-    Keys.onDeletePressed: {
-        var n = ed.nodeAt(ed.selectedId)
-        if (ed.isTable(n) && ed.tableExtra >= 0)
-            ed.deleteThisTableCell()
-        else if (ed.canUngroup())
-            ed.ungroupSelection()
-        else
-            ed.deleteChip()
-    }
+    Keys.onDeletePressed: ed.deleteSelected()
     Keys.onPressed: (e) => {
         if (e.key === Qt.Key_Backspace) {
-            var n = ed.nodeAt(ed.selectedId)
-            if (ed.isTable(n) && ed.tableExtra >= 0)
-                ed.deleteThisTableCell()
-            else if (ed.canUngroup())
-                ed.ungroupSelection()
-            else
-                ed.deleteChip()
+            ed.deleteSelected()
             e.accepted = true
         } else if ((e.key === Qt.Key_Return || e.key === Qt.Key_Enter) && ed.drawTool === "path" && ed.pathDraft.length) {
             ed.finishPath(false)

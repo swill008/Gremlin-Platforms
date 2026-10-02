@@ -1727,6 +1727,59 @@ def scenario_to_pool(s: Session) -> None:
     s.steps[-1]["state"]["stackSize"] = len(s.node(stack)["members"])
 
 
+def scenario_deletes(s: Session) -> None:
+    """The Delete key removes every selected item as one undo step, and a
+    selected leader spine or extra table cell alone, not the whole chip or
+    table."""
+    _load(s, "evo_r")
+    Key = QtCore.Qt.Key
+    ids = {n: s.call("placedId", "btn", n) for n in (3, 4, 5)}
+
+    def placed_step(name: str) -> None:
+        s.record(name)
+        s.steps[-1]["state"]["placed"] = {
+            str(n): bool(s.call("placedId", "btn", n)) for n in (3, 4, 5)
+        }
+
+    s.call("setSelection", [ids[3], ids[4], ids[5]])
+    s.key(Key.Key_Delete)
+    placed_step("several-deleted")
+    s.key(Key.Key_Z, QtCore.Qt.KeyboardModifier.ControlModifier)
+    placed_step("one-undo-restores-all")
+
+    # A spine: the chip stays, the spine goes.
+    chip = ids[3]
+    s.call("setSelection", [chip])
+    s.call_on_node("addCurveSpine", chip)
+    before = len(s.node(chip).get("spines") or [])
+    s.set_prop("selectedSpine", 0)
+    s.key(Key.Key_Delete)
+    s.record("spine-deleted")
+    s.steps[-1]["state"]["chipKept"] = any(
+        n["id"] == chip for n in s.state()["nodes"]
+    )
+    s.steps[-1]["state"]["spinesBeforeAfter"] = [
+        before, len(s.node(chip).get("spines") or [])
+    ]
+
+    # An extra table cell: the table stays, the cell goes.
+    s.call("setDrawTool", "table")
+    s.drag(s.point(0.74, 0.55), s.point(0.95, 0.85))
+    s.call("setDrawTool", "")
+    table = s.state()["selected"][0]
+    s.call("spawnEmptyCell")
+    extras = len(s.node(table).get("extras") or [])
+    s.set_prop("tableExtra", extras - 1)
+    s.key(Key.Key_Delete)
+    s.record("cell-deleted")
+    s.steps[-1]["state"]["tableKept"] = any(
+        n["id"] == table for n in s.state()["nodes"]
+    )
+    s.steps[-1]["state"]["extrasBeforeAfter"] = [
+        extras, len(s.node(table).get("extras") or [])
+    ]
+
+
 def scenario_shape_tools(s: Session) -> None:
     """Transform handles on a double arrow: shape (head and shaft), tips,
     bend and skew; Reset shape; Edit points on a triangle."""
@@ -1892,6 +1945,7 @@ SCENARIOS = {
     "to_pool": scenario_to_pool,
     "shape_tools": scenario_shape_tools,
     "hotspots": scenario_hotspots,
+    "deletes": scenario_deletes,
 }
 
 

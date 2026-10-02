@@ -676,6 +676,7 @@ Item {
     // Selection, nudging, delete, copy/paste/duplicate and stacking order (rig_selection.js)
     function deleteSelection() { return RigSelection.deleteSelection() }
     function deleteChip(id) { return RigSelection.deleteChip(id) }
+    function deleteSelected() { return RigSelection.deleteSelected() }
     function nudge(dx, dy) { return RigSelection.nudge(dx, dy) }
     function moveNodeBy(n, dx, dy, seenPack) { return RigSelection.moveNodeBy(n, dx, dy, seenPack) }
     function _newId(n) { return RigSelection._newId(n) }

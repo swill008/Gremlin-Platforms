@@ -534,29 +534,55 @@ class Backend(QtCore.QObject):
         )
         self.recentProfilesChanged.emit()
 
+    def _read_profile(self, fpath: str) -> None:
+        """Make the profile at fpath the open one; raises when it can't be
+        read."""
+        LogicalDevice().reset()
+        new_profile = profile.Profile()
+        profile_was_converted = new_profile.from_xml(Path(fpath))
+        profile_folder = os.path.dirname(fpath)
+        if profile_folder not in sys.path:
+            sys.path = list(set(sys.path))
+            sys.path.insert(0, profile_folder)
+        self.profile = new_profile
+        persist_log(f"Persist profile load path={fpath}")
+        if profile_was_converted:
+            self.profile.to_xml(Path(fpath))
+
     def _load_profile(self, fpath: str) -> bool:
         if not os.path.isfile(fpath):
             display_error(f"Unable to load profile '{fpath}', no such file.")
             return False
         self.activate_gremlin(False)
+        open_now = self.profile.fpath if self.profile else None
+        previous = str(open_now) if open_now else ""
         try:
-            LogicalDevice().reset()
-            new_profile = profile.Profile()
-            profile_was_converted = new_profile.from_xml(fpath)
-            profile_folder = os.path.dirname(fpath)
-            if profile_folder not in sys.path:
-                sys.path = list(set(sys.path))
-                sys.path.insert(0, profile_folder)
-            self.profile = new_profile
-            persist_log(f"Persist profile load path={fpath}")
-            if profile_was_converted:
-                self.profile.to_xml(fpath)
-        except (KeyError, TypeError) as e:
-            logging.getLogger("system").exception(f"Invalid profile content:\n{e}")
-            self.newProfile()
-            return False
-        except error.ProfileError as e:
-            self.newProfile()
-            display_error(f"Failed to load the profile {fpath}.", str(e))
+            self._read_profile(fpath)
+        except Exception as e:
+            # Any failure (bad XML, content this version can't read, a
+            # missing plugin...): say so, and put back what was open. Reading
+            # starts by resetting the Logical Device, so the old profile is
+            # read again from its file.
+            logging.getLogger("system").exception(f"Failed to load profile {fpath}")
+            reason = str(e) or type(e).__name__
+            reopened = False
+            if previous and previous != fpath and os.path.isfile(previous):
+                try:
+                    self._read_profile(previous)
+                    reopened = True
+                except Exception:
+                    logging.getLogger("system").exception(
+                        f"Failed to reopen profile {previous}"
+                    )
+            if not reopened:
+                self.newProfile()
+            display_error(
+                f"Could not load the profile {fpath}.",
+                reason + "\n\n" + (
+                    f"The profile you had open ({previous}) is open again."
+                    if reopened
+                    else "A new, empty profile is open instead."
+                ),
+            )
             return False
         return True

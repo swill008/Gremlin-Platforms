@@ -25,12 +25,37 @@ Popup {
     property string heading: ""
     property string lastAccepted: ""
     property var validator: function(value) { return true }
+    // A blank value is accepted where it means something (a device alias:
+    // back to the device's own name); names that must exist turn it off.
+    property bool allowBlank: true
     property bool clearOnClick: true
     property bool _clearedOnClick: false
     property bool _committed: false
     property bool showOption: false
     property string optionText: ""
     property bool optionChecked: false
+
+    // OK is only offered for a usable value: passing the validator, and
+    // not blank unless allowBlank. Checked whenever the text or the rule changes, not only
+    // while typing, so a seeded or cleared name is checked too.
+    function _check() {
+        var value = _input.text
+        var ok = (_root.allowBlank || value.trim().length > 0) && !!_root.validator(value)
+        _input.outlineOverride = ok ? null : Style.error
+        _button.enabled = ok
+        return ok
+    }
+
+    function _accept() {
+        if (!_check())
+            return
+        _root.lastAccepted = _input.text
+        _root._committed = true
+        _root.accepted(_input.text)
+        _root.close()
+    }
+
+    onValidatorChanged: if (opened) _check()
 
     function seedText() {
         if (_root.text && _root.text.length > 0) {
@@ -55,6 +80,7 @@ Popup {
         if (!clearOnClick) {
             _input.selectAll()
         }
+        _check()
     }
 
     onTextChanged: {
@@ -93,14 +119,10 @@ Popup {
                     }
                 }
 
-                Keys.onReturnPressed: _button.click()
-                Keys.onEnterPressed: _button.click()
+                Keys.onReturnPressed: _root._accept()
+                Keys.onEnterPressed: _root._accept()
 
-                onTextEdited: () => {
-                    let isValid = _root.validator(text)
-                    _input.outlineOverride = isValid ? null : Style.error
-                    _button.enabled = isValid
-                }
+                onTextChanged: if (_root.opened) _root._check()
             }
 
             Button {
@@ -108,12 +130,7 @@ Popup {
 
                 text: "Ok"
 
-                onClicked: () => {
-                    _root.lastAccepted = _input.text
-                    _root._committed = true
-                    _root.accepted(_input.text)
-                    _root.close()
-                }
+                onClicked: _root._accept()
             }
         }
 

@@ -31,6 +31,7 @@ ApplicationWindow {
 
         visible: false
         width: Style.dp(500)
+        allowBlank: false
 
         property var callback: null
 

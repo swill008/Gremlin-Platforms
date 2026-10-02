@@ -889,13 +889,13 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: Style.warn
-                text: "Clear every chip, leader, and hotspot from the map?"
+                text: "Clear everything from the map: chips, leaders, hotspots, drawings, text boxes, pictures and tables?"
             }
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: Style.fgMuted
-                text: "Joystick mappings are not changed. Pressed buttons still light in the reservoir. Save after reset if you want the empty layout to become the live map."
+                text: "Actions are not changed. Ctrl+Z brings the layout back, and File → Cancel leaves editing without keeping the reset. Save to make the empty map the live one."
             }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
@@ -1022,17 +1022,10 @@ ApplicationWindow {
         var e = _ed()
         if (!e)
             return
-        var n = e.nodeAt(e.selectedId)
-        if (nodeIsGroup(n) || e.isGroup(n))
-            e.ungroupSelection()
-        else
-            e.deleteChip()
+        // A spine, a table cell, or every selected item; a group breaks up.
+        e.deleteSelected()
         applySelected()
         refreshReservoir()
-    }
-
-    function nodeIsGroup(n) {
-        return !!(n && (n.kind === "plus" || n.kind === "pair" || n.kind === "axis_stack" || n.kind === "stack" || (n.members && n.members.length)))
     }
 
     function captureView() {
