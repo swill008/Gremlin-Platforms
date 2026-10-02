@@ -75,6 +75,7 @@ ApplicationWindow {
             "Export PDF…",
             "Export PNG…",
             "Export JPG…",
+            "Print…",
             "Export modes…",
             "Export size",
             "Light page for printing",
@@ -1616,12 +1617,18 @@ ApplicationWindow {
 
     // Saves the whole page, whatever the zoom, without selection rings,
     // handles, guides or the grid; hidden items are left out as always.
+    // File → Print: the page as Export draws it, then the printer dialog.
+    function printView() {
+        exportViewTo("", "print")
+    }
+
     function exportViewTo(url, format) {
         var e = _ed()
         if (!e)
             return
         _exportJob = { url: url, format: format }
-        e.printLight = _opts.values["light-page"] === true
+        e.printLight = format === "print" ? _opts.values["print-light"] !== false
+                                          : _opts.values["light-page"] === true
         e.exporting = true
         e.repaint()
         // Let the editor redraw without its editing marks first.
@@ -1633,10 +1640,11 @@ ApplicationWindow {
         var job = _exportJob
         _exportJob = null
         if (!e || !job) {
-            if (e)
+            if (e) {
                 e.exporting = false
                 e.printLight = false
                 e.repaint()
+            }
             return
         }
         var f = Math.max(1, exportScale)
@@ -1648,14 +1656,20 @@ ApplicationWindow {
             e.repaint()
             if (!result)
                 return
+            if (job.format === "print") {
+                _hw.printPage(result.image, r.x * f, r.y * f, r.w * f, r.h * f, bg,
+                              targetName.length ? targetName : "Button Map")
+                return
+            }
             if (!_hw.savePageImage(result.image, r.x * f, r.y * f, r.w * f, r.h * f,
                                    String(job.url), job.format, bg, f))
                 console.warn("Button Map export failed: " + job.url)
         }, Qt.size(Math.round(e.width * f), Math.round(e.height * f)))
-        if (!ok)
+        if (!ok) {
             e.exporting = false
             e.printLight = false
             e.repaint()
+        }
     }
 
     Timer {
@@ -2426,6 +2440,11 @@ ApplicationWindow {
                     }
                 }
                 MenuItem {
+                    text: "Print…"
+                    enabled: _buttonMap.targetName.length > 0
+                    onTriggered: _buttonMap.printView()
+                }
+                MenuItem {
                     text: "Export modes…"
                     enabled: _buttonMap.profileModes.length > 0 && _buttonMap.targetGuid.length > 0
                     onTriggered: _buttonMap.openExportModes()
@@ -2838,6 +2857,10 @@ ApplicationWindow {
                     enabled: editing
                     sequence: "Ctrl+S"
                     onActivated: saveEdit()
+                }
+                Shortcut {
+                    sequence: "Ctrl+P"
+                    onActivated: _buttonMap.printView()
                 }
                 Shortcut {
                     sequence: "Ctrl+1"

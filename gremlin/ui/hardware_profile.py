@@ -187,6 +187,24 @@ def adjust_photo(
 _LOOK_CACHE = 12
 
 
+def print_image(printer: QtGui.QPagedPaintDevice, image: QtGui.QImage) -> bool:
+    """Draws image as large as fits on the printer's page, keeping its shape,
+    centred."""
+    if image is None or image.isNull():
+        return False
+    painter = QtGui.QPainter()
+    if not painter.begin(printer):
+        return False
+    area = painter.viewport()
+    size = image.size().scaled(area.size(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+    x = area.x() + (area.width() - size.width()) // 2
+    y = area.y() + (area.height() - size.height()) // 2
+    painter.setWindow(area)
+    painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
+    painter.drawImage(QtCore.QRect(x, y, size.width(), size.height()), image)
+    return painter.end()
+
+
 def _template_stem(name: str) -> str:
     """A template's file name: its name, with characters files cannot hold
     replaced."""
@@ -1581,6 +1599,42 @@ class HardwareProfile(QtCore.QObject):
         return save_page_image(
             image, x, y, w, h, to_local_path(url), fmt, background, scale
         )
+
+    # --- printing (File > Print) ----------------------------------------------
+
+    @QtCore.Slot(QtGui.QImage, float, float, float, float, str, str, result=bool)
+    def printPage(
+        self,
+        image: QtGui.QImage,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        background: str,
+        title: str,
+    ) -> bool:
+        """Prints the page part of a picture of the editor: the printer
+        dialog first, then the page as large as fits, turned to landscape
+        when it is wider than tall."""
+        from PySide6 import QtPrintSupport
+
+        page = page_of(image, x, y, w, h, background)
+        if page is None:
+            return False
+        printer = QtPrintSupport.QPrinter(
+            QtPrintSupport.QPrinter.PrinterMode.HighResolution
+        )
+        printer.setDocName(title or "Button Map")
+        printer.setPageOrientation(
+            QtGui.QPageLayout.Orientation.Landscape
+            if page.width() > page.height()
+            else QtGui.QPageLayout.Orientation.Portrait
+        )
+        dialog = QtPrintSupport.QPrintDialog(printer)
+        dialog.setWindowTitle("Print Button Map")
+        if dialog.exec() != QtPrintSupport.QPrintDialog.DialogCode.Accepted:
+            return False
+        return print_image(printer, page)
 
     # --- one page per mode (File > Export modes) ------------------------------
 

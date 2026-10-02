@@ -125,6 +125,12 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {},
     ),
     (
+        "export", "04-print-light", PropertyType.Bool, True,
+        "File > Print prints on a white page with dark ink (see Light page), "
+        "whatever the export setting.",
+        {},
+    ),
+    (
         "export", "02-mode-title", PropertyType.Bool, True,
         "File > Export modes writes each mode's name at the top of its page.",
         {},

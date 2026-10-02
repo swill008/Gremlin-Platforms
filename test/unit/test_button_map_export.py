@@ -119,3 +119,45 @@ def test_export_pages_through_the_window_slots(tmp_path: pathlib.Path) -> None:
     ]
     # Finished: nothing left over for the next export.
     assert profile.finishExportPages(url, "jpg", 1) == 0
+
+
+# Printing needs the widgets application, so it runs in a process of its own.
+_PRINT = r"""
+import os, sys
+sys.path.insert(0, ".")
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+from PySide6 import QtGui, QtPrintSupport, QtWidgets
+app = QtWidgets.QApplication(sys.argv[:1])
+from gremlin.ui.hardware_profile import print_image
+printer = QtPrintSupport.QPrinter(QtPrintSupport.QPrinter.PrinterMode.ScreenResolution)
+printer.setOutputFormat(QtPrintSupport.QPrinter.OutputFormat.PdfFormat)
+printer.setOutputFileName(sys.argv[1])
+image = QtGui.QImage(120, 60, QtGui.QImage.Format.Format_RGB32)
+image.fill(QtGui.QColor("#3366CC"))
+ok = print_image(printer, image)
+none = print_image(printer, QtGui.QImage())
+print(ok, none, flush=True)
+os._exit(0)
+"""
+
+
+def test_print_draws_the_page(tmp_path: pathlib.Path) -> None:
+    import os
+    import subprocess
+
+    target = tmp_path / "printed.pdf"
+    root = pathlib.Path(__file__).parents[2]
+    result = subprocess.run(
+        [sys.executable, "-c", _PRINT, str(target)],
+        capture_output=True,
+        text=True,
+        cwd=root,
+        timeout=60,
+        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+    )
+    assert result.stdout.split() == ["True", "False"], result.stderr[-1000:]
+    assert target.read_bytes().startswith(b"%PDF")
+
+
+def test_print_slot_is_there_for_the_window() -> None:
+    assert hasattr(HardwareProfile, "printPage")

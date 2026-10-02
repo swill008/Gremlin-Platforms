@@ -127,6 +127,38 @@ def main() -> None:
                 print(f"ERROR {name}: {expr.error().toString()}", flush=True)
             QtTest.QTest.qWait(250)
             quick.grabWindow().save(str(out / f"{name}.png"))
+        # A real export on a light page: the page must come out white. A
+        # device that is not plugged in still gets a map to export.
+        device = QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win,
+            "_buttonMap.targetGuid = '12345678-1234-1234-1234-123456789abc';"
+            " _buttonMap.targetName = 'Smoke Stick'",
+        )
+        device.evaluate()
+        QtTest.QTest.qWait(800)
+        target = out / "light-export.png"
+        url = QtCore.QUrl.fromLocalFile(str(target)).toString()
+        code = (
+            "_opts.set('light-page', true);"
+            f" _buttonMap.exportViewTo('{url}', 'png')"
+        )
+        expr = QtQml.QQmlExpression(QtQml.qmlContext(win), win, code)
+        expr.evaluate()
+        if expr.hasError():
+            print(f"ERROR light-export: {expr.error().toString()}", flush=True)
+        QtTest.QTest.qWait(800)
+        image = QtGui.QImage(str(target))
+        if image.isNull():
+            print("ERROR light-export: nothing written", flush=True)
+        else:
+            corner = image.pixelColor(2, 2).name()
+            print(f"LIGHT {corner}", flush=True)
+            if corner != "#ffffff":
+                print(f"ERROR light-export: page corner is {corner}", flush=True)
+        reset = QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win, "_opts.set('light-page', false)"
+        )
+        reset.evaluate()
     for warning in warnings:
         print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)
     print("done", flush=True)
