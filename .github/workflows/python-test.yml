@@ -2,10 +2,11 @@ name: CI Tests
 
 on:
   workflow_dispatch:
+  # Gremlin-Platforms is the main line: every release is built from it.
   push:
-    branches: [ develop, main ]
+    branches: [ Gremlin-Platforms, develop, main ]
   pull_request_target:
-    branches: [ develop, main ]
+    branches: [ Gremlin-Platforms, develop, main ]
 
 jobs:
   test:
