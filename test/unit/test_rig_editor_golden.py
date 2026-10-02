@@ -136,6 +136,42 @@ def _different_pixels(want: pathlib.Path, got: pathlib.Path) -> int:
     )
 
 
+def _compact(doc: dict) -> dict:
+    """Golden file form: the first step keeps every node, later steps only
+    the nodes that changed (by index) and the node count."""
+    out = {k: v for k, v in doc.items() if k != "steps"}
+    out["steps"] = []
+    previous: list = []
+    for step in doc["steps"]:
+        state = dict(step["state"])
+        nodes = state.pop("nodes")
+        state["nodeCount"] = len(nodes)
+        state["changed"] = {
+            str(i): n
+            for i, n in enumerate(nodes)
+            if i >= len(previous) or previous[i] != n
+        }
+        out["steps"].append({"step": step["step"], "state": state})
+        previous = nodes
+    return out
+
+
+def _expand(doc: dict) -> dict:
+    out = {k: v for k, v in doc.items() if k != "steps"}
+    out["steps"] = []
+    nodes: list = []
+    for step in doc["steps"]:
+        state = dict(step["state"])
+        changed = state.pop("changed")
+        count = state.pop("nodeCount")
+        nodes = list(nodes[:count]) + [None] * max(0, count - len(nodes))
+        for index, node in changed.items():
+            nodes[int(index)] = node
+        state["nodes"] = nodes
+        out["steps"].append({"step": step["step"], "state": state})
+    return out
+
+
 def _run(scenario: str, out_dir: pathlib.Path) -> dict:
     result = subprocess.run(
         [sys.executable, str(_HARNESS), scenario, str(out_dir)],
@@ -157,7 +193,8 @@ def test_editor_matches_golden(scenario: str, tmp_path: pathlib.Path) -> None:
     if _UPDATE:
         _GOLDEN.mkdir(exist_ok=True)
         golden_json.write_text(
-            json.dumps(run, indent=1, sort_keys=True) + "\n", encoding="utf-8"
+            json.dumps(_compact(run), indent=1, sort_keys=True) + "\n",
+            encoding="utf-8",
         )
         for old in _GOLDEN.glob(f"{scenario}-*.png"):
             old.unlink()
@@ -165,7 +202,7 @@ def test_editor_matches_golden(scenario: str, tmp_path: pathlib.Path) -> None:
             shutil.copy(image, _GOLDEN / image.name)
         pytest.skip("goldens rewritten")
 
-    golden = json.loads(golden_json.read_text(encoding="utf-8"))
+    golden = _expand(json.loads(golden_json.read_text(encoding="utf-8")))
     assert [s["step"] for s in run["steps"]] == [s["step"] for s in golden["steps"]]
     for want, got in zip(golden["steps"], run["steps"]):
         diff = _first_difference(want["state"], got["state"])

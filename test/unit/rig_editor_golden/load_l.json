@@ -2,12 +2,8 @@
  "steps": [
   {
    "state": {
-    "drawTool": "",
-    "histAt": 0,
-    "histLen": 1,
-    "menu": 0,
-    "nodes": [
-     {
+    "changed": {
+     "0": {
       "border": "#3F3F46",
       "chipFx": 0.65212,
       "chipFy": 0.16911,
@@ -68,7 +64,7 @@
        "type": "hot"
       }
      },
-     {
+     "1": {
       "border": "#3F3F46",
       "chipFx": 0.67858,
       "chipFy": 0.06307,
@@ -155,7 +151,390 @@
       ],
       "textColor": "#E4E4E7"
      },
-     {
+     "10": {
+      "border": "#3F3F46",
+      "chipFx": 0.50365,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 28",
+      "from": {
+       "id": "ID20",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.46087,
+      "hotFy": 0.714,
+      "hotSize": 4,
+      "hwId": 28,
+      "id": "ID20",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID20",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID21",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.49021,
+          "fy": 0.67525
+         }
+        ],
+        "to": {
+         "id": "ID20",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.42768,
+      "ny": 0.71556,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.49021,
+        "fy": 0.67525
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID20",
+       "type": "hot"
+      }
+     },
+     "11": {
+      "border": "#3F3F46",
+      "chipFx": 0.46832,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 27",
+      "from": {
+       "id": "ID22",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.43638,
+      "hotFy": 0.70044,
+      "hotSize": 4,
+      "hwId": 27,
+      "id": "ID22",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID22",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID23",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.4594,
+          "fy": 0.66847
+         }
+        ],
+        "to": {
+         "id": "ID22",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.3822,
+      "ny": 0.70044,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.4594,
+        "fy": 0.66847
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID22",
+       "type": "hot"
+      }
+     },
+     "12": {
+      "border": "#3F3F46",
+      "chipFx": 0.43419,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 29",
+      "from": {
+       "id": "ID24",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.41087,
+      "hotFy": 0.69444,
+      "hotSize": 4,
+      "hwId": 29,
+      "id": "ID24",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID24",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID25",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.42959,
+          "fy": 0.66547
+         }
+        ],
+        "to": {
+         "id": "ID24",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.33763,
+      "ny": 0.69511,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.42959,
+        "fy": 0.66547
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID24",
+       "type": "hot"
+      }
+     },
+     "13": {
+      "border": "#3F3F46",
+      "chipFx": 0.43726,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID26",
+      "from": {
+       "id": "ID26",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.42438,
+      "hotFy": 0.80489,
+      "hotSize": 4,
+      "id": "ID26",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID26",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID27",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.43941,
+          "fy": 0.82667
+         }
+        ],
+        "to": {
+         "id": "ID26",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 25",
+        "hwId": 25,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 26",
+        "hwId": 26,
+        "ox": 0,
+        "oy": 0.02222,
+        "role": "down"
+       }
+      ],
+      "nx": 0.3631,
+      "ny": 0.79511,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.43941,
+        "fy": 0.82667
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID26",
+       "type": "hot"
+      }
+     },
+     "14": {
+      "border": "#3F3F46",
+      "chipFx": 0.39613,
+      "chipFy": 0.8592,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Axis 4",
+      "from": {
+       "id": "ID28",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.4,
+      "hotFy": 0.78356,
+      "hotSize": 4,
+      "hwId": 4,
+      "id": "ID28",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID28",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID29",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.40345,
+          "fy": 0.82138
+         }
+        ],
+        "to": {
+         "id": "ID28",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.31761,
+      "ny": 0.78756,
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.40345,
+        "fy": 0.82138
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID28",
+       "type": "hot"
+      }
+     },
+     "15": {
+      "border": "#3F3F46",
+      "chipFx": 0.3665,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID30",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.37212,
+      "hotFy": 0.778,
+      "hotSize": 4,
+      "id": "ID30",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID30",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID31",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.37791,
+          "fy": 0.81322
+         }
+        ],
+        "to": {
+         "id": "ID30",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 23",
+        "hwId": 23,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 24",
+        "hwId": 24,
+        "ox": 0,
+        "oy": 0.02222,
+        "role": "down"
+       }
+      ],
+      "nx": 0.26622,
+      "ny": 0.77778,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.37791,
+        "fy": 0.81322
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     "2": {
       "border": "#3F3F46",
       "chipFx": 0.67858,
       "chipFy": 0.31849,
@@ -242,7 +621,7 @@
       ],
       "textColor": "#E4E4E7"
      },
-     {
+     "3": {
       "border": "#3F3F46",
       "chipFx": 0.67655,
       "chipFy": 0.2684,
@@ -294,7 +673,7 @@
       ],
       "textColor": "#E4E4E7"
      },
-     {
+     "4": {
       "border": "#3F3F46",
       "chipFx": 0.61913,
       "chipFy": 0.41396,
@@ -382,7 +761,7 @@
       ],
       "textColor": "#E4E4E7"
      },
-     {
+     "5": {
       "border": "#3F3F46",
       "chipFx": 0.46413,
       "chipFy": 0.52,
@@ -473,7 +852,7 @@
        "type": "hot"
       }
      },
-     {
+     "6": {
       "border": "#3F3F46",
       "chipFx": 0.38465,
       "chipFy": 0.2484,
@@ -535,7 +914,7 @@
        "type": "hot"
       }
      },
-     {
+     "7": {
       "border": "#3F3F46",
       "chipFx": 0.38301,
       "chipFy": 0.29311,
@@ -609,7 +988,7 @@
        "type": "hot"
       }
      },
-     {
+     "8": {
       "border": "#3F3F46",
       "chipFx": 0.38176,
       "chipFy": 0.36104,
@@ -683,7 +1062,7 @@
        "type": "hot"
       }
      },
-     {
+     "9": {
       "border": "#3F3F46",
       "chipFx": 0.39416,
       "chipFy": 0.43054,
@@ -743,391 +1122,13 @@
        "id": "ID18",
        "type": "hot"
       }
-     },
-     {
-      "border": "#3F3F46",
-      "chipFx": 0.50365,
-      "chipFy": 0.6165,
-      "color": "#18181B",
-      "fontSize": 10,
-      "friendly": "Button 28",
-      "from": {
-       "id": "ID20",
-       "pin": "bottom",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.46087,
-      "hotFy": 0.714,
-      "hotSize": 4,
-      "hwId": 28,
-      "id": "ID20",
-      "kind": "btn",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID20",
-         "pin": "bottom",
-         "type": "chip"
-        },
-        "id": "ID21",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.49021,
-          "fy": 0.67525
-         }
-        ],
-        "to": {
-         "id": "ID20",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.42768,
-      "ny": 0.71556,
-      "pin": "bottom",
-      "prefix": "",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.49021,
-        "fy": 0.67525
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID20",
-       "type": "hot"
-      }
-     },
-     {
-      "border": "#3F3F46",
-      "chipFx": 0.46832,
-      "chipFy": 0.6165,
-      "color": "#18181B",
-      "fontSize": 8,
-      "friendly": "Button 27",
-      "from": {
-       "id": "ID22",
-       "pin": "bottom",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.43638,
-      "hotFy": 0.70044,
-      "hotSize": 4,
-      "hwId": 27,
-      "id": "ID22",
-      "kind": "btn",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID22",
-         "pin": "bottom",
-         "type": "chip"
-        },
-        "id": "ID23",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.4594,
-          "fy": 0.66847
-         }
-        ],
-        "to": {
-         "id": "ID22",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.3822,
-      "ny": 0.70044,
-      "pin": "bottom",
-      "prefix": "",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.4594,
-        "fy": 0.66847
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID22",
-       "type": "hot"
-      }
-     },
-     {
-      "border": "#3F3F46",
-      "chipFx": 0.43419,
-      "chipFy": 0.6165,
-      "color": "#18181B",
-      "fontSize": 8,
-      "friendly": "Button 29",
-      "from": {
-       "id": "ID24",
-       "pin": "bottom",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.41087,
-      "hotFy": 0.69444,
-      "hotSize": 4,
-      "hwId": 29,
-      "id": "ID24",
-      "kind": "btn",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID24",
-         "pin": "bottom",
-         "type": "chip"
-        },
-        "id": "ID25",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.42959,
-          "fy": 0.66547
-         }
-        ],
-        "to": {
-         "id": "ID24",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.33763,
-      "ny": 0.69511,
-      "pin": "bottom",
-      "prefix": "",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.42959,
-        "fy": 0.66547
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID24",
-       "type": "hot"
-      }
-     },
-     {
-      "border": "#3F3F46",
-      "chipFx": 0.43726,
-      "chipFy": 0.84844,
-      "color": "#18181B",
-      "fontSize": 10,
-      "friendly": "ID26",
-      "from": {
-       "id": "ID26",
-       "pin": "top",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.42438,
-      "hotFy": 0.80489,
-      "hotSize": 4,
-      "id": "ID26",
-      "kind": "stack",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID26",
-         "pin": "top",
-         "type": "chip"
-        },
-        "id": "ID27",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.43941,
-          "fy": 0.82667
-         }
-        ],
-        "to": {
-         "id": "ID26",
-         "type": "hot"
-        }
-       }
-      ],
-      "members": [
-       {
-        "friendly": "Button 25",
-        "hwId": 25,
-        "ox": 0,
-        "oy": 0,
-        "role": "up"
-       },
-       {
-        "friendly": "Button 26",
-        "hwId": 26,
-        "ox": 0,
-        "oy": 0.02222,
-        "role": "down"
-       }
-      ],
-      "nx": 0.3631,
-      "ny": 0.79511,
-      "pin": "top",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.43941,
-        "fy": 0.82667
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID26",
-       "type": "hot"
-      }
-     },
-     {
-      "border": "#3F3F46",
-      "chipFx": 0.39613,
-      "chipFy": 0.8592,
-      "color": "#18181B",
-      "fontSize": 10,
-      "friendly": "Axis 4",
-      "from": {
-       "id": "ID28",
-       "pin": "top",
-       "type": "chip"
-      },
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.4,
-      "hotFy": 0.78356,
-      "hotSize": 4,
-      "hwId": 4,
-      "id": "ID28",
-      "kind": "axis",
-      "label": "",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID28",
-         "pin": "top",
-         "type": "chip"
-        },
-        "id": "ID29",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.40345,
-          "fy": 0.82138
-         }
-        ],
-        "to": {
-         "id": "ID28",
-         "type": "hot"
-        }
-       }
-      ],
-      "nx": 0.31761,
-      "ny": 0.78756,
-      "pin": "top",
-      "prefix": "A",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.40345,
-        "fy": 0.82138
-       }
-      ],
-      "textColor": "#E4E4E7",
-      "to": {
-       "id": "ID28",
-       "type": "hot"
-      }
-     },
-     {
-      "border": "#3F3F46",
-      "chipFx": 0.3665,
-      "chipFy": 0.84844,
-      "color": "#18181B",
-      "fontSize": 10,
-      "friendly": "ID30",
-      "highlight": true,
-      "hlBorder": "#22C55E",
-      "hlColor": "#14532D",
-      "hlText": "#BBF7D0",
-      "hotFx": 0.37212,
-      "hotFy": 0.778,
-      "hotSize": 4,
-      "id": "ID30",
-      "kind": "stack",
-      "leaders": [
-       {
-        "from": {
-         "id": "ID30",
-         "pin": "top",
-         "type": "chip"
-        },
-        "id": "ID31",
-        "spines": [
-         {
-          "curve": true,
-          "fx": 0.37791,
-          "fy": 0.81322
-         }
-        ],
-        "to": {
-         "id": "ID30",
-         "type": "hot"
-        }
-       }
-      ],
-      "members": [
-       {
-        "friendly": "Button 23",
-        "hwId": 23,
-        "ox": 0,
-        "oy": 0,
-        "role": "up"
-       },
-       {
-        "friendly": "Button 24",
-        "hwId": 24,
-        "ox": 0,
-        "oy": 0.02222,
-        "role": "down"
-       }
-      ],
-      "nx": 0.26622,
-      "ny": 0.77778,
-      "pin": "top",
-      "spines": [
-       {
-        "curve": true,
-        "fx": 0.37791,
-        "fy": 0.81322
-       }
-      ],
-      "textColor": "#E4E4E7"
      }
-    ],
+    },
+    "drawTool": "",
+    "histAt": 0,
+    "histLen": 1,
+    "menu": 0,
+    "nodeCount": 16,
     "photo": [
      1,
      0,
