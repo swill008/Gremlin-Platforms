@@ -78,12 +78,13 @@ function styleDefault(key) {
     if (key === "hlText") return "#BBF7D0"
     if (key === "leaderColor") return "#A1A1AA"
     if (key === "hotColor") return "#F4F4F5"
+    if (key === "hotPressColor") return styleDefault("hlBorder")
     return ""
 }
 
 function pickColor(field) {
     var n = nodeAt(selectedId)
-    var mem = (field === "leaderColor" || field === "hotColor") ? null : targetMember()
+    var mem = (field === "leaderColor" || field === "hotColor" || field === "hotPressColor") ? null : targetMember()
     colorPickRequested(field, styleVal(n, mem, field, styleDefault(field)))
 }
 

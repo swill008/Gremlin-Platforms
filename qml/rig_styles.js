@@ -11,7 +11,8 @@
 var _FIELDS = {
     chip: ["chipShape", "chipSize", "chipFill", "fontSize", "color", "border", "textColor",
            "highlight", "hlColor", "hlBorder", "hlText", "hotSize", "hotShape", "hotFill",
-           "hotColor", "leaderColor", "leaderWidth"],
+           "hotColor", "hotLine", "hotOpacity", "hotHalo", "hotNumber", "hotPress", "hotPressColor",
+           "hotPulse", "hotLive", "leaderColor", "leaderWidth"],
     shape: ["fill", "color", "border", "stroke", "dash", "opacity"],
     line: ["border", "stroke", "dash", "opacity", "headStart", "headEnd"]
 }

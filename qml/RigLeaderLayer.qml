@@ -37,11 +37,8 @@ Canvas {
                 ed.strokeLeader(ctx, n, ed.pathPtsL(L), L)
             }
             var hot = ed.hotPt(n)
-            var hs = ed.hotSz(n)
-            var hShape = n.hotShape || "round"
-            var hFill = n.hotFill || "filled"
-            if (!ed.hotHidden(n))
-                ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : ed.ink(n.hotColor || "#F4F4F5"))
+            if (ed.hotShown(n))
+                ed.paintHotspot(ctx, n, hot.x, hot.y, ed.hotSz(n), sel ? "#FBBF24" : (n.hotColor || "#F4F4F5"), sel)
             if (ed.showChrome) {
                 for (li = 0; li < ls.length; li++) {
                     var L2 = ls[li]

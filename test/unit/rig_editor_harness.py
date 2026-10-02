@@ -1785,6 +1785,53 @@ def scenario_shape_tools(s: Session) -> None:
         n.get("shape"), len(n.get("pts", [])), n.get("closed")]
 
 
+def scenario_hotspots(s: Session) -> None:
+    """Every hotspot shape, fills, line widths, opacity, halo and number;
+    highlight on press; kept off the live map."""
+    _load(s, "evo_r")
+    looks = [
+        ("btn", 3, {"hotShape": "square", "hotSize": 14}),
+        ("btn", 4, {"hotShape": "diamond", "hotSize": 14, "hotFill": "half"}),
+        ("btn", 5, {"hotShape": "triangle", "hotSize": 14}),
+        ("btn", 21, {"hotShape": "ring", "hotSize": 16}),
+        ("btn", 22, {"hotShape": "target", "hotSize": 16, "hotLine": "thick"}),
+        ("btn", 1, {"hotShape": "crosshair", "hotSize": 20}),
+        ("btn", 25, {"hotShape": "plus", "hotSize": 14}),
+        ("btn", 23, {"hotShape": "x", "hotSize": 14, "hotLine": "thin"}),
+        ("btn", 28, {"hotShape": "pin", "hotSize": 12, "hotNumber": True}),
+        ("btn", 27, {"hotSize": 12, "hotHalo": True, "hotOpacity": 0.5}),
+        ("btn", 29, {"hotShape": "none"}),
+    ]
+    for kind, hw, fields in looks:
+        s.call("setSelection", [s.call("placedId", kind, hw)])
+        for key, value in fields.items():
+            s.call("applyField", key, value)
+    s.call("setSelection", [])
+    s.record("shapes", image=True)
+
+    # Pressed: Button 3 lights its hotspot in the pressed colour.
+    b3 = s.call("placedId", "btn", 3)
+    s.call("setSelection", [b3])
+    s.call("applyField", "hotPress", True)
+    s.call("applyField", "hotPressColor", "#FF0000")
+    s.call("setSelection", [])
+    s.js("useFakeDevice", json.dumps([{"kind": "btn", "hwId": 3}]))
+    s.set_prop("findOn", False)
+    s.js("hold", "btn:3", 1)
+    s.record("pressed", image=True)
+    s.steps[-1]["state"]["pressed"] = s.call("hotPressed", s.node(b3))
+    s.js("hold", "btn:3", 0)
+
+    # Not on the live map: hidden once editing ends.
+    s.call("setSelection", [b3])
+    s.call("applyField", "hotLive", False)
+    s.call("setSelection", [])
+    s.js("setEditing", False)
+    s.wait(200)
+    s.record("live-map-without", image=True)
+    s.steps[-1]["state"]["shown"] = s.call("hotShown", s.node(b3))
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1844,6 +1891,7 @@ SCENARIOS = {
     "rulers": scenario_rulers,
     "to_pool": scenario_to_pool,
     "shape_tools": scenario_shape_tools,
+    "hotspots": scenario_hotspots,
 }
 
 

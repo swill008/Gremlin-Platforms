@@ -211,6 +211,7 @@ def _run(scenario: str, out_dir: pathlib.Path) -> dict:
         "rulers",
         "to_pool",
         "shape_tools",
+        "hotspots",
     ],
 )
 def test_editor_matches_golden(scenario: str, tmp_path: pathlib.Path) -> None:

@@ -174,12 +174,36 @@ function _chipColours() {
 }
 
 function _hotspot() {
+    var n = nodeAt(selectedId)
+    function flip(key, dflt) {
+        return _tog(_HOT_TOGGLES[key], n ? (n[key] === undefined ? dflt : !!n[key]) : dflt, function() {
+            var t = nodeAt(selectedId)
+            var on = t ? (t[key] === undefined ? dflt : !!t[key]) : dflt
+            applyField(key, !on)
+        })
+    }
     return _sect("hotspot", "Hotspot", [
         _pick("Size", [4, 6, 8, 9, 10, 12, 14, 16, 20, 24, 28], null, _field("hotSize", 9), _set("hotSize")),
-        _pick("Shape", ["round", "square"], ["Round", "Square"], _field("hotShape", "round"), _set("hotShape")),
-        _pick("Fill", ["filled", "hollow"], ["Filled", "Hollow"], _field("hotFill", "filled"), _set("hotFill")),
-        _act("Hotspot colour…", function() { pickColor("hotColor") })
+        _pick("Shape",
+              ["round", "square", "diamond", "triangle", "ring", "target", "crosshair", "plus", "x", "pin", "none"],
+              ["Round", "Square", "Diamond", "Triangle", "Ring", "Target", "Crosshair", "Plus", "X", "Pin", "None"],
+              _field("hotShape", "round"), _set("hotShape")),
+        _pick("Fill", ["filled", "hollow", "half"], ["Filled", "Hollow", "Half"], _field("hotFill", "filled"), _set("hotFill")),
+        _pick("Line", ["thin", "medium", "thick"], ["Thin", "Medium", "Thick"], _field("hotLine", "medium"), _set("hotLine")),
+        _pick("Opacity", [0.25, 0.5, 0.75, 1], ["25%", "50%", "75%", "100%"], _field("hotOpacity", 1), _set("hotOpacity")),
+        flip("hotHalo", false),
+        flip("hotNumber", false),
+        flip("hotPress", false),
+        flip("hotPulse", false),
+        flip("hotLive", true),
+        _act("Hotspot colour…", function() { pickColor("hotColor") }),
+        _act("Pressed colour…", function() { pickColor("hotPressColor") })
     ])
+}
+
+var _HOT_TOGGLES = {
+    hotHalo: "Halo", hotNumber: "Number", hotPress: "Highlight on press",
+    hotPulse: "Pulse on press", hotLive: "Show on live map"
 }
 
 function _leaderCount() {

@@ -32,6 +32,7 @@ import "rig_path.js" as RigPath
 import "rig_styles.js" as RigStyles
 import "rig_rulers.js" as RigRulers
 import "rig_transform.js" as RigTransform
+import "rig_hotspot.js" as RigHotspot
 
 Item {
     id: _ed
@@ -77,6 +78,10 @@ Item {
     // The selected drawing's handles (rig_transform.js): resize, shape, tips,
     // skew or bend. Back to resize whenever the selection changes.
     property string transformMode: "resize"
+    // Hotspot pulses (rig_hotspot.js): when each pulse started, and which
+    // controls were held at the last live update.
+    property var hotPulseAt: ({})
+    property var hotHeld: ({})
     property var selectedIds: []
     property bool banding: false
     property bool bandAdd: false
@@ -625,6 +630,13 @@ Item {
     function dragTransform(n, name, mx, my) { return RigTransform.dragTransform(n, name, mx, my) }
     function convertToPath() { return RigTransform.convertToPath() }
     function resetShape() { return RigTransform.resetShape() }
+
+    // Hotspots (rig_hotspot.js)
+    function hotPressed(n) { return RigHotspot.hotPressed(n) }
+    function hotShown(n) { return RigHotspot.hotShown(n) }
+    function paintHotspot(ctx, n, x, y, size, colour, selected) { return RigHotspot.paintHotspot(ctx, n, x, y, size, colour, selected) }
+    function hotPulseTick() { return RigHotspot.hotPulseTick() }
+    function hotPulsing() { return RigHotspot.hotPulsing() }
     function distributeSelection(axis) { return RigAlign.distributeSelection(axis) }
 
     // The Properties panel's fields (rig_props.js)
@@ -1385,7 +1397,23 @@ Item {
 
     Connections {
         target: _ed.face
-        function onLiveStampChanged() { _ed.findTick() }
+        function onLiveStampChanged() {
+            _ed.findTick()
+            _ed.hotPulseTick()
+        }
+    }
+
+    // Redraws the hotspots while a press pulse runs.
+    Timer {
+        id: _hotPulseTimer
+        interval: 30
+        repeat: true
+        onTriggered: {
+            if (_lines)
+                _lines.requestPaint()
+            if (!_ed.hotPulsing())
+                stop()
+        }
     }
 
     Timer {
