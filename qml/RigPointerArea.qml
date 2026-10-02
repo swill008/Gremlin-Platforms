@@ -11,9 +11,8 @@ import Gremlin.Style
 // drawing, resizing, band selection and the right-click menus.
 MouseArea {
     property var ed: null
-    property var chipMenu: null
-    property var tableMenu: null
-    property var textMenu: null
+    property var menuTarget: null
+    property var menu: null
     property var spineHoldTimer: null
     anchors.fill: parent
     z: 8
@@ -104,13 +103,13 @@ MouseArea {
                 ed.selectedId = hit.id
                 ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
                 ed.selectedSpine = hit.spine
-                chipMenu.nodeId = hit.id
-                chipMenu.kind = "spine"
-                chipMenu.leader = (hit.leader !== undefined) ? hit.leader : 0
-                chipMenu.seg = hit.spine
+                menuTarget.nodeId = hit.id
+                menuTarget.kind = "spine"
+                menuTarget.leader = (hit.leader !== undefined) ? hit.leader : 0
+                menuTarget.seg = hit.spine
                 ed.spineHoldArm = true
                 ed.spineHoldId = hit.id
-                ed.spineHoldLeader = chipMenu.leader
+                ed.spineHoldLeader = menuTarget.leader
                 ed.spineHoldIndex = hit.spine
                 ed.spineHoldX = m.x
                 ed.spineHoldY = m.y
@@ -120,12 +119,12 @@ MouseArea {
             if (hit.id) {
                 if (!shift && !ed.isSelected(hit.id))
                     ed.setSelection([hit.id])
-                chipMenu.nodeId = hit.id
-                chipMenu.kind = hit.kind || ""
-                chipMenu.seg = (hit.seg !== undefined) ? hit.seg : -1
-                chipMenu.leader = (hit.leader !== undefined) ? hit.leader : 0
-                ed.selectedLeader = chipMenu.leader
-                ed.selectedSeg = chipMenu.seg
+                menuTarget.nodeId = hit.id
+                menuTarget.kind = hit.kind || ""
+                menuTarget.seg = (hit.seg !== undefined) ? hit.seg : -1
+                menuTarget.leader = (hit.leader !== undefined) ? hit.leader : 0
+                ed.selectedLeader = menuTarget.leader
+                ed.selectedSeg = menuTarget.seg
                 if (hit.kind === "spine")
                     ed.selectedSpine = hit.spine
                 if (hit.kind === "member")
@@ -138,10 +137,7 @@ MouseArea {
                 var tn = ed.nodeAt(hit.id)
                 if (ed.isText(tn)) {
                     ed.chipMenuRequested(m.x, m.y)
-                    chipMenu.close()
-                    tableMenu.close()
-                    textMenu.close()
-                    textMenu.popup()
+                    menu.openAt(m.x, m.y)
                     return
                 }
                 if (ed.isTable(tn)) {
@@ -150,21 +146,17 @@ MouseArea {
                     ed.tableCol = cell.col
                     ed.tableExtra = (cell.extra !== undefined) ? cell.extra : -1
                     ed.chipMenuRequested(m.x, m.y)
-                    chipMenu.close()
-                    tableMenu.close()
-                    tableMenu.popup()
+                    menu.openAt(m.x, m.y)
                     return
                 }
             } else {
-                chipMenu.nodeId = ""
-                chipMenu.kind = ""
-                chipMenu.seg = -1
-                chipMenu.leader = 0
+                menuTarget.nodeId = ""
+                menuTarget.kind = ""
+                menuTarget.seg = -1
+                menuTarget.leader = 0
             }
             ed.chipMenuRequested(m.x, m.y)
-            tableMenu.close()
-            chipMenu.close()
-            chipMenu.popup()
+            menu.openAt(m.x, m.y)
             return
         }
         if (hit.kind === "overlayPin") {
@@ -392,8 +384,7 @@ MouseArea {
             ed.spineHoldArm = false
             if (m.button === Qt.RightButton) {
                 ed.chipMenuRequested(ed.spineHoldX, ed.spineHoldY)
-                chipMenu.close()
-                chipMenu.popup()
+                menu.openAt(ed.spineHoldX, ed.spineHoldY)
             }
             return
         }

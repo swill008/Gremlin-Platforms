@@ -753,23 +753,6 @@
        "type": "hot"
       }
      },
-     "19": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.1,
-      "fill": "hollow",
-      "fw": 0.1625,
-      "fx": 0.0375,
-      "fy": 0.05556,
-      "id": "ID38",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "arrow",
-      "stroke": 2
-     },
      "2": {
       "border": "#3F3F46",
       "chipFx": 0.32345,
@@ -821,23 +804,6 @@
        }
       ],
       "textColor": "#E4E4E7"
-     },
-     "20": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.07778,
-      "fill": "filled",
-      "fw": 0.2,
-      "fx": 0.0375,
-      "fy": 0.24444,
-      "id": "ID39",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "arrow2",
-      "stroke": 2
      },
      "3": {
       "border": "#3F3F46",
@@ -1327,11 +1293,22 @@
       }
      }
     },
-    "drawTool": "arrow2",
-    "histAt": 3,
-    "histLen": 4,
-    "menu": [],
-    "nodeCount": 21,
+    "drawTool": "",
+    "histAt": 0,
+    "histLen": 1,
+    "menu": [
+     "Button 3",
+     "Rename",
+     "Delete chip",
+     "> Chip style",
+     "> Colours",
+     "> Hotspot",
+     "> Leader",
+     "> Leader ends",
+     "> Group",
+     "> Shape around selection"
+    ],
+    "nodeCount": 19,
     "photo": [
      1,
      0,
@@ -1339,45 +1316,36 @@
      0
     ],
     "selected": [
-     "ID39"
+     "ID4"
     ]
    },
-   "step": "block-arrows"
+   "step": "chip-compact"
   },
   {
    "state": {
-    "changed": {
-     "21": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "ends": [
-       0.02381,
-       0.10526,
-       0.97619,
-       0.89474
-      ],
-      "fh": 0.08444,
-      "fill": "hollow",
-      "fw": 0.21,
-      "fx": 0.745,
-      "fy": 0.06889,
-      "headEnd": "none",
-      "headStart": "none",
-      "id": "ID40",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "line",
-      "stroke": 2
-     }
-    },
-    "drawTool": "line",
-    "histAt": 4,
-    "histLen": 5,
-    "menu": [],
-    "nodeCount": 22,
+    "changed": {},
+    "drawTool": "",
+    "histAt": 0,
+    "histLen": 1,
+    "menu": [
+     "Button 3",
+     "Rename",
+     "Delete chip",
+     "v Chip style",
+     "  Font size: 8 | 9 | *10 | 11 | 12 | 14 | 16 | 18 | 20 | 22",
+     "  Size: 12 | 14 | 16 | *18 | 20 | 22 | 24 | 28 | 32 | 36 | 42 | 48",
+     "  Shape: *Round | Square",
+     "  Fill: *Filled | Hollow",
+     "  Highlight on press [x]",
+     "  Reset this cell (off)",
+     "> Colours",
+     "> Hotspot",
+     "> Leader",
+     "> Leader ends",
+     "> Group",
+     "> Shape around selection"
+    ],
+    "nodeCount": 19,
     "photo": [
      1,
      0,
@@ -1385,45 +1353,90 @@
      0
     ],
     "selected": [
-     "ID40"
+     "ID4"
     ]
    },
-   "step": "line"
+   "step": "chip-style-open"
   },
   {
    "state": {
     "changed": {
-     "22": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "ends": [
-       0.02649,
-       0.08635,
-       0.97351,
-       0.91365
+     "2": {
+      "border": "#3F3F46",
+      "chipFx": 0.32345,
+      "chipFy": 0.2684,
+      "chipSize": 22,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.41625,
+      "hotFy": 0.25556,
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID4",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID4",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID5",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.38501,
+          "fy": 0.26698
+         }
+        ],
+        "to": {
+         "id": "ID4",
+         "type": "hot"
+        }
+       }
       ],
-      "fh": 0.10294,
-      "fill": "hollow",
-      "fw": 0.18878,
-      "fx": 0.745,
-      "fy": 0.23556,
-      "headEnd": "solid",
-      "headStart": "none",
-      "id": "ID41",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "line",
-      "stroke": 2
+      "nx": 0.34854,
+      "ny": 0.25467,
+      "pin": "right",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.38501,
+        "fy": 0.26698
+       }
+      ],
+      "textColor": "#E4E4E7"
      }
     },
     "drawTool": "",
-    "histAt": 5,
-    "histLen": 6,
-    "menu": [],
-    "nodeCount": 23,
+    "histAt": 2,
+    "histLen": 3,
+    "menu": [
+     "Button 3",
+     "Rename",
+     "Delete chip",
+     "v Chip style",
+     "  Font size: 8 | 9 | *10 | 11 | 12 | 14 | 16 | 18 | 20 | 22",
+     "  Size: 12 | 14 | 16 | 18 | 20 | *22 | 24 | 28 | 32 | 36 | 42 | 48",
+     "  Shape: *Round | Square",
+     "  Fill: *Filled | Hollow",
+     "  Highlight on press [x]",
+     "  Reset this cell (off)",
+     "> Colours",
+     "> Hotspot",
+     "> Leader",
+     "> Leader ends",
+     "> Group",
+     "> Shape around selection"
+    ],
+    "nodeCount": 19,
     "photo": [
      1,
      0,
@@ -1431,45 +1444,34 @@
      0
     ],
     "selected": [
-     "ID41"
+     "ID4"
     ]
    },
-   "step": "arrow-shift-snapped"
+   "step": "chip-size-stepped"
   },
   {
    "state": {
-    "changed": {
-     "21": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "ends": [
-       0.02614,
-       0.04819,
-       0.97386,
-       0.95181
-      ],
-      "fh": 0.18444,
-      "fill": "hollow",
-      "fw": 0.19125,
-      "fx": 0.745,
-      "fy": 0.06889,
-      "headEnd": "none",
-      "headStart": "none",
-      "id": "ID40",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "line",
-      "stroke": 2
-     }
-    },
+    "changed": {},
     "drawTool": "",
-    "histAt": 6,
-    "histLen": 7,
-    "menu": [],
-    "nodeCount": 23,
+    "histAt": 2,
+    "histLen": 3,
+    "menu": [
+     "Button 3",
+     "Rename",
+     "Delete chip",
+     "> Chip style",
+     "> Colours",
+     "v Hotspot",
+     "  Size: *4 | 6 | 8 | 9 | 10 | 12 | 14 | 16 | 20 | 24 | 28",
+     "  Shape: *Round | Square",
+     "  Fill: *Filled | Hollow",
+     "  Hotspot colour\u2026",
+     "> Leader",
+     "> Leader ends",
+     "> Group",
+     "> Shape around selection"
+    ],
+    "nodeCount": 19,
     "photo": [
      1,
      0,
@@ -1477,45 +1479,34 @@
      0
     ],
     "selected": [
-     "ID40"
+     "ID4"
     ]
    },
-   "step": "drag-line-end"
+   "step": "hotspot-open"
   },
   {
    "state": {
-    "changed": {
-     "22": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "ends": [
-       0.05589,
-       0.15979,
-       0.94411,
-       0.84021
-      ],
-      "fh": 0.12516,
-      "fill": "hollow",
-      "fw": 0.20128,
-      "fx": 0.73875,
-      "fy": 0.22444,
-      "headEnd": "hollow",
-      "headStart": "hollow",
-      "id": "ID41",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "line",
-      "stroke": 6
-     }
-    },
+    "changed": {},
     "drawTool": "",
-    "histAt": 9,
-    "histLen": 10,
-    "menu": [],
-    "nodeCount": 23,
+    "histAt": 2,
+    "histLen": 3,
+    "menu": [
+     "Button 4",
+     "Rename",
+     "Delete chip",
+     "> Chip style",
+     "> Colours",
+     "v Hotspot",
+     "  Size: *4 | 6 | 8 | 9 | 10 | 12 | 14 | 16 | 20 | 24 | 28",
+     "  Shape: *Round | Square",
+     "  Fill: *Filled | Hollow",
+     "  Hotspot colour\u2026",
+     "> Leader",
+     "> Leader ends",
+     "> Group",
+     "> Shape around selection"
+    ],
+    "nodeCount": 19,
     "photo": [
      1,
      0,
@@ -1523,45 +1514,23 @@
      0
     ],
     "selected": [
-     "ID41"
+     "ID14"
     ]
    },
-   "step": "hollow-heads-thick"
+   "step": "chip-remembers-section"
   },
   {
    "state": {
-    "changed": {
-     "22": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "ends": [
-       0.05589,
-       0.15979,
-       0.94411,
-       0.84021
-      ],
-      "fh": 0.12516,
-      "fill": "hollow",
-      "fw": 0.20128,
-      "fx": 0.73875,
-      "fy": 0.22444,
-      "headEnd": "hollow",
-      "headStart": "solid",
-      "id": "ID41",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "line",
-      "stroke": 6
-     }
-    },
+    "changed": {},
     "drawTool": "",
-    "histAt": 11,
-    "histLen": 12,
-    "menu": [],
-    "nodeCount": 23,
+    "histAt": 2,
+    "histLen": 3,
+    "menu": [
+     "Canvas",
+     "> Draw",
+     "> Shape around selection"
+    ],
+    "nodeCount": 19,
     "photo": [
      1,
      0,
@@ -1569,10 +1538,30 @@
      0
     ],
     "selected": [
-     "ID41"
+     "ID14"
     ]
    },
-   "step": "swap-heads"
+   "step": "canvas"
+  },
+  {
+   "state": {
+    "changed": {},
+    "drawTool": "",
+    "histAt": 2,
+    "histLen": 3,
+    "menu": [],
+    "nodeCount": 19,
+    "photo": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "selected": [
+     "ID14"
+    ]
+   },
+   "step": "canvas-action-closes"
   },
   {
    "state": {
@@ -1581,57 +1570,20 @@
       "around": [],
       "border": "#22C55E",
       "color": "#14532D",
-      "dash": "dot",
-      "fh": 0.1,
-      "fill": "hollow",
-      "fw": 0.1625,
-      "fx": 0.0375,
-      "fy": 0.05556,
-      "id": "ID38",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "arrow",
-      "stroke": 2
-     },
-     "20": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "dash": "dash",
-      "fh": 0.07778,
-      "fill": "filled",
-      "fw": 0.2,
-      "fx": 0.0375,
-      "fy": 0.24444,
-      "id": "ID39",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "arrow2",
-      "stroke": 2
-     },
-     "21": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "dash": "dot",
       "ends": [
-       0.02614,
-       0.04819,
-       0.97386,
-       0.95181
+       0.03125,
+       0.5,
+       0.96875,
+       0.5
       ],
-      "fh": 0.18444,
+      "fh": 0.01778,
       "fill": "hollow",
-      "fw": 0.19125,
-      "fx": 0.745,
-      "fy": 0.06889,
+      "fw": 0.16,
+      "fx": 0.045,
+      "fy": 0.09111,
       "headEnd": "solid",
       "headStart": "none",
-      "id": "ID40",
+      "id": "ID38",
       "kind": "draw",
       "opacity": 1,
       "pad": 8,
@@ -1641,10 +1593,18 @@
      }
     },
     "drawTool": "",
-    "histAt": 15,
-    "histLen": 16,
-    "menu": [],
-    "nodeCount": 23,
+    "histAt": 3,
+    "histLen": 4,
+    "menu": [
+     "Arrow",
+     "Duplicate",
+     "Delete",
+     "> Arrowheads",
+     "> Line",
+     "> Rotate",
+     "> Arrange"
+    ],
+    "nodeCount": 20,
     "photo": [
      1,
      0,
@@ -1655,16 +1615,27 @@
      "ID38"
     ]
    },
-   "step": "outlines"
+   "step": "line"
   },
   {
    "state": {
     "changed": {},
     "drawTool": "",
-    "histAt": 15,
-    "histLen": 16,
-    "menu": [],
-    "nodeCount": 23,
+    "histAt": 3,
+    "histLen": 4,
+    "menu": [
+     "Arrow",
+     "Duplicate",
+     "Delete",
+     "v Arrowheads",
+     "  Start: *None | Solid | Hollow",
+     "  End: None | *Solid | Hollow",
+     "  Swap heads",
+     "> Line",
+     "> Rotate",
+     "> Arrange"
+    ],
+    "nodeCount": 20,
     "photo": [
      1,
      0,
@@ -1672,90 +1643,63 @@
      0
     ],
     "selected": [
-     "ID40"
+     "ID38"
     ]
    },
-   "step": "click-on-line"
+   "step": "line-heads"
   },
   {
    "state": {
     "changed": {},
     "drawTool": "",
-    "histAt": 15,
-    "histLen": 16,
-    "menu": [],
-    "nodeCount": 23,
+    "histAt": 3,
+    "histLen": 4,
+    "menu": [
+     "Canvas",
+     "v Draw",
+     "  Shape: Rectangle | Rounded | Ellipse | Triangle | Diamond | Arrow | Double arrow",
+     "  Line: Line | Arrow",
+     "  Box: Text box | Table",
+     "  Import picture\u2026",
+     "  Stop drawing (off)"
+    ],
+    "menuInsideWindow": true,
+    "nodeCount": 20,
     "photo": [
      1,
      0,
      0,
      0
     ],
-    "selected": []
+    "selected": [
+     "ID38"
+    ]
    },
-   "step": "click-beside-line"
+   "step": "small-window"
   },
   {
    "state": {
-    "changed": {
-     "19": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "fh": 0.1,
-      "fill": "hollow",
-      "fw": 0.1625,
-      "fx": 0.0375,
-      "fy": 0.05556,
-      "id": "ID38",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "arrow",
-      "stroke": 2
-     },
-     "21": {
-      "around": [],
-      "border": "#22C55E",
-      "color": "#14532D",
-      "dash": "dot",
-      "ends": [
-       0.02614,
-       0.04819,
-       0.97386,
-       0.95181
-      ],
-      "fh": 0.18444,
-      "fill": "hollow",
-      "fw": 0.19125,
-      "fx": 0.745,
-      "fy": 0.06889,
-      "headEnd": "none",
-      "headStart": "none",
-      "id": "ID40",
-      "kind": "draw",
-      "opacity": 1,
-      "pad": 8,
-      "rot": 0,
-      "shape": "line",
-      "stroke": 2
-     }
-    },
+    "changed": {},
     "drawTool": "",
-    "histAt": 13,
-    "histLen": 16,
-    "menu": [],
-    "nodeCount": 23,
+    "histAt": 3,
+    "histLen": 4,
+    "menu": [
+     "Canvas",
+     "> Draw"
+    ],
+    "menuInsideWindow": true,
+    "nodeCount": 20,
     "photo": [
      1,
      0,
      0,
      0
     ],
-    "selected": []
+    "selected": [
+     "ID38"
+    ]
    },
-   "step": "undo-2"
+   "step": "small-window-section-closed"
   }
  ],
  "warnings": [

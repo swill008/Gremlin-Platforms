@@ -1296,7 +1296,7 @@
     "drawTool": "",
     "histAt": 0,
     "histLen": 1,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1.5,
@@ -1314,7 +1314,7 @@
     "drawTool": "",
     "histAt": 0,
     "histLen": 1,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1,
@@ -1386,7 +1386,7 @@
     "drawTool": "",
     "histAt": 3,
     "histLen": 4,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1,
@@ -1406,7 +1406,7 @@
     "drawTool": "",
     "histAt": 3,
     "histLen": 4,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1,
@@ -1505,7 +1505,7 @@
     "drawTool": "",
     "histAt": 4,
     "histLen": 5,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1,
@@ -1620,7 +1620,7 @@
     "drawTool": "",
     "histAt": 5,
     "histLen": 6,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1,
@@ -1741,7 +1741,7 @@
     "drawTool": "",
     "histAt": 6,
     "histLen": 7,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1,
@@ -1844,7 +1844,7 @@
     "drawTool": "",
     "histAt": 7,
     "histLen": 8,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1,
@@ -1932,7 +1932,7 @@
     "drawTool": "",
     "histAt": 8,
     "histLen": 9,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1,
@@ -2041,7 +2041,7 @@
     "drawTool": "",
     "histAt": 9,
     "histLen": 10,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1,
@@ -2150,7 +2150,7 @@
     "drawTool": "",
     "histAt": 10,
     "histLen": 11,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 19,
     "photo": [
      1,
@@ -2200,7 +2200,7 @@
     "drawTool": "",
     "histAt": 14,
     "histLen": 15,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 20,
     "photo": [
      1,
@@ -2250,7 +2250,7 @@
     "drawTool": "",
     "histAt": 15,
     "histLen": 16,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 20,
     "photo": [
      1,
@@ -2322,7 +2322,7 @@
     "drawTool": "",
     "histAt": 18,
     "histLen": 19,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 21,
     "photo": [
      1,
@@ -2394,7 +2394,7 @@
     "drawTool": "",
     "histAt": 21,
     "histLen": 22,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 21,
     "photo": [
      1,
@@ -2471,7 +2471,7 @@
     "drawTool": "",
     "histAt": 22,
     "histLen": 23,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 21,
     "photo": [
      1,
@@ -2527,7 +2527,7 @@
     "drawTool": "",
     "histAt": 24,
     "histLen": 25,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 21,
     "photo": [
      1,
@@ -2571,7 +2571,7 @@
     "drawTool": "",
     "histAt": 25,
     "histLen": 26,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 22,
     "photo": [
      1,
@@ -2622,7 +2622,7 @@
     "drawTool": "",
     "histAt": 26,
     "histLen": 27,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 22,
     "photo": [
      1,
@@ -2666,7 +2666,7 @@
     "drawTool": "",
     "histAt": 28,
     "histLen": 29,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 22,
     "photo": [
      1,
@@ -2774,7 +2774,7 @@
     "drawTool": "",
     "histAt": 30,
     "histLen": 31,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 22,
     "photo": [
      1,
@@ -2794,7 +2794,7 @@
     "drawTool": "",
     "histAt": 30,
     "histLen": 31,
-    "menu": 0,
+    "menu": [],
     "nodeCount": 22,
     "photo": [
      1,
@@ -2812,7 +2812,7 @@
   }
  ],
  "warnings": [
-  "QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg",
-  "QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg"
+  "QML Image: Cannot open: qml/images/vkb_gladiator_rig.jpg",
+  "QML Image: Cannot open: qml/images/vkb_gladiator_rig.jpg"
  ]
 }

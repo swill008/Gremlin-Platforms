@@ -89,25 +89,13 @@ Window {
         var r = e[name].apply(e, JSON.parse(argsJson))
         return JSON.stringify(r === undefined ? null : r)
     }
-    // The open right-click menu, told apart by its number of entries; 0 when
-    // none is open.
-    function openMenuSize() {
-        var list = ed().data
-        for (var i = 0; i < list.length; i++) {
-            var o = list[i]
-            if (o && o.popup !== undefined && o.opened)
-                return o.count
-        }
-        return 0
-    }
-    function closeMenus() {
-        var list = ed().data
-        for (var i = 0; i < list.length; i++) {
-            var o = list[i]
-            if (o && o.popup !== undefined && o.opened)
-                o.close()
-        }
-    }
+    // The open right-click menu as text lines (title, rows, open section);
+    // empty when none is open.
+    function menuLines() { return ed().menuLines() }
+    function closeMenus() { ed().closeMenu() }
+    function menuRowRect(text) { return JSON.stringify(ed().menuRowRect(text)) }
+    function menuBox() { return JSON.stringify(ed().menuBox()) }
+    function resize(w, h) { _win.width = w; _win.height = h }
     // Call with the live node object as the first argument (not a JSON copy).
     function callOnNode(name, id, argsJson) {
         var e = ed()
@@ -118,7 +106,7 @@ Window {
     function state() {
         var e = ed()
         return JSON.stringify({
-            menu: openMenuSize(),
+            menu: menuLines(),
             photo: [e.photoScale, e.photoOffX, e.photoOffY, e.photoRot],
             nodes: e.nodes,
             selected: e.selectedIds,
@@ -262,6 +250,19 @@ class Session:
         self.js("closeMenus")
         self.wait(120)
 
+    def click_menu_row(self, text: str) -> None:
+        """Clicks the open menu's row that shows this text."""
+        r = json.loads(self.js("menuRowRect", text))
+        assert r, f"no menu row {text!r}"
+        self.click(
+            QtCore.QPoint(round(r["x"] + r["w"] / 2), round(r["y"] + r["h"] / 2))
+        )
+
+    def menu_key(self, key: QtCore.Qt.Key) -> None:
+        """A key press while the menu has focus."""
+        QtTest.QTest.keyClick(self.win, key)
+        self.wait(60)
+
     def click(
         self, pos: QtCore.QPoint, mods: QtCore.Qt.KeyboardModifier | None = None
     ) -> None:
@@ -400,13 +401,13 @@ def scenario_session_r(s: Session) -> None:
     text = s.state()["nodes"][-2]["id"]
     table = s.state()["nodes"][-1]["id"]
     s.right_click(s.center(second))
-    s.record("menu-chip")
+    s.record("menu-chip", image=True)
     s.close_menus()
     s.right_click(s.center(text))
     s.record("menu-text")
     s.close_menus()
     s.right_click(s.center(table, dx=-40, dy=-40))
-    s.record("menu-table")
+    s.record("menu-table", image=True)
     s.close_menus()
 
     # Shape around a selected chip.
@@ -628,11 +629,82 @@ def scenario_arrows(s: Session) -> None:
     s.record("undo-2", image=True)
 
 
+def scenario_menu(s: Session) -> None:
+    """The right-click menu: compact on opening, sections open on a click,
+    value rows by keyboard, the last section remembered, canvas tools, and
+    staying inside a small window."""
+    Key = QtCore.Qt.Key
+    _load(s, "evo_r")
+    chips = [n["id"] for n in s.state()["nodes"] if n["kind"] == "btn"]
+
+    s.right_click(s.center(chips[0]))
+    s.record("chip-compact")
+    s.click_menu_row("Chip style")
+    s.record("chip-style-open", image=True)
+    # Focus starts on the clicked header: down to Size, then step it twice.
+    for _ in range(2):
+        s.menu_key(Key.Key_Down)
+    s.menu_key(Key.Key_Right)
+    s.menu_key(Key.Key_Right)
+    s.record("chip-size-stepped")
+    s.click_menu_row("Hotspot")
+    s.record("hotspot-open")
+    s.menu_key(Key.Key_Escape)
+
+    # The next chip reopens on the section used last.
+    s.right_click(s.center(chips[1]))
+    s.record("chip-remembers-section")
+    s.close_menus()
+
+    # Canvas: the Draw section, and an action that closes the menu.
+    s.right_click(s.point(0.1, 0.5))
+    s.record("canvas")
+    s.click_menu_row("Draw")
+    s.click_menu_row("Import picture…")
+    s.record("canvas-action-closes")
+
+    # A line: arrowheads by keyboard.
+    s.call("setDrawTool", "arrowline")
+    s.drag(s.point(0.05, 0.10), s.point(0.20, 0.10))
+    s.call("setDrawTool", "")
+    line = s.state()["selected"][0]
+    ends = s.call_on_node("lineEndsAt", line)
+    s.right_click(s.ed_point((ends["ax"] + ends["bx"]) / 2, ends["ay"]))
+    s.record("line")
+    s.click_menu_row("Arrowheads")
+    s.record("line-heads", image=True)
+    s.close_menus()
+
+    # A small window: opened near the bottom-right corner the menu flips to
+    # stay inside, and a long section scrolls.
+    s.js("resize", 700, 420)
+    s.wait(300)
+    s.right_click(QtCore.QPoint(690, 410))
+    box = json.loads(s.js("menuBox"))
+    s.record("small-window", image=True)
+    s.steps[-1]["state"]["menuInsideWindow"] = (
+        box["open"]
+        and box["x"] >= 0
+        and box["y"] >= 0
+        and box["x"] + box["w"] <= 700
+        and box["y"] + box["h"] <= 420
+    )
+    # It reopens on the remembered Draw section; closing it stays inside too.
+    s.click_menu_row("Draw")
+    box = json.loads(s.js("menuBox"))
+    s.record("small-window-section-closed", image=True)
+    s.steps[-1]["state"]["menuInsideWindow"] = (
+        box["y"] >= 0 and box["y"] + box["h"] <= 420
+    )
+    s.close_menus()
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
     "api_sweep": scenario_api_sweep,
     "arrows": scenario_arrows,
+    "menu": scenario_menu,
 }
 
 
