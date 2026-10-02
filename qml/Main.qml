@@ -841,6 +841,7 @@ ApplicationWindow {
 
     CommandPalette {
         id: _commandPalette
+        owners: ["main"]
     }
 
     header: ToolBar {

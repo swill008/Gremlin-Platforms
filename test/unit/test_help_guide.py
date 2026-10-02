@@ -114,6 +114,7 @@ def test_button_map_help_is_its_own_guide() -> None:
         "Unlock all", "Properties", "Align and distribute", "Space out",
         "Recent", "Pick from map", "Ctrl+Shift+L", "F1", "Callout", "Freehand",
         "Rulers", "Saved styles", "Export modes", "Print", "Mirror layout",
+        "Command palette", "Ctrl+K",
     ):
         assert feature in section, feature
     # Only the Button Map: no other screens or features.

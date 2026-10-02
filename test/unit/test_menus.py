@@ -16,10 +16,6 @@ import sys
 _HERE = pathlib.Path(__file__).parent
 _ROOT = _HERE.parents[1]
 
-# The Button Map editor keeps its own menus (the style the rest follows).
-_BUTTON_MAP = re.compile(
-    r"^qml/(DialogJoystickButtonMap|DialogButtonMapGuide|VkbRig\w*|Rig\w*|rig_\w*)\.(qml|js)$"
-)
 _STOCK_MENU = re.compile(
     r"(?<![\w.])(Menu|MenuItem|MenuSeparator|MenuBar|AutoSizingMenu)\s*\{"
 )
@@ -34,12 +30,9 @@ def _qml_files() -> dict[str, str]:
     return out
 
 
-def test_no_stock_menus_outside_the_button_map() -> None:
-    found = [
-        rel
-        for rel, text in _qml_files().items()
-        if not _BUTTON_MAP.match(rel) and _STOCK_MENU.search(text)
-    ]
+def test_no_stock_menus_anywhere() -> None:
+    # The Button Map included: it uses the shared menus too.
+    found = [rel for rel, text in _qml_files().items() if _STOCK_MENU.search(text)]
     assert found == [], (
         "Use Gremlin.Menus (ContextMenu, ThemedMenu, ThemedMenuItem) instead "
         f"of Qt's stock menus in: {found}"

@@ -173,7 +173,7 @@ MouseArea {
                 var tn = ed.nodeAt(hit.id)
                 if (ed.isText(tn)) {
                     ed.chipMenuRequested(m.x, m.y)
-                    menu.openAt(m.x, m.y)
+                    menu.openAt(ed, m.x, m.y)
                     return
                 }
                 if (ed.isTable(tn)) {
@@ -182,7 +182,7 @@ MouseArea {
                     ed.tableCol = cell.col
                     ed.tableExtra = (cell.extra !== undefined) ? cell.extra : -1
                     ed.chipMenuRequested(m.x, m.y)
-                    menu.openAt(m.x, m.y)
+                    menu.openAt(ed, m.x, m.y)
                     return
                 }
             } else {
@@ -192,7 +192,7 @@ MouseArea {
                 menuTarget.leader = 0
             }
             ed.chipMenuRequested(m.x, m.y)
-            menu.openAt(m.x, m.y)
+            menu.openAt(ed, m.x, m.y)
             return
         }
         if (hit.kind === "overlayPin") {
@@ -436,7 +436,7 @@ MouseArea {
             ed.spineHoldArm = false
             if (m.button === Qt.RightButton) {
                 ed.chipMenuRequested(ed.spineHoldX, ed.spineHoldY)
-                menu.openAt(ed.spineHoldX, ed.spineHoldY)
+                menu.openAt(ed, ed.spineHoldX, ed.spineHoldY)
             }
             return
         }

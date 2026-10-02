@@ -15,6 +15,10 @@ T.Popup {
 
     property var results: []
     property int pick: 0
+    // Only these owners' commands (a window's own); all when empty.
+    property var owners: []
+    // Called as it opens, before listing: a window defines its commands.
+    property var beforeOpen: null
 
     parent: T.Overlay.overlay
     modal: true
@@ -30,7 +34,7 @@ T.Popup {
     T.Overlay.modal: Rectangle { color: Style.dim }
 
     function search(text) {
-        results = Commands.search(text)
+        results = Commands.search(text, owners)
         pick = results.length ? 0 : -1
         _list.positionViewAtBeginning()
     }
@@ -50,6 +54,8 @@ T.Popup {
     }
 
     onAboutToShow: {
+        if (typeof beforeOpen === "function")
+            beforeOpen()
         _field.text = ""
         search("")
     }

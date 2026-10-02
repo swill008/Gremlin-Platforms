@@ -6,6 +6,7 @@ import QtQml
 import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
+import Gremlin.Menus as Menus
 import "rig_coords.js" as RigCoords
 import "rig_style.js" as RigStyle
 import "rig_snap.js" as RigSnap
@@ -1446,8 +1447,20 @@ Item {
         function close() { _menu.close() }
     }
 
-    RigContextMenu {
+    // The right-click menu: the program's shared one (Gremlin.Menus), fed
+    // by rig_menu.js. Rows that cannot be used now are greyed, not hidden.
+    Menus.ContextMenu {
         id: _menu
-        ed: _ed
+        build: _ed.menuModel
+        hideUnavailable: false
+
+        Connections {
+            target: _ed
+            // Checks and labels follow every change while the menu is open.
+            function onTickChanged() {
+                if (_menu.opened)
+                    _menu.refresh()
+            }
+        }
     }
 }

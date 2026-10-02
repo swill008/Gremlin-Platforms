@@ -14,7 +14,8 @@
 //     run(value) }                                       stays open
 //   { kind: "number", text, value, min, max, suffix, enabled, run(value) }
 //                                                        stays open
-// RigContextMenu.qml draws it; only what applies to the target is listed.
+// The shared ContextMenu (Gremlin.Menus) draws it; only what applies to the
+// target is listed. menuModel() adds Undo and Redo beside the title.
 
 function _act(text, run, enabled) {
     return { kind: "action", text: text, run: run, enabled: enabled === undefined ? true : !!enabled }
@@ -698,5 +699,12 @@ function menuModel() {
             quick.push(_act("Stop drawing", function() { drawTool = "" }))
         sections = _canvasSections()
     }
-    return { kind: kind, title: menuTitle(kind), quick: quick, sections: _compact(sections) }
+    return {
+        kind: kind, title: menuTitle(kind), quick: quick, sections: _compact(sections),
+        // Beside the title.
+        header: [
+            { label: "Undo", enabled: canUndo, run: undo },
+            { label: "Redo", enabled: canRedo, run: redo }
+        ]
+    }
 }

@@ -10,6 +10,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.Menus
 import "helpers.js" as Helpers
 
 ApplicationWindow {
@@ -59,91 +60,7 @@ ApplicationWindow {
     property string pendingGuid: ""
     property bool startBlank: false
     property bool faceLive: false
-    // Measured by growFileMenu() at startup and each time the menu opens.
-    property int fileMenuW: 280
 
-    TextMetrics {
-        id: _menuMetric
-        font.pixelSize: Style.dp(14)
-    }
-
-    // A menu shows only what can be used now: unavailable items are hidden
-    // (with no gap left) and so are separators with nothing on one side.
-    // Runs each time the menu opens.
-    function compactMenu(menu) {
-        function show(item, on) {
-            item.visible = on
-            item.height = on ? item.implicitHeight : 0
-        }
-        var pendingSep = null
-        var seenItem = false
-        for (var i = 0; i < menu.count; i++) {
-            var item = menu.itemAt(i)
-            if (!item)
-                continue
-            // A MenuSeparator has no text.
-            if (item.text === undefined) {
-                show(item, false)
-                if (seenItem)
-                    pendingSep = item
-                continue
-            }
-            var on = item.enabled && !(item.subMenu && !item.subMenu.enabled)
-            show(item, on)
-            if (!on)
-                continue
-            if (pendingSep) {
-                show(pendingSep, true)
-                pendingSep = null
-            }
-            seenItem = true
-        }
-    }
-
-    function growFileMenu() {
-        // As wide as its longest item showing (or all of them, before the
-        // menu is built).
-        var shown = []
-        for (var m = 0; m < _fileMenu.count; m++) {
-            var it = _fileMenu.itemAt(m)
-            if (it && it.visible && it.text !== undefined && String(it.text).length)
-                shown.push(String(it.text))
-        }
-        var labels = shown.length ? shown : [
-            "Edit Mapping",
-            "Fit to photo frame",
-            "Choose background…",
-            "Export PDF…",
-            "Export PNG…",
-            "Export JPG…",
-            "Print…",
-            "Export modes…",
-            "Export size",
-            "Light page for printing",
-            "Copy layout from",
-            "Templates",
-            "Reset layout",
-            "Clear image"
-        ]
-        var rows = []
-        if (!shown.length) {
-            try {
-                rows = _devices.listRows() || []
-            } catch (err) {
-                rows = []
-            }
-        }
-        var i
-        for (i = 0; i < rows.length; i++)
-            labels.push(String(rows[i].name || ""))
-        var max = Style.dp(160)
-        for (i = 0; i < labels.length; i++) {
-            _menuMetric.text = labels[i]
-            if (_menuMetric.advanceWidth > max)
-                max = _menuMetric.advanceWidth
-        }
-        fileMenuW = Math.ceil(max + Style.dp(88))
-    }
     property string stockImage: {
         if (/evo l|ot l/i.test(targetName))
             return "qml/images/vkb_gladiator_evo_l.jpg"
@@ -296,7 +213,7 @@ ApplicationWindow {
     Instantiator {
         id: _inputDeviceItems
         model: _devices
-        delegate: MenuItem {
+        delegate: ThemedMenuItem {
             required property string name
             required property string guid
             text: name
@@ -307,7 +224,6 @@ ApplicationWindow {
         }
         onObjectAdded: function(index, object) {
             _fileMenu.insertItem(4 + index, object)
-            growFileMenu()
         }
         onObjectRemoved: function(index, object) {
             _fileMenu.removeItem(object)
@@ -915,7 +831,6 @@ ApplicationWindow {
         resItems = []
         if (_devices)
             _devices.reload()
-        growFileMenu()
         if (startBlank || !targetName.length) {
             targetName = ""
             loadedDevice = ""
@@ -1552,79 +1467,19 @@ ApplicationWindow {
         applySelected()
     }
 
-    Menu {
-        id: _groupMenu
-        MenuItem { text: "Group selected"; onTriggered: { var e = _ed(); if (e) e.groupSelection() } }
-        MenuItem {
-            text: "Break group"
-            enabled: { var e = _ed(); return !!(e && e.canUngroup()) }
-            onTriggered: { var e = _ed(); if (e) e.ungroupSelection() }
+    // The command palette (Ctrl+K): this window's menu commands. They are
+    // read from the menu bar as it opens and taken away as it closes, so the
+    // shared command list never keeps hold of this window.
+    CommandPalette {
+        id: _palette
+        owners: ["buttonmap"]
+        beforeOpen: function() {
+            Commands.removeOwner("buttonmap")
+            Commands.defineFromMenuBar(_menuBar, "buttonmap")
         }
-        MenuSeparator {}
-        MenuItem { text: "Edit group"; onTriggered: { var e = _ed(); if (e) e.beginGroupEdit(e.selectedId) } }
-        MenuItem { text: "Done editing group"; onTriggered: { var e = _ed(); if (e) e.endGroupEdit() } }
-        MenuSeparator {}
-        Menu {
-            title: "Apply Format"
-            enabled: {
-                var e = _ed()
-                return !!(e && e.isFiveWay(e.nodeAt(e.selectedId)))
-            }
-            Menu {
-                title: "5-Way"
-                MenuItem {
-                    text: "Plus cluster"
-                    checkable: true
-                    checked: { var e = _ed(); return !!(e && e.fiveWayFormat(e.nodeAt(e.selectedId)) === "plus") }
-                    onTriggered: { var e = _ed(); if (e) e.applyFiveWayFormat("plus") }
-                }
-                MenuItem {
-                    text: "Mini hat"
-                    checkable: true
-                    checked: { var e = _ed(); return !!(e && e.fiveWayFormat(e.nodeAt(e.selectedId)) === "mini") }
-                    onTriggered: { var e = _ed(); if (e) e.applyFiveWayFormat("mini") }
-                }
-                MenuItem {
-                    text: "Named card"
-                    checkable: true
-                    checked: { var e = _ed(); return !!(e && e.fiveWayFormat(e.nodeAt(e.selectedId)) === "card") }
-                    onTriggered: { var e = _ed(); if (e) e.applyFiveWayFormat("card") }
-                }
-                MenuItem {
-                    text: "Radial leaders"
-                    checkable: true
-                    checked: { var e = _ed(); return !!(e && e.fiveWayFormat(e.nodeAt(e.selectedId)) === "radial") }
-                    onTriggered: { var e = _ed(); if (e) e.applyFiveWayFormat("radial") }
-                }
-            }
-        }
-        MenuSeparator {}
-        MenuItem { text: "Align left"; onTriggered: { var e = _ed(); if (e) e.setAlignH("left") } }
-        MenuItem { text: "Align center"; onTriggered: { var e = _ed(); if (e) e.setAlignH("center") } }
-        MenuItem { text: "Align right"; onTriggered: { var e = _ed(); if (e) e.setAlignH("right") } }
-        MenuItem { text: "Free layout"; onTriggered: { var e = _ed(); if (e) e.setAlignH("free") } }
+        onClosed: Commands.removeOwner("buttonmap")
     }
-
-    Menu {
-        id: _leadMenu
-        MenuItem { text: "Add straight spine"; onTriggered: { var e = _ed(); if (e && selectedNode) { e.ensureMidSpine(selectedNode); e.bump() } } }
-        MenuItem { text: "Add curved spine"; onTriggered: { var e = _ed(); if (e && selectedNode) e.addCurveSpine(selectedNode) } }
-        MenuItem { text: "This segment curved"; onTriggered: { var e = _ed(); if (e) e.setSegCurve(e.currentLeader(e.nodeAt(e.selectedId)), Math.max(0, e.selectedSeg), true) } }
-        MenuItem { text: "This segment straight"; onTriggered: { var e = _ed(); if (e) e.setSegCurve(e.currentLeader(e.nodeAt(e.selectedId)), Math.max(0, e.selectedSeg), false) } }
-        MenuItem { text: "All segments curved"; onTriggered: { var e = _ed(); if (e) e.setAllSegCurve(true) } }
-        MenuItem { text: "All segments straight"; onTriggered: { var e = _ed(); if (e) e.setAllSegCurve(false) } }
-        MenuSeparator {}
-        MenuItem { text: "Add leader (same chip / hotspot)"; onTriggered: { var e = _ed(); if (e) e.addLeader() } }
-        MenuItem { text: "Branch from this end"; onTriggered: { var e = _ed(); if (e) e.addBranch() } }
-        MenuItem { text: "Delete leader"; onTriggered: { var e = _ed(); if (e) e.deleteLeader() } }
-        MenuSeparator {}
-        MenuItem { text: "Detach chip end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("from") } }
-        MenuItem { text: "Detach hotspot end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("to") } }
-        MenuItem { text: "Reconnect to this chip"; onTriggered: { var e = _ed(); if (e) e.attachEndToSelf("from") } }
-        MenuItem { text: "Reconnect to this hotspot"; onTriggered: { var e = _ed(); if (e) e.attachEndToSelf("to") } }
-        MenuItem { text: "Delete selected spine"; onTriggered: { var e = _ed(); if (e) e.deleteSelection() } }
-    }
-
+    Component.onDestruction: Commands.removeOwner("buttonmap")
 
     FileDialog {
         id: _imageDialog
@@ -2388,36 +2243,35 @@ ApplicationWindow {
         anchors.bottomMargin: Style.dp(78)
         spacing: 0
 
-        MenuBar {
+        ThemedMenuBar {
+            id: _menuBar
             Layout.fillWidth: true
-            Menu {
+            ThemedMenu {
                 id: _fileMenu
                 title: "File"
-                width: _buttonMap.fileMenuW
-                implicitWidth: _buttonMap.fileMenuW
-                onAboutToShow: {
+                // The lists in it are filled before ThemedMenu hides what
+                // cannot be used and sizes itself.
+                beforeShow: function() {
                     _buttonMap.savedLayouts = _hw.savedLayouts(_buttonMap.targetName)
                     _buttonMap.refreshTemplates()
-                    _buttonMap.compactMenu(_fileMenu)
-                    _buttonMap.growFileMenu()
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Edit Mapping"
                     enabled: !_buttonMap.editing && _buttonMap.targetName.length > 0
                     onTriggered: _buttonMap.enterEdit()
                 }
-                MenuItem { text: "Save"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
-                MenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
-                MenuSeparator {}
-                MenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
-                MenuItem {
+                ThemedMenuItem { text: "Save"; hint: "Ctrl+S"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
+                ThemedMenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
+                ThemedMenuSeparator {}
+                ThemedMenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
+                ThemedMenuItem {
                     text: "Fit to photo frame"
                     enabled: editing && !fittedThisEdit
                     onTriggered: fitToPhotoFrame()
                 }
-                MenuSeparator {}
-                MenuItem { text: "Choose background…"; enabled: editing; onTriggered: _imageDialog.open() }
-                MenuItem {
+                ThemedMenuSeparator {}
+                ThemedMenuItem { text: "Choose background…"; enabled: editing; onTriggered: _imageDialog.open() }
+                ThemedMenuItem {
                     text: "Clear image"
                     enabled: editing
                     onTriggered: {
@@ -2426,29 +2280,29 @@ ApplicationWindow {
                         resetPhoto()
                     }
                 }
-                MenuSeparator {}
-                MenuItem {
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
                     text: "Export PDF…"
                     enabled: _buttonMap.targetName.length > 0
                     onTriggered: _exportPdfDialog.open()
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Export PNG…"
                     enabled: _buttonMap.targetName.length > 0
                     onTriggered: _exportPngDialog.open()
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Export JPG…"
                     enabled: _buttonMap.targetName.length > 0
                     onTriggered: _exportJpgDialog.open()
                 }
-                Menu {
+                ThemedMenu {
                     id: _copyMenu
                     title: "Copy layout from"
                     enabled: _buttonMap.targetName.length > 0 && _buttonMap.savedLayouts.length > 0
                     Instantiator {
                         model: _buttonMap.savedLayouts
-                        delegate: MenuItem {
+                        delegate: ThemedMenuItem {
                             required property var modelData
                             text: modelData.name + "…"
                             onTriggered: _buttonMap.openCopyLayout(modelData)
@@ -2457,23 +2311,23 @@ ApplicationWindow {
                         onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
                     }
                 }
-                Menu {
+                ThemedMenu {
                     id: _templateMenu
                     title: "Templates"
                     enabled: _buttonMap.targetName.length > 0
-                    onAboutToShow: _buttonMap.refreshTemplates()
-                    MenuItem {
+                    beforeShow: _buttonMap.refreshTemplates
+                    ThemedMenuItem {
                         text: "Save layout as template…"
                         enabled: (_buttonMap.layoutNow() || []).length > 0
                         onTriggered: _templateNameDlg.open()
                     }
-                    Menu {
+                    ThemedMenu {
                         id: _applyTemplateMenu
                         title: "Apply template"
                         enabled: _buttonMap.templateList.length > 0
                         Instantiator {
                             model: _buttonMap.templateList
-                            delegate: MenuItem {
+                            delegate: ThemedMenuItem {
                                 required property var modelData
                                 text: modelData.name + "…"
                                 onTriggered: _buttonMap.openCopyLayout({ name: modelData.name, template: true })
@@ -2482,34 +2336,35 @@ ApplicationWindow {
                             onObjectRemoved: (index, object) => _applyTemplateMenu.removeItem(object)
                         }
                     }
-                    MenuItem {
+                    ThemedMenuItem {
                         text: "Manage templates…"
                         onTriggered: _templatesDlg.open()
                     }
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Print…"
+                    hint: "Ctrl+P"
                     enabled: _buttonMap.targetName.length > 0
                     onTriggered: _buttonMap.printView()
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Export modes…"
                     enabled: _buttonMap.profileModes.length > 0 && _buttonMap.targetGuid.length > 0
                     onTriggered: _buttonMap.openExportModes()
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Light page for printing"
                     enabled: _buttonMap.targetName.length > 0
                     checkable: true
                     checked: _opts.values["light-page"] === true
                     onTriggered: _opts.set("light-page", checked)
                 }
-                Menu {
+                ThemedMenu {
                     title: "Export size"
                     enabled: _buttonMap.targetName.length > 0
                     Repeater {
                         model: [1, 2, 3]
-                        MenuItem {
+                        ThemedMenuItem {
                             required property int modelData
                             text: modelData + "×"
                             checkable: true
@@ -2518,67 +2373,71 @@ ApplicationWindow {
                         }
                     }
                 }
-                MenuSeparator {}
-                MenuItem {
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
                     text: "Close"
                     onTriggered: _buttonMap.close()
                 }
             }
-            Menu {
+            ThemedMenu {
                 id: _editMenu
                 title: "Edit"
-                onAboutToShow: _buttonMap.compactMenu(_editMenu)
-                MenuItem {
+                ThemedMenuItem {
                     text: "Undo"
+                    hint: "Ctrl+Z"
                     enabled: { var e = _ed(); return e ? e.canUndo : false }
                     onTriggered: { var e = _ed(); if (e) e.undo() }
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Redo"
+                    hint: "Ctrl+Y"
                     enabled: { var e = _ed(); return e ? e.canRedo : false }
                     onTriggered: { var e = _ed(); if (e) e.redo() }
                 }
-                MenuSeparator {}
-                MenuItem {
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
                     text: "Duplicate"
+                    hint: "Ctrl+D"
                     enabled: { var e = _ed(); return e && e.selectedId !== "" }
                     onTriggered: { var e = _ed(); if (e) e.duplicateSelection() }
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Copy"
+                    hint: "Ctrl+C"
                     enabled: { var e = _ed(); return e && e.selectedId !== "" }
                     onTriggered: { var e = _ed(); if (e) e.copySelection() }
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Paste"
+                    hint: "Ctrl+V"
                     enabled: { var e = _ed(); return e && e.clip && e.clip.length }
                     onTriggered: { var e = _ed(); if (e) e.pasteClipboard() }
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Paste picture"
+                    hint: "Ctrl+Shift+V"
                     enabled: editing && _hw.clipboardHasImage
                     onTriggered: pastePicture()
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Mirror layout"
                     enabled: editing
                     onTriggered: _buttonMap.mirrorNow()
                 }
-                MenuSeparator {}
-                MenuItem {
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
                     text: "Editor options…"
                     onTriggered: _buttonMap.openEditorOptions()
                 }
             }
-            Menu {
+            ThemedMenu {
                 id: _viewMenu
                 title: "View"
-                onAboutToShow: _buttonMap.compactMenu(_viewMenu)
-                Menu {
+                ThemedMenu {
                     title: "Chip text"
                     Repeater {
                         model: ["Name", "Action", "Name and action"]
-                        MenuItem {
+                        ThemedMenuItem {
                             required property string modelData
                             text: modelData
                             checkable: true
@@ -2587,19 +2446,19 @@ ApplicationWindow {
                         }
                     }
                 }
-                Menu {
+                ThemedMenu {
                     id: _labelModeMenu
                     title: "Labels mode"
-                    MenuItem {
+                    ThemedMenuItem {
                         text: "Follow the program"
                         checkable: true
                         checked: _buttonMap.labelMode === ""
                         onTriggered: _buttonMap.labelMode = ""
                     }
-                    MenuSeparator {}
+                    ThemedMenuSeparator {}
                     Instantiator {
                         model: _buttonMap.profileModes
-                        delegate: MenuItem {
+                        delegate: ThemedMenuItem {
                             required property string modelData
                             text: modelData
                             checkable: true
@@ -2610,29 +2469,38 @@ ApplicationWindow {
                         onObjectRemoved: (index, object) => _labelModeMenu.removeItem(object)
                     }
                 }
-                MenuSeparator {}
-                MenuItem {
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
                     text: "Layers"
                     checkable: true
                     checked: layersOn
                     onTriggered: layersOn = !layersOn
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Properties"
                     checkable: true
                     checked: propsOn
                     onTriggered: propsOn = !propsOn
                 }
-                MenuItem {
+                ThemedMenuItem {
+                    text: "Command palette…"
+                    hint: "Ctrl+K"
+                    inPalette: false
+                    onTriggered: _palette.open()
+                }
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
                     text: "Zoom to fit page"
+                    hint: "Ctrl+1"
                     onTriggered: _buttonMap.zoomToPage()
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Zoom to selection"
+                    hint: "Ctrl+2"
                     enabled: { var e = _ed(); return !!(e && e.selectedIds && e.selectedIds.length) }
                     onTriggered: _buttonMap.zoomToSelection()
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Reset view (View 100%)"
                     onTriggered: {
                         var f = _cardLoader.item
@@ -2642,14 +2510,14 @@ ApplicationWindow {
                         persistUi()
                     }
                 }
-                MenuSeparator {}
-                MenuItem {
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
                     text: "Rulers"
                     checkable: true
                     checked: _opts.values["rulers"] === true
                     onTriggered: _opts.set("rulers", checked)
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Show guides"
                     checkable: true
                     checked: _buttonMap.guidesOn
@@ -2661,89 +2529,89 @@ ApplicationWindow {
                         persistUi()
                     }
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Clear guides"
                     enabled: _buttonMap.guidesX.length + _buttonMap.guidesY.length > 0
                     onTriggered: { var e = _ed(); if (e) e.clearRulerGuides() }
                 }
-                Menu {
+                ThemedMenu {
                     title: "Grid"
-                    MenuItem {
+                    ThemedMenuItem {
                         text: "Show grid"
                         checkable: true
                         checked: _buttonMap.gridOn
                         onTriggered: _buttonMap.setGridPref("gridOn", checked)
                     }
-                    MenuItem {
+                    ThemedMenuItem {
                         text: "Snap to grid"
                         checkable: true
                         checked: _buttonMap.snapOn
                         onTriggered: _buttonMap.setGridPref("snapOn", checked)
                     }
-                    MenuItem {
+                    ThemedMenuItem {
                         text: "Snap to entities"
                         checkable: true
                         checked: _buttonMap.snapEntOn
                         onTriggered: _buttonMap.setGridPref("snapEntOn", checked)
                     }
-                    MenuSeparator {}
-                    Menu {
+                    ThemedMenuSeparator {}
+                    ThemedMenu {
                         title: "Size"
-                        MenuItem {
+                        ThemedMenuItem {
                             text: "4"
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 4 }
                             onTriggered: _buttonMap.setGridPref("gridSize", 4)
                         }
-                        MenuItem {
+                        ThemedMenuItem {
                             text: "8"
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 8 }
                             onTriggered: _buttonMap.setGridPref("gridSize", 8)
                         }
-                        MenuItem {
+                        ThemedMenuItem {
                             text: "12"
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 12 }
                             onTriggered: _buttonMap.setGridPref("gridSize", 12)
                         }
-                        MenuItem {
+                        ThemedMenuItem {
                             text: "16"
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 16 }
                             onTriggered: _buttonMap.setGridPref("gridSize", 16)
                         }
-                        MenuItem {
+                        ThemedMenuItem {
                             text: "24"
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 24 }
                             onTriggered: _buttonMap.setGridPref("gridSize", 24)
                         }
-                        MenuItem {
+                        ThemedMenuItem {
                             text: "32"
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 32 }
                             onTriggered: _buttonMap.setGridPref("gridSize", 32)
                         }
-                        MenuItem {
+                        ThemedMenuItem {
                             text: "48"
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 48 }
                             onTriggered: _buttonMap.setGridPref("gridSize", 48)
                         }
-                        MenuItem {
+                        ThemedMenuItem {
                             text: "64"
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 64 }
                             onTriggered: _buttonMap.setGridPref("gridSize", 64)
                         }
-                        MenuItem {
+                        ThemedMenuItem {
                             text: "200"
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 200 }
                             onTriggered: _buttonMap.setGridPref("gridSize", 200)
                         }
-                        MenuItem {
+                        ThemedMenuItem {
                             text: "400"
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 400 }
@@ -2752,13 +2620,12 @@ ApplicationWindow {
                     }
                 }
             }
-            Menu {
+            ThemedMenu {
                 id: _photoMenu
                 title: "Photo"
                 // Everything in it needs editing.
                 enabled: editing
-                onAboutToShow: _buttonMap.compactMenu(_photoMenu)
-                MenuItem {
+                ThemedMenuItem {
                     text: "Move photo"
                     checkable: true
                     enabled: editing
@@ -2771,22 +2638,23 @@ ApplicationWindow {
                         _buttonMap.applyPhotoToEditor()
                     }
                 }
-                MenuItem {
+                ThemedMenuItem {
                     text: "Adjust photo…"
                     enabled: editing
                     onTriggered: _photoAdj.open()
                 }
-                MenuSeparator {}
-                MenuItem {
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
                     text: "Reset photo"
                     enabled: editing
                     onTriggered: _buttonMap.resetPhoto()
                 }
             }
-            Menu {
+            ThemedMenu {
                 title: "Help"
-                MenuItem {
+                ThemedMenuItem {
                     text: "Button Map guide"
+                    hint: "F1"
                     onTriggered: _buttonMap.openGuide()
                 }
             }
@@ -2902,6 +2770,10 @@ ApplicationWindow {
                     enabled: editing
                     sequence: "Ctrl+V"
                     onActivated: { var e = _ed(); if (e) e.pasteClipboard() }
+                }
+                Shortcut {
+                    sequence: "Ctrl+K"
+                    onActivated: _palette.open()
                 }
                 Shortcut {
                     sequence: "F1"

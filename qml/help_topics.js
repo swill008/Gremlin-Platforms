@@ -292,6 +292,7 @@ function buttonMapTopics() {
             "<p>Button Map is a picture of one device with a chip on each control. While the profile runs, a press lights its chip, and wires show where the control goes (shown as <b>(not claimed)</b> when the output is not claimed). Chips are layout only: moving, renaming or deleting one never changes the actions in the profile.</p>"
             + "<p>Pick the device from the <b>File</b> menu. Before you edit, the map is live: hover a chip to see which control it is, and drag with the left or middle button to pan.</p>"
             + "<p><b>File → Edit Mapping</b> starts editing. The pool beside the map lists the device's controls; drag a chip from it onto the photo, and filter it by name. <b>File → Save</b> (Ctrl+S) writes the layout to the device's module file; <b>File → Cancel</b> leaves without saving. Closing with unsaved edits asks first.</p>"
+            + "<p>The menus show only what you can use right now, with shortcuts beside their commands. <b>View → Command palette</b> (Ctrl+K) lists every menu command you can use now: type part of a name and press Enter.</p>"
             + "<p>Most of this guide is about editing. <b>Help → Button Map guide</b> or <b>F1</b> opens it.</p>"),
         topic("Getting started", "File menu and export",
             "<p>The Button Map's menus show only what you can use at that moment: before a device is chosen the File menu lists the devices, and the editing items appear once you choose File → Edit Mapping. The Photo menu works while editing.</p>"
@@ -344,6 +345,7 @@ function buttonMapTopics() {
             + "<li><b>Ctrl+P</b> Print</li>"
             + "<li><b>Ctrl+0</b> Reset view to 100%; <b>Alt</b> while dragging: no snapping; <b>Shift</b> while drawing: keep proportions or 15° steps</li>"
             + "<li><b>Esc</b> Cancel the tool, crop, rename or group edit</li>"
+            + "<li><b>Ctrl+K</b> Command palette</li>"
             + "<li><b>F1</b> This guide</li>"
             + "</ul>"),
         topic("Chips", "Chips",

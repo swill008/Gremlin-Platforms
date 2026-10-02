@@ -166,7 +166,7 @@ Popup {
             if (it.kind === "choice")
                 t += ": " + it.options.map(function(o) { return o.checked ? "*" + o.text : o.text }).join(" | ")
             if (it.kind === "number")
-                t += ": " + it.value + it.suffix
+                t += ": " + it.value + (it.suffix || "")
             if (it.hint)
                 t += " (" + it.hint + ")"
             if (!it.enabled)
@@ -427,7 +427,7 @@ Popup {
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 x: row && row.indent ? Style.menuIndent : Style.dp(6)
-                width: parent.width - x - Style.dp(8) - _hint.width
+                width: parent.width - x - Math.max(Style.dp(26), _hint.width + Style.dp(16))
                 text: it ? it.text : ""
                 font.pixelSize: _menu.textPx
                 font.bold: !!(it && it.danger)
@@ -440,7 +440,7 @@ Popup {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
                 anchors.rightMargin: Style.dp(8)
-                text: !it ? "" : (it.kind === "toggle" ? (it.checked ? "✓" : "") : it.hint)
+                text: !it ? "" : (it.kind === "toggle" ? (it.checked ? "✓" : "") : (it.hint || ""))
                 font.pixelSize: it && it.kind === "toggle" ? _menu.textPx : _menu.textPx - Style.dp(1)
                 color: it && it.kind === "toggle" ? Style.menuAccent : Style.menuHint
             }
@@ -470,6 +470,7 @@ Popup {
             readonly property var it: row ? row.item : null
             implicitHeight: _menu.rowH + Style.dp(4)
             hot: _menu.focusRow === rowIndex
+            bar: false
 
             function editValue() {
                 _numField.forceActiveFocus()
@@ -514,7 +515,7 @@ Popup {
                 id: _numBox
                 x: _numLabel.x + _numLabel.width + Style.dp(4)
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: Style.dp(2)
+                spacing: Style.dp(4)
                 Repeater {
                     model: it && it.step ? [-1] : []
                     delegate: _stepButton
@@ -549,7 +550,7 @@ Popup {
                 Label {
                     visible: !!(it && it.suffix)
                     anchors.verticalCenter: parent.verticalCenter
-                    text: it ? it.suffix : ""
+                    text: it ? (it.suffix || "") : ""
                     font.pixelSize: _menu.textPx
                     color: Style.menuTextSoft
                 }
@@ -565,7 +566,7 @@ Popup {
                     Label {
                         id: _goText
                         anchors.centerIn: parent
-                        text: it ? it.go : ""
+                        text: it ? (it.go || "") : ""
                         font.pixelSize: _menu.textPx - Style.dp(1)
                         color: _goArea.containsMouse ? Style.onColor : Style.menuText
                     }
@@ -617,6 +618,7 @@ Popup {
             readonly property var it: row ? row.item : null
             implicitHeight: _menu.rowH + Style.dp(4)
             hot: _menu.focusRow === rowIndex
+            bar: false
 
             function editValue() {
                 _entryField.forceActiveFocus()
@@ -647,7 +649,7 @@ Popup {
                 bottomPadding: 0
                 font.pixelSize: _menu.textPx
                 enabled: !!(_entryRow.it && _entryRow.it.enabled)
-                placeholderText: _entryRow.it ? _entryRow.it.placeholder : ""
+                placeholderText: _entryRow.it ? (_entryRow.it.placeholder || "") : ""
                 selectByMouse: true
                 onAccepted: {
                     var value = text.trim()
@@ -673,6 +675,7 @@ Popup {
             readonly property var it: row ? row.item : null
             implicitHeight: _flow.implicitHeight + Style.dp(8)
             hot: _menu.focusRow === rowIndex
+            bar: false
             Label {
                 id: _choiceLabel
                 x: row && row.indent ? Style.menuIndent : Style.dp(6)

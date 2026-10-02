@@ -151,8 +151,9 @@ function _score(c, words) {
 }
 
 // The palette's list: available commands matching the text, best first;
-// everything (in menu order) when the text is empty.
-function search(text) {
+// everything (in menu order) when the text is empty. owners: only the
+// commands of these owners (a window's own), or all when empty.
+function search(text, owners) {
     var words = String(text || "").toLowerCase().split(/\s+/).filter(Boolean)
     var out = []
     var list = all()
@@ -160,10 +161,75 @@ function search(text) {
         var c = list[i]
         if (c.palette === false || !isAvailable(c.id))
             continue
+        if (owners && owners.length && owners.indexOf(c.owner) < 0)
+            continue
         var s = words.length ? _score(c, words) : 0
         if (s >= 0)
             out.push({ cmd: c, score: s, at: i })
     }
     out.sort(function(a, b) { return b.score - a.score || a.at - b.at })
     return out.map(function(r) { return r.cmd })
+}
+
+// Commands for every row of a menu (and its submenus) that is not already a
+// command: a window with its own menus lists them in the palette this way.
+// The commands hold the rows, so the window takes them away again
+// (removeOwner) when the palette closes and when it closes itself.
+function defineFromMenu(menu, owner, path) {
+    if (!menu)
+        return
+    if (typeof menu.beforeShow === "function")
+        menu.beforeShow()
+    for (var i = 0; i < menu.count; i++) {
+        var item = menu.itemAt(i)
+        // Separators have no text.
+        if (!item || item.text === undefined || !String(item.text).length)
+            continue
+        if (item.subMenu) {
+            defineFromMenu(item.subMenu, owner, path.concat([item.text]))
+            continue
+        }
+        if ((item.command && item.command.length) || item.inPalette === false)
+            continue
+        _defineRow(item, owner, path, i)
+    }
+}
+
+function _defineRow(item, owner, path, at) {
+    var group = path.join(" › ")
+    define({
+        id: owner + ":" + group + "/" + at + "/" + item.text,
+        text: String(item.text),
+        group: group,
+        shortcut: item.hint || "",
+        owner: owner,
+        enabled: function() { return item.enabled },
+        visible: function() { return item.shown !== false },
+        checked: item.checkable ? function() { return item.checked } : undefined,
+        run: function() {
+            // As a click does: a check row flips before it reports.
+            if (item.checkable)
+                item.toggle()
+            item.triggered()
+        }
+    })
+}
+
+// The same for each menu of a menu bar.
+function defineFromMenuBar(bar, owner) {
+    for (var i = 0; bar && i < bar.count; i++) {
+        var menu = bar.menuAt(i)
+        if (menu && menu.enabled)
+            defineFromMenu(menu, owner, [menu.title])
+    }
+}
+
+// How many commands an owner has (tests: a closed window leaves none).
+function countOwner(owner) {
+    var n = 0
+    for (var i = 0; i < _order.length; i++) {
+        if (_byId[_order[i]].owner === owner)
+            n++
+    }
+    return n
 }

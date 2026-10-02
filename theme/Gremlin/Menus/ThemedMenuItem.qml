@@ -22,6 +22,8 @@ T.MenuItem {
     // Wanted in the menu at all (ThemedMenu hides the row when false or when
     // it cannot be used).
     property bool shown: true
+    // Listed in the window's command palette (Commands.defineFromMenu).
+    property bool inPalette: true
 
     // Takes the command's current state. ThemedMenu calls this as it opens.
     function refresh() {
