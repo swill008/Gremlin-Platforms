@@ -20,8 +20,14 @@ _REMAINING = {
     "qml/OutputModuleView.qml": 12,
     # Overlays on the device photo and the colour picker's fixed palette.
     "qml/DialogJoystickButtonMap.qml": 50,
-    # Drawn on the device photo, which looks the same in both modes.
-    "qml/VkbRigEditor.qml": 114,
+    # Drawn on the device photo, which looks the same in both modes. The
+    # Rig*.qml parts were split out of VkbRigEditor.qml with their colours.
+    "qml/RigChipItem.qml": 6,
+    "qml/RigDrawItem.qml": 22,
+    "qml/RigGroupItem.qml": 3,
+    "qml/RigMiniChip.qml": 10,
+    "qml/RigSelRing.qml": 1,
+    "qml/VkbRigEditor.qml": 72,
     "qml/VkbRigFace.qml": 8,
     "qml/Xbox360Face.qml": 44,
 }

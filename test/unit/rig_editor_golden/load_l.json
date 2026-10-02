@@ -1133,7 +1133,7 @@
   }
  ],
  "warnings": [
-  "VkbRigEditor.qml:5629:13: QML QQuickImage: Cannot open: file:///E:/Users/Stacie/Documents/GitHub/JoystickGremlin_/.claude/worktrees/interesting-blackburn-1a11b6/qml/images/vkb_gladiator_rig.jpg",
-  "VkbRigFace.qml:432:17: QML QQuickImage: Cannot open: file:///E:/Users/Stacie/Documents/GitHub/JoystickGremlin_/.claude/worktrees/interesting-blackburn-1a11b6/qml/images/vkb_gladiator_rig.jpg"
+  "qml/VkbRigEditor.qml: QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg",
+  "qml/VkbRigFace.qml: QML QQuickImage: Cannot open: qml/images/vkb_gladiator_rig.jpg"
  ]
 }

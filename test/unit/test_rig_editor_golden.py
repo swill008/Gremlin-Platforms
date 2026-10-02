@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -68,7 +69,11 @@ def _normalize(doc: dict) -> dict:
         return value
 
     out = walk(doc)
-    out["warnings"] = sorted(w.split("/qml/", 1)[-1] for w in out.get("warnings", []))
+    # File names stay, line numbers do not: moving code must not fail this.
+    out["warnings"] = sorted(
+        re.sub(r":\d+(:\d+)?:", ":", re.sub(r"file:///\S*?/qml/", "qml/", w))
+        for w in out.get("warnings", [])
+    )
     return out
 
 
