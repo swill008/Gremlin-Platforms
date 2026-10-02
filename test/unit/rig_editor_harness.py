@@ -1311,6 +1311,13 @@ def scenario_labels(s: Session) -> None:
     label_step("unbound-blank")
     s.set_prop("unboundText", "Dash")
     label_step("unbound-dash")
+    # Export modes: each page carries its mode's name, without editing marks.
+    s.call("setSelection", [])
+    s.set_prop("exporting", True)
+    s.set_prop("exportTitle", "Combat")
+    label_step("export-page-title", image=True)
+    s.set_prop("exportTitle", "")
+    s.set_prop("exporting", False)
 
 
 def scenario_export(s: Session) -> None:

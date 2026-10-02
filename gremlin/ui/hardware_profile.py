@@ -101,29 +101,71 @@ def save_page_image(
     scale is how much larger than on screen the picture was drawn; a PDF
     page keeps the on-screen size and gets the extra detail.
     """
-    if image is None or image.isNull():
+    page = page_of(image, x, y, w, h, background)
+    if page is None:
         return False
+    kind = str(fmt or "png").lower()
+    if kind == "pdf":
+        from gremlin.ui.util import save_image_as_pdf
+
+        return save_image_as_pdf(page, path, scale)
+    return _save_image(page, path, kind)
+
+
+def page_of(
+    image: QtGui.QImage, x: float, y: float, w: float, h: float, background: str
+) -> QtGui.QImage | None:
+    """The page cut out of a picture of the editor, on the background colour
+    (as on screen: on a transparent PNG the light leader lines all but vanish
+    in an image viewer)."""
+    if image is None or image.isNull():
+        return None
     rect = QtCore.QRect(round(x), round(y), round(w), round(h))
     rect = rect.intersected(image.rect())
     if rect.isEmpty():
-        return False
+        return None
     page = image.copy(rect).convertToFormat(QtGui.QImage.Format.Format_ARGB32)
-    kind = str(fmt or "png").lower()
-    # Onto the window's background, as on screen: on a transparent PNG the
-    # light leader lines all but vanish in an image viewer.
     flat = QtGui.QImage(page.size(), QtGui.QImage.Format.Format_RGB32)
     flat.fill(QtGui.QColor(background or "#202020"))
     painter = QtGui.QPainter(flat)
     painter.drawImage(0, 0, page)
     painter.end()
-    page = flat
-    if kind == "pdf":
-        from gremlin.ui.util import save_image_as_pdf
+    return flat
 
-        return save_image_as_pdf(page, path, scale)
+
+def _save_image(page: QtGui.QImage, path: Path, kind: str) -> bool:
     if kind in ("jpg", "jpeg"):
         return page.save(str(path), "JPG", 92)
     return page.save(str(path), "PNG")
+
+
+def _file_part(name: str) -> str:
+    """A mode name made safe for a file name."""
+    safe = "".join(c if c.isalnum() or c in " -_" else "_" for c in name).strip()
+    return safe or "mode"
+
+
+def save_pages(
+    pages: list[tuple[str, QtGui.QImage]], path: Path, fmt: str, scale: float = 1.0
+) -> list[Path]:
+    """Writes one page per mode: a PDF with a page each, or one PNG or JPG
+    each named after the file chosen plus the mode ("map - Combat.png").
+    Returns the files written."""
+    if not pages:
+        return []
+    kind = str(fmt or "png").lower()
+    path = Path(path)
+    if kind == "pdf":
+        from gremlin.ui.util import save_images_as_pdf
+
+        ok = save_images_as_pdf([image for _name, image in pages], path, scale)
+        return [path] if ok else []
+    written: list[Path] = []
+    for name, image in pages:
+        target = path.with_name(f"{path.stem} - {_file_part(name)}{path.suffix}")
+        if _save_image(image, target, kind):
+            written.append(target)
+    return written
 
 
 def _is_hex_colour(value: object) -> bool:
@@ -1465,11 +1507,45 @@ class HardwareProfile(QtCore.QObject):
         """Saves the page part of a picture of the editor (Export).
 
         x, y, w, h is the page in the picture's pixels. The page goes onto
-        the background colour, as it looks on screen. scale is the export size (1x, 2x, 3x).
+        the background colour, as it looks on screen. scale is the export
+        size (1x, 2x, 3x).
         """
         return save_page_image(
             image, x, y, w, h, to_local_path(url), fmt, background, scale
         )
+
+    # --- one page per mode (File > Export modes) ------------------------------
+
+    @QtCore.Slot()
+    def beginExportPages(self) -> None:
+        self._export_pages: list[tuple[str, QtGui.QImage]] = []
+
+    @QtCore.Slot(QtGui.QImage, float, float, float, float, str, str, result=bool)
+    def addExportPage(
+        self,
+        image: QtGui.QImage,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        name: str,
+        background: str,
+    ) -> bool:
+        """Keeps one mode's page until finishExportPages writes them all."""
+        page = page_of(image, x, y, w, h, background)
+        if page is None:
+            return False
+        if not hasattr(self, "_export_pages"):
+            self.beginExportPages()
+        self._export_pages.append((name, page))
+        return True
+
+    @QtCore.Slot(str, str, float, result=int)
+    def finishExportPages(self, url: str, fmt: str, scale: float) -> int:
+        """Writes the pages kept so far; returns how many files were written."""
+        pages = getattr(self, "_export_pages", [])
+        self._export_pages = []
+        return len(save_pages(pages, to_local_path(url), fmt, scale))
 
     @QtCore.Property(bool, notify=clipboardChanged)
     def clipboardHasImage(self) -> bool:

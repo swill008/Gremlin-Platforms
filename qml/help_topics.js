@@ -237,6 +237,7 @@ function topics() {
             + "<li><b>Fit to photo frame</b> shrinks an older, oversized layout to the photo.</li>"
             + "<li><b>Choose background…</b> uses another picture as the photo; <b>Clear image</b> goes back to the module's picture.</li>"
             + "<li><b>Export PDF…</b>, <b>Export PNG…</b>, <b>Export JPG…</b> save the whole page, whatever the zoom, on the window's background colour. Selection marks, handles, guides and the grid are left off, and so are hidden items. <b>Export size</b> picks 1×, 2× (the default) or 3× the size on screen; a PDF page keeps the on-screen size and gets the extra detail.</li>"
+            + "<li><b>Export modes…</b> writes one page per mode, each chip showing what its control does in that mode (Action labels; if chips show names, the export shows actions). Tick the modes, choose PDF (one file, a page per mode), PNG or JPG (a file per mode, named after the file you choose plus the mode). Each page can carry its mode's name at the top.</li>"
             + "<li><b>Close</b>. The last row shows the device's module file.</li>"
             + "</ul>"
             + "<p>To copy a whole device setup, layout included, to another computer, use Tools → Device setup → <b>Device Pack</b>. Hidden items travel in the pack and stay hidden.</p>"),
@@ -345,7 +346,7 @@ function topics() {
             + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>Unbound</b> (see Action labels).</li>"
             + "<li><b>Editing</b>: <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
             + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
-            + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size).</li>"
+            + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size); <b>Mode title</b>, the mode's name at the top of each Export modes page.</li>"
             + "<li><b>Colours</b>: <b>Recent colours</b>, how many the colour picker keeps.</li>"
             + "</ul>"),
         topic("Button Map", "Selecting, undo and keys",

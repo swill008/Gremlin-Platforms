@@ -99,6 +99,11 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {"valid_options": ["1x", "2x", "3x"]},
     ),
     (
+        "export", "02-mode-title", PropertyType.Bool, True,
+        "File > Export modes writes each mode's name at the top of its page.",
+        {},
+    ),
+    (
         "colours", "01-recent-colours", PropertyType.Int, 10,
         "How many recent colours the colour picker keeps.",
         {"min": 4, "max": 30},

@@ -75,6 +75,7 @@ ApplicationWindow {
             "Export PDF…",
             "Export PNG…",
             "Export JPG…",
+            "Export modes…",
             "Export size",
             "Reset layout",
             "Clear image"
@@ -1596,6 +1597,159 @@ ApplicationWindow {
         nameFilters: ["JPEG image (*.jpg *.jpeg)"]
         onAccepted: exportViewTo(selectedFile, "jpg")
     }
+    // --- File → Export modes: one page per mode -----------------------------
+
+    property var _modesJob: null
+    property var _modesPicked: []
+    property string _modesFormat: "pdf"
+
+    function openExportModes() {
+        _modesPicked = profileModes.slice()
+        _modesDlg.open()
+    }
+
+    function toggleExportMode(mode, on) {
+        var next = []
+        for (var i = 0; i < profileModes.length; i++) {
+            var m = profileModes[i]
+            if (m === mode ? on : _modesPicked.indexOf(m) >= 0)
+                next.push(m)
+        }
+        _modesPicked = next
+    }
+
+    function exportModesTo(url, format, modes) {
+        var e = _ed()
+        if (!e || !modes.length || _modesJob)
+            return
+        _modesJob = {
+            url: String(url), format: format, modes: modes.slice(), i: 0,
+            keepText: e.chipTextMode, f: Math.max(1, exportScale)
+        }
+        _hw.beginExportPages()
+        // Pages that all read the same would be no use: show the actions.
+        if (e.chipTextMode === "Name")
+            e.chipTextMode = "Action"
+        e.exporting = true
+        _nextModePage()
+    }
+
+    function _nextModePage() {
+        var e = _ed()
+        var job = _modesJob
+        if (!e || !job)
+            return
+        if (job.i >= job.modes.length) {
+            var written = _hw.finishExportPages(job.url, job.format, job.f)
+            _modesJob = null
+            e.exporting = false
+            e.exportTitle = ""
+            e.chipTextMode = job.keepText
+            refreshActionLabels()
+            if (e.showFindMessage)
+                e.showFindMessage(written ? "Exported " + job.modes.length + " modes." : "Export failed.")
+            return
+        }
+        var mode = job.modes[job.i]
+        e.actionLabels = labelsFor(mode)
+        e.exportTitle = _opts.values["mode-title"] !== false ? mode : ""
+        e.bump()
+        _modesTimer.restart()
+    }
+
+    Timer {
+        id: _modesTimer
+        interval: 80
+        onTriggered: {
+            var e = _buttonMap._ed()
+            var job = _buttonMap._modesJob
+            if (!e || !job)
+                return
+            var r = e.spaceRect()
+            var f = job.f
+            var bg = String(Style.background)
+            var mode = job.modes[job.i]
+            var ok = e.grabToImage(function(result) {
+                if (result)
+                    _hw.addExportPage(result.image, r.x * f, r.y * f, r.w * f, r.h * f, mode, bg)
+                job.i++
+                _buttonMap._nextModePage()
+            }, Qt.size(Math.round(e.width * f), Math.round(e.height * f)))
+            if (!ok) {
+                job.i++
+                _buttonMap._nextModePage()
+            }
+        }
+    }
+
+    Dialog {
+        id: _modesDlg
+        title: "Export modes"
+        modal: true
+        anchors.centerIn: parent
+        width: Style.dp(420)
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: Style.dp(8)
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Style.fgMuted
+                text: "One page per mode, each chip showing what its control does in that mode. "
+                      + "A PDF gets a page per mode; PNG and JPG get a file per mode."
+            }
+            Repeater {
+                model: _buttonMap.profileModes
+                CheckBox {
+                    required property string modelData
+                    text: modelData
+                    checked: _buttonMap._modesPicked.indexOf(modelData) >= 0
+                    onToggled: _buttonMap.toggleExportMode(modelData, checked)
+                }
+            }
+            CheckBox {
+                text: "Mode name at the top of each page"
+                checked: _opts.values["mode-title"] !== false
+                onToggled: _opts.set("mode-title", checked)
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: Style.dp(8)
+                Button {
+                    text: "Cancel"
+                    onClicked: _modesDlg.close()
+                }
+                Repeater {
+                    model: ["PDF", "PNG", "JPG"]
+                    Button {
+                        required property string modelData
+                        text: modelData + "…"
+                        enabled: _buttonMap._modesPicked.length > 0
+                        highlighted: modelData === "PDF"
+                        onClicked: {
+                            _buttonMap._modesFormat = modelData.toLowerCase()
+                            _modesDlg.close()
+                            _exportModesFile.open()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    FileDialog {
+        id: _exportModesFile
+        title: "Export modes"
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: _buttonMap._modesFormat
+        nameFilters: _buttonMap._modesFormat === "pdf" ? ["PDF (*.pdf)"]
+                     : (_buttonMap._modesFormat === "jpg" ? ["JPEG image (*.jpg *.jpeg)"] : ["PNG image (*.png)"])
+        onAccepted: _buttonMap.exportModesTo(selectedFile, _buttonMap._modesFormat, _buttonMap._modesPicked)
+    }
+
+
     FileDialog {
         id: _exportPdfDialog
         title: "Export PDF"
@@ -1719,6 +1873,11 @@ ApplicationWindow {
                 MenuItem {
                     text: "Export JPG…"
                     onTriggered: _exportJpgDialog.open()
+                }
+                MenuItem {
+                    text: "Export modes…"
+                    enabled: _buttonMap.profileModes.length > 0 && _buttonMap.targetGuid.length > 0
+                    onTriggered: _buttonMap.openExportModes()
                 }
                 Menu {
                     title: "Export size"

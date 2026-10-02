@@ -547,20 +547,39 @@ def save_image_as_pdf(image: QtGui.QImage, path: Path, scale: float = 1.0) -> bo
     Returns:
         True when the file was written
     """
-    if image.isNull() or not str(path):
+    return save_images_as_pdf([image], path, scale)
+
+
+def save_images_as_pdf(
+    images: list[QtGui.QImage], path: Path, scale: float = 1.0
+) -> bool:
+    """Writes images to path as a PDF with one page per image, each page
+    sized to its image (see save_image_as_pdf for scale).
+
+    Returns:
+        True when the file was written
+    """
+    images = [image for image in images if not image.isNull()]
+    if not images or not str(path):
         return False
+    factor = max(1.0, scale)
+
+    def page_size(image: QtGui.QImage) -> QtGui.QPageSize:
+        return QtGui.QPageSize(
+            QtCore.QSizeF(image.width() / factor, image.height() / factor),
+            QtGui.QPageSize.Unit.Point,
+        )
+
     writer = QtGui.QPdfWriter(str(path))
     writer.setResolution(96)
     writer.setPageMargins(QtCore.QMarginsF(0, 0, 0, 0))
-    writer.setPageSize(QtGui.QPageSize(
-        QtCore.QSizeF(
-            image.width() / max(1.0, scale), image.height() / max(1.0, scale)
-        ),
-        QtGui.QPageSize.Unit.Point,
-    ))
+    writer.setPageSize(page_size(images[0]))
     painter = QtGui.QPainter()
     if not painter.begin(writer):
         return False
-    target = QtCore.QRectF(painter.viewport())
-    painter.drawImage(target, image)
+    for index, image in enumerate(images):
+        if index:
+            writer.setPageSize(page_size(image))
+            writer.newPage()
+        painter.drawImage(QtCore.QRectF(painter.viewport()), image)
     return painter.end()

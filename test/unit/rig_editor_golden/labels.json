@@ -1439,6 +1439,36 @@
     "selected": []
    },
    "step": "unbound-dash"
+  },
+  {
+   "state": {
+    "changed": {},
+    "chipTexts": {
+     "axis:1": "vJoy 1 X",
+     "btn:1": "Ctrl+G",
+     "btn:2": "\u2014",
+     "btn:3": "Gear up",
+     "btn:6": "\u2192 Combat",
+     "btn:9": "\u2014"
+    },
+    "cropId": "",
+    "drawTool": "",
+    "histAt": 0,
+    "histLen": 1,
+    "layers": [],
+    "menu": [],
+    "nodeCount": 19,
+    "pasteRequests": 0,
+    "photo": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "props": [],
+    "selected": []
+   },
+   "step": "export-page-title"
   }
  ],
  "warnings": [

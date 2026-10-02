@@ -44,6 +44,8 @@ Item {
     // guides. showChrome is what visual parts check instead of interactive.
     property bool exporting: false
     readonly property bool showChrome: interactive && !exporting
+    // Export modes: the mode's name, drawn at the top of the page while exporting.
+    property string exportTitle: ""
     property var selectedIds: []
     property bool banding: false
     property bool bandAdd: false
@@ -1059,6 +1061,18 @@ Item {
         color: "#33FBBF24"
         border.color: "#FBBF24"
         border.width: Style.dp(1)
+    }
+
+    // The mode's name on each page of File → Export modes.
+    Text {
+        z: 9
+        visible: _ed.exporting && _ed.exportTitle.length > 0
+        x: { _ed.tick; return _ed.spaceRect().x + _ed.spaceRect().w * 0.02 }
+        y: { _ed.tick; return _ed.spaceRect().y + _ed.spaceRect().h * 0.02 }
+        color: Style.fg
+        font.pixelSize: { _ed.tick; return _ed.uiPx(28) }
+        font.bold: true
+        text: _ed.exportTitle
     }
 
     Text {
