@@ -198,14 +198,27 @@ Item {
                 }
             }
 
+            // Both off is allowed (it pauses the action), but say so.
             Label {
-                visible: _root.action && _root.action.isValid != true
+                visible: _root.action && _root.action.actionBehavior === "button"
+                    && _root.action.canChangeActivation
+                    && !_root.action.activateOnPress && !_root.action.activateOnRelease
+                Layout.alignment: Qt.AlignVCenter
+                text: "Off: never runs"
+                color: Style.warn
+                font.pixelSize: Style.dp(12)
+            }
+
+            // Errors and warnings alike, by their own icon and colour (the
+            // binding header does the same).
+            Label {
+                visible: _root.action && _root.action.userFeedback.length > 0
 
                 font.family: "bootstrap-icons"
                 font.pixelSize: Style.dp(24)
 
-                text: bsi.icons.error
-                color: Style.error
+                text: _root.action ? Helpers.determineHintIcon(_root.action.userFeedback) : ""
+                color: _root.action ? Helpers.determineHintColor(_root.action.userFeedback) : Style.error
 
                 HoverHandler {
                     onHoveredChanged: () => {
@@ -226,6 +239,8 @@ Item {
                 visible: !_root.compactMode
 
                 text: bsi.icons.remove
+
+                PointerTip { text: "Remove this action" }
 
                 onClicked: {
                     if (_root.compactMode && _root.inputItemModel && _root.inputBinding) {

@@ -1267,10 +1267,7 @@ Item {
                     _root._openPane(_root._actionParent, _root._actionSeq, _root._actionTitle)
                 }),
                 MenuModel.action("Delete", function() {
-                    // The pane may be editing the input this action belongs to.
-                    if (_root.actionOpen && _root.paneKey === _root._actionParent)
-                        _root._finishClose()
-                    _layout.deleteAction(_root._actionParent, _root._actionSeq)
+                    _root.deleteActionAsked(_root._actionParent, _root._actionSeq)
                 }, true, { danger: true })
             ])
         }
@@ -1442,6 +1439,29 @@ Item {
             _root._pendingGroup = ""
         }
         onCancelled: _root._pendingGroup = ""
+    }
+
+    // Deleting an action closes the editor open on its input: when that
+    // editor has unsaved changes, ask first.
+    function deleteActionAsked(parentKey, seq) {
+        var editing = actionOpen && paneKey === parentKey
+        function go() {
+            if (editing)
+                _finishClose()
+            _layout.deleteAction(parentKey, seq)
+        }
+        if (editing && _layout.paneDirty()) {
+            _deleteGate.confirmThen("Delete action?",
+                "The action editor is open on this input with changes that are not saved."
+                    + " Deleting the action closes it and drops those changes.",
+                "Delete", go, null, true)
+            return
+        }
+        go()
+    }
+
+    DismissibleDialog {
+        id: _deleteGate
     }
 
     DismissibleDialog {

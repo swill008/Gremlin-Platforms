@@ -15,6 +15,7 @@ import Gremlin.Style
 import Gremlin.Config
 
 ApplicationWindow {
+    id: _mapper
     font.pixelSize: Style.fontSize
     minimumWidth: Style.dp(900)
     minimumHeight: Style.dp(400)
@@ -42,6 +43,8 @@ ApplicationWindow {
 
     property var selectedInputModules: ({})
     property var selectedOutputModules: ({})
+    // The card it was opened from: its module starts ticked.
+    property string initialSlug: ""
 
     ColumnLayout {
         anchors.fill: parent
@@ -75,11 +78,12 @@ ApplicationWindow {
                         width: ListView.view.width - Style.dp(10)
 
                         text: model.name
-                        checked: false
+                        checked: model.slug === _mapper.initialSlug
 
                         onCheckedChanged: () => {
                             selectedInputModules[model.slug] = checked
                         }
+                        Component.onCompleted: selectedInputModules[model.slug] = checked
                     }
                 }
             }
@@ -110,11 +114,12 @@ ApplicationWindow {
                         width: ListView.view.width - Style.dp(10)
 
                         text: model.name
-                        checked: false
+                        checked: model.slug === _mapper.initialSlug
 
                         onCheckedChanged: () => {
                             selectedOutputModules[model.slug] = checked
                         }
+                        Component.onCompleted: selectedOutputModules[model.slug] = checked
                     }
                 }
             }

@@ -148,7 +148,7 @@ class SplitAxisData(AbstractActionData):
 
     @override
     def user_feedback(self) -> list[UserFeedback]:
-        return []
+        return self._empty_feedback()
 
     @override
     def _valid_selectors(self) -> List[str]:

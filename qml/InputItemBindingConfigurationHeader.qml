@@ -155,8 +155,19 @@ Item {
                 text: bsi.icons.remove
                 font.pixelSize: Style.dp(24)
 
+                PointerTip { text: "Remove this binding and all its actions" }
+
                 onClicked: () => {
-                    _root.inputItemModel.deleteActionSequnce(_root.inputBinding)
+                    var binding = _root.inputBinding
+                    var model = _root.inputItemModel
+                    var n = binding ? binding.actionCount() : 0
+                    if (n === 0) {
+                        model.deleteActionSequnce(binding)
+                        return
+                    }
+                    _removeGate.confirmThen("Remove binding?",
+                        "Remove this binding and its " + (n === 1 ? "action" : n + " actions") + "?",
+                        "Remove", function() { model.deleteActionSequnce(binding) }, null, true)
                 }
             }
         }
@@ -248,5 +259,9 @@ Item {
             "application/x-gremlin-sequence": (_root.inputBinding && _root.inputBinding.rootAction)
                 ? _root.inputBinding.rootAction.id : ""
         }
+    }
+
+    DismissibleDialog {
+        id: _removeGate
     }
 }

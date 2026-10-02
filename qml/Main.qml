@@ -373,20 +373,20 @@ ApplicationWindow {
         openConfigurationForCard(card)
     }
 
+    // Menu commands act on the selected card (the Home page's focus).
     function openConfigurationForFocus() {
-        var card = _statusLastCard
-        if (!card || !card.slug)
-            card = _moduleModel.focusedCardMap()
+        var card = _moduleModel.focusedCardMap()
         if (card && card.slug)
             openConfigurationForCard(card)
         else if (uiState)
             uiState.setCurrentRoom("configuration")
     }
 
-    property var _statusLastCard: null
-
-    function openConfigureModule(direction) {
-        var card = _statusLastCard && _statusLastCard.slug ? _statusLastCard : _moduleModel.focusedCardMap()
+    // card: the card a card command came from; menu commands leave it out
+    // and get the selected card.
+    function openConfigureModule(direction, card) {
+        if (!card || !card.slug)
+            card = _moduleModel.focusedCardMap()
         var want = direction
         if (!want && card && card.direction === "dest")
             want = "dest"
@@ -1350,41 +1350,32 @@ ApplicationWindow {
                 onFocusSlug: function(slug) {
                     _moduleModel.setFocus(slug)
                 }
-                onOpenConfiguration: function(card) {
-                    _statusLastCard = card
+                onOpenConfiguration: function(card) {
                     openConfigurationForCard(card)
                 }
-                onOpenButtonMap: function(card) {
-                    _statusLastCard = card
+                onOpenButtonMap: function(card) {
                     openButtonMapForCard(card)
                 }
-                onOpenOutputView: function(card) {
-                    _statusLastCard = card
+                onOpenOutputView: function(card) {
                     openOutputViewForCard(card)
                 }
                 onConfigureModule: function(card) {
-                    _statusLastCard = card
-                    openConfigureModule(card.direction === "dest" ? "dest" : "source")
+                    openConfigureModule(card.direction === "dest" ? "dest" : "source", card)
                 }
-                onAutoMap: function(card) {
-                    _statusLastCard = card
-                    Helpers.createComponent("DialogAutoMapper.qml")
+                onAutoMap: function(card) {
+                    Helpers.createComponent("DialogAutoMapper.qml", {"initialSlug": card.slug || ""})
                 }
-                onOpenPairing: function(card) {
-                    _statusLastCard = card
+                onOpenPairing: function(card) {
                     pairingForCard(card)
                 }
-                onOpenCalibration: function(card) {
-                    _statusLastCard = card
+                onOpenCalibration: function(card) {
                     Helpers.createComponent("DialogCalibration.qml", {"initialSlug": card.slug || ""})
                 }
-                onOpenDeviceInformation: function(card) {
-                    _statusLastCard = card
-                    Helpers.createComponent("DialogDeviceInformation.qml")
+                onOpenDeviceInformation: function(card) {
+                    Helpers.createComponent("DialogDeviceInformation.qml", {"initialGuid": card.guid || ""})
                 }
-                onAssignHardware: function(card) {
-                    _statusLastCard = card
-                    Helpers.createComponent("DialogSwapDevices.qml")
+                onAssignHardware: function(card) {
+                    Helpers.createComponent("DialogSwapDevices.qml", {"initialGuid": card.guid || ""})
                 }
                 onIgnoreDevice: function(card) {
                     _moduleModel.ignoreSlug(card.slug)

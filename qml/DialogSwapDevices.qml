@@ -14,6 +14,7 @@ import Gremlin.Menus as Menus
 import Gremlin.Tools
 
 ApplicationWindow {
+    id: _swap
     font.pixelSize: Style.fontSize
     width: Style.dp(800)
     height: _content.implicitHeight + Style.dp(30)
@@ -26,6 +27,25 @@ ApplicationWindow {
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
+
+    // The card it was opened from: its device starts as the connected device.
+    property string initialGuid: ""
+    // Device ids compare without braces or case ({ABC} == abc).
+    function _sameGuid(a, b) {
+        function clean(v) { return String(v || "").replace(/[{}]/g, "").toLowerCase() }
+        return clean(a).length > 0 && clean(a) === clean(b)
+    }
+    function pickInitial() {
+        var box = _physicalDeviceSelection
+        for (var i = 0; i < box.count; i++) {
+            if (_sameGuid(box.valueAt(i), initialGuid)) {
+                box.currentIndex = i
+                return
+            }
+        }
+    }
+    onInitialGuidChanged: pickInitial()
+    Component.onCompleted: Qt.callLater(pickInitial)
 
     DeviceListModel {
         id: _physicalDevices

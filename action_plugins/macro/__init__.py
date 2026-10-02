@@ -1030,6 +1030,14 @@ class MacroData(AbstractActionData):
 
     @override
     def user_feedback(self) -> List[UserFeedback]:
+        if not self.actions:
+            # A warning, not an error, so a save keeps the macro.
+            return [
+                UserFeedback(
+                    UserFeedback.FeedbackType.Warning,
+                    "No steps yet: record or add keys, or this does nothing.",
+                )
+            ]
         return []
 
     @override

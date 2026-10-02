@@ -280,6 +280,18 @@ class AbstractActionData(ABC):
             ]
         )
 
+    def _empty_feedback(self) -> list[UserFeedback]:
+        """A warning (never an error, so a save keeps the action) for a
+        container with nothing in any of its slots: it would do nothing."""
+        if all(not self.get_actions(sel)[0] for sel in self._valid_selectors()):
+            return [
+                UserFeedback(
+                    UserFeedback.FeedbackType.Warning,
+                    "Nothing inside yet: add an action, or this does nothing.",
+                )
+            ]
+        return []
+
     # Interface that all actions have to support, even if only an empty noop
     # implementation is provided.
 

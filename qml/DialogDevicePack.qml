@@ -501,18 +501,22 @@ ApplicationWindow {
                 RowLayout {
                     Layout.fillWidth: true
                     Label { text: "Put this pack on"; color: Style.foreground }
+                    // One target: picking a device fills the name below, and
+                    // typing a name picks that device (or none, if it is new).
                     ComboBox {
                         id: _importDevice
                         Layout.fillWidth: true
                         model: _deviceModel
                         textRole: "name"
+                        displayText: currentIndex < 0 ? "(the name typed below)" : currentText
                         onActivated: _saveAs.text = currentText
                     }
                 }
                 TextField {
                     id: _saveAs
                     Layout.fillWidth: true
-                    placeholderText: "Device name on this machine"
+                    placeholderText: "Device name on this machine (or pick one above)"
+                    onTextEdited: _importDevice.currentIndex = _importDevice.find(text.trim())
                 }
                 RowLayout {
                     Layout.fillWidth: true

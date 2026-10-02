@@ -196,6 +196,16 @@ ApplicationWindow {
             text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. Automatically Start turns Gremlin control and HiDHide Enabled on each time this program starts. This program does not install HiDHide. Click on Get HiDHide to download the program."
         }
 
+        // Why the switches and lists are greyed out, and what turns them on.
+        Label {
+            visible: _hh.installed && !_hh.gremlinControl
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            color: Style.warn
+            font.pixelSize: Style.dp(12)
+            text: "Turn on Gremlin control (above) to change HiDHide from here. Until then the settings below are shown but can't be changed."
+        }
+
         Label {
             visible: !_hh.installed
             wrapMode: Text.WordWrap

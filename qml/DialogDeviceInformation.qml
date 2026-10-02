@@ -11,8 +11,18 @@ import Gremlin.Device
 import Gremlin.Style
 
 ApplicationWindow {
+    id: _info
     font.pixelSize: Style.fontSize
     minimumWidth: Style.dp(1000)
+
+    // The card it was opened from: its row is marked.
+    property string initialGuid: ""
+    // Device ids compare without braces or case ({ABC} == abc).
+    function _sameGuid(a, b) {
+        function clean(v) { return String(v || "").replace(/[{}]/g, "").toLowerCase() }
+        return clean(a).length > 0 && clean(a) === clean(b)
+    }
+
     minimumHeight: Style.dp(300)
 
     color: Style.background
@@ -78,7 +88,8 @@ ApplicationWindow {
                         height: Style.dp(40)
                         width: _view.width
 
-                        color: index % 2 === 0 ? Style.backgroundShade : Style.background
+                        color: _info._sameGuid(guid, _info.initialGuid) ? Style.bgSelected
+                             : (index % 2 === 0 ? Style.backgroundShade : Style.background)
 
                         RowLayout {
                             width: parent.width

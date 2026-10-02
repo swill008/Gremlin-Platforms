@@ -299,7 +299,34 @@ class ChangeModeData(AbstractActionData):
 
     @override
     def user_feedback(self) -> List[UserFeedback]:
-        return []
+        """Warns (never an error, so a save keeps the action) when a target
+        mode no longer exists, or a Switch, Temporary or Cycle has none."""
+        profile = shared_state.current_profile
+        if profile is None:
+            return []
+        known = set(profile.modes.mode_names())
+        messages = []
+        missing = [m for m in self._target_modes if m not in known]
+        if missing:
+            messages.append(
+                UserFeedback(
+                    UserFeedback.FeedbackType.Warning,
+                    "Mode "
+                    + ", ".join(f"'{m}'" for m in missing)
+                    + " no longer exists. Pick the mode again.",
+                )
+            )
+        needs_target = self._change_type in (
+            ChangeType.Switch, ChangeType.Temporary, ChangeType.Cycle
+        )
+        if needs_target and not self._target_modes:
+            messages.append(
+                UserFeedback(
+                    UserFeedback.FeedbackType.Warning,
+                    "No mode chosen: this action does nothing yet.",
+                )
+            )
+        return messages
 
     @override
     def _valid_selectors(self) -> List[str]:
