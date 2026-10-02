@@ -224,3 +224,56 @@ class TestModeManager:
         assert ml[2].is_temporary
         assert ml[3].is_temporary
         assert ml[4].is_temporary
+
+
+class TestStartMode:
+    @staticmethod
+    def _profile(startup_mode: str) -> Profile:
+        p = Profile()
+        p.modes.add_mode("Combat")
+        p.modes.add_mode("Alpha")
+        p.modes.set_parent("Alpha", "Default")
+        p.settings.startup_mode = startup_mode
+        return p
+
+    @staticmethod
+    def _stored_last_mode(
+        monkeypatch: pytest.MonkeyPatch, stored: dict[str, str]
+    ) -> None:
+        original = Configuration.value
+
+        def value(self: Configuration, section: str, group: str, name: str) -> object:
+            if name == "last-mode-per-profile":
+                return stored
+            return original(self, section, group, name)
+
+        monkeypatch.setattr(Configuration, "value", value)
+
+    def test_heuristic_is_first_parentless_mode(self) -> None:
+        p = self._profile("Use Heuristic")
+        assert gremlin.mode_manager.resolve_start_mode(p) == "Combat"
+
+    def test_named_mode(self) -> None:
+        p = self._profile("Alpha")
+        assert gremlin.mode_manager.resolve_start_mode(p) == "Alpha"
+
+    def test_last_active(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        p = self._profile("Last Active")
+        p.fpath = pathlib.Path("C:/profiles/test.xml")
+        self._stored_last_mode(monkeypatch, {str(p.fpath): "Alpha"})
+        assert gremlin.mode_manager.resolve_start_mode(p) == "Alpha"
+
+    def test_last_active_deleted_mode_falls_back(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        p = self._profile("Last Active")
+        p.fpath = pathlib.Path("C:/profiles/test.xml")
+        self._stored_last_mode(monkeypatch, {str(p.fpath): "Gone"})
+        assert gremlin.mode_manager.resolve_start_mode(p) == "Combat"
+
+    def test_reset_uses_startup_mode(self) -> None:
+        p = self._profile("Alpha")
+        gremlin.shared_state.current_profile = p
+        mm = ModeManager()
+        mm.reset()
+        assert mm.current.name == "Alpha"

@@ -233,7 +233,7 @@ function topics() {
         topic("Options and Profile", "Profile Settings",
             "<p>View → <b>Profile Settings</b>. Stored in the profile; save the profile to keep them.</p>"
             + "<ul>"
-            + "<li><b>Startup Mode</b>: Use Heuristic, Last Active, or a mode by name.</li>"
+            + "<li><b>Startup Mode</b>: the mode the profile is in when it is loaded, including when a program auto-loads it. <b>Use Heuristic</b> picks the first mode, in alphabetical order, that has no parent; <b>Last Active</b> picks the mode the profile was using the last time it ran; a mode by name picks that mode. <b>Toggle</b> starts in the mode shown in the toolbar, so change the toolbar mode to start somewhere else.</li>"
             + "<li><b>Macro Default Delay</b>: the pause between macro steps.</li>"
             + "<li><b>vJoy Behavior</b>: treat each vJoy device as an output (default) or as an input.</li>"
             + "<li><b>vJoy Initial Values</b>: axis values set when the profile starts.</li>"

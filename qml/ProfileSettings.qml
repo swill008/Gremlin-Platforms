@@ -63,7 +63,7 @@ Item {
                     UIText {
                         Layout.fillWidth: true
 
-                        text: "Use Heuristic starts in the first mode, in alphabetical order, that has no parent. Last Active starts in the mode this profile was using the last time it ran. Choosing a mode by name always starts in that mode."
+                        text: "The mode the profile is in when it is loaded. Use Heuristic picks the first mode, in alphabetical order, that has no parent. Last Active picks the mode this profile was using the last time it ran. Choosing a mode by name picks that mode. Toggle starts in the mode shown in the toolbar."
                     }
                 }
 
