@@ -18,8 +18,8 @@ from gremlin import (
     logical_device,
     mode_manager,
 )
+from gremlin.modules import output
 from gremlin.types import InputType
-from vjoy.vjoy import VJoyProxy
 
 if TYPE_CHECKING:
     from gremlin import event_handler
@@ -211,17 +211,8 @@ class ButtonReleaseActions(QtCore.QObject):
         Args:
             vjoy_input: the vjoy input data to use in the release
         """
-        vjoy = VJoyProxy()
-        # Check if the button is valid otherwise we cause Gremlin to crash
-        if vjoy_input[0] in vjoy.vjoy_devices and vjoy[vjoy_input[0]].is_button_valid(
-            vjoy_input[1]
-        ):
-            vjoy[vjoy_input[0]].button(vjoy_input[1]).is_pressed = False
-        else:
-            logging.getLogger("system").warning(
-                "Attempted to use non existent button: "
-                + f"vJoy {vjoy_input[0]:d} button {vjoy_input[1]:d}"
-            )
+        # The output module checks the claim and that the button exists.
+        output.release_vjoy_button(vjoy_input[0], vjoy_input[1])
 
     def _release_logical_device_callback_prototype(self, input_id: int) -> None:
         """Prototype of a button release callback, used with lambdas.

@@ -271,6 +271,76 @@ def vjoy_exists(vjoy_id: int) -> bool:
         return False
 
 
+class _ScriptAxis:
+    def __init__(self, vjoy_id: int, axis_id: int) -> None:
+        self._vjoy_id, self._axis_id = vjoy_id, axis_id
+
+    @property
+    def value(self) -> float:
+        return float(vjoy_value(self._vjoy_id, "axis", self._axis_id))
+
+    @value.setter
+    def value(self, value: float) -> None:
+        write_vjoy(self._vjoy_id, "axis", self._axis_id, value)
+
+
+class _ScriptButton:
+    def __init__(self, vjoy_id: int, button_id: int) -> None:
+        self._vjoy_id, self._button_id = vjoy_id, button_id
+
+    @property
+    def is_pressed(self) -> bool:
+        return bool(vjoy_value(self._vjoy_id, "button", self._button_id))
+
+    @is_pressed.setter
+    def is_pressed(self, value: bool) -> None:
+        write_vjoy(self._vjoy_id, "button", self._button_id, value)
+
+
+class _ScriptHat:
+    def __init__(self, vjoy_id: int, hat_id: int) -> None:
+        self._vjoy_id, self._hat_id = vjoy_id, hat_id
+
+    @property
+    def direction(self) -> Any:  # noqa: ANN401
+        return vjoy_value(self._vjoy_id, "hat", self._hat_id)
+
+    @direction.setter
+    def direction(self, value: Any) -> None:  # noqa: ANN401
+        write_vjoy(self._vjoy_id, "hat", self._hat_id, value)
+
+
+class _ScriptDevice:
+    """One vJoy device as a script sees it: claimed outputs only."""
+
+    def __init__(self, vjoy_id: int) -> None:
+        self.vjoy_id = int(vjoy_id)
+
+    def axis(
+        self, axis_id: int | None = None, linear_index: int | None = None
+    ) -> _ScriptAxis:
+        if axis_id is None and linear_index is not None:
+            dev = _open_vjoy(self.vjoy_id)
+            valid = dev is not None and dev.is_axis_valid(linear_index=linear_index)
+            axis_id = dev.axis_id(linear_index) if valid else 0
+        return _ScriptAxis(self.vjoy_id, int(axis_id or 0))
+
+    def button(self, index: int) -> _ScriptButton:
+        return _ScriptButton(self.vjoy_id, int(index))
+
+    def hat(self, index: int) -> _ScriptHat:
+        return _ScriptHat(self.vjoy_id, int(index))
+
+
+class ScriptVJoy:
+    """The "vjoy" object user scripts get. Used like the old driver proxy
+    (vjoy[1].button(3).is_pressed = True) but every read and write goes
+    through the output module, so unclaimed outputs are blocked."""
+
+    def __getitem__(self, vjoy_id: int) -> _ScriptDevice:
+        return _ScriptDevice(vjoy_id)
+
+
 # --- Xbox (ViGEm) -----------------------------------------------------------
 
 
@@ -294,12 +364,17 @@ def xbox_error() -> str:
 # --- lifecycle --------------------------------------------------------------
 
 
-def reset_drivers() -> None:
-    """Release every vJoy device and unplug every Xbox pad Gremlin holds."""
+def reset_vjoy() -> None:
+    """Release every vJoy device Gremlin holds."""
     try:
         _vjoy_proxy().reset()
     except Exception:
         syslog.exception("vJoy reset failed")
+
+
+def reset_drivers() -> None:
+    """Release every vJoy device and unplug every Xbox pad Gremlin holds."""
+    reset_vjoy()
     try:
         from vigem.xbox import XboxProxy
 

@@ -42,12 +42,12 @@ from gremlin.input_cache import (
     Keyboard,
 )
 from gremlin.logical_device import LogicalDevice
+from gremlin.modules import output
 from gremlin.types import (
     HatDirection,
     InputType,
     PropertyType,
 )
-from vjoy.vjoy import VJoyProxy
 
 
 def _resolve_path(script_path: Path) -> Path:
@@ -262,20 +262,20 @@ class JoystickDecorator:
 
 
 class VJoyPlugin:
-    """Plugin providing automatic access to the VJoyProxy object.
+    """Plugin giving scripts vJoy access through the output modules.
 
     For a function to use this plugin it requires one of its parameters
     to be named "vjoy".
     """
 
-    vjoy = VJoyProxy()
+    vjoy = output.ScriptVJoy()
 
     def __init__(self) -> None:
         self.keyword = "vjoy"
 
     def install(self, callback: Callable, partial_fn: Callable) -> Callable:
         """Decorates the given callback function to provide access to
-        the VJoyProxy object.
+        the firewalled vJoy object.
 
         Only if the signature contains the plugin's keyword is the
         decorator applied.
@@ -1173,14 +1173,13 @@ class VirtualInputVariable(AbstractVariable):
         return self._valid_types
 
     def remap(self, value: float | bool | HatDirection) -> None:
-        device = VJoyProxy()[self._vjoy_id]
         match self._input_type:
             case InputType.JoystickButton:
-                device.button(self._input_id).is_pressed = value
+                output.write_vjoy(self._vjoy_id, "button", self._input_id, value)
             case InputType.JoystickAxis:
-                device.axis(self._input_id).value = value
+                output.write_vjoy(self._vjoy_id, "axis", self._input_id, value)
             case InputType.JoystickHat:
-                device.hat(self._input_id).direction = value
+                output.write_vjoy(self._vjoy_id, "hat", self._input_id, value)
             case _:
                 raise error.GremlinError(
                     f"Received invalid input type '{self._input_type}'"

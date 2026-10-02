@@ -32,6 +32,7 @@ from gremlin import (
 from gremlin.base_classes import Value
 from gremlin.config import Configuration
 from gremlin.input_refresh import RefreshPhysicalInputs
+from gremlin.modules import output
 from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.osc import OscRuntime
 from gremlin.types import (
@@ -40,8 +41,6 @@ from gremlin.types import (
     HatDirection,
     InputType,
 )
-from vigem.xbox import XboxProxy
-from vjoy.vjoy import VJoyProxy
 
 
 class VirtualButton(metaclass=ABCMeta):
@@ -321,6 +320,9 @@ class CodeRunner:
 
         macro.MacroManager().default_delay = settings.macro_default_delay
         syslog = logging.getLogger("system")
+        # Each run reads the output modules fresh and logs blocked outputs anew.
+        output.refresh()
+        output.clear_blocked_log()
 
         try:
             self._setup_user_scripts()
@@ -402,8 +404,7 @@ class CodeRunner:
         audio_player.AudioPlayer().stop()
         tts.TTSManager().stop()
 
-        VJoyProxy.reset()
-        XboxProxy().reset()
+        output.reset_drivers()
 
     def _reset_state(self) -> None:
         self.event_handler._active_mode = self._profile.modes.first_mode
@@ -427,10 +428,9 @@ class CodeRunner:
             RefreshPhysicalInputs.refresh_axes()
 
         for vid, data in self._profile.settings.vjoy_initial_values.items():
-            vjoy_proxy = VJoyProxy()[vid]
             for aid, value in data.items():
-                if value != 0.0 and vjoy_state[vid][aid] == 0.0:
-                    vjoy_proxy.axis(linear_index=aid).value = value
+                if value != 0.0 and vjoy_state.get(vid, {}).get(aid) == 0.0:
+                    output.write_vjoy_axis_linear(vid, aid, value)
 
     def _setup_user_scripts(self) -> None:
         system_paths = [os.path.normcase(os.path.abspath(p)) for p in sys.path]

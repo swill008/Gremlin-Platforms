@@ -40,13 +40,13 @@ from gremlin.keyboard import (
     send_key_up,
 )
 from gremlin.logical_device import LogicalDevice
+from gremlin.modules import output
 from gremlin.types import (
     AxisMode,
     InputType,
     MouseButton,
     PropertyType,
 )
-from vjoy.vjoy import VJoyProxy
 
 MacroEntry = collections.namedtuple("MacroEntry", ["macro", "state"])
 
@@ -875,18 +875,18 @@ class VJoyAction(AbstractAction):
 
     def __call__(self) -> None:
         try:
-            vjoy = VJoyProxy()[self.vjoy_id]
+            vid, iid = self.vjoy_id, self.input_id
             if self.input_type == InputType.JoystickAxis:
                 if self.axis_mode == AxisMode.Absolute:
-                    vjoy.axis(self.input_id).value = self.value
+                    output.write_vjoy(vid, "axis", iid, self.value)
                 elif self.axis_mode == AxisMode.Relative:
-                    vjoy.axis(self.input_id).value = max(
-                        -1.0, min(1.0, vjoy.axis(self.input_id).value + self.value)
-                    )
+                    current = output.vjoy_value(vid, "axis", iid)
+                    value = max(-1.0, min(1.0, current + self.value))
+                    output.write_vjoy(vid, "axis", iid, value)
             elif self.input_type == InputType.JoystickButton:
-                vjoy.button(self.input_id).is_pressed = self.value
+                output.write_vjoy(vid, "button", iid, self.value)
             elif self.input_type == InputType.JoystickHat:
-                vjoy.hat(self.input_id).direction = self.value
+                output.write_vjoy(vid, "hat", iid, self.value)
         except Exception as e:
             logging.getLogger("event").error(
                 f"Failed to execute vJoy macro entry due to: {e}"

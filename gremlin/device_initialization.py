@@ -15,7 +15,6 @@ from gremlin import (
     shared_state,
 )
 from vjoy import vjoy
-from vjoy.vjoy import VJoyProxy
 
 _joystick_devices: dict[uuid.UUID, dill.DeviceSummary] = collections.OrderedDict()
 _joystick_init_lock = threading.Lock()
@@ -99,7 +98,6 @@ def joystick_devices_initialization() -> None:
 
     # Query all vJoy devices in sequence until all have been processed and
     # their matching Direct Input counterparts have been found.
-    vjoy_proxy = VJoyProxy()
     for i in range(1, 17):
         # Only process devices that actually exist.
         if not vjoy.device_exists(i):
@@ -128,7 +126,9 @@ def joystick_devices_initialization() -> None:
             )
 
     # Reset all devices so we don't hog the ones we aren't actually using.
-    vjoy_proxy.reset()
+    from gremlin.modules import output
+
+    output.reset_vjoy()
 
     # Update device list which will be used when queries for joystick devices
     # are made. Order the devices such that vJoy devices are last and the

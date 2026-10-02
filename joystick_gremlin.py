@@ -49,7 +49,6 @@ from PySide6 import (
 
 import dill
 import resources  # noqa: F401
-import vjoy.vjoy
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
 
@@ -169,14 +168,11 @@ def shutdown_cleanup() -> None:
     except Exception:
         log.exception("Shutdown: backend")
     try:
-        from vigem.xbox import XboxProxy
-        XboxProxy().reset()
+        from gremlin.modules import output
+
+        output.reset_drivers()
     except Exception:
-        pass
-    try:
-        vjoy.vjoy.VJoyProxy.reset()
-    except Exception:
-        log.exception("Shutdown: vJoy")
+        log.exception("Shutdown: vJoy / Xbox")
     try:
         gremlin.audio_player.AudioPlayer().stop()
     except Exception:

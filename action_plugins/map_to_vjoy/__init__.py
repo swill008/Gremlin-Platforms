@@ -30,6 +30,7 @@ from gremlin.base_classes import (
     UserFeedback,
     Value,
 )
+from gremlin.modules import output
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
@@ -41,7 +42,6 @@ from gremlin.ui.action_model import (
     ActionModel,
     SequenceIndex,
 )
-from vjoy.vjoy import VJoyProxy
 
 if TYPE_CHECKING:
     from gremlin.ui.profile import InputItemBindingModel
@@ -74,12 +74,12 @@ class MapToVjoyFunctor(AbstractFunctor):
         if not self._should_execute(value):
             return
 
+        vjoy_id = self.data.vjoy_device_id
+        input_id = self.data.vjoy_input_id
         try:
             if self.data.vjoy_input_type == InputType.JoystickAxis:
                 if self.data.axis_mode == AxisMode.Absolute:
-                    VJoyProxy()[self.data.vjoy_device_id].axis(
-                        self.data.vjoy_input_id
-                    ).value = value.current
+                    output.write_vjoy(vjoy_id, "axis", input_id, value.current)
                 else:
                     self.should_stop_thread = abs(event.value) < 0.05
                     self.axis_delta_value = value.current * (
@@ -99,11 +99,13 @@ class MapToVjoyFunctor(AbstractFunctor):
                 is_pressed = value.current
                 if self.data.button_inverted:
                     is_pressed = not is_pressed
-                VJoyProxy()[self.data.vjoy_device_id].button(
-                    self.data.vjoy_input_id
-                ).is_pressed = is_pressed
+                sent = output.write_vjoy(vjoy_id, "button", input_id, is_pressed)
 
-                if is_pressed and ActionProperty.DisableAutoRelease not in properties:
+                if (
+                    sent
+                    and is_pressed
+                    and ActionProperty.DisableAutoRelease not in properties
+                ):
                     event_helpers.ButtonReleaseActions().register_vjoy_button_release(
                         (self.data.vjoy_device_id, self.data.vjoy_input_id),
                         event,
@@ -111,9 +113,7 @@ class MapToVjoyFunctor(AbstractFunctor):
                     )
 
             elif self.data.vjoy_input_type == InputType.JoystickHat:
-                VJoyProxy()[self.data.vjoy_device_id].hat(
-                    self.data.vjoy_input_id
-                ).direction = value.current
+                output.write_vjoy(vjoy_id, "hat", input_id, value.current)
         except error.VJoyError as e:
             logging.getLogger("event").error(
                 f"Failed to execute {self.data.name} action due to vJoy error: {e}."
@@ -121,18 +121,20 @@ class MapToVjoyFunctor(AbstractFunctor):
 
     def relative_axis_thread(self) -> None:
         self.thread_running = True
-        vjoy_dev = VJoyProxy()[self.data.vjoy_device_id]
-        self.axis_value = vjoy_dev.axis(self.data.vjoy_input_id).value
+        vjoy_id = self.data.vjoy_device_id
+        axis_id = self.data.vjoy_input_id
+        self.axis_value = output.vjoy_value(vjoy_id, "axis", axis_id)
         while self.thread_running:
             # Abort if the vJoy device is no longer valid
-            if not vjoy_dev.is_owned():
+            if not output.vjoy_owned(vjoy_id):
                 self.thread_running = False
                 return
 
             try:
                 # If the vjoy value has was changed from what we set it to
                 # in the last iteration, terminate the thread
-                change = vjoy_dev.axis(self.data.vjoy_input_id).value - self.axis_value
+                current = output.vjoy_value(vjoy_id, "axis", axis_id)
+                change = current - self.axis_value
                 if abs(change) > 0.0001:
                     self.thread_running = False
                     self.should_stop_thread = True
@@ -141,7 +143,10 @@ class MapToVjoyFunctor(AbstractFunctor):
                 self.axis_value = util.clamp(
                     self.axis_value + self.axis_delta_value, -1.0, 1.0
                 )
-                vjoy_dev.axis(self.data.vjoy_input_id).value = self.axis_value
+                # Blocked by the output module: nothing to drive.
+                if not output.write_vjoy(vjoy_id, "axis", axis_id, self.axis_value):
+                    self.thread_running = False
+                    return
 
                 if (
                     self.should_stop_thread
