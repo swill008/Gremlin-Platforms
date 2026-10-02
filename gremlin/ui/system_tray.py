@@ -17,6 +17,7 @@ from PySide6 import (
 
 import gremlin.util
 from gremlin.config import Configuration
+from gremlin.ui import tray_memory
 from gremlin.ui.backend import Backend
 
 # Private message the tray icon uses to report activity to the helper window.
@@ -59,6 +60,8 @@ class SystemTrayIcon(QtCore.QObject):
         self._hwnd = 0
         self._idle_icon = 0
         self._active_icon = 0
+        # Hidden to the tray, with its pages unloaded (tray_memory).
+        self._trayed = False
 
         try:
             self._create_resources()
@@ -69,6 +72,7 @@ class SystemTrayIcon(QtCore.QObject):
             return
 
         self._window.visibilityChanged.connect(self._window_mode_changed_cb)
+        tray_memory.let_hidden_window_release_graphics(self._window)
         self._backend.activityChanged.connect(self._gremlin_status_change_cb)
         self._window.installEventFilter(self)
         self._window_mode_changed_cb(self._window.visibility())
@@ -193,6 +197,16 @@ class SystemTrayIcon(QtCore.QObject):
             QtGui.QWindow.Visibility.FullScreen,
         ):
             self._last_window_mode = mode
+
+        # In the tray nobody sees the pages: give their memory back while
+        # hidden, load them again when shown.
+        if mode == QtGui.QWindow.Visibility.Hidden and self._icon_present:
+            if not self._trayed:
+                self._trayed = True
+                tray_memory.enter_tray(self._window, self._backend.engine)
+        elif mode != QtGui.QWindow.Visibility.Hidden and self._trayed:
+            self._trayed = False
+            tray_memory.leave_tray(self._window)
 
         if (
             mode == QtGui.QWindow.Visibility.Minimized

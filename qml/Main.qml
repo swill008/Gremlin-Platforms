@@ -40,6 +40,23 @@ ApplicationWindow {
     // The commands that have a shortcut (main_commands.js).
     property var shortcutCommands: []
 
+    // Hidden to the tray (gremlin/ui/tray_memory.py): the pages are
+    // unloaded to give their memory back. Configuration stays while it holds
+    // unsaved display or Logical Device edits.
+    property bool trayed: false
+    property bool _keepConfigInTray: false
+    readonly property bool _configLive: !trayed || _keepConfigInTray
+
+    function enterTray() {
+        _keepConfigInTray = displayUnsaved()
+        trayed = true
+    }
+
+    function leaveTray() {
+        trayed = false
+        _keepConfigInTray = false
+    }
+
     Component.onCompleted: () => {
         if (backend) {
             Style.isDarkMode = backend.useDarkMode
@@ -1184,56 +1201,60 @@ ApplicationWindow {
             function onModelReset() { _root.refreshSourceModuleCount() }
         }
 
-        StatusPage {
-            id: _statusPage
+        // Home stays loaded while the window shows; unloaded in the tray.
+        Loader {
+            id: _statusLoader
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: !uiState || uiState.currentRoom === "status"
-            model: _moduleModel
-            onFocusSlug: function(slug) {
-                _moduleModel.setFocus(slug)
-            }
-            onOpenConfiguration: function(card) {
-                _statusLastCard = card
-                openConfigurationForCard(card)
-            }
-            onOpenButtonMap: function(card) {
-                _statusLastCard = card
-                openButtonMapForCard(card)
-            }
-            onOpenOutputView: function(card) {
-                _statusLastCard = card
-                openOutputViewForCard(card)
-            }
-            onConfigureModule: function(card) {
-                _statusLastCard = card
-                openConfigureModule(card.direction === "dest" ? "dest" : "source")
-            }
-            onAutoMap: function(card) {
-                _statusLastCard = card
-                Helpers.createComponent("DialogAutoMapper.qml")
-            }
-            onOpenPairing: function(card) {
-                _statusLastCard = card
-                pairingForCard(card)
-            }
-            onOpenCalibration: function(card) {
-                _statusLastCard = card
-                Helpers.createComponent("DialogCalibration.qml", {"initialSlug": card.slug || ""})
-            }
-            onOpenDeviceInformation: function(card) {
-                _statusLastCard = card
-                Helpers.createComponent("DialogDeviceInformation.qml")
-            }
-            onAssignHardware: function(card) {
-                _statusLastCard = card
-                Helpers.createComponent("DialogSwapDevices.qml")
-            }
-            onIgnoreDevice: function(card) {
-                _moduleModel.ignoreSlug(card.slug)
-            }
-            onDeviceDeleted: function(card) {
-                closeDeletedDevice(card)
+            active: !_root.trayed
+            visible: active && (!uiState || uiState.currentRoom === "status")
+            sourceComponent: StatusPage {
+                model: _moduleModel
+                onFocusSlug: function(slug) {
+                    _moduleModel.setFocus(slug)
+                }
+                onOpenConfiguration: function(card) {
+                    _statusLastCard = card
+                    openConfigurationForCard(card)
+                }
+                onOpenButtonMap: function(card) {
+                    _statusLastCard = card
+                    openButtonMapForCard(card)
+                }
+                onOpenOutputView: function(card) {
+                    _statusLastCard = card
+                    openOutputViewForCard(card)
+                }
+                onConfigureModule: function(card) {
+                    _statusLastCard = card
+                    openConfigureModule(card.direction === "dest" ? "dest" : "source")
+                }
+                onAutoMap: function(card) {
+                    _statusLastCard = card
+                    Helpers.createComponent("DialogAutoMapper.qml")
+                }
+                onOpenPairing: function(card) {
+                    _statusLastCard = card
+                    pairingForCard(card)
+                }
+                onOpenCalibration: function(card) {
+                    _statusLastCard = card
+                    Helpers.createComponent("DialogCalibration.qml", {"initialSlug": card.slug || ""})
+                }
+                onOpenDeviceInformation: function(card) {
+                    _statusLastCard = card
+                    Helpers.createComponent("DialogDeviceInformation.qml")
+                }
+                onAssignHardware: function(card) {
+                    _statusLastCard = card
+                    Helpers.createComponent("DialogSwapDevices.qml")
+                }
+                onIgnoreDevice: function(card) {
+                    _moduleModel.ignoreSlug(card.slug)
+                }
+                onDeviceDeleted: function(card) {
+                    closeDeletedDevice(card)
+                }
             }
         }
 
@@ -1491,6 +1512,7 @@ ApplicationWindow {
             active: uiState && uiState.currentRoom === "configuration"
                     && _root.configDirection === "dest"
                     && uiState.currentTab !== "xbox"
+                    && _root._configLive
             visible: active
             onLoaded: _root.syncOutputView()
             sourceComponent: OutputModuleView {
@@ -1511,6 +1533,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.fillWidth: true
             active: uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical"
+                    && _root._configLive
             visible: active
             source: "LogicalPage.qml"
             onLoaded: {
@@ -1534,33 +1557,36 @@ ApplicationWindow {
             active: uiState && uiState.currentRoom === "configuration"
                     && uiState.currentTab !== "logical"
                     && !(_root.configDirection === "dest" && uiState.currentTab !== "xbox")
+                    && _root._configLive
             visible: active
             sourceComponent: _configSplitComp
             onLoaded: _root.syncCatalogView()
         }
 
-        ScriptManager {
-            id: _scriptManager
-
+        // Loaded only while shown.
+        Loader {
+            id: _scriptLoader
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.verticalStretchFactor: 10
-
-            visible: uiState && uiState.currentRoom === "scripts"
-
-            scriptListModel: backend ? backend.scriptListModel : null
+            active: !!uiState && uiState.currentRoom === "scripts"
+            visible: active
+            sourceComponent: ScriptManager {
+                scriptListModel: backend ? backend.scriptListModel : null
+            }
         }
 
-        ProfileSettings {
-            id: _profileSettings
-
+        // Loaded only while shown.
+        Loader {
+            id: _settingsLoader
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.verticalStretchFactor: 10
-
-            visible: uiState && uiState.currentRoom === "settings"
-
-            settingsModel: ProfileSettingsModel {}
+            active: !!uiState && uiState.currentRoom === "settings"
+            visible: active
+            sourceComponent: ProfileSettings {
+                settingsModel: ProfileSettingsModel {}
+            }
         }
     }
 
@@ -1571,97 +1597,107 @@ ApplicationWindow {
         SplitView {
             id: _splitView
 
-            property alias catalog: _deviceInputList
-            property alias oscList: _oscDeviceList
+            // Each panel loads only for its own tab.
+            readonly property var catalog: _catalogLoader.item
+            readonly property var oscList: _oscLoader.item
 
             clip: true
             orientation: (uiState && uiState.currentTab === "physical") ? Qt.Vertical : Qt.Horizontal
 
-            BindingCatalog {
-                id: _deviceInputList
-
-                visible: uiState && uiState.currentTab === "physical"
+            Loader {
+                id: _catalogLoader
+                active: uiState && uiState.currentTab === "physical"
+                visible: active
                 SplitView.minimumWidth: Style.dp(400)
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-
-                device: _deviceModel
-                moduleModel: _moduleModel
-                isOutput: _root.configDirection === "dest"
-                showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel
-                onParkEmptyInUnmappedChanged: _root.parkEmptyInUnmapped = parkEmptyInUnmapped
-                onClosePanel: {
-                    if (_root.configDirection === "dest")
-                        _root.outputViewPanel = false
-                    else
-                        _root.catalogPanel = false
-                    _root.rememberDisplayPanel()
+                onLoaded: _root.syncCatalogView()
+                sourceComponent: BindingCatalog {
+                    device: _deviceModel
+                    moduleModel: _moduleModel
+                    isOutput: _root.configDirection === "dest"
+                    showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel
+                    onParkEmptyInUnmappedChanged: _root.parkEmptyInUnmapped = parkEmptyInUnmapped
+                    onClosePanel: {
+                        if (_root.configDirection === "dest")
+                            _root.outputViewPanel = false
+                        else
+                            _root.catalogPanel = false
+                        _root.rememberDisplayPanel()
+                    }
+                    onLeaveResolved: _root.continueDisplayLeave()
+                    onLeaveCancelled: _root.cancelDisplayLeave()
                 }
-                onLeaveResolved: _root.continueDisplayLeave()
-                onLeaveCancelled: _root.cancelDisplayLeave()
             }
 
-            LogicalDevice {
-                id: _logicalDeviceList
-
-                visible: uiState && uiState.currentTab === "logical"
+            Loader {
+                id: _logicalListLoader
+                active: uiState && uiState.currentTab === "logical"
+                visible: active
                 SplitView.minimumWidth: Style.dp(360)
                 SplitView.preferredWidth: Style.dp(420)
                 SplitView.fillHeight: true
-
-                onInputIdentifierChanged: () => {
-                    if (uiState) {
-                        uiState.setCurrentInput(inputIdentifier, inputIndex)
+                sourceComponent: LogicalDevice {
+                    onInputIdentifierChanged: () => {
+                        if (uiState) {
+                            uiState.setCurrentInput(inputIdentifier, inputIndex)
+                        }
                     }
                 }
             }
 
-            OscDevice {
-                id: _oscDeviceList
-
-                visible: uiState && uiState.currentTab === "osc"
+            Loader {
+                id: _oscLoader
+                active: uiState && uiState.currentTab === "osc"
+                visible: active
                 SplitView.minimumWidth: Style.dp(400)
-
-                onInputIdentifierChanged: () => {
-                    if (uiState) {
-                        uiState.setCurrentInput(inputIdentifier, inputIndex)
+                // It follows the mode from when it loads.
+                onLoaded: if (uiState && item.device) item.device.setMode(uiState.currentMode)
+                sourceComponent: OscDevice {
+                    onInputIdentifierChanged: () => {
+                        if (uiState) {
+                            uiState.setCurrentInput(inputIdentifier, inputIndex)
+                        }
                     }
                 }
             }
 
-            XboxDevice {
-                id: _xboxDeviceList
-
-                visible: uiState && uiState.currentTab === "xbox"
+            Loader {
+                id: _xboxLoader
+                active: uiState && uiState.currentTab === "xbox"
+                visible: active
                 SplitView.minimumWidth: Style.dp(400)
                 SplitView.fillWidth: true
+                sourceComponent: XboxDevice {}
             }
 
-            KeyboardInputList {
-                id: _keyboardInputList
-
-                visible: uiState && uiState.currentTab === "keyboard"
+            Loader {
+                id: _keyboardLoader
+                active: uiState && uiState.currentTab === "keyboard"
+                visible: active
                 SplitView.minimumWidth: Style.dp(400)
+                sourceComponent: KeyboardInputList {}
             }
 
-            InputConfiguration {
-                id: _inputConfigurationPanel
-                isOutput: _root.configDirection === "dest"
-
-                visible: uiState && !["scripts", "settings", "xbox", "physical"].includes(uiState.currentTab)
-
-                Component.onCompleted: () => {
-                    if (backend && uiState) {
-                        inputItemModel = backend.getInputItem(
-                            uiState.currentInput,
-                            uiState.currentInputIndex
-                        )
-                    }
-                }
-
+            Loader {
+                id: _inputConfigLoader
+                active: uiState && !["scripts", "settings", "xbox", "physical"].includes(uiState.currentTab)
+                visible: active
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
                 SplitView.minimumWidth: Style.dp(900)
+                sourceComponent: InputConfiguration {
+                    isOutput: _root.configDirection === "dest"
+
+                    Component.onCompleted: () => {
+                        if (backend && uiState) {
+                            inputItemModel = backend.getInputItem(
+                                uiState.currentInput,
+                                uiState.currentInputIndex
+                            )
+                        }
+                    }
+                }
             }
         }
     }
