@@ -78,6 +78,7 @@ ApplicationWindow {
             "Export modes…",
             "Export size",
             "Copy layout from",
+            "Templates",
             "Reset layout",
             "Clear image"
         ]
@@ -1616,8 +1617,10 @@ ApplicationWindow {
         _copyDlg.open()
     }
 
-    function copyLayoutFrom(slug, mirror) {
-        var text = _hw.layoutNodes(slug)
+    function copyLayoutFrom(row, mirror) {
+        if (!row)
+            return
+        var text = row.template ? _hw.templateNodes(row.name) : _hw.layoutNodes(row.slug)
         if (!text.length)
             return
         var nodes = []
@@ -1641,8 +1644,10 @@ ApplicationWindow {
 
     Dialog {
         id: _copyDlg
-        title: "Copy layout"
+        title: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply template" : "Copy layout"
         modal: true
+        // Another device's layout is usually the other hand's; a template is not.
+        onOpened: _copyMirror.checked = !(_buttonMap._copyFrom && _buttonMap._copyFrom.template)
         anchors.centerIn: parent
         width: Style.dp(460)
         standardButtons: Dialog.NoButton
@@ -1654,7 +1659,8 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: Style.fg
-                text: "Replace this map's chips, leaders and drawings with the layout of "
+                text: "Replace this map's chips, leaders and drawings with "
+                      + (_buttonMap._copyFrom && _buttonMap._copyFrom.template ? "the template " : "the layout of ")
                       + (_buttonMap._copyFrom ? _buttonMap._copyFrom.name : "") + "?"
             }
             Label {
@@ -1682,16 +1688,217 @@ ApplicationWindow {
                     onClicked: _copyDlg.close()
                 }
                 Button {
-                    text: "Copy layout"
+                    text: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply template" : "Copy layout"
                     highlighted: true
                     onClicked: {
                         var row = _buttonMap._copyFrom
                         _copyDlg.close()
-                        if (row)
-                            _buttonMap.copyLayoutFrom(row.slug, _copyMirror.checked)
+                        _buttonMap.copyLayoutFrom(row, _copyMirror.checked)
                     }
                 }
             }
+        }
+    }
+
+    // --- layout templates (File → Templates) ---------------------------------
+
+    property var templateList: []
+    property string _templateMsg: ""
+
+    function refreshTemplates() {
+        templateList = _hw.templates()
+    }
+
+    function layoutNow() {
+        return editing ? editorNodesNow() : liveNodes
+    }
+
+    function saveTemplateAs(name, replace) {
+        var clean = String(name || "").trim()
+        if (!clean.length)
+            return
+        if (!replace && _hw.templateExists(clean)) {
+            _templateReplace.pendingName = clean
+            _templateReplace.confirm("Replace template", "A template called " + clean + " exists. Replace it with this layout?", "Replace")
+            return
+        }
+        var ok = _hw.saveTemplate(clean, JSON.stringify(layoutNow() || []), targetName)
+        refreshTemplates()
+        var e = _ed()
+        if (e)
+            e.showFindMessage(ok ? "Saved as template " + clean + "." : "The template was not saved.")
+    }
+
+    DismissibleDialog {
+        id: _templateReplace
+        property string pendingName: ""
+        onConfirmed: _buttonMap.saveTemplateAs(pendingName, true)
+    }
+
+    Dialog {
+        id: _templateNameDlg
+        title: "Save layout as template"
+        modal: true
+        anchors.centerIn: parent
+        width: Style.dp(420)
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
+        onOpened: {
+            _templateName.text = targetName
+            _templateName.selectAll()
+            _templateName.forceActiveFocus()
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: Style.dp(10)
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Style.fgMuted
+                text: "Keeps this layout's chips, leaders and drawings under a name, to apply to any device later (File → Templates → Apply template)."
+            }
+            TextField {
+                id: _templateName
+                Layout.fillWidth: true
+                placeholderText: "Template name"
+                onAccepted: _templateSave.clicked()
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: Style.dp(8)
+                Button {
+                    text: "Cancel"
+                    onClicked: _templateNameDlg.close()
+                }
+                Button {
+                    id: _templateSave
+                    text: "Save"
+                    highlighted: true
+                    enabled: _templateName.text.trim().length > 0
+                    onClicked: {
+                        var name = _templateName.text
+                        _templateNameDlg.close()
+                        _buttonMap.saveTemplateAs(name, false)
+                    }
+                }
+            }
+        }
+    }
+
+    // Rename, export, delete and import templates.
+    Dialog {
+        id: _templatesDlg
+        title: "Templates"
+        modal: true
+        anchors.centerIn: parent
+        width: Style.dp(560)
+        height: Math.min(Style.dp(520), _buttonMap.height - Style.dp(80))
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
+        onOpened: _buttonMap.refreshTemplates()
+        property string renaming: ""
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: Style.dp(8)
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Style.fgMuted
+                text: _buttonMap.templateList.length
+                      ? "Templates are kept with the module files. Export writes one to a file to share; Import adds one. Pictures in a template stay where they are, so share a Device Pack to send pictures too."
+                      : "No templates yet. File → Templates → Save layout as template keeps the current layout."
+            }
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: Style.dp(4)
+                model: _buttonMap.templateList
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                delegate: RowLayout {
+                    required property var modelData
+                    width: ListView.view.width
+                    spacing: Style.dp(6)
+                    TextField {
+                        Layout.fillWidth: true
+                        visible: _templatesDlg.renaming === modelData.name
+                        text: modelData.name
+                        onAccepted: {
+                            var from = modelData.name
+                            var to = text.trim()
+                            _templatesDlg.renaming = ""
+                            if (to.length && to !== from && !_hw.renameTemplate(from, to)) {
+                                var e = _buttonMap._ed()
+                                if (e)
+                                    e.showFindMessage("A template called " + to + " exists already.")
+                            }
+                            _buttonMap.refreshTemplates()
+                        }
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        visible: _templatesDlg.renaming !== modelData.name
+                        color: Style.fg
+                        elide: Text.ElideRight
+                        text: modelData.name + "  ·  " + modelData.count + (modelData.count === 1 ? " item" : " items")
+                    }
+                    Button {
+                        text: "Rename"
+                        onClicked: _templatesDlg.renaming = modelData.name
+                    }
+                    Button {
+                        text: "Export…"
+                        onClicked: {
+                            _templateExportFile.templateName = modelData.name
+                            _templateExportFile.open()
+                        }
+                    }
+                    Button {
+                        text: "Delete"
+                        onClicked: {
+                            _hw.deleteTemplate(modelData.name)
+                            _buttonMap.refreshTemplates()
+                        }
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.dp(8)
+                Button {
+                    text: "Import…"
+                    onClicked: _templateImportFile.open()
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: "Close"
+                    onClicked: _templatesDlg.close()
+                }
+            }
+        }
+    }
+
+    FileDialog {
+        id: _templateExportFile
+        property string templateName: ""
+        title: "Export template"
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "json"
+        nameFilters: ["Button Map template (*.json)"]
+        onAccepted: _hw.exportTemplate(templateName, selectedFile)
+    }
+
+    FileDialog {
+        id: _templateImportFile
+        title: "Import template"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Button Map template (*.json)"]
+        onAccepted: {
+            var name = _hw.importTemplate(selectedFile)
+            _buttonMap.refreshTemplates()
+            var e = _buttonMap._ed()
+            if (e)
+                e.showFindMessage(name.length ? "Imported template " + name + "." : "That file is not a Button Map template.")
         }
     }
 
@@ -1992,6 +2199,36 @@ ApplicationWindow {
                         }
                         onObjectAdded: (index, object) => _copyMenu.insertItem(index + 1, object)
                         onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
+                    }
+                }
+                Menu {
+                    id: _templateMenu
+                    title: "Templates"
+                    enabled: _buttonMap.targetName.length > 0
+                    onAboutToShow: _buttonMap.refreshTemplates()
+                    MenuItem {
+                        text: "Save layout as template…"
+                        enabled: (_buttonMap.layoutNow() || []).length > 0
+                        onTriggered: _templateNameDlg.open()
+                    }
+                    Menu {
+                        id: _applyTemplateMenu
+                        title: "Apply template"
+                        enabled: _buttonMap.templateList.length > 0
+                        Instantiator {
+                            model: _buttonMap.templateList
+                            delegate: MenuItem {
+                                required property var modelData
+                                text: modelData.name + "…"
+                                onTriggered: _buttonMap.openCopyLayout({ name: modelData.name, template: true })
+                            }
+                            onObjectAdded: (index, object) => _applyTemplateMenu.insertItem(index, object)
+                            onObjectRemoved: (index, object) => _applyTemplateMenu.removeItem(object)
+                        }
+                    }
+                    MenuItem {
+                        text: "Manage templates…"
+                        onTriggered: _templatesDlg.open()
                     }
                 }
                 MenuItem {

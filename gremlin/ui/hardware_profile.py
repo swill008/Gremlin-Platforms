@@ -139,6 +139,26 @@ def _save_image(page: QtGui.QImage, path: Path, kind: str) -> bool:
     return page.save(str(path), "PNG")
 
 
+def _template_stem(name: str) -> str:
+    """A template's file name: its name, with characters files cannot hold
+    replaced."""
+    text = str(name or "").strip()
+    stem = "".join(c if c.isalnum() or c in " -_" else "_" for c in text).strip()
+    return stem[:80]
+
+
+def _read_template(path: Path) -> dict | None:
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(doc, dict) or not isinstance(doc.get("nodes"), list):
+        return None
+    if not doc["nodes"]:
+        return None
+    return doc
+
+
 def _file_part(name: str) -> str:
     """A mode name made safe for a file name."""
     safe = "".join(c if c.isalnum() or c in " -_" else "_" for c in name).strip()
@@ -1843,6 +1863,132 @@ class HardwareProfile(QtCore.QObject):
             return ""
         nodes = doc.get("nodes") if isinstance(doc, dict) else None
         return json.dumps(nodes) if isinstance(nodes, list) and nodes else ""
+
+    # --- layout templates (File > Templates) ----------------------------------
+
+    def _templates_dir(self) -> Path:
+        return _maps_dir() / "templates"
+
+    def _template_file(self, name: str) -> Path | None:
+        stem = _template_stem(name)
+        return self._templates_dir() / f"{stem}.json" if stem else None
+
+    @QtCore.Slot(result=list)
+    def templates(self) -> list:
+        """Saved layout templates by name: [{name, savedAt, count}]."""
+        rows = []
+        folder = self._templates_dir()
+        for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+            doc = _read_template(path)
+            if doc is None:
+                continue
+            rows.append({
+                "name": str(doc.get("name") or path.stem),
+                "savedAt": str(doc.get("savedAt") or ""),
+                "count": len(doc["nodes"]),
+            })
+        rows.sort(key=lambda row: row["name"].lower())
+        return rows
+
+    @QtCore.Slot(str, result=bool)
+    def templateExists(self, name: str) -> bool:
+        path = self._template_file(name)
+        return bool(path and path.is_file())
+
+    @QtCore.Slot(str, str, str, result=bool)
+    def saveTemplate(self, name: str, nodes_json: str, device_name: str) -> bool:
+        """Saves a layout under a name, replacing a template of that name."""
+        path = self._template_file(name)
+        try:
+            nodes = json.loads(nodes_json)
+        except ValueError:
+            return False
+        if path is None or not isinstance(nodes, list) or not nodes:
+            return False
+        doc = {
+            "kind": "button-map-template",
+            "name": name.strip(),
+            "device": device_name,
+            "savedAt": datetime.now().isoformat(timespec="seconds"),
+            "nodes": nodes,
+        }
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(doc, indent=1), encoding="utf-8")
+        except OSError:
+            return False
+        return True
+
+    @QtCore.Slot(str, result=str)
+    def templateNodes(self, name: str) -> str:
+        path = self._template_file(name)
+        doc = _read_template(path) if path else None
+        return json.dumps(doc["nodes"]) if doc else ""
+
+    @QtCore.Slot(str, result=bool)
+    def deleteTemplate(self, name: str) -> bool:
+        path = self._template_file(name)
+        if not path or not path.is_file():
+            return False
+        try:
+            path.unlink()
+        except OSError:
+            return False
+        return True
+
+    @QtCore.Slot(str, str, result=bool)
+    def renameTemplate(self, name: str, new_name: str) -> bool:
+        path = self._template_file(name)
+        target = self._template_file(new_name)
+        doc = _read_template(path) if path else None
+        if doc is None or target is None:
+            return False
+        if target.is_file() and target != path:
+            return False
+        doc["name"] = new_name.strip()
+        try:
+            target.write_text(json.dumps(doc, indent=1), encoding="utf-8")
+            if target != path:
+                path.unlink()
+        except OSError:
+            return False
+        return True
+
+    @QtCore.Slot(str, str, result=bool)
+    def exportTemplate(self, name: str, url: str) -> bool:
+        """Writes a template to a file to share."""
+        path = self._template_file(name)
+        if not path or _read_template(path) is None:
+            return False
+        try:
+            shutil.copyfile(path, to_local_path(url))
+        except OSError:
+            return False
+        return True
+
+    @QtCore.Slot(str, result=str)
+    def importTemplate(self, url: str) -> str:
+        """Adds a shared template file; returns its name ("" when the file is
+        not a template). A name already taken gets a number."""
+        doc = _read_template(Path(to_local_path(url)))
+        if doc is None:
+            return ""
+        base = str(doc.get("name") or Path(to_local_path(url)).stem).strip() or "Template"
+        name = base
+        number = 2
+        while self.templateExists(name):
+            name = f"{base} {number}"
+            number += 1
+        doc["name"] = name
+        path = self._template_file(name)
+        if path is None:
+            return ""
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(doc, indent=1), encoding="utf-8")
+        except OSError:
+            return ""
+        return name
 
     # --- recovery copies (autosave) ------------------------------------------
 
