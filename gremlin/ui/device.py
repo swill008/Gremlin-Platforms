@@ -355,10 +355,15 @@ class Device(QtCore.QAbstractListModel):
             return
 
         self.beginResetModel()
-        self._device = dill.DILL.get_device_information_by_guid(
-            dill.GUID.from_str(guid)
-        )
-        self._device_mapping = DeviceDatabase().get_mapping(self._device)
+        # QML binds "" while no device is selected or during teardown.
+        try:
+            self._device = dill.DILL.get_device_information_by_guid(
+                dill.GUID.from_str(guid)
+            )
+            self._device_mapping = DeviceDatabase().get_mapping(self._device)
+        except ValueError:
+            self._device = None
+            self._device_mapping = None
         self.endResetModel()
         self.deviceChanged.emit()
 
@@ -892,12 +897,19 @@ class DeviceAxisSeries(QtCore.QObject):
         if self._device is not None and guid == str(self._device.device_guid):
             return
 
-        self._device = dill.DILL.get_device_information_by_guid(
-            dill.GUID.from_str(guid)
-        )
-        self._device_uuid = uuid.UUID(guid)
-
         self._state = []
+        self._identifier_map = {}
+        try:
+            self._device = dill.DILL.get_device_information_by_guid(
+                dill.GUID.from_str(guid)
+            )
+            self._device_uuid = uuid.UUID(guid)
+        except ValueError:
+            self._device = None
+            self._device_uuid = None
+            self.deviceChanged.emit()
+            return
+
         for i in range(self._device.axis_count):
             self._identifier_map[self._device.axis_map[i].axis_index] = i
             self._state.append(
