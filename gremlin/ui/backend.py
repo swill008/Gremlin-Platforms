@@ -312,25 +312,6 @@ class Backend(QtCore.QObject):
         signal.configChanged.emit()
         audio_player.AudioPlayer().refresh()
 
-    def check_for_updates(self) -> None:
-        if self.config.value("global", "general", "check-for-updates"):
-            version_string = util.latest_gremlin_version()
-            if version_string is None:
-                return
-            if util.should_announce_version(
-                version_string,
-                util.get_code_version(),
-                self.config.value("global", "internal", "last-known-version"),
-            ):
-                signal.showNotification.emit(
-                    "New version available",
-                    f"A newer version of Gremlin-Platforms, {version_string} "
-                    f"is available.",
-                )
-                self.config.set(
-                    "global", "internal", "last-known-version", version_string
-                )
-
     def _active_process_changed_cb(self, path: str) -> None:
         if not self.config.value("profile", "automation", "enable-auto-loading"):
             return

@@ -86,6 +86,7 @@ import gremlin.ui.osc_option  # noqa: F401
 import gremlin.ui.log_option  # noqa: F401
 import gremlin.ui.tools
 import gremlin.ui.ui_scale_option
+import gremlin.ui.update_model  # noqa: E402
 import gremlin.ui.util
 import gremlin.osc
 import gremlin.ui.osc_device_model  # noqa: F401
@@ -467,12 +468,20 @@ def register_config_options() -> None:
         "List of recently opened profiles", {},
     )
     cfg.register(
-        "global", "internal", "last-known-version", PropertyType.String,
-        gremlin.util.get_code_version(), "Last known version of Gremlin.", {},
+        "global", "general", "check-for-updates", PropertyType.Bool, True,
+        "Check for new Gremlin versions online upon start.", {}, True,
     )
     cfg.register(
-        "global", "general", "check-for-updates", PropertyType.Bool, False,
-        "Check for new Gremlin versions online upon start.", {}, True,
+        "global", "internal", "skipped-update-version", PropertyType.String, "",
+        "Release the user chose to skip in the Update dialog.", {},
+    )
+    cfg.register(
+        "global", "internal", "last-run-version", PropertyType.String, "",
+        "Version that ran last, to say so once after an update.", {},
+    )
+    cfg.register(
+        "global", "internal", "update-feed-url", PropertyType.String, "",
+        "Release feed used instead of GitHub (testing only).", {},
     )
     plugins = str(Path(gremlin.util.data_folder()) / "plugins")
     cfg.register(
@@ -743,7 +752,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
             sys.exit(-1)
 
         self.process_cmd_args(cmd_args)
-        self.backend.check_for_updates()
+        self.updater.startup()
 
         self.main_window = self.engine.rootObjects()[0]
         self.color_information_object = self.main_window.findChild(
@@ -830,6 +839,8 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.engine.rootContext().setContextProperty("backend", self.backend)
         self.engine.rootContext().setContextProperty("uiState", self.backend.ui_state)
         self.engine.rootContext().setContextProperty("signal", gremlin.signal.signal)
+        self.updater = gremlin.ui.update_model.UpdateModel(self)
+        self.engine.rootContext().setContextProperty("updater", self.updater)
 
 
 def main() -> int:
@@ -857,7 +868,10 @@ def main() -> int:
         except Exception:
             pass
     backend = getattr(app, "backend", None)
-    if backend is not None and backend.restart_on_exit:
+    update_model = getattr(app, "updater", None)
+    # A started installer launches the new version itself when it is done.
+    installing = update_model is not None and update_model.start_pending_install()
+    if not installing and backend is not None and backend.restart_on_exit:
         program, args = gremlin.util.restart_command(
             sys.argv,
             os.path.join(install_path, os.path.basename(sys.argv[0])),

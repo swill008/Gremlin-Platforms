@@ -253,6 +253,8 @@ ApplicationWindow {
             _quitPending = false
             if (backend)
                 backend.setRestartOnExit(false)
+            if (updater)
+                updater.setInstallOnExit(false)
         }
     }
 
@@ -520,10 +522,13 @@ ApplicationWindow {
         Qt.quit()
     }
 
-    // restart: start Gremlin again once it has shut down. Any other quit clears it.
-    function quitGremlin(restart) {
+    // restart: start Gremlin again once it has shut down. update: run the
+    // downloaded installer once it has shut down. Any other quit clears both.
+    function quitGremlin(restart, update) {
         if (backend)
             backend.setRestartOnExit(!!restart)
+        if (updater)
+            updater.setInstallOnExit(!!update)
         // Panels and the Logical pane first, then the profile, then quit.
         _quitPending = true
         leaveDisplayThen(function() {
@@ -615,6 +620,8 @@ ApplicationWindow {
             takeAction()
             if (quitting && backend)
                 backend.setRestartOnExit(false)
+            if (quitting && updater)
+                updater.setInstallOnExit(false)
         }
     }
 
@@ -907,6 +914,14 @@ ApplicationWindow {
                 text: qsTr("User Guide")
                 onTriggered: () => {
                     Helpers.createComponent("DialogHelp.qml")
+                }
+            }
+            MenuItem {
+                text: qsTr("Check for Updates")
+                onTriggered: () => {
+                    Helpers.createComponent("DialogUpdate.qml")
+                    if (updater && updater.state !== "downloading" && updater.state !== "ready")
+                        updater.check(true)
                 }
             }
             MenuItem {
@@ -1205,6 +1220,17 @@ ApplicationWindow {
         }
     }
     Connections {
+        target: updater
+
+        function onOfferUpdate() {
+            Helpers.createComponent("DialogUpdate.qml")
+        }
+
+        function onInstallRequested() {
+            _root.quitGremlin(false, true)
+        }
+    }
+    Connections {
         target: signal
 
         function onConfigChanged() {
@@ -1229,6 +1255,8 @@ ApplicationWindow {
     onClosing: (close) => {
         if (backend)
             backend.setRestartOnExit(false)
+        if (updater)
+            updater.setInstallOnExit(false)
         _windowPlacement.save(_root)
         // Same order as File > Exit: panels, then the profile, then quit.
         if (displayUnsaved() || (backend && backend.profileContainsUnsavedChanges)) {

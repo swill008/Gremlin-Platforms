@@ -772,7 +772,7 @@ Decisions: Auto Mapper claim switch, off by default (1A); one Xbox pad for now (
 | HELP-A | DONE 101a0a16 | Getting Started (pipeline, First setup, Toggle and status, Profiles, What is saved where), Devices and Modules, Troubleshooting. |
 | HELP-B | DONE 602b87a8 | Configuration, Actions (one topic per action, six were missing), Logical Device (9 -> 4 topics), Modes. |
 | HELP-C | DONE 2352a3d0 | Tools, Options and Profile, Button Map F1 help rewritten (zoom 75-600%, real right-click menu), About shows the version and this repo, orphan button_map_editor_help.md removed. Guard: test_help_guide (menu paths exist, every action has a topic, no removed features). |
-| HELP-BUG | FIXED (this commit) | Decided (option c, compared with upstream R16): Startup Mode picks the mode when the profile is loaded (ModeManager.reset uses mode_manager.resolve_start_mode, so Load, New and auto-load land in it); Toggle keeps starting in the toolbar mode (83078f83). R16 instead always starts Toggle in Startup Mode, but its toolbar is only the editing mode. Profile Settings text and the User Guide topic updated; unit tests in test_modes.py. |
+| HELP-BUG | FIXED be7a9ec6 | Decided (option c, compared with upstream R16): Startup Mode picks the mode when the profile is loaded (ModeManager.reset uses mode_manager.resolve_start_mode, so Load, New and auto-load land in it); Toggle keeps starting in the toolbar mode (83078f83). R16 instead always starts Toggle in Startup Mode, but its toolbar is only the editing mode. Profile Settings text and the User Guide topic updated; unit tests in test_modes.py. |
 | HELP-BUG-HANDS-ON | [U] | Set Startup Mode to a named mode, save, reload: the toolbar shows that mode and Toggle runs in it. Last Active: run in a mode, stop, reload: toolbar shows that mode. Change the toolbar mode, Toggle: runs in the toolbar mode. |
 
 ## INTEG: integration test suite (2026-10-01)
@@ -780,8 +780,22 @@ Decisions: Auto Mapper claim switch, off by default (1A); one Xbox pad for now (
 | ID | Result | Notes |
 |---|---|---|
 | INTEG-SPLINE | FIXED ecaf6812 | Real bug: 0c339239 left a use of the removed eps in CubicSpline.fit, so a Cubic Spline curve with 3+ points raised NameError (adding a point, loading the profile). Unit test in test_splines.py. |
-| INTEG-MODULES | FIXED (this commit) | Tests ran with an empty temp modules folder, so the layer rule dropped the vJoy test inputs and blocked every vJoy output. device_modules fixture writes an input module bound to the vJoy DI GUID and an unbound "vJoy N" output module, both claiming everything. |
-| INTEG-SCRIPTS | FIXED (this commit) | Relative script paths resolve against the user scripts folder (empty temp folder in tests). _bundled_user_scripts copies user_scripts/*.py there. |
-| INTEG-PROCESS | FIXED (this commit) | test/unit + test/integration in one process: test_sequence_reorder.py makes a plain QCoreApplication at collection, so JoystickGremlinApp/Backend(engine) is never created. Run the suites separately; _own_process fails with that message. Making the unit test use qapp instead launched a real app window in the unit run and hung, so it stays. |
+| INTEG-MODULES | FIXED 2c805655 | Tests ran with an empty temp modules folder, so the layer rule dropped the vJoy test inputs and blocked every vJoy output. device_modules fixture writes an input module bound to the vJoy DI GUID and an unbound "vJoy N" output module, both claiming everything. |
+| INTEG-SCRIPTS | FIXED 2c805655 | Relative script paths resolve against the user scripts folder (empty temp folder in tests). _bundled_user_scripts copies user_scripts/*.py there. |
+| INTEG-PROCESS | FIXED 2c805655 | test/unit + test/integration in one process: test_sequence_reorder.py makes a plain QCoreApplication at collection, so JoystickGremlinApp/Backend(engine) is never created. Run the suites separately; _own_process fails with that message. Making the unit test use qapp instead launched a real app window in the unit run and hung, so it stays. |
 | INTEG-RESULT | PASS | test/unit 519 passed, 15 skipped; test/integration 219 passed, 222 subtests (was 147 passed, 109 failed, 23 errors). |
 | INTEG-GUID-NOISE | OPEN | Integration runs print a ValueError traceback from DeviceModel._set_guid (gremlin/ui/device.py:359): a QML binding sets an empty/invalid GUID. Not a test failure; present before these fixes. |
+
+## UPD: installer and in-app updater (2026-10-01)
+
+| ID | Result | Notes |
+|---|---|---|
+| UPD-ISS | DONE | installer/gremlin_platforms.iss replaces the R15 script: new AppId, per-user (PrivilegesRequired=lowest), folder page prefilled with {autopf}\Gremlin-Platforms and remembered, refuses a folder that needs admin, removes the old _internal, license page, Start menu + optional desktop shortcut, /LAUNCH=1 restarts after a silent update. |
+| UPD-WORKFLOW | DONE | release-exe.yml takes the version from version.json and publishes Setup.exe and the zip; publish=false builds only (workflow artifact). GitHub's windows-latest image has Inno Setup 6.7.1. |
+| UPD-APP | DONE (this commit) | gremlin/updater.py + gremlin/ui/update_model.py + DialogUpdate.qml: Help -> Check for Updates, startup check (on by default for new configs), Update now / Skip / Later, download with progress, size + SHA-256 check against GitHub's digest, installer runs after Gremlin shut down through the normal quit path. Portable and source copies only link to the release page. "Updated" notice once after an update. User Guide topic "Installing and updating". |
+| UPD-UNIT | PASS | test_update_check.py (asset choice, digest rules, offer/skip, install kind, feed URL, installer/workflow names agree), test_update_model.py (no install without a verified download, cancelled quit clears it, post-update notice). |
+| UPD-NET | PASS | Local http server feed via the hidden update-feed-url: check -> available -> download -> verified -> installRequested; a tampered file is rejected and deleted. |
+| UPD-DIALOG | PASS | DialogUpdate.qml loaded offscreen: text and buttons right for checking, upToDate, available, downloading, ready, error; no QML warnings. |
+| UPD-BUILD | [U] | Build Setup.exe (Inno Setup locally, or the workflow with publish=false) and click through the wizard: Welcome, License, folder (prefilled), shortcuts, install, Launch. |
+| UPD-HANDS-ON | [U] | Install 1.0.2 from the Setup, point update-feed-url at a local 1.0.3 release, Help -> Check for Updates -> Update now: Gremlin closes, installs without a UAC prompt, starts 1.0.3, says "Updated", profiles/settings kept. Uninstall leaves the user's Gremlin Platforms folder untouched. |
+| UPD-EXISTING-CONFIG | NOTE | Check for updates defaults to on only where it was never saved; a configuration.json that stored False (as on the dev machine) keeps it off until ticked in Options -> Global. |

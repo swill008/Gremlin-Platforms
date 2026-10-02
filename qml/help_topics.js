@@ -24,6 +24,15 @@ function topics() {
             + "<li>Press <b>Toggle</b> to run the profile. Use the <b>vJoy Viewer</b> or <b>Xbox Viewer</b> to watch the result.</li>"
             + "</ol>"
             + "<p>Tools → Mapping → <b>Auto Mapper</b> can create the Map to vJoy actions for a whole device in one step.</p>"),
+        topic("Getting Started", "Installing and updating",
+            "<p>Each release on GitHub has two downloads:</p>"
+            + "<ul>"
+            + "<li><b>Gremlin-Platforms-R1-X.Y.Z-Setup.exe</b>, the installer. It installs for your Windows user only and needs no administrator rights. The suggested folder is %LOCALAPPDATA%\\Programs\\Gremlin-Platforms; you can choose another folder you can write to. It adds a Start menu entry, an optional desktop shortcut, and an uninstaller in Settings → Apps.</li>"
+            + "<li><b>Gremlin-Platforms-R1-X.Y.Z.zip</b>, the portable copy. Unzip it anywhere outside Program Files and run gremlin_platforms.exe.</li>"
+            + "</ul>"
+            + "<p><b>Help → Check for Updates</b> asks GitHub for the latest release. When Options → Global → <b>Check for updates</b> is on (the default), it also checks when the program starts and only speaks up when there is a newer version.</p>"
+            + "<p>An installed copy offers <b>Update now</b>: it downloads the installer, checks it against the SHA-256 checksum GitHub reports, closes the program the usual way (asking about unsaved changes), installs, and starts the new version. <b>Skip this version</b> stops the startup check from offering that version. A portable copy, or one run from source, only points you to the release page.</p>"
+            + "<p>Updates and uninstalling never touch your profiles, modules or settings; they are kept in your Gremlin Platforms folder (see What is saved where).</p>"),
         topic("Getting Started", "Toggle and status",
             "<p><b>Toggle</b> on the toolbar runs or stops the loaded profile. While it is off you are only editing; nothing is sent to vJoy or Xbox. The button uses the accent color while the profile runs.</p>"
             + "<p>The bottom bar shows <b>Status</b> (Active, Not Running, or Paused), the <b>Executing mode</b>, and what the last save wrote.</p>"
@@ -222,7 +231,7 @@ function topics() {
         topic("Options and Profile", "Options",
             "<p>Tools → <b>Options</b> (or the gear on the toolbar). Program settings, not stored in the profile.</p>"
             + "<ul>"
-            + "<li><b>Global</b>: Close to tray, Minimize to tray, Check for updates, <b>Device change behavior</b> (Reload, Ignore, Disable), Hidhide on start, axis refresh on activation and mode change, Debug log level, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
+            + "<li><b>Global</b>: Close to tray, Minimize to tray, <b>Check for updates</b> (when the program starts; see Installing and updating), <b>Device change behavior</b> (Reload, Ignore, Disable), Hidhide on start, axis refresh on activation and mode change, Debug log level, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
             + "<li><b>User Interface</b>: Dark mode, UI scale, Disable Windows scaling, Display mode (numbers and/or labels), Input highlighting and Highlight source.</li>"
             + "<li><b>Action</b>: the Action list order, and settings for Axis Delta, Change Mode, Double Tap, Macro, Play Sound, Smart Toggle, Tempo, and Text-To-Speech (voice).</li>"
             + "<li><b>Profile</b>: Enable auto loading — load a profile when a chosen program starts — and Remain active on focus loss.</li>"

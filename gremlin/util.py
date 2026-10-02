@@ -14,7 +14,6 @@ import sys
 import threading
 import time
 import types
-import urllib.request
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -1197,11 +1196,6 @@ def restart_command(
     return executable, [script, *argv[1:]]
 
 
-LATEST_RELEASE_URL = (
-    "https://api.github.com/repos/swill008/JoystickGremlin_/releases/latest"
-)
-
-
 def version_from_tag(tag: str) -> str | None:
     """Returns the X.Y.Z version at the end of a release tag.
 
@@ -1213,55 +1207,6 @@ def version_from_tag(tag: str) -> str | None:
     """
     match = re.search(r"(\d+\.\d+\.\d+)$", str(tag or "").strip())
     return match.group(1) if match else None
-
-
-def should_announce_version(latest: str, running: str, announced: str) -> bool:
-    """Returns True when the latest release is worth telling the user about.
-
-    It must be newer than the running program and not the version already
-    announced. The announced value only stops repeats; an older program's
-    leftover value never hides a newer release.
-
-    Args:
-        latest: version of the latest published release
-        running: version of the running program
-        announced: version the user was last told about
-
-    Returns:
-        True when the user should be notified
-    """
-
-    def parse(value: str) -> tuple[int, ...] | None:
-        try:
-            return tuple(int(part) for part in str(value).split("."))
-        except (TypeError, ValueError):
-            return None
-
-    latest_v = parse(latest)
-    running_v = parse(running)
-    if latest_v is None or running_v is None or latest_v <= running_v:
-        return False
-    return latest_v != parse(announced)
-
-
-def latest_gremlin_version() -> str | None:
-    """Returns the version of the latest published Gremlin-Platforms release.
-
-    Returns:
-        Latest release version as string if available, None otherwise
-    """
-    request = urllib.request.Request(
-        LATEST_RELEASE_URL,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "Gremlin-Platforms",
-        },
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=5) as response:
-            return version_from_tag(json.loads(response.read()).get("tag_name"))
-    except Exception:
-        return None
 
 
 def get_code_version() -> str:
