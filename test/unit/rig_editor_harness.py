@@ -108,10 +108,18 @@ Window {
                 o.close()
         }
     }
+    // Call with the live node object as the first argument (not a JSON copy).
+    function callOnNode(name, id, argsJson) {
+        var e = ed()
+        var r = e[name].apply(e, [e.nodeAt(id)].concat(JSON.parse(argsJson)))
+        return JSON.stringify(r === undefined ? null : r)
+    }
+    function setProp(name, json) { ed()[name] = JSON.parse(json) }
     function state() {
         var e = ed()
         return JSON.stringify({
             menu: openMenuSize(),
+            photo: [e.photoScale, e.photoOffX, e.photoOffY, e.photoRot],
             nodes: e.nodes,
             selected: e.selectedIds,
             histAt: e.histAt,
@@ -196,6 +204,15 @@ class Session:
         out = self.js("call", name, json.dumps(list(args)))
         self.wait(30)
         return json.loads(out)
+
+    def call_on_node(self, name: str, id_: str, *args: object) -> object:
+        out = self.js("callOnNode", name, id_, json.dumps(list(args)))
+        self.wait(30)
+        return json.loads(out)
+
+    def set_prop(self, name: str, value: object) -> None:
+        self.js("setProp", name, json.dumps(value))
+        self.wait(30)
 
     def point(self, fx: float, fy: float) -> QtCore.QPoint:
         x, y = json.loads(self.js("pagePt", fx, fy))
@@ -440,9 +457,111 @@ def scenario_session_r(s: Session) -> None:
     s.record("redo-1", image=True)
 
 
+def scenario_api_sweep(s: Session) -> None:
+    """Calls the editor's functions directly, area by area, so code paths the
+    mouse session does not reach are covered too."""
+    _load(s, "evo_r")
+    nodes = s.state()["nodes"]
+    chips = [n["id"] for n in nodes if n["kind"] == "btn"]
+    stack = next(n["id"] for n in nodes if n["kind"] == "stack")
+
+    # Photo pose.
+    s.call("applyPhotoPose", {"scale": 1.5, "offX": 0.1, "offY": -0.1, "rot": 10})
+    s.record("photo-pose", image=True)
+    s.call("resetPhotoPose")
+    s.record("photo-reset")
+
+    # Chip styling.
+    s.call("setSelection", [chips[0]])
+    s.call("applyField", "color", "#B91C1C")
+    s.call("applyField", "chipShape", "square")
+    s.call("applyField", "fontSize", 18)
+    s.record("chip-style")
+    s.call("resetMemberStyle")
+    s.record("chip-style-reset")
+
+    # Leaders: add, branch, curve all segments, spines, delete.
+    s.call("setSelection", [chips[1]])
+    s.call("addLeader")
+    s.record("leader-add")
+    s.call("addBranch")
+    s.record("leader-branch")
+    s.call("setAllSegCurve", True)
+    s.call_on_node("addCurveSpine", chips[1])
+    s.record("leader-curves")
+    s.call("clearAllSpines", chips[1])
+    s.call("detachEnd", "to")
+    s.record("leader-detach")
+    s.call("deleteLeader")
+    s.record("leader-delete")
+
+    # Group alignment.
+    s.call("setSelection", [stack])
+    s.call("setAlignH", "center")
+    s.record("align-center")
+    s.call("setAlignH", "right")
+    s.call_on_node("bakeAlignToFree", stack)
+    s.record("align-free")
+
+    # Text box formats and themes.
+    s.call("setDrawTool", "text")
+    s.drag(s.point(0.75, 0.10), s.point(0.92, 0.18))
+    s.call("setDrawTool", "")
+    text = s.state()["selected"][0]
+    s.call("applyTextTheme", "sheet")
+    s.call("applyField", "fontSize", 20)
+    s.call("copyTextFormat")
+    s.call("applyTextBoxSize", 0.2, 0.1)
+    s.record("text-theme", image=True)
+    s.call("clearTextFormat")
+    s.record("text-clear")
+
+    # Tables: rows, columns, id column, theme, font, free cell.
+    s.call("setDrawTool", "table")
+    s.drag(s.point(0.74, 0.55), s.point(0.95, 0.85))
+    s.call("setDrawTool", "")
+    table = s.state()["selected"][0]
+    s.set_prop("tableRow", 0)
+    s.set_prop("tableCol", 0)
+    s.call("addTableRow", True)
+    s.call("addTableCol", True)
+    s.record("table-grow")
+    s.call("toggleTableIdCol")
+    s.call("setTableTheme", "sheet")
+    s.call("setTableFont", 16)
+    s.record("table-style", image=True)
+    s.call("toggleTableCellFree")
+    s.record("table-free-cell")
+    s.call("deleteTableRow")
+    s.call("deleteTableCol")
+    s.record("table-shrink")
+
+    # Image layer with snap points, lock and stacking.
+    icon = ROOT / "gfx" / "icon.png"
+    s.call("addOverlay", "test/icon", QtCore.QUrl.fromLocalFile(str(icon)).toString())
+    overlay = s.state()["selected"][0]
+    s.record("overlay-add", image=True)
+    b = s._box(overlay)
+    s.call_on_node("addSocketAt", overlay, b["x"] + b["w"] / 2, b["y"] + b["h"] / 2)
+    s.record("overlay-socket")
+    s.call("clearSockets")
+    s.call("toggleLock", overlay)
+    s.record("overlay-lock")
+    s.call("toggleLock", overlay)
+    s.call("setSelection", [table])
+    s.call("sendBack")
+    s.record("table-back")
+
+    # Select everything drawn and delete it.
+    s.call("setSelection", [text, table, overlay])
+    s.call("deleteSelection")
+    s.record("delete-drawn", image=True)
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
+    "api_sweep": scenario_api_sweep,
 }
 
 

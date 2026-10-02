@@ -41,13 +41,24 @@ pytestmark = pytest.mark.skipif(
 
 
 def _normalize(doc: dict) -> dict:
-    """Ids carry a clock and a random number: number them by first use,
-    also inside other strings ("<id>_L0"). Floats are rounded."""
+    """Ids carry a clock and a random number: number every "id" value (nodes,
+    leaders, sockets...) by first use, also inside other strings ("<id>_L0").
+    Floats are rounded."""
     ids: list[str] = []
+
+    def collect(value: object) -> None:
+        if isinstance(value, dict):
+            found = value.get("id")
+            if isinstance(found, str) and found and found not in ids:
+                ids.append(found)
+            for v in value.values():
+                collect(v)
+        elif isinstance(value, list):
+            for v in value:
+                collect(v)
+
     for step in doc["steps"]:
-        for node in step["state"]["nodes"]:
-            if node["id"] not in ids:
-                ids.append(node["id"])
+        collect(step["state"]["nodes"])
         for selected in step["state"]["selected"]:
             if selected not in ids:
                 ids.append(selected)
@@ -63,7 +74,8 @@ def _normalize(doc: dict) -> dict:
             for old in longest_first:
                 if old in value:
                     value = value.replace(old, names[old])
-            return value
+            # Files under the checkout (an image layer's srcUrl).
+            return re.sub(r"file:///\S*?/(gfx|qml)/", r"<repo>/\1/", value)
         if isinstance(value, float):
             return round(value, 5)
         return value
@@ -76,7 +88,7 @@ def _normalize(doc: dict) -> dict:
 def _warning_text(warning: str) -> str:
     """The message without where it came from: code moves between files and
     lines as the editor is split up, and the checkout path differs."""
-    warning = re.sub(r"file:///\S*?/qml/", "qml/", warning)
+    warning = re.sub(r"(file:///\S*?/|<repo>/)qml/", "qml/", warning)
     return re.sub(r"^qml/[\w/]+\.qml(:\d+)*:\s*", "", warning)
 
 
@@ -136,7 +148,7 @@ def _run(scenario: str, out_dir: pathlib.Path) -> dict:
     return json.loads(report.read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize("scenario", ["load_l", "session_r"])
+@pytest.mark.parametrize("scenario", ["load_l", "session_r", "api_sweep"])
 def test_editor_matches_golden(scenario: str, tmp_path: pathlib.Path) -> None:
     run = _normalize(_run(scenario, tmp_path))
     images = sorted(tmp_path.glob(f"{scenario}-*.png"))

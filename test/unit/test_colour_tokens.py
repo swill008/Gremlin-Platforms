@@ -20,6 +20,8 @@ _REMAINING = {
     "qml/OutputModuleView.qml": 12,
     # Overlays on the device photo and the colour picker's fixed palette.
     "qml/DialogJoystickButtonMap.qml": 50,
+    # Counted since .js files are scanned too; older than the scan.
+    "qml/helpers.js": 4,
     # Drawn on the device photo, which looks the same in both modes. The
     # Rig*.qml parts were split out of VkbRigEditor.qml with their colours.
     "qml/RigChipItem.qml": 6,
@@ -30,7 +32,12 @@ _REMAINING = {
     "qml/RigLeaderLayer.qml": 9,
     "qml/RigMiniChip.qml": 10,
     "qml/RigSelRing.qml": 1,
-    "qml/VkbRigEditor.qml": 59,
+    "qml/VkbRigEditor.qml": 8,
+    "qml/rig_draw.js": 15,
+    "qml/rig_groups.js": 6,
+    "qml/rig_style.js": 8,
+    "qml/rig_tables.js": 11,
+    "qml/rig_text.js": 11,
     "qml/VkbRigFace.qml": 8,
     "qml/Xbox360Face.qml": 44,
 }
@@ -39,7 +46,9 @@ _REMAINING = {
 def _counts() -> dict[str, int]:
     found = {}
     for folder in ("qml", "theme", "action_plugins"):
-        for path in (_ROOT / folder).rglob("*.qml"):
+        # .js too: QML code-behind files (the Button Map editor's rig_*.js).
+        paths = [*(_ROOT / folder).rglob("*.qml"), *(_ROOT / folder).rglob("*.js")]
+        for path in paths:
             name = path.relative_to(_ROOT).as_posix()
             if name == "qml/Style.qml":
                 continue

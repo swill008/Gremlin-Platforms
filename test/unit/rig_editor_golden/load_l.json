@@ -37,7 +37,7 @@
          "pin": "left",
          "type": "chip"
         },
-        "id": "ID0_L0",
+        "id": "ID1",
         "spines": [
          {
           "curve": true,
@@ -74,7 +74,7 @@
       "chipFy": 0.06307,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID1",
+      "friendly": "ID2",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -83,16 +83,16 @@
       "hotFx": 0.55212,
       "hotFy": 0.17467,
       "hotSize": 28,
-      "id": "ID1",
+      "id": "ID2",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID1",
+         "id": "ID2",
          "pin": "left",
          "type": "chip"
         },
-        "id": "ID1_L0",
+        "id": "ID3",
         "spines": [
          {
           "curve": true,
@@ -101,7 +101,7 @@
          }
         ],
         "to": {
-         "id": "ID1",
+         "id": "ID2",
          "type": "hot"
         }
        }
@@ -161,7 +161,7 @@
       "chipFy": 0.31849,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID2",
+      "friendly": "ID4",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -170,16 +170,16 @@
       "hotFx": 0.55725,
       "hotFy": 0.23244,
       "hotSize": 28,
-      "id": "ID2",
+      "id": "ID4",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID2",
+         "id": "ID4",
          "pin": "left",
          "type": "chip"
         },
-        "id": "ID2_L0",
+        "id": "ID5",
         "spines": [
          {
           "curve": true,
@@ -188,7 +188,7 @@
          }
         ],
         "to": {
-         "id": "ID2",
+         "id": "ID4",
          "type": "hot"
         }
        }
@@ -257,17 +257,17 @@
       "hotFy": 0.25556,
       "hotSize": 4,
       "hwId": 3,
-      "id": "ID3",
+      "id": "ID6",
       "kind": "btn",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID3",
+         "id": "ID6",
          "pin": "left",
          "type": "chip"
         },
-        "id": "ID3_L0",
+        "id": "ID7",
         "spines": [
          {
           "curve": true,
@@ -276,7 +276,7 @@
          }
         ],
         "to": {
-         "id": "ID3",
+         "id": "ID6",
          "type": "hot"
         }
        }
@@ -300,7 +300,7 @@
       "chipFy": 0.41396,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID4",
+      "friendly": "ID8",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -310,16 +310,16 @@
       "hotFx": 0.55175,
       "hotFy": 0.37978,
       "hotSize": 28,
-      "id": "ID4",
+      "id": "ID8",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID4",
+         "id": "ID8",
          "pin": "left",
          "type": "chip"
         },
-        "id": "ID4_L0",
+        "id": "ID9",
         "spines": [
          {
           "curve": true,
@@ -328,7 +328,7 @@
          }
         ],
         "to": {
-         "id": "ID4",
+         "id": "ID8",
          "type": "hot"
         }
        }
@@ -388,9 +388,9 @@
       "chipFy": 0.52,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID5",
+      "friendly": "ID10",
       "from": {
-       "id": "ID5",
+       "id": "ID10",
        "pin": "right",
        "type": "chip"
       },
@@ -401,16 +401,16 @@
       "hotFx": 0.51975,
       "hotFy": 0.64778,
       "hotSize": 4,
-      "id": "ID5",
+      "id": "ID10",
       "kind": "axis_stack",
       "leaders": [
        {
         "from": {
-         "id": "ID5",
+         "id": "ID10",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID5_L0",
+        "id": "ID11",
         "spines": [
          {
           "curve": true,
@@ -424,7 +424,7 @@
          }
         ],
         "to": {
-         "id": "ID5",
+         "id": "ID10",
          "type": "hot"
         }
        }
@@ -469,7 +469,7 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID5",
+       "id": "ID10",
        "type": "hot"
       }
      },
@@ -494,7 +494,7 @@
       "hotFy": 0.26222,
       "hotSize": 4,
       "hwId": 4,
-      "id": "ID6",
+      "id": "ID12",
       "kind": "btn",
       "label": "",
       "leaders": [
@@ -504,7 +504,7 @@
          "fy": 0.25109,
          "type": "free"
         },
-        "id": "ID6_L0",
+        "id": "ID13",
         "spines": [
          {
           "curve": true,
@@ -513,7 +513,7 @@
          }
         ],
         "to": {
-         "id": "ID6",
+         "id": "ID12",
          "type": "hot"
         }
        }
@@ -531,7 +531,7 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID6",
+       "id": "ID12",
        "type": "hot"
       }
      },
@@ -541,9 +541,9 @@
       "chipFy": 0.29311,
       "color": "#18181B",
       "fontSize": 8,
-      "friendly": "ID7",
+      "friendly": "ID14",
       "from": {
-       "id": "ID7",
+       "id": "ID14",
        "pin": "right",
        "type": "chip"
       },
@@ -554,16 +554,16 @@
       "hotFx": 0.41087,
       "hotFy": 0.28578,
       "hotSize": 4,
-      "id": "ID7",
+      "id": "ID14",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID7",
+         "id": "ID14",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID7_L0",
+        "id": "ID15",
         "spines": [
          {
           "curve": true,
@@ -572,7 +572,7 @@
          }
         ],
         "to": {
-         "id": "ID7",
+         "id": "ID14",
          "type": "hot"
         }
        }
@@ -605,7 +605,7 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID7",
+       "id": "ID14",
        "type": "hot"
       }
      },
@@ -615,9 +615,9 @@
       "chipFy": 0.36104,
       "color": "#18181B",
       "fontSize": 8,
-      "friendly": "ID8",
+      "friendly": "ID16",
       "from": {
-       "id": "ID8",
+       "id": "ID16",
        "pin": "right",
        "type": "chip"
       },
@@ -628,16 +628,16 @@
       "hotFx": 0.43088,
       "hotFy": 0.30533,
       "hotSize": 4,
-      "id": "ID8",
+      "id": "ID16",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID8",
+         "id": "ID16",
          "pin": "right",
          "type": "chip"
         },
-        "id": "ID8_L0",
+        "id": "ID17",
         "spines": [
          {
           "curve": true,
@@ -646,7 +646,7 @@
          }
         ],
         "to": {
-         "id": "ID8",
+         "id": "ID16",
          "type": "hot"
         }
        }
@@ -679,7 +679,7 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID8",
+       "id": "ID16",
        "type": "hot"
       }
      },
@@ -703,7 +703,7 @@
       "hotFy": 0.43622,
       "hotSize": 4,
       "hwId": 5,
-      "id": "ID9",
+      "id": "ID18",
       "kind": "btn",
       "label": "",
       "leaders": [
@@ -713,7 +713,7 @@
          "fy": 0.44049,
          "type": "free"
         },
-        "id": "ID9_L0",
+        "id": "ID19",
         "spines": [
          {
           "curve": true,
@@ -722,7 +722,7 @@
          }
         ],
         "to": {
-         "id": "ID9",
+         "id": "ID18",
          "type": "hot"
         }
        }
@@ -740,7 +740,7 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID9",
+       "id": "ID18",
        "type": "hot"
       }
      },
@@ -752,7 +752,7 @@
       "fontSize": 10,
       "friendly": "Button 28",
       "from": {
-       "id": "ID10",
+       "id": "ID20",
        "pin": "bottom",
        "type": "chip"
       },
@@ -764,17 +764,17 @@
       "hotFy": 0.714,
       "hotSize": 4,
       "hwId": 28,
-      "id": "ID10",
+      "id": "ID20",
       "kind": "btn",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID10",
+         "id": "ID20",
          "pin": "bottom",
          "type": "chip"
         },
-        "id": "ID10_L0",
+        "id": "ID21",
         "spines": [
          {
           "curve": true,
@@ -783,7 +783,7 @@
          }
         ],
         "to": {
-         "id": "ID10",
+         "id": "ID20",
          "type": "hot"
         }
        }
@@ -801,7 +801,7 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID10",
+       "id": "ID20",
        "type": "hot"
       }
      },
@@ -813,7 +813,7 @@
       "fontSize": 8,
       "friendly": "Button 27",
       "from": {
-       "id": "ID11",
+       "id": "ID22",
        "pin": "bottom",
        "type": "chip"
       },
@@ -825,17 +825,17 @@
       "hotFy": 0.70044,
       "hotSize": 4,
       "hwId": 27,
-      "id": "ID11",
+      "id": "ID22",
       "kind": "btn",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID11",
+         "id": "ID22",
          "pin": "bottom",
          "type": "chip"
         },
-        "id": "ID11_L0",
+        "id": "ID23",
         "spines": [
          {
           "curve": true,
@@ -844,7 +844,7 @@
          }
         ],
         "to": {
-         "id": "ID11",
+         "id": "ID22",
          "type": "hot"
         }
        }
@@ -862,7 +862,7 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID11",
+       "id": "ID22",
        "type": "hot"
       }
      },
@@ -874,7 +874,7 @@
       "fontSize": 8,
       "friendly": "Button 29",
       "from": {
-       "id": "ID12",
+       "id": "ID24",
        "pin": "bottom",
        "type": "chip"
       },
@@ -886,17 +886,17 @@
       "hotFy": 0.69444,
       "hotSize": 4,
       "hwId": 29,
-      "id": "ID12",
+      "id": "ID24",
       "kind": "btn",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID12",
+         "id": "ID24",
          "pin": "bottom",
          "type": "chip"
         },
-        "id": "ID12_L0",
+        "id": "ID25",
         "spines": [
          {
           "curve": true,
@@ -905,7 +905,7 @@
          }
         ],
         "to": {
-         "id": "ID12",
+         "id": "ID24",
          "type": "hot"
         }
        }
@@ -923,7 +923,7 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID12",
+       "id": "ID24",
        "type": "hot"
       }
      },
@@ -933,9 +933,9 @@
       "chipFy": 0.84844,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID13",
+      "friendly": "ID26",
       "from": {
-       "id": "ID13",
+       "id": "ID26",
        "pin": "top",
        "type": "chip"
       },
@@ -946,16 +946,16 @@
       "hotFx": 0.42438,
       "hotFy": 0.80489,
       "hotSize": 4,
-      "id": "ID13",
+      "id": "ID26",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID13",
+         "id": "ID26",
          "pin": "top",
          "type": "chip"
         },
-        "id": "ID13_L0",
+        "id": "ID27",
         "spines": [
          {
           "curve": true,
@@ -964,7 +964,7 @@
          }
         ],
         "to": {
-         "id": "ID13",
+         "id": "ID26",
          "type": "hot"
         }
        }
@@ -997,7 +997,7 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID13",
+       "id": "ID26",
        "type": "hot"
       }
      },
@@ -1009,7 +1009,7 @@
       "fontSize": 10,
       "friendly": "Axis 4",
       "from": {
-       "id": "ID14",
+       "id": "ID28",
        "pin": "top",
        "type": "chip"
       },
@@ -1021,17 +1021,17 @@
       "hotFy": 0.78356,
       "hotSize": 4,
       "hwId": 4,
-      "id": "ID14",
+      "id": "ID28",
       "kind": "axis",
       "label": "",
       "leaders": [
        {
         "from": {
-         "id": "ID14",
+         "id": "ID28",
          "pin": "top",
          "type": "chip"
         },
-        "id": "ID14_L0",
+        "id": "ID29",
         "spines": [
          {
           "curve": true,
@@ -1040,7 +1040,7 @@
          }
         ],
         "to": {
-         "id": "ID14",
+         "id": "ID28",
          "type": "hot"
         }
        }
@@ -1058,7 +1058,7 @@
       ],
       "textColor": "#E4E4E7",
       "to": {
-       "id": "ID14",
+       "id": "ID28",
        "type": "hot"
       }
      },
@@ -1068,7 +1068,7 @@
       "chipFy": 0.84844,
       "color": "#18181B",
       "fontSize": 10,
-      "friendly": "ID15",
+      "friendly": "ID30",
       "highlight": true,
       "hlBorder": "#22C55E",
       "hlColor": "#14532D",
@@ -1076,16 +1076,16 @@
       "hotFx": 0.37212,
       "hotFy": 0.778,
       "hotSize": 4,
-      "id": "ID15",
+      "id": "ID30",
       "kind": "stack",
       "leaders": [
        {
         "from": {
-         "id": "ID15",
+         "id": "ID30",
          "pin": "top",
          "type": "chip"
         },
-        "id": "ID15_L0",
+        "id": "ID31",
         "spines": [
          {
           "curve": true,
@@ -1094,7 +1094,7 @@
          }
         ],
         "to": {
-         "id": "ID15",
+         "id": "ID30",
          "type": "hot"
         }
        }
@@ -1127,6 +1127,12 @@
       ],
       "textColor": "#E4E4E7"
      }
+    ],
+    "photo": [
+     1,
+     0,
+     0,
+     0
     ],
     "selected": []
    },
