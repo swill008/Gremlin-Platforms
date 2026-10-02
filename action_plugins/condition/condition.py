@@ -321,7 +321,7 @@ class VJoyCondition(AbstractCondition):
                     )
 
         def display_name(self) -> str:
-            vjoy_name = f"vJoy {self.vjoy_id}"
+            vjoy_name = output.vjoy_module_name(self.vjoy_id) or f"vJoy {self.vjoy_id}"
             match self.input_type:
                 case InputType.JoystickAxis:
                     return f"{vjoy_name} - Axis: {self.input_id}"

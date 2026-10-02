@@ -13,7 +13,7 @@ from gremlin.ui import input_pairing as pairing
 from gremlin.ui import xbox_maps
 import gremlin.ui.type_aliases as ta
 from gremlin.modules.ids import guid_key
-from gremlin.modules import ids, output
+from gremlin.modules import ids, output, wiring
 from gremlin.modules.runtime import InputModuleRuntime
 from vigem.xbox import XboxTarget
 
@@ -22,30 +22,6 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 OSC_GUID = str(ids.OSC)
 
-_CHIP = {
-    "left_stick_x": "LSX",
-    "left_stick_y": "LSY",
-    "right_stick_x": "RSX",
-    "right_stick_y": "RSY",
-    "left_trigger": "LT",
-    "right_trigger": "RT",
-    "a": "A",
-    "b": "B",
-    "x": "X",
-    "y": "Y",
-    "left_shoulder": "LB",
-    "right_shoulder": "RB",
-    "left_thumb": "LS",
-    "right_thumb": "RS",
-    "start": "Str",
-    "back": "Bak",
-    "guide": "G",
-    "dpad_up": "U",
-    "dpad_down": "D",
-    "dpad_left": "L",
-    "dpad_right": "R",
-    "dpad": "Hat",
-}
 
 
 def _connected_keys() -> set[str]:
@@ -81,7 +57,7 @@ def _xbox_label(target: str) -> str:
 
 def _chip(target: str) -> str:
     key = str(target or "").strip().lower().replace("-", "_")
-    return _CHIP.get(key, key[:3] or "xb")
+    return wiring.XBOX_SHORT.get(key, key[:3] or "xb")
 
 
 def _pair_label(items) -> str:
@@ -119,7 +95,7 @@ def _mapped_xbox_rows(guid: str, input_type: InputType) -> list[dict]:
                     "label": src,
                     "xboxPad": int(pad),
                     "xboxTarget": str(target),
-                    "xboxLabel": f"Xbox {pad} {_xbox_label(target)}",
+                    "xboxLabel": wiring.xbox_dest(pad, target),
                     "xboxChip": _chip(target),
                 }
             )

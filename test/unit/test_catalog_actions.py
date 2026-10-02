@@ -83,6 +83,16 @@ def _load_helpers():
     ns: dict = {
         "InputType": type("InputType", (), {"JoystickButton": 1}),
         "common": type("common", (), {"input_to_ui_string": staticmethod(lambda t, i: f"Button {i}")}),
+        # Destination text comes from gremlin.modules.wiring (tested on its own).
+        "wiring": type(
+            "wiring",
+            (),
+            {
+                "dest_label": staticmethod(
+                    lambda a, short=False: f"vJoy {a.vjoy_device_id} · Button {a.vjoy_input_id}"
+                )
+            },
+        ),
     }
     exec(src[start:end], ns)
     return ns

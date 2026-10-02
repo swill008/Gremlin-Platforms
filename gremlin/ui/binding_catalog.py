@@ -10,11 +10,11 @@ import xml.etree.ElementTree as ElementTree
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import common, shared_state
+from gremlin import shared_state
+from gremlin.modules import wiring
 from gremlin.modules.claim import type_of
 from gremlin.profile import InputItem, InputItemBinding
 from gremlin.signal import signal
-from gremlin.types import InputType
 from gremlin.ui.module_inputs import ModuleClaimedInputModel
 from gremlin.ui.module_model import _load_module_doc
 
@@ -204,15 +204,8 @@ def summarize_action(action) -> tuple[str, str]:
     tag = str(getattr(action, "tag", "") or "")
     label = _TYPE_LABELS.get(tag, getattr(action, "name", None) or tag or "Action")
     dest = ""
-    if tag == "map-to-vjoy":
-        vid = getattr(action, "vjoy_device_id", "?")
-        itype = getattr(action, "vjoy_input_type", InputType.JoystickButton)
-        iid = getattr(action, "vjoy_input_id", 1)
-        try:
-            iname = common.input_to_ui_string(itype, int(iid))
-        except Exception:
-            iname = str(iid)
-        dest = f"vJoy {vid} · {iname}"
+    if tag in ("map-to-vjoy", "map-to-xbox"):
+        dest = wiring.dest_label(action)
     elif tag == "map-to-keyboard":
         keys = getattr(action, "keys", None) or []
         dest = " + ".join(_key_name(k) for k in keys) if keys else "Keyboard"
@@ -220,16 +213,6 @@ def summarize_action(action) -> tuple[str, str]:
         mode = getattr(action, "mode", None)
         button = getattr(action, "button", None)
         dest = str(getattr(button, "name", None) or button or mode or "Mouse")
-    elif tag == "map-to-xbox":
-        target = getattr(action, "xbox_target", None)
-        raw = getattr(target, "value", None)
-        if raw is None:
-            raw = target
-        try:
-            from vigem.xbox import XboxTarget
-            dest = str(XboxTarget.from_string(str(raw or "")).label)
-        except Exception:
-            dest = str(getattr(target, "label", None) or raw or "Xbox")
     elif tag == "map-to-logical-device":
         dest = str(getattr(action, "action_label", None) or "Logical device")
     elif tag == "macro":

@@ -9,6 +9,7 @@ from PySide6 import QtCore
 
 import dill
 from gremlin import device_initialization, event_handler, shared_state
+from gremlin.modules import wiring
 from gremlin.signal import signal
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
@@ -91,29 +92,9 @@ def _dest_labels_for_item(item) -> list[str]:
         if root is None:
             continue
         for action in _walk_actions(root):
-            tag = getattr(action, "tag", "")
-            if tag == "map-to-vjoy":
-                try:
-                    vjoy_id = int(action.vjoy_device_id)
-                    vtype = getattr(action, "vjoy_input_type", None)
-                    vinput = int(action.vjoy_input_id)
-                except Exception:
-                    continue
-                if vtype == InputType.JoystickAxis:
-                    dest = AXIS_LABELS.get(vinput, f"A{vinput}")
-                elif vtype == InputType.JoystickHat:
-                    dest = f"H{vinput}"
-                else:
-                    dest = f"B{vinput}"
-                labels.append(f"vJoy {vjoy_id} {dest}")
-            elif tag == "map-to-xbox":
-                try:
-                    xid = int(getattr(action, "xbox_device_id", 1))
-                except Exception:
-                    xid = 1
-                target = getattr(action, "xbox_target", None)
-                pretty = getattr(target, "label", None) or str(target or "").replace("_", " ")
-                labels.append(f"Xbox {xid} {pretty}")
+            text = wiring.dest_label(action, short=True)
+            if text:
+                labels.append(text)
     return labels
 
 

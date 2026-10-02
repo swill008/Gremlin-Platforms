@@ -677,6 +677,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 13. Minor/cosmetic: F-01b, HD-01b, PS-06, MENU-CLIP, IC-01b, IC-17b, C-06, LP-24b, S-05b, OPT-X1b, OPT-U01b, OPT-F08b, CAL-05b, MM-01b, AE-XML-CHAIN, AE-NARROW, HH-08 note.
 14. ~~Back burner: XB-IMG / XV-IMG (#9)~~ fixed: Xbox face loads xbox360_two_panel.jpg from the data folder's modules/library; picture labels corrected (only LB / RB on the bumpers kept).
 15. To do: [Stock Images] Code still looks for the stock pictures in `qml/images`, which "moved user data" (a4f743fc) emptied; the pictures are now in `User_Data/images` and `User_Data/modules/library`. Points at the old path: `imagesFolderUrl()` (hardware_profile.py, creates an empty `qml/images` next to the exe), `_stock_photo()` / `_stock_photo_l()`, the relative-path fallback in hardware_profile.py, Button Map `stockImage`, VkbRigFace / VkbRigEditor (`images/vkb_gladiator_rig.jpg`), Xbox360Face (done: now uses the modules library lookup). Decide where stock pictures live for other users (bundled read-only vs copied into the data folder), then point all of these at one place.
+16. To do: [Xbox Pads] Only one Xbox pad for now ("Xbox 360 Controller" = pad 1). Later: a way to add Xbox output modules for pads 2-4 ("Xbox 360 N", nothing claimed), listed in Map to Xbox and the viewers. The output layer already maps "Xbox 360 N" to pad N (output.xbox_pad_of).
 
 ### Noted while fixing #10 (2026-09-30)
 
