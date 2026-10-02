@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
+import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Menus
@@ -689,6 +690,8 @@ Item {
             anchors.fill: parent
             anchors.margins: Style.dp(10)
             source: _page.dragPhoto
+            // The card's photo size (StatusCard), not the full photo.
+            sourceSize: Qt.size(720 * Screen.devicePixelRatio, 520 * Screen.devicePixelRatio)
             fillMode: Image.PreserveAspectFit
             opacity: 0.4
             visible: _page.dragPhoto && _page.dragPhoto.length
@@ -915,6 +918,8 @@ Item {
                 anchors.fill: parent
                 anchors.margins: Style.dp(10)
                 source: _page.dragPhoto
+                // The card's photo size (StatusCard), not the full photo.
+                sourceSize: Qt.size(720 * Screen.devicePixelRatio, 520 * Screen.devicePixelRatio)
                 fillMode: Image.PreserveAspectFit
                 visible: _page.dragPhoto && _page.dragPhoto.length
                 asynchronous: true

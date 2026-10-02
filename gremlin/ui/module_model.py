@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 from PySide6 import QtCore
@@ -563,6 +564,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._dest_snap: dict[str, dict] = {}
         # vJoy id and claim per output card, read once per reload.
         self._dest_targets: dict[str, tuple[int, dict]] = {}
+        # Claim per input card: (checked at, file stamp, claim). Input events
+        # come hundreds of times a second while sticks move; re-reading and
+        # parsing the module file for each one churned memory and CPU.
+        self._source_claims: dict[str, tuple[float, tuple[int, int] | None, dict]] = {}
         self._reload()
         event_handler.EventListener().device_change_event.connect(self._schedule_reload)
         from gremlin.modules.runtime import InputModuleRuntime
@@ -1201,6 +1206,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     def _refresh_inplace(self) -> None:
         self._dest_targets = {}
+        self._source_claims = {}
         if not self._rows:
             self._reload()
             return
@@ -1335,17 +1341,44 @@ class ModuleListModel(QtCore.QAbstractListModel):
             hid = int(getattr(event, "identifier", 0) or 0)
         except (TypeError, ValueError):
             return
-        doc = _load_module_doc(row.raw_name or row.name, row.guid)
-        claim = read_claim(doc) if doc else {}
+        claim = self._source_claim(row)
         if not claim_is_empty(claim) and not claim_allows(claim, kind, hid):
             return
         self._set_last(row, kind, hid, claim)
+
+    # How often an input card looks at its module file for a newer save.
+    _CLAIM_CHECK_S = 0.5
+
+    def _source_claim(self, row: ModuleRow) -> dict:
+        """An input card's claim, re-read only when its module file changed
+        (looked at no more than twice a second)."""
+        now = time.monotonic()
+        cached = self._source_claims.get(row.slug)
+        if cached is not None and now - cached[0] < self._CLAIM_CHECK_S:
+            return cached[2]
+        name = row.raw_name or row.name
+        path = _maps_dir() / f"{resolve_module_slug(name, row.guid)}.json"
+        try:
+            stat = path.stat()
+            stamp: tuple[int, int] | None = (stat.st_mtime_ns, stat.st_size)
+        except OSError:
+            stamp = None
+        if cached is not None and cached[1] == stamp:
+            claim = cached[2]
+        else:
+            doc = _load_module_doc(name, row.guid) if stamp else {}
+            claim = read_claim(doc) if doc else {}
+        self._source_claims[row.slug] = (now, stamp, claim)
+        return claim
 
     def _set_last(self, row: ModuleRow, kind: str, hid: int, claim: dict | None) -> None:
         hardware = f"{kind} {hid}"
         friendly = claim_friendly(claim, kind, hid) or hardware.replace(
             "button", "Button"
         ).replace("axis", "Axis").replace("hat", "Hat")
+        # The same input again (an axis moving): the card already shows it.
+        if self._last.get(row.slug) == (friendly, hardware):
+            return
         self._last[row.slug] = (friendly, hardware)
         idx = self._rows.index(row)
         self.dataChanged.emit(
@@ -1394,6 +1427,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     def _reload(self) -> None:
         self._dest_targets = {}
+        self._source_claims = {}
         hidden = _hidden_slugs()
         show_stubs = _show_stubs()
         rows: list[ModuleRow] = []

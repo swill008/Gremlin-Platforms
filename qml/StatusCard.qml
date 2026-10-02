@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
+import QtQuick.Window
 
 import Gremlin.Menus
 import Gremlin.Style
@@ -112,6 +113,11 @@ Rectangle {
                     anchors.margins: Style.dp(2)
                     source: photo
                     fillMode: Image.PreserveAspectFit
+                    // Decoded no larger than a card can show (720 x 520, see
+                    // _clampW/_clampH), not at the photo's full size: about
+                    // 5 MB less per card. A fixed size, so resizing a card
+                    // does not decode the photo again.
+                    sourceSize: Qt.size(720 * Screen.devicePixelRatio, 520 * Screen.devicePixelRatio)
                     asynchronous: true
                     cache: true
                     visible: photo && photo.length
