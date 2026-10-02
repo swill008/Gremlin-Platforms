@@ -105,11 +105,13 @@ function beginTurn(mx, my) {
     for (var i = 0; i < list.length; i++) {
         var n = list[i]
         var mid = _centre(n)
+        var tip = (n.tail && n.tail.fx !== undefined) ? calloutTip(n) : null
         items.push({
             id: n.id,
             c: mid,
             rot: n.rot || 0,
-            ends: isLine(n) ? lineEndsAt(n) : null
+            ends: isLine(n) ? lineEndsAt(n) : null,
+            tip: tip
         })
     }
     turnStart = { c: c, a0: Shapes.handleAngle(c.x, c.y, mx, my), items: items }
@@ -140,6 +142,10 @@ function _turnTo(deg) {
             _shift(n, dx / Math.max(1, s.w), dy / Math.max(1, s.h))
         if (isRotatable(n))
             n.rot = Shapes.normDeg(it.rot + deg)
+        if (it.tip) {
+            var t = Shapes.rotatePt(it.tip.x - st.c.x, it.tip.y - st.c.y, deg)
+            n.tail = { fx: xToFx(st.c.x + t.x), fy: yToFy(st.c.y + t.y) }
+        }
     }
 }
 

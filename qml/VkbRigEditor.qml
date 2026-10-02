@@ -27,6 +27,7 @@ import "rig_align.js" as RigAlign
 import "rig_find.js" as RigFind
 import "rig_mirror.js" as RigMirror
 import "rig_grouprot.js" as RigGroupRot
+import "rig_callout.js" as RigCallout
 
 Item {
     id: _ed
@@ -505,6 +506,19 @@ Item {
     function dragTurn(mx, my) { return RigGroupRot.dragTurn(mx, my) }
     function endTurn() { return RigGroupRot.endTurn() }
     function turnSelectionBy(deg) { return RigGroupRot.turnSelectionBy(deg) }
+
+    // Callouts (rig_callout.js)
+    function isCallout(n) { return RigCallout.isCallout(n) }
+    function calloutTip(n) { return RigCallout.calloutTip(n) }
+    function calloutTipLocal(n, w, h) { return RigCallout.calloutTipLocal(n, w, h) }
+    function paintCallout(ctx, n, w, h, ox, oy) { return RigCallout.paintCallout(ctx, n, w, h, ox, oy) }
+    function onCalloutTip(n, mx, my) { return RigCallout.onCalloutTip(n, mx, my) }
+    function dragCalloutTip(n, mx, my) { return RigCallout.dragCalloutTip(n, mx, my) }
+    function dropCalloutTip(n, mx, my) { return RigCallout.dropCalloutTip(n, mx, my) }
+    function addCalloutTail() { return RigCallout.addCalloutTail() }
+    function removeCalloutTail() { return RigCallout.removeCalloutTail() }
+    function detachCalloutTail() { return RigCallout.detachCalloutTail() }
+    function addCalloutFor(chipId) { return RigCallout.addCalloutFor(chipId) }
     function distributeSelection(axis) { return RigAlign.distributeSelection(axis) }
 
     // The Properties panel's fields (rig_props.js)

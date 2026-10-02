@@ -306,6 +306,10 @@ function topics() {
             + "<li><b>Box</b>: preset Size (Caption, Small, Medium, Large, Title, Wide), Theme (Dark, Hollow, Sheet), Text colour…, Fill colour…, Outline colour…, Fill opacity and Outline opacity.</li>"
             + "<li><b>Copy and paint format</b>: <b>Copy format</b> takes this box's look; <b>Paint format</b> puts it on the next boxes you click; <b>Clear formatting</b> resets it; <b>Copy text</b> copies the words.</li>"
             + "</ul>"),
+        topic("Button Map", "Callouts",
+            "<p>A callout is a text box with a pointer. Draw → <b>Box</b> → <b>Callout</b>, then drag the box; or right-click a chip → <b>Add callout</b> for one beside the chip, pointing at it and showing its text. Everything a text box does, a callout does too: typing, fonts, themes, colours, paint format, turning.</p>"
+            + "<p>Select a callout to see the round handle at the pointer's tip. Drag it anywhere to point at a spot on the photo; drop it on a chip and the pointer follows that chip when it moves (the handle is filled while it does). The pointer leaves the side of the box facing its tip.</p>"
+            + "<p>The text box's <b>Pointer</b> section: <b>Detach from chip</b> keeps the pointer where it is without following, <b>Remove pointer</b> makes it a plain text box, and on a plain text box <b>Add pointer</b> makes it a callout.</p>"),
         topic("Button Map", "Tables",
             "<p>Draw → <b>Box</b> → <b>Table</b>, then drag. Double-click a cell to type in it.</p>"
             + "<ul>"

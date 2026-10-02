@@ -5718,6 +5718,7 @@
     "menu": [
      "Button 4",
      "Rename",
+     "Add callout",
      "Delete chip",
      "> Chip style",
      "> Colours",
@@ -5759,6 +5760,7 @@
      "> Text",
      "> Box",
      "> Copy and paint format",
+     "> Pointer",
      "> Rotate",
      "> Arrange"
     ],

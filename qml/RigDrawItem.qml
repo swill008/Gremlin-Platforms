@@ -252,7 +252,48 @@ Item {
             return !!(node && node.shape === "text")
         }
         anchors.fill: parent
+        // A callout: box and pointer drawn as one shape, reaching past the box.
+        Canvas {
+            id: _calloutFace
+            readonly property bool on: { ed.tick; return ed.isCallout(node) }
+            readonly property var tip: {
+                ed.tick
+                return on ? ed.calloutTipLocal(node, _drawRoot.width, _drawRoot.height) : ({ x: 0, y: 0 })
+            }
+            visible: on
+            x: Math.min(0, tip.x) - 4
+            y: Math.min(0, tip.y) - 4
+            width: Math.max(_drawRoot.width, tip.x) + 4 - x
+            height: Math.max(_drawRoot.height, tip.y) + 4 - y
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.reset()
+                if (on)
+                    ed.paintCallout(ctx, node, _drawRoot.width, _drawRoot.height, -x, -y)
+            }
+            onTipChanged: requestPaint()
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+            Connections {
+                target: ed
+                function onTickChanged() { if (_calloutFace.on) _calloutFace.requestPaint() }
+            }
+        }
+        // The pointer's tip: drag it; drop it on a chip to follow that chip.
         Rectangle {
+            z: 5
+            visible: { ed.tick; return !!(_calloutFace.on && ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node)) }
+            x: _calloutFace.tip.x - 5
+            y: _calloutFace.tip.y - 5
+            width: 10
+            height: 10
+            radius: 5
+            color: { ed.tick; return (node && node.tail && node.tail.to) ? ed.handleFill : ed.handleInk }
+            border.color: ed.handleFill
+            border.width: 2
+        }
+        Rectangle {
+            visible: { ed.tick; return !ed.isCallout(node) }
             anchors.fill: parent
             color: {
                 ed.tick
@@ -272,6 +313,7 @@ Item {
             }
         }
         Rectangle {
+            visible: { ed.tick; return !ed.isCallout(node) }
             anchors.fill: parent
             color: "transparent"
             border.color: {

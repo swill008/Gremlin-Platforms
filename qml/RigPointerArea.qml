@@ -409,6 +409,12 @@ MouseArea {
             ed.endTurn()
             return
         }
+        if (ed.dragKind === "draw-tail") {
+            ed.dropCalloutTip(ed.nodeAt(ed.selectedId), m.x, m.y)
+            ed.dragKind = ""
+            ed.bump()
+            return
+        }
         if (ed.dragKind === "linearm") {
             ed.lineArm = false
             ed.dragKind = ""

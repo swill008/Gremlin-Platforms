@@ -460,6 +460,12 @@ function _textSections() {
             _act("Clear formatting", clearTextFormat),
             _act("Copy text", copyTextPlain)
         ]),
+        _sect("pointer", "Pointer", isCallout(n) ? [
+            _act("Detach from chip", detachCalloutTail, !!(n.tail && n.tail.to)),
+            _act("Remove pointer", removeCalloutTail)
+        ] : [
+            _act("Add pointer", addCalloutTail)
+        ]),
         _rotate(),
         _arrange()
     ]
@@ -509,7 +515,7 @@ function _canvasSections() {
     var draw = [
         _pick("Shape", tools, _SHAPE_LABELS, function(t) { return drawTool === t }, setDrawTool),
         _pick("Line", ["line", "arrowline"], ["Line", "Arrow"], function(t) { return drawTool === t }, setDrawTool),
-        _pick("Box", ["text", "table"], ["Text box", "Table"], function(t) { return drawTool === t }, setDrawTool),
+        _pick("Box", ["text", "callout", "table"], ["Text box", "Callout", "Table"], function(t) { return drawTool === t }, setDrawTool),
         _act("Import picture…", function() { overlayImportRequested() }),
         _act("Paste picture", function() { pastePictureRequested() }, canPastePicture),
         _act("Stop drawing", function() { drawTool = "" }, drawTool.length > 0)
@@ -556,7 +562,7 @@ function menuModel() {
     var quick = []
     var sections = []
     if (kind === "chip") {
-        quick = [_act("Rename", _renameChip), _act("Delete chip", deleteChip)]
+        quick = [_act("Rename", _renameChip), _act("Add callout", function() { addCalloutFor(_ctx.nodeId) }), _act("Delete chip", deleteChip)]
         sections = [_chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _group(), _format(), _around(), _arrange()]
     } else if (kind === "group") {
         quick = groupEditId !== ""

@@ -55,6 +55,8 @@ function _mirrorDrawing(n, pictures) {
             n.ends = [1 - e[0], e[1], 1 - e[2], e[3]]
         return
     }
+    if (n.tail && n.tail.fx !== undefined)
+        n.tail.fx = _mirrorX(n.tail.fx)
     if (isText(n) || isTable(n))
         return
     if (isOverlay(n) && !pictures) {

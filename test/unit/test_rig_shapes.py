@@ -215,3 +215,33 @@ def test_crop_from_drag_and_clamp(js: QtQml.QJSEngine) -> None:
     assert call(js, "clampCrop({l: 0.7, r: 0.7})") == pytest.approx(
         {"l": 0.7, "t": 0, "r": 0.28, "b": 0}
     )
+
+
+def test_callout_pointer_leaves_the_side_facing_its_tip(js: QtQml.QJSEngine) -> None:
+    w, h = 100, 40
+    below = call(js, f"calloutOutline({w}, {h}, 30, 90, 20)")
+    assert [30, 90] in below
+    # The pointer's base sits on the bottom edge, 20 wide, round x = 30.
+    base = [p for p in below if p[1] == h and 0 < p[0] < w]
+    assert sorted(x for x, _ in base) == [20, 40]
+    right = call(js, f"calloutOutline({w}, {h}, 160, 20, 20)")
+    assert [160, 20] in right
+    assert all(p[0] == w for p in right if p[1] not in (0, h) and p != [160, 20])
+    above = call(js, f"calloutOutline({w}, {h}, 50, -30, 20)")
+    left = call(js, f"calloutOutline({w}, {h}, -50, 20, 20)")
+    assert [50, -30] in above and [-50, 20] in left
+
+
+def test_callout_base_stays_on_its_side(js: QtQml.QJSEngine) -> None:
+    # A tip far to one side: the base slides to the end of the side, and is
+    # never wider than a third of it.
+    pts = call(js, "calloutOutline(60, 40, 70, 500, 40)")
+    base = sorted(x for x, y in pts if y == 40 and 0 < x < 60)
+    assert base[0] >= 0 and base[-1] <= 60
+    assert base[-1] - base[0] <= 20 + 1e-9
+
+
+def test_callout_tip_inside_is_just_the_box(js: QtQml.QJSEngine) -> None:
+    assert call(js, "calloutOutline(100, 40, 50, 20, 20)") == [
+        [0, 0], [100, 0], [100, 40], [0, 40]
+    ]

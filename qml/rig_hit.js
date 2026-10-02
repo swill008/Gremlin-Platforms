@@ -118,6 +118,9 @@ function hitTest(mx, my) {
 }
 
 function hitDraw(n, mx, my) {
+    // A selected callout's pointer tip, outside its box.
+    if (onCalloutTip(n, mx, my))
+        return "tail"
     var i = nodeIndex(n.id)
     var it = (i >= 0 && _chips) ? _chips.itemAt(i) : null
     if (!it)

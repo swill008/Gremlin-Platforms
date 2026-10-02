@@ -1301,6 +1301,7 @@
     "menu": [
      "Button 3",
      "Rename",
+     "Add callout",
      "Delete chip",
      "> Chip style",
      "> Colours",
@@ -1337,6 +1338,7 @@
     "menu": [
      "Button 3",
      "Rename",
+     "Add callout",
      "Delete chip",
      "v Chip style",
      "  Font size: 8 | 9 | *10 | 11 | 12 | 14 | 16 | 18 | 20 | 22",
@@ -1433,6 +1435,7 @@
     "menu": [
      "Button 3",
      "Rename",
+     "Add callout",
      "Delete chip",
      "v Chip style",
      "  Font size: 8 | 9 | *10 | 11 | 12 | 14 | 16 | 18 | 20 | 22",
@@ -1475,6 +1478,7 @@
     "menu": [
      "Button 3",
      "Rename",
+     "Add callout",
      "Delete chip",
      "> Chip style",
      "> Colours",
@@ -1515,6 +1519,7 @@
     "menu": [
      "Button 4",
      "Rename",
+     "Add callout",
      "Delete chip",
      "> Chip style",
      "> Colours",
@@ -2992,7 +2997,7 @@
      "v Draw",
      "  Shape: Rectangle | Rounded | Ellipse | Triangle | Diamond | Arrow | Double arrow",
      "  Line: Line | Arrow",
-     "  Box: Text box | Table",
+     "  Box: Text box | Callout | Table",
      "  Import picture\u2026",
      "  Paste picture (off)",
      "  Stop drawing (off)"

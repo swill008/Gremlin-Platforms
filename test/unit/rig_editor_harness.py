@@ -1381,6 +1381,40 @@ def scenario_turn(s: Session) -> None:
     s.steps[-1]["state"]["textRot"] = s.node(text).get("rot")
 
 
+def scenario_callout(s: Session) -> None:
+    """Callouts: drawn with the tool, the tip dragged onto a chip and following
+    it, one added for a chip, the pointer removed and added back."""
+    _load(s, "evo_r")
+    s.call("setDrawTool", "callout")
+    s.drag(s.point(0.12, 0.08), s.point(0.26, 0.14))
+    s.call("setDrawTool", "")
+    box = s.state()["selected"][0]
+    s.record("drawn", image=True)
+
+    # Drag the tip onto Button 3: it follows the chip from then on.
+    tip = s.call_on_node("calloutTip", box)
+    chip = s._box("b3")
+    s.drag(
+        s.ed_point(tip["x"], tip["y"]),
+        s.ed_point(chip["x"] + chip["w"] / 2, chip["y"] + chip["h"] / 2),
+    )
+    s.record("tip-on-chip", image=True)
+    s.call("setSelection", ["b3"])
+    s.key(QtCore.Qt.Key.Key_Down, QtCore.Qt.KeyboardModifier.ShiftModifier)
+    s.key(QtCore.Qt.Key.Key_Down, QtCore.Qt.KeyboardModifier.ShiftModifier)
+    s.record("chip-moved", image=True)
+
+    # Right-click a chip → Add callout.
+    s.call("addCalloutFor", s.call("placedId", "btn", 6))
+    added = s.state()["selected"][0]
+    s.record("added-for-chip", image=True)
+    s.call("removeCalloutTail")
+    s.record("pointer-removed")
+    s.call("addCalloutTail")
+    s.record("pointer-added")
+    s.steps[-1]["state"]["tails"] = [s.node(box).get("tail"), s.node(added).get("tail")]
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1431,6 +1465,7 @@ SCENARIOS = {
     "labels": scenario_labels,
     "mirror": scenario_mirror,
     "turn": scenario_turn,
+    "callout": scenario_callout,
 }
 
 

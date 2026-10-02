@@ -281,6 +281,10 @@ function addDrawAround(shape) {
 // New drawings go on top of the other drawings, under the chips; a text box
 // goes on top of everything.
 function addDrawFree(shape, x0, y0, x1, y1) {
+    // A callout is a text box with a pointer (rig_callout.js).
+    var callout = shape === "callout"
+    if (callout)
+        shape = "text"
     if (isLineTool(shape)) {
         addLineFree(shape, x0, y0, x1, y1)
         return
@@ -337,6 +341,8 @@ function addDrawFree(shape, x0, y0, x1, y1) {
         st.wrap = true
         st.scaleFont = false
     }
+    if (callout)
+        st.tail = { fx: xToFx(x - w * 0.3), fy: yToFy(y + h * 2) }
     if (shape === "text")
         nodes.push(st)
     else

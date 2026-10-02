@@ -228,3 +228,33 @@ function cropFromDrag(box, rot, c0, handle, px, py) {
     if (handle.indexOf("n") >= 0) c.t = a.t + (box.h - want.h) / pxY
     return clampCrop(c)
 }
+
+// --- callouts ------------------------------------------------------------------
+
+// The outline of a callout: a w x h box with a pointer to (tx, ty), in the
+// box's own coordinates, as [[x, y], ...] going round clockwise. The pointer
+// leaves the side facing its tip, centred under the tip where it can be,
+// base wide (at most a third of that side). A tip inside the box gives the
+// box alone.
+function calloutOutline(w, h, tx, ty, base) {
+    var dx = tx < 0 ? -tx : (tx > w ? tx - w : 0)
+    var dy = ty < 0 ? -ty : (ty > h ? ty - h : 0)
+    var box = [[0, 0], [w, 0], [w, h], [0, h]]
+    if (!dx && !dy)
+        return box
+    function along(len, at) {
+        var half = Math.min(base / 2, len / 6)
+        var c = Math.max(half, Math.min(len - half, at))
+        return { a: c - half, b: c + half }
+    }
+    if (dy >= dx) {
+        var bx = along(w, tx)
+        if (ty < 0)
+            return [[0, 0], [bx.a, 0], [tx, ty], [bx.b, 0], [w, 0], [w, h], [0, h]]
+        return [[0, 0], [w, 0], [w, h], [bx.b, h], [tx, ty], [bx.a, h], [0, h]]
+    }
+    var by = along(h, ty)
+    if (tx > w)
+        return [[0, 0], [w, 0], [w, by.a], [tx, ty], [w, by.b], [w, h], [0, h]]
+    return [[0, 0], [w, 0], [w, h], [0, h], [0, by.b], [tx, ty], [0, by.a]]
+}
