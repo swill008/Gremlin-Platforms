@@ -30,6 +30,11 @@ ApplicationWindow {
     property string initialSlug: ""
     property bool allowClose: false
 
+    // For the main window's quit: unsaved calibration this window would ask about.
+    function hasUnsavedWork() {
+        return !allowClose && _calib.hasUnsaved()
+    }
+
     ToolWindowMemory {
         host: _calibrationDialog
         name: "calibration"

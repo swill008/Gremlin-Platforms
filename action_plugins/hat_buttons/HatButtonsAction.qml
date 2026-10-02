@@ -13,6 +13,7 @@ import Gremlin.Style
 import "../../qml"
 
 Item {
+    id: _hat
     property HatButtonsModel action
 
     implicitHeight: _content.height
@@ -34,7 +35,16 @@ Item {
                 checked: _root.action.buttonCount == 4
 
                 onClicked: {
-                    _root.action.buttonCount = 4
+                    // The diagonals' actions would go: ask first.
+                    var lost = _hat.action.actionsDroppedBy(4)
+                    if (!lost) {
+                        _hat.action.buttonCount = 4
+                        return
+                    }
+                    _modeGate.confirmThen("Switch to 4 way",
+                        (lost === 1 ? "1 action" : lost + " actions")
+                        + " on the diagonal directions (North-East, South-East, South-West, North-West) will be removed. North, East, South and West keep theirs.",
+                        "Switch to 4 way", function() { _hat.action.buttonCount = 4 }, null, true)
                 }
             }
             RadioButton {
@@ -98,5 +108,10 @@ Item {
                 width: _buttonSequence.width
             }
         }
+    }
+
+    // Asks before 4 way drops the diagonals' actions.
+    DismissibleDialog {
+        id: _modeGate
     }
 }

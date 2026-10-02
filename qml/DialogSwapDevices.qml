@@ -100,10 +100,17 @@ ApplicationWindow {
             Button {
                 text: "Swap Bindings"
                 onClicked: () => {
-                    _statusMessage.text = _tools.swapDevices(
-                        _profileDeviceSelection.currentValue,
-                        _physicalDeviceSelection.currentValue
-                    )
+                    var from = _profileDeviceSelection.currentValue
+                    var to = _physicalDeviceSelection.currentValue
+                    // Every binding moves at once: ask first.
+                    _swapGate.confirmThen("Swap bindings",
+                        "Move every binding of " + _profileDeviceSelection.currentText
+                        + " onto " + _physicalDeviceSelection.currentText + "?\n\n"
+                        + "This changes the open profile. Nothing is saved yet: to undo, "
+                        + "load the profile again without saving.",
+                        "Swap bindings", function() {
+                            _statusMessage.text = _tools.swapDevices(from, to)
+                        })
                 }
             }
 
@@ -116,5 +123,10 @@ ApplicationWindow {
                 text: "Select devices, then click the button."
             }
         }
+    }
+
+    // Asks before Swap Bindings moves every binding.
+    DismissibleDialog {
+        id: _swapGate
     }
 }

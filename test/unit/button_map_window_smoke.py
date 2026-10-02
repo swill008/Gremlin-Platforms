@@ -180,6 +180,25 @@ def main() -> None:
         )
         print(f"RESULT file-menu-device {menu.evaluate()[0]}", flush=True)
         QtTest.QTest.qWait(200)
+        # Cancel leaves no undo steps: an edit, then Cancel, then nothing
+        # to undo (the Edit menu's Undo too).
+        edit = QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win,
+            "_buttonMap.enterEdit(); var e = _ed(); e.seedHist();"
+            " e.nodes.push({id: 'smoke_box', kind: 'draw', shape: 'rect',"
+            " x: 0.1, y: 0.1, w: 0.1, h: 0.1}); e.bump(); String(e.canUndo)",
+        )
+        before = edit.evaluate()[0]
+        QtTest.QTest.qWait(300)
+        cancel = QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win, "_buttonMap.discardEdit(); 'ok'"
+        )
+        cancel.evaluate()
+        QtTest.QTest.qWait(300)
+        after = QtQml.QQmlExpression(
+            QtQml.qmlContext(win), win, "String(_ed().canUndo)"
+        ).evaluate()[0]
+        print(f"RESULT undo-after-cancel {before} {after}", flush=True)
     for warning in warnings:
         print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)
     print("done", flush=True)

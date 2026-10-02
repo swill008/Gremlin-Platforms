@@ -624,9 +624,37 @@ ApplicationWindow {
         Qt.quit()
     }
 
+    // A tool window with unsaved work (Configure module, Calibration), or
+    // null. Quitting would close it without its own Save question.
+    function toolWindowWithUnsavedWork() {
+        var wins = [configureWin, Helpers.windowOf("DialogCalibration.qml")]
+        for (var i = 0; i < wins.length; i++) {
+            var w = wins[i]
+            if (w && w.visible && typeof w.hasUnsavedWork === "function" && w.hasUnsavedWork())
+                return w
+        }
+        return null
+    }
+
+    // Brings that window forward and lets it ask about its unsaved work;
+    // the quit stops there. True when there was one.
+    function stopQuitForToolWindow() {
+        var w = toolWindowWithUnsavedWork()
+        if (!w)
+            return false
+        cancelQuitRequest()
+        w.show()
+        w.raise()
+        w.requestActivate()
+        w.close()
+        return true
+    }
+
     // restart: start Gremlin again once it has shut down. update: run the
     // downloaded installer once it has shut down. Any other quit clears both.
     function quitGremlin(restart, update) {
+        if (stopQuitForToolWindow())
+            return
         if (backend)
             backend.setRestartOnExit(!!restart)
         if (updater)
@@ -1266,7 +1294,13 @@ ApplicationWindow {
         if (updater)
             updater.setInstallOnExit(false)
         _windowPlacement.save(_root)
-        // Same order as File > Exit: panels, then the profile, then quit.
+        // Same order as File > Exit: tool windows, panels, then the profile,
+        // then quit.
+        if (toolWindowWithUnsavedWork()) {
+            close.accepted = false
+            stopQuitForToolWindow()
+            return
+        }
         if (displayUnsaved() || (backend && backend.profileContainsUnsavedChanges)) {
             close.accepted = false
             quitGremlin(false)

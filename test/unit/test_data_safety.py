@@ -119,3 +119,24 @@ def test_clear_image_then_cancel_and_save_drops_the_copy(modules: pathlib.Path) 
     hw.stashPhoto("Stick R")
     hw.dropPhotoStash("Stick R")
     assert hw.restorePhoto("Stick R") is False
+
+
+def test_hat_switch_keeps_the_shared_directions() -> None:
+    from action_plugins.hat_buttons import HatButtonsData
+
+    data = HatButtonsData()
+    data.set_button_count(8)
+    data.direction["North"] = ["n"]
+    data.direction["North-East"] = ["ne1", "ne2"]
+    data.direction["South"] = ["s"]
+    # Going to 4 way would drop the two North-East actions; nothing else.
+    assert data.actions_dropped_by(4) == 2
+    data.set_button_count(4)
+    assert data.direction["North"] == ["n"]
+    assert data.direction["South"] == ["s"]
+    assert "North-East" not in data.direction
+    # And back: the shared directions still keep theirs.
+    data.set_button_count(8)
+    assert data.direction["North"] == ["n"]
+    assert data.direction["North-East"] == []
+    assert data.actions_dropped_by(4) == 0

@@ -28,6 +28,11 @@ ApplicationWindow {
     property string moduleFileNotice: ""
     property bool claimDirty: false
     property bool allowClose: false
+
+    // For the main window's quit: unsaved edits this window would ask about.
+    function hasUnsavedWork() {
+        return claimDirty && !allowClose
+    }
     property string saveIntent: "close"
     property string pendingFileSlug: ""
     property var moduleFileChoices: []

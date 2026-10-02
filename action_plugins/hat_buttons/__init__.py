@@ -202,6 +202,10 @@ class HatButtonsModel(ActionModel):
             self._data.set_button_count(count)
             self.changed.emit()
 
+    @QtCore.Slot(int, result=int)
+    def actionsDroppedBy(self, count: int) -> int:
+        return self._data.actions_dropped_by(count)
+
     buttonCount = QtCore.Property(
         type=int, fget=_get_button_count, fset=_set_button_count, notify=changed
     )
@@ -244,12 +248,23 @@ class HatButtonsData(AbstractActionData):
         self.set_button_count(4)
 
     def set_button_count(self, count: int) -> None:
+        """Switch between 4 and 8 directions. Directions both have (North,
+        East, South, West, Center) keep their actions; going to 4 drops the
+        diagonals' (the editor asks first)."""
         if count not in HatButtonsData.name_list:
             raise GremlinError(f"Invalid button count {count} for HatButtons")
+        old = getattr(self, "direction", None) or {}
         self.button_count = count
-        self.direction = {}
-        for name in HatButtonsData.name_list[self.button_count]:
-            self.direction[name] = []
+        self.direction = {
+            name: old.get(name, []) for name in HatButtonsData.name_list[count]
+        }
+
+    def actions_dropped_by(self, count: int) -> int:
+        """How many actions switching to count directions would remove."""
+        keep = set(HatButtonsData.name_list.get(count, []))
+        return sum(
+            len(actions) for name, actions in self.direction.items() if name not in keep
+        )
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

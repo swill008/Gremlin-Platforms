@@ -683,6 +683,13 @@ ApplicationWindow {
         applyPhoto(livePhoto)
         movePhoto = false
         applyPhotoToEditor()
+        // The discarded edits leave no undo steps behind: start the history
+        // again from the live map once it is back on screen.
+        Qt.callLater(function() {
+            var e = _ed()
+            if (e)
+                e.seedHist()
+        })
     }
 
     function cancelEdit() {
@@ -865,6 +872,11 @@ ApplicationWindow {
             _buttonMap.clearRecovery()
         }
         onCancelled: _buttonMap._pendingRecovery = null
+    }
+
+    // Asks before a template is deleted.
+    DismissibleDialog {
+        id: _deleteGate
     }
 
     DismissibleDialog {
@@ -1932,8 +1944,13 @@ ApplicationWindow {
                     Button {
                         text: "Delete"
                         onClicked: {
-                            _hw.deleteTemplate(modelData.name)
-                            _buttonMap.refreshTemplates()
+                            var name = modelData.name
+                            _deleteGate.confirmThen("Delete template",
+                                "Delete the template “" + name + "”? Layouts made from it are not changed.",
+                                "Delete", function() {
+                                    _hw.deleteTemplate(name)
+                                    _buttonMap.refreshTemplates()
+                                }, null, true)
                         }
                     }
                 }
@@ -2396,13 +2413,14 @@ ApplicationWindow {
                 ThemedMenuItem {
                     text: "Undo"
                     hint: "Ctrl+Z"
-                    enabled: { var e = _ed(); return e ? e.canUndo : false }
+                    // Only while editing: the history is of edits.
+                    enabled: { var e = _ed(); return editing && e ? e.canUndo : false }
                     onTriggered: { var e = _ed(); if (e) e.undo() }
                 }
                 ThemedMenuItem {
                     text: "Redo"
                     hint: "Ctrl+Y"
-                    enabled: { var e = _ed(); return e ? e.canRedo : false }
+                    enabled: { var e = _ed(); return editing && e ? e.canRedo : false }
                     onTriggered: { var e = _ed(); if (e) e.redo() }
                 }
                 ThemedMenuSeparator {}
@@ -3192,7 +3210,9 @@ ApplicationWindow {
                     y: Style.dp(12)
                     height: {
                         var bottom = parent.height - Style.dp(12)
-                        if (_poolFloat.visible && _poolFloat.y > height * 0.5)
+                        // The pool sits in the lower half: stop above it. (Of
+                        // the parent's height: the panel's own would loop.)
+                        if (_poolFloat.visible && _poolFloat.y > parent.height * 0.5)
                             bottom = Math.min(bottom, _poolFloat.y - Style.dp(8))
                         return Math.max(Style.dp(120), bottom - y)
                     }

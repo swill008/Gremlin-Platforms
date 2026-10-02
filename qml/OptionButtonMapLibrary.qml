@@ -80,7 +80,13 @@ Item {
                 }
                 Button {
                     text: "Delete"
-                    onClicked: _opts.deleteStyle(modelData.name, modelData.kind)
+                    onClicked: {
+                        var name = modelData.name
+                        var kind = modelData.kind
+                        _deleteGate.confirmThen("Delete saved style",
+                            "Delete the saved style “" + name + "”? Items that use it keep their look.",
+                            "Delete", function() { _opts.deleteStyle(name, kind) }, null, true)
+                    }
                 }
             }
         }
@@ -129,11 +135,21 @@ Item {
                 Button {
                     text: "Delete"
                     onClicked: {
-                        _hw.deleteTemplate(modelData.name)
-                        _library.refreshTemplates()
+                        var name = modelData.name
+                        _deleteGate.confirmThen("Delete template",
+                            "Delete the template “" + name + "”? Layouts made from it are not changed.",
+                            "Delete", function() {
+                                _hw.deleteTemplate(name)
+                                _library.refreshTemplates()
+                            }, null, true)
                     }
                 }
             }
         }
+    }
+
+    // Asks before a style or template is deleted.
+    DismissibleDialog {
+        id: _deleteGate
     }
 }
