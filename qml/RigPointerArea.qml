@@ -108,6 +108,15 @@ MouseArea {
             ed.dragKind = "pen"
             return
         }
+        if (ed.interactive && m.button === Qt.LeftButton && !ed.drawTool.length) {
+            var onGuide = ed.rulerGuideAt(m.x, m.y)
+            var under = onGuide ? ed.hitTest(m.x, m.y) : null
+            if (onGuide && !(under && under.kind)) {
+                ed.guideDrag = onGuide
+                ed.dragKind = "rulerguide"
+                return
+            }
+        }
         if (ed.interactive && m.button === Qt.LeftButton && ed.onTurnHandle(m.x, m.y)) {
             ed.beginTurn(m.x, m.y)
             ed.dragKind = "turn"
@@ -381,6 +390,10 @@ MouseArea {
             ed.penMove(m.x, m.y)
             return
         }
+        if (ed.dragKind === "rulerguide" && ed.guideDrag) {
+            ed.dragRulerGuide(ed.guideDrag.axis, ed.guideDrag.index, m.x, m.y)
+            return
+        }
         if (!ed.dragKind) {
             return
         }
@@ -433,6 +446,14 @@ MouseArea {
         if (ed.dragKind === "pen") {
             ed.dragKind = ""
             ed.penEnd()
+            return
+        }
+        if (ed.dragKind === "rulerguide") {
+            var gd = ed.guideDrag
+            ed.dragKind = ""
+            ed.guideDrag = null
+            if (gd)
+                ed.dropRulerGuide(gd.axis, gd.index, m.x, m.y)
             return
         }
         if (ed.dragKind === "draw-tail") {

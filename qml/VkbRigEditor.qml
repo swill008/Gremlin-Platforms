@@ -30,6 +30,7 @@ import "rig_grouprot.js" as RigGroupRot
 import "rig_callout.js" as RigCallout
 import "rig_path.js" as RigPath
 import "rig_styles.js" as RigStyles
+import "rig_rulers.js" as RigRulers
 
 Item {
     id: _ed
@@ -63,6 +64,11 @@ Item {
     property var pathHover: null
     // Saved styles (Options → Button Map → Library), from the window.
     property var savedStyles: []
+    // Guides dragged out of the rulers, as page fractions (rig_rulers.js).
+    property var rulerGuidesX: []
+    property var rulerGuidesY: []
+    property bool guidesOn: true
+    property var guideDrag: null
     property var selectedIds: []
     property bool banding: false
     property bool bandAdd: false
@@ -178,6 +184,8 @@ Item {
     signal findNotPlaced(string label)
     // Save this style: the window asks for a name.
     signal saveStyleRequested(string kind, string fieldsJson)
+    // A ruler guide was added, dropped or removed: the window saves them.
+    signal rulerGuidesEdited()
 
     property var hist
     property int histAt: -1
@@ -587,6 +595,16 @@ Item {
     function saveStyleOf(id) { return RigStyles.saveStyleOf(id) }
     function applySavedStyle(style) { return RigStyles.applySavedStyle(style) }
     function stylesFor(kind) { return RigStyles.stylesFor(kind) }
+
+    // Ruler guides (rig_rulers.js)
+    function addRulerGuide(axis, frac) { return RigRulers.addRulerGuide(axis, frac) }
+    function moveRulerGuide(axis, index, frac) { return RigRulers.moveRulerGuide(axis, index, frac) }
+    function removeRulerGuide(axis, index) { return RigRulers.removeRulerGuide(axis, index) }
+    function clearRulerGuides() { return RigRulers.clearRulerGuides() }
+    function rulerGuideAt(mx, my) { return RigRulers.rulerGuideAt(mx, my) }
+    function dragRulerGuide(axis, index, mx, my) { return RigRulers.dragRulerGuide(axis, index, mx, my) }
+    function dropRulerGuide(axis, index, mx, my) { return RigRulers.dropRulerGuide(axis, index, mx, my) }
+    function rulerGuideLines() { return RigRulers.rulerGuideLines() }
     function distributeSelection(axis) { return RigAlign.distributeSelection(axis) }
 
     // The Properties panel's fields (rig_props.js)

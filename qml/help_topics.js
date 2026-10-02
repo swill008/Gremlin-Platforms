@@ -247,6 +247,10 @@ function topics() {
             "<p>Scroll to zoom (75% to 600%); the <b>Zoom speed</b> setting in Editor options sets how fast. Drag with the middle button to pan. View → <b>Reset view (View 100%)</b> or Ctrl+0 returns to 100%. View → <b>Zoom to fit page</b> (Ctrl+1) shows the whole page; View → <b>Zoom to selection</b> (Ctrl+2) fills the view with what is selected.</p>"
             + "<p>View → <b>Grid</b>: <b>Show grid</b>, <b>Snap to grid</b>, <b>Snap to entities</b> (edges and middles of other items, with guide lines), and the grid <b>Size</b>. Hold <b>Alt</b> while dragging to skip snapping.</p>"
             + "<p>View → <b>Layers</b> and View → <b>Properties</b> show the two side panels (see Layers and Properties panel).</p>"),
+        topic("Button Map", "Rulers and guides",
+            "<p>View → <b>Rulers</b> shows rulers along the top and left of the map while editing, marked in percent of the page (as the Properties panel measures).</p>"
+            + "<p>Drag down out of the top ruler for a horizontal guide, or right out of the left ruler for a vertical one. Items you move snap their edges or middles to a guide before anything else, and points (drawing, hotspots, line ends) snap to guides too; Alt skips snapping. Drag a guide to move it; drop it on its ruler or off the page to remove it.</p>"
+            + "<p>Guides are saved with the device's view. View → <b>Show guides</b> hides and shows them, and View → <b>Clear guides</b> removes them all. They never print or export.</p>"),
         topic("Button Map", "The photo",
             "<p>The photo is the device picture under everything else. Photo → <b>Move photo</b> drags it (Esc leaves the tool); <b>Adjust photo…</b> sets its size, offset and rotation; <b>Reset photo</b> puts it back.</p>"
             + "<p><b>Adjust photo…</b> also sets its <b>Look</b>, so the chips stand out against a busy picture: <b>Brightness</b> and <b>Contrast</b> (either way), <b>Greyscale</b> and <b>Fade</b>. <b>Reset look</b> puts them back; Reset photo leaves the look alone. The look is saved with the layout, shows on the live map and in exports, and Undo steps through it.</p>"
@@ -366,7 +370,7 @@ function topics() {
             + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>Unbound</b> (see Action labels).</li>"
             + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror layout and Copy layout from also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
             + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
-            + "<li><b>View</b>: <b>Zoom speed</b>, how fast the mouse wheel zooms.</li>"
+            + "<li><b>View</b>: <b>Zoom speed</b>, how fast the mouse wheel zooms; <b>Rulers</b>, shown or not (also View → Rulers).</li>"
             + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size); <b>Mode title</b>, the mode's name at the top of each Export modes page; <b>Light page</b>, export on white for printing (also File → Light page for printing).</li>"
             + "<li><b>Colours</b>: <b>Recent colours</b>, how many the colour picker keeps.</li>"
             + "<li><b>Library</b>: the saved styles and layout templates, to rename or delete.</li>"

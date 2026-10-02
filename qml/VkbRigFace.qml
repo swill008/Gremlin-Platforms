@@ -34,6 +34,18 @@ Item {
     readonly property real wheelBase: 1 + 0.0012 * Math.max(0.25, zoomSpeed / 100)
     readonly property real viewPct: zoom / zoomFit
 
+    // Rulers along the top and left while editing, in percent of the page.
+    // Drag out of one to add a guide (rig_rulers.js; the Ruler component
+    // below).
+    property bool rulersOn: false
+    readonly property real rulerSize: Style.dp(18)
+
+    // Editor x or y (the world's coordinates) to the view's, and back.
+    function viewX(ex) { return panX + _world.width / 2 + (ex - _world.width / 2) * zoom }
+    function viewY(ey) { return panY + _world.height / 2 + (ey - _world.height / 2) * zoom }
+    function editorX(vx) { return (vx - panX - _world.width / 2) / zoom + _world.width / 2 }
+    function editorY(vy) { return (vy - panY - _world.height / 2) / zoom + _world.height / 2 }
+
     readonly property real _pw: _img.paintedWidth
     readonly property real _ph: _img.paintedHeight
     readonly property real _ox: (_img.width - _pw) * 0.5
@@ -602,6 +614,134 @@ Item {
     }
 
     Binding { target: _editorLoader.item; property: "face"; value: _face; when: _editorLoader.status === Loader.Ready; restoreMode: Binding.RestoreNone }
+
+    component Ruler: Canvas {
+        id: _ruler
+        property bool across: true
+        // An inline component cannot see this file's ids: the view and the
+        // editor come in as properties.
+        property var face: null
+        readonly property var ed: face ? face.editorItem : null
+        z: 7
+        visible: !!face && face.rulersOn && !!ed && ed.interactive
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            ctx.fillStyle = String(Style.bgCard)
+            ctx.fillRect(0, 0, width, height)
+            if (!ed)
+                return
+            var s = ed.spaceRect()
+            ctx.strokeStyle = String(Style.fgMuted)
+            ctx.fillStyle = String(Style.fgMuted)
+            ctx.font = Math.round(Style.dp(9)) + "px sans-serif"
+            ctx.lineWidth = 1
+            for (var k = 0; k <= 40; k++) {
+                var f = k / 40
+                var v = across ? face.viewX(s.x + f * s.w) : face.viewY(s.y + f * s.h)
+                var big = k % 4 === 0
+                var len = big ? (across ? height : width) * 0.6 : (across ? height : width) * 0.3
+                ctx.beginPath()
+                if (across) {
+                    ctx.moveTo(Math.round(v) + 0.5, height)
+                    ctx.lineTo(Math.round(v) + 0.5, height - len)
+                } else {
+                    ctx.moveTo(width, Math.round(v) + 0.5)
+                    ctx.lineTo(width - len, Math.round(v) + 0.5)
+                }
+                ctx.stroke()
+                if (big && across)
+                    ctx.fillText(String(Math.round(f * 100)), v + 2, Style.dp(9))
+                else if (big)
+                    ctx.fillText(String(Math.round(f * 100)), 1, v - 2)
+            }
+            // The guides' places.
+            ctx.fillStyle = String(Style.accent)
+            var gl = across ? ed.rulerGuidesX : ed.rulerGuidesY
+            for (var g = 0; g < gl.length; g++) {
+                var gv = across ? face.viewX(s.x + gl[g] * s.w) : face.viewY(s.y + gl[g] * s.h)
+                if (across)
+                    ctx.fillRect(gv - 1, 0, 3, height)
+                else
+                    ctx.fillRect(0, gv - 1, width, 3)
+            }
+        }
+        Connections {
+            target: _ruler.face
+            function onPanXChanged() { _ruler.requestPaint() }
+            function onPanYChanged() { _ruler.requestPaint() }
+            function onZoomChanged() { _ruler.requestPaint() }
+            function onRulersOnChanged() { _ruler.requestPaint() }
+        }
+        Connections {
+            target: _ruler.ed
+            function onRulerGuidesXChanged() { _ruler.requestPaint() }
+            function onRulerGuidesYChanged() { _ruler.requestPaint() }
+            function onWidthChanged() { _ruler.requestPaint() }
+        }
+        // Drag out a guide: down from the top ruler gives a horizontal one,
+        // right from the left ruler a vertical one.
+        MouseArea {
+            anchors.fill: parent
+            preventStealing: true
+            property int index: -1
+            readonly property string axis: _ruler.across ? "y" : "x"
+            function fracAt(mouse) {
+                var e = _ruler.ed
+                var p = mapToItem(face, mouse.x, mouse.y)
+                var s = e.spaceRect()
+                return _ruler.across ? (face.editorY(p.y) - s.y) / s.h : (face.editorX(p.x) - s.x) / s.w
+            }
+            onPressed: (mouse) => {
+                if (!_ruler.ed)
+                    return
+                index = _ruler.ed.addRulerGuide(axis, Math.max(0, Math.min(1, fracAt(mouse))))
+            }
+            onPositionChanged: (mouse) => {
+                if (index >= 0 && _ruler.ed)
+                    _ruler.ed.moveRulerGuide(axis, index, fracAt(mouse))
+            }
+            onReleased: (mouse) => {
+                if (index < 0 || !_ruler.ed)
+                    return
+                var p = mapToItem(face, mouse.x, mouse.y)
+                var e = _ruler.ed
+                var ex = face.editorX(p.x)
+                var ey = face.editorY(p.y)
+                // Let go on the ruler itself: no guide.
+                if (contains(Qt.point(mouse.x, mouse.y)))
+                    e.removeRulerGuide(axis, index)
+                else
+                    e.dropRulerGuide(axis, index, ex, ey)
+                index = -1
+            }
+        }
+    }
+
+    Ruler {
+        face: _face
+        across: true
+        x: _face.rulerSize
+        y: 0
+        width: _face.width - _face.rulerSize
+        height: _face.rulerSize
+    }
+    Ruler {
+        face: _face
+        across: false
+        x: 0
+        y: _face.rulerSize
+        width: _face.rulerSize
+        height: _face.height - _face.rulerSize
+    }
+    Rectangle {
+        z: 7
+        visible: _face.rulersOn && !!_editorLoader.item && _editorLoader.item.interactive
+        width: _face.rulerSize
+        height: _face.rulerSize
+        color: Style.bgCard
+    }
+
     Binding { target: _editorLoader.item; property: "nodes"; value: _face.editorNodes; when: _editorLoader.status === Loader.Ready; restoreMode: Binding.RestoreNone }
     Binding { target: _editorLoader.item; property: "interactive"; value: _face.editing; when: _editorLoader.status === Loader.Ready; restoreMode: Binding.RestoreNone }
 

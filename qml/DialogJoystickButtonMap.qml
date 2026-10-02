@@ -1289,7 +1289,10 @@ ApplicationWindow {
             gridSize: gridSize,
             viewPct: viewPctSave,
             panX: viewPanX,
-            panY: viewPanY
+            panY: viewPanY,
+            guidesX: guidesX,
+            guidesY: guidesY,
+            guidesOn: guidesOn
         }
     }
 
@@ -1310,6 +1313,24 @@ ApplicationWindow {
             viewPanX = ui.panX
         if (ui.panY === ui.panY)
             viewPanY = ui.panY
+        guidesX = Array.isArray(ui.guidesX) ? ui.guidesX : []
+        guidesY = Array.isArray(ui.guidesY) ? ui.guidesY : []
+        if (ui.guidesOn === true || ui.guidesOn === false)
+            guidesOn = ui.guidesOn
+    }
+
+    // The device's ruler guides (saved with the view) and whether they show.
+    property var guidesX: []
+    property var guidesY: []
+    property bool guidesOn: true
+
+    function guidesFromEditor() {
+        var e = _ed()
+        if (!e)
+            return
+        guidesX = e.rulerGuidesX.slice()
+        guidesY = e.rulerGuidesY.slice()
+        persistUi()
     }
 
     // Editor settings from Options (Edit → Editor options).
@@ -1326,6 +1347,8 @@ ApplicationWindow {
         var f = e.face
         if (f && o["zoom-speed"] > 0)
             f.zoomSpeed = o["zoom-speed"]
+        if (f)
+            f.rulersOn = o["rulers"] === true
         e.findOn = o["press-to-find"] !== false
         e.findAxes = o["find-axes"] === true
         refreshActionLabels()
@@ -1407,6 +1430,9 @@ ApplicationWindow {
         e.snapOn = snapOn
         e.snapEntOn = snapEntOn
         e.gridSize = gridSize
+        e.rulerGuidesX = guidesX.slice()
+        e.rulerGuidesY = guidesY.slice()
+        e.guidesOn = guidesOn
         applyOptionsToEditor()
         if (e.repaint)
             e.repaint()
@@ -2544,6 +2570,29 @@ ApplicationWindow {
                     }
                 }
                 MenuSeparator {}
+                MenuItem {
+                    text: "Rulers"
+                    checkable: true
+                    checked: _opts.values["rulers"] === true
+                    onTriggered: _opts.set("rulers", checked)
+                }
+                MenuItem {
+                    text: "Show guides"
+                    checkable: true
+                    checked: _buttonMap.guidesOn
+                    onTriggered: {
+                        _buttonMap.guidesOn = checked
+                        var e = _ed()
+                        if (e)
+                            e.guidesOn = checked
+                        persistUi()
+                    }
+                }
+                MenuItem {
+                    text: "Clear guides"
+                    enabled: _buttonMap.guidesX.length + _buttonMap.guidesY.length > 0
+                    onTriggered: { var e = _ed(); if (e) e.clearRulerGuides() }
+                }
                 Menu {
                     title: "Grid"
                     MenuItem {
@@ -2862,6 +2911,7 @@ ApplicationWindow {
                             function onPhotoGreyChanged() { _lookTimer.restart() }
                             function onPhotoBaseUrlChanged() { _lookTimer.restart() }
                             function onSaveStyleRequested(kind, fieldsJson) { _buttonMap.askStyleName(kind, fieldsJson) }
+                            function onRulerGuidesEdited() { _buttonMap.guidesFromEditor() }
                             function onOverlayImportRequested() { _overlayDialog.open() }
                             function onPastePictureRequested() { _buttonMap.pastePicture() }
                             function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }

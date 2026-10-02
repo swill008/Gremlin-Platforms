@@ -96,6 +96,19 @@ function updateMoveGuides(n) {
     var pageCy = s.y + s.h * 0.5
     considerX(pageCx, "center", 0, Math.abs(cx - pageCx))
     considerY(pageCy, "center", 0, Math.abs(cy - pageCy))
+    // Ruler guides win: they were put there to line things up on.
+    var rg = rulerGuideLines()
+    var gi
+    for (gi = 0; gi < rg.xs.length; gi++) {
+        considerX(rg.xs[gi], "center", 0, Math.abs(cx - rg.xs[gi]))
+        considerX(rg.xs[gi], "left", 0, Math.abs(left - rg.xs[gi]))
+        considerX(rg.xs[gi], "right", 0, Math.abs(right - rg.xs[gi]))
+    }
+    for (gi = 0; gi < rg.ys.length; gi++) {
+        considerY(rg.ys[gi], "center", 0, Math.abs(cy - rg.ys[gi]))
+        considerY(rg.ys[gi], "top", 0, Math.abs(top - rg.ys[gi]))
+        considerY(rg.ys[gi], "bottom", 0, Math.abs(bot - rg.ys[gi]))
+    }
     considerX(s.x, "left", 2, Math.abs(left - s.x))
     considerX(s.x + s.w, "right", 2, Math.abs(right - (s.x + s.w)))
     considerY(s.y, "top", 2, Math.abs(top - s.y))
@@ -174,16 +187,29 @@ function snapPos(x, y, altOff) {
     return Qt.point(worldToX(snapWorld(xToWorld(x))), worldToY(snapWorld(yToWorld(y))))
 }
 
+// The nearest of lines within d of v, or v.
+function _nearLine(v, lines, d) {
+    var best = v
+    for (var i = 0; i < lines.length; i++) {
+        var dd = Math.abs(v - lines[i])
+        if (dd < d) {
+            d = dd
+            best = lines[i]
+        }
+    }
+    return best
+}
+
 function snapEnt(x, y, altOff) {
     if (altOff)
         return Qt.point(x, y)
+    var rg = rulerGuideLines()
     if (!snapEntOn) {
-        if (snapOn)
-            return snapPos(x, y, false)
-        return Qt.point(x, y)
+        var p = snapOn ? snapPos(x, y, false) : Qt.point(x, y)
+        return Qt.point(_nearLine(p.x, rg.xs, 8), _nearLine(p.y, rg.ys, 8))
     }
-    var xs = []
-    var ys = []
+    var xs = rg.xs.slice()
+    var ys = rg.ys.slice()
     function ax(v) { xs.push(v) }
     function ay(v) { ys.push(v) }
     var list = nodes || []

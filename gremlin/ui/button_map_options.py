@@ -101,6 +101,12 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {"min": 10, "max": 600},
     ),
     (
+        "view", "02-rulers", PropertyType.Bool, False,
+        "Show rulers along the top and left of the map while editing. Drag out "
+        "of a ruler to add a guide. Also in View > Rulers.",
+        {},
+    ),
+    (
         "view", "01-zoom-speed", PropertyType.Int, 100,
         "How fast the mouse wheel zooms the map, in percent of the usual speed.",
         {"min": 25, "max": 300},

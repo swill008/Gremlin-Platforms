@@ -141,6 +141,8 @@ Window {
         })
     }
     function setPhotoUrl(url) { _face.photoOverride = url }
+    function setRulers(on) { _face.rulersOn = on }
+    function getProp(name) { return JSON.stringify(ed()[name]) }
     function zoomToPage() { _face.zoomToPage() }
     function viewState() {
         return JSON.stringify({
@@ -374,6 +376,9 @@ class Session:
         out = self.js("callOnNode", name, id_, json.dumps(list(args)))
         self.wait(30)
         return json.loads(out)
+
+    def call_prop(self, name: str) -> object:
+        return json.loads(self.js("getProp", name))
 
     def set_prop(self, name: str, value: object) -> None:
         self.js("setProp", name, json.dumps(value))
@@ -1587,6 +1592,47 @@ def scenario_zoom(s: Session) -> None:
         **s.state(), "zoomed": s.call("zoomToSelection")}})
 
 
+def scenario_rulers(s: Session) -> None:
+    """Rulers: a guide dragged out of the top ruler, a shape dragged near it
+    snaps to it, the guide dragged off the page goes."""
+    _load(s, "evo_r")
+    s.js("setRulers", True)
+    s.call("setDrawTool", "rect")
+    s.drag(s.point(0.05, 0.40), s.point(0.15, 0.50))
+    s.call("setDrawTool", "")
+    rect = s.state()["selected"][0]
+    # Filled, so grabbing its middle takes it.
+    s.call("applyField", "fill", "filled")
+    s.call("setSelection", [])
+    s.record("rulers", image=True)
+
+    # Out of the top ruler, down to a fifth of the page.
+    ruler = QtCore.QPoint(s.point(0.5, 0.3).x(), 9)
+    s.drag(ruler, s.point(0.5, 0.2))
+    s.record("guide-added", image=True)
+    s.steps[-1]["state"]["guides"] = [
+        s.call_prop("rulerGuidesX"), s.call_prop("rulerGuidesY")]
+
+    # The shape dragged up near the guide lands on it.
+    box = s._box(rect)
+    grab = s.ed_point(box["x"] + box["w"] / 2, box["y"] + box["h"] / 2)
+    guide_y = s.point(0.5, 0.2).y()
+    target = QtCore.QPoint(grab.x(), guide_y + round(box["h"] / 2) + 4)
+    s.drag(grab, target)
+    s.record("shape-on-guide", image=True)
+    snapped = s._box(rect)
+    s.steps[-1]["state"]["topOnGuide"] = abs(
+        s.ed_point(snapped["x"], snapped["y"]).y() - guide_y) <= 1
+
+    # Drag the guide back onto its ruler: gone.
+    s.call("setSelection", [])
+    on_guide = s.point(0.8, 0.2)
+    s.drag(on_guide, QtCore.QPoint(on_guide.x(), 6))
+    s.record("guide-removed")
+    s.steps[-1]["state"]["guides"] = [
+        s.call_prop("rulerGuidesX"), s.call_prop("rulerGuidesY")]
+
+
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
     handles or the grid, and without hidden items. (The window then crops
@@ -1643,6 +1689,7 @@ SCENARIOS = {
     "photo_look": scenario_photo_look,
     "light_page": scenario_light_page,
     "zoom": scenario_zoom,
+    "rulers": scenario_rulers,
 }
 
 
