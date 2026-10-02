@@ -35,6 +35,15 @@ SECTION_DISPLAY_NAMES = {
     "osc": "OSC Connection",
     "display": "Display",
     "automap": "Auto Mapper",
+    "button-map": "Button Map",
+}
+
+# Group order inside a section; others follow by name.
+_GROUP_ORDER = {
+    "general": 0, "files": 1, "input-names": 2,
+    # Button Map (gremlin/ui/button_map_options.py)
+    "labels": 10, "editing": 11, "autosave": 12, "view": 13, "export": 14,
+    "colours": 15, "library": 16,
 }
 
 
@@ -93,6 +102,8 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
                     return 5
                 case "automap":
                     return 6
+                case "button-map":
+                    return 7
                 case _:
                     return 99
 
@@ -151,8 +162,7 @@ class ConfigGroupModel(QtCore.QAbstractListModel):
             self._config.groups(self._section_name)
             + self._option.groups(self._section_name)
         )
-        order = {"general": 0, "files": 1, "input-names": 2}
-        return sorted(names, key=lambda name: (order.get(name, 50), name))
+        return sorted(names, key=lambda name: (_GROUP_ORDER.get(name, 50), name))
 
 
 @ta.QmlElement

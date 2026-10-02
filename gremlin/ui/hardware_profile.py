@@ -75,6 +75,16 @@ def _photo_pose(raw) -> dict:
 _RECENT_COLOURS = 10
 
 
+def _recent_count() -> int:
+    """How many recent colours to keep (Options → Button Map → Colours)."""
+    try:
+        from gremlin.ui import button_map_options
+
+        return max(1, int(button_map_options.value("recent-colours")))
+    except Exception:
+        return _RECENT_COLOURS
+
+
 def save_page_image(
     image: QtGui.QImage,
     x: float,
@@ -1376,7 +1386,7 @@ class HardwareProfile(QtCore.QObject):
         stored = Configuration().value(
             "global", "internal", "button-map-recent-colours"
         )
-        return [str(c) for c in (stored or []) if _is_hex_colour(c)][:_RECENT_COLOURS]
+        return [str(c) for c in (stored or []) if _is_hex_colour(c)][:_recent_count()]
 
     @QtCore.Slot(str)
     def noteColour(self, hex_colour: str) -> None:
@@ -1387,7 +1397,7 @@ class HardwareProfile(QtCore.QObject):
         if not _is_hex_colour(colour):
             return
         recent = [c for c in self.recentColours if c.upper() != colour]
-        recent = [colour, *recent][:_RECENT_COLOURS]
+        recent = [colour, *recent][:_recent_count()]
         Configuration().set("global", "internal", "button-map-recent-colours", recent)
         self.recentColoursChanged.emit()
 

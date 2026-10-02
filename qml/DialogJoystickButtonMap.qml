@@ -240,6 +240,10 @@ ApplicationWindow {
 
     ViewerDeviceModel { id: _devices }
     HardwareProfile { id: _hw }
+    ButtonMapOptions {
+        id: _opts
+        onChanged: _buttonMap.applyOptionsToEditor()
+    }
 
     Instantiator {
         id: _inputDeviceItems
@@ -1166,6 +1170,24 @@ ApplicationWindow {
             viewPanY = ui.panY
     }
 
+    // Editor settings from Options (Edit → Editor options).
+    function applyOptionsToEditor() {
+        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+        if (!e)
+            return
+        var o = _opts.values
+        if (o["undo-steps"] > 0)
+            e.histCap = o["undo-steps"]
+        if (o["rotate-snap"] > 0)
+            e.rotateSnap = o["rotate-snap"]
+    }
+
+    function openEditorOptions() {
+        var w = Helpers.createComponent("DialogOptions.qml", { initialSection: "Button Map" })
+        if (w)
+            w.showSection("Button Map")
+    }
+
     function applyGridToEditor() {
         if (!faceLive)
             return
@@ -1176,6 +1198,7 @@ ApplicationWindow {
         e.snapOn = snapOn
         e.snapEntOn = snapEntOn
         e.gridSize = gridSize
+        applyOptionsToEditor()
         if (e.repaint)
             e.repaint()
         applyViewToFace()
@@ -1350,7 +1373,10 @@ ApplicationWindow {
     }
 
     // Export size: the page is drawn this many times larger than on screen.
-    property int exportScale: 2
+    readonly property int exportScale: {
+        var t = String(_opts.values["export-size"] || "2x")
+        return t.charAt(0) === "1" ? 1 : (t.charAt(0) === "3" ? 3 : 2)
+    }
     property var _exportJob: null
 
     // Saves the whole page, whatever the zoom, without selection rings,
@@ -1544,7 +1570,7 @@ ApplicationWindow {
                             text: modelData + "×"
                             checkable: true
                             checked: _buttonMap.exportScale === modelData
-                            onTriggered: _buttonMap.exportScale = modelData
+                            onTriggered: _opts.set("export-size", modelData + "x")
                         }
                     }
                 }
@@ -1586,6 +1612,11 @@ ApplicationWindow {
                     text: "Paste picture"
                     enabled: editing && _hw.clipboardHasImage
                     onTriggered: pastePicture()
+                }
+                MenuSeparator {}
+                MenuItem {
+                    text: "Editor options…"
+                    onTriggered: _buttonMap.openEditorOptions()
                 }
             }
             Menu {

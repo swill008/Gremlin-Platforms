@@ -80,6 +80,7 @@ import gremlin.tts
 import gremlin.types
 import gremlin.ui.action_image_generator
 import gremlin.ui.backend
+import gremlin.ui.button_map_options
 import gremlin.ui.system_tray
 import gremlin.ui.option
 import gremlin.ui.osc_option  # noqa: F401
@@ -651,6 +652,7 @@ def register_config_options() -> None:
     gremlin.ui.hidhide._ensure_options()
     gremlin.ui.window_placement._ensure()
     gremlin.ui.vjoy_status.register_options()
+    gremlin.ui.button_map_options.register()
 
 
 def configure_loggers() -> None:

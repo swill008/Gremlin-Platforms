@@ -62,7 +62,7 @@ function applyDrawResize(n, mx, my, handle, altOff) {
         var ox = handle === "end0" ? e.bx : e.ax
         var oy = handle === "end0" ? e.by : e.ay
         if (shiftHeld) {
-            var s = Shapes.snapAngle(ox, oy, px, py, 15)
+            var s = Shapes.snapAngle(ox, oy, px, py, rotateSnap)
             px = s.x
             py = s.y
         }
@@ -85,7 +85,7 @@ function applyDrawResize(n, mx, my, handle, altOff) {
         // steps with Shift.
         var gr = drawGeom(n)
         var a = Shapes.handleAngle(gr.x + gr.w / 2, gr.y + gr.h / 2, mx, my)
-        n.rot = shiftHeld ? Shapes.snapDeg(a, 15) : Math.round(a * 10) / 10
+        n.rot = shiftHeld ? Shapes.snapDeg(a, rotateSnap) : Math.round(a * 10) / 10
         return
     }
     // Pictures keep their proportions from a corner unless Shift is held;
@@ -355,7 +355,7 @@ function isLineTool(tool) {
 
 function addLineFree(tool, x0, y0, x1, y1) {
     if (shiftHeld) {
-        var s = Shapes.snapAngle(x0, y0, x1, y1, 15)
+        var s = Shapes.snapAngle(x0, y0, x1, y1, rotateSnap)
         x1 = s.x
         y1 = s.y
     }
@@ -378,7 +378,7 @@ function drawToolPoint(x0, y0, x1, y1) {
     if (!shiftHeld)
         return Qt.point(x1, y1)
     if (isLineTool(drawTool)) {
-        var s = Shapes.snapAngle(x0, y0, x1, y1, 15)
+        var s = Shapes.snapAngle(x0, y0, x1, y1, rotateSnap)
         return Qt.point(s.x, s.y)
     }
     return lockAspect(x0, y0, x1, y1)

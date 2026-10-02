@@ -32,6 +32,22 @@ ApplicationWindow {
         defaultHeight: Style.dp(700)
     }
 
+    // Opens on this section (its display name, e.g. "Button Map").
+    property string initialSection: ""
+
+    function showSection(name) {
+        // Roles of ConfigSectionModel: UserRole + 1 name, + 2 groupModel.
+        for (var i = 0; i < _sectionModel.rowCount(); i++) {
+            var index = _sectionModel.index(i, 0)
+            if (_sectionModel.data(index, Qt.UserRole + 1) === name) {
+                _sectionSelector.currentIndex = i
+                _configSection.groupModel = _sectionModel.data(index, Qt.UserRole + 2)
+                _sectionSelector.positionViewAtIndex(i, ListView.Contain)
+                return
+            }
+        }
+    }
+
     onClosing: () => {
         backend.emitConfigChanged()
     }
@@ -55,7 +71,11 @@ ApplicationWindow {
             model: _sectionModel
             delegate: ConfigSectionButton {}
 
-            Component.onCompleted: () => { currentItem.clicked() }
+            Component.onCompleted: () => {
+                currentItem.clicked()
+                if (_options.initialSection)
+                    Qt.callLater(function() { _options.showSection(_options.initialSection) })
+            }
         }
 
         // Shows the contents of the currently selected section.

@@ -330,6 +330,13 @@ function topics() {
         topic("Button Map", "Colours",
             "<p>The colour picker opens from Colours, Fill colour…, Outline colour… and the Properties swatches. Drag in the square and the bar, or click a swatch; the change shows at once.</p>"
             + "<p><b>Recent</b> shows the colours you used last, on any device. <b>Pick from map</b> closes the picker; click anywhere in the window to take the colour there (right-click or Esc gives up).</p>"),
+        topic("Button Map", "Editor options",
+            "<p><b>Edit → Editor options…</b> in the Button Map opens Options at its <b>Button Map</b> section; the same settings are under Options in the main window. They apply to every device.</p>"
+            + "<ul>"
+            + "<li><b>Editing</b>: <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line.</li>"
+            + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size).</li>"
+            + "<li><b>Colours</b>: <b>Recent colours</b>, how many the colour picker keeps.</li>"
+            + "</ul>"),
         topic("Button Map", "Selecting, undo and keys",
             "<p>Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrow keys nudge the selection; Shift+Arrow nudges by the grid size. Undo and Redo are also at the top of every right-click menu.</p>"
             + "<ul>"

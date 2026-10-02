@@ -309,8 +309,9 @@ function _rotate() {
         items.push(_num("Angle", Math.round(rot * 10) / 10, 0, 360, "°", setRotation))
         items.push(_pick("Turn to", [0, 90, 180, 270], ["0°", "90°", "180°", "270°"],
                          function(v) { return Math.abs(rot - v) < 0.05 }, setRotation))
-        items.push(_act("Rotate −15°", by(-15)))
-        items.push(_act("Rotate +15°", by(15)))
+        var step = rotateSnap || 15
+        items.push(_act("Rotate −" + step + "°", by(-step)))
+        items.push(_act("Rotate +" + step + "°", by(step)))
     }
     if (isFlippable(n)) {
         items.push(_act("Flip horizontally", function() { flipSelection("h") }))

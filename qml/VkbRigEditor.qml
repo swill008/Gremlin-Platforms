@@ -149,6 +149,8 @@ Item {
     property var hist
     property int histAt: -1
     property int histCap: 80
+    // Degrees per Shift step when turning an item or drawing a line (Options).
+    property int rotateSnap: 15
     property bool _restoring: false
     readonly property bool canUndo: histAt > 0
     readonly property bool canRedo: histAt >= 0 && hist && histAt < hist.length - 1
