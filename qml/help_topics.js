@@ -240,7 +240,7 @@ function topics() {
             "<p>Debug → <b>Live Log Reader</b> follows the program's activity log (logs.txt): what was read and saved, and when. The system log (system.log) in the Logs folder records errors and blocked outputs.</p>"),
 
         topic("Options and Profile", "Options",
-            "<p>Tools → <b>Options</b> (or the gear on the toolbar). Program settings, not stored in the profile.</p>"
+            "<p>Tools → <b>Options</b> (or <b>Options</b> on the toolbar). Program settings, not stored in the profile; the profile's own are on its <b>Profile Settings</b> tab.</p>"
             + "<ul>"
             + "<li><b>Global</b>: Close to tray, Minimize to tray, <b>Check for updates</b> (when the program starts; see Installing and updating), <b>Device change behavior</b> (Reload, Ignore, Disable), Hidhide on start, axis refresh on activation and mode change, Debug log level, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
             + "<li><b>User Interface</b>: Dark mode, UI scale, Disable Windows scaling, Display mode (numbers and/or labels), Input highlighting and Highlight source, and the <b>Menu preview</b>.</li>"

@@ -1063,7 +1063,9 @@ ApplicationWindow {
 
             JGToolButton {
                 text: "\uF3E5"
-                tooltip: qsTr("Open options")
+                // Program-wide settings; the profile's own are its Profile Settings tab.
+                caption: "Options"
+                tooltip: qsTr("Options: settings for the whole program")
 
                 onClicked: () => {
                     Helpers.createComponent("DialogOptions.qml")
@@ -1350,31 +1352,31 @@ ApplicationWindow {
                 onFocusSlug: function(slug) {
                     _moduleModel.setFocus(slug)
                 }
-                onOpenConfiguration: function(card) {
+                onOpenConfiguration: function(card) {
                     openConfigurationForCard(card)
                 }
-                onOpenButtonMap: function(card) {
+                onOpenButtonMap: function(card) {
                     openButtonMapForCard(card)
                 }
-                onOpenOutputView: function(card) {
+                onOpenOutputView: function(card) {
                     openOutputViewForCard(card)
                 }
                 onConfigureModule: function(card) {
                     openConfigureModule(card.direction === "dest" ? "dest" : "source", card)
                 }
-                onAutoMap: function(card) {
+                onAutoMap: function(card) {
                     Helpers.createComponent("DialogAutoMapper.qml", {"initialSlug": card.slug || ""})
                 }
-                onOpenPairing: function(card) {
+                onOpenPairing: function(card) {
                     pairingForCard(card)
                 }
-                onOpenCalibration: function(card) {
+                onOpenCalibration: function(card) {
                     Helpers.createComponent("DialogCalibration.qml", {"initialSlug": card.slug || ""})
                 }
-                onOpenDeviceInformation: function(card) {
+                onOpenDeviceInformation: function(card) {
                     Helpers.createComponent("DialogDeviceInformation.qml", {"initialGuid": card.guid || ""})
                 }
-                onAssignHardware: function(card) {
+                onAssignHardware: function(card) {
                     Helpers.createComponent("DialogSwapDevices.qml", {"initialGuid": card.guid || ""})
                 }
                 onIgnoreDevice: function(card) {
@@ -1609,7 +1611,7 @@ ApplicationWindow {
                 JGTabButton {
                     id: _profileSettingsButton
 
-                    text: "Settings"
+                    text: "Profile Settings"
                     width: _metricProfileSettings.width + Style.dp(50)
                     checked: false
 

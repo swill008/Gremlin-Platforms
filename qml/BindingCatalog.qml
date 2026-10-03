@@ -164,6 +164,10 @@ Item {
     }
 
     DismissibleDialog {
+        id: _deleteGate
+    }
+
+    DismissibleDialog {
         id: _paneLeave
         onSaveChosen: {
             var seq = _catalog.commitPane()
@@ -1517,7 +1521,15 @@ Item {
                                 implicitWidth: Style.dp(70)
                                 implicitHeight: Style.dp(28)
                                 z: 2
-                                onClicked: lv.catalogModel.removeSequence(deviceIndex, sequenceIndex)
+                                // Edits in the pane wait for OK; a delete asks instead.
+                                onClicked: {
+                                    var model = lv.catalogModel
+                                    var dev = deviceIndex
+                                    var seq = sequenceIndex
+                                    _deleteGate.confirmThen("Delete action?",
+                                        "Delete " + typeLabel + (destLabel ? " → " + destLabel : "") + " from this binding?",
+                                        "Delete", function() { model.removeSequence(dev, seq) }, null, true)
+                                }
                             }
                             Button {
                                 visible: (rowKind === "group" || rowKind === "unmapped") && !lv.catalogLocked

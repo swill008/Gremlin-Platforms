@@ -31,6 +31,15 @@ ApplicationWindow {
     property bool allowClose: false
 
     // For the main window's quit: unsaved calibration this window would ask about.
+    // Whether any axis has unsaved changes (for Save all).
+    property bool anyUnsaved: false
+    function refreshUnsaved() { anyUnsaved = _calib.hasUnsaved() }
+    Connections {
+        target: _calib
+        function onDataChanged() { _calibrationDialog.refreshUnsaved() }
+        function onModelReset() { _calibrationDialog.refreshUnsaved() }
+    }
+
     function hasUnsavedWork() {
         return !allowClose && _calib.hasUnsaved()
     }
@@ -151,6 +160,24 @@ ApplicationWindow {
                         _calibrationDialog.syncSelection()
                     else if (currentValue)
                         _calibrationDialog.shownSlug = String(currentValue)
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            // Every axis with unsaved changes at once (each axis also has its own).
+            Button {
+                text: "Save all"
+                enabled: _calibrationDialog.anyUnsaved
+                onClicked: {
+                    var ok = _calib.saveAll()
+                    var where = ok && _calib.moduleFilePath ? _calib.moduleFilePath() : ""
+                    _saveGate.announce(ok, ok ? "Saved every axis to the module file."
+                                              : "Not written. It is still only on this screen.")
+                    if (backend)
+                        backend.noteSave(ok ? ("Saved the calibration to " + where)
+                                            : "The calibration was not written.")
+                    _calibrationDialog.refreshUnsaved()
                 }
             }
         }

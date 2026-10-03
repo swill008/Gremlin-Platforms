@@ -17,8 +17,11 @@ ApplicationWindow {
     // ToolWindowMemory sets the saved or default size when the window opens.
     width: 1200
     height: 700
-    minimumWidth: Style.dp(1200)
-    minimumHeight: Style.dp(600)
+    // Never wider or taller than the screen, even at a high UI scale.
+    readonly property int _fitW: Math.max(640, Screen.desktopAvailableWidth - 40)
+    readonly property int _fitH: Math.max(480, Screen.desktopAvailableHeight - 60)
+    minimumWidth: Math.min(Style.dp(1200), _fitW)
+    minimumHeight: Math.min(Style.dp(600), _fitH)
 
     U.Universal.theme: Style.theme
     color: Style.background
@@ -28,8 +31,8 @@ ApplicationWindow {
     ToolWindowMemory {
         host: _options
         name: "options"
-        defaultWidth: Style.dp(1200)
-        defaultHeight: Style.dp(700)
+        defaultWidth: Math.min(Style.dp(1200), _options._fitW)
+        defaultHeight: Math.min(Style.dp(700), _options._fitH)
     }
 
     // Opens on this section (its display name, e.g. "Button Map").
