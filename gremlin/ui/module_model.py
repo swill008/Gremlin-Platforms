@@ -452,6 +452,15 @@ def _module_damage(device_name: str, guid: str = "") -> str:
     return module_file.damage_reason(_maps_dir() / f"{slug}.json")
 
 
+def _device_connected(guid: str) -> bool:
+    """True when the joystick driver sees a device with this GUID."""
+    try:
+        return bool(dill.DILL.device_exists(dill.GUID.from_str(guid)))
+    except Exception:
+        # A GUID the driver can't read is not one of its devices.
+        return False
+
+
 def module_exists(device_name: str) -> bool:
     path = _maps_dir() / f"{resolve_module_slug(device_name)}.json"
     return path.is_file()
@@ -1627,6 +1636,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._guid = ""
+        # Why Save is refused for the loaded device ("" when it isn't).
+        self._not_connected = ""
         self._device_name = ""
         self._rows: list[dict] = []
         self._lit_index = -1
@@ -1658,6 +1669,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
     def loadDevice(self, guid: str, device_name: str) -> None:
         self._guid = guid or ""
         self._device_name = device_name or ""
+        self._not_connected = ""
         rows: list[dict] = []
         claim = read_claim(_load_module_doc(device_name, guid)) if device_name else {
             "buttons": [],
@@ -1692,6 +1704,13 @@ class DriverInputModel(QtCore.QAbstractListModel):
         ):
             self._load_xbox_dest(claim)
             return
+        # A device that isn't plugged in shows no controls: saving would
+        # erase its claims and names, so Save is refused until it is back.
+        if guid and not _device_connected(guid):
+            self._not_connected = (
+                f"Plug in {device_name or 'the device'} to change its setup. "
+                "Nothing was saved."
+            )
         if info is not None:
             for i in range(info.axis_count):
                 hid = info.axis_map[i].axis_index
@@ -2000,8 +2019,16 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 self.rowActivated.emit(i)
                 return
 
+    @QtCore.Slot(result=str)
+    def saveBlockedReason(self) -> str:
+        """Why Save is refused for the loaded device ("" when it isn't)."""
+        return self._not_connected
+
     @QtCore.Slot(str, str, result=bool)
     def saveClaim(self, device_name: str, direction: str) -> bool:
+        if self.saveBlockedReason():
+            _plog("save claim refused", name=device_name, reason=self._not_connected)
+            return False
         name = device_name or self._device_name
         slug = _slug(name)
         path = _maps_dir() / f"{slug}.json"

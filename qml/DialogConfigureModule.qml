@@ -110,7 +110,8 @@ ApplicationWindow {
         if (_win.photoUrl && _win.photoUrl.length)
             _hw.keepPhoto(deviceName, _win.photoUrl)
         if (!_driver.saveClaim(deviceName, direction)) {
-            _saveGate.announce(false, "Not written. It is still only on this screen.")
+            _saveGate.announce(false, _driver.saveBlockedReason()
+                               || "Not written. It is still only on this screen.")
             if (backend)
                 backend.noteSave("The module file was not written.")
             return false
