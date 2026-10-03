@@ -163,6 +163,11 @@ class DebugLog(QtCore.QObject):
         self._warn = "#F0A30A"
         self._error = "#F87171"
         self._on = True
+        # Load Whole File: read all of a big file, not just its end.
+        self._whole = False
+        self._cut = False
+        # (size, mtime) of the file as last read; unchanged means no re-read.
+        self._stamp: tuple[int, int] | None = None
 
     def _path(self) -> Path:
         from gremlin.util import logs_dir
@@ -183,8 +188,8 @@ class DebugLog(QtCore.QObject):
     def _set_file(self, value: str) -> None:
         if value != self._file:
             self._file = value
-            self._raw = None
-            self.refresh()
+            self._whole = False
+            self._reload()
 
     file = QtCore.Property(
         str, lambda self: self._file, _set_file, notify=changed,
@@ -221,6 +226,15 @@ class DebugLog(QtCore.QObject):
     @QtCore.Property(bool, notify=changed)
     def exists(self) -> bool:
         return self._path().is_file()
+
+    @QtCore.Property(bool, notify=changed)
+    def truncated(self) -> bool:
+        """Only the end of a big file is shown (Load Whole File shows all)."""
+        return self._cut
+
+    @QtCore.Property(int, constant=True)
+    def tailKilobytes(self) -> int:
+        return _TAIL_BYTES // 1024
 
     @QtCore.Property(bool, notify=changed)
     def loggingOn(self) -> bool:
@@ -267,18 +281,73 @@ class DebugLog(QtCore.QObject):
             self.changed.emit()
         path = self._path()
         try:
-            size = path.stat().st_size
-            with path.open("rb") as handle:
-                if size > _TAIL_BYTES:
-                    handle.seek(size - _TAIL_BYTES)
-                    handle.readline()  # drop the cut-off line
-                data = handle.read().decode("utf-8", errors="replace")
+            stat = path.stat()
+            stamp = (stat.st_size, stat.st_mtime_ns)
         except OSError:
-            data = ""
-        if data == self._raw:
+            stamp = None
+        if stamp == self._stamp and self._raw is not None:
+            return
+        self._stamp = stamp
+        cut = False
+        data = ""
+        if stamp is not None:
+            try:
+                with path.open("rb") as handle:
+                    if stamp[0] > _TAIL_BYTES and not self._whole:
+                        handle.seek(stamp[0] - _TAIL_BYTES)
+                        handle.readline()  # drop the cut-off line
+                        cut = True
+                    data = handle.read().decode("utf-8", errors="replace")
+            except OSError:
+                data = ""
+        if data == self._raw and cut == self._cut:
             return
         self._raw = data
+        self._cut = cut
         self._apply()
+
+    def _reload(self) -> None:
+        self._raw = None
+        self._stamp = None
+        self.refresh()
+
+    @QtCore.Slot()
+    def loadWhole(self) -> None:
+        """Read all of the file this time (until another log is chosen)."""
+        self._whole = True
+        self._reload()
+
+    @QtCore.Slot()
+    def clear(self) -> None:
+        """Empty the shown file. The program's own log handler has it open,
+        so it is emptied through that handler; otherwise directly."""
+        import logging
+
+        path = self._path()
+        done = False
+        for handler in logging.getLogger(self._file).handlers:
+            name = getattr(handler, "baseFilename", "")
+            stream = getattr(handler, "stream", None)
+            if stream is None or os.path.normcase(name) != os.path.normcase(str(path)):
+                continue
+            handler.acquire()
+            try:
+                stream.flush()
+                stream.seek(0)
+                stream.truncate()
+                done = True
+            except (OSError, ValueError):
+                pass
+            finally:
+                handler.release()
+        if not done:
+            try:
+                if path.is_file():
+                    path.write_bytes(b"")
+            except OSError:
+                pass
+        self._whole = False
+        self._reload()
 
     @QtCore.Slot()
     def copyShown(self) -> None:

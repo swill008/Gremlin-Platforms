@@ -298,6 +298,26 @@ ApplicationWindow {
                     }
                 }
 
+                // A big file: only its end is read until asked for all of it.
+                RowLayout {
+                    visible: _debug.truncated
+                    Layout.fillWidth: true
+                    Label {
+                        Layout.fillWidth: true
+                        text: "Showing the last " + _debug.tailKilobytes
+                            + " KB of a large file."
+                        color: Style.fgMuted
+                        wrapMode: Text.WordWrap
+                    }
+                    Button {
+                        text: qsTr("Load Whole File")
+                        onClicked: {
+                            _debugView.follow = true
+                            _debug.loadWhole()
+                        }
+                    }
+                }
+
                 LogView {
                     id: _debugView
                     Layout.fillWidth: true
@@ -307,6 +327,19 @@ ApplicationWindow {
 
                 RowLayout {
                     Layout.alignment: Qt.AlignRight
+                    Button {
+                        text: qsTr("Clear Log")
+                        enabled: _debug.exists
+                        onClicked: {
+                            _clearGate.confirmThen("Clear Log?",
+                                "Empty " + _debug.path.split(/[\\/]/).pop()
+                                    + "? Everything in it is removed for good.",
+                                "Clear", function() {
+                                    _debugView.follow = true
+                                    _debug.clear()
+                                }, null, true)
+                        }
+                    }
                     Button {
                         text: qsTr("Open Logs Folder")
                         onClicked: _debug.openFolder()

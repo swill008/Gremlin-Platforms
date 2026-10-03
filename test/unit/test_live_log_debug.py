@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gremlin.ui.live_debug import debug_entries, filter_entries
+import pytest
+
+from gremlin.ui.live_debug import DebugLog, debug_entries, filter_entries
 
 _ROOT = Path(__file__).resolve().parents[2]
 
@@ -51,3 +53,53 @@ def test_window_has_config_and_debug_tabs() -> None:
     assert 'TabButton { text: "Config"' in qml
     assert 'TabButton { text: "Debug"' in qml
     assert "LiveLog {" in qml and "DebugLog {" in qml
+
+
+def _debug_log(path: Path, name: str) -> DebugLog:
+    log = DebugLog()
+    log._file = name
+    log._path = lambda: path  # type: ignore[method-assign]
+    log._logging_on = lambda: True  # type: ignore[method-assign]
+    return log
+
+
+def test_load_whole_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import gremlin.ui.live_debug as live_debug
+
+    monkeypatch.setattr(live_debug, "_TAIL_BYTES", 200)
+    path = tmp_path / "system.log"
+    path.write_text("".join(
+        f"2026-10-03 09:12:{i:02d}       INFO line {i}\n" for i in range(20)
+    ), encoding="utf-8")
+    log = _debug_log(path, "test-whole")
+    log.refresh()
+    assert log.truncated and 0 < log.totalCount < 20
+    log.loadWhole()
+    assert not log.truncated and log.totalCount == 20
+
+
+def test_clear_empties_the_file_through_its_handler(tmp_path: Path) -> None:
+    import logging
+
+    path = tmp_path / "event.log"
+    logger = logging.getLogger("test-clear-log")
+    logger.propagate = False
+    handler = logging.FileHandler(path, mode="w", encoding="utf-8")
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    try:
+        logger.info("before")
+        handler.flush()
+        log = _debug_log(path, "test-clear-log")
+        log.refresh()
+        assert log.totalCount == 1
+        log.clear()
+        assert path.read_text(encoding="utf-8") == ""
+        assert log.totalCount == 0
+        # The handler keeps writing from the start, with no gap.
+        logger.info("after")
+        handler.flush()
+        assert path.read_text(encoding="utf-8") == "after\n"
+    finally:
+        logger.removeHandler(handler)
+        handler.close()

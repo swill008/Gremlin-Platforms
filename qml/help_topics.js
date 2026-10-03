@@ -239,7 +239,7 @@ function topics() {
             "<p>Debug → <b>Live Log Reader</b> has two tabs.</p>"
             + "<ul>"
             + "<li><b>Config</b> follows the program's activity log (logs.txt): which profiles, modules and settings files were read and saved, and when. Use it to check how a file loads.</li>"
-            + "<li><b>Debug</b> shows the diagnostic logs in the Logs folder: <b>System</b> (system.log: errors, warnings, blocked outputs), <b>Scripts</b> (user.log) and <b>Events</b> (event.log). <b>Show</b> picks the lowest level shown, <b>Find</b> narrows it to entries with that text, and warnings and errors are in color. What gets written is set in Options → General → Diagnostics; while that is Off, the tab says so.</li>"
+            + "<li><b>Debug</b> shows the diagnostic logs in the Logs folder: <b>System</b> (system.log: errors, warnings, blocked outputs), <b>Scripts</b> (user.log) and <b>Events</b> (event.log). <b>Show</b> picks the lowest level shown, <b>Find</b> narrows it to entries with that text, and warnings and errors are in color. For a large file only the last 512 KB is shown at first; <b>Load Whole File</b> reads all of it. <b>Clear Log</b> empties the shown file (it asks first). What gets written is set in Options → General → Diagnostics; while that is Off, the tab says so.</li>"
             + "</ul>"),
 
         topic("Options and Profile", "Options",
