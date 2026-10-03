@@ -767,6 +767,8 @@ function ungroupSelection() {
     var idx = nodeIndex(n.id)
     if (idx < 0)
         return
+    // Leaders and callouts aimed at the group stay where they are drawn.
+    freeEndsAimedAt(n.id, -1)
     list.splice(idx, 1)
     for (i = 0; i < created.length; i++)
         list.splice(idx + i, 0, created[i])

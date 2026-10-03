@@ -704,6 +704,7 @@ Item {
     function cancelAllActions() { return RigSelection.cancelAllActions() }
     function overPool(mx, my) { return RigSelection.overPool(mx, my) }
     function returnToPool() { return RigSelection.returnToPool() }
+    function freeEndsAimedAt(id, memberIndex) { return RigSelection.freeEndsAimedAt(id, memberIndex) }
 
     // What a pointer drag does to the item being dragged (rig_pointer.js)
     function applyPointer(mx, my, altOff) { return RigPointer.applyPointer(mx, my, altOff) }

@@ -21,6 +21,51 @@ function deleteSelection() {
     }
 }
 
+// Before an item leaves the map (memberIndex < 0) or a group loses one of
+// its chips (memberIndex >= 0): every leader end and callout pointer aimed at
+// it stays exactly where it is drawn now, as a free end, instead of jumping
+// to the page's top-left corner. Ends are changed in place (they can be
+// shared). Ends aimed at later chips of the group follow their new place.
+function freeEndsAimedAt(id, memberIndex) {
+    if (memberIndex === undefined)
+        memberIndex = -1
+    var seen = []
+    function fix(end) {
+        if (!end || end.id !== id || end.type === "free" || seen.indexOf(end) >= 0)
+            return
+        seen.push(end)
+        if (memberIndex >= 0 && end.type === "member" && end.member > memberIndex) {
+            end.member = end.member - 1
+            return
+        }
+        if (memberIndex >= 0 && !(end.type === "member" && end.member === memberIndex))
+            return
+        var p = endPt(end)
+        end.type = "free"
+        end.fx = xToFx(p.x)
+        end.fy = yToFy(p.y)
+        delete end.id
+        delete end.member
+    }
+    var list = nodes || []
+    for (var i = 0; i < list.length; i++) {
+        var n = list[i]
+        if (!n || (n.id === id && memberIndex < 0))
+            continue
+        fix(n.from)
+        fix(n.to)
+        var leads = n.leaders || []
+        for (var k = 0; k < leads.length; k++) {
+            fix(leads[k].from)
+            fix(leads[k].to)
+        }
+        if (memberIndex < 0 && n.tail && n.tail.to === id) {
+            var tip = calloutTip(n)
+            n.tail = { fx: xToFx(tip.x), fy: yToFy(tip.y) }
+        }
+    }
+}
+
 // Takes one item off the map without a history step; false for a group, a
 // locked item or one not on the map.
 function _removeNode(nid) {
@@ -34,6 +79,7 @@ function _removeNode(nid) {
         detachTablePacked(n)
     else
         detachChipFromTable(n)
+    freeEndsAimedAt(nid, -1)
     var list = nodes || []
     list.splice(idx, 1)
     return true
@@ -122,6 +168,7 @@ function returnToPool() {
         var at = list.indexOf(mem)
         if (at < 0)
             return false
+        freeEndsAimedAt(n.id, at)
         list.splice(at, 1)
         selectedMember = -1
         if (!list.length)
@@ -153,6 +200,7 @@ function _removeChipNode(n) {
         detachTablePacked(n)
     else
         detachChipFromTable(n)
+    freeEndsAimedAt(n.id, -1)
     nodes.splice(idx, 1)
     return true
 }
