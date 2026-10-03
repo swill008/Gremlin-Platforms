@@ -193,7 +193,7 @@ MetaConfigOption().register(
     OSC_SECTION,
     OSC_GROUP,
     "input-host",
-    "Input IP and port Gremlin binds to. Pick a scanned address or type one.",
+    "Input IP and port the program listens on. Pick a scanned address or type one.",
     OscInputHostModel,
 )
 MetaConfigOption().register(

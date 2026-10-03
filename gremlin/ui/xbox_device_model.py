@@ -129,7 +129,7 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
 
     def _get_status(self) -> str:
         if output.xbox_available():
-            return "ViGEmBus ready. Map hardware with Map to Xbox, then toggle Gremlin on."
+            return "ViGEmBus ready. Map hardware with Map to Xbox, then run the profile."
         err = output.xbox_error()
         if err:
             return err

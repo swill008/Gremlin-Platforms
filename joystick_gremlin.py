@@ -410,10 +410,13 @@ def _confirm_second_instance(
     if windows:
         extra = "\nOpen window:\n- " + "\n- ".join(windows[:4])
     elif lock_held and not pids:
-        extra = "\nAnother Optimization build is using the Gremlin lock file."
+        extra = "\nAnother copy of Gremlin-Platforms is using its lock file."
     hung_hint = ""
     if pids and not windows:
-        hung_hint = "\nA Gremlin process is running with no visible window. It may be hung."
+        hung_hint = (
+            "\nA Gremlin-Platforms process is running with no visible window."
+            " It may be hung."
+        )
     text = (
         "Another Gremlin-Platforms window is already running.\n"
         f"Process IDs: {pid_text}"
@@ -470,7 +473,7 @@ def register_config_options() -> None:
     )
     cfg.register(
         "global", "general", "check-for-updates", PropertyType.Bool, True,
-        "Check for new Gremlin versions online upon start.", {}, True,
+        "Check online for a new version when the program starts.", {}, True,
     )
     cfg.register(
         "global", "internal", "skipped-update-version", PropertyType.String, "",
@@ -536,7 +539,7 @@ def register_config_options() -> None:
     cfg.register(
         "global", "general", "device-change-behavior", PropertyType.Selection,
         "Reload",
-        "Action Gremlin takes when a joystick is connected or disconnected.",
+        "What the program does when a joystick is connected or disconnected.",
         {"valid_options": ["Disable", "Ignore", "Reload"]}, True,
     )
     cfg.register(
@@ -557,13 +560,13 @@ def register_config_options() -> None:
     )
     cfg.register(
         "global", "general", "minimize-to-tray", PropertyType.Bool, False,
-        "Minimize the Gremlin window to the system tray instead of the taskbar.",
+        "Minimize the program to the system tray instead of the taskbar.",
         {}, True,
     )
     cfg.register(
         "global", "general", "close-to-tray", PropertyType.Bool, False,
-        "Closing the Gremlin window hides it in the system tray rather than "
-        "terminating Gremlin. Quit via the tray icon's menu.",
+        "Closing the window hides it in the system tray instead of exiting the "
+        "program. Exit from the tray icon's menu.",
         {}, True,
     )
     cfg.register(
@@ -613,12 +616,12 @@ def register_config_options() -> None:
     cfg.register(
         osc_sec, osc_grp, "host", PropertyType.Selection,
         gremlin.osc.default_bind_host(),
-        "Input IP Gremlin binds to.",
+        "Input IP the program listens on.",
         {"valid_options": osc_ips}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "port", PropertyType.String, "8001",
-        "Input port Gremlin listens on. Must match Companion Target Port.", {}, False,
+        "Input port the program listens on. Must match Companion Target Port.", {}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "output-host", PropertyType.Selection, "127.0.0.1",

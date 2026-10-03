@@ -99,6 +99,6 @@ MetaConfigOption().register(
     LOG_SECTION,
     LOG_GROUP,
     "debug",
-    "Write diagnostic logs to the Gremlin user-profile folder.",
+    "Write diagnostic logs to the logs folder (Options → Global → Files).",
     LogLevelModel,
 )

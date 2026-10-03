@@ -33,10 +33,10 @@ function topics() {
             + "<p><b>Help → Check for Updates</b> asks GitHub for the latest release. When Options → Global → <b>Check for updates</b> is on (the default), it also checks when the program starts and only speaks up when there is a newer version.</p>"
             + "<p>An installed copy offers <b>Update now</b>: it downloads the installer, checks it against the SHA-256 checksum GitHub reports, closes the program the usual way (asking about unsaved changes), installs, and starts the new version. <b>Skip this version</b> stops the startup check from offering that version. A portable copy, or one run from source, only points you to the release page.</p>"
             + "<p>Updates and uninstalling never touch your profiles, modules or settings; they are kept in your Gremlin Platforms folder (see What is saved where).</p>"),
-        topic("Getting Started", "Toggle and status",
-            "<p><b>Toggle</b> on the toolbar runs or stops the loaded profile. While it is off you are only editing; nothing is sent to vJoy or Xbox. The button uses the accent color while the profile runs.</p>"
-            + "<p>The bottom bar shows <b>Status</b> (Active, Not Running, or Paused), the <b>Executing mode</b>, and what the last save wrote.</p>"
-            + "<p>Toggle does not hide controllers from games; use <b>HidHide</b> for that. What happens when a controller is plugged in or removed while running is set by Options → Global → <b>Device change behavior</b> (Reload, Ignore, or Disable).</p>"),
+        topic("Getting Started", "Run and status",
+            "<p><b>Run</b> on the toolbar runs the loaded profile; while it runs the button reads <b>Stop</b>. While it is off you are only editing; nothing is sent to vJoy or Xbox. The button uses the accent color while the profile runs.</p>"
+            + "<p>The bottom bar shows <b>Status</b> (Running, Stopped, or Paused, and 'unsaved changes' when the running profile has some) and what the last save wrote. The toolbar's <b>Mode</b> is the mode you edit and the mode that runs.</p>"
+            + "<p>Running does not hide controllers from games; use <b>HidHide</b> for that. What happens when a controller is plugged in or removed while running is set by Options → Global → <b>Device change behavior</b> (Reload, Ignore, or Disable).</p>"),
         topic("Getting Started", "Menus and the command palette",
             "<p>Every menu in the program works the same way, in light and dark mode:</p>"
             + "<ul>"
@@ -97,7 +97,7 @@ function topics() {
             + "<ul>"
             + "<li><b>Add Action</b> on an input opens the action editor beside it. Build the action and press <b>OK</b>. <b>Close pane after OK</b> closes the editor when OK succeeds.</li>"
             + "<li><b>Delete</b> removes an action. Leaving an input with unsaved editor changes asks first.</li>"
-            + "<li>Actions belong to the mode shown in <b>Configuring mode</b> on the toolbar.</li>"
+            + "<li>Actions belong to the mode shown in <b>Mode</b> on the toolbar.</li>"
             + "<li><b>Move empty to Unmapped</b> lists inputs with no actions under an Unmapped heading.</li>"
             + "<li>OK keeps the action in the profile; File → <b>Save Profile</b> writes it to disk.</li>"
             + "</ul>"
@@ -193,7 +193,7 @@ function topics() {
             "<p>A mode is a set of actions. The same button can do different things in different modes. A mode can <b>inherit</b> from a parent: anything it does not map itself uses the parent's actions.</p>"
             + "<ul>"
             + "<li><b>Manage Modes</b> (toolbar, or Tools → Mapping): add, rename, and remove modes, and set <b>Inherits from</b>.</li>"
-            + "<li><b>Configuring mode</b> on the toolbar picks the mode you edit and the mode Toggle starts in. The bottom bar shows the <b>Executing mode</b>.</li>"
+            + "<li><b>Mode</b> on the toolbar picks the mode you edit and the mode Run starts in; while running it shows the mode that runs.</li>"
             + "<li>The <b>Change Mode</b> action switches mode while the profile runs.</li>"
             + "<li>Modes are part of the profile; save the profile to keep them.</li>"
             + "</ul>"),
@@ -230,7 +230,7 @@ function topics() {
             "<p>HidHide hides physical controllers from games so they only see vJoy or Xbox. Gremlin-Platforms always sees them. The HidHide driver is a separate install (<b>Get HidHide</b>).</p>"
             + "<p>Tools → Device setup → <b>HidHide</b>:</p>"
             + "<ul>"
-            + "<li><b>Gremlin control</b> lets this program write HidHide's settings. <b>HidHide Enabled</b> turns hiding on. <b>Automatically Start</b> applies both each time the program starts.</li>"
+            + "<li><b>Gremlin-Platforms controls HidHide</b> lets this program write HidHide's settings. <b>HidHide Enabled</b> turns hiding on. <b>Automatically Start</b> applies both each time the program starts.</li>"
             + "<li>Tick the devices to hide. <b>Gaming devices only</b> shortens the list. A hidden device is dimmed and marked HIDDEN.</li>"
             + "<li><b>Allow list</b>: only the listed programs see hidden devices. <b>Block list</b>: the listed programs do not. Add programs with <b>Add Program</b>.</li>"
             + "<li><b>Test HidHide</b> opens the Windows Game Controllers panel. With Allow list on, a hidden device should be missing there. Reopen the panel after each change.</li>"
@@ -262,16 +262,16 @@ function topics() {
             "<p>View → <b>Scripts</b> adds Python scripts to the profile. <b>Add Script</b> picks a .py file; each script can be renamed and its variables set on that page. Scripts are saved with the profile. A script's <b>vjoy</b> object can only use outputs the vJoy output modules claim.</p>"),
         topic("Troubleshooting", "Nothing reaches vJoy",
             "<ul>"
-            + "<li>Is <b>Toggle</b> on? The bottom bar should say Active.</li>"
+            + "<li>Is the profile running? The toolbar button should read <b>Stop</b> and the bottom bar <b>Running</b>.</li>"
             + "<li>Is the input <b>claimed</b> in its input module? Unclaimed inputs are ignored.</li>"
             + "<li>Does the wire show <b>(not claimed)</b>? Claim that output in Configure output module.</li>"
-            + "<li>Is the action in the <b>Executing mode</b>? Only that mode's actions (and its parents') run.</li>"
+            + "<li>Is the action in the running <b>Mode</b> (on the toolbar)? Only that mode's actions (and its parents') run.</li>"
             + "<li><b>system.log</b> in the Logs folder (Options → Global → Files) notes each blocked output once.</li>"
             + "</ul>"),
         topic("Troubleshooting", "Xbox does nothing",
             "<ul>"
             + "<li>Open the Xbox page: it must say <b>ViGEmBus ready</b>. If not, install ViGEmBus.</li>"
-            + "<li>The pad exists only while the profile runs (Toggle on) and after a Map to Xbox action has sent.</li>"
+            + "<li>The pad exists only while the profile runs and after a Map to Xbox action has sent.</li>"
             + "<li>Check the action uses <b>Map to Xbox</b> with <b>Xbox 360 Controller</b> and the right Target.</li>"
             + "</ul>"),
         topic("Troubleshooting", "A key binding does not fire",

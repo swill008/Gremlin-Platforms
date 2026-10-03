@@ -95,7 +95,7 @@ ColumnLayout {
 
                 JGText {
                     visible: pairActive
-                    text: "Active"
+                    text: "Running"
                     color: Style.ok
                     font.pixelSize: Style.dp(13)
                 }

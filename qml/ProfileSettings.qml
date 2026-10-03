@@ -63,7 +63,7 @@ Item {
                     UIText {
                         Layout.fillWidth: true
 
-                        text: "The mode the profile is in when it is loaded. Use Heuristic picks the first mode, in alphabetical order, that has no parent. Last Active picks the mode this profile was using the last time it ran. Choosing a mode by name picks that mode. Toggle starts in the mode shown in the toolbar."
+                        text: "The mode the profile is in when it is loaded. Use Heuristic picks the first mode, in alphabetical order, that has no parent. Last Active picks the mode this profile was using the last time it ran. Choosing a mode by name picks that mode. Run starts in the mode shown in the toolbar."
                     }
                 }
 
@@ -151,7 +151,7 @@ Item {
                         Layout.fillWidth: true
 
                         text: "Determines whether vJoy devices are treated as " +
-                            "input or output devices by Gremlin. If treated " +
+                            "input or output devices by the program. If treated " +
                             "as an output device, it can be used with the " +
                             "'Map to vJoy' action. If treated as an input device, " +
                             "the vJoy device is treated like any other " +

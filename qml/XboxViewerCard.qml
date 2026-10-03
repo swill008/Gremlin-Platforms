@@ -72,7 +72,7 @@ ColumnLayout {
                 }
                 JGText {
                     visible: pairActive
-                    text: "Active"
+                    text: "Running"
                     color: Style.ok
                     font.pixelSize: Style.dp(13)
                 }
@@ -86,7 +86,7 @@ ColumnLayout {
 
             JGText {
                 visible: !pairActive && _xboxPads.count > 0
-                text: "Activate Gremlin to plug the virtual pad and light this face."
+                text: "Run the profile to plug in the virtual pad and light this face."
                 color: Style.alert
                 font.pixelSize: Style.dp(13)
                 wrapMode: Text.WordWrap

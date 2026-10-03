@@ -1015,9 +1015,10 @@ ApplicationWindow {
             JGToolButton {
                 id: _toggleButton
                 text: "\uF448"
-                caption: "Toggle"
+                // Glossary: Run / Stop.
+                caption: backend && backend.gremlinActive ? "Stop" : "Run"
                 color: backend && backend.gremlinActive ? Style.accent : Style.foreground
-                tooltip: qsTr("Toggle Active")
+                tooltip: backend && backend.gremlinActive ? qsTr("Stop the profile") : qsTr("Run the profile")
 
                 onClicked: () => {
                     if (backend) {
@@ -1079,7 +1080,8 @@ ApplicationWindow {
             Label {
                 Layout.rightMargin: Style.dp(10)
 
-                text: "Configuring mode"
+                // One mode: the one you edit is the one that runs.
+                text: "Mode"
             }
 
             TooltipComboBox {
@@ -1167,7 +1169,7 @@ ApplicationWindow {
                 color: backend && backend.gremlinActive ? Style.foreground : Style.fgMuted
                 text: "<B>Status: </B>" +
                     Helpers.selectText(
-                        backend && backend.gremlinActive, "Active", "Not Running"
+                        backend && backend.gremlinActive, "Running", "Stopped"
                     ) +
                     Helpers.selectText(
                         backend && backend.gremlinActive && backend.gremlinPaused, " (Paused)", ""
@@ -1176,13 +1178,6 @@ ApplicationWindow {
                     Helpers.selectText(
                         backend && backend.gremlinActive && _root.profileDirty, " (unsaved changes)", ""
                     )
-            }
-
-            Label {
-                Layout.preferredWidth: Style.dp(220)
-                padding: Style.dp(5)
-
-                text: "<B>Executing mode: </B>" + (backend ? backend.currentMode : "")
             }
 
             Label {

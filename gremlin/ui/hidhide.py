@@ -168,7 +168,7 @@ def _ensure_options() -> None:
             "hidhide-on-start",
             PropertyType.Bool,
             False,
-            "Turn HidHide on when Gremlin starts.",
+            "Turn HidHide on when the program starts.",
             {},
             True,
         )

@@ -270,7 +270,7 @@ class SystemTrayIcon(QtCore.QObject):
             )
             win32gui.AppendMenu(menu, win32con.MF_STRING, _ID_SHOW, show_hide)
             win32gui.AppendMenu(menu, win32con.MF_SEPARATOR, 0, "")
-            label = "Deactivate" if self._backend.gremlinActive else "Activate"
+            label = "Stop profile" if self._backend.gremlinActive else "Run profile"
             win32gui.AppendMenu(menu, win32con.MF_STRING, _ID_TOGGLE, label)
             win32gui.AppendMenu(menu, win32con.MF_SEPARATOR, 0, "")
             win32gui.AppendMenu(

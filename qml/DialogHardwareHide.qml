@@ -155,7 +155,7 @@ ApplicationWindow {
                     property bool shown: _hh.gremlinControl
                     onShownChanged: if (!pressed) checked = shown
                     Component.onCompleted: checked = shown
-                    text: "Gremlin control"
+                    text: "Gremlin-Platforms controls HidHide"
                     onClicked: _hh.setGremlinControl(checked)
                 }
                 Switch {
@@ -193,7 +193,7 @@ ApplicationWindow {
             wrapMode: Text.WordWrap
             color: Style.fgMuted
             font.pixelSize: Style.dp(12)
-            text: "HidHide Enabled means HidHide enforces the device list and the program list. Off means HidHide is installed but HidHide is not hiding anything. Automatically Start turns Gremlin control and HidHide Enabled on each time this program starts. This program does not install HidHide. Click on Get HidHide to download the program."
+            text: "HidHide Enabled means HidHide enforces the device list and the program list. Off means HidHide is installed but HidHide is not hiding anything. Automatically Start turns on both this control and HidHide Enabled each time this program starts. This program does not install HidHide. Click on Get HidHide to download the program."
         }
 
         // Why the switches and lists are greyed out, and what turns them on.
@@ -203,7 +203,7 @@ ApplicationWindow {
             wrapMode: Text.WordWrap
             color: Style.warn
             font.pixelSize: Style.dp(12)
-            text: "Turn on Gremlin control (above) to change HidHide from here. Until then the settings below are shown but can't be changed."
+            text: "Turn on 'Gremlin-Platforms controls HidHide' (above) to change HidHide from here. Until then the settings below are shown but can't be changed."
         }
 
         Label {
@@ -212,7 +212,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             color: Style.fgMuted
             font.pixelSize: Style.dp(12)
-            text: "Install HidHide from the Nefarius releases page, then open this window again. Gremlin will not download or bundle that installer."
+            text: "Install HidHide from the Nefarius releases page, then open this window again. This program does not download or bundle that installer."
         }
 
         Switch {

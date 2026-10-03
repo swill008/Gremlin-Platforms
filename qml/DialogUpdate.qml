@@ -42,7 +42,7 @@ ApplicationWindow {
             var text = "<b>Gremlin-Platforms " + updater.latestVersion + "</b> is available. "
                 + "You have " + updater.currentVersion + ".<br><br>"
             if (updater.canInstall)
-                return text + "Update now downloads it, closes Gremlin, installs it and starts it again. "
+                return text + "Update now downloads it, closes the program, installs it and starts it again. "
                     + "Your profiles and settings are kept."
             if (updater.installKind === "installed")
                 return text + "This release has no installer this copy can check, so get it from the release page."
@@ -51,7 +51,7 @@ ApplicationWindow {
         case "downloading":
             return "Downloading Gremlin-Platforms " + updater.latestVersion + "…"
         case "ready":
-            return "Downloaded and checked. Gremlin will close, install "
+            return "Downloaded and checked. The program will close, install "
                 + updater.latestVersion + " and start again."
         case "error":
             return updater.errorText
