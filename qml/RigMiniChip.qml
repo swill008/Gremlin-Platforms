@@ -21,7 +21,13 @@ Rectangle {
     }
     width: implicitWidth
     height: implicitHeight
-    implicitWidth: { ed.tick; return t.implicitWidth + ed.uiPx(Math.max(10, ed.styleVal(node, mem, "chipSize", 18) * 0.55)) }
+    // A circle is as wide as it is tall (ed.chipH gives its diameter).
+    implicitWidth: {
+        ed.tick
+        if (ed.isCircle(node, mem))
+            return ed.chipH(node, mem)
+        return t.implicitWidth + ed.uiPx(Math.max(10, ed.styleVal(node, mem, "chipSize", 18) * 0.55))
+    }
     implicitHeight: { ed.tick; return ed.chipH(node, mem) }
     radius: { ed.tick; return ed.chipR(node, height || ed.chipH(node, mem), mem) }
     color: {
@@ -63,7 +69,7 @@ Rectangle {
             var hl = ed.styleVal(node, mem, "highlight", true)
             return ed.ink(parent.on && hl ? ed.styleVal(node, mem, "hlText", "#BBF7D0") : ed.styleVal(node, mem, "textColor", "#E4E4E7"))
         }
-        font.pixelSize: { ed.tick; return ed.uiPx(ed.styleVal(node, mem, "fontSize", 10)) }
+        font.pixelSize: { ed.tick; return ed.uiPx(ed.isCircle(node, mem) ? ed.circleFont(node, mem) : ed.styleVal(node, mem, "fontSize", 10)) }
         visible: {
             ed.tick
             return !(ed.renameId === node.id && ed.renameMember === memberIndex)

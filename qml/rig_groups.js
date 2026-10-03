@@ -197,7 +197,7 @@ function fiveWayFormat(n) {
 function memberHasOverride(mem) {
     if (!mem)
         return false
-    var keys = ["chipShape", "chipSize", "chipFill", "fontSize", "color", "border", "textColor",
+    var keys = ["chipShape", "chipSize", "circleSize", "chipFill", "fontSize", "color", "border", "textColor",
                 "hlColor", "hlBorder", "hlText", "offX", "offY"]
     var i
     for (i = 0; i < keys.length; i++) {
@@ -214,7 +214,7 @@ function clearGroupFormat() {
         return
     selectedId = n.id
     var mem = n.members || []
-    var keys = ["chipShape", "chipSize", "chipFill", "fontSize", "color", "border", "textColor",
+    var keys = ["chipShape", "chipSize", "circleSize", "chipFill", "fontSize", "color", "border", "textColor",
                 "hlColor", "hlBorder", "hlText", "offX", "offY"]
     var i
     var k
@@ -392,7 +392,7 @@ function themeCell(n) {
 
 function clearThemeMemberLayout(n) {
     var mem = n && n.members ? n.members : []
-    var keys = ["chipShape", "chipSize", "chipFill", "fontSize", "color", "border", "textColor",
+    var keys = ["chipShape", "chipSize", "circleSize", "chipFill", "fontSize", "color", "border", "textColor",
                 "hlColor", "hlBorder", "hlText", "offX", "offY"]
     var i, k
     for (i = 0; i < mem.length; i++) {

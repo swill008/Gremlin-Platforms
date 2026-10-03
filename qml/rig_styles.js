@@ -9,7 +9,7 @@
 // function here has a forwarder of the same name in the editor.
 
 var _FIELDS = {
-    chip: ["chipShape", "chipSize", "chipFill", "fontSize", "color", "border", "textColor",
+    chip: ["chipShape", "chipSize", "circleSize", "chipFill", "fontSize", "color", "border", "textColor",
            "highlight", "hlColor", "hlBorder", "hlText", "hotSize", "hotShape", "hotFill",
            "hotColor", "hotLine", "hotOpacity", "hotHalo", "hotNumber", "hotPress", "hotPressColor",
            "hotPulse", "hotLive", "leaderColor", "leaderWidth"],

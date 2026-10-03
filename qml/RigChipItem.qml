@@ -14,7 +14,13 @@ Rectangle {
     property bool on: ed.litOf(node.kind, node.hwId)
     width: implicitWidth
     height: implicitHeight
-    implicitWidth: { ed.tick; return _lab.implicitWidth + ed.uiPx(Math.max(10, (node.chipSize || 18) * 0.55)) }
+    // A circle is as wide as it is tall (ed.chipH gives its diameter).
+    implicitWidth: {
+        ed.tick
+        if (ed.isCircle(node, null))
+            return ed.chipH(node)
+        return _lab.implicitWidth + ed.uiPx(Math.max(10, (node.chipSize || 18) * 0.55))
+    }
     implicitHeight: { ed.tick; return ed.chipH(node) }
     radius: { ed.tick; return ed.chipR(node, height || ed.chipH(node)) }
     color: {
@@ -39,7 +45,7 @@ Rectangle {
             ed.tick
             return ed.ink(on && node.highlight ? (node.hlText || "#BBF7D0") : (node.textColor || "#E4E4E7"))
         }
-        font.pixelSize: { ed.tick; return ed.uiPx(node.fontSize || 10) }
+        font.pixelSize: { ed.tick; return ed.uiPx(ed.isCircle(node, null) ? ed.circleFont(node, null) : (node.fontSize || 10)) }
         text: {
             ed.tick
             return ed.chipText(node, null)

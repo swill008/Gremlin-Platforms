@@ -362,7 +362,7 @@ function buttonMapTopics() {
             + "<ul>"
             + "<li><b>Rename</b> and <b>Delete Chip</b> (back to the pool; Delete or Backspace does the same).</li>"
             + "<li>Or drag a chip back onto the pool: the pool lights up, and letting go takes the chip off the map. With several chips selected, they all go; a group goes whole, and while a group is being edited the member you drag leaves it. Locked chips stay. Undo brings them back.</li>"
-            + "<li><b>Chip Style</b>: font size, chip size, Round or Square, Filled or Hollow, and <b>Highlight on press</b>.</li>"
+            + "<li><b>Chip Style</b>: font size, chip size, <b>Round</b>, <b>Square</b> or <b>Circle</b>, Filled or Hollow, and <b>Highlight on press</b>. A <b>Circle</b> is always a true circle: it grows to fit its label (<b>Circle Size</b> → <b>Auto</b>), or keeps a size you choose and makes the text smaller to fit.</li>"
             + "<li><b>Colors</b>: Fill color…, Outline color… and Text color…, and <b>Pressed Fill…</b>, <b>Pressed Outline…</b> and <b>Pressed Text…</b> used while the control is held.</li>"
             + "<li><b>Hotspot</b> and <b>Leader Ends</b> (see Hotspots and leaders), <b>Arrange</b> (stacking, Lock, Hide).</li>"
             + "</ul>"

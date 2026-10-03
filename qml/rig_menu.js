@@ -63,7 +63,8 @@ function _setDraw(key) {
 }
 
 function _sect(key, title, items) {
-    return { key: key, title: title, items: items }
+    // Rows that do not apply here are passed as null and left out.
+    return { key: key, title: title, items: (items || []).filter(function(i) { return !!i }) }
 }
 
 function _menuIds() {
@@ -165,7 +166,13 @@ function _chipStyle() {
     return _sect("style", "Chip Style", [
         _pick("Font Size", [8, 9, 10, 11, 12, 14, 16, 18, 20, 22], null, _field("fontSize", 10), _set("fontSize")),
         _pick("Size", [12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48], null, _field("chipSize", 18), _set("chipSize")),
-        _pick("Shape", ["round", "square"], ["Round", "Square"], _field("chipShape", "round"), _set("chipShape")),
+        _pick("Shape", ["round", "square", "circle"], ["Round", "Square", "Circle"], _field("chipShape", "round"), _set("chipShape")),
+        // A circle sizes itself to its label (Auto) unless a size is chosen.
+        _field("chipShape", "round")("circle")
+            ? _pick("Circle Size", [0, 20, 24, 28, 32, 36, 42, 48, 56, 64, 72],
+                    ["Auto", "20", "24", "28", "32", "36", "42", "48", "56", "64", "72"],
+                    _field("circleSize", 0), _set("circleSize"))
+            : null,
         _pick("Fill", ["filled", "hollow"], ["Filled", "Hollow"], _field("chipFill", "filled"), _set("chipFill")),
         _tog("Highlight on press", !n || n.highlight !== false,
              function() { var c = nodeAt(selectedId); applyField("highlight", !(c && c.highlight !== false)) }),

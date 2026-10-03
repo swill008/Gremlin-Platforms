@@ -349,13 +349,50 @@ function pinPt(n, item, side) {
 }
 
 function chipH(n, mem) {
+    if (isCircle(n, mem))
+        return uiPx(circleD(n, mem))
     var sz = styleVal(n, mem, "chipSize", 18)
     var fs = styleVal(n, mem, "fontSize", 10)
     return uiPx(Math.max(sz, fs + 8))
 }
 
 function chipR(n, h, mem) {
-    return styleVal(n, mem, "chipShape", "round") === "square" ? 0 : Math.max(2, h * 0.5)
+    var shape = styleVal(n, mem, "chipShape", "round")
+    if (shape === "circle")
+        return h * 0.5
+    return shape === "square" ? 0 : Math.max(2, h * 0.5)
+}
+
+// Circle (Chip Style → Shape): a true circle, width always equal to height.
+// Its diameter (unscaled) fits the label unless Circle Size sets it; a set
+// size smaller than the label needs makes the text smaller (circleFont), never
+// the circle wider.
+function isCircle(n, mem) {
+    return styleVal(n, mem, "chipShape", "round") === "circle"
+        && fiveWayFormat(n) !== "mini"
+}
+
+function _chipLabel(n, mem) {
+    return String(mem ? memberLabel(n, mem) : friendlyOf(n, null))
+}
+
+function circleD(n, mem) {
+    var fixed = Number(styleVal(n, mem, "circleSize", 0)) || 0
+    if (fixed > 0)
+        return fixed
+    var fs = styleVal(n, mem, "fontSize", 10)
+    var sz = styleVal(n, mem, "chipSize", 18)
+    var textW = _chipLabel(n, mem).length * fs * 0.5
+    return Math.max(sz, fs + 8, textW + Math.max(8, fs * 0.8))
+}
+
+function circleFont(n, mem) {
+    var fs = styleVal(n, mem, "fontSize", 10)
+    if (!isCircle(n, mem))
+        return fs
+    var d = circleD(n, mem)
+    var len = Math.max(1, _chipLabel(n, mem).length)
+    return Math.max(6, Math.min(fs, (d - Math.max(6, d * 0.15)) / (len * 0.5)))
 }
 
 function chipIsHollow(n, mem) {
@@ -503,5 +540,7 @@ function chipWGuess(n, mem) {
     var pad = Math.max(10, sz * 0.55)
     if (fiveWayFormat(n) === "mini" && !memberHasCustomName(n, mem))
         return uiPx(Math.max(18, fs + 10))
+    if (isCircle(n, mem))
+        return uiPx(circleD(n, mem))
     return uiPx(String(s).length * fs * 0.50 + pad)
 }

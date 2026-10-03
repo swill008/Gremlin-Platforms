@@ -16,7 +16,7 @@ function ink(c) {
 }
 
 function isStyleKey(key) {
-    return key === "chipShape" || key === "chipSize" || key === "chipFill" || key === "fontSize"
+    return key === "chipShape" || key === "chipSize" || key === "circleSize" || key === "chipFill" || key === "fontSize"
         || key === "color" || key === "border" || key === "textColor" || key === "highlight"
         || key === "hlColor" || key === "hlBorder" || key === "hlText"
 }
@@ -105,7 +105,7 @@ function resetMemberStyle() {
     var mem = targetMember()
     if (!mem)
         return
-    var keys = ["chipShape", "chipSize", "chipFill", "fontSize", "color", "border", "textColor", "hlColor", "hlBorder", "hlText", "offX", "offY"]
+    var keys = ["chipShape", "chipSize", "circleSize", "chipFill", "fontSize", "color", "border", "textColor", "hlColor", "hlBorder", "hlText", "offX", "offY"]
     var i
     for (i = 0; i < keys.length; i++)
         delete mem[keys[i]]

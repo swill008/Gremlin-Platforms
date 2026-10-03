@@ -290,6 +290,8 @@ Item {
     function chipXY(n) { return RigChips.chipXY(n) }
     function pinPt(n, item, side) { return RigChips.pinPt(n, item, side) }
     function chipH(n, mem) { return RigChips.chipH(n, mem) }
+    function isCircle(n, mem) { return RigChips.isCircle(n, mem) }
+    function circleFont(n, mem) { return RigChips.circleFont(n, mem) }
     function chipR(n, h, mem) { return RigChips.chipR(n, h, mem) }
     function chipIsHollow(n, mem) { return RigChips.chipIsHollow(n, mem) }
     function hotSz(n) { return RigChips.hotSz(n) }
