@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import (
     TYPE_CHECKING,
     List,
@@ -25,6 +26,7 @@ from gremlin.base_classes import (
     Value,
 )
 from gremlin.error import GremlinError
+from gremlin.log_once import log_once
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
@@ -56,7 +58,21 @@ class PlaySoundFunctor(AbstractFunctor):
         if not self._should_execute(value):
             return
 
-        AudioPlayer().enqueue(self.data.sound_filename, self.data.sound_volume)
+        filename = self.data.sound_filename
+        if not util.file_exists_and_is_accessible(filename):
+            log_once(
+                "user", ("play-sound-missing", filename), logging.WARNING,
+                f"Play Sound: '{filename}' not found, nothing played",
+            )
+            return
+        try:
+            AudioPlayer().enqueue(filename, self.data.sound_volume)
+        except Exception as e:
+            # A file that can't be decoded (damaged, unsupported format).
+            log_once(
+                "user", ("play-sound-unreadable", filename), logging.WARNING,
+                f"Play Sound: could not play '{filename}': {e}",
+            )
 
 
 class PlaySoundModel(ActionModel):
@@ -142,11 +158,8 @@ class PlaySoundData(AbstractActionData):
 
         self.sound_filename = util.read_property(node, "filename", PropertyType.String)
         self.sound_volume = util.read_property(node, "volume", PropertyType.Int)
-
-        if not self.is_valid():
-            raise GremlinError(
-                f"{self.sound_filename} does not exists or is not accessible."
-            )
+        # A missing file does not stop the profile from loading: the action is
+        # kept as it is, and its card says the file isn't found.
 
     @override
     def _to_xml(self) -> ElementTree.Element:
@@ -163,12 +176,19 @@ class PlaySoundData(AbstractActionData):
     @override
     def user_feedback(self) -> List[UserFeedback]:
         messages = []
-        if not util.file_exists_and_is_accessible(self.sound_filename):
+        if not str(self.sound_filename or "").strip():
+            # Not finished: no file chosen yet.
+            messages.append(
+                UserFeedback(UserFeedback.FeedbackType.Error, "Choose a sound file.")
+            )
+        elif not util.file_exists_and_is_accessible(self.sound_filename):
+            # A warning, not an error, so a save keeps the action: the file
+            # may be put back or another one chosen.
             messages.append(
                 UserFeedback(
-                    UserFeedback.FeedbackType.Error,
-                    f"File '{self.sound_filename}' does not exist or is "
-                    f"not accessible.",
+                    UserFeedback.FeedbackType.Warning,
+                    f"File '{self.sound_filename}' not found. Pressing it plays "
+                    "nothing until the file is back or another is chosen.",
                 )
             )
         return messages
