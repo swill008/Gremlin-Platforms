@@ -2646,8 +2646,8 @@
      "Height: 10%",
      "Angle: 0\u00b0",
      "Fill: hollow",
-     "Fill colour: #14532D",
-     "Outline colour: #22C55E",
+     "Fill color: #14532D",
+     "Outline color: #22C55E",
      "Line width: 2px",
      "Outline: ",
      "Opacity: 100%"
@@ -2701,8 +2701,8 @@
      "Height: 12.5%",
      "Angle: 30\u00b0",
      "Fill: filled",
-     "Fill colour: #14532D",
-     "Outline colour: #22C55E",
+     "Fill color: #14532D",
+     "Outline color: #22C55E",
      "Line width: 2px",
      "Outline: ",
      "Opacity: 50%"
@@ -2791,10 +2791,10 @@
      "Hotspot Y: 25.56%",
      "Font size: 10px",
      "Chip size: 18px",
-     "Fill colour: #18181B",
-     "Outline colour: #3F3F46",
-     "Text colour: #E4E4E7",
-     "Hotspot colour: #F4F4F5"
+     "Fill color: #18181B",
+     "Outline color: #3F3F46",
+     "Text color: #E4E4E7",
+     "Hotspot color: #F4F4F5"
     ],
     "selected": [
      "ID4"
@@ -4140,7 +4140,7 @@
      "Start Y: 80%",
      "End X: 25%",
      "End Y: 95%",
-     "Colour: #22C55E",
+     "Color: #22C55E",
      "Line width: 2px",
      "Outline: ",
      "Start head: none",
@@ -5497,8 +5497,8 @@
     "props": [
      "2 selected",
      "Fill: hollow",
-     "Fill colour: #14532D",
-     "Outline colour: #22C55E",
+     "Fill color: #14532D",
+     "Outline color: #22C55E",
      "Line width: 2px",
      "Outline: ",
      "Opacity: 25%"
@@ -5554,8 +5554,8 @@
      "Height: 12.5%",
      "Angle: 30\u00b0",
      "Fill: filled",
-     "Fill colour: #14532D",
-     "Outline colour: #22C55E",
+     "Fill color: #14532D",
+     "Outline color: #22C55E",
      "Line width: 2px",
      "Outline: ",
      "Opacity: 25%"

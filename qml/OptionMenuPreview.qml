@@ -75,11 +75,11 @@ Item {
             spacing: Style.dp(8)
             Button {
                 id: _menuButton
-                text: "Right-click menu…"
+                text: "Right-click Menu…"
                 onClicked: _sample.openBelow(_menuButton)
             }
             Button {
-                text: "Command palette…"
+                text: "Command Palette…"
                 onClicked: _palette.open()
             }
             ComboBox {

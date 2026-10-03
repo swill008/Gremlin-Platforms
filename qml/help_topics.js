@@ -31,7 +31,7 @@ function topics() {
             + "<li><b>Gremlin-Platforms-R1-X.Y.Z.zip</b>, the portable copy. Unzip it anywhere outside Program Files and run gremlin_platforms.exe.</li>"
             + "</ul>"
             + "<p><b>Help → Check for Updates</b> asks GitHub for the latest release. When Options → Global → <b>Check for updates</b> is on (the default), it also checks when the program starts and only speaks up when there is a newer version.</p>"
-            + "<p>An installed copy offers <b>Update now</b>: it downloads the installer, checks it against the SHA-256 checksum GitHub reports, closes the program the usual way (asking about unsaved changes), installs, and starts the new version. <b>Skip this version</b> stops the startup check from offering that version. A portable copy, or one run from source, only points you to the release page.</p>"
+            + "<p>An installed copy offers <b>Update Now</b>: it downloads the installer, checks it against the SHA-256 checksum GitHub reports, closes the program the usual way (asking about unsaved changes), installs, and starts the new version. <b>Skip This Version</b> stops the startup check from offering that version. A portable copy, or one run from source, only points you to the release page.</p>"
             + "<p>Updates and uninstalling never touch your profiles, modules or settings; they are kept in your Gremlin Platforms folder (see What is saved where).</p>"),
         topic("Getting Started", "Run and status",
             "<p><b>Run</b> on the toolbar runs the loaded profile; while it runs the button reads <b>Stop</b>. While it is off you are only editing; nothing is sent to vJoy or Xbox. The button uses the accent color while the profile runs.</p>"
@@ -44,7 +44,7 @@ function topics() {
             + "<li><b>Right-click menus</b> start with the name of what you clicked and its most used commands, then <b>sections</b> (▸) that open one at a time. The section you opened last opens again next time. Some show <b>Undo</b> and <b>Redo</b> beside the name.</li>"
             + "<li><b>Keys</b>: Up and Down move, Right and Left open or close a section or step a row of choices, Enter runs, Esc closes.</li>"
             + "<li><b>Dropdown lists</b> of ten or more entries have a search box: type part of a name, Up and Down move, Enter picks.</li>"
-            + "<li><b>Command palette</b>: Ctrl+K (or View → <b>Command palette</b>) lists every menu command you can use now. Type part of a name and press Enter. Shortcuts show beside the commands.</li>"
+            + "<li><b>Command Palette</b>: Ctrl+K (or View → <b>Command Palette</b>) lists every menu command you can use now. Type part of a name and press Enter. Shortcuts show beside the commands.</li>"
             + "<li><b>Shortcuts</b>: Ctrl+N new profile, Ctrl+O load, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+K command palette, F1 this guide.</li>"
             + "</ul>"
             + "<p>Options → User Interface → <b>Menu preview</b> shows each part and lets you try them.</p>"),
@@ -59,7 +59,7 @@ function topics() {
             "<p>Three separate stores. Saving one does not save the others, except where noted.</p>"
             + "<ul>"
             + "<li><b>Profile</b> (File → Save Profile): modes, actions, profile settings, scripts.</li>"
-            + "<li><b>Module file</b>, one per device: claims, friendly names, the device picture, the Button Map layout, the display look of its Configuration page or Output View, and its calibration. Input/Output Module Setup, Button Map, Calibration, and the display editors write it. Saving an output module also saves the profile when the profile already has a file.</li>"
+            + "<li><b>Module File</b>, one per device: claims, friendly names, the device picture, the Button Map layout, the display look of its Configuration page or Output View, and its calibration. Input/Output Module Setup, Button Map, Calibration, and the display editors write it. Saving an output module also saves the profile when the profile already has a file.</li>"
             + "<li><b>Program settings</b>: Options, Home layout and card sizes, window sizes, HidHide choices, and the Logical Device display look.</li>"
             + "</ul>"
             + "<p>After every save the bottom bar names the file that was written.</p>"),
@@ -69,28 +69,28 @@ function topics() {
             + "<ul>"
             + "<li><b>Double-click</b> a card to open its Configuration page (or <b>Output View</b> for an output).</li>"
             + "<li><b>Right-click</b> a card for: Open Configuration, Button Map, Module Setup…, Auto Mapper, the viewer, Calibration, Device Information, Swap device…, stacking, Reset size, Hide card, Reset card layout (its size and stacking), and Delete Device.</li>"
-            + "<li><b>Shift-click</b> cards, then <b>Stack selected cards</b>, to group them.</li>"
+            + "<li><b>Shift-click</b> cards, then <b>Stack Selected Cards</b>, to group them.</li>"
             + "<li>Each card's <b>last:</b> line shows the latest input it passed or output it sent.</li>"
-            + "<li><b>Compact view</b> and <b>Layout</b> (Single list, Side by side, or Stacked; also View → <b>Home layout</b>) change how the cards are laid out. Right-click empty space for <b>Unhide all cards</b> and <b>Reset all card sizes</b>.</li>"
+            + "<li><b>Compact view</b> and <b>Layout</b> (Single list, Side by side, or Stacked; also View → <b>Home Layout</b>) change how the cards are laid out. Right-click empty space for <b>Unhide All Cards</b> and <b>Reset All Card Sizes</b>.</li>"
             + "</ul>"),
         topic("Devices and Modules", "Input modules",
             "<p>An input module decides which controls of a physical device exist for Gremlin-Platforms. Only <b>claimed</b> controls reach your actions, the viewers, and the Auto Mapper.</p>"
-            + "<p>Open it from the card menu or Tools → Device setup → <b>Input Module Setup</b>. Press a control on the device to claim it, or tick it; untick to release it. Give a control a <b>Friendly name</b> if you like. <b>Save module</b> writes the module file; <b>Cancel</b> discards.</p>"
+            + "<p>Open it from the card menu or Tools → Device Setup → <b>Input Module Setup</b>. Press a control on the device to claim it, or tick it; untick to release it. Give a control a <b>Friendly name</b> if you like. <b>Save module</b> writes the module file; <b>Cancel</b> discards.</p>"
             + "<p><b>Keyboard</b> is an input module too. Key bindings only fire for keys it claims. Until you save a choice, every key is claimed. Typing in Windows and games is never affected.</p>"
             + "<p>Calibration for a stick is stored in its input module (see Calibration).</p>"),
         topic("Devices and Modules", "vJoy output modules",
             "<p>Each vJoy device has an output module. It is the firewall in front of the vJoy driver: only outputs it <b>claims</b> are sent.</p>"
-            + "<p>Open it from the card menu or Tools → Device setup → <b>Output Module Setup</b>. Tick the axes, buttons, and hats you will use, then <b>Save module</b>. The vJoy driver sets the maximum; the output module sets what Gremlin-Platforms may use.</p>"
+            + "<p>Open it from the card menu or Tools → Device Setup → <b>Output Module Setup</b>. Tick the axes, buttons, and hats you will use, then <b>Save module</b>. The vJoy driver sets the maximum; the output module sets what Gremlin-Platforms may use.</p>"
             + "<p>A wire to an output that is not claimed sends nothing. It is kept, and shown as <b>(not claimed)</b> on the Configuration page, Button Map chips, the viewers, and in Map to vJoy, and the log notes it once. Claim the output to make it work.</p>"),
         topic("Devices and Modules", "Xbox output module",
             "<p>The Xbox controller (<b>Xbox 360 Controller</b>, pad 1) is a virtual Xbox 360 pad provided by the <b>ViGEmBus</b> driver. Its output module passes every control straight to the driver; there is nothing to claim.</p>"
             + "<p>Send to it with the <b>Map to Xbox</b> action. Its page (double-click the card) shows whether ViGEmBus is ready and which inputs drive each control. The <b>Xbox Viewer</b> shows the live pad. The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when Toggle is turned off.</p>"),
         topic("Devices and Modules", "Module files and Device Pack",
-            "<p>Each device has its own module file, found by the device first and then by its name. In Input/Output Module Setup, <b>Module file</b> shows the current file and offers <b>Import from</b> (copy another file into this device's file), <b>Browse for File</b>, <b>Open modules folder</b>, and <b>Delete file</b>. <b>Import image…</b> sets the device picture.</p>"
-            + "<p>Tools → Device setup → <b>Device Pack</b> shares a device setup. <b>Export</b> saves a device's module file and pictures to a zip. <b>Import</b> loads a zip onto a device you choose under <b>Put this pack on</b>.</p>"),
+            "<p>Each device has its own module file, found by the device first and then by its name. In Input/Output Module Setup, <b>Module File</b> shows the current file and offers <b>Import from</b> (copy another file into this device's file), <b>Browse for File</b>, <b>Open Modules Folder</b>, and <b>Delete File</b>. <b>Import Image…</b> sets the device picture.</p>"
+            + "<p>Tools → Device Setup → <b>Device Pack</b> shares a device setup. <b>Export</b> saves a device's module file and pictures to a zip. <b>Import</b> loads a zip onto a device you choose under <b>Put this pack on</b>.</p>"),
         topic("Devices and Modules", "Hidden cards",
             "<p>Hiding a card only removes it from Home. It does not hide the device from Windows or games; use HidHide for that.</p>"
-            + "<p>Hide a card with its <b>×</b> or <b>Hide card</b> in its menu. View → <b>Hidden cards…</b> lists hidden cards with <b>Unhide</b> and <b>Unhide all</b>.</p>"),
+            + "<p>Hide a card with its <b>×</b> or <b>Hide Card</b> in its menu. View → <b>Hidden Cards…</b> lists hidden cards with <b>Unhide</b> and <b>Unhide All</b>.</p>"),
 
         topic("Configuration", "Adding actions",
             "<p>The Configuration page lists the claimed inputs of one device and the actions on each. Open it by double-clicking a card, or View → <b>Configuration</b>. The arrows beside the title step to the previous or next device.</p>"
@@ -105,7 +105,7 @@ function topics() {
         topic("Configuration", "Appearance",
             "<p>Appearance changes how a Configuration page or Output View looks, not what it does. The look is saved in that device's module file.</p>"
             + "<p><b>Appearance…</b> opens the panel. Changes show at once and are kept only with <b>Save Appearance</b>. <b>Reset Appearance</b> (red) restores the built-in look; <b>Copy Appearance from…</b> copies another device's look. Both still need Save Appearance. Closing the panel with unsaved changes asks first.</p>"
-            + "<p>Sections: <b>Screen</b> (background color or image), <b>Shown</b> (child rows, live bars, LED dots, summary), <b>List</b> and <b>Group</b> (spacing and group cards), <b>Parent row</b> and <b>Child row</b> (row size, padding, colors), <b>Text</b>, <b>Selection</b>, and <b>Editor</b> (the action editor beside a row). Use <b>Open all</b> / <b>Close all</b> to expand them.</p>"),
+            + "<p>Sections: <b>Screen</b> (background color or image), <b>Shown</b> (child rows, live bars, LED dots, summary), <b>List</b> and <b>Group</b> (spacing and group cards), <b>Parent Row</b> and <b>Child Row</b> (row size, padding, colors), <b>Text</b>, <b>Selection</b>, and <b>Editor</b> (the action editor beside a row). Use <b>Open All</b> / <b>Close All</b> to expand them.</p>"),
 
         topic("Actions", "Choosing an action",
             "<p><b>Add Action</b> lists the actions that suit the input type (axis, button, hat, or key). Container actions hold other actions; add the container first, then the actions inside it.</p>"
@@ -122,7 +122,7 @@ function topics() {
             + "<li>Trigger: <b>Full axis</b> (−1 → 0%, +1 → 100%) or <b>Upper half</b> (center → 0%).</li>"
             + "<li>Button: <b>Invert</b>.</li></ul>"),
         topic("Actions", "Map to Logical Device",
-            "<p>Sends the input to a control on the Logical Device. Pick the logical control of the same type. Axis: <b>Absolute</b> or <b>Relative</b> with <b>Scaling</b>. Button: <b>Invert activation</b>. The Logical Device page's <b>Assign hardware</b> creates these actions for you.</p>"),
+            "<p>Sends the input to a control on the Logical Device. Pick the logical control of the same type. Axis: <b>Absolute</b> or <b>Relative</b> with <b>Scaling</b>. Button: <b>Invert activation</b>. The Logical Device page's <b>Assign Hardware</b> creates these actions for you.</p>"),
         topic("Actions", "Map to Keyboard",
             "<p>Holds the recorded keys while the input is held and releases them when it is released. Use <b>Record Keys</b> to set the <b>Key Combination</b>; modifiers are pressed first.</p>"),
         topic("Actions", "Map to Mouse",
@@ -171,20 +171,20 @@ function topics() {
             "<p>Reuses an existing action of the same input type. Pick it, then either share it (both inputs use the same action) or duplicate it (an independent copy).</p>"),
 
         topic("Logical Device", "Logical Device",
-            "<p>The Logical Device is a virtual device inside the program. Its buttons, axes, and hats are fed by physical inputs (<b>Assign hardware</b> or Map to Logical Device) and have actions of their own. Use it to combine several physical controls before sending them on.</p>"
-            + "<p>Open it with <b>Logical Device</b> on the toolbar or Tools → Mapping → Logical Device. Controls are identified by type and number (Button 1, Axis 1, Hat 1). <b>Rename</b> adds your own name; <b>Hide system name</b> shows only yours; <b>Clear name</b> removes it.</p>"
+            "<p>The Logical Device is a virtual device inside the program. Its buttons, axes, and hats are fed by physical inputs (<b>Assign Hardware</b> or Map to Logical Device) and have actions of their own. Use it to combine several physical controls before sending them on.</p>"
+            + "<p>Open it with <b>Logical Device</b> on the toolbar or Tools → Mapping → Logical Device. Controls are identified by type and number (Button 1, Axis 1, Hat 1). <b>Rename</b> adds your own name; <b>Hide system name</b> shows only yours; <b>Clear Name</b> removes it.</p>"
             + "<p>Editing is locked while the profile runs (“Running”).</p>"),
         topic("Logical Device", "Controls, groups, and the menu",
             "<ul>"
-            + "<li>Right-click empty space: <b>Display</b>, then the sections <b>Add inputs</b> (Buttons, Axes and Hats, each with a count up to 180 and <b>Add</b>), <b>Groups</b> (<b>New group</b>) and <b>Order</b> (By system name, By your name, Group names A to Z). <b>Undo</b> and <b>Redo</b> sit beside the menu's title.</li>"
-            + "<li>Right-click a control: <b>Add Action</b>, <b>Rename</b> and <b>Assign hardware</b>, then <b>Row</b> (<b>Clear name</b>, <b>Delete</b>) and <b>Group</b> (<b>Group as</b>, and <b>Move to</b> each group). Shift-click selects several; the menu's title then counts them.</li>"
-            + "<li>Right-click a group: <b>Rename group</b>, then <b>Groups</b> → <b>Move group up</b>, <b>Move group down</b> or <b>Delete group</b> (its controls go to Ungrouped). Click a group header to fold it.</li>"
+            + "<li>Right-click empty space: <b>Display</b>, then the sections <b>Add Inputs</b> (Buttons, Axes and Hats, each with a count up to 180 and <b>Add</b>), <b>Groups</b> (<b>New group</b>) and <b>Order</b> (By system name, By your name, Group names A to Z). <b>Undo</b> and <b>Redo</b> sit beside the menu's title.</li>"
+            + "<li>Right-click a control: <b>Add Action</b>, <b>Rename</b> and <b>Assign Hardware</b>, then <b>Row</b> (<b>Clear Name</b>, <b>Delete</b>) and <b>Group</b> (<b>Group as</b>, and <b>Move to</b> each group). Shift-click selects several; the menu's title then counts them.</li>"
+            + "<li>Right-click a group: <b>Rename Group</b>, then <b>Groups</b> → <b>Move Group Up</b>, <b>Move Group Down</b> or <b>Delete Group</b> (its controls go to Ungrouped). Click a group header to fold it.</li>"
             + "<li>Drag a control by its grey handle onto another control (top half = before, bottom half = after) or onto a group header. Drag a header to move the group.</li>"
             + "<li><b>Find</b> filters by name, type, Ungrouped, <b>No hardware writer</b>, or <b>No actions in this mode</b>; <b>Clear</b> resets it.</li>"
             + "<li>Undo/Redo: Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z).</li>"
             + "</ul>"),
         topic("Logical Device", "Assign hardware and actions",
-            "<p><b>Assign hardware</b> lists claimed physical controls of the same type (keyboard keys for a button; OSC too). Tick a control to add a Map to Logical Device action to it in the current mode; untick to remove that link. <b>Search</b> filters the list.</p>"
+            "<p><b>Assign Hardware</b> lists claimed physical controls of the same type (keyboard keys for a button; OSC too). Tick a control to add a Map to Logical Device action to it in the current mode; untick to remove that link. <b>Search</b> filters the list.</p>"
             + "<p>The control then shows <b>Written by</b> with the source. On that line an axis has Absolute/Relative and a scale; a button has <b>Invert</b>.</p>"
             + "<p><b>Add Action</b> opens the action editor beside the list, the same editor as on the Configuration page. Click an action row to edit it; right-click it to <b>Open</b> or <b>Delete</b> it.</p>"),
         topic("Logical Device", "Appearance",
@@ -199,7 +199,7 @@ function topics() {
             + "</ul>"),
         topic("Tools", "Button Map",
             "<p>Button Map is a picture of a device with a chip on each control. A press lights its chip, and chips can show what each control does in the profile. Moving a chip changes only the picture, never the actions.</p>"
-            + "<p>Open it from a device card's right-click menu, the toolbar, or Tools → Mapping → <b>Button Map</b>. It has its own guide: <b>F1</b> or Help → Button Map guide in the Button Map window explains everything it does.</p>"),
+            + "<p>Open it from a device card's right-click menu, the toolbar, or Tools → Mapping → <b>Button Map</b>. It has its own guide: <b>F1</b> or Help → Button Map Guide in the Button Map window explains everything it does.</p>"),
         topic("Tools", "Viewers",
             "<p>The viewers show live values; they change nothing. Open them from the toolbar, Tools → Viewers, or a card's menu.</p>"
             + "<ul>"
@@ -208,9 +208,9 @@ function topics() {
             + "</ul>"),
         topic("Tools", "Calibration",
             "<p>Sets the center and the ends of each axis so its full travel is used. It is stored in the device's input module and applied before any action sees the axis.</p>"
-            + "<p>Tools → Device setup → <b>Calibration</b>, or a card's menu. Choose the input module. For each axis, move the stick and use <b>Calibrate center</b> and <b>Calibrate extrema</b>, or type the values. An axis shows <b>Not saved</b> until you press its save button. Leaving with unsaved axes asks first.</p>"),
+            + "<p>Tools → Device Setup → <b>Calibration</b>, or a card's menu. Choose the input module. For each axis, move the stick and use <b>Calibrate Center</b> and <b>Calibrate Extrema</b>, or type the values. An axis shows <b>Not saved</b> until you press its save button. Leaving with unsaved axes asks first.</p>"),
         topic("Tools", "Device Information",
-            "<p>Tools → Device setup → <b>Device Information</b> lists every device Windows reports: Name, Axes, Buttons, Hats, VID, PID, Joystick ID, and Device GUID. Use it to tell identical devices apart.</p>"),
+            "<p>Tools → Device Setup → <b>Device Information</b> lists every device Windows reports: Name, Axes, Buttons, Hats, VID, PID, Joystick ID, and Device GUID. Use it to tell identical devices apart.</p>"),
         topic("Tools", "Auto Mapper",
             "<p>Creates Map to vJoy actions in one step: each claimed input of an input module gets an action to the same number on a vJoy output module.</p>"
             + "<ol>"
@@ -225,10 +225,10 @@ function topics() {
             + "<li><b>Combine onto Selected Outputs</b> reuses the outputs when you tick more inputs than outputs.</li>"
             + "</ul>"),
         topic("Tools", "Swap Devices",
-            "<p>Swaps every binding between two devices, for example after replacing a stick. Tools → Device setup → <b>Swap Devices</b>: choose <b>From profile device</b> and <b>To connected device</b>, then <b>Swap Bindings</b>. References inside actions and script variables are swapped too. Save the profile afterwards.</p>"),
+            "<p>Swaps every binding between two devices, for example after replacing a stick. Tools → Device Setup → <b>Swap Devices</b>: choose <b>From profile device</b> and <b>To connected device</b>, then <b>Swap Bindings</b>. References inside actions and script variables are swapped too. Save the profile afterwards.</p>"),
         topic("Tools", "HidHide",
             "<p>HidHide hides physical controllers from games so they only see vJoy or Xbox. Gremlin-Platforms always sees them. The HidHide driver is a separate install (<b>Get HidHide</b>).</p>"
-            + "<p>Tools → Device setup → <b>HidHide</b>:</p>"
+            + "<p>Tools → Device Setup → <b>HidHide</b>:</p>"
             + "<ul>"
             + "<li><b>Gremlin-Platforms controls HidHide</b> lets this program write HidHide's settings. <b>HidHide Enabled</b> turns hiding on. <b>Automatically Start</b> applies both each time the program starts.</li>"
             + "<li>Tick the devices to hide. <b>Gaming devices only</b> shortens the list. A hidden device is dimmed and marked HIDDEN.</li>"
@@ -247,7 +247,7 @@ function topics() {
             + "<li><b>Action</b>: the Action list order, and settings for Axis Delta, Change Mode, Double Tap, Macro, Play Sound, Smart Toggle, Tempo, and Text-To-Speech (voice).</li>"
             + "<li><b>Profile</b>: Load profiles automatically — load a profile when a chosen program starts — and Keep running when the program loses focus.</li>"
             + "<li><b>OSC Connection</b>: Enabled, Input host and port, Output address, and press timing.</li>"
-            + "<li><b>Home</b>: Home card options and <b>Reset all card sizes</b>.</li>"
+            + "<li><b>Home</b>: Home card options and <b>Reset All Card Sizes</b>.</li>"
             + "<li><b>Auto Mapper</b>: Overwrite used inputs and Remember overwrite.</li>"
             + "</ul>"),
         topic("Options and Profile", "Profile Settings",
@@ -278,7 +278,7 @@ function topics() {
             "<p>Open Input Module Setup on <b>Keyboard</b> and check the key is claimed. Once you save a keyboard choice, only claimed keys fire.</p>"),
         topic("Troubleshooting", "A device is missing or seen twice",
             "<ul>"
-            + "<li>Not on Home: check View → <b>Hidden cards…</b>.</li>"
+            + "<li>Not on Home: check View → <b>Hidden Cards…</b>.</li>"
             + "<li>A game sees both the physical stick and vJoy: hide the physical stick with <b>HidHide</b>.</li>"
             + "<li>Bindings belong to a device that was replaced: use <b>Swap Devices</b>.</li>"
             + "</ul>")
@@ -292,45 +292,45 @@ function buttonMapTopics() {
             "<p>Button Map is a picture of one device with a chip on each control. While the profile runs, a press lights its chip, and wires show where the control goes (shown as <b>(not claimed)</b> when the output is not claimed). Chips are layout only: moving, renaming or deleting one never changes the actions in the profile.</p>"
             + "<p>Pick the device from the <b>File</b> menu. Before you edit, the map is live: hover a chip to see which control it is, and drag with the left or middle button to pan.</p>"
             + "<p><b>File → Edit Mapping</b> starts editing. The pool beside the map lists the device's controls; drag a chip from it onto the photo, and filter it by name. <b>File → Save</b> (Ctrl+S) writes the layout to the device's module file; <b>File → Cancel</b> leaves without saving. Closing with unsaved edits asks first.</p>"
-            + "<p>The menus show only what you can use right now, with shortcuts beside their commands. <b>View → Command palette</b> (Ctrl+K) lists every menu command you can use now: type part of a name and press Enter.</p>"
-            + "<p>Most of this guide is about editing. <b>Help → Button Map guide</b> or <b>F1</b> opens it.</p>"),
+            + "<p>The menus show only what you can use right now, with shortcuts beside their commands. <b>View → Command Palette</b> (Ctrl+K) lists every menu command you can use now: type part of a name and press Enter.</p>"
+            + "<p>Most of this guide is about editing. <b>Help → Button Map Guide</b> or <b>F1</b> opens it.</p>"),
         topic("Getting started", "File menu and export",
             "<p>The Button Map's menus show only what you can use at that moment: before a device is chosen File → <b>Device</b> lists the devices, and the editing items appear once you choose File → Edit Mapping. The Photo menu works while editing.</p>"
             + "<ul>"
             + "<li><b>Edit Mapping</b>, <b>Save</b> (Ctrl+S), <b>Cancel</b>.</li>"
-            + "<li><b>Reset layout</b> clears everything from the map: chips go back to the pool, and leaders, hotspots, drawings, text boxes, pictures and tables are removed (it asks first). Actions are not changed. Ctrl+Z brings the layout back; save afterwards to make the empty map the live one.</li>"
-            + "<li><b>Fit to photo frame</b> shrinks an older, oversized layout to the photo.</li>"
-            + "<li>Photo → <b>Choose photo…</b> uses another picture as the photo; <b>Clear photo</b> goes back to the module's picture.</li>"
-            + "<li><b>Export PDF…</b>, <b>Export PNG…</b>, <b>Export JPG…</b> save the whole page, whatever the zoom, on the window's background colour. Selection marks, handles, guides and the grid are left off, and so are hidden items. <b>Export size</b> picks 1×, 2× (the default) or 3× the size on screen; a PDF page keeps the on-screen size and gets the extra detail. <b>Light page for exports</b> exports on white instead: every colour has its lightness turned over, so dark chips come out light with dark text and a dark red becomes a light red, while the photo stays as it is. The screen does not change.</li>"
-            + "<li><b>Copy layout from</b> lists the other devices that have a layout. Pick one to replace this map's chips, leaders and drawings with it, mirrored left to right if you like (for the other hand's stick). This device's photo stays; Undo puts the old layout back, and nothing is saved until you save.</li>"
-            + "<li><b>Templates</b>: <b>Save layout as template…</b> keeps this map's chips, leaders and drawings under a name; <b>Apply template</b> puts one on any device (it asks first; Undo puts the old layout back); <b>Manage templates…</b> renames, deletes, exports a template to a file to share, and imports one. A template keeps where its pictures are, not the picture files themselves.</li>"
+            + "<li><b>Reset Layout</b> clears everything from the map: chips go back to the pool, and leaders, hotspots, drawings, text boxes, pictures and tables are removed (it asks first). Actions are not changed. Ctrl+Z brings the layout back; save afterwards to make the empty map the live one.</li>"
+            + "<li><b>Fit to Photo Frame</b> shrinks an older, oversized layout to the photo.</li>"
+            + "<li>Photo → <b>Choose Photo…</b> uses another picture as the photo; <b>Clear Photo</b> goes back to the module's picture.</li>"
+            + "<li><b>Export PDF…</b>, <b>Export PNG…</b>, <b>Export JPG…</b> save the whole page, whatever the zoom, on the window's background color. Selection marks, handles, guides and the grid are left off, and so are hidden items. <b>Export Size</b> picks 1×, 2× (the default) or 3× the size on screen; a PDF page keeps the on-screen size and gets the extra detail. <b>Light Page for Exports</b> exports on white instead: every color has its lightness turned over, so dark chips come out light with dark text and a dark red becomes a light red, while the photo stays as it is. The screen does not change.</li>"
+            + "<li><b>Copy Layout from</b> lists the other devices that have a layout. Pick one to replace this map's chips, leaders and drawings with it, mirrored left to right if you like (for the other hand's stick). This device's photo stays; Undo puts the old layout back, and nothing is saved until you save.</li>"
+            + "<li><b>Templates</b>: <b>Save Layout as Template…</b> keeps this map's chips, leaders and drawings under a name; <b>Apply Template</b> puts one on any device (it asks first; Undo puts the old layout back); <b>Manage Templates…</b> renames, deletes, exports a template to a file to share, and imports one. A template keeps where its pictures are, not the picture files themselves.</li>"
             + "<li><b>Print…</b> (Ctrl+P) prints the whole page, as Export draws it, as large as fits on the paper and turned to landscape when wider than tall. Windows' printer dialog comes first. It prints on a light page unless Editor options → Export → <b>Print light</b> is off. To print every mode, Export modes to a PDF and print that.</li>"
-            + "<li><b>Export modes…</b> writes one page per mode, each chip showing what its control does in that mode (Action labels; if chips show names, the export shows actions). Tick the modes, choose PDF (one file, a page per mode), PNG or JPG (a file per mode, named after the file you choose plus the mode). Each page can carry its mode's name at the top.</li>"
+            + "<li><b>Export Modes…</b> writes one page per mode, each chip showing what its control does in that mode (Action labels; if chips show names, the export shows actions). Tick the modes, choose PDF (one file, a page per mode), PNG or JPG (a file per mode, named after the file you choose plus the mode). Each page can carry its mode's name at the top.</li>"
             + "<li><b>Close</b>. The last row shows the device's module file.</li>"
             + "</ul>"),
         topic("Getting started", "Editor options",
             "<p><b>Edit → Editor options…</b> in the Button Map opens the Button Map's settings. They apply to every device.</p>"
             + "<ul>"
-            + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>No actions</b> (see Action labels).</li>"
+            + "<li><b>Labels</b>: <b>Chip Text</b>, <b>Description first</b>, <b>Several actions</b> and <b>No actions</b> (see Action labels).</li>"
             + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror layout and Copy layout from also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
             + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
             + "<li><b>View</b>: <b>Zoom speed</b>, how fast the mouse wheel zooms; <b>Rulers</b>, shown or not (also View → Rulers).</li>"
-            + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size); <b>Mode title</b>, the mode's name at the top of each Export modes page; <b>Light page</b>, export on white (also File → Light page for exports); <b>Print light</b>, File → Print on white (on unless turned off).</li>"
-            + "<li><b>Colours</b>: <b>Recent colours</b>, how many the colour picker keeps.</li>"
+            + "<li><b>Export</b>: <b>Export Size</b>, 1x, 2x or 3x (also File → Export Size); <b>Mode title</b>, the mode's name at the top of each Export modes page; <b>Light page</b>, export on white (also File → Light Page for Exports); <b>Print light</b>, File → Print on white (on unless turned off).</li>"
+            + "<li><b>Colors</b>: <b>Recent colors</b>, how many the color picker keeps.</li>"
             + "<li><b>Library</b>: the saved styles and layout templates, to rename or delete.</li>"
             + "</ul>"),
         topic("The map", "View, zoom and grid",
-            "<p>Scroll to zoom (75% to 600%); the <b>Zoom speed</b> setting in Editor options sets how fast. Drag with the middle button to pan. View → <b>Reset view (View 100%)</b> or Ctrl+0 returns to 100%. View → <b>Zoom to fit page</b> (Ctrl+1) shows the whole page; View → <b>Zoom to selection</b> (Ctrl+2) fills the view with what is selected.</p>"
-            + "<p>View → <b>Grid</b>: <b>Show grid</b>, <b>Snap to grid</b>, <b>Snap to entities</b> (edges and middles of other items, with guide lines), and the grid <b>Size</b>. Hold <b>Alt</b> while dragging to skip snapping.</p>"
+            "<p>Scroll to zoom (75% to 600%); the <b>Zoom speed</b> setting in Editor options sets how fast. Drag with the middle button to pan. View → <b>Reset View (View 100%)</b> or Ctrl+0 returns to 100%. View → <b>Zoom to Fit Page</b> (Ctrl+1) shows the whole page; View → <b>Zoom to Selection</b> (Ctrl+2) fills the view with what is selected.</p>"
+            + "<p>View → <b>Grid</b>: <b>Show Grid</b>, <b>Snap to Grid</b>, <b>Snap to Entities</b> (edges and middles of other items, with guide lines), and the grid <b>Size</b>. Hold <b>Alt</b> while dragging to skip snapping.</p>"
             + "<p>View → <b>Layers</b> and View → <b>Properties</b> show the two side panels (see Layers and Properties panel).</p>"),
         topic("The map", "Rulers and guides",
             "<p>View → <b>Rulers</b> shows rulers along the top and left of the map while editing, marked in percent of the page (as the Properties panel measures).</p>"
             + "<p>Drag down out of the top ruler for a horizontal guide, or right out of the left ruler for a vertical one. Items you move snap their edges or middles to a guide before anything else, and points (drawing, hotspots, line ends) snap to guides too; Alt skips snapping. Drag a guide to move it; drop it on its ruler or off the page to remove it.</p>"
-            + "<p>Guides are saved with the device's view. View → <b>Show guides</b> hides and shows them, and View → <b>Clear guides</b> removes them all. They never print or export.</p>"),
+            + "<p>Guides are saved with the device's view. View → <b>Show Guides</b> hides and shows them, and View → <b>Clear Guides</b> removes them all. They never print or export.</p>"),
         topic("The map", "The photo",
-            "<p>The photo is the device picture under everything else. Photo → <b>Move photo</b> drags it (Esc leaves the tool); <b>Adjust photo…</b> sets its size, offset and rotation; <b>Reset photo</b> puts it back.</p>"
-            + "<p><b>Adjust photo…</b> also sets its <b>Look</b>, so the chips stand out against a busy picture: <b>Brightness</b> and <b>Contrast</b> (either way), <b>Greyscale</b> and <b>Fade</b>. <b>Reset look</b> puts them back; Reset photo leaves the look alone. The look is saved with the layout, shows on the live map and in exports, and Undo steps through it.</p>"
-            + "<p>Photo → <b>Choose photo…</b> uses another picture; <b>Clear photo</b> returns to the module's picture. The photo has its own row at the bottom of the Layers panel, so it can be hidden or locked like any item.</p>"),
+            "<p>The photo is the device picture under everything else. Photo → <b>Move Photo</b> drags it (Esc leaves the tool); <b>Adjust Photo…</b> sets its size, offset and rotation; <b>Reset Photo</b> puts it back.</p>"
+            + "<p><b>Adjust Photo…</b> also sets its <b>Look</b>, so the chips stand out against a busy picture: <b>Brightness</b> and <b>Contrast</b> (either way), <b>Greyscale</b> and <b>Fade</b>. <b>Reset Look</b> puts them back; Reset photo leaves the look alone. The look is saved with the layout, shows on the live map and in exports, and Undo steps through it.</p>"
+            + "<p>Photo → <b>Choose Photo…</b> uses another picture; <b>Clear Photo</b> returns to the module's picture. The photo has its own row at the bottom of the Layers panel, so it can be hidden or locked like any item.</p>"),
         topic("The map", "Selecting, undo and keys",
             "<p><b>Press to find</b>: while editing, press a button or hat on the device and its chip is selected and scrolled into view (a group member selects its group). A control that is not on the map yet is shown in the pool, filtered by name; a hidden one is pointed to the Layers panel. Turn it off, or let a pushed axis count too, in Editor options.</p>"
             + "<p>Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrow keys nudge the selection; Shift+Arrow nudges by the grid size. Undo and Redo are also at the top of every right-click menu.</p>"
@@ -352,16 +352,16 @@ function buttonMapTopics() {
             "<p>A chip shows a control's name (Button 10, Axis 1, Hat 1) or its friendly name. Drag one from the pool onto the photo; drag it again to move it.</p>"
             + "<p>Right-click a chip for:</p>"
             + "<ul>"
-            + "<li><b>Rename</b> and <b>Delete chip</b> (back to the pool; Delete or Backspace does the same).</li>"
+            + "<li><b>Rename</b> and <b>Delete Chip</b> (back to the pool; Delete or Backspace does the same).</li>"
             + "<li>Or drag a chip back onto the pool: the pool lights up, and letting go takes the chip off the map. With several chips selected, they all go; a group goes whole, and while a group is being edited the member you drag leaves it. Locked chips stay. Undo brings them back.</li>"
-            + "<li><b>Chip style</b>: font size, chip size, Round or Square, Filled or Hollow, and <b>Highlight on press</b>.</li>"
-            + "<li><b>Colours</b>: Fill colour…, Outline colour… and Text colour…, and <b>Pressed fill…</b>, <b>Pressed outline…</b> and <b>Pressed text…</b> used while the control is held.</li>"
-            + "<li><b>Hotspot</b> and <b>Leader ends</b> (see Hotspots and leaders), <b>Arrange</b> (stacking, Lock, Hide).</li>"
+            + "<li><b>Chip Style</b>: font size, chip size, Round or Square, Filled or Hollow, and <b>Highlight on press</b>.</li>"
+            + "<li><b>Colors</b>: Fill color…, Outline color… and Text color…, and <b>Pressed Fill…</b>, <b>Pressed Outline…</b> and <b>Pressed Text…</b> used while the control is held.</li>"
+            + "<li><b>Hotspot</b> and <b>Leader Ends</b> (see Hotspots and leaders), <b>Arrange</b> (stacking, Lock, Hide).</li>"
             + "</ul>"
             + "<p>Ctrl+D duplicates the selection; Ctrl+C and Ctrl+V copy and paste it inside the editor.</p>"),
         topic("Chips", "Action labels",
-            "<p>Chips can show what each control does in the profile instead of its name, so the map reads as a binding sheet: <b>Gear up</b> or <b>Ctrl+G</b> beside the button, not Button 23. View → <b>Chip text</b> picks <b>Name</b>, <b>Action</b>, or <b>Name and action</b> (also in Editor options → Labels). Renaming a chip still edits its name.</p>"
-            + "<p>The text comes from the control's actions in one mode. View → <b>Labels mode</b> picks the mode, or <b>Follow the program</b>: the running mode while the profile runs, otherwise the mode chosen in the program. A control with no actions in a mode shows its parent mode's, as the running profile does.</p>"
+            "<p>Chips can show what each control does in the profile instead of its name, so the map reads as a binding sheet: <b>Gear up</b> or <b>Ctrl+G</b> beside the button, not Button 23. View → <b>Chip Text</b> picks <b>Name</b>, <b>Action</b>, or <b>Name and action</b> (also in Editor options → Labels). Renaming a chip still edits its name.</p>"
+            + "<p>The text comes from the control's actions in one mode. View → <b>Labels Mode</b> picks the mode, or <b>Follow the Program</b>: the running mode while the profile runs, otherwise the mode chosen in the program. A control with no actions in a mode shows its parent mode's, as the running profile does.</p>"
             + "<ul>"
             + "<li><b>Description</b>: its text. With Editor options → Labels → <b>Description first</b> on (the default), it stands for the whole binding.</li>"
             + "<li><b>Map to Keyboard</b>: the keys, such as Ctrl+G. <b>Map to vJoy</b> and <b>Map to Xbox</b>: the output, such as vJoy 1 B5. <b>Change Mode</b>: → and the target mode, or Cycle, Previous mode, Unwind mode. <b>Text to Speech</b>: what it says. Mouse, Macro, Load profile, Run command, Sound, Pause / resume and Logical Device show those words.</li>"
@@ -369,38 +369,38 @@ function buttonMapTopics() {
             + "</ul>"
             + "<p><b>Several actions</b> shows the first one's text, or all of them joined with +. <b>No actions</b> sets what a chip shows when its control does nothing in that mode: its name, nothing, or a dash. Labels follow the profile as you edit it.</p>"),
         topic("Chips", "Hotspots and leaders",
-            "<p>Each chip has a <b>hotspot</b>, the dot on the photo marking the physical control, and a <b>leader</b> line between them. Drag the chip and the hotspot separately. A chip's <b>Hotspot</b> section sets how the mark looks: <b>Size</b>; <b>Shape</b> (Round, Square, Diamond, Triangle pointing along the leader, Ring, Target, Crosshair, Plus, X, Pin, or None for no mark); <b>Fill</b> (Filled, Hollow, Half); <b>Line</b> (Thin, Medium, Thick); <b>Opacity</b>; <b>Halo</b>, a soft glow that stands out on busy photos; <b>Number</b>, the control's number inside; <b>Highlight on press</b>, the <b>Pressed colour…</b> while the control is held; <b>Pulse on press</b>, a ring that grows from it on each press; <b>Show on live map</b>, off to see it only while editing; and <b>Hotspot colour…</b>.</p>"
+            "<p>Each chip has a <b>hotspot</b>, the dot on the photo marking the physical control, and a <b>leader</b> line between them. Drag the chip and the hotspot separately. A chip's <b>Hotspot</b> section sets how the mark looks: <b>Size</b>; <b>Shape</b> (Round, Square, Diamond, Triangle pointing along the leader, Ring, Target, Crosshair, Plus, X, Pin, or None for no mark); <b>Fill</b> (Filled, Hollow, Half); <b>Line</b> (Thin, Medium, Thick); <b>Opacity</b>; <b>Halo</b>, a soft glow that stands out on busy photos; <b>Number</b>, the control's number inside; <b>Highlight on press</b>, the <b>Pressed Color…</b> while the control is held; <b>Pulse on press</b>, a ring that grows from it on each press; <b>Show on live map</b>, off to see it only while editing; and <b>Hotspot Color…</b>.</p>"
             + "<p>Click a leader to select it. Drag a segment to bend it; that adds a curve point (a spine). Click a spine to select it; hold the right button on a spine for about half a second to delete it.</p>"
-            + "<p>Right-click a leader for <b>Add leader</b> (another line from the same chip) and <b>Delete leader</b>. Its <b>Leader</b> section has <b>Leader colour…</b>, <b>Weight</b>, <b>Add straight spine</b>, <b>Add curved spine</b>, <b>Convert spine</b>, <b>This segment</b> or <b>All segments</b> (Curved or Straight), <b>Branch from this end</b>, <b>Clear all spines</b> and <b>Delete spine</b>. <b>Leader ends</b> detaches the chip end or the hotspot end, and reconnects it.</p>"
+            + "<p>Right-click a leader for <b>Add Leader</b> (another line from the same chip) and <b>Delete leader</b>. Its <b>Leader</b> section has <b>Leader Color…</b>, <b>Weight</b>, <b>Add Straight Spine</b>, <b>Add Curved Spine</b>, <b>Convert Spine</b>, <b>This Segment</b> or <b>All Segments</b> (Curved or Straight), <b>Branch from This End</b>, <b>Clear All Spines</b> and <b>Delete Spine</b>. <b>Leader Ends</b> detaches the chip end or the hotspot end, and reconnects it.</p>"
             + "<p>Spines show only while editing; the lines stay on the live map. In the Layers panel, open a chip to hide or lock its hotspot or one leader on its own.</p>"),
         topic("Chips", "Groups and 5-way formats",
-            "<p>Select two or more chips (Shift-click, or drag a box on empty space) and choose <b>Group selected</b> (Ctrl+G). The chips stay exactly where you put them (line them up first with <b>Align</b>, the arrow keys or by dragging), and the group moves as one. <b>Break group</b> (Ctrl+Shift+G) splits it. <b>Edit group</b> lets you move and style one member; <b>Done editing group</b> or Esc ends that.</p>"
-            + "<p><b>Align members</b> arranges a group Left, Centre, Right or Free (Free keeps your own arrangement; new groups start as Free).</p>"
+            "<p>Select two or more chips (Shift-click, or drag a box on empty space) and choose <b>Group Selected</b> (Ctrl+G). The chips stay exactly where you put them (line them up first with <b>Align</b>, the arrow keys or by dragging), and the group moves as one. <b>Break Group</b> (Ctrl+Shift+G) splits it. <b>Edit Group</b> lets you move and style one member; <b>Done Editing Group</b> or Esc ends that.</p>"
+            + "<p><b>Align Members</b> arranges a group Left, Centre, Right or Free (Free keeps your own arrangement; new groups start as Free).</p>"
             + "<p><b>Turn a group</b>: select it and drag the round handle above it, or right-click → <b>Turn group</b>. Its chips swing round the group's middle and stay upright so they still read; the hotspot stays on the photo.</p>"
-            + "<p>Right-click a five-chip hat group: <b>5-way</b> styles it as <b>Plus</b>, <b>Mini hat</b>, <b>Named card</b> or <b>Radial</b>; <b>Clear format</b> removes the style.</p>"
+            + "<p>Right-click a five-chip hat group: <b>5-way</b> styles it as <b>Plus</b>, <b>Mini hat</b>, <b>Named card</b> or <b>Radial</b>; <b>Clear Format</b> removes the style.</p>"
             + "<p>Grouping chips or text boxes together with a table packs them into the table (see Tables).</p>"),
         topic("Chips", "Mirror layout",
             "<p><b>Edit → Mirror layout</b> turns the whole map left to right while editing: every chip, group, drawing and picture goes to the other side of the page, with its hotspot, leader bends and loose leader ends. Shapes and lines are mirrored, so an arrow points the other way; text boxes, tables and the arrangement inside a group stay as they are, so they still read. Pictures move but are only flipped when Editor options → Editing → Mirror pictures is on. Undo puts it back.</p>"
-            + "<p>To lay out a left-hand stick from a right-hand one, open the left stick and use <b>File → Copy layout from</b> with Mirror left to right ticked.</p>"),
+            + "<p>To lay out a left-hand stick from a right-hand one, open the left stick and use <b>File → Copy Layout from</b> with Mirror left to right ticked.</p>"),
         topic("Drawing", "Right-click menu",
             "<p>While editing, the menu shows only what applies to what you right-clicked: a chip, a group, a leader, a shape, a line, a picture, a text box, a table, several selected items, or empty canvas.</p>"
             + "<p>It opens small: the item's name with <b>Undo</b> and <b>Redo</b>, a few actions, then sections such as Chip style or Arrowheads. Click a section to open it; one is open at a time, and the menu reopens on the section you used last for that kind of item. Rows of values (sizes, widths, opacity) change straight away and leave the menu open; other actions close it.</p>"
             + "<p>Keys: Up and Down move, Enter acts, Right and Left open or close a section or step a row of values, Esc closes. Near a window edge the menu opens the other way, and it scrolls when it is taller than the window.</p>"),
         topic("Drawing", "Drawing shapes",
-            "<p>Right-click empty canvas → <b>Draw</b> and pick a <b>Shape</b>: Rectangle, Rounded, Ellipse, Triangle, Diamond, Arrow or Double arrow. Drag on the photo to draw it; hold Shift to keep its proportions. The tool stays on for the next one until <b>Stop drawing</b> or Esc.</p>"
-            + "<p>With chips selected, <b>Shape around selection</b> draws a shape around them that moves with them; its <b>Padding</b> sets the gap, and Arrange → <b>Detach from chips</b> frees it.</p>"
-            + "<p>Right-click a shape for <b>Duplicate</b> and <b>Delete</b>, then sections: <b>Shape</b> (change the kind), <b>Fill and outline</b> (Filled or Hollow, Fill colour…, Outline colour…, Width, outline Solid, Dashed or Dotted, Opacity), <b>Rotate and flip</b> and <b>Arrange</b>.</p>"),
+            "<p>Right-click empty canvas → <b>Draw</b> and pick a <b>Shape</b>: Rectangle, Rounded, Ellipse, Triangle, Diamond, Arrow or Double arrow. Drag on the photo to draw it; hold Shift to keep its proportions. The tool stays on for the next one until <b>Stop Drawing</b> or Esc.</p>"
+            + "<p>With chips selected, <b>Shape Around Selection</b> draws a shape around them that moves with them; its <b>Padding</b> sets the gap, and Arrange → <b>Detach from Chips</b> frees it.</p>"
+            + "<p>Right-click a shape for <b>Duplicate</b> and <b>Delete</b>, then sections: <b>Shape</b> (change the kind), <b>Fill and Outline</b> (Filled or Hollow, Fill color…, Outline color…, Width, outline Solid, Dashed or Dotted, Opacity), <b>Rotate and Flip</b> and <b>Arrange</b>.</p>"),
         topic("Drawing", "Lines and arrows",
             "<p>Draw → <b>Line</b> picks <b>Line</b> or <b>Arrow</b>. Drag from one end to the other; hold Shift to keep to 15° steps.</p>"
             + "<p>A selected line has a handle on each end; drag one to move that end (Shift for 15° steps). To turn a line, move its ends.</p>"
-            + "<p>Its <b>Arrowheads</b> section sets the <b>Start</b> and <b>End</b> to None, Solid or Hollow; <b>Swap heads</b> turns them round. Its <b>Line</b> section has Colour…, Width, Outline (Solid, Dashed or Dotted) and Opacity, and <b>Flip</b> mirrors it.</p>"),
+            + "<p>Its <b>Arrowheads</b> section sets the <b>Start</b> and <b>End</b> to None, Solid or Hollow; <b>Swap Heads</b> turns them round. Its <b>Line</b> section has Color…, Width, Outline (Solid, Dashed or Dotted) and Opacity, and <b>Flip</b> mirrors it.</p>"),
         topic("Drawing", "Paths and freehand",
             "<p>Draw → <b>Line</b> → <b>Path</b> draws through several points: click each point; click the first point again to close the shape, or double-click, press Enter or right-click to finish an open path. Shift keeps each segment to angle steps. The tool stays on for the next path; Esc stops it.</p>"
             + "<p>Draw → <b>Line</b> → <b>Freehand</b> draws while the button is held down. When you let go, the stroke is tidied (fewer points, same shape) and smoothed.</p>"
             + "<p>A selected path shows a small round handle on each point: drag one to move it. Its box's handles resize the whole path, and it turns and flips like a shape.</p>"
-            + "<p>Right-click a path: <b>Path</b> → <b>Closed</b> and <b>Smooth</b>; <b>Line</b> → colour, width, Solid, Dashed or Dotted, opacity; an open path has <b>Arrowheads</b> at its start and end, a closed one a <b>Fill</b> (Filled or Hollow, Fill colour…).</p>"),
+            + "<p>Right-click a path: <b>Path</b> → <b>Closed</b> and <b>Smooth</b>; <b>Line</b> → color, width, Solid, Dashed or Dotted, opacity; an open path has <b>Arrowheads</b> at its start and end, a closed one a <b>Fill</b> (Filled or Hollow, Fill color…).</p>"),
         topic("Drawing", "Rotate, flip and resize",
-            "<p>Shapes, text boxes and pictures can be turned. A selected one has a round handle above it: drag it to turn the item to any angle, with Shift for steps (15° unless Editor options → Editing → Rotate snap says otherwise). The <b>Rotate and flip</b> section has an <b>Angle</b> to type, <b>Turn to</b> 0°, 90°, 180° or 270°, <b>Rotate −15°</b> and <b>Rotate +15°</b>, and <b>Flip horizontally</b> and <b>Flip vertically</b>. Properties takes an exact Angle.</p>"
+            "<p>Shapes, text boxes and pictures can be turned. A selected one has a round handle above it: drag it to turn the item to any angle, with Shift for steps (15° unless Editor options → Editing → Rotate snap says otherwise). The <b>Rotate and Flip</b> section has an <b>Angle</b> to type, <b>Turn to</b> 0°, 90°, 180° or 270°, <b>Rotate −15°</b> and <b>Rotate +15°</b>, and <b>Flip Horizontally</b> and <b>Flip Vertically</b>. Properties takes an exact Angle.</p>"
             + "<p>Drag the square handles to resize. A turned item resizes along its own sides, and the opposite side stays where it is. From a corner, a shape keeps its proportions when Shift is held; a picture keeps them unless Shift is held.</p>"
             + "<p><b>Several items together</b>: with two or more selected, a dashed box goes round them with one round handle above it. Drag it to turn them all about their middle (the angle shows beside the handle): shapes, text boxes and pictures turn, lines swing round with both ends, and chips, groups and tables move round but stay upright so they still read. Hotspots stay on the photo; locked items stay put. The right-click menu's <b>Turn together</b> turns them by a step, a quarter turn or a half turn. Turning there and back puts them where they were. One selected group turns the same way (see Groups and 5-way formats).</p>"
             + "<p>Lines turn by moving their ends. Tables, chips and hotspots do not turn on their own.</p>"),
@@ -413,37 +413,37 @@ function buttonMapTopics() {
             + "<li><b>Bend</b> (block arrows): a diamond on the middle of the shaft. Drag it to curve the arrow; the box grows so the arrow keeps its thickness.</li>"
             + "<li><b>Skew</b>: a diamond on the top edge leans the item sideways, one on the right edge leans it up or down.</li>"
             + "</ul>"
-            + "<p><b>Edit points</b> turns a shape into a path with a handle on every corner, looking as it does now (shaped, bent, skewed, turned), so any corner can be moved; it is then a path, not an arrow. <b>Reset shape</b> takes away the shaping, bend and skew. Undo steps back through all of it.</p>"),
+            + "<p><b>Edit Points</b> turns a shape into a path with a handle on every corner, looking as it does now (shaped, bent, skewed, turned), so any corner can be moved; it is then a path, not an arrow. <b>Reset Shape</b> takes away the shaping, bend and skew. Undo steps back through all of it.</p>"),
         topic("Drawing", "Text boxes",
-            "<p>Draw → <b>Box</b> → <b>Text box</b>, then drag. Double-click a text box (or <b>Edit text…</b>) to type.</p>"
+            "<p>Draw → <b>Box</b> → <b>Text box</b>, then drag. Double-click a text box (or <b>Edit Text…</b>) to type.</p>"
             + "<ul>"
             + "<li><b>Text</b>: Font size, Bold, Word wrap, <b>Scale font with box</b>, and alignment Across (Left, Centre, Right) and Down (Top, Middle, Bottom).</li>"
-            + "<li><b>Box</b>: preset Size (Caption, Small, Medium, Large, Title, Wide), Theme (Dark, Hollow, Sheet), Text colour…, Fill colour…, Outline colour…, Fill opacity and Outline opacity.</li>"
-            + "<li><b>Copy and paint format</b>: <b>Copy format</b> takes this box's look; <b>Paint format</b> puts it on the next boxes you click; <b>Clear formatting</b> resets it; <b>Copy text</b> copies the words.</li>"
+            + "<li><b>Box</b>: preset Size (Caption, Small, Medium, Large, Title, Wide), Theme (Dark, Hollow, Sheet), Text color…, Fill color…, Outline color…, Fill opacity and Outline opacity.</li>"
+            + "<li><b>Copy and Paint Format</b>: <b>Copy Format</b> takes this box's look; <b>Paint format</b> puts it on the next boxes you click; <b>Clear Formatting</b> resets it; <b>Copy Text</b> copies the words.</li>"
             + "</ul>"),
         topic("Drawing", "Callouts",
-            "<p>A callout is a text box with a pointer. Draw → <b>Box</b> → <b>Callout</b>, then drag the box; or right-click a chip → <b>Add callout</b> for one beside the chip, pointing at it and showing its text. Everything a text box does, a callout does too: typing, fonts, themes, colours, paint format, turning.</p>"
+            "<p>A callout is a text box with a pointer. Draw → <b>Box</b> → <b>Callout</b>, then drag the box; or right-click a chip → <b>Add Callout</b> for one beside the chip, pointing at it and showing its text. Everything a text box does, a callout does too: typing, fonts, themes, colors, paint format, turning.</p>"
             + "<p>Select a callout to see the round handle at the pointer's tip. Drag it anywhere to point at a spot on the photo; drop it on a chip and the pointer follows that chip when it moves (the handle is filled while it does). The pointer leaves the side of the box facing its tip.</p>"
-            + "<p>The text box's <b>Pointer</b> section: <b>Detach from chip</b> keeps the pointer where it is without following, <b>Remove pointer</b> makes it a plain text box, and on a plain text box <b>Add pointer</b> makes it a callout.</p>"),
+            + "<p>The text box's <b>Pointer</b> section: <b>Detach from Chip</b> keeps the pointer where it is without following, <b>Remove Pointer</b> makes it a plain text box, and on a plain text box <b>Add Pointer</b> makes it a callout.</p>"),
         topic("Drawing", "Tables",
             "<p>Draw → <b>Box</b> → <b>Table</b>, then drag. Double-click a cell to type in it.</p>"
             + "<ul>"
-            + "<li><b>Rows and columns</b>: Insert row above, Delete this row, Insert column left, Delete this column, and an <b>ID column</b>.</li>"
-            + "<li><b>Cell</b>: <b>Free position</b> lets a cell be dragged out of the grid; <b>Independent of table</b> keeps it still when the table moves; <b>Spawn empty cell</b> adds a loose cell; <b>Delete this cell</b>; <b>Place across</b> and <b>Place down</b> park a cell at a side.</li>"
+            + "<li><b>Rows and Columns</b>: Insert row above, Delete this row, Insert column left, Delete this column, and an <b>ID column</b>.</li>"
+            + "<li><b>Cell</b>: <b>Free position</b> lets a cell be dragged out of the grid; <b>Independent of table</b> keeps it still when the table moves; <b>Spawn Empty Cell</b> adds a loose cell; <b>Delete This Cell</b>; <b>Place Across</b> and <b>Place Down</b> park a cell at a side.</li>"
             + "<li><b>Look</b>: Theme (Dark, Hollow, Sheet) and font size.</li>"
             + "</ul>"
-            + "<p>Select a table with chips or text boxes on it and choose <b>Group selected</b>: they are packed into the table and move with it. <b>Break group</b> takes them out again; <b>Delete table</b> removes it.</p>"),
+            + "<p>Select a table with chips or text boxes on it and choose <b>Group Selected</b>: they are packed into the table and move with it. <b>Break Group</b> takes them out again; <b>Delete Table</b> removes it.</p>"),
         topic("Drawing", "Pictures",
-            "<p>Draw → <b>Import picture…</b> adds a picture file on top of the photo. Edit → <b>Paste picture</b> (Ctrl+Shift+V), or <b>Paste picture</b> in the canvas's Draw section, adds the picture on the clipboard: a copied picture, or picture files copied in File Explorer. <b>Ctrl+V</b> pastes a picture too when it was copied after your last chip copy. You can also <b>drag picture files</b> from File Explorer onto the map while editing: each lands where you drop it, at its own shape. Pictures are saved beside the device's module file.</p>"
+            "<p>Draw → <b>Import Picture…</b> adds a picture file on top of the photo. Edit → <b>Paste Picture</b> (Ctrl+Shift+V), or <b>Paste Picture</b> in the canvas's Draw section, adds the picture on the clipboard: a copied picture, or picture files copied in File Explorer. <b>Ctrl+V</b> pastes a picture too when it was copied after your last chip copy. You can also <b>drag picture files</b> from File Explorer onto the map while editing: each lands where you drop it, at its own shape. Pictures are saved beside the device's module file.</p>"
             + "<p>A picture moves, resizes, turns and flips like a shape (see Rotate, flip and resize). Its <b>Picture</b> section has:</p>"
             + "<ul>"
-            + "<li><b>Crop</b>: the handles turn blue and cut the picture instead of scaling it; what stays does not move. Esc or selecting something else ends it. <b>Reset crop</b> shows the whole picture again; Properties takes exact crop values.</li>"
-            + "<li><b>Add snap point</b> (then click the picture) and <b>Clear snap points</b>: chips snap to these points.</li>"
+            + "<li><b>Crop</b>: the handles turn blue and cut the picture instead of scaling it; what stays does not move. Esc or selecting something else ends it. <b>Reset Crop</b> shows the whole picture again; Properties takes exact crop values.</li>"
+            + "<li><b>Add snap point</b> (then click the picture) and <b>Clear Snap Points</b>: chips snap to these points.</li>"
             + "<li>Opacity.</li>"
             + "</ul>"),
         topic("Drawing", "Saved styles",
-            "<p>A look you use again and again can be kept under a name. Right-click a chip, shape, line, path or text box → <b>Saved styles</b> → <b>Save this style…</b> and give it a name, such as Weapons, red. A style of the same name and kind is replaced.</p>"
-            + "<p>The same section then lists the saved styles for that kind of item: <b>Apply</b> one to put its look on everything selected of that kind, as one step for Undo. A chip's style holds its chip, text, pressed, hotspot and leader colours and sizes; a shape's its fill and outline; a line's its colour, width, outline and arrowheads; a text box's its format.</p>"
+            "<p>A look you use again and again can be kept under a name. Right-click a chip, shape, line, path or text box → <b>Saved Styles</b> → <b>Save This Style…</b> and give it a name, such as Weapons, red. A style of the same name and kind is replaced.</p>"
+            + "<p>The same section then lists the saved styles for that kind of item: <b>Apply</b> one to put its look on everything selected of that kind, as one step for Undo. A chip's style holds its chip, text, pressed, hotspot and leader colors and sizes; a shape's its fill and outline; a line's its color, width, outline and arrowheads; a text box's its format.</p>"
             + "<p>Styles are shared by every device. Edit → Editor options… → <b>Library</b> renames and deletes them, and the layout templates too.</p>"),
         topic("Panels", "Layers panel",
             "<p>View → <b>Layers</b> shows every item while editing, top of the stack first, then the photo.</p>"
@@ -458,17 +458,17 @@ function buttonMapTopics() {
         topic("Panels", "Properties panel",
             "<p>View → <b>Properties</b> shows the selected item's exact values while editing. Positions and sizes are in percent of the page.</p>"
             + "<ul>"
-            + "<li>A shape or picture: X, Y, Width, Height and Angle, then fill, colours, line width, outline and opacity; a picture also has Crop left, top, right and bottom.</li>"
-            + "<li>A line: Start and End X and Y, colour, width, outline and the Start and End heads.</li>"
-            + "<li>A chip: its place and its hotspot's, font size, chip size and colours.</li>"
+            + "<li>A shape or picture: X, Y, Width, Height and Angle, then fill, colors, line width, outline and opacity; a picture also has Crop left, top, right and bottom.</li>"
+            + "<li>A line: Start and End X and Y, color, width, outline and the Start and End heads.</li>"
+            + "<li>A chip: its place and its hotspot's, font size, chip size and colors.</li>"
             + "<li>Several items: only the style shows, and a change applies to all of them.</li>"
             + "</ul>"
-            + "<p>Type a number and press Enter, or click a colour to open the colour picker. A locked item's values show but do not change.</p>"),
+            + "<p>Type a number and press Enter, or click a color to open the color picker. A locked item's values show but do not change.</p>"),
         topic("Panels", "Align and distribute",
-            "<p>Select several items and right-click one of them. <b>Align and distribute</b> lines them up <b>Across</b> (Left, Centre, Right) or <b>Down</b> (Top, Middle, Bottom) by their edges or middles. <b>Space out</b> leaves equal gaps between three or more. Locked items stay where they are.</p>"),
-        topic("Panels", "Colours",
-            "<p>The colour picker opens from Colours, Fill colour…, Outline colour… and the Properties swatches. Drag in the square and the bar, or click a swatch; the change shows at once.</p>"
-            + "<p><b>Recent</b> shows the colours you used last, on any device. <b>Pick from map</b> closes the picker; click anywhere in the window to take the colour there (right-click or Esc gives up).</p>")
+            "<p>Select several items and right-click one of them. <b>Align and Distribute</b> lines them up <b>Across</b> (Left, Centre, Right) or <b>Down</b> (Top, Middle, Bottom) by their edges or middles. <b>Space Out</b> leaves equal gaps between three or more. Locked items stay where they are.</p>"),
+        topic("Panels", "Colors",
+            "<p>The color picker opens from Colors, Fill color…, Outline color… and the Properties swatches. Drag in the square and the bar, or click a swatch; the change shows at once.</p>"
+            + "<p><b>Recent</b> shows the colors you used last, on any device. <b>Pick from Map</b> closes the picker; click anywhere in the window to take the color there (right-click or Esc gives up).</p>")
     ]
 }
 

@@ -1611,9 +1611,9 @@
      "  Shape: Rectangle | Rounded | Ellipse | Triangle | Diamond | Arrow | Double arrow",
      "  Line: Line | Arrow | Path | Freehand",
      "  Box: Text box | Callout | Table",
-     "  Import picture\u2026",
-     "  Paste picture (off)",
-     "  Stop drawing (off)"
+     "  Import Picture\u2026",
+     "  Paste Picture (off)",
+     "  Stop Drawing (off)"
     ],
     "nodeCount": 20,
     "pasteRequests": 0,

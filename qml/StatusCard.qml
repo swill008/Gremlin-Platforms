@@ -436,16 +436,16 @@ Rectangle {
                 MenuModel.action("Device Information", function() { _card.openDeviceInformation() })
             ]),
             MenuModel.section("cards", "Cards", [
-                MenuModel.action("Stack selected cards", function() { _card.stackSelectedCards() }, _card.canStackSelected),
+                MenuModel.action("Stack Selected Cards", function() { _card.stackSelectedCards() }, _card.canStackSelected),
                 MenuModel.action("Unstack", function() { _card.unstackCard() }, stacked),
-                MenuModel.action("Unstack all", function() { _card.unstackAllCards() }, stacked),
-                MenuModel.action("Reset size", function() { _card.resetSize() }),
-                MenuModel.action("Reset all card sizes", function() { _card.resetAllSizes() })
+                MenuModel.action("Unstack All", function() { _card.unstackAllCards() }, stacked),
+                MenuModel.action("Reset Size", function() { _card.resetSize() }),
+                MenuModel.action("Reset All Card Sizes", function() { _card.resetAllSizes() })
             ]),
             MenuModel.section("device", "Device", [
-                dest ? null : MenuModel.action("Swap device…", function() { _card.assignHardware() }),
-                MenuModel.action("Hide card", function() { _card.ignoreDevice() }),
-                MenuModel.action("Reset card layout", function() { _card.clearSettings() }),
+                dest ? null : MenuModel.action("Swap Device…", function() { _card.assignHardware() }),
+                MenuModel.action("Hide Card", function() { _card.ignoreDevice() }),
+                MenuModel.action("Reset Card Layout", function() { _card.clearSettings() }),
                 MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })
             ])
         ])

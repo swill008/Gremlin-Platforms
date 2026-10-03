@@ -905,7 +905,7 @@ def scenario_menu(s: Session) -> None:
 
     s.right_click(s.center(chips[0]))
     s.record("chip-compact")
-    s.click_menu_row("Chip style")
+    s.click_menu_row("Chip Style")
     s.record("chip-style-open", image=True)
     # Focus starts on the clicked header: down to Size, then step it twice.
     for _ in range(2):
@@ -926,7 +926,7 @@ def scenario_menu(s: Session) -> None:
     s.right_click(s.point(0.1, 0.5))
     s.record("canvas")
     s.click_menu_row("Draw")
-    s.click_menu_row("Import picture…")
+    s.click_menu_row("Import Picture…")
     s.record("canvas-action-closes")
 
     # A line: arrowheads by keyboard.
@@ -1102,7 +1102,7 @@ def scenario_transform(s: Session) -> None:
 
     # A typed angle and flips, from the menu.
     s.right_click(local(arrow, 0.5, 0.5))
-    s.click_menu_row("Rotate and flip")
+    s.click_menu_row("Rotate and Flip")
     r = json.loads(s.js("menuRowRect", "Angle"))
     s.click(QtCore.QPoint(round(r["x"] + 120), round(r["y"] + r["h"] / 2)))
     QtTest.QTest.keyClick(s.win, Key.Key_A, Mod.ControlModifier)
@@ -1110,7 +1110,7 @@ def scenario_transform(s: Session) -> None:
     QtTest.QTest.keyClick(s.win, Key.Key_Return)
     s.wait(150)
     s.record("typed-angle")
-    s.click_menu_row("Flip horizontally")
+    s.click_menu_row("Flip Horizontally")
     s.record("flipped", image=True)
 
     # A line flips by moving its ends.
@@ -1212,7 +1212,7 @@ def scenario_align(s: Session) -> None:
     # From the menu: open Align and distribute, Across row, step to Left.
     box = s._box(shapes[1])
     s.right_click(s.ed_point(box["x"] + 2, box["y"] + box["h"] / 2))
-    s.click_menu_row("Align and distribute")
+    s.click_menu_row("Align and Distribute")
     s.menu_key(Key.Key_Down)
     s.menu_key(Key.Key_Right)
     s.record("menu-left")
@@ -1270,7 +1270,7 @@ def scenario_picture(s: Session) -> None:
     box = s._box(pic)
     s.right_click(s.ed_point(box["x"] + box["w"] / 2, box["y"] + box["h"] / 2))
     s.open_menu_section("Picture")
-    s.click_menu_row("Reset crop")
+    s.click_menu_row("Reset Crop")
     s.record("crop-reset", image=True)
 
     # Paste picture: off with nothing on the clipboard, then on.
@@ -1281,7 +1281,7 @@ def scenario_picture(s: Session) -> None:
     s.set_prop("canPastePicture", True)
     s.right_click(s.point(0.1, 0.9))
     s.open_menu_section("Draw")
-    s.click_menu_row("Paste picture")
+    s.click_menu_row("Paste Picture")
     s.record("paste-requested")
 
 
@@ -1601,7 +1601,7 @@ def scenario_styles(s: Session) -> None:
     s.call("setSelection", shapes)
     box = s._box(shapes[0])
     s.right_click(s.ed_point(box["x"] + 4, box["y"] + 4))
-    s.open_menu_section("Saved styles")
+    s.open_menu_section("Saved Styles")
     s.record("menu")
     s.click_menu_row("Apply Warning")
     s.record("applied", image=True)

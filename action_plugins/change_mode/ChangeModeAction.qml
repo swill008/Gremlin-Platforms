@@ -152,7 +152,7 @@ Item {
                 }
 
                 Button {
-                    text: "Add mode"
+                    text: "Add Mode"
 
                     onClicked: function() {
                         _root.action.addTargetMode()

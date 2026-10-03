@@ -832,8 +832,8 @@ Item {
                 }
                 RowLayout {
                     spacing: Style.dp(8)
-                    Button { text: "Open all"; onClicked: _root.setAllSections(true) }
-                    Button { text: "Close all"; onClicked: _root.setAllSections(false) }
+                    Button { text: "Open All"; onClicked: _root.setAllSections(true) }
+                    Button { text: "Close All"; onClicked: _root.setAllSections(false) }
                     Item { Layout.fillWidth: true }
                 }
 
@@ -937,7 +937,7 @@ Item {
                             ColorPick { label: "Color"; swatch: _root.colorGroup; target: "group" }
                         }
                         FoldSection {
-                            title: "Parent row"
+                            title: "Parent Row"
                             open: _root.openParent
                             onToggled: (v) => { _root.openParent = v }
                             RowLayout {
@@ -972,7 +972,7 @@ Item {
                             ColorPick { label: "Row color"; swatch: _root.colorParent; target: "parent" }
                         }
                         FoldSection {
-                            title: "Action row"
+                            title: "Action Row"
                             open: _root.openChild
                             onToggled: (v) => { _root.openChild = v }
                             RowLayout {
@@ -1197,10 +1197,10 @@ Item {
         if (onRow) {
             quick.push(MenuModel.action("Add Action", function() { _openNewPane(_menuKey, _menuTitle) }))
             quick.push(MenuModel.action("Rename", _renameRow))
-            quick.push(MenuModel.action("Assign hardware", _assignHardware))
+            quick.push(MenuModel.action("Assign Hardware", _assignHardware))
         }
         if (onGroup)
-            quick.push(MenuModel.action("Rename group", _renameGroup))
+            quick.push(MenuModel.action("Rename Group", _renameGroup))
         quick.push(MenuModel.action("Appearance…", function() { displayOpen = true }))
 
         var moveTo = []
@@ -1221,7 +1221,7 @@ Item {
         }
         return MenuModel.menu(kind, title, quick, [
             onRow ? MenuModel.section("row", "Row", [
-                MenuModel.action("Clear name", function() { _layout.setUserName(_menuKey, "") }, _menuUser.length > 0),
+                MenuModel.action("Clear Name", function() { _layout.setUserName(_menuKey, "") }, _menuUser.length > 0),
                 // Acts on the selection, like Group as and Move to.
                 MenuModel.action(many ? "Delete " + _picked.length + " rows" : "Delete", function() {
                     _layout.deleteParents(_picked.length > 0 ? _picked : [_menuKey])
@@ -1231,7 +1231,7 @@ Item {
                 MenuModel.entry("Group as", function(name) { _groupAs(name) }, true,
                                 { placeholder: "Name, then Enter" })
             ].concat(moveTo)) : null,
-            MenuModel.section("add", "Add inputs", [
+            MenuModel.section("add", "Add Inputs", [
                 add("Buttons", "button"),
                 add("Axes", "axis"),
                 add("Hats", "hat")
@@ -1239,15 +1239,15 @@ Item {
             locked ? null : MenuModel.section("groups", "Groups", [
                 MenuModel.entry("New group", function(name) { _layout.addGroup(name) }, true,
                                 { placeholder: "Name, then Enter", keepOpen: true }),
-                onGroup ? MenuModel.action("Move group up", function() { _layout.moveGroupUp(_groupName) }) : null,
-                onGroup ? MenuModel.action("Move group down", function() { _layout.moveGroupDown(_groupName) }) : null,
-                onGroup ? MenuModel.action("Delete group", function() { _layout.removeGroup(_groupName) }, true,
+                onGroup ? MenuModel.action("Move Group Up", function() { _layout.moveGroupUp(_groupName) }) : null,
+                onGroup ? MenuModel.action("Move Group Down", function() { _layout.moveGroupDown(_groupName) }) : null,
+                onGroup ? MenuModel.action("Delete Group", function() { _layout.removeGroup(_groupName) }, true,
                                            { danger: true }) : null
             ]),
             locked ? null : MenuModel.section("order", "Order", [
-                MenuModel.action("By system name", function() { _layout.sortBySystem() }),
-                MenuModel.action("By your name", function() { _layout.sortByName() }),
-                MenuModel.action("Group names A to Z", function() { _layout.sortGroupNames() })
+                MenuModel.action("By System Name", function() { _layout.sortBySystem() }),
+                MenuModel.action("By Your Name", function() { _layout.sortByName() }),
+                MenuModel.action("Group Names A to Z", function() { _layout.sortGroupNames() })
             ])
         ], header)
     }
@@ -1936,7 +1936,7 @@ Item {
 
     ColorDialog {
         id: _colorDlg
-        title: "Choose color"
+        title: "Choose Color"
         onAccepted: {
             var c = selectedColor.toString()
             if (_colorTarget === "child") colorChildSet = c

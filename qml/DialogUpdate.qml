@@ -92,19 +92,19 @@ ApplicationWindow {
             spacing: Style.dp(8)
 
             Button {
-                text: qsTr("Update now")
+                text: qsTr("Update Now")
                 visible: _root.state_ === "available" && updater.canInstall
                 highlighted: true
                 onClicked: () => { updater.download() }
             }
             Button {
-                text: qsTr("Open release page")
+                text: qsTr("Open Release Page")
                 visible: _root.state_ === "available" && !updater.canInstall
                 highlighted: true
                 onClicked: () => { updater.openReleasePage() }
             }
             Button {
-                text: qsTr("Skip this version")
+                text: qsTr("Skip This Version")
                 visible: _root.state_ === "available"
                 onClicked: () => {
                     updater.skipVersion()
@@ -112,7 +112,7 @@ ApplicationWindow {
                 }
             }
             Button {
-                text: qsTr("Install and restart")
+                text: qsTr("Install and Restart")
                 visible: _root.state_ === "ready"
                 highlighted: true
                 onClicked: () => { updater.install() }
@@ -123,7 +123,7 @@ ApplicationWindow {
                 onClicked: () => { updater.cancel() }
             }
             Button {
-                text: qsTr("Try again")
+                text: qsTr("Try Again")
                 visible: _root.state_ === "error"
                 onClicked: () => { updater.check(true) }
             }

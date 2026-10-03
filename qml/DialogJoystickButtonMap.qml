@@ -832,7 +832,7 @@ ApplicationWindow {
 
     Dialog {
         id: _resetDlg
-        title: "Reset layout"
+        title: "Reset Layout"
         modal: true
         anchors.centerIn: parent
         width: Style.dp(460)
@@ -857,11 +857,11 @@ ApplicationWindow {
                 Layout.alignment: Qt.AlignRight
                 spacing: Style.dp(8)
                 Button {
-                    text: "Keep map"
+                    text: "Keep Map"
                     onClicked: _resetDlg.close()
                 }
                 Button {
-                    text: "Reset layout"
+                    text: "Reset Layout"
                     highlighted: true
                     onClicked: {
                         _buttonMap.resetLayout()
@@ -1496,7 +1496,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _imageDialog
-        title: "Choose photo"
+        title: "Choose Photo"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
         currentFolder: _hw.imagesFolderUrl()
@@ -1514,7 +1514,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _overlayDialog
-        title: "Import overlay image"
+        title: "Import Picture"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
         currentFolder: _hw.imagesFolderUrl()
@@ -1736,7 +1736,7 @@ ApplicationWindow {
 
     Dialog {
         id: _styleNameDlg
-        title: "Save style"
+        title: "Save Style"
         modal: true
         anchors.centerIn: parent
         width: Style.dp(400)
@@ -1820,7 +1820,7 @@ ApplicationWindow {
 
     Dialog {
         id: _templateNameDlg
-        title: "Save layout as template"
+        title: "Save Layout as Template"
         modal: true
         anchors.centerIn: parent
         width: Style.dp(420)
@@ -1968,7 +1968,7 @@ ApplicationWindow {
     FileDialog {
         id: _templateExportFile
         property string templateName: ""
-        title: "Export template"
+        title: "Export Template"
         fileMode: FileDialog.SaveFile
         defaultSuffix: "json"
         nameFilters: ["Button Map template (*.json)"]
@@ -1981,7 +1981,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _templateImportFile
-        title: "Import template"
+        title: "Import Template"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Button Map template (*.json)"]
         onAccepted: {
@@ -2084,7 +2084,7 @@ ApplicationWindow {
 
     Dialog {
         id: _modesDlg
-        title: "Export modes"
+        title: "Export Modes"
         modal: true
         anchors.centerIn: parent
         width: Style.dp(420)
@@ -2141,7 +2141,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _exportModesFile
-        title: "Export modes"
+        title: "Export Modes"
         fileMode: FileDialog.SaveFile
         defaultSuffix: _buttonMap._modesFormat
         nameFilters: _buttonMap._modesFormat === "pdf" ? ["PDF (*.pdf)"]
@@ -2250,12 +2250,12 @@ ApplicationWindow {
             }
             RowLayout {
                 Layout.fillWidth: true
-                Button { text: "Reset look"; onClicked: { var e = _buttonMap._ed(); if (e) e.resetPhotoLook() } }
+                Button { text: "Reset Look"; onClicked: { var e = _buttonMap._ed(); if (e) e.resetPhotoLook() } }
             }
             RowLayout {
                 Layout.fillWidth: true
                 Button { text: "Size 100%"; onClicked: _buttonMap.fitPhotoWell() }
-                Button { text: "Reset photo"; onClicked: _buttonMap.resetPhoto() }
+                Button { text: "Reset Photo"; onClicked: _buttonMap.resetPhoto() }
                 Item { Layout.fillWidth: true }
                 Button { text: "Close"; onClicked: _photoAdj.close() }
             }
@@ -2291,9 +2291,9 @@ ApplicationWindow {
                     id: _deviceMenu
                     title: "Device"
                 }
-                ThemedMenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
+                ThemedMenuItem { text: "Reset Layout"; enabled: editing; onTriggered: _resetDlg.open() }
                 ThemedMenuItem {
-                    text: "Fit to photo frame"
+                    text: "Fit to Photo Frame"
                     enabled: editing && !fittedThisEdit
                     onTriggered: fitToPhotoFrame()
                 }
@@ -2315,7 +2315,7 @@ ApplicationWindow {
                 }
                 ThemedMenu {
                     id: _copyMenu
-                    title: "Copy layout from"
+                    title: "Copy Layout from"
                     enabled: _buttonMap.targetName.length > 0 && _buttonMap.savedLayouts.length > 0
                     Instantiator {
                         model: _buttonMap.savedLayouts
@@ -2334,13 +2334,13 @@ ApplicationWindow {
                     enabled: _buttonMap.targetName.length > 0
                     beforeShow: _buttonMap.refreshTemplates
                     ThemedMenuItem {
-                        text: "Save layout as template…"
+                        text: "Save Layout as Template…"
                         enabled: (_buttonMap.layoutNow() || []).length > 0
                         onTriggered: _templateNameDlg.open()
                     }
                     ThemedMenu {
                         id: _applyTemplateMenu
-                        title: "Apply template"
+                        title: "Apply Template"
                         enabled: _buttonMap.templateList.length > 0
                         Instantiator {
                             model: _buttonMap.templateList
@@ -2354,7 +2354,7 @@ ApplicationWindow {
                         }
                     }
                     ThemedMenuItem {
-                        text: "Manage templates…"
+                        text: "Manage Templates…"
                         onTriggered: _templatesDlg.open()
                     }
                 }
@@ -2365,19 +2365,19 @@ ApplicationWindow {
                     onTriggered: _buttonMap.printView()
                 }
                 ThemedMenuItem {
-                    text: "Export modes…"
+                    text: "Export Modes…"
                     enabled: _buttonMap.profileModes.length > 0 && _buttonMap.targetGuid.length > 0
                     onTriggered: _buttonMap.openExportModes()
                 }
                 ThemedMenuItem {
-                    text: "Light page for exports"
+                    text: "Light Page for Exports"
                     enabled: _buttonMap.targetName.length > 0
                     checkable: true
                     checked: _opts.values["light-page"] === true
                     onTriggered: _opts.set("light-page", checked)
                 }
                 ThemedMenu {
-                    title: "Export size"
+                    title: "Export Size"
                     enabled: _buttonMap.targetName.length > 0
                     Repeater {
                         model: [1, 2, 3]
@@ -2432,19 +2432,19 @@ ApplicationWindow {
                     onTriggered: { var e = _ed(); if (e) e.pasteClipboard() }
                 }
                 ThemedMenuItem {
-                    text: "Paste picture"
+                    text: "Paste Picture"
                     hint: "Ctrl+Shift+V"
                     enabled: editing && _hw.clipboardHasImage
                     onTriggered: pastePicture()
                 }
                 ThemedMenuItem {
-                    text: "Mirror layout"
+                    text: "Mirror Layout"
                     enabled: editing
                     onTriggered: _buttonMap.mirrorNow()
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
-                    text: "Editor options…"
+                    text: "Editor Options…"
                     onTriggered: _buttonMap.openEditorOptions()
                 }
             }
@@ -2452,7 +2452,7 @@ ApplicationWindow {
                 id: _viewMenu
                 title: "View"
                 ThemedMenu {
-                    title: "Chip text"
+                    title: "Chip Text"
                     Repeater {
                         model: ["Name", "Action", "Name and action"]
                         ThemedMenuItem {
@@ -2466,9 +2466,9 @@ ApplicationWindow {
                 }
                 ThemedMenu {
                     id: _labelModeMenu
-                    title: "Labels mode"
+                    title: "Labels Mode"
                     ThemedMenuItem {
-                        text: "Follow the program"
+                        text: "Follow the Program"
                         checkable: true
                         checked: _buttonMap.labelMode === ""
                         onTriggered: _buttonMap.labelMode = ""
@@ -2501,25 +2501,25 @@ ApplicationWindow {
                     onTriggered: propsOn = !propsOn
                 }
                 ThemedMenuItem {
-                    text: "Command palette…"
+                    text: "Command Palette…"
                     hint: "Ctrl+K"
                     inPalette: false
                     onTriggered: _palette.open()
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
-                    text: "Zoom to fit page"
+                    text: "Zoom to Fit Page"
                     hint: "Ctrl+1"
                     onTriggered: _buttonMap.zoomToPage()
                 }
                 ThemedMenuItem {
-                    text: "Zoom to selection"
+                    text: "Zoom to Selection"
                     hint: "Ctrl+2"
                     enabled: { var e = _ed(); return !!(e && e.selectedIds && e.selectedIds.length) }
                     onTriggered: _buttonMap.zoomToSelection()
                 }
                 ThemedMenuItem {
-                    text: "Reset view (View 100%)"
+                    text: "Reset View (View 100%)"
                     onTriggered: {
                         var f = _cardLoader.item
                         if (f && f.resetView)
@@ -2536,7 +2536,7 @@ ApplicationWindow {
                     onTriggered: _opts.set("rulers", checked)
                 }
                 ThemedMenuItem {
-                    text: "Show guides"
+                    text: "Show Guides"
                     checkable: true
                     checked: _buttonMap.guidesOn
                     onTriggered: {
@@ -2548,26 +2548,26 @@ ApplicationWindow {
                     }
                 }
                 ThemedMenuItem {
-                    text: "Clear guides"
+                    text: "Clear Guides"
                     enabled: _buttonMap.guidesX.length + _buttonMap.guidesY.length > 0
                     onTriggered: { var e = _ed(); if (e) e.clearRulerGuides() }
                 }
                 ThemedMenu {
                     title: "Grid"
                     ThemedMenuItem {
-                        text: "Show grid"
+                        text: "Show Grid"
                         checkable: true
                         checked: _buttonMap.gridOn
                         onTriggered: _buttonMap.setGridPref("gridOn", checked)
                     }
                     ThemedMenuItem {
-                        text: "Snap to grid"
+                        text: "Snap to Grid"
                         checkable: true
                         checked: _buttonMap.snapOn
                         onTriggered: _buttonMap.setGridPref("snapOn", checked)
                     }
                     ThemedMenuItem {
-                        text: "Snap to entities"
+                        text: "Snap to Entities"
                         checkable: true
                         checked: _buttonMap.snapEntOn
                         onTriggered: _buttonMap.setGridPref("snapEntOn", checked)
@@ -2643,9 +2643,9 @@ ApplicationWindow {
                 title: "Photo"
                 // Everything in it needs editing.
                 enabled: editing
-                ThemedMenuItem { text: "Choose photo…"; enabled: editing; onTriggered: _imageDialog.open() }
+                ThemedMenuItem { text: "Choose Photo…"; enabled: editing; onTriggered: _imageDialog.open() }
                 ThemedMenuItem {
-                    text: "Clear photo"
+                    text: "Clear Photo"
                     enabled: editing
                     onTriggered: {
                         // Cancel can put the current photo back.
@@ -2663,7 +2663,7 @@ ApplicationWindow {
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
-                    text: "Move photo"
+                    text: "Move Photo"
                     checkable: true
                     enabled: editing
                     checked: {
@@ -2676,13 +2676,13 @@ ApplicationWindow {
                     }
                 }
                 ThemedMenuItem {
-                    text: "Adjust photo…"
+                    text: "Adjust Photo…"
                     enabled: editing
                     onTriggered: _photoAdj.open()
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
-                    text: "Reset photo"
+                    text: "Reset Photo"
                     enabled: editing
                     onTriggered: _buttonMap.resetPhoto()
                 }
@@ -2690,7 +2690,7 @@ ApplicationWindow {
             ThemedMenu {
                 title: "Help"
                 ThemedMenuItem {
-                    text: "Button Map guide"
+                    text: "Button Map Guide"
                     hint: "F1"
                     onTriggered: _buttonMap.openGuide()
                 }
@@ -3605,7 +3605,7 @@ ApplicationWindow {
                 }
             }
             Button {
-                text: "Pick from map"
+                text: "Pick from Map"
                 Layout.fillWidth: true
                 onClicked: _buttonMap.startEyedropper(_colorPop.field)
             }

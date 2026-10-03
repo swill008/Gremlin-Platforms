@@ -103,16 +103,16 @@ def test_button_map_help_is_its_own_guide() -> None:
     assert main_titles.count("Button Map") == 1
     section = _text(guide)
     for feature in (
-        "Edit Mapping", "Export size", "Snap to entities", "Adjust photo",
-        "Highlight on press", "Pressed fill", "Hotspot", "spine", "Leader ends",
-        "Group selected", "Mini hat", "Radial", "Undo", "Rounded", "Double arrow",
-        "Shape around selection", "Arrowheads", "Swap heads", "Dashed",
-        "Rotate and flip", "Flip vertically", "Turn to", "Text box",
+        "Edit Mapping", "Export Size", "Snap to Entities", "Adjust Photo",
+        "Highlight on press", "Pressed Fill", "Hotspot", "spine", "Leader Ends",
+        "Group Selected", "Mini hat", "Radial", "Undo", "Rounded", "Double arrow",
+        "Shape Around Selection", "Arrowheads", "Swap Heads", "Dashed",
+        "Rotate and Flip", "Flip Vertically", "Turn to", "Text box",
         "Scale font with box", "Paint format", "Table", "ID column",
-        "Independent of table", "Spawn empty cell", "Import picture",
-        "Paste picture", "Crop", "Reset crop", "snap point", "Layers",
-        "Unlock all", "Properties", "Align and distribute", "Space out",
-        "Recent", "Pick from map", "Ctrl+Shift+L", "F1", "Callout", "Freehand",
+        "Independent of table", "Spawn Empty Cell", "Import Picture",
+        "Paste picture", "Crop", "Reset Crop", "snap point", "Layers",
+        "Unlock all", "Properties", "Align and distribute", "Space Out",
+        "Recent", "Pick from Map", "Ctrl+Shift+L", "F1", "Callout", "Freehand",
         "Rulers", "Saved styles", "Export modes", "Print", "Mirror layout",
         "Command palette", "Ctrl+K",
     ):

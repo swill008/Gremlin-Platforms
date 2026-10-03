@@ -666,7 +666,7 @@ Item {
                 id: _inputPane
                 SplitView.minimumWidth: Style.dp(180)
                 SplitView.minimumHeight: Style.dp(120)
-                title: "Input modules"
+                title: "Input Modules"
                 direction: "source"
                 onWidthChanged: if (_splitView.visible && !_splitView.applying) _ratioSave.restart()
                 onHeightChanged: if (_splitView.visible && !_splitView.applying) _ratioSave.restart()
@@ -677,7 +677,7 @@ Item {
                 SplitView.minimumHeight: Style.dp(120)
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-                title: "Output modules"
+                title: "Output Modules"
                 direction: "dest"
             }
         }
@@ -961,11 +961,11 @@ Item {
         menuWidth: Style.dp(240)
         build: function() {
             return MenuModel.menu("home", "Home", [
-                MenuModel.action("Unhide all cards", function() {
+                MenuModel.action("Unhide All Cards", function() {
                     if (_page.model)
                         _page.model.unignoreAll()
                 }, !!(_page.model && _page.model.hiddenList().length)),
-                MenuModel.action("Reset all card sizes", function() { _page.resetAllCardSizes() }),
+                MenuModel.action("Reset All Card Sizes", function() { _page.resetAllCardSizes() }),
                 MenuModel.command("view.hidden"),
                 MenuModel.section("layout", "Layout", [
                     MenuModel.command("view.layout.single"),

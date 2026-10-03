@@ -42,10 +42,10 @@ function _drawStyleFields(n) {
     var out = []
     if (!isLine(n) && !isOverlay(n) && !isTable(n)) {
         out.push(_choiceField("fill", "Fill", ["filled", "hollow"], ["Filled", "Hollow"], n.fill || "hollow"))
-        out.push(_colourField("color", "Fill colour", n.color || styleDefault("color")))
+        out.push(_colourField("color", "Fill color", n.color || styleDefault("color")))
     }
     if (!isOverlay(n)) {
-        out.push(_colourField("border", isLine(n) ? "Colour" : "Outline colour", n.border || styleDefault("border")))
+        out.push(_colourField("border", isLine(n) ? "Color" : "Outline color", n.border || styleDefault("border")))
         if (!isTable(n) && !isText(n)) {
             out.push(_numField("stroke", "Line width", n.stroke || 2, 1, 24, "px"))
             out.push(_choiceField("dash", "Outline", ["", "dash", "dot"], ["Solid", "Dashed", "Dotted"], n.dash || ""))
@@ -53,7 +53,7 @@ function _drawStyleFields(n) {
     }
     if (isText(n)) {
         out.push(_numField("fontSize", "Font size", n.fontSize || 12, 6, 72, "px"))
-        out.push(_colourField("textColor", "Text colour", n.textColor || styleDefault("textColor")))
+        out.push(_colourField("textColor", "Text color", n.textColor || styleDefault("textColor")))
     }
     if (isLine(n)) {
         var heads = ["none", "solid", "hollow"]
@@ -83,9 +83,9 @@ function propsModel() {
         else
             fields = [_numField("fontSize", "Font size", n.fontSize || 10, 6, 40, "px"),
                       _numField("chipSize", "Chip size", n.chipSize || 18, 8, 64, "px"),
-                      _colourField("color", "Fill colour", styleVal(n, null, "color", styleDefault("color"))),
-                      _colourField("border", "Outline colour", styleVal(n, null, "border", styleDefault("border"))),
-                      _colourField("textColor", "Text colour", styleVal(n, null, "textColor", styleDefault("textColor")))]
+                      _colourField("color", "Fill color", styleVal(n, null, "color", styleDefault("color"))),
+                      _colourField("border", "Outline color", styleVal(n, null, "border", styleDefault("border"))),
+                      _colourField("textColor", "Text color", styleVal(n, null, "textColor", styleDefault("textColor")))]
         return { title: title, locked: false, fields: fields }
     }
     if (isLine(n)) {
@@ -123,10 +123,10 @@ function propsModel() {
         fields = fields.concat([
             _numField("fontSize", "Font size", n.fontSize || 10, 6, 40, "px"),
             _numField("chipSize", "Chip size", n.chipSize || 18, 8, 64, "px"),
-            _colourField("color", "Fill colour", styleVal(n, null, "color", styleDefault("color"))),
-            _colourField("border", "Outline colour", styleVal(n, null, "border", styleDefault("border"))),
-            _colourField("textColor", "Text colour", styleVal(n, null, "textColor", styleDefault("textColor"))),
-            _colourField("hotColor", "Hotspot colour", styleVal(n, null, "hotColor", styleDefault("hotColor")))
+            _colourField("color", "Fill color", styleVal(n, null, "color", styleDefault("color"))),
+            _colourField("border", "Outline color", styleVal(n, null, "border", styleDefault("border"))),
+            _colourField("textColor", "Text color", styleVal(n, null, "textColor", styleDefault("textColor"))),
+            _colourField("hotColor", "Hotspot color", styleVal(n, null, "hotColor", styleDefault("hotColor")))
         ])
     return { title: title, locked: isLocked(n), fields: fields }
 }

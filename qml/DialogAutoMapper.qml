@@ -188,7 +188,7 @@ ApplicationWindow {
             Layout.topMargin: Style.dp(10)
 
             Button {
-                text: "Create 1:1 actions"
+                text: "Create 1:1 Actions"
 
                 onClicked: () => {
                     var run = function() {

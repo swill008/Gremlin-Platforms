@@ -63,8 +63,8 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "def assignment_summary" in py
     text = _QML.read_text(encoding="utf-8")
     assert 'text: "Input Configuration — Appearance"' in text
-    assert 'text: "Open all"' in text
-    assert 'text: "Close all"' in text
+    assert 'text: "Open All"' in text
+    assert 'text: "Close All"' in text
     assert "Layout.preferredWidth: Style.dp(360)" in text
     assert 'text: "Save\\nAppearance"' in text
     assert "onClicked: resetCatalog()" in text
@@ -77,8 +77,8 @@ def test_assignment_summary_counts_destinations() -> None:
     assert 'text: "Space between groups"' in text
     assert 'text: "Space inside the group"' in text
     assert "def leafRun" in Path(__file__).resolve().parents[2].joinpath("gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
-    assert 'title: "Parent row"' in text
-    assert 'title: "Child row"' in text
+    assert 'title: "Parent Row"' in text
+    assert 'title: "Child Row"' in text
     assert 'title: "Selection"' in text
     output = Path(__file__).resolve().parents[2].joinpath("qml/OutputModuleView.qml").read_text(encoding="utf-8")
     assert 'text: "Output Module View — Appearance"' in output

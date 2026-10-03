@@ -56,7 +56,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _pickPhoto
-        title: "Device image"
+        title: "Device Image"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp *.webp)", "All files (*)"]
         property string targetId: ""
@@ -68,7 +68,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _pickExe
-        title: "Add a game or program"
+        title: "Add a Game or Program"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Programs (*.exe)", "All files (*)"]
         onAccepted: {

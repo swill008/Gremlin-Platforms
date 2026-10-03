@@ -239,7 +239,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _save
-        title: "Export device pack"
+        title: "Export Device Pack"
         fileMode: FileDialog.SaveFile
         defaultSuffix: "zip"
         nameFilters: ["Device packs (*.zip)"]
@@ -256,7 +256,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _pick
-        title: "Open device pack"
+        title: "Open Device Pack"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Device packs (*.zip)"]
         currentFolder: _hw.exportFolderUrl()
@@ -285,7 +285,7 @@ ApplicationWindow {
 
     Dialog {
         id: _warn
-        title: "Picture not included"
+        title: "Picture Not Included"
         modal: true
         anchors.centerIn: Overlay.overlay
         width: Style.dp(460)
@@ -302,7 +302,7 @@ ApplicationWindow {
             RowLayout {
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: "Go back"
+                    text: "Go Back"
                     onClicked: _warn.close()
                 }
                 Button {
@@ -452,7 +452,7 @@ ApplicationWindow {
                 RowLayout {
                     Layout.fillWidth: true
                     Button {
-                        text: "Choose zip…"
+                        text: "Choose Zip…"
                         focusPolicy: Qt.NoFocus
                         onClicked: {
                             _pick.currentFolder = _hw.exportFolderUrl()
@@ -523,13 +523,13 @@ ApplicationWindow {
                     Layout.leftMargin: 0
                     spacing: Style.dp(8)
                     Button {
-                        text: "Open all"
+                        text: "Open All"
                         focusPolicy: Qt.NoFocus
                         enabled: sections.length > 0
                         onClicked: setAll(true)
                     }
                     Button {
-                        text: "Close all"
+                        text: "Close All"
                         focusPolicy: Qt.NoFocus
                         enabled: sections.length > 0
                         onClicked: setAll(false)

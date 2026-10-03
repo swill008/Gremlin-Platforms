@@ -309,10 +309,10 @@ Item {
             groups[_actionKinds[names[i]] || "other"].push(add(names[i]))
         var canDelete = !!(parentAction && action) || !!(compactMode && inputItemModel && inputBinding)
         return MenuModel.menu("action-node", action ? action.name : "Action", quick, [
-            MenuModel.section("add-map", "Add: map to", groups.map),
-            MenuModel.section("add-axis", "Add: axis and hat", groups.axis),
-            MenuModel.section("add-logic", "Add: logic and timing", groups.logic),
-            MenuModel.section("add-other", "Add: other", groups.other),
+            MenuModel.section("add-map", "Add: Map to", groups.map),
+            MenuModel.section("add-axis", "Add: Axis and Hat", groups.axis),
+            MenuModel.section("add-logic", "Add: Logic and Timing", groups.logic),
+            MenuModel.section("add-other", "Add: Other", groups.other),
             MenuModel.section("remove", "Remove", [
                 MenuModel.action("Delete", function() {
                     if (_root.compactMode && _root.inputItemModel && _root.inputBinding)

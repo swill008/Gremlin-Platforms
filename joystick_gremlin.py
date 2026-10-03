@@ -481,7 +481,7 @@ def register_config_options() -> None:
     )
     cfg.register(
         "global", "internal", "button-map-recent-colours", PropertyType.List, [],
-        "Colours last applied in the Button Map editor, newest first.", {},
+        "Colors last applied in the Button Map editor, newest first.", {},
     )
     cfg.register(
         "global", "internal", "last-run-version", PropertyType.String, "",

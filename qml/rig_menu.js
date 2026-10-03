@@ -151,26 +151,26 @@ function _renameChip() {
 
 function _chipStyle() {
     var n = nodeAt(selectedId)
-    return _sect("style", "Chip style", [
-        _pick("Font size", [8, 9, 10, 11, 12, 14, 16, 18, 20, 22], null, _field("fontSize", 10), _set("fontSize")),
+    return _sect("style", "Chip Style", [
+        _pick("Font Size", [8, 9, 10, 11, 12, 14, 16, 18, 20, 22], null, _field("fontSize", 10), _set("fontSize")),
         _pick("Size", [12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48], null, _field("chipSize", 18), _set("chipSize")),
         _pick("Shape", ["round", "square"], ["Round", "Square"], _field("chipShape", "round"), _set("chipShape")),
         _pick("Fill", ["filled", "hollow"], ["Filled", "Hollow"], _field("chipFill", "filled"), _set("chipFill")),
         _tog("Highlight on press", !n || n.highlight !== false,
              function() { var c = nodeAt(selectedId); applyField("highlight", !(c && c.highlight !== false)) }),
-        _act("Reset this cell", resetMemberStyle, targetMember() !== null)
+        _act("Reset This Cell", resetMemberStyle, targetMember() !== null)
     ])
 }
 
 function _chipColours() {
     function pick(field) { return function() { pickColor(field) } }
-    return _sect("colours", "Colours", [
-        _act("Fill colour…", pick("color")),
-        _act("Outline colour…", pick("border")),
-        _act("Text colour…", pick("textColor")),
-        _act("Pressed fill…", pick("hlColor")),
-        _act("Pressed outline…", pick("hlBorder")),
-        _act("Pressed text…", pick("hlText"))
+    return _sect("colours", "Colors", [
+        _act("Fill Color…", pick("color")),
+        _act("Outline Color…", pick("border")),
+        _act("Text Color…", pick("textColor")),
+        _act("Pressed Fill…", pick("hlColor")),
+        _act("Pressed Outline…", pick("hlBorder")),
+        _act("Pressed Text…", pick("hlText"))
     ])
 }
 
@@ -197,8 +197,8 @@ function _hotspot() {
         flip("hotPress", false),
         flip("hotPulse", false),
         flip("hotLive", true),
-        _act("Hotspot colour…", function() { pickColor("hotColor") }),
-        _act("Pressed colour…", function() { pickColor("hotPressColor") })
+        _act("Hotspot Color…", function() { pickColor("hotColor") }),
+        _act("Pressed Color…", function() { pickColor("hotPressColor") })
     ])
 }
 
@@ -234,40 +234,40 @@ function _leader() {
         setSegCurve(currentLeader(nodeAt(selectedId)), Math.max(0, seg), curved)
     }
     return _sect("leader", "Leader", [
-        _act("Leader colour…", function() { pickColor("leaderColor") }),
+        _act("Leader Color…", function() { pickColor("leaderColor") }),
         _pick("Weight", widths, labels, function(w) { return Math.round(leaderWidthOf(n) * 10) === w },
               function(w) { applyField("leaderWidth", w / 10) }),
-        _act("Add straight spine", function() { ensureMidSpine(nodeAt(selectedId)); bump() }),
-        _act("Add curved spine", function() { addCurveSpine(nodeAt(selectedId)) }),
-        _act("Convert spine", convertSelectedSpine, ctxHasSelectedSpine()),
-        _pick("This segment", [true, false], ["Curved", "Straight"], function() { return false },
+        _act("Add Straight Spine", function() { ensureMidSpine(nodeAt(selectedId)); bump() }),
+        _act("Add Curved Spine", function() { addCurveSpine(nodeAt(selectedId)) }),
+        _act("Convert Spine", convertSelectedSpine, ctxHasSelectedSpine()),
+        _pick("This Segment", [true, false], ["Curved", "Straight"], function() { return false },
               function(v) { setSeg(v) }),
-        _pick("All segments", [true, false], ["Curved", "Straight"], function() { return false },
+        _pick("All Segments", [true, false], ["Curved", "Straight"], function() { return false },
               function(v) { setAllSegCurve(v) }),
-        _act("Add leader", addLeader),
-        _act("Branch from this end", function() { selectedLeader = leader; addBranch() }),
-        _act("Clear all spines", function() { clearAllSpines(selectedId) }, !!(n && !isDraw(n))),
-        _act("Delete spine", function() { selectedLeader = leader; deleteSelection() }, selectedSpine >= 0),
+        _act("Add Leader", addLeader),
+        _act("Branch from This End", function() { selectedLeader = leader; addBranch() }),
+        _act("Clear All Spines", function() { clearAllSpines(selectedId) }, !!(n && !isDraw(n))),
+        _act("Delete Spine", function() { selectedLeader = leader; deleteSelection() }, selectedSpine >= 0),
         _deleteLeaderItem()
     ])
 }
 
 function _leaderEnds() {
-    return _sect("ends", "Leader ends", [
-        _act("Detach chip end", function() { detachEnd("from") }),
-        _act("Detach hotspot end", function() { detachEnd("to") }),
-        _act("Reconnect to this chip", function() { attachEndToSelf("from") }),
-        _act("Reconnect to this hotspot", function() { attachEndToSelf("to") })
+    return _sect("ends", "Leader Ends", [
+        _act("Detach Chip End", function() { detachEnd("from") }),
+        _act("Detach Hotspot End", function() { detachEnd("to") }),
+        _act("Reconnect to This Chip", function() { attachEndToSelf("from") }),
+        _act("Reconnect to This Hotspot", function() { attachEndToSelf("to") })
     ])
 }
 
 function _group() {
     var n = ctxTarget()
     return _sect("group", "Group", [
-        _act("Group selected", groupSelection, canGroup()),
-        _act("Break group", ungroupSelection, canUngroup() || isGroup(n)),
-        _act("Edit group", function() { beginGroupEdit(_ctx.nodeId) }, isGroup(n)),
-        _act("Done editing group", endGroupEdit, groupEditId !== "")
+        _act("Group Selected", groupSelection, canGroup()),
+        _act("Break Group", ungroupSelection, canUngroup() || isGroup(n)),
+        _act("Edit Group", function() { beginGroupEdit(_ctx.nodeId) }, isGroup(n)),
+        _act("Done Editing Group", endGroupEdit, groupEditId !== "")
     ])
 }
 
@@ -275,10 +275,10 @@ function _format() {
     var n = ctxTarget()
     if (!isFiveWay(n) && !ctxHasTheme())
         return null
-    return _sect("format", "5-way format", [
+    return _sect("format", "5-way Format", [
         _pick("Style", ["plus", "mini", "card", "radial"], ["Plus", "Mini hat", "Named card", "Radial"],
               function(f) { return fiveWayFormat(ctxTarget()) === f }, applyFiveWayFormat, isFiveWay(n)),
-        _act("Clear format", clearGroupFormat, ctxHasGroupFormat())
+        _act("Clear Format", clearGroupFormat, ctxHasGroupFormat())
     ])
 }
 
@@ -286,7 +286,7 @@ function _align() {
     var n = ctxTarget()
     if (!isGroup(n))
         return null
-    return _sect("align", "Align members", [
+    return _sect("align", "Align Members", [
         _pick("Align", ["left", "center", "right", "free"], ["Left", "Centre", "Right", "Free"],
               function(a) { return groupAlignH(ctxTarget()) === a }, setAlignH)
     ])
@@ -298,7 +298,7 @@ var _AROUND_LABELS = ["Rectangle", "Rounded", "Ellipse", "Triangle", "Diamond"]
 function _around() {
     if (!_selectionHasChips())
         return null
-    return _sect("around", "Shape around selection", [
+    return _sect("around", "Shape Around Selection", [
         _pick("Shape", _AROUND, _AROUND_LABELS, function() { return false }, addDrawAround)
     ])
 }
@@ -341,12 +341,12 @@ function _rotate() {
         items.push(_act("Rotate +" + step + "°", by(step)))
     }
     if (isFlippable(n)) {
-        items.push(_act("Flip horizontally", function() { flipSelection("h") }))
-        items.push(_act("Flip vertically", function() { flipSelection("v") }))
+        items.push(_act("Flip Horizontally", function() { flipSelection("h") }))
+        items.push(_act("Flip Vertically", function() { flipSelection("v") }))
     }
     if (!items.length)
         return null
-    var title = isRotatable(n) ? (isFlippable(n) ? "Rotate and flip" : "Rotate") : "Flip"
+    var title = isRotatable(n) ? (isFlippable(n) ? "Rotate and Flip" : "Rotate") : "Flip"
     return _sect("rotate", title, items)
 }
 
@@ -361,8 +361,8 @@ function _transform() {
         _pick("Handles", modes, labels, function(m) { return transformMode === m }, setTransformMode, !isLocked(n))
     ]
     if (canEditPoints(n))
-        items.push(_act("Edit points", convertToPath, !isLocked(n)))
-    items.push(_act("Reset shape", resetShape, hasShaping(n) && !isLocked(n)))
+        items.push(_act("Edit Points", convertToPath, !isLocked(n)))
+    items.push(_act("Reset Shape", resetShape, hasShaping(n) && !isLocked(n)))
     return _sect("transform", "Transform", items)
 }
 
@@ -388,15 +388,15 @@ function _detachFromChips() {
 function _arrange(extra) {
     var n = nodeAt(selectedId)
     var items = [
-        _act("Bring to front", bringToFront),
-        _act("Bring forward", bringForward),
-        _act("Send back", sendBack),
-        _act("Send to back", sendToBack),
+        _act("Bring to Front", bringToFront),
+        _act("Bring Forward", bringForward),
+        _act("Send Back", sendBack),
+        _act("Send to Back", sendToBack),
         _lockItem(),
         _act("Hide", function() { setLayerFlag(selectedId, "", "hidden", true) })
     ]
     if (n && n.around && n.around.length)
-        items.push(_act("Detach from chips", _detachFromChips))
+        items.push(_act("Detach from Chips", _detachFromChips))
     return _sect("arrange", "Arrange", items.concat(extra || []))
 }
 
@@ -404,8 +404,8 @@ function _shapeSections() {
     var n = nodeAt(selectedId)
     var style = [
         _pick("Fill", ["filled", "hollow"], ["Filled", "Hollow"], _field("fill", "hollow"), _set("fill")),
-        _act("Fill colour…", function() { requestDrawColor("color") }),
-        _act("Outline colour…", function() { requestDrawColor("border") }),
+        _act("Fill Color…", function() { requestDrawColor("color") }),
+        _act("Outline Color…", function() { requestDrawColor("border") }),
         _width(),
         _outline(),
         _opacity("opacity")
@@ -416,7 +416,7 @@ function _shapeSections() {
         _sect("shape", "Shape", [
             _pick("Shape", _SHAPES, _SHAPE_LABELS, _field("shape", "rect"), _set("shape"))
         ]),
-        _sect("style", "Fill and outline", style),
+        _sect("style", "Fill and Outline", style),
         _transform(),
         _rotate(),
         _arrange()
@@ -430,10 +430,10 @@ function _lineSections() {
         _sect("heads", "Arrowheads", [
             _pick("Start", heads, headLabels, _field("headStart", "none"), _setDraw("headStart")),
             _pick("End", heads, headLabels, _field("headEnd", "none"), _setDraw("headEnd")),
-            _act("Swap heads", swapLineHeads)
+            _act("Swap Heads", swapLineHeads)
         ]),
         _sect("style", "Line", [
-            _act("Colour…", function() { requestDrawColor("border") }),
+            _act("Color…", function() { requestDrawColor("border") }),
             _width(),
             _outline(),
             _opacity("opacity")
@@ -454,7 +454,7 @@ function _pathSections() {
             _tog("Smooth", !!(n && n.smooth), togglePathSmooth)
         ]),
         _sect("style", "Line", [
-            _act("Colour…", function() { requestDrawColor("border") }),
+            _act("Color…", function() { requestDrawColor("border") }),
             _width(),
             _outline(),
             _opacity("opacity")
@@ -463,7 +463,7 @@ function _pathSections() {
     if (closed) {
         out.push(_sect("fill", "Fill", [
             _pick("Fill", ["filled", "hollow"], ["Filled", "Hollow"], _field("fill", "hollow"), _set("fill")),
-            _act("Fill colour…", function() { requestDrawColor("color") })
+            _act("Fill Color…", function() { requestDrawColor("color") })
         ]))
     } else {
         out.push(_sect("heads", "Arrowheads", [
@@ -481,9 +481,9 @@ function _imageSections() {
     return [
         _sect("image", "Picture", [
             _tog("Crop", cropId === selectedId, toggleCrop, !isLocked(n)),
-            _act("Reset crop", resetCrop, !!(n && n.crop) && !isLocked(n)),
+            _act("Reset Crop", resetCrop, !!(n && n.crop) && !isLocked(n)),
             _act(plantSnap ? "Click the picture to place a snap point…" : "Add snap point", beginPlantSnap),
-            _act("Clear snap points", clearSockets, !!(n && n.sockets && n.sockets.length)),
+            _act("Clear Snap Points", clearSockets, !!(n && n.sockets && n.sockets.length)),
             _opacity("opacity")
         ]),
         _transform(),
@@ -520,14 +520,14 @@ function _textSections() {
             _pick("Theme", themes, themeLabels,
                   function(t) { var b = nodeAt(selectedId); return (b && b.theme ? b.theme : "gremlin") === t },
                   applyTextTheme),
-            _act("Text colour…", function() { requestDrawColor("textColor") }),
-            _act("Fill colour…", function() { requestDrawColor("color") }),
-            _act("Outline colour…", function() { requestDrawColor("border") }),
-            _pick("Fill opacity", opac, opacLabels, _field("fillOpacity", 1), _set("fillOpacity")),
-            _pick("Outline opacity", opac, opacLabels, _field("borderOpacity", 1), _set("borderOpacity"))
+            _act("Text Color…", function() { requestDrawColor("textColor") }),
+            _act("Fill Color…", function() { requestDrawColor("color") }),
+            _act("Outline Color…", function() { requestDrawColor("border") }),
+            _pick("Fill Opacity", opac, opacLabels, _field("fillOpacity", 1), _set("fillOpacity")),
+            _pick("Outline Opacity", opac, opacLabels, _field("borderOpacity", 1), _set("borderOpacity"))
         ]),
-        _sect("format", "Copy and paint format", [
-            _act("Copy format", copyTextFormat),
+        _sect("format", "Copy and Paint Format", [
+            _act("Copy Format", copyTextFormat),
             _tog("Paint format", textPaintOn, function() {
                 if (!textFormatClip)
                     return
@@ -535,14 +535,14 @@ function _textSections() {
                 textPaintOn = true
                 bump()
             }, !!textFormatClip),
-            _act("Clear formatting", clearTextFormat),
-            _act("Copy text", copyTextPlain)
+            _act("Clear Formatting", clearTextFormat),
+            _act("Copy Text", copyTextPlain)
         ]),
         _sect("pointer", "Pointer", isCallout(n) ? [
-            _act("Detach from chip", detachCalloutTail, !!(n.tail && n.tail.to)),
-            _act("Remove pointer", removeCalloutTail)
+            _act("Detach from Chip", detachCalloutTail, !!(n.tail && n.tail.to)),
+            _act("Remove Pointer", removeCalloutTail)
         ] : [
-            _act("Add pointer", addCalloutTail)
+            _act("Add Pointer", addCalloutTail)
         ]),
         _transform(),
         _rotate(),
@@ -555,11 +555,11 @@ function _tableSections() {
     var cell = tableCurrentCell(n)
     var hasCell = tableHasTarget()
     return [
-        _sect("rows", "Rows and columns", [
-            _act("Insert row above", function() { addTableRow(false) }),
-            _act("Delete this row", deleteTableRow, !!(n && n.rows && n.rows.length > 1)),
-            _act("Insert column left", function() { addTableCol(false) }),
-            _act("Delete this column", deleteTableCol, !!(n && n.cols > 1)),
+        _sect("rows", "Rows and Columns", [
+            _act("Insert Row Above", function() { addTableRow(false) }),
+            _act("Delete This Row", deleteTableRow, !!(n && n.rows && n.rows.length > 1)),
+            _act("Insert Column Left", function() { addTableCol(false) }),
+            _act("Delete This Column", deleteTableCol, !!(n && n.cols > 1)),
             _tog("ID column", !!(n && n.idCol), toggleTableIdCol)
         ]),
         _sect("cell", "Cell", [
@@ -567,22 +567,22 @@ function _tableSections() {
             _tog("Independent of table", !!(cell && cell.independent),
                  function() { var c = tableCurrentCell(nodeAt(selectedId)); setTableCellIndependent(!(c && c.independent)) },
                  hasCell),
-            _act("Spawn empty cell", spawnEmptyCell),
-            _act("Delete this cell", deleteThisTableCell, tableExtra >= 0),
-            _pick("Place across", ["left", "center", "right"], ["Far left", "Centre", "Far right"],
+            _act("Spawn Empty Cell", spawnEmptyCell),
+            _act("Delete This Cell", deleteThisTableCell, tableExtra >= 0),
+            _pick("Place Across", ["left", "center", "right"], ["Far left", "Centre", "Far right"],
                   function() { return false }, placeTableCell, hasCell),
-            _pick("Place down", ["top", "middle", "bottom"], ["Top", "Middle", "Bottom"],
+            _pick("Place Down", ["top", "middle", "bottom"], ["Top", "Middle", "Bottom"],
                   function() { return false }, placeTableCell, hasCell)
         ]),
         _sect("look", "Look", [
             _pick("Theme", ["gremlin", "hollow", "sheet"], ["Dark", "Hollow", "Sheet"],
                   function(t) { return (n && n.theme ? n.theme : "gremlin") === t }, setTableTheme),
-            _pick("Font size", [8, 10, 12, 14, 16], null,
+            _pick("Font Size", [8, 10, 12, 14, 16], null,
                   function(v) { return n && n.fontSize ? n.fontSize === v : v === 10 }, setTableFont)
         ]),
         _arrange([
-            _act("Break group", ungroupSelection, canUngroup()),
-            _act("Delete table", deleteTable)
+            _act("Break Group", ungroupSelection, canUngroup()),
+            _act("Delete Table", deleteTable)
         ])
     ]
 }
@@ -595,9 +595,9 @@ function _canvasSections() {
         _pick("Shape", tools, _SHAPE_LABELS, function(t) { return drawTool === t }, setDrawTool),
         _pick("Line", ["line", "arrowline", "path", "pen"], ["Line", "Arrow", "Path", "Freehand"], function(t) { return drawTool === t }, setDrawTool),
         _pick("Box", ["text", "callout", "table"], ["Text box", "Callout", "Table"], function(t) { return drawTool === t }, setDrawTool),
-        _act("Import picture…", function() { overlayImportRequested() }),
-        _act("Paste picture", function() { pastePictureRequested() }, canPastePicture),
-        _act("Stop drawing", function() { drawTool = "" }, drawTool.length > 0)
+        _act("Import Picture…", function() { overlayImportRequested() }),
+        _act("Paste Picture", function() { pastePictureRequested() }, canPastePicture),
+        _act("Stop Drawing", function() { drawTool = "" }, drawTool.length > 0)
     ]
     var out = [_sect("draw", "Draw", draw)]
     var around = _around()
@@ -611,10 +611,10 @@ function _canvasSections() {
 // Lining up several items; the menu stays open to try another.
 function _alignSection() {
     var none = function() { return false }
-    return _sect("align-many", "Align and distribute", [
+    return _sect("align-many", "Align and Distribute", [
         _pick("Across", ["left", "center", "right"], ["Left", "Centre", "Right"], none, alignSelection, canAlign()),
         _pick("Down", ["top", "middle", "bottom"], ["Top", "Middle", "Bottom"], none, alignSelection, canAlign()),
-        _pick("Space out", ["h", "v"], ["Across", "Down"], none, distributeSelection, canDistribute())
+        _pick("Space Out", ["h", "v"], ["Across", "Down"], none, distributeSelection, canDistribute())
     ])
 }
 
@@ -637,14 +637,14 @@ function _savedStyles() {
     if (!kind)
         return null
     var id = n.id
-    var items = [_act("Save this style…", function() { saveStyleOf(id) })]
+    var items = [_act("Save This Style…", function() { saveStyleOf(id) })]
     var list = stylesFor(kind)
     for (var i = 0; i < list.length && i < 12; i++) {
         (function(style) {
             items.push(_act("Apply " + style.name, function() { applySavedStyle(style) }))
         })(list[i])
     }
-    return _sect("saved-styles", "Saved styles", items)
+    return _sect("saved-styles", "Saved Styles", items)
 }
 
 // --- the menu ----------------------------------------------------------------
@@ -658,17 +658,17 @@ function menuModel() {
     var quick = []
     var sections = []
     if (kind === "chip") {
-        quick = [_act("Rename", _renameChip), _act("Add callout", function() { addCalloutFor(_ctx.nodeId) }), _act("Delete chip", deleteChip)]
+        quick = [_act("Rename", _renameChip), _act("Add Callout", function() { addCalloutFor(_ctx.nodeId) }), _act("Delete Chip", deleteChip)]
         sections = [_chipStyle(), _chipColours(), _savedStyles(), _hotspot(), _leader(), _leaderEnds(), _group(), _format(), _around(), _arrange()]
     } else if (kind === "group") {
         quick = groupEditId !== ""
-            ? [_act("Done editing group", endGroupEdit), _act("Break group", ungroupSelection)]
-            : [_act("Edit group", function() { beginGroupEdit(_ctx.nodeId) }), _act("Break group", ungroupSelection)]
+            ? [_act("Done Editing Group", endGroupEdit), _act("Break Group", ungroupSelection)]
+            : [_act("Edit Group", function() { beginGroupEdit(_ctx.nodeId) }), _act("Break Group", ungroupSelection)]
         sections = [_format(), _align(), _turnSection(), _chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _around(), _arrange()]
     } else if (kind === "leader") {
-        quick = [_act("Add leader", addLeader), _deleteLeaderItem()]
+        quick = [_act("Add Leader", addLeader), _deleteLeaderItem()]
         if (selectedSpine >= 0)
-            quick.unshift(_act("Delete spine", function() { selectedLeader = _ctx.leader; deleteSelection() }))
+            quick.unshift(_act("Delete Spine", function() { selectedLeader = _ctx.leader; deleteSelection() }))
         sections = [_leader(), _leaderEnds(), _chipStyle(), _chipColours(), _hotspot()]
     } else if (kind === "shape" || kind === "line" || kind === "image" || kind === "path") {
         quick = [_act("Duplicate", duplicateSelection), _act("Delete", deleteChip)]
@@ -678,17 +678,17 @@ function menuModel() {
             sections.splice(sections.length - 2, 0, _savedStyles())
     } else if (kind === "text") {
         quick = [
-            _act("Edit text…", function() { var t = nodeAt(selectedId); if (isText(t)) beginTextRename(t.id) }),
+            _act("Edit Text…", function() { var t = nodeAt(selectedId); if (isText(t)) beginTextRename(t.id) }),
             _act("Duplicate", duplicateSelection),
-            _act("Delete text box", deleteChip)
+            _act("Delete Text Box", deleteChip)
         ]
         sections = _textSections()
         sections.splice(sections.length - 2, 0, _savedStyles())
     } else if (kind === "table") {
-        quick = [_act("Add row below", function() { addTableRow(true) }), _act("Add column right", function() { addTableCol(true) })]
+        quick = [_act("Add Row Below", function() { addTableRow(true) }), _act("Add Column Right", function() { addTableCol(true) })]
         sections = _tableSections()
     } else if (kind === "multi") {
-        quick = [_act("Group selected", groupSelection, canGroup()), _act("Duplicate", duplicateSelection), _act("Delete", function() { deleteSelected() })]
+        quick = [_act("Group Selected", groupSelection, canGroup()), _act("Duplicate", duplicateSelection), _act("Delete", function() { deleteSelected() })]
         var first = nodeAt(_ctx.nodeId)
         sections = [_alignSection(), _turnSection(), _savedStyles()].concat(isDraw(first) ? (isLine(first) ? _lineSections() : _shapeSections())
                                  : [_chipStyle(), _chipColours(), _hotspot(), _leader(), _around()])
@@ -696,7 +696,7 @@ function menuModel() {
         if (clip && clip.length)
             quick.push(_act("Paste", pasteClipboard))
         if (drawTool.length)
-            quick.push(_act("Stop drawing", function() { drawTool = "" }))
+            quick.push(_act("Stop Drawing", function() { drawTool = "" }))
         sections = _canvasSections()
     }
     return {

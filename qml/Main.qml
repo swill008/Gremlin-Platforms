@@ -808,7 +808,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _saveProfileFileDialog
-        title: "Save profile as"
+        title: "Save Profile As"
 
         // Set by guardUnsavedChanges: runs after a successful save.
         property var afterSave: null
@@ -859,7 +859,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _loadProfileFileDialog
-        title: "Open profile"
+        title: "Open Profile"
 
         acceptLabel: "Open"
         defaultSuffix: "xml"
@@ -923,7 +923,7 @@ ApplicationWindow {
             ThemedMenuItem { command: "view.configuration" }
             ThemedMenuSeparator {}
             ThemedMenu {
-                title: qsTr("Home layout")
+                title: qsTr("Home Layout")
                 ThemedMenuItem { command: "view.layout.single" }
                 ThemedMenuItem { command: "view.layout.side" }
                 ThemedMenuItem { command: "view.layout.stacked" }
@@ -944,7 +944,7 @@ ApplicationWindow {
                 ThemedMenuItem { command: "tools.xboxViewer" }
             }
             ThemedMenu {
-                title: qsTr("Device setup")
+                title: qsTr("Device Setup")
                 ThemedMenuItem { command: "tools.calibration" }
                 ThemedMenuItem { command: "tools.hidhide" }
                 ThemedMenuItem { command: "tools.configureInput" }

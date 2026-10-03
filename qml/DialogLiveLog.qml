@@ -146,7 +146,7 @@ ApplicationWindow {
         RowLayout {
             Layout.alignment: Qt.AlignRight
             Button {
-                text: qsTr("Clear log")
+                text: qsTr("Clear Log")
                 onClicked: {
                     _clearGate.confirmThen("Clear log?",
                         "Clear everything shown here? (The log starts empty at every start anyway.)",
@@ -157,7 +157,7 @@ ApplicationWindow {
                 }
             }
             Button {
-                text: qsTr("Copy all logs")
+                text: qsTr("Copy All Logs")
                 onClicked: _log.copyAll()
             }
         }

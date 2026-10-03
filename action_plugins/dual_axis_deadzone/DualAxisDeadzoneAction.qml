@@ -41,7 +41,7 @@ Item {
         modal: true
         focus: true
 
-        title: "Rename action"
+        title: "Rename Action"
 
         Row {
             anchors.fill: parent

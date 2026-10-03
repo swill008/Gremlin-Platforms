@@ -253,7 +253,7 @@ Item {
 
     ColorDialog {
         id: _colorDlg
-        title: "Choose color"
+        title: "Choose Color"
         onAccepted: {
             var c = selectedColor.toString()
             if (_colorTarget === "child") colorChildSet = c
@@ -274,7 +274,7 @@ Item {
 
     FileDialog {
         id: _screenImageDlg
-        title: "Screen background"
+        title: "Screen Background"
         nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp *.webp)"]
         fileMode: FileDialog.OpenFile
         onAccepted: screenImage = selectedFile.toString()
@@ -1571,7 +1571,7 @@ Item {
             Button {
                 visible: _catalog.count === 0 && parent._filtered
                 Layout.alignment: Qt.AlignHCenter
-                text: "Clear filters"
+                text: "Clear Filters"
                 onClicked: {
                     _catalog.typeFilter = "all"
                     _catalog.destFilter = "all"
@@ -1709,8 +1709,8 @@ Item {
                 }
                 RowLayout {
                     spacing: Style.dp(8)
-                    Button { text: "Open all"; onClicked: setAllSections(true) }
-                    Button { text: "Close all"; onClicked: setAllSections(false) }
+                    Button { text: "Open All"; onClicked: setAllSections(true) }
+                    Button { text: "Close All"; onClicked: setAllSections(false) }
                     Item { Layout.fillWidth: true }
                 }
 
@@ -1872,7 +1872,7 @@ Item {
                             ColorPick { label: "Color"; swatch: colorGroup; target: "group" }
                         }
                         FoldSection {
-                            title: "Parent row"
+                            title: "Parent Row"
                             open: openParent
                             onToggled: (v) => { openParent = v }
                             RowLayout {
@@ -1927,7 +1927,7 @@ Item {
                             }
                         }
                         FoldSection {
-                            title: "Child row"
+                            title: "Child Row"
                             open: openChild
                             onToggled: (v) => { openChild = v }
                             RowLayout {

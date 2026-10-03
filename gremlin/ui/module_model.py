@@ -406,7 +406,7 @@ _DEFAULT_CATALOG = {
     "groupPadLeft": 48,
     "parkEmptyInUnmapped": False,
     "unmappedGap": 48,
-    # Colours: "" follows Dark mode; a value is the user's own choice.
+    # Colors: "" follows Dark mode; a value is the user's own choice.
     "colorParent": "",
     "colorChild": "",
     "colorSelected": "",
@@ -437,7 +437,7 @@ _DEFAULT_VIEW = {
     "buttonSize": "medium",
     "buttonColumns": 12,
     "buttonWidth": 64,
-    # Colours: "" follows Dark mode; a value is the user's own choice.
+    # Colors: "" follows Dark mode; a value is the user's own choice.
     "colorLive": "",
     "colorMeter": "",
     "colorPress": "",

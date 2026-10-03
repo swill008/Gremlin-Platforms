@@ -119,7 +119,7 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
     ),
     (
         "export", "03-light-page", PropertyType.Bool, False,
-        "Exports on a white page: dark colours turn light and light ones dark, "
+        "Exports on a white page: dark colors turn light and light ones dark, "
         "keeping their hue. The photo is not changed. Also in File > Light page "
         "for exports. Printing has its own setting (Print light).",
         {},
@@ -137,7 +137,7 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
     ),
     (
         "colours", "01-recent-colours", PropertyType.Int, 10,
-        "How many recent colours the colour picker keeps.",
+        "How many recent colors the color picker keeps.",
         {"min": 4, "max": 30},
     ),
 ]

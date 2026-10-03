@@ -23,7 +23,7 @@ Item {
         spacing: Style.dp(8)
 
         Button {
-            text: "Reset all card sizes"
+            text: "Reset All Card Sizes"
             onClicked: _sizes.resetAll()
         }
     }

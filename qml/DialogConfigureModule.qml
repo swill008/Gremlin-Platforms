@@ -183,7 +183,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _imageDialog
-        title: "Import image"
+        title: "Import Image"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
         currentFolder: _hw.imagesFolderUrl()
@@ -258,7 +258,7 @@ ApplicationWindow {
                         text: "No photo for this module.\nImport image…"
                     }
                     Button {
-                        text: "Import image…"
+                        text: "Import Image…"
                         onClicked: _imageDialog.open()
                     }
                 }
@@ -338,7 +338,7 @@ ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
             Button {
-                text: "Module file"
+                text: "Module File"
                 focusPolicy: Qt.NoFocus
                 onClicked: {
                     refreshModuleFileLabel()
@@ -367,7 +367,7 @@ ApplicationWindow {
 
     Dialog {
         id: _moduleFileDialog
-        title: "Module file"
+        title: "Module File"
         modal: true
         anchors.centerIn: parent
         width: Style.dp(460)
@@ -437,7 +437,7 @@ ApplicationWindow {
                 }
             }
             Button {
-                text: "Open modules folder"
+                text: "Open Modules Folder"
                 Layout.fillWidth: true
                 onClicked: {
                     if (moduleModel)
@@ -445,7 +445,7 @@ ApplicationWindow {
                 }
             }
             Button {
-                text: "Delete file"
+                text: "Delete File"
                 Layout.fillWidth: true
                 onClicked: {
                     if (!moduleModel)
@@ -474,7 +474,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _moduleLoadDialog
-        title: "Browse for file"
+        title: "Choose Module File"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Module files (*.json)"]
         onAccepted: {

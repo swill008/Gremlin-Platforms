@@ -15,7 +15,7 @@ ApplicationWindow {
     id: _win
     width: 420
     height: 360
-    title: "Hidden cards"
+    title: "Hidden Cards"
 
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }
@@ -74,7 +74,7 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.leftMargin: Style.dp(12)
         anchors.bottomMargin: Style.dp(66)
-        text: "Unhide all"
+        text: "Unhide All"
         enabled: _list.count > 0
         onClicked: {
             if (moduleModel)

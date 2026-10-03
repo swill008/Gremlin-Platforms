@@ -26,7 +26,7 @@ Item {
     FileDialog {
         id: _selectScript
 
-        title: "Please select a file"
+        title: "Add Script"
 
         acceptLabel: "Load"
         defaultSuffix: "py"

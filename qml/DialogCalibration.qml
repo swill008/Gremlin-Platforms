@@ -167,7 +167,7 @@ ApplicationWindow {
 
             // Every axis with unsaved changes at once (each axis also has its own).
             Button {
-                text: "Save all"
+                text: "Save All"
                 enabled: _calibrationDialog.anyUnsaved
                 onClicked: {
                     var ok = _calib.saveAll()
@@ -417,7 +417,7 @@ ApplicationWindow {
                     id: _btnCenterCalibration
 
                     Layout.preferredWidth: Style.dp(150)
-                    text: "Calibrate center"
+                    text: "Calibrate Center"
                     visible: model.withCenter
 
                     checkable: true
@@ -438,7 +438,7 @@ ApplicationWindow {
                     id: _btnExtremaCalibration
 
                     Layout.preferredWidth: Style.dp(150)
-                    text: "Calibrate extrema"
+                    text: "Calibrate Extrema"
 
                     checkable: true
                     onToggled: {

@@ -222,7 +222,7 @@ Item {
             }
 
             Button {
-                text: "Add step"
+                text: "Add Step"
 
                 onClicked: () => {
                     _root.action.addAction(_macroAction.currentValue)

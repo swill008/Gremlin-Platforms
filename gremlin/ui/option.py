@@ -57,6 +57,12 @@ _ENTRY_TITLES = {
     "auto-loading": "Programs and their profiles",
     "resolution-mode": "Mode cycle resolution",
     "unbound": "No actions",
+    "recent-colours": "Recent colors",
+}
+
+# Headings for groups whose stored key is spelled differently (glossary: US).
+_GROUP_TITLES = {
+    "colours": "colors",
 }
 
 # Group order inside a section; others follow by name.
@@ -171,7 +177,9 @@ class ConfigGroupModel(QtCore.QAbstractListModel):
             case "entryModel":
                 return ConfigEntryModel(self._section_name, groups[index.row()])
             case "groupName":
-                return groups[index.row()]
+                # Shown as the group's heading; the key itself never changes.
+                name = groups[index.row()]
+                return _GROUP_TITLES.get(name, name)
             case _:
                 return None
 

@@ -37,7 +37,11 @@ def test_options_list_a_button_map_section_in_group_order() -> None:
     assert "Button Map" in names
     groups = ConfigGroupModel(bmo.SECTION)
     shown = [groups.data(groups.index(i), 257) for i in range(groups.rowCount())]
-    assert shown == [g for g in bmo.GROUPS if g in shown]
+    # Headings may be spelled differently from the stored keys ("colours").
+    from gremlin.ui.option import _GROUP_TITLES
+
+    keys = [_GROUP_TITLES.get(g, g) for g in bmo.GROUPS]
+    assert shown == [g for g in keys if g in shown]
 
 
 def test_values_by_name_and_set() -> None:
