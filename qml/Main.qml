@@ -1159,7 +1159,7 @@ ApplicationWindow {
             anchors.fill: parent
 
             Label {
-                Layout.preferredWidth: Style.dp(200)
+                Layout.preferredWidth: Math.max(Style.dp(200), implicitWidth)
                 padding: Style.dp(5)
 
                 color: backend && backend.gremlinActive ? Style.foreground : Style.fgMuted
@@ -1169,6 +1169,10 @@ ApplicationWindow {
                     ) +
                     Helpers.selectText(
                         backend && backend.gremlinActive && backend.gremlinPaused, " (Paused)", ""
+                    ) +
+                    // Started with edits that are not saved yet: they run too.
+                    Helpers.selectText(
+                        backend && backend.gremlinActive && _root.profileDirty, " (unsaved changes)", ""
                     )
             }
 

@@ -210,6 +210,8 @@ ApplicationWindow {
         anchors.bottomMargin: Style.dp(78)
         spacing: Style.dp(10)
 
+        RunningNote {}
+
         Label {
             text: deviceName.length ? deviceName : "Unnamed device"
             font.pixelSize: Style.dp(16)

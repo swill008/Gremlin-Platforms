@@ -1496,7 +1496,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _imageDialog
-        title: "Choose background image"
+        title: "Choose photo"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
         currentFolder: _hw.imagesFolderUrl()
@@ -2298,25 +2298,6 @@ ApplicationWindow {
                     onTriggered: fitToPhotoFrame()
                 }
                 ThemedMenuSeparator {}
-                ThemedMenuItem { text: "Choose background…"; enabled: editing; onTriggered: _imageDialog.open() }
-                ThemedMenuItem {
-                    text: "Clear image"
-                    enabled: editing
-                    onTriggered: {
-                        // Cancel can put the current photo back.
-                        _hw.stashPhoto(targetName)
-                        if (!_hw.clearImage(targetName)) {
-                            // It may have stopped part way: put the photo back.
-                            _hw.restorePhoto(targetName)
-                            tellFailure("Clear image failed",
-                                "The photo file could not be removed (it may be open in another program).")
-                            return
-                        }
-                        applyImage(stockImage)
-                        resetPhoto()
-                    }
-                }
-                ThemedMenuSeparator {}
                 ThemedMenuItem {
                     text: "Export PDF…"
                     enabled: _buttonMap.targetName.length > 0
@@ -2662,6 +2643,25 @@ ApplicationWindow {
                 title: "Photo"
                 // Everything in it needs editing.
                 enabled: editing
+                ThemedMenuItem { text: "Choose photo…"; enabled: editing; onTriggered: _imageDialog.open() }
+                ThemedMenuItem {
+                    text: "Clear photo"
+                    enabled: editing
+                    onTriggered: {
+                        // Cancel can put the current photo back.
+                        _hw.stashPhoto(targetName)
+                        if (!_hw.clearImage(targetName)) {
+                            // It may have stopped part way: put the photo back.
+                            _hw.restorePhoto(targetName)
+                            tellFailure("Clear photo failed",
+                                "The photo file could not be removed (it may be open in another program).")
+                            return
+                        }
+                        applyImage(stockImage)
+                        resetPhoto()
+                    }
+                }
+                ThemedMenuSeparator {}
                 ThemedMenuItem {
                     text: "Move photo"
                     checkable: true

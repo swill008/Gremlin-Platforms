@@ -68,6 +68,8 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.margins: Style.dp(10)
 
+        RunningNote {}
+
         RowLayout {
             Label {
                 Layout.preferredWidth: Style.dp(200)

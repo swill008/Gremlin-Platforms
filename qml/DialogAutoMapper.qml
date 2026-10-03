@@ -50,6 +50,8 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.margins: Style.dp(10)
 
+        RunningNote {}
+
         RowLayout {
             ColumnLayout {
                 Layout.fillWidth: true

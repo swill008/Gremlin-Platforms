@@ -90,7 +90,7 @@ def test_cancel_puts_the_starting_photo_back(modules: pathlib.Path) -> None:
     hw = hardware_profile.HardwareProfile()
 
     hw.stashPhoto("Stick R")
-    # Choose background… with a .png, then a second change in the same edit.
+    # Choose photo… with a .png, then a second change in the same edit.
     (folder / "photo.jpg").unlink()
     (folder / "photo.png").write_bytes(b"new")
     doc.write_text(json.dumps({"image": "stick_r/photo.png"}), encoding="utf-8")

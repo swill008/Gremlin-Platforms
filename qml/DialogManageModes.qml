@@ -60,6 +60,8 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.topMargin: Style.dp(10)
 
+        RunningNote { Layout.leftMargin: Style.dp(12) }
+
         Label {
             Layout.fillWidth: true
             Layout.leftMargin: Style.dp(12)
