@@ -33,6 +33,22 @@ from gremlin.types import (
 )
 from gremlin.util import clamp
 
+
+@pytest.fixture(scope="package", autouse=True)
+def _own_process() -> None:
+    """Fails clearly when a plain QCoreApplication was made first.
+
+    Then pytest-qt never creates JoystickGremlinApp: the settings are not
+    registered and the Backend has no engine.
+    """
+    app = QtCore.QCoreApplication.instance()
+    if app is not None and not isinstance(app, joystick_gremlin.JoystickGremlinApp):
+        pytest.fail(
+            "A test made a plain QCoreApplication before the Gremlin app: "
+            "use the qapp fixture instead.",
+            pytrace=False,
+        )
+
 LDIdentifier = LogicalDevice.Input.Identifier
 
 
