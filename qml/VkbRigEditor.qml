@@ -1460,6 +1460,9 @@ Item {
         id: _menu
         build: _ed.menuModel
         hideUnavailable: false
+        // Stays open while you work and can be dragged by its title; a click
+        // outside it closes it.
+        stayOpen: true
 
         Connections {
             target: _ed

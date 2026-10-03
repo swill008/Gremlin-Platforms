@@ -37,6 +37,11 @@ Popup {
     property point _lastHover: Qt.point(-1, -1)
     property real anchorX: 0
     property real anchorY: 0
+    // Stays open after a row is chosen (refreshed to the new state) and can be
+    // dragged by its title; a click outside it or Esc closes it (Button Map).
+    property bool stayOpen: false
+    // Moved by dragging the title: placed where dropped, no flipping.
+    property bool _dragged: false
     readonly property real edge: Style.menuPad
     readonly property real rowH: Style.menuRowH
     readonly property int textPx: Style.menuTextPx
@@ -56,12 +61,16 @@ Popup {
     height: Math.min(_column.implicitHeight + topPadding + bottomPadding, parent ? parent.height - 2 * edge : 400)
     x: {
         var pw = parent ? parent.width : 0
+        if (_dragged)
+            return Math.max(edge, Math.min(anchorX, pw - edge - width))
         if (anchorX + width > pw - edge)
             return Math.max(edge, anchorX - width)
         return anchorX
     }
     y: {
         var ph = parent ? parent.height : 0
+        if (_dragged)
+            return Math.max(edge, Math.min(anchorY, ph - edge - height))
         if (anchorY + height > ph - edge)
             return Math.max(edge, Math.min(anchorY - height, ph - edge - height))
         return anchorY
@@ -78,6 +87,7 @@ Popup {
         var p = item ? item.mapToItem(parent, ix, iy) : Qt.point(ix, iy)
         anchorX = p.x
         anchorY = p.y
+        _dragged = false
         current = MenuModel.lastSection(model.kind)
         focusRow = -1
         open()
@@ -103,13 +113,13 @@ Popup {
         if (!item || !item.enabled)
             return
         if (item.kind === "action") {
-            if (!item.keepOpen)
+            if (!item.keepOpen && !stayOpen)
                 close()
             item.run()
         } else if (item.kind === "toggle") {
             item.run()
         } else if (item.kind === "entry") {
-            if (!item.keepOpen)
+            if (!item.keepOpen && !stayOpen)
                 close()
             item.run(value)
         } else if (item.kind === "number" && item.go && item.closeOnGo) {
@@ -298,13 +308,33 @@ Popup {
                 width: _flick.width - (_flick.scrolls ? _bar.width : 0)
                 spacing: 0
 
-                // Title: what was clicked, with its header buttons.
+                // Title: what was clicked, with its header buttons. With
+                // stayOpen, drag it to move the menu.
                 RowLayout {
                     visible: _menu.model.title.length > 0 || _menu.model.header.length > 0
                     width: parent.width
                     height: visible ? _menu.rowH + Style.dp(4) : 0
                     spacing: Style.dp(4)
                     Label {
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: _menu.stayOpen
+                            cursorShape: enabled ? Qt.SizeAllCursor : Qt.ArrowCursor
+                            property point _start
+                            property point _origin
+                            onPressed: (m) => {
+                                _start = mapToItem(_menu.parent, m.x, m.y)
+                                _origin = Qt.point(_menu.x, _menu.y)
+                            }
+                            onPositionChanged: (m) => {
+                                if (!pressed)
+                                    return
+                                var p = mapToItem(_menu.parent, m.x, m.y)
+                                _menu._dragged = true
+                                _menu.anchorX = _origin.x + p.x - _start.x
+                                _menu.anchorY = _origin.y + p.y - _start.y
+                            }
+                        }
                         Layout.fillWidth: true
                         Layout.leftMargin: Style.dp(6)
                         text: _menu.model.title

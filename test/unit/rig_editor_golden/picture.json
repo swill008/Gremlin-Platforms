@@ -1569,7 +1569,22 @@
     "histAt": 5,
     "histLen": 6,
     "layers": [],
-    "menu": [],
+    "menu": [
+     "Picture",
+     "Duplicate",
+     "Delete",
+     "Copy (Ctrl+C)",
+     "Paste (Ctrl+V) (off)",
+     "v Picture",
+     "  Crop [ ]",
+     "  Reset Crop (off)",
+     "  Add snap point",
+     "  Clear Snap Points (off)",
+     "  Opacity: 25% | 50% | 75% | *100%",
+     "> Transform",
+     "> Rotate and Flip",
+     "> Arrange"
+    ],
     "nodeCount": 20,
     "pasteRequests": 0,
     "photo": [
@@ -1651,7 +1666,17 @@
     "histAt": 5,
     "histLen": 6,
     "layers": [],
-    "menu": [],
+    "menu": [
+     "Canvas",
+     "Paste (Ctrl+V)",
+     "v Draw",
+     "  Shape: Rectangle | Rounded | Ellipse | Triangle | Diamond | Arrow | Double arrow",
+     "  Line: Line | Arrow | Path | Freehand",
+     "  Box: Text box | Callout | Table",
+     "  Import Picture\u2026",
+     "  Paste Picture",
+     "  Stop Drawing (off)"
+    ],
     "nodeCount": 20,
     "pasteRequests": 1,
     "photo": [

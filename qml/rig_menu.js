@@ -195,6 +195,7 @@ function _hotspot() {
         })
     }
     return _sect("hotspot", "Hotspot", [
+        _hideHotspot(),
         _pick("Size", [4, 6, 8, 9, 10, 12, 14, 16, 20, 24, 28], null, _field("hotSize", 9), _set("hotSize")),
         _pick("Shape",
               ["round", "square", "diamond", "triangle", "ring", "target", "crosshair", "plus", "x", "pin", "none"],
@@ -211,6 +212,19 @@ function _hotspot() {
         _act("Hotspot Color…", function() { pickColor("hotColor") }),
         _act("Pressed Color…", function() { pickColor("hotPressColor") })
     ])
+}
+
+// Hide Hotspot: the same switch as the hotspot's eye in the Layers panel
+// (hotHidden); the shape and its settings stay, so showing it again brings
+// the same hotspot back. With several chips selected, it hides them all, or
+// shows them all when all are hidden.
+function _hideHotspot() {
+    var ids = (selectedIds && selectedIds.length) ? selectedIds.slice() : (selectedId ? [selectedId] : [])
+    var allHidden = ids.length > 0 && ids.every(function(id) { return layerFlag(id, "hot", "hidden") })
+    return _tog("Hide Hotspot", allHidden, function() {
+        for (var i = 0; i < ids.length; i++)
+            setLayerFlag(ids[i], "hot", "hidden", !allHidden)
+    }, ids.length > 0)
 }
 
 var _HOT_TOGGLES = {
