@@ -3,6 +3,18 @@
 Work that is known and parked. Each item names its tracker ref (UI issues
 tracker) so the details stay in one place.
 
+## Next up (added 2026-10-03)
+
+- [ ] **Hidden Cards in the Home menu, no window.** Remove the Hidden Cards
+  window (`qml/DialogHiddenDevices.qml`) and View → Hidden Cards…
+  (`qml/main_commands.js` `view.hidden`). In the Home right-click menu
+  (`qml/StatusPage.qml`, next to Unhide All Cards), make **Hidden Cards** a
+  submenu that slides out and lists each hidden card by name; clicking one
+  unhides it. Nothing hidden: the submenu shows "No hidden cards" (disabled).
+  Unhide All Cards stays. Update help (`qml/help_topics.js`: Home topics and
+  the "Not on Home" troubleshooting line) and keep the glossary words (Hide
+  Card / Hidden Cards).
+
 ## OSC (parked 2026-10-02: leave OSC alone for now)
 
 - [ ] **B15 – Default ports clash and disagree.** The program listens on 8000
