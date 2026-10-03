@@ -834,14 +834,18 @@ Item {
                                 return saved >= 140 ? Style.dp(saved) : 0
                             }
                             property int ghostPad: showGhost ? _page.ghostW + Style.dp(16) : 0
+                            // The front card's own height, kept up to date by the card
+                            // (its photo loads after the slot is made). Reading the card
+                            // through itemAt() would not update the slot when it grows,
+                            // and the next row would overlap it.
+                            property real leadH: 0
 
                             width: isDragHome ? 0 : (cardW + extra + ghostPad)
                             height: {
                                 if (isDragHome)
                                     return Math.max(1, _page.ghostH)
                                 var compact = _page.model && _page.model.compactView
-                                var c = _memberCards.itemAt(0)
-                                var need = (c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : Style.dp(compact ? 120 : 260)
+                                var need = leadH > 0 ? Math.round(leadH) : Style.dp(compact ? 120 : 260)
                                 var h = Math.max(cardH >= Style.dp(140) ? cardH : 0, need) + extra
                                 if (showGhost)
                                     h = Math.max(h, _page.ghostH)
@@ -891,9 +895,15 @@ Item {
                                         else
                                             _pile.thawSlot()
                                     }
+                                    onImplicitHeightChanged: {
+                                        if (index === 0)
+                                            _pile.leadH = implicitHeight
+                                    }
                                     Component.onCompleted: {
                                         _page.fillCard(_card, modelData)
                                         _page.bindCard(_card)
+                                        if (index === 0)
+                                            _pile.leadH = implicitHeight
                                     }
                                 }
                             }
