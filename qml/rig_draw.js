@@ -239,6 +239,11 @@ function flipSelection(axis) {
     bump()
 }
 
+// A drawn shape's outline points in its w x h box (as the painter draws it).
+function shapeOutlinePts(n, w, h) {
+    return Shapes.shapeOutline(n, w, h).pts
+}
+
 function _drawStyle() {
     return {
         kind: "draw",

@@ -81,6 +81,13 @@ function _unskew(n, x, y, w, h) {
     return [w / 2 + (dx - k.kx * dy) / det, h / 2 + (dy - k.ky * dx) / det]
 }
 
+// A point from the drawing's wrapper into the box its outline is drawn in:
+// skew undone, then the flip (hit testing a shape by its outline).
+function drawLocalPoint(n, x, y, w, h) {
+    var q = _unskew(n, x, y, w, h)
+    return _flipPt(n, q[0], q[1], w, h)
+}
+
 // --- where the handles are ------------------------------------------------------------
 
 function _flipPt(n, x, y, w, h) {
@@ -255,7 +262,7 @@ function dragTransform(n, name, mx, my) {
         // How far the shaft's middle is from the straight line (up is +).
         var off = m.mid - q[1]
         var bend = off / (m.T + 2 * Math.abs(off))
-        bend = Math.max(-0.4, Math.min(0.4, bend))
+        bend = Math.max(-Shapes.maxBend(), Math.min(Shapes.maxBend(), bend))
         if (Math.abs(bend) < 0.02)
             bend = 0
         _setBend(n, bend, m.T)

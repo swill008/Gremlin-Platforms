@@ -408,11 +408,19 @@ function invertLightness(c) {
 // A block arrow's measures in a w x h box. adj: headLen (fraction of the
 // width), headW and shaft (fractions of the arrow's thickness); bend: how
 // far the shaft's middle leaves the straight line, as a fraction of the
-// box's height (-0.4..0.4). A bent arrow keeps its thickness, T, in the
-// part of the box the bend leaves.
+// box's height (-MAX_BEND..MAX_BEND). A bent arrow keeps its thickness, T, in
+// the part of the box the bend leaves.
+// The deepest bend: the shaft's middle can leave the straight line by about
+// 8x the arrow's thickness (0.4 allowed only 2x: too shallow on long arrows).
+var MAX_BEND = 0.47
+
+function maxBend() {
+    return MAX_BEND
+}
+
 function arrowMeasures(shape, w, h, adj, bend) {
     var a = adj || {}
-    var b = Math.max(-0.4, Math.min(0.4, Number(bend) || 0))
+    var b = Math.max(-MAX_BEND, Math.min(MAX_BEND, Number(bend) || 0))
     var T = h * (1 - 2 * Math.abs(b))
     var two = shape === "arrow2"
     var defLen = Math.min(h, w * (two ? 0.3 : 0.45)) / Math.max(1, w)

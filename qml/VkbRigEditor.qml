@@ -504,6 +504,7 @@ Item {
     function isTable(n) { return RigDraw.isTable(n) }
     function isText(n) { return RigDraw.isText(n) }
     function drawGeom(n) { return RigDraw.drawGeom(n) }
+    function shapeOutlinePts(n, w, h) { return RigDraw.shapeOutlinePts(n, w, h) }
     function applyDrawResize(n, mx, my, handle, altOff) { return RigDraw.applyDrawResize(n, mx, my, handle, altOff) }
     function _drawStyle() { return RigDraw._drawStyle() }
     function addDrawAround(shape) { return RigDraw.addDrawAround(shape) }
@@ -636,6 +637,7 @@ Item {
     function canEditPoints(n) { return RigTransform.canEditPoints(n) }
     function hasShaping(n) { return RigTransform.hasShaping(n) }
     function skewMatrix(n, w, h) { return RigTransform.skewMatrix(n, w, h) }
+    function drawLocalPoint(n, x, y, w, h) { return RigTransform.drawLocalPoint(n, x, y, w, h) }
     function transformHandles(n, w, h) { return RigTransform.transformHandles(n, w, h) }
     function transformHandleAt(n, px, py, w, h) { return RigTransform.transformHandleAt(n, px, py, w, h) }
     function dragTransform(n, name, mx, my) { return RigTransform.dragTransform(n, name, mx, my) }

@@ -193,6 +193,14 @@ function hitDraw(n, mx, my) {
             return "body"
         }
     }
+    // A drawn shape is hit on its own outline (a bent arrow or an ellipse is
+    // not its box): inside it when filled, near its line when hollow.
+    if (_OUTLINED[n.shape || "rect"] && !isPath(n)) {
+        if (isLocked(n))
+            return ""
+        var lp = drawLocalPoint(n, p.x, p.y, w, h)
+        return shapeHit(n, lp[0], lp[1], w, h) ? "body" : ""
+    }
     if (p.x < 0 || p.y < 0 || p.x > w || p.y > h)
         return ""
     if (isPath(n))
@@ -205,6 +213,49 @@ function hitDraw(n, mx, my) {
     if (p.x <= ring || p.y <= ring || p.x >= w - ring || p.y >= h - ring)
         return "body"
     return ""
+}
+
+// Shapes drawn from an outline (rig_draw.js), hit by that outline.
+var _OUTLINED = {
+    rect: true, roundrect: true, ellipse: true, triangle: true, diamond: true,
+    arrow: true, arrow2: true
+}
+
+// Whether (px, py), in the item's own coordinates, is on the shape as
+// rig_draw.js paints it: the outline inset by half the stroke; filled unless
+// "hollow" (the same test the painter uses).
+function shapeHit(n, px, py, w, h) {
+    var stroke = n.stroke || 2
+    var inset = stroke / 2
+    var ww = Math.max(2, w - stroke)
+    var hh = Math.max(2, h - stroke)
+    var x = px - inset
+    var y = py - inset
+    var near = Math.max(6, stroke * 0.5 + 4)
+    var filled = n.fill !== "hollow"
+    if ((n.shape || "rect") === "ellipse") {
+        var rx = Math.max(0.5, ww / 2)
+        var ry = Math.max(0.5, hh / 2)
+        var dx = x - rx
+        var dy = y - ry
+        var r = Math.hypot(dx / rx, dy / ry)
+        if (filled && r <= 1)
+            return true
+        // Distance to the ellipse, near enough for a thin ring.
+        return Math.abs(r - 1) * Math.min(rx, ry) <= near
+    }
+    var pts = Shapes.shapeOutline(n, ww, hh).pts
+    var inside = false
+    var best = Infinity
+    for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        var a = pts[i]
+        var b = pts[j]
+        if ((a[1] > y) !== (b[1] > y)
+                && x < (b[0] - a[0]) * (y - a[1]) / ((b[1] - a[1]) || 1e-9) + a[0])
+            inside = !inside
+        best = Math.min(best, Shapes.distToSegment(x, y, a[0], a[1], b[0], b[1]))
+    }
+    return (filled && inside) || best <= near
 }
 
 function memberHit(n, mx, my) {
