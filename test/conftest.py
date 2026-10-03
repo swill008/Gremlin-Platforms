@@ -51,6 +51,17 @@ def pytest_collection_modifyitems(
         )
 
 
+@pytest.fixture(autouse=True)
+def _no_message_boxes(monkeypatch: pytest.MonkeyPatch) -> list[tuple]:
+    """No test shows a real Windows message box (they appear on screen even
+    off-screen, and wait for a click): they are recorded instead."""
+    shown: list[tuple] = []
+    monkeypatch.setattr(
+        joystick_gremlin, "_message_box", lambda *a: shown.append(a) or 1
+    )
+    return shown
+
+
 @pytest.fixture(scope="session")
 def qapp_cls() -> type[joystick_gremlin.JoystickGremlinApp]:
     return joystick_gremlin.JoystickGremlinApp

@@ -145,9 +145,42 @@ def exception_hook(
     msg = " ".join(traceback.format_exception(exception_type, value, trace))
     logging.getLogger("system").error(f"Unhandled exception: {msg}")
     try:
-        gremlin.signal.display_error("An unhandled exception occured.", msg)
+        gremlin.signal.display_error("An unhandled exception occurred.", msg)
     except RuntimeError:
         pass
+
+
+def _message_box(text: str, title: str, flags: int) -> int:
+    """A Windows message box (shown even off-screen; tests replace this)."""
+    return ctypes.windll.user32.MessageBoxW(None, text, title, flags)
+
+
+class StartupError(Exception):
+    """The program could not start; details says why (shown to the user)."""
+
+    def __init__(self, summary: str, details: str = "") -> None:
+        super().__init__(summary)
+        self.details = details
+
+
+def tell_could_not_start(summary: str, details: str) -> None:
+    """Shows why the program could not start, in a Windows message box: the
+    program's own windows may not exist yet. The text can be copied with
+    Ctrl+C for a bug report."""
+    lines = [line for line in details.strip().splitlines() if line.strip()]
+    shown = "\n".join(lines[-12:])
+    try:
+        logs = str(gremlin.util.logs_dir())
+    except Exception:
+        logs = os.path.join(gremlin.util.userprofile_path(), "logs")
+    text = (
+        "Gremlin-Platforms could not start.\n\n"
+        f"{summary}\n\n{shown}\n\n"
+        f"The log files are in:\n{logs}\n\n"
+        "Press Ctrl+C to copy this message."
+    )
+    # MB_OK | MB_ICONERROR
+    _message_box(text, "Gremlin-Platforms R1", 0x10)
 
 
 def shutdown_cleanup() -> None:
@@ -446,12 +479,7 @@ def _confirm_second_instance(
         "No = Start this copy anyway. vJoy mapping may not respond.\n"
         "Cancel = Do not start this copy."
     )
-    result = ctypes.windll.user32.MessageBoxW(
-        None,
-        text,
-        "Gremlin-Platforms R1",
-        0x33,
-    )
+    result = _message_box(text, "Gremlin-Platforms R1", 0x33)
     if result == 6:
         return "close_others"
     if result == 7:
@@ -788,11 +816,17 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.cfg.purge_unused()
         update_action_priorities()
 
+        qml_errors: list[str] = []
+        self.engine.warnings.connect(
+            lambda warnings: qml_errors.extend(w.toString() for w in warnings)
+        )
         self.engine.load(
             QtCore.QUrl.fromLocalFile(gremlin.util.resource_path("qml/Main.qml"))
         )
         if not self.engine.rootObjects():
-            sys.exit(-1)
+            raise StartupError(
+                "The main window could not be loaded.", "\n".join(qml_errors)
+            )
 
         self.process_cmd_args(cmd_args)
         self.updater.startup()
@@ -900,7 +934,16 @@ def main() -> int:
         if choice == "close_others":
             _terminate_other_gremlin(pids)
             lock = acquire_instance_lock()
-    app = JoystickGremlinApp(sys.argv)
+    try:
+        app = JoystickGremlinApp(sys.argv)
+    except Exception as e:
+        summary = str(e) if isinstance(e, StartupError) else f"{type(e).__name__}: {e}"
+        details = getattr(e, "details", "") or traceback.format_exc()
+        logging.getLogger("system").error(f"Could not start: {summary}\n{details}")
+        tell_could_not_start(summary, details)
+        gremlin.deferred_write.flush_all()
+        # Threads started before the failure must not keep the process alive.
+        os._exit(1)
     app._instance_lock = lock
     app.exec()
     logging.getLogger("system").info("Terminating Gremlin")

@@ -68,8 +68,10 @@ def test_alone_finds_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
     assert jg._other_gremlin_pids() == []
 
 
-class _AppStarted(Exception):
-    pass
+class _AppStarted(BaseException):
+    """The fake app's "start-up reached" signal: not an error, so main()'s
+    could-not-start handling (which catches Exception) lets it through."""
+
 
 
 def _fake_app(*args: object, **kwargs: object) -> NoReturn:
