@@ -236,7 +236,11 @@ function topics() {
             + "</ul>"
             + "<p>All switches start off on a new install.</p>"),
         topic("Tools", "Live Log Reader",
-            "<p>Debug → <b>Live Log Reader</b> follows the program's activity log (logs.txt): what was read and saved, and when. The system log (system.log) in the Logs folder records errors and blocked outputs.</p>"),
+            "<p>Debug → <b>Live Log Reader</b> has two tabs.</p>"
+            + "<ul>"
+            + "<li><b>Config</b> follows the program's activity log (logs.txt): which profiles, modules and settings files were read and saved, and when. Use it to check how a file loads.</li>"
+            + "<li><b>Debug</b> shows the diagnostic logs in the Logs folder: <b>System</b> (system.log: errors, warnings, blocked outputs), <b>Scripts</b> (user.log) and <b>Events</b> (event.log). <b>Show</b> picks the lowest level shown, <b>Find</b> narrows it to entries with that text, and warnings and errors are in color. What gets written is set in Options → General → Diagnostics; while that is Off, the tab says so.</li>"
+            + "</ul>"),
 
         topic("Options and Profile", "Options",
             "<p>Tools → <b>Options</b> (or <b>Options</b> on the toolbar). Program settings, not stored in the profile; the profile's own are on its <b>Profile Settings</b> tab.</p>"

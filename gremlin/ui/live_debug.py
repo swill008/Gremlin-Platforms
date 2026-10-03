@@ -2,11 +2,14 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""One file log of reads and saves, and the window that shows it."""
+"""The Live Log Reader: one file log of reads and saves (Config tab), and
+the diagnostic log files (Debug tab)."""
 
 from __future__ import annotations
 
+import html
 import os
+import re
 import threading
 from pathlib import Path
 
@@ -95,3 +98,196 @@ class LiveLog(QtCore.QObject):
         clipboard = QtGui.QGuiApplication.clipboard()
         if clipboard is not None:
             clipboard.setText(self._text)
+
+
+# Debug tab: the diagnostic log files (Options → General → Diagnostics).
+DEBUG_FILES = {
+    "system": "system.log",
+    "user": "user.log",
+    "event": "event.log",
+}
+# Shown levels, lowest first; "All" shows everything.
+DEBUG_LEVELS = ("All", "Info", "Warning", "Error")
+_RANKS = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3, "CRITICAL": 3}
+_MIN_RANK = {"All": 0, "Info": 1, "Warning": 2, "Error": 3}
+# Only the end of a big file is read; older lines are in the file itself.
+_TAIL_BYTES = 512 * 1024
+_ENTRY = re.compile(
+    r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(?:\s+|,)"
+    r"(?:(DEBUG|INFO|WARNING|ERROR|CRITICAL)\b)?"
+)
+
+
+def debug_entries(text: str) -> list[tuple[int, str]]:
+    """(rank, text) for each entry. A line without a time stamp (a traceback)
+    belongs to the entry above it; an entry without a level (user scripts)
+    counts as Info."""
+    entries: list[tuple[int, str]] = []
+    for line in text.splitlines():
+        match = _ENTRY.match(line)
+        if match or not entries:
+            level = match.group(1) if match else None
+            entries.append((_RANKS.get(level or "INFO", 1), line))
+        else:
+            rank, body = entries[-1]
+            entries[-1] = (rank, body + "\n" + line)
+    return entries
+
+
+def filter_entries(
+    entries: list[tuple[int, str]], level: str, find: str
+) -> list[tuple[int, str]]:
+    least = _MIN_RANK.get(level, 0)
+    needle = find.strip().lower()
+    return [
+        (rank, body) for rank, body in entries
+        if rank >= least and (not needle or needle in body.lower())
+    ]
+
+
+@ta.QmlElement
+class DebugLog(QtCore.QObject):
+    """One diagnostic log file, filtered by level and text, for the Live Log
+    Reader's Debug tab."""
+
+    changed = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        self._file = "system"
+        self._level = "All"
+        self._find = ""
+        self._raw: str | None = None
+        self._shown: list[tuple[int, str]] = []
+        self._total = 0
+        self._warn = "#F0A30A"
+        self._error = "#F87171"
+        self._on = True
+
+    def _path(self) -> Path:
+        from gremlin.util import logs_dir
+
+        return logs_dir() / DEBUG_FILES.get(self._file, "system.log")
+
+    def _set(self, name: str, value: str) -> None:
+        if getattr(self, name) != value:
+            setattr(self, name, value)
+            self._apply()
+
+    def _apply(self) -> None:
+        entries = debug_entries(self._raw or "")
+        self._total = len(entries)
+        self._shown = filter_entries(entries, self._level, self._find)
+        self.changed.emit()
+
+    def _set_file(self, value: str) -> None:
+        if value != self._file:
+            self._file = value
+            self._raw = None
+            self.refresh()
+
+    file = QtCore.Property(
+        str, lambda self: self._file, _set_file, notify=changed,
+    )
+    level = QtCore.Property(
+        str, lambda self: self._level, lambda self, v: self._set("_level", v),
+        notify=changed,
+    )
+    find = QtCore.Property(
+        str, lambda self: self._find, lambda self, v: self._set("_find", v),
+        notify=changed,
+    )
+    warningColor = QtCore.Property(
+        str, lambda self: self._warn, lambda self, v: self._set("_warn", v),
+        notify=changed,
+    )
+    errorColor = QtCore.Property(
+        str, lambda self: self._error, lambda self, v: self._set("_error", v),
+        notify=changed,
+    )
+
+    @QtCore.Property(str, notify=changed)
+    def path(self) -> str:
+        return str(self._path())
+
+    @QtCore.Property(int, notify=changed)
+    def shownCount(self) -> int:
+        return len(self._shown)
+
+    @QtCore.Property(int, notify=changed)
+    def totalCount(self) -> int:
+        return self._total
+
+    @QtCore.Property(bool, notify=changed)
+    def exists(self) -> bool:
+        return self._path().is_file()
+
+    @QtCore.Property(bool, notify=changed)
+    def loggingOn(self) -> bool:
+        """Diagnostic logs are not Off (read again on every refresh)."""
+        return self._on
+
+    @staticmethod
+    def _logging_on() -> bool:
+        from gremlin.config import Configuration
+        from gremlin.ui.log_option import (
+            DEFAULT_LEVEL,
+            LOG_GROUP,
+            LOG_NAME,
+            LOG_SECTION,
+            normalize_level,
+        )
+
+        cfg = Configuration()
+        value = (
+            cfg.value(LOG_SECTION, LOG_GROUP, LOG_NAME)
+            if cfg.exists(LOG_SECTION, LOG_GROUP, LOG_NAME) else DEFAULT_LEVEL
+        )
+        return normalize_level(value) != "Off"
+
+    @QtCore.Property(str, notify=changed)
+    def html(self) -> str:
+        """The shown entries; warnings and errors in color."""
+        lines = []
+        for rank, body in self._shown:
+            text = html.escape(body).replace("\n", "<br>")
+            if rank >= 3:
+                text = f'<span style="color:{self._error}">{text}</span>'
+            elif rank == 2:
+                text = f'<span style="color:{self._warn}">{text}</span>'
+            lines.append(text)
+        # white-space: pre keeps the view's own font (a <pre> would not).
+        return '<div style="white-space:pre">' + "<br>".join(lines) + "</div>"
+
+    @QtCore.Slot()
+    def refresh(self) -> None:
+        on = self._logging_on()
+        if on != self._on:
+            self._on = on
+            self.changed.emit()
+        path = self._path()
+        try:
+            size = path.stat().st_size
+            with path.open("rb") as handle:
+                if size > _TAIL_BYTES:
+                    handle.seek(size - _TAIL_BYTES)
+                    handle.readline()  # drop the cut-off line
+                data = handle.read().decode("utf-8", errors="replace")
+        except OSError:
+            data = ""
+        if data == self._raw:
+            return
+        self._raw = data
+        self._apply()
+
+    @QtCore.Slot()
+    def copyShown(self) -> None:
+        clipboard = QtGui.QGuiApplication.clipboard()
+        if clipboard is not None:
+            clipboard.setText("\n".join(body for _rank, body in self._shown))
+
+    @QtCore.Slot()
+    def openFolder(self) -> None:
+        folder = self._path().parent
+        folder.mkdir(parents=True, exist_ok=True)
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(folder)))
