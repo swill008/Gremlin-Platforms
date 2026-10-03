@@ -89,7 +89,7 @@ function topics() {
             + "<p>Tools → Device Setup → <b>Device Pack</b> shares a device setup. <b>Export</b> saves a device's module file and pictures to a zip. <b>Import</b> loads a zip onto a device you choose under <b>Put this pack on</b>.</p>"),
         topic("Devices and Modules", "Hidden cards",
             "<p>Hiding a card only removes it from Home. It does not hide the device from Windows or games; use HidHide for that.</p>"
-            + "<p>Hide a card with its <b>×</b> or <b>Hide Card</b> in its menu. To bring one back, right-click empty space on Home and open <b>Hidden Cards</b>: it lists each hidden card, and clicking one unhides it. <b>Unhide All Cards</b> brings them all back.</p>"),
+            + "<p>Hide a card with <b>Hide Card</b> in its right-click menu. To bring one back, right-click empty space on Home and open <b>Hidden Cards</b>: it lists each hidden card, and clicking one unhides it. <b>Unhide All Cards</b> brings them all back.</p>"),
 
         topic("Configuration", "Adding actions",
             "<p>The Configuration page lists the claimed inputs of one device and the actions on each. Open it by double-clicking a card, or View → <b>Configuration</b>. The arrows beside the title step to the previous or next device.</p>"

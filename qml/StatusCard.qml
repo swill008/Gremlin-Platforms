@@ -283,34 +283,6 @@ Rectangle {
         }
     }
 
-    Rectangle {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.margins: Style.dp(6)
-        width: Style.dp(20)
-        height: Style.dp(20)
-        radius: Style.dp(2)
-        z: 6
-        color: _hideHover.hovered ? Style.line : "transparent"
-        border.color: Style.line
-        border.width: Style.dp(1)
-
-        Label {
-            anchors.centerIn: parent
-            text: "×"
-            color: Style.fgMuted
-            font.pixelSize: Style.dp(12)
-        }
-        HoverHandler { id: _hideHover }
-        MouseArea {
-            anchors.fill: parent
-            z: 7
-            cursorShape: Qt.PointingHandCursor
-            onClicked: _card.ignoreDevice()
-        }
-        PointerTip { text: "Hide card" }
-    }
-
     Button {
         visible: _card.direction === "dest" && !_card.compactView
         z: 32
@@ -415,15 +387,17 @@ Rectangle {
         }
     }
 
-    // The card's right-click menu (Gremlin.Menus): the two main ways in,
-    // then sections for the module, viewers, card layout and the device.
+    // The card's right-click menu (Gremlin.Menus): the two main ways in and
+    // Hide Card (the card has no × of its own), then sections for the
+    // module, viewers, card layout and the device.
     function menuModel() {
         var dest = direction === "dest"
         var xbox = bus === "XInput" || tab === "xbox" || slug === "xbox"
         return MenuModel.menu("card", cardName || rawName || "Device", [
             MenuModel.action(dest ? "Output View" : "Open Configuration",
                              function() { dest ? _card.openOutputView() : _card.openConfiguration() }),
-            MenuModel.action("Button Map", function() { _card.openButtonMap() })
+            MenuModel.action("Button Map", function() { _card.openButtonMap() }),
+            MenuModel.action("Hide Card", function() { _card.ignoreDevice() })
         ], [
             MenuModel.section("module", "Module", [
                 MenuModel.action("Module Setup…",
@@ -444,7 +418,6 @@ Rectangle {
             ]),
             MenuModel.section("device", "Device", [
                 dest ? null : MenuModel.action("Swap Device…", function() { _card.assignHardware() }),
-                MenuModel.action("Hide Card", function() { _card.ignoreDevice() }),
                 MenuModel.action("Reset Card Layout", function() { _card.clearSettings() }),
                 MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })
             ])
