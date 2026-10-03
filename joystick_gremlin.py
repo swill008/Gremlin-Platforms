@@ -35,7 +35,8 @@ def _windows_scaling_disabled() -> bool:
     return str(raw).strip().lower() in ("1", "true", "yes")
 
 
-# Value at launch, put back before a restart so the new process reads the setting afresh.
+# Value at launch, put back before a restart so the new process reads the
+# setting afresh.
 _LAUNCH_HIGHDPI_SCALING = os.environ.get("QT_ENABLE_HIGHDPI_SCALING")
 if _windows_scaling_disabled():
     os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
