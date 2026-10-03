@@ -327,7 +327,8 @@ class CodeRunner:
                             callback_count += 1
 
             sequence_count = self._setup_profile()
-            syslog.warning(
+            # Status, not a problem: Info, so it is not in a Warning log.
+            syslog.info(
                 "Gremlin start: %s UI sequences, %s script callbacks, mode=%s",
                 sequence_count,
                 callback_count,
@@ -459,7 +460,7 @@ class CodeRunner:
 
         if action_sequences:
             sample = action_sequences[0].input_item
-            syslog.warning(
+            syslog.info(
                 "First sequence device=%s type=%s id=%s mode=%s",
                 sample.device_id,
                 sample.input_type,

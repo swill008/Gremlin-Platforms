@@ -214,7 +214,31 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 )
         self._data[key]["is_registered"] = True
 
+    # The newest program version that has used this settings file.
+    _VERSION_KEY = ("global", "internal", "settings-version")
+
     def purge_unused(self) -> None:
+        """Remove settings no option uses any more (run at start, once every
+        option is registered). Settings saved by a newer version are kept: an
+        older copy of the program does not know that version's settings and
+        must not delete them."""
+        from gremlin.updater import is_newer
+
+        current = util.get_code_version()
+        stored = self._data.get(self._VERSION_KEY, {}).get("value")
+        newer = bool(stored) and is_newer(str(stored), current)
+        self.register(
+            *self._VERSION_KEY, PropertyType.String, current,
+            "The newest program version that has used these settings.", {}, False,
+        )
+        if newer:
+            logging.getLogger("system").info(
+                f"Settings were last used by version {stored}; settings this "
+                f"version ({current}) does not know are kept."
+            )
+            return
+        if stored != current:
+            self.set(*self._VERSION_KEY, current)
         keys_to_delete = []
         for key, value in self._data.items():
             if not value.get("is_registered", False):
@@ -222,8 +246,9 @@ class Configuration(metaclass=common.SingletonMetaclass):
         removed = False
         for key in keys_to_delete:
             if key[0] != "calibration":
-                logging.getLogger("system").warning(
-                    f"Parameter '{key}' has not been registered, purging."
+                # A retired setting: cleanup, not a problem.
+                logging.getLogger("system").info(
+                    f"Removed setting {'/'.join(key)}: no longer used."
                 )
                 del self._data[key]
                 removed = True
