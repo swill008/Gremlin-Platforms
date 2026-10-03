@@ -40,10 +40,23 @@ function styleVal(n, mem, key, fallback) {
 }
 
 function applyField(key, val) {
+    _setField(key, val)
+    bump()
+}
+
+// The color picker while it is being dragged: the map follows at once and
+// one undo step is kept when the changes pause (not one per move).
+function applyFieldLive(key, val) {
+    _setField(key, val)
+    repaint()
+    selectedChanged()
+    noteLiveEdit()
+}
+
+function _setField(key, val) {
     var mem = targetMember()
     if (mem && isStyleKey(key)) {
         mem[key] = val
-        bump()
         return
     }
     var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
@@ -57,7 +70,6 @@ function applyField(key, val) {
                 fitTextBox(n)
         }
     }
-    bump()
 }
 
 function fieldEq(key, val, fallback) {

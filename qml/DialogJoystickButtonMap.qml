@@ -3449,13 +3449,23 @@ ApplicationWindow {
             }
         }
 
-        function openField(field, hex, anchorItem) {
-            _colorPop.field = field
-            changed = false
-            var c = Qt.color(hex && hex.length ? hex : "#18181B")
+        // Set while hue, saturation and value are set together (opening the
+        // picker, a swatch): nothing is pushed half-way.
+        property bool _setting: false
+
+        function _setHsv(c) {
+            _setting = true
             hh = c.hsvHue < 0 ? 0 : c.hsvHue
             ss = c.hsvSaturation
             vv = c.hsvValue
+            _setting = false
+        }
+
+        function openField(field, hex, anchorItem) {
+            _colorPop.field = field
+            changed = false
+            // Shows the field's color; applies nothing (it is already set).
+            _setHsv(Qt.color(hex && hex.length ? hex : "#18181B"))
             if (moved || (opened && pinned)) {
                 // Stays where it was put.
             } else if (anchorItem && parent) {
@@ -3470,20 +3480,20 @@ ApplicationWindow {
         }
 
         function pushLive() {
-            if (!visible)
+            if (!visible || _setting)
                 return
             var e = _cardLoader.item ? _cardLoader.item.editorItem : null
             if (e) {
-                e.applyField(field, _buttonMap._toHex(live))
+                // From hh, ss, vv themselves: the 'live' binding may not have
+                // caught up yet inside these change handlers.
+                e.applyFieldLive(field, _buttonMap._toHex(Qt.hsva(hh, ss, vv, 1)))
                 changed = true
             }
         }
 
         function takeHex(hex) {
-            var c = Qt.color(hex)
-            hh = c.hsvHue < 0 ? 0 : c.hsvHue
-            ss = c.hsvSaturation
-            vv = c.hsvValue
+            _setHsv(Qt.color(hex))
+            pushLive()
         }
 
         onClosed: {
@@ -3593,8 +3603,12 @@ ApplicationWindow {
                     anchors.fill: parent
                     preventStealing: true
                     function take(mx, my) {
+                        // Both together, then one push (not one half-way).
+                        _colorPop._setting = true
                         _colorPop.ss = Math.max(0, Math.min(1, mx / Math.max(1, _sv.width)))
                         _colorPop.vv = Math.max(0, Math.min(1, 1 - my / Math.max(1, _sv.height)))
+                        _colorPop._setting = false
+                        _colorPop.pushLive()
                     }
                     onPressed: (m) => take(m.x, m.y)
                     onPositionChanged: (m) => { if (pressed) take(m.x, m.y) }

@@ -220,6 +220,7 @@ def _run(scenario: str, out_dir: pathlib.Path) -> dict:
         "deletes",
         "group_keeps",
         "break_group",
+        "live_color",
     ],
 )
 def test_editor_matches_golden(scenario: str, tmp_path: pathlib.Path) -> None:

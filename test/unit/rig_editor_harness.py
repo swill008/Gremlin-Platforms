@@ -2033,6 +2033,26 @@ def scenario_break_group(s: Session) -> None:
             assert chip["color"] == "#112233", chip
 
 
+def scenario_live_color(s: Session) -> None:
+    """The color picker's live edits (applyFieldLive): the map follows each
+    one, and a run of them makes one undo step when it pauses, not one per
+    move (a drag in the color square used to add about 50)."""
+    _load(s, "evo_r")
+    s.call("setSelection", ["b3"])
+    s.wait(600)
+    before = s.call_prop("histAt")
+    for i in range(25):
+        s.call("applyFieldLive", "color", f"#20{i:02X}40")
+    s.wait(700)
+    after = s.call_prop("histAt")
+    assert after - before == 1, (before, after)
+    assert s.node("b3")["color"] == "#201840", s.node("b3")["color"]
+    s.record("after-live-color")
+    s.call("undo")
+    s.record("after-undo")
+    assert s.node("b3").get("color") != "#201840"
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
@@ -2062,6 +2082,7 @@ SCENARIOS = {
     "deletes": scenario_deletes,
     "group_keeps": scenario_group_keeps,
     "break_group": scenario_break_group,
+    "live_color": scenario_live_color,
 }
 
 

@@ -247,6 +247,7 @@ Item {
     function targetMember() { return RigStyle.targetMember() }
     function styleVal(n, mem, key, fallback) { return RigStyle.styleVal(n, mem, key, fallback) }
     function applyField(key, val) { return RigStyle.applyField(key, val) }
+    function applyFieldLive(key, val) { return RigStyle.applyFieldLive(key, val) }
     function fieldEq(key, val, fallback) { return RigStyle.fieldEq(key, val, fallback) }
     function styleDefault(key) { return RigStyle.styleDefault(key) }
     function pickColor(field) { return RigStyle.pickColor(field) }
@@ -777,6 +778,12 @@ Item {
     // Photo changes from the Adjust photo sliders come many per drag: one undo
     // step once they stop.
     function notePhotoChange() {
+        _photoHist.restart()
+    }
+
+    // A run of live edits (the color picker) makes one undo step when it
+    // pauses, like the photo controls.
+    function noteLiveEdit() {
         _photoHist.restart()
     }
 
