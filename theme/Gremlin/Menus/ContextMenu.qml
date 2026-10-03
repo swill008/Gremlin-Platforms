@@ -368,8 +368,13 @@ Popup {
                                 enabled: _headBtn.on
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
+                                    // Undo/Redo change the map, the open menu rebuilds and
+                                    // this button is replaced while it runs: hold on to the
+                                    // menu first, not through this button afterwards.
+                                    var menu = _menu
                                     _headBtn.modelData.run()
-                                    _menu.refresh()
+                                    if (menu)
+                                        menu.refresh()
                                 }
                             }
                         }
