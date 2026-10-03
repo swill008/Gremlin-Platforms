@@ -351,6 +351,27 @@ ApplicationWindow {
             if (n.fy !== undefined) n.fy = pos(n.fy)
             if (n.fw !== undefined) n.fw = sz(n.fw)
             if (n.fh !== undefined) n.fh = sz(n.fh)
+            // The hotspot and a callout's free pointer move with the rest.
+            if (n.hotFx !== undefined) n.hotFx = pos(n.hotFx)
+            if (n.hotFy !== undefined) n.hotFy = pos(n.hotFy)
+            if (n.tail && n.tail.fx !== undefined && once(n.tail)) {
+                n.tail.fx = pos(n.tail.fx)
+                n.tail.fy = pos(n.tail.fy)
+            }
+            // Table cells moved off on their own (independent) too.
+            var rows = n.rows || []
+            for (k = 0; k < rows.length; k++) {
+                var cells = (rows[k] && rows[k].cells) || []
+                for (var c = 0; c < cells.length; c++) {
+                    var cell = cells[c]
+                    if (!cell || !once(cell))
+                        continue
+                    if (cell.efx !== undefined) cell.efx = pos(cell.efx)
+                    if (cell.efy !== undefined) cell.efy = pos(cell.efy)
+                    if (cell.efw !== undefined) cell.efw = sz(cell.efw)
+                    if (cell.efh !== undefined) cell.efh = sz(cell.efh)
+                }
+            }
             var extras = n.extras || []
             for (k = 0; k < extras.length; k++) {
                 if (!extras[k])
@@ -427,6 +448,7 @@ ApplicationWindow {
         applyImage(liveImage.length ? liveImage : stockImage)
         editing = true
         fittedThisEdit = false
+        fitHistAt = -1
         selectedId = ""
         selectedNode = null
         Qt.callLater(function() {
@@ -1450,6 +1472,10 @@ ApplicationWindow {
     }
 
 
+    // The undo position right after Fit to Photo Frame: undoing back past it
+    // makes Fit available again.
+    property int fitHistAt: -1
+
     function fitToPhotoFrame() {
         if (fittedThisEdit)
             return
@@ -1457,10 +1483,20 @@ ApplicationWindow {
         sceneShiftList(editing ? workNodes : liveNodes)
         fittedThisEdit = true
         // An undo step for the moved nodes (bump repaints too).
-        if (editing && e && e.bump)
+        if (editing && e && e.bump) {
             e.bump()
-        else if (e && e.repaint)
+            fitHistAt = e.histAt
+        } else if (e && e.repaint) {
             e.repaint()
+        }
+    }
+
+    function noteHistoryForFit() {
+        var e = _ed()
+        if (fittedThisEdit && fitHistAt >= 0 && e && e.histAt < fitHistAt) {
+            fittedThisEdit = false
+            fitHistAt = -1
+        }
     }
 
     function persistUi() {
@@ -2928,7 +2964,10 @@ ApplicationWindow {
                             function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }
                             function onDrawToolChanged() { _buttonMap.resTick++ }
                             function onPhotoRestored() { _buttonMap.syncPhotoFromEditor() }
-                            function onHistoryChanged() { _buttonMap.deferHistory() }
+                            function onHistoryChanged() {
+                                _buttonMap.noteHistoryForFit()
+                                _buttonMap.deferHistory()
+                            }
                             function onNodesChanged() { _buttonMap.deferHistory() }
                         }
                         Component.onCompleted: _cardLoader.item = _card
