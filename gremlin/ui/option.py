@@ -131,7 +131,8 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ]),
     ]),
     ("Folders", [
-        ("Folders", [
+        # One group: no heading under the page title.
+        ("", [
             ("global", "files", "data-folder"),
             ("global", "files", "profiles-folder"),
             ("global", "files", "modules-folder"),
@@ -775,10 +776,8 @@ MetaConfigOption().register(
     "profile",
     "automation",
     "auto-loading",
-    "Automatically load profiles based on the currently active executable. "
-    "Each entry an executable and the profile to load with it. The executable "
-    "can be changed manually if needed. This also allows specifying the path "
-    "to an executable as a regular expression.",
+    "Each program and the profile it loads. A program's path can be typed "
+    "by hand, or written as a regular expression to match several.",
     ProfileAutoLoadingModel,
 )
 

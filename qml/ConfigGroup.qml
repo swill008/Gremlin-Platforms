@@ -49,6 +49,8 @@ ColumnLayout {
     }
 
     Label {
+        // A page with one group may leave it untitled.
+        visible: groupName.length > 0
         Layout.topMargin: Style.dp(14)
         // Display groups are already titled; stored ones ("labels") are not.
         text: /^[a-z]/.test(groupName) ? Helpers.capitalize(groupName) : groupName
@@ -58,6 +60,8 @@ ColumnLayout {
 
     Rectangle {
         Layout.fillWidth: true
+        // Untitled: keep the heading's space above the card.
+        Layout.topMargin: groupName.length > 0 ? 0 : Style.dp(14)
         implicitHeight: _rows.implicitHeight
         radius: Style.dp(6)
         color: Style.bgCard

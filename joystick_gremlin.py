@@ -598,14 +598,14 @@ def register_config_options() -> None:
     )
     cfg.register(
         "profile", "automation", "enable-auto-loading", PropertyType.Bool, False,
-        "Enable the automatic loading and activation of profiles based on the "
-        "specified executable and profile combinations.", {}, True,
+        "Load and run a profile when its program comes to the front.", {},
+        True,
     )
     cfg.register(
         "profile", "automation", "remain-active-on-focus-loss", PropertyType.Bool,
         False,
-        "Keep the profile active when the monitored executable loses focus and "
-        "the newly focused executable does not have a profile assigned to it.",
+        "Keep the profile running when you switch to a program that has no "
+        "profile.",
         {}, True,
     )
     cfg.register(
