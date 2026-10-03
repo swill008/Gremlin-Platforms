@@ -1457,7 +1457,8 @@ Item {
         property string kind: ""
         property int seg: -1
         property int leader: 0
-        function close() { _menu.close() }
+        // Cancelling (a double-click on empty map) leaves a pinned menu open.
+        function close() { if (!_menu.pinned) _menu.close() }
     }
 
     // The right-click menu: the program's shared one (Gremlin.Menus), fed

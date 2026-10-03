@@ -31,10 +31,13 @@ MouseArea {
             ed.finishPath(false)
             e.accepted = true
         } else if (e.key === Qt.Key_Escape) {
-            if (ed.renameId)
+            if (ed.renameId) {
                 ed.cancelRename()
-            else
+            } else {
                 ed.cancelAllActions()
+                // Esc also closes (and unpins) a pinned menu.
+                ed.closeMenu()
+            }
             e.accepted = true
         } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_L) {
             // Ctrl+L locks or unlocks the selection; Ctrl+Shift+L unlocks everything.
