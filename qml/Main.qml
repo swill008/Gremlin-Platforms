@@ -730,7 +730,9 @@ ApplicationWindow {
     ErrorDialog {
         id: _errorDialog
 
-        title: "A fatal error occurred"
+        // Most errors are not fatal (an OSC port in use, a file that won't
+        // load); the message says what happened.
+        title: "Error"
     }
 
     MessageDialog {
@@ -806,7 +808,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _saveProfileFileDialog
-        title: "Please choose a file"
+        title: "Save profile as"
 
         // Set by guardUnsavedChanges: runs after a successful save.
         property var afterSave: null
@@ -857,7 +859,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _loadProfileFileDialog
-        title: "Please choose a file"
+        title: "Open profile"
 
         acceptLabel: "Open"
         defaultSuffix: "xml"

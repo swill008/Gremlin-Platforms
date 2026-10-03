@@ -119,9 +119,9 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
     ),
     (
         "export", "03-light-page", PropertyType.Bool, False,
-        "Export on a white page for printing: dark colours turn light and light "
-        "ones dark, keeping their hue. The photo is not changed. Also in File > "
-        "Light page for printing.",
+        "Exports on a white page: dark colours turn light and light ones dark, "
+        "keeping their hue. The photo is not changed. Also in File > Light page "
+        "for exports. Printing has its own setting (Print light).",
         {},
     ),
     (

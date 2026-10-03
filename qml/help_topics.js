@@ -36,7 +36,7 @@ function topics() {
         topic("Getting Started", "Toggle and status",
             "<p><b>Toggle</b> on the toolbar runs or stops the loaded profile. While it is off you are only editing; nothing is sent to vJoy or Xbox. The button uses the accent color while the profile runs.</p>"
             + "<p>The bottom bar shows <b>Status</b> (Active, Not Running, or Paused), the <b>Executing mode</b>, and what the last save wrote.</p>"
-            + "<p>Toggle does not hide controllers from games; use <b>HiDHide</b> for that. What happens when a controller is plugged in or removed while running is set by Options → Global → <b>Device change behavior</b> (Reload, Ignore, or Disable).</p>"),
+            + "<p>Toggle does not hide controllers from games; use <b>HidHide</b> for that. What happens when a controller is plugged in or removed while running is set by Options → Global → <b>Device change behavior</b> (Reload, Ignore, or Disable).</p>"),
         topic("Getting Started", "Menus and the command palette",
             "<p>Every menu in the program works the same way, in light and dark mode:</p>"
             + "<ul>"
@@ -53,14 +53,14 @@ function topics() {
             + "<ul>"
             + "<li><b>File → New Profile</b> (Ctrl+N), <b>Load Profile</b> (Ctrl+O), <b>Recent</b>, <b>Save Profile</b> (Ctrl+S), <b>Save Profile As</b>.</li>"
             + "<li>Closing the program or loading another profile asks first when there are unsaved changes.</li>"
-            + "<li>Options → Profile → <b>Enable auto loading</b> loads a profile when a chosen program starts.</li>"
+            + "<li>Options → Profile → <b>Load profiles automatically</b> loads a profile when a chosen program starts.</li>"
             + "</ul>"),
         topic("Getting Started", "What is saved where",
             "<p>Three separate stores. Saving one does not save the others, except where noted.</p>"
             + "<ul>"
             + "<li><b>Profile</b> (File → Save Profile): modes, actions, profile settings, scripts.</li>"
             + "<li><b>Module file</b>, one per device: claims, friendly names, the device picture, the Button Map layout, the display look of its Configuration page or Output View, and its calibration. Configure input/output module, Button Map, Calibration, and the display editors write it. Saving an output module also saves the profile when the profile already has a file.</li>"
-            + "<li><b>Program settings</b>: Options, Home layout and card sizes, window sizes, HiDHide choices, and the Logical Device display look.</li>"
+            + "<li><b>Program settings</b>: Options, Home layout and card sizes, window sizes, HidHide choices, and the Logical Device display look.</li>"
             + "</ul>"
             + "<p>After every save the bottom bar names the file that was written.</p>"),
 
@@ -68,7 +68,7 @@ function topics() {
             "<p>Home shows one card per device: your physical devices, each vJoy device, and the Xbox controller.</p>"
             + "<ul>"
             + "<li><b>Double-click</b> a card to open its Configuration page (or <b>Output View</b> for an output).</li>"
-            + "<li><b>Right-click</b> a card for: Open Configuration, Button Map, Configure input/output module, Auto Mapper, the viewer, Calibration, Device Information, Assign hardware…, stacking, Reset size, Hide device, Clear module settings, and Delete Device.</li>"
+            + "<li><b>Right-click</b> a card for: Open Configuration, Button Map, Configure input/output module, Auto Mapper, the viewer, Calibration, Device Information, Assign hardware…, stacking, Reset size, Hide device, Reset card layout (its size and stacking), and Delete Device.</li>"
             + "<li><b>Shift-click</b> cards, then <b>Stack selected cards</b>, to group them.</li>"
             + "<li>Each card's <b>last:</b> line shows the latest input it passed or output it sent.</li>"
             + "<li><b>Compact view</b> and <b>Split</b> (None, Vertical, Horizontal) change the layout; View → <b>Home layout</b> chooses Single list, Side by side, or Stacked. Right-click empty space for <b>Unhide all devices</b> and <b>Reset all card sizes</b>.</li>"
@@ -86,10 +86,10 @@ function topics() {
             "<p>The Xbox controller (<b>Xbox 360 Controller</b>, pad 1) is a virtual Xbox 360 pad provided by the <b>ViGEmBus</b> driver. Its output module passes every control straight to the driver; there is nothing to claim.</p>"
             + "<p>Send to it with the <b>Map to Xbox</b> action. Its page (double-click the card) shows whether ViGEmBus is ready and which inputs drive each control. The <b>Xbox Viewer</b> shows the live pad. The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when Toggle is turned off.</p>"),
         topic("Devices and Modules", "Module files and Device Pack",
-            "<p>Each device has its own module file, found by the device first and then by its name. In Configure input/output module, <b>Module file</b> shows the current file and offers <b>Import from</b> (copy another file into this device's file), <b>Browse for File</b>, <b>Open configuration folder</b>, and <b>Delete file</b>. <b>Import image…</b> sets the device picture.</p>"
+            "<p>Each device has its own module file, found by the device first and then by its name. In Configure input/output module, <b>Module file</b> shows the current file and offers <b>Import from</b> (copy another file into this device's file), <b>Browse for File</b>, <b>Open modules folder</b>, and <b>Delete file</b>. <b>Import image…</b> sets the device picture.</p>"
             + "<p>Tools → Device setup → <b>Device Pack</b> shares a device setup. <b>Export</b> saves a device's module file and pictures to a zip. <b>Import</b> loads a zip onto a device you choose under <b>Put this pack on</b>.</p>"),
         topic("Devices and Modules", "Hidden devices",
-            "<p>Hiding a card only removes it from Home. It does not hide the device from Windows or games; use HiDHide for that.</p>"
+            "<p>Hiding a card only removes it from Home. It does not hide the device from Windows or games; use HidHide for that.</p>"
             + "<p>Hide a card with its <b>×</b> or <b>Hide device</b> in its menu. View → <b>Hidden devices…</b> lists hidden cards with <b>Unhide</b> and <b>Unhide all</b>.</p>"),
 
         topic("Configuration", "Adding actions",
@@ -226,14 +226,14 @@ function topics() {
             + "</ul>"),
         topic("Tools", "Swap Devices",
             "<p>Swaps every binding between two devices, for example after replacing a stick. Tools → Device setup → <b>Swap Devices</b>: choose <b>From profile device</b> and <b>To connected device</b>, then <b>Swap Bindings</b>. References inside actions and script variables are swapped too. Save the profile afterwards.</p>"),
-        topic("Tools", "HiDHide",
-            "<p>HiDHide hides physical controllers from games so they only see vJoy or Xbox. Gremlin-Platforms always sees them. The HiDHide driver is a separate install (<b>Get HiDHide</b>).</p>"
-            + "<p>Tools → Device setup → <b>HiDHide</b>:</p>"
+        topic("Tools", "HidHide",
+            "<p>HidHide hides physical controllers from games so they only see vJoy or Xbox. Gremlin-Platforms always sees them. The HidHide driver is a separate install (<b>Get HidHide</b>).</p>"
+            + "<p>Tools → Device setup → <b>HidHide</b>:</p>"
             + "<ul>"
-            + "<li><b>Gremlin control</b> lets this program write HiDHide's settings. <b>HiDHide Enabled</b> turns hiding on. <b>Automatically Start</b> applies both each time the program starts.</li>"
+            + "<li><b>Gremlin control</b> lets this program write HidHide's settings. <b>HidHide Enabled</b> turns hiding on. <b>Automatically Start</b> applies both each time the program starts.</li>"
             + "<li>Tick the devices to hide. <b>Gaming devices only</b> shortens the list. A hidden device is dimmed and marked HIDDEN.</li>"
             + "<li><b>Allow list</b>: only the listed programs see hidden devices. <b>Block list</b>: the listed programs do not. Add programs with <b>Add Program</b>.</li>"
-            + "<li><b>Test HiDHide</b> opens the Windows Game Controllers panel. With Allow list on, a hidden device should be missing there. Reopen the panel after each change.</li>"
+            + "<li><b>Test HidHide</b> opens the Windows Game Controllers panel. With Allow list on, a hidden device should be missing there. Reopen the panel after each change.</li>"
             + "</ul>"
             + "<p>All switches start off on a new install.</p>"),
         topic("Tools", "Live Log Reader",
@@ -242,10 +242,10 @@ function topics() {
         topic("Options and Profile", "Options",
             "<p>Tools → <b>Options</b> (or <b>Options</b> on the toolbar). Program settings, not stored in the profile; the profile's own are on its <b>Profile Settings</b> tab.</p>"
             + "<ul>"
-            + "<li><b>Global</b>: Close to tray, Minimize to tray, <b>Check for updates</b> (when the program starts; see Installing and updating), <b>Device change behavior</b> (Reload, Ignore, Disable), Hidhide on start, axis refresh on activation and mode change, Debug log level, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
-            + "<li><b>User Interface</b>: Dark mode, UI scale, Disable Windows scaling, Display mode (numbers and/or labels), Input highlighting and Highlight source, and the <b>Menu preview</b>.</li>"
+            + "<li><b>Global</b>: Close to tray, Minimize to tray, <b>Check for updates</b> (when the program starts; see Installing and updating), <b>Device change behavior</b> (Reload, Ignore, Disable), Turn HidHide on at start, axis refresh on activation and mode change, Diagnostic logs, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
+            + "<li><b>User Interface</b>: Dark mode, UI scale, Ignore Windows display scaling, Display mode (numbers and/or labels), Input highlighting and Highlight source, and the <b>Menu preview</b>.</li>"
             + "<li><b>Action</b>: the Action list order, and settings for Axis Delta, Change Mode, Double Tap, Macro, Play Sound, Smart Toggle, Tempo, and Text-To-Speech (voice).</li>"
-            + "<li><b>Profile</b>: Enable auto loading — load a profile when a chosen program starts — and Remain active on focus loss.</li>"
+            + "<li><b>Profile</b>: Load profiles automatically — load a profile when a chosen program starts — and Keep running when the program loses focus.</li>"
             + "<li><b>OSC Connection</b>: Enabled, Input host and port, Output address, and press timing.</li>"
             + "<li><b>Display</b>: Home card options and <b>Reset all card sizes</b>.</li>"
             + "<li><b>Auto Mapper</b>: Overwrite used inputs and Remember overwrite.</li>"
@@ -279,7 +279,7 @@ function topics() {
         topic("Troubleshooting", "A device is missing or seen twice",
             "<ul>"
             + "<li>Not on Home: check View → <b>Hidden devices…</b>.</li>"
-            + "<li>A game sees both the physical stick and vJoy: hide the physical stick with <b>HiDHide</b>.</li>"
+            + "<li>A game sees both the physical stick and vJoy: hide the physical stick with <b>HidHide</b>.</li>"
             + "<li>Bindings belong to a device that was replaced: use <b>Swap Devices</b>.</li>"
             + "</ul>")
     ]
@@ -301,7 +301,7 @@ function buttonMapTopics() {
             + "<li><b>Reset layout</b> clears everything from the map: chips go back to the pool, and leaders, hotspots, drawings, text boxes, pictures and tables are removed (it asks first). Actions are not changed. Ctrl+Z brings the layout back; save afterwards to make the empty map the live one.</li>"
             + "<li><b>Fit to photo frame</b> shrinks an older, oversized layout to the photo.</li>"
             + "<li>Photo → <b>Choose photo…</b> uses another picture as the photo; <b>Clear photo</b> goes back to the module's picture.</li>"
-            + "<li><b>Export PDF…</b>, <b>Export PNG…</b>, <b>Export JPG…</b> save the whole page, whatever the zoom, on the window's background colour. Selection marks, handles, guides and the grid are left off, and so are hidden items. <b>Export size</b> picks 1×, 2× (the default) or 3× the size on screen; a PDF page keeps the on-screen size and gets the extra detail. <b>Light page for printing</b> exports on white instead: every colour has its lightness turned over, so dark chips come out light with dark text and a dark red becomes a light red, while the photo stays as it is. The screen does not change.</li>"
+            + "<li><b>Export PDF…</b>, <b>Export PNG…</b>, <b>Export JPG…</b> save the whole page, whatever the zoom, on the window's background colour. Selection marks, handles, guides and the grid are left off, and so are hidden items. <b>Export size</b> picks 1×, 2× (the default) or 3× the size on screen; a PDF page keeps the on-screen size and gets the extra detail. <b>Light page for exports</b> exports on white instead: every colour has its lightness turned over, so dark chips come out light with dark text and a dark red becomes a light red, while the photo stays as it is. The screen does not change.</li>"
             + "<li><b>Copy layout from</b> lists the other devices that have a layout. Pick one to replace this map's chips, leaders and drawings with it, mirrored left to right if you like (for the other hand's stick). This device's photo stays; Undo puts the old layout back, and nothing is saved until you save.</li>"
             + "<li><b>Templates</b>: <b>Save layout as template…</b> keeps this map's chips, leaders and drawings under a name; <b>Apply template</b> puts one on any device (it asks first; Undo puts the old layout back); <b>Manage templates…</b> renames, deletes, exports a template to a file to share, and imports one. A template keeps where its pictures are, not the picture files themselves.</li>"
             + "<li><b>Print…</b> (Ctrl+P) prints the whole page, as Export draws it, as large as fits on the paper and turned to landscape when wider than tall. Windows' printer dialog comes first. It prints on a light page unless Editor options → Export → <b>Print light</b> is off. To print every mode, Export modes to a PDF and print that.</li>"
@@ -315,7 +315,7 @@ function buttonMapTopics() {
             + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror layout and Copy layout from also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
             + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
             + "<li><b>View</b>: <b>Zoom speed</b>, how fast the mouse wheel zooms; <b>Rulers</b>, shown or not (also View → Rulers).</li>"
-            + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size); <b>Mode title</b>, the mode's name at the top of each Export modes page; <b>Light page</b>, export on white for printing (also File → Light page for printing); <b>Print light</b>, File → Print on white (on unless turned off).</li>"
+            + "<li><b>Export</b>: <b>Export size</b>, 1x, 2x or 3x (also File → Export size); <b>Mode title</b>, the mode's name at the top of each Export modes page; <b>Light page</b>, export on white (also File → Light page for exports); <b>Print light</b>, File → Print on white (on unless turned off).</li>"
             + "<li><b>Colours</b>: <b>Recent colours</b>, how many the colour picker keeps.</li>"
             + "<li><b>Library</b>: the saved styles and layout templates, to rename or delete.</li>"
             + "</ul>"),

@@ -69,7 +69,7 @@ function commandList() {
           run: function() { toggleTool("DialogXboxViewer.qml") } },
         { id: "tools.calibration", text: "Calibration", group: "Tools › Device setup",
           run: function() { openTool("DialogCalibration.qml") } },
-        { id: "tools.hidhide", text: "HiDHide", group: "Tools › Device setup", keywords: "hide devices",
+        { id: "tools.hidhide", text: "HidHide", group: "Tools › Device setup", keywords: "hide devices",
           run: function() { openTool("DialogHardwareHide.qml") } },
         { id: "tools.configureInput", text: "Configure input module", group: "Tools › Device setup",
           run: function() { openConfigureModule("source") } },

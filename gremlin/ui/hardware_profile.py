@@ -43,7 +43,7 @@ _MAX_PHOTO_SIDE = 1600
 def limit_image_file(src: Path, dest: Path, max_side: int = _MAX_PHOTO_SIDE) -> None:
     """Copy an image, scaling it down when the long side is larger than max_side.
 
-    Used for small device photos (HiDHide); raises OSError when nothing could
+    Used for small device photos (HidHide); raises OSError when nothing could
     be written.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -70,7 +70,7 @@ def limit_image_file(src: Path, dest: Path, max_side: int = _MAX_PHOTO_SIDE) -> 
     if not scaled.save(str(dest), fmt, quality) and dest.resolve() != src.resolve():
         shutil.copy2(src, dest)
 
-# Off unless someone is tracing a save. Same idea as the HiDHide log switch.
+# Off unless someone is tracing a save. Same idea as the HidHide log switch.
 _persist_log = False
 
 

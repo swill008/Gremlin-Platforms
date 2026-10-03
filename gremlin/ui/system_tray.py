@@ -274,7 +274,7 @@ class SystemTrayIcon(QtCore.QObject):
             win32gui.AppendMenu(menu, win32con.MF_STRING, _ID_TOGGLE, label)
             win32gui.AppendMenu(menu, win32con.MF_SEPARATOR, 0, "")
             win32gui.AppendMenu(
-                menu, win32con.MF_STRING, _ID_QUIT, "Quit Gremlin-Platforms"
+                menu, win32con.MF_STRING, _ID_QUIT, "Exit Gremlin-Platforms"
             )
             with contextlib.suppress(win32gui.error):
                 win32gui.SetForegroundWindow(self._hwnd)

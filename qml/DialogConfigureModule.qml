@@ -437,7 +437,7 @@ ApplicationWindow {
                 }
             }
             Button {
-                text: "Open configuration folder"
+                text: "Open modules folder"
                 Layout.fillWidth: true
                 onClicked: {
                     if (moduleModel)

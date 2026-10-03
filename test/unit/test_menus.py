@@ -128,7 +128,7 @@ def test_shared_menus_work(tmp_path: pathlib.Path) -> None:
         "Stick|Open Configuration|Button Map|> Module|> View|> Cards|> Device"
     )
     assert results["card-device"].endswith(
-        "|  Hide device|  Clear module settings|  Delete Device"
+        "|  Hide device|  Reset card layout|  Delete Device"
     )
     assert "Unstack" not in results["card-device"]
     # A text box's menu: only the edits that can be made; none, no menu.

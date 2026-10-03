@@ -2370,7 +2370,7 @@ ApplicationWindow {
                     onTriggered: _buttonMap.openExportModes()
                 }
                 ThemedMenuItem {
-                    text: "Light page for printing"
+                    text: "Light page for exports"
                     enabled: _buttonMap.targetName.length > 0
                     checkable: true
                     checked: _opts.values["light-page"] === true

@@ -269,7 +269,7 @@ Configuration().register(
     "resolution-mode",
     PropertyType.Selection,
     "Oldest",
-    "Defines how a what mode is switched to in the case that a cyclical mode "
+    "Defines which mode is switched to in the case that a cyclical mode "
     'traversal is detected. "Oldest" switches to the oldest mode in '
     'the cycle while "newest" finds the most recent common mode and '
     "switches to that one.",

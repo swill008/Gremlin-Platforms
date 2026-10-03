@@ -22,7 +22,8 @@ ApplicationWindow {
     color: Style.background
     U.Universal.theme: Style.theme
 
-    title: qsTr("Software Update")
+    // The same words as the Help menu item that opens it.
+    title: qsTr("Check for Updates")
 
     readonly property string state_: updater ? updater.state : "idle"
 

@@ -69,8 +69,8 @@ _IOCTL_NAMES = {
 
 
 def _hh_log(message: str, level: int = logging.DEBUG) -> None:
-    """HiDHide line in the system log. Options > Debug sets which levels are kept."""
-    logging.getLogger("system").log(level, "HiDHide %s", message)
+    """HidHide line in the system log. Options > Debug sets which levels are kept."""
+    logging.getLogger("system").log(level, "HidHide %s", message)
 
 DEVPROP_TYPE_EMPTY = 0x00000000
 DEVPROP_TYPE_GUID = 0x0000000D
@@ -158,7 +158,7 @@ def _ensure_options() -> None:
             _CFG_MANAGED,
             PropertyType.String,
             "",
-            "Set after the user saves HiDHide Enabled. Empty means leave the driver alone.",
+            "Set after the user saves HidHide Enabled. Empty means leave the driver alone.",
             {},
             False,
         )
@@ -168,7 +168,7 @@ def _ensure_options() -> None:
             "hidhide-on-start",
             PropertyType.Bool,
             False,
-            "Turn HiDHide on when Gremlin starts.",
+            "Turn HidHide on when Gremlin starts.",
             {},
             True,
         )
@@ -178,7 +178,7 @@ def _ensure_options() -> None:
             _CFG_GAMING,
             PropertyType.String,
             "",
-            "Limit the HiDHide device list to game controllers.",
+            "Limit the HidHide device list to game controllers.",
             {},
             False,
         )
@@ -213,7 +213,7 @@ def _ensure_options() -> None:
             False,
         )
     except Exception:
-        logging.getLogger("system").exception("HiDHide settings not registered")
+        logging.getLogger("system").exception("HidHide settings not registered")
 
 
 def _load_games() -> list[dict]:
@@ -237,13 +237,13 @@ def _load_games() -> list[dict]:
     return out
 
 
-# The last HiDHide setting that could not be written ("" when all were).
+# The last HidHide setting that could not be written ("" when all were).
 _settings_error = ""
 
 
 def _settings_write_failed(exc: Exception) -> None:
     global _settings_error
-    _settings_error = f"Could not save the HiDHide settings: {exc}"
+    _settings_error = f"Could not save the HidHide settings: {exc}"
     _hh_log(_settings_error, logging.WARNING)
 
 
@@ -447,7 +447,7 @@ def _set_managed(on: bool) -> None:
 
 
 def _apply_saved_cloak() -> bool:
-    """Write HiDHide Enabled. The unset value is off, and it is not taken from the driver."""
+    """Write HidHide Enabled. The unset value is off, and it is not taken from the driver."""
     choice = _saved_cloak()
     if choice is None:
         choice = False
@@ -544,7 +544,7 @@ def _gremlin_exe() -> str:
 
 
 def _nt_image_path(path: str) -> str:
-    """Same NT path HiDHide stores: GetFinalPathNameByHandleW(VOLUME_NAME_NT)."""
+    """Same NT path HidHide stores: GetFinalPathNameByHandleW(VOLUME_NAME_NT)."""
     import ctypes
     from ctypes import wintypes
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -693,7 +693,7 @@ def _ioctl(handle, code: int, inn: bytes | None = None, out_size: int = 0) -> tu
         None,
     )
     if not ok:
-        _ioctl_error = f"HiDHide driver call failed ({ctypes.get_last_error()})."
+        _ioctl_error = f"HidHide driver call failed ({ctypes.get_last_error()})."
     name = _IOCTL_NAMES.get(int(code) & 0xFFFFFFFF, "OTHER")
     _hh_log(
         f"ioctl {name} code=0x{int(code) & 0xFFFFFFFF:08X} in={in_len} out={out_size} "
@@ -1543,7 +1543,7 @@ class HidHideModel(QtCore.QObject):
         try:
             rows = list_hid_devices(self._gaming_only)
         except Exception:
-            logging.getLogger("system").exception("HiDHide device list failed")
+            logging.getLogger("system").exception("HidHide device list failed")
             rows = []
         built = []
         for row in _enrich_devices(rows):
@@ -1627,7 +1627,7 @@ class HidHideModel(QtCore.QObject):
         if not self._present or not _hidhide_managed():
             return False
         if not set_inverse(bool(on)):
-            self._last_error = _ioctl_error or "HiDHide driver call failed."
+            self._last_error = _ioctl_error or "HidHide driver call failed."
             self.reload()
             return False
         _save_list_mode(bool(on))
@@ -1708,7 +1708,7 @@ class HidHideModel(QtCore.QObject):
             return False
         if not set_active(bool(on)):
             # Same as the per-device switches: say why and show the real state.
-            self._last_error = _ioctl_error or "HiDHide driver call failed."
+            self._last_error = _ioctl_error or "HidHide driver call failed."
             _hh_log(f"set active failed: {self._last_error}", logging.WARNING)
             self.reload()
             return False
@@ -1741,7 +1741,7 @@ class HidHideModel(QtCore.QObject):
         _hh_log(f"set hidden={bool(hidden)} id={instance_id} group={group_ids} blacklist={kept}")
         _save_hidden(kept)
         if not set_blacklist(kept):
-            self._last_error = _ioctl_error or "HiDHide driver call failed."
+            self._last_error = _ioctl_error or "HidHide driver call failed."
             _hh_log(f"set blacklist failed: {self._last_error}", logging.WARNING)
             self.reload()
             return False
@@ -1829,7 +1829,7 @@ class HidHideModel(QtCore.QObject):
 
 
 def apply_on_start() -> None:
-    """If Automatically Start is on, turn on Gremlin control and HiDHide Enabled."""
+    """If Automatically Start is on, turn on Gremlin control and HidHide Enabled."""
     _ensure_options()
     if not _start_enabled():
         _hh_log("start skipped, Automatically Start is off", logging.INFO)
@@ -1844,7 +1844,7 @@ def apply_on_start() -> None:
 
 
 def apply_saved_list() -> None:
-    """Write Gremlin's saved HiDHide settings after the user has saved HiDHide Enabled."""
+    """Write Gremlin's saved HidHide settings after the user has saved HidHide Enabled."""
     if not driver_present():
         _hh_log("apply skipped, driver not present", logging.WARNING)
         return

@@ -722,7 +722,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         try:
             gremlin.ui.hidhide.apply_on_start()
         except Exception:
-            self.syslog.exception("HiDHide start")
+            self.syslog.exception("HidHide start")
         sys.excepthook = exception_hook
 
         dill.DILL.init()

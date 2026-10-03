@@ -75,7 +75,7 @@ def test_dual_deadzone_takes_the_nearest_allowed_value() -> None:
 def test_hidhide_device_photo_copy_exists_and_caps_size(
     tmp_path: pathlib.Path,
 ) -> None:
-    # The HiDHide photo picker imports this; it was missing, so picking failed.
+    # The HidHide photo picker imports this; it was missing, so picking failed.
     from PySide6 import QtGui
 
     from gremlin.ui.hardware_profile import limit_image_file

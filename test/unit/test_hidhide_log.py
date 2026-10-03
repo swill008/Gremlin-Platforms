@@ -9,8 +9,8 @@ def test_messages_reach_the_system_log(caplog):
         hh._hh_log("detail")
         hh._hh_log("step", logging.INFO)
     assert [(r.name, r.levelno, r.getMessage()) for r in caplog.records] == [
-        ("system", logging.DEBUG, "HiDHide detail"),
-        ("system", logging.INFO, "HiDHide step"),
+        ("system", logging.DEBUG, "HidHide detail"),
+        ("system", logging.INFO, "HidHide step"),
     ]
 
 
@@ -22,5 +22,5 @@ def test_missing_driver_at_start_is_a_warning(caplog):
         with caplog.at_level(logging.WARNING, logger="system"):
             hh.apply_on_start()
     assert [r.getMessage() for r in caplog.records] == [
-        "HiDHide start skipped, driver not present",
+        "HidHide start skipped, driver not present",
     ]

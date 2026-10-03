@@ -18,7 +18,7 @@ ApplicationWindow {
     height: 640
     minimumWidth: Style.dp(640)
     minimumHeight: Style.dp(480)
-    title: "HiDHide"
+    title: "HidHide"
     color: Style.background
     U.Universal.theme: Style.theme
 
@@ -112,7 +112,7 @@ ApplicationWindow {
                     spacing: 0
                     Label {
                         color: Style.fg
-                        text: _hh.installed ? "HiDHide driver found" : "HiDHide is not installed"
+                        text: _hh.installed ? "HidHide driver found" : "HidHide is not installed"
                     }
                     Label {
                         visible: _hh.driverVersion.length > 0
@@ -124,11 +124,11 @@ ApplicationWindow {
                 RowLayout {
                     spacing: Style.dp(4)
                     Button {
-                        text: "Get HiDHide"
+                        text: "Get HidHide"
                         onClicked: _hh.openDownload()
                     }
                     Button {
-                        text: "Test HiDHide"
+                        text: "Test HidHide"
                         onClicked: _hh.openGameControllers()
                     }
                 }
@@ -164,7 +164,7 @@ ApplicationWindow {
                     property bool shown: _hh.cloakOn
                     onShownChanged: if (!pressed) checked = shown
                     Component.onCompleted: checked = shown
-                    text: "HiDHide Enabled"
+                    text: "HidHide Enabled"
                     // A refused change puts the switch back (shown may not change).
                     onClicked: if (!_hh.setCloak(checked)) checked = shown
                 }
@@ -182,7 +182,7 @@ ApplicationWindow {
         }
 
         Label {
-            text: "HiDHide"
+            text: "HidHide"
             color: Style.fg
             font.pixelSize: Style.dp(16)
             font.bold: true
@@ -193,7 +193,7 @@ ApplicationWindow {
             wrapMode: Text.WordWrap
             color: Style.fgMuted
             font.pixelSize: Style.dp(12)
-            text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. Automatically Start turns Gremlin control and HiDHide Enabled on each time this program starts. This program does not install HiDHide. Click on Get HiDHide to download the program."
+            text: "HidHide Enabled means HidHide enforces the device list and the program list. Off means HidHide is installed but HidHide is not hiding anything. Automatically Start turns Gremlin control and HidHide Enabled on each time this program starts. This program does not install HidHide. Click on Get HidHide to download the program."
         }
 
         // Why the switches and lists are greyed out, and what turns them on.
@@ -203,7 +203,7 @@ ApplicationWindow {
             wrapMode: Text.WordWrap
             color: Style.warn
             font.pixelSize: Style.dp(12)
-            text: "Turn on Gremlin control (above) to change HiDHide from here. Until then the settings below are shown but can't be changed."
+            text: "Turn on Gremlin control (above) to change HidHide from here. Until then the settings below are shown but can't be changed."
         }
 
         Label {
@@ -212,7 +212,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             color: Style.fgMuted
             font.pixelSize: Style.dp(12)
-            text: "Install HiDHide from the Nefarius releases page, then open this window again. Gremlin will not download or bundle that installer."
+            text: "Install HidHide from the Nefarius releases page, then open this window again. Gremlin will not download or bundle that installer."
         }
 
         Switch {
@@ -288,7 +288,7 @@ ApplicationWindow {
 
                 Label {
                     visible: _hh.deviceCount === 0
-                    text: _hh.installed ? "No HID devices reported." : "Device list needs the HiDHide driver."
+                    text: _hh.installed ? "No HID devices reported." : "Device list needs the HidHide driver."
                     color: Style.fgMuted
                 }
 

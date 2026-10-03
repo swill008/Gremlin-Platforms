@@ -38,6 +38,26 @@ SECTION_DISPLAY_NAMES = {
     "button-map": "Button Map",
 }
 
+# Titles for entries whose key does not read well as a title; any other
+# entry shows its key with spaces ("zoom-speed" -> "Zoom speed").
+_ENTRY_TITLES = {
+    "ui-scale": "UI scale",
+    "disable-windows-scaling": "Ignore Windows display scaling",
+    "show-stubs": "Show devices without a module",
+    "last-keep-after-release": "Keep last value after release",
+    "debug": "Diagnostic logs",
+    "hidhide-on-start": "Turn HidHide on at start",
+    "autorelease-no-arg": "Auto-release address-only messages",
+    "pad-args": "Treat address-only messages as 1.0",
+    "delay-presets": "Auto-release delay presets",
+    "plugin-directory": "Plugins folder",
+    "autosave-seconds": "Seconds between recovery copies",
+    "remain-active-on-focus-loss": "Keep running when the program loses focus",
+    "enable-auto-loading": "Load profiles automatically",
+    "auto-loading": "Programs and their profiles",
+    "resolution-mode": "Mode cycle resolution",
+}
+
 # Group order inside a section; others follow by name.
 _GROUP_ORDER = {
     "general": 0, "files": 1, "input-names": 2,
@@ -202,6 +222,8 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
             name = entries[index.row()]
             if role_name == "name":
                 name = re.sub(r"^[0-9]+-", "", name)
+                if name in _ENTRY_TITLES:
+                    return _ENTRY_TITLES[name]
                 return re.sub(r"[_-]+", " ", name).capitalize()
             if name in self._option.entries(self._section_name, self._group_name):
                 match role_name:

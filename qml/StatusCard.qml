@@ -445,7 +445,7 @@ Rectangle {
             MenuModel.section("device", "Device", [
                 dest ? null : MenuModel.action("Assign hardware…", function() { _card.assignHardware() }),
                 MenuModel.action("Hide device", function() { _card.ignoreDevice() }),
-                MenuModel.action("Clear module settings", function() { _card.clearSettings() }),
+                MenuModel.action("Reset card layout", function() { _card.clearSettings() }),
                 MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })
             ])
         ])
