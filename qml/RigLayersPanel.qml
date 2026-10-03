@@ -6,12 +6,16 @@ import QtQml
 import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
+import Gremlin.Menus
 
 // The Button Map editor's Layers panel: every item, top of the stack first,
 // with an eye (show or hide) and a lock on each. Chips and groups open to
 // their hotspot and leaders, which have their own eye and lock; the
 // background photo is the last row. Click a row to select it (Ctrl or Shift
-// adds), drag a row to restack it, double-click to rename a drawing.
+// adds), drag a row to restack it, double-click to rename a drawing. The
+// trash icon, or Delete in a row's right-click menu, deletes it
+// (ed.deleteLayer: chips back to the pool, leaders and pictures removed,
+// hotspots hidden).
 Rectangle {
     id: _panel
 
@@ -28,6 +32,29 @@ Rectangle {
     readonly property var rows: (ed && ed.layerRows) ? (ed.tick, ed.layerRows(filter, expanded)) : []
 
     signal closeRequested()
+
+    // The row the right-click menu was opened on.
+    property var menuRow: null
+
+    function deleteRow(row) {
+        if (row && ed && ed.canDeleteLayer(row.id, row.part))
+            ed.deleteLayer(row.id, row.part)
+    }
+
+    ContextMenu {
+        id: _rowMenu
+        build: function() {
+            var row = _panel.menuRow
+            if (!row)
+                return MenuModel.menu("layer", "", [], [], [])
+            var dot = (row.part === "hot") ? "Hide Hotspot" : "Delete"
+            return MenuModel.menu("layer", row.name, [
+                MenuModel.action(dot, function() { _panel.deleteRow(row) },
+                                 !!(_panel.ed && _panel.ed.canDeleteLayer(row.id, row.part)),
+                                 { danger: row.part !== "hot" })
+            ], [])
+        }
+    }
 
     color: Style.bgCard
     border.color: Style.lineStrong
@@ -233,10 +260,16 @@ Rectangle {
                             id: _rowArea
                             anchors.fill: parent
                             hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             preventStealing: true
                             property real pressY: 0
-                            onPressed: (m) => { pressY = m.y }
+                            onPressed: (m) => {
+                                pressY = m.y
+                                if (m.button === Qt.RightButton) {
+                                    _panel.menuRow = _row.row
+                                    _rowMenu.openAt(this, m.x, m.y)
+                                }
+                            }
                             onPositionChanged: (m) => {
                                 if (!pressed || _row.row.depth !== 0 || _row.row.part === "photo")
                                     return
@@ -250,6 +283,8 @@ Rectangle {
                             // Dropping or selecting rebuilds the rows, this one
                             // included: reset the drag first, act last.
                             onReleased: (m) => {
+                                if (m.button === Qt.RightButton)
+                                    return
                                 var panel = _panel
                                 var from = panel.dragRow
                                 var to = panel.dropRow
@@ -333,6 +368,31 @@ Rectangle {
                                     Keys.onEscapePressed: _panel.renameId = ""
                                     onActiveFocusChanged: if (!activeFocus && visible) _panel.renameId = ""
                                 }
+                            }
+                            // Delete (trash), left of the eye so the eye and lock keep
+                            // their places: not on the photo; greyed when locked or
+                            // (a hotspot) already hidden.
+                            Label {
+                                readonly property bool can: !!(_panel.ed && _panel.ed.canDeleteLayer(_row.row.id, _row.row.part))
+                                Layout.preferredWidth: Style.dp(22)
+                                horizontalAlignment: Text.AlignHCenter
+                                visible: _row.row.part !== "photo"
+                                text: ""
+                                font.family: "bootstrap-icons"
+                                font.pixelSize: Style.dp(13)
+                                color: !can ? Style.fgDisabled : (_trashArea.containsMouse ? Style.dangerText : Style.fgMuted)
+                                MouseArea {
+                                    id: _trashArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    enabled: parent.can
+                                    onClicked: _panel.deleteRow(_row.row)
+                                }
+                                ToolTip.visible: _trashArea.containsMouse
+                                ToolTip.delay: 500
+                                ToolTip.text: _row.row.part === "hot" ? "Hide hotspot"
+                                    : (_row.row.type === "chip" || _row.row.type === "group") ? "Delete (back to the pool)"
+                                    : "Delete"
                             }
                             // Eye and lock. Dimmed when the chip they belong to
                             // already hides or locks them.

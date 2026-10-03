@@ -300,8 +300,8 @@ function _format() {
     var n = ctxTarget()
     if (!isFiveWay(n) && !ctxHasTheme())
         return null
-    return _sect("format", "5-way Format", [
-        _pick("Style", ["plus", "mini", "card", "radial"], ["Plus", "Mini hat", "Named card", "Radial"],
+    return _sect("format", "Style", [
+        _pick("Format", ["plus", "mini", "card", "radial"], ["Plus", "Mini hat", "Named card", "Radial"],
               function(f) { return fiveWayFormat(ctxTarget()) === f }, applyFiveWayFormat, isFiveWay(n)),
         _act("Clear Format", clearGroupFormat, ctxHasGroupFormat())
     ])

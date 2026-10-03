@@ -236,6 +236,49 @@ function toggleLayerFlag(id, part, flag) {
     setLayerFlag(id, part, flag, !layerFlag(id, part, flag))
 }
 
+// Layers panel Delete (its trash icon and right-click menu): a chip or group
+// goes back to the pool, a leader is removed, a hotspot is hidden (a chip
+// always keeps its hotspot's place), a picture, drawing, text box or table is
+// removed. The photo and locked items are not deleted. One undo step.
+function canDeleteLayer(id, part) {
+    if (part === "photo" || !id)
+        return false
+    var n = nodeAt(id)
+    if (!n || isLocked(n))
+        return false
+    // A locked hotspot or leader stays too.
+    if (part && layerFlag(id, part, "locked"))
+        return false
+    if (part === "hot")
+        return !layerFlag(id, "hot", "hidden")
+    return true
+}
+
+function deleteLayer(id, part) {
+    if (!canDeleteLayer(id, part))
+        return false
+    var n = nodeAt(id)
+    if (part === "hot") {
+        setLayerFlag(id, "hot", "hidden", true)
+        return true
+    }
+    if (part && part.indexOf("leader:") === 0) {
+        setSelection([id])
+        selectedId = id
+        selectedLeader = parseInt(part.slice(7), 10) || 0
+        deleteLeader()
+        return true
+    }
+    if (isGroup(n)) {
+        setSelection([id])
+        selectedId = id
+        returnToPool()
+        return true
+    }
+    deleteChip(id)
+    return true
+}
+
 // Ctrl+L: locks the selection, or unlocks it when all of it is locked.
 function toggleLockSelection() {
     var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])

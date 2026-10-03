@@ -527,6 +527,8 @@ Item {
     function layerFlagInherited(id, part, flag) { return RigLayers.layerFlagInherited(id, part, flag) }
     function setLayerFlag(id, part, flag, on) { return RigLayers.setLayerFlag(id, part, flag, on) }
     function toggleLayerFlag(id, part, flag) { return RigLayers.toggleLayerFlag(id, part, flag) }
+    function canDeleteLayer(id, part) { return RigLayers.canDeleteLayer(id, part) }
+    function deleteLayer(id, part) { return RigLayers.deleteLayer(id, part) }
     function toggleLockSelection() { return RigLayers.toggleLockSelection() }
     function showAll() { return RigLayers.showAll() }
     function unlockAll() { return RigLayers.unlockAll() }
