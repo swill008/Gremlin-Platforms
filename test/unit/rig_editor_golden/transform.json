@@ -1488,6 +1488,8 @@
      "Arrow",
      "Duplicate",
      "Delete",
+     "Copy (Ctrl+C)",
+     "Paste (Ctrl+V) (off)",
      "> Shape",
      "> Fill and Outline",
      "> Transform",

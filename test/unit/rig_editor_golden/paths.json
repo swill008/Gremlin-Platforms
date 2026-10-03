@@ -5472,6 +5472,8 @@
      "Path",
      "Duplicate",
      "Delete",
+     "Copy (Ctrl+C)",
+     "Paste (Ctrl+V) (off)",
      "> Path",
      "> Line",
      "> Arrowheads",

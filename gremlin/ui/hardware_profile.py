@@ -295,6 +295,16 @@ def _is_hex_colour(value: object) -> bool:
     )
 
 
+def _as_urls(items: object) -> list[QtCore.QUrl]:
+    """Dropped or chosen URLs as QUrls. A drag from QML arrives as QUrl
+    objects, whose str() is their repr ("PySide6.QtCore.QUrl('file:…')"),
+    not the address: only text is turned into a QUrl."""
+    if hasattr(items, "toVariant"):  # a JavaScript array (QJSValue)
+        items = items.toVariant()  # type: ignore[union-attr]
+    found = list(items) if isinstance(items, (list, tuple)) else []
+    return [u if isinstance(u, QtCore.QUrl) else QtCore.QUrl(str(u)) for u in found]
+
+
 def _image_files(urls: list[QtCore.QUrl]) -> list[Path]:
     """The local picture files among these URLs, in order."""
     out: list[Path] = []
@@ -1787,7 +1797,7 @@ class HardwareProfile(QtCore.QObject):
         """Copies dropped or pasted picture files in as layer pictures; skips
         anything that is not a picture file. Stored paths."""
         out: list[str] = []
-        for path in _image_files([QtCore.QUrl(str(u)) for u in urls or []]):
+        for path in _image_files(_as_urls(urls)):
             rel = self.copyOverlay(path.as_uri(), device_name)
             if rel:
                 out.append(rel)
@@ -1796,8 +1806,7 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot("QVariant", result=bool)
     def hasPictureFiles(self, urls: object) -> bool:
         """Some of these dropped URLs are picture files."""
-        items = list(urls) if isinstance(urls, (list, tuple)) else []
-        return bool(_image_files([QtCore.QUrl(str(u)) for u in items]))
+        return bool(_image_files(_as_urls(urls)))
 
     @QtCore.Slot(str, result=float)
     def imageAspect(self, stored: str) -> float:

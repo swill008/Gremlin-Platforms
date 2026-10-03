@@ -1607,6 +1607,7 @@
     "layers": [],
     "menu": [
      "Canvas",
+     "Paste (Ctrl+V) (off)",
      "v Draw",
      "  Shape: Rectangle | Rounded | Ellipse | Triangle | Diamond | Arrow | Double arrow",
      "  Line: Line | Arrow | Path | Freehand",

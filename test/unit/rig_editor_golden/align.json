@@ -1415,6 +1415,8 @@
      "Group Selected",
      "Duplicate",
      "Delete",
+     "Copy (Ctrl+C)",
+     "Paste (Ctrl+V) (off)",
      "v Align and Distribute",
      "  Across: Left | Center | Right",
      "  Down: Top | Middle | Bottom",

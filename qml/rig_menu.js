@@ -17,8 +17,19 @@
 // The shared ContextMenu (Gremlin.Menus) draws it; only what applies to the
 // target is listed. menuModel() adds Undo and Redo beside the title.
 
-function _act(text, run, enabled) {
-    return { kind: "action", text: text, run: run, enabled: enabled === undefined ? true : !!enabled }
+function _act(text, run, enabled, hint) {
+    return { kind: "action", text: text, run: run, enabled: enabled === undefined ? true : !!enabled,
+             hint: hint || "" }
+}
+
+// Copy and Paste, the same as Ctrl+C / Ctrl+V: Copy for what was clicked,
+// Paste for copied items or a picture on the clipboard.
+function _copyPaste(withCopy) {
+    var out = []
+    if (withCopy)
+        out.push(_act("Copy", copySelection, true, "Ctrl+C"))
+    out.push(_act("Paste", pasteClipboard, !!((clip && clip.length) || canPastePicture), "Ctrl+V"))
+    return out
 }
 
 function _tog(text, checked, run, enabled) {
@@ -693,12 +704,15 @@ function menuModel() {
         sections = [_alignSection(), _turnSection(), _savedStyles()].concat(isDraw(first) ? (isLine(first) ? _lineSections() : _shapeSections())
                                  : [_chipStyle(), _chipColours(), _hotspot(), _leader(), _around()])
     } else {
-        if (clip && clip.length)
-            quick.push(_act("Paste", pasteClipboard))
+        quick = quick.concat(_copyPaste(false))
         if (drawTool.length)
             quick.push(_act("Stop Drawing", function() { drawTool = "" }))
         sections = _canvasSections()
     }
+    // Copy and Paste on everything that can be copied (a leader belongs to
+    // its chip: copy the chip).
+    if (kind !== "canvas" && kind !== "leader" && kind !== "")
+        quick = quick.concat(_copyPaste(true))
     return {
         kind: kind, title: menuTitle(kind), quick: quick, sections: _compact(sections),
         // Beside the title.
