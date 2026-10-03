@@ -40,6 +40,10 @@ Popup {
     // Stays open after a row is chosen (refreshed to the new state) and can be
     // dragged by its title; a click outside it or Esc closes it (Button Map).
     property bool stayOpen: false
+    // Pinned with the pin by the title: a click outside does not close it, it
+    // stays open after a row is chosen and stays where it is; Esc closes it
+    // (and unpins it).
+    property bool pinned: false
     // Moved by dragging the title: placed where dropped, no flipping.
     property bool _dragged: false
     readonly property real edge: Style.menuPad
@@ -77,13 +81,30 @@ Popup {
     }
     modal: false
     focus: true
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    closePolicy: pinned ? Popup.CloseOnEscape : (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
+    onClosed: pinned = false
 
-    background: MenuSurface {}
+    // Clicks, the wheel and the pointer on the menu stay on the menu: nothing
+    // under it (the Button Map) reacts to them.
+    background: MenuSurface {
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            hoverEnabled: true
+            onWheel: (w) => { w.accepted = true }
+        }
+    }
 
     // Opens at a point in item's coordinates (the window's without an item).
     function openAt(item, ix, iy) {
         refresh()
+        // A pinned menu stays where it is and shows what was clicked now.
+        if (pinned && opened) {
+            current = MenuModel.lastSection(model.kind)
+            focusRow = -1
+            _keys.forceActiveFocus()
+            return
+        }
         var p = item ? item.mapToItem(parent, ix, iy) : Qt.point(ix, iy)
         anchorX = p.x
         anchorY = p.y
@@ -114,16 +135,16 @@ Popup {
             return
         var kindBefore = model.kind
         if (item.kind === "action") {
-            if (!item.keepOpen && !stayOpen)
+            if (!item.keepOpen && !stayOpen && !pinned)
                 close()
             item.run()
         } else if (item.kind === "toggle") {
             item.run()
         } else if (item.kind === "entry") {
-            if (!item.keepOpen && !stayOpen)
+            if (!item.keepOpen && !stayOpen && !pinned)
                 close()
             item.run(value)
-        } else if (item.kind === "number" && item.go && item.closeOnGo) {
+        } else if (item.kind === "number" && item.go && item.closeOnGo && !pinned) {
             close()
             item.run(value)
         } else {
@@ -133,7 +154,7 @@ Popup {
             refresh()
             // stayOpen: an action that took away what the menu was for (Break
             // Group, Delete) closes it rather than showing another thing's menu.
-            if (stayOpen && model.kind !== kindBefore)
+            if (stayOpen && !pinned && model.kind !== kindBefore)
                 close()
         }
     }
@@ -314,8 +335,8 @@ Popup {
                 width: _flick.width - (_flick.scrolls ? _bar.width : 0)
                 spacing: 0
 
-                // Title: what was clicked, with its header buttons. With
-                // stayOpen, drag it to move the menu.
+                // Title: what was clicked, with its header buttons and the
+                // pin. With stayOpen or pinned, drag it to move the menu.
                 RowLayout {
                     visible: _menu.model.title.length > 0 || _menu.model.header.length > 0
                     width: parent.width
@@ -324,7 +345,7 @@ Popup {
                     Label {
                         MouseArea {
                             anchors.fill: parent
-                            enabled: _menu.stayOpen
+                            enabled: _menu.stayOpen || _menu.pinned
                             cursorShape: enabled ? Qt.SizeAllCursor : Qt.ArrowCursor
                             property point _start
                             property point _origin
@@ -348,6 +369,26 @@ Popup {
                         font.bold: true
                         color: Style.menuTextStrong
                         elide: Text.ElideRight
+                    }
+                    Label {
+                        id: _pin
+                        Layout.rightMargin: Style.dp(2)
+                        font.family: "bootstrap-icons"
+                        font.pixelSize: _menu.textPx
+                        // pin-fill when pinned, pin-angle when not.
+                        text: _menu.pinned ? "\uF4EC" : "\uF4EB"
+                        color: _menu.pinned ? Style.menuAccent : (_pinArea.containsMouse ? Style.menuText : Style.menuTextOff)
+                        MouseArea {
+                            id: _pinArea
+                            anchors.fill: parent
+                            anchors.margins: -Style.dp(4)
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: _menu.pinned = !_menu.pinned
+                        }
+                        ToolTip.visible: _pinArea.containsMouse
+                        ToolTip.delay: 600
+                        ToolTip.text: _menu.pinned ? "Unpin: a click outside closes the menu" : "Pin: keep the menu open"
                     }
                     Repeater {
                         model: _menu.model.header

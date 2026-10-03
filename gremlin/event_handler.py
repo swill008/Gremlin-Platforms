@@ -480,7 +480,7 @@ class EventListener(QtCore.QObject):
             from gremlin.log_once import log_once
 
             log_once(
-                "system", ("calibration", key), logging.WARNING,
+                "system", ("calibration", key), logging.INFO,
                 f"No calibration data for {key[0]} - Axis {key[1]}",
             )
             return util.with_default_center_calibration(event.value)

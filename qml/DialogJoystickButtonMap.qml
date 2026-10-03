@@ -3419,7 +3419,14 @@ ApplicationWindow {
         height: Style.dp(400)
         modal: false
         focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        // Above an open menu (the Button Map's menu stays open while you pick).
+        z: 1
+        // Pinned with the pin by the title: a click outside does not close it;
+        // Esc closes it (and unpins it).
+        property bool pinned: false
+        // Dragged by its title: it opens where it was left.
+        property bool moved: false
+        closePolicy: pinned ? Popup.CloseOnEscape : (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
         padding: Style.dp(10)
         property string field: "color"
         // A colour was applied while open: it goes into the recent colours.
@@ -3432,6 +3439,14 @@ ApplicationWindow {
             color: "#18181B"
             border.color: "#3F3F46"
             radius: Style.dp(8)
+            // Clicks, the wheel and the pointer on the picker stay on it:
+            // nothing under it (the menu, the map) reacts to them.
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+                hoverEnabled: true
+                onWheel: (w) => { w.accepted = true }
+            }
         }
 
         function openField(field, hex, anchorItem) {
@@ -3441,7 +3456,9 @@ ApplicationWindow {
             hh = c.hsvHue < 0 ? 0 : c.hsvHue
             ss = c.hsvSaturation
             vv = c.hsvValue
-            if (anchorItem && parent) {
+            if (moved || (opened && pinned)) {
+                // Stays where it was put.
+            } else if (anchorItem && parent) {
                 var p = anchorItem.mapToItem(parent, 0, anchorItem.height + 4)
                 x = Math.max(8, Math.min(parent.width - width - 8, p.x - width + anchorItem.width))
                 y = Math.max(8, Math.min(parent.height - height - 8, p.y))
@@ -3473,6 +3490,9 @@ ApplicationWindow {
             if (changed)
                 _hw.noteColour(_buttonMap._toHex(live))
             changed = false
+            // Pick from Map closes it for a moment: the pin stays.
+            if (!_buttonMap.eyedropField.length)
+                pinned = false
         }
 
         onHhChanged: pushLive()
@@ -3482,10 +3502,53 @@ ApplicationWindow {
         ColumnLayout {
             anchors.fill: parent
             spacing: Style.dp(8)
-            Label {
-                text: "Pick color"
-                color: "#E4E4E7"
-                font.bold: true
+            // Title: drag it to move the picker; the pin keeps it open.
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    Layout.fillWidth: true
+                    text: "Pick Color"
+                    color: "#E4E4E7"
+                    font.bold: true
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.SizeAllCursor
+                        property point _start
+                        property point _origin
+                        onPressed: (m) => {
+                            _start = mapToItem(_colorPop.parent, m.x, m.y)
+                            _origin = Qt.point(_colorPop.x, _colorPop.y)
+                        }
+                        onPositionChanged: (m) => {
+                            if (!pressed)
+                                return
+                            var p = mapToItem(_colorPop.parent, m.x, m.y)
+                            var pw = _colorPop.parent ? _colorPop.parent.width : 0
+                            var ph = _colorPop.parent ? _colorPop.parent.height : 0
+                            _colorPop.moved = true
+                            _colorPop.x = Math.max(0, Math.min(pw - _colorPop.width, _origin.x + p.x - _start.x))
+                            _colorPop.y = Math.max(0, Math.min(ph - _colorPop.height, _origin.y + p.y - _start.y))
+                        }
+                    }
+                }
+                Label {
+                    font.family: "bootstrap-icons"
+                    font.pixelSize: Style.dp(14)
+                    // pin-fill when pinned, pin-angle when not.
+                    text: _colorPop.pinned ? "\uF4EC" : "\uF4EB"
+                    color: _colorPop.pinned ? Style.menuAccent : (_pickPinArea.containsMouse ? Style.menuText : Style.menuTextOff)
+                    MouseArea {
+                        id: _pickPinArea
+                        anchors.fill: parent
+                        anchors.margins: -Style.dp(4)
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: _colorPop.pinned = !_colorPop.pinned
+                    }
+                    ToolTip.visible: _pickPinArea.containsMouse
+                    ToolTip.delay: 600
+                    ToolTip.text: _colorPop.pinned ? "Unpin: a click outside closes the picker" : "Pin: keep the picker open"
+                }
             }
             Item {
                 id: _sv
