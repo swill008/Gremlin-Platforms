@@ -32,6 +32,19 @@ _CHECK_TIMEOUT_MS = 10000
 _DOWNLOAD_STALL_MS = 30000
 
 
+
+def _one_off_request(url: str) -> QtNetwork.QNetworkRequest:
+    """A request whose connection closes when the reply is done. Kept open
+    for reuse, GitHub closes it about 30 s later and Qt prints
+    "QIODevice::read (QSslSocket): device not open"; the program makes one
+    request at a time, so there is nothing to reuse it for."""
+    request = QtNetwork.QNetworkRequest(QtCore.QUrl(url))
+    request.setAttribute(
+        QtNetwork.QNetworkRequest.Attribute.Http2AllowedAttribute, False
+    )
+    request.setRawHeader(b"Connection", b"close")
+    return request
+
 class UpdateModel(QtCore.QObject):
     """State of the update check, shown by DialogUpdate.qml.
 
@@ -122,7 +135,7 @@ class UpdateModel(QtCore.QObject):
         url = updater.feed_url(
             self._config.value("global", "internal", "update-feed-url")
         )
-        request = QtNetwork.QNetworkRequest(QtCore.QUrl(url))
+        request = _one_off_request(url)
         request.setRawHeader(b"Accept", b"application/vnd.github+json")
         request.setRawHeader(b"User-Agent", b"Gremlin-Platforms")
         request.setTransferTimeout(_CHECK_TIMEOUT_MS)
@@ -191,7 +204,7 @@ class UpdateModel(QtCore.QObject):
             return
         self._received = 0
         self.progressChanged.emit()
-        request = QtNetwork.QNetworkRequest(QtCore.QUrl(setup.url))
+        request = _one_off_request(setup.url)
         request.setRawHeader(b"User-Agent", b"Gremlin-Platforms")
         request.setTransferTimeout(_DOWNLOAD_STALL_MS)
         self._reply = self._network.get(request)
