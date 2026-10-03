@@ -64,6 +64,8 @@ def test_cancelled_quit_clears_the_install(
     assert model.start_pending_install() is True
     assert started[0][0] == str(setup)
     assert "/LAUNCH=1" in started[0][1]
+    # Each update leaves its setup log beside the installer.
+    assert f"/LOG={setup.with_suffix('.log')}" in started[0][1]
 
 
 def test_says_so_once_after_an_update(

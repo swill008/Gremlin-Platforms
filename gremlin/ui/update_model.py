@@ -283,11 +283,14 @@ class UpdateModel(QtCore.QObject):
             return False
         if not self._ready_path.is_file():
             return False
-        logging.getLogger("system").info("Update: starting %s", self._ready_path)
+        log_path = self._ready_path.with_suffix(".log")
+        logging.getLogger("system").info(
+            "Update: starting %s (log: %s)", self._ready_path, log_path
+        )
         return bool(
             QtCore.QProcess.startDetached(
                 str(self._ready_path),
-                updater.setup_arguments(),
+                updater.setup_arguments(str(log_path)),
                 str(self._ready_path.parent),
             )
         )
@@ -300,8 +303,10 @@ class UpdateModel(QtCore.QObject):
             return
         self._config.set("global", "internal", "last-run-version", current)
         if previous and updater.is_newer(current, previous):
+            # The installers go; their logs stay (small, and they explain a
+            # failed update).
             for leftover in updater.updates_dir().glob("*"):
-                if leftover.is_file():
+                if leftover.is_file() and leftover.suffix.lower() != ".log":
                     leftover.unlink(missing_ok=True)
             signal.showNotification.emit(
                 "Updated", f"Gremlin-Platforms is now version {current}."

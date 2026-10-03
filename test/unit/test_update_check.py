@@ -147,6 +147,20 @@ def test_silent_update_restarts_the_program() -> None:
     args = updater.setup_arguments()
     assert "/SILENT" in args
     assert "/LAUNCH=1" in args
+    assert updater.setup_arguments("C:/u/setup.log")[-1] == "/LOG=C:/u/setup.log"
+
+
+def test_installer_never_deletes_the_old_program_up_front() -> None:
+    """A failed update must leave the version that worked: the old files are
+    moved aside, removed only after the new ones are in, and put back if the
+    install does not finish."""
+    root = pathlib.Path(__file__).parents[2]
+    iss = (root / "installer" / "gremlin_platforms.iss").read_text(encoding="utf-8")
+    assert "[InstallDelete]" not in iss
+    assert "function PrepareToInstall" in iss
+    assert "MoveAside('_internal')" in iss
+    assert "procedure DeinitializeSetup" in iss and "PutBack('_internal')" in iss
+    assert "ssPostInstall" in iss and "RemovePath(AppFile('_internal.old'))" in iss
 
 
 def test_installer_and_workflow_agree_on_names() -> None:

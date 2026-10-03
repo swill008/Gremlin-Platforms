@@ -135,10 +135,15 @@ def file_matches(path: Path, size: int, sha256: str) -> bool:
     return digest.hexdigest() == str(sha256).lower()
 
 
-def setup_arguments() -> list[str]:
+def setup_arguments(log_path: str | None = None) -> list[str]:
     """Arguments for a silent update: progress window only, no questions,
-    start the new version when done (the installer's /LAUNCH=1)."""
-    return ["/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LAUNCH=1"]
+    start the new version when done (the installer's /LAUNCH=1). With
+    log_path, setup writes its log there (kept in the updates folder, so a
+    failed update can be traced)."""
+    args = ["/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LAUNCH=1"]
+    if log_path:
+        args.append(f"/LOG={log_path}")
+    return args
 
 
 def _allowed_url(url: str) -> bool:

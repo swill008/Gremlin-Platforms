@@ -53,10 +53,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
-[InstallDelete]
-; The old version's program files, so nothing stale is left behind. User data
-; lives in %USERPROFILE%\Gremlin Platforms and is never touched.
-Type: filesandordirs; Name: "{app}\_internal"
+; The old version's program files are not deleted up front: PrepareToInstall
+; moves them aside (_internal.old, gremlin_platforms.exe.old) and they are
+; removed only once the new ones are in, or put back if the install fails.
+; User data lives in %USERPROFILE%\Gremlin Platforms and is never touched.
 
 [Files]
 Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -74,11 +74,135 @@ Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: LaunchAfterSilentUpdate
 
 [UninstallDelete]
 Type: files; Name: "{app}\dill_debug.log"
+Type: filesandordirs; Name: "{app}\_internal.old"
+Type: files; Name: "{app}\{#MyAppExeName}.old"
+Type: files; Name: "{app}\.update-in-progress"
 
 [Code]
+var
+  { The old program was moved aside and is put back unless the install
+    finishes. }
+  MovedAside: Boolean;
+  Finished: Boolean;
+
 function LaunchAfterSilentUpdate: Boolean;
 begin
   Result := WizardSilent and (ExpandConstant('{param:LAUNCH|0}') = '1');
+end;
+
+function AppFile(const Name: String): String;
+begin
+  Result := AddBackslash(WizardDirValue) + Name;
+end;
+
+{ Written once the old program is moved aside, removed when the install
+  finishes: found at the start of a later install, it means this one stopped
+  half-way, so the .old copies are the good ones. }
+function MarkerFile: String;
+begin
+  Result := AppFile('.update-in-progress');
+end;
+
+function ExistsAt(const Path: String): Boolean;
+begin
+  Result := DirExists(Path) or FileExists(Path);
+end;
+
+procedure RemovePath(const Path: String);
+begin
+  if DirExists(Path) then
+    DelTree(Path, True, True, True)
+  else if FileExists(Path) then
+    DeleteFile(Path);
+end;
+
+{ Moves Name to Name.old. The old program may still be closing after it
+  started the update, and its files stay locked until it has: keep trying for
+  up to 30 seconds. }
+function MoveAside(const Name: String): Boolean;
+var
+  Tries: Integer;
+begin
+  Result := True;
+  if not ExistsAt(AppFile(Name)) then
+    Exit;
+  for Tries := 1 to 60 do
+  begin
+    if RenameFile(AppFile(Name), AppFile(Name + '.old')) then
+      Exit;
+    Sleep(500);
+  end;
+  Result := False;
+end;
+
+procedure PutBack(const Name: String);
+begin
+  if ExistsAt(AppFile(Name + '.old')) then
+  begin
+    RemovePath(AppFile(Name));
+    RenameFile(AppFile(Name + '.old'), AppFile(Name));
+  end;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if FileExists(MarkerFile) then
+  begin
+    { An earlier install stopped half-way: keep its .old copies (the last
+      working version) and drop the half-copied files. }
+    Log('Earlier install did not finish; keeping its backup.');
+    if ExistsAt(AppFile('_internal.old')) then
+      RemovePath(AppFile('_internal'));
+    if ExistsAt(AppFile('{#MyAppExeName}.old')) then
+      RemovePath(AppFile('{#MyAppExeName}'));
+    MovedAside := True;
+    Exit;
+  end;
+  { Leftovers of a finished install that could not delete them. }
+  RemovePath(AppFile('_internal.old'));
+  RemovePath(AppFile('{#MyAppExeName}.old'));
+  if not MoveAside('_internal') then
+  begin
+    Result := 'Gremlin-Platforms is still running, so it could not be updated. ' +
+      'Close it and run the update again. Nothing was changed.';
+    Exit;
+  end;
+  if not MoveAside('{#MyAppExeName}') then
+  begin
+    PutBack('_internal');
+    Result := 'Gremlin-Platforms is still running, so it could not be updated. ' +
+      'Close it and run the update again. Nothing was changed.';
+    Exit;
+  end;
+  MovedAside := True;
+  if ExistsAt(AppFile('_internal.old')) or ExistsAt(AppFile('{#MyAppExeName}.old')) then
+    SaveStringToFile(MarkerFile, 'update in progress', False);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+  begin
+    { The new version is in: the old one can go. }
+    Finished := True;
+    DeleteFile(MarkerFile);
+    RemovePath(AppFile('_internal.old'));
+    RemovePath(AppFile('{#MyAppExeName}.old'));
+  end;
+end;
+
+procedure DeinitializeSetup;
+begin
+  { Failed or cancelled after the old program was moved aside: put it back,
+    so the version that worked before still starts. }
+  if MovedAside and not Finished then
+  begin
+    Log('Install did not finish; putting the previous version back.');
+    PutBack('_internal');
+    PutBack('{#MyAppExeName}');
+    DeleteFile(MarkerFile);
+  end;
 end;
 
 { True when the folder can be written without admin rights. Removes anything
