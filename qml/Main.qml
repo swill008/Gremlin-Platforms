@@ -265,7 +265,7 @@ ApplicationWindow {
     }
 
     function continueDisplayLeave() {
-        var quitText = _quitPending ? "Display options are not saved. Quit and they will be lost." : ""
+        var quitText = _quitPending ? "Appearance changes are not saved. Quit and they will be lost." : ""
         var catalog = catalogPane()
         if (catalog)
             catalog.leaveMessage = quitText
@@ -1480,7 +1480,7 @@ ApplicationWindow {
                 }
                 Button {
                     visible: configDirection === "dest"
-                    text: outputViewPanel ? "Hide Editor" : "Show Editor"
+                    text: outputViewPanel ? "Hide Appearance" : "Appearance…"
                     // Hiding goes through the panel's close, which asks about unsaved
                     // display options and then hides it.
                     onClicked: {
@@ -1511,7 +1511,7 @@ ApplicationWindow {
                 }
                 Button {
                     visible: configDirection !== "dest" && configDirection !== "logical"
-                    text: catalogPanel ? "Hide Editor" : "Show Editor"
+                    text: catalogPanel ? "Hide Appearance" : "Appearance…"
                     onClicked: {
                         var catalog = catalogPane()
                         if (catalogPanel && catalog && catalog.requestClose) {

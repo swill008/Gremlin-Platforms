@@ -110,7 +110,7 @@ ColumnLayout {
 
                 Switch {
                     id: _temporal
-                    text: "Axes - Temporal"
+                    text: "Axes over time"
                 }
             }
 
@@ -150,7 +150,7 @@ ColumnLayout {
 
             JGText {
                 visible: _axes.count === 0
-                text: destEmpty ? "No dest-claimed axes." : "No claimed axes send to this output."
+                text: destEmpty ? "This output claims no axes." : "No claimed axes send to this output."
                 opacity: 0.45
                 font.pixelSize: Style.dp(13)
             }
@@ -221,7 +221,7 @@ ColumnLayout {
 
             JGText {
                 visible: _buttons.count === 0
-                text: destEmpty ? "No dest-claimed buttons." : "No claimed buttons send to this output."
+                text: destEmpty ? "This output claims no buttons." : "No claimed buttons send to this output."
                 opacity: 0.45
                 font.pixelSize: Style.dp(13)
             }

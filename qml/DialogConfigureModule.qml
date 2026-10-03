@@ -330,7 +330,7 @@ ApplicationWindow {
                     horizontalAlignment: Text.AlignHCenter
                     text: deviceName.toLowerCase() === "keyboard"
                           ? "Press a key to add it."
-                          : "No controls reported. For a stick, check DILL sees the device."
+                          : "No controls reported. For a stick, check that Windows sees it (Set up USB game controllers)."
                 }
             }
         }

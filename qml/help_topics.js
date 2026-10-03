@@ -71,7 +71,7 @@ function topics() {
             + "<li><b>Right-click</b> a card for: Open Configuration, Button Map, Module Setup…, Auto Mapper, the viewer, Calibration, Device Information, Swap device…, stacking, Reset size, Hide card, Reset card layout (its size and stacking), and Delete Device.</li>"
             + "<li><b>Shift-click</b> cards, then <b>Stack selected cards</b>, to group them.</li>"
             + "<li>Each card's <b>last:</b> line shows the latest input it passed or output it sent.</li>"
-            + "<li><b>Compact view</b> and <b>Split</b> (None, Vertical, Horizontal) change the layout; View → <b>Home layout</b> chooses Single list, Side by side, or Stacked. Right-click empty space for <b>Unhide all devices</b> and <b>Reset all card sizes</b>.</li>"
+            + "<li><b>Compact view</b> and <b>Layout</b> (Single list, Side by side, or Stacked; also View → <b>Home layout</b>) change how the cards are laid out. Right-click empty space for <b>Unhide all cards</b> and <b>Reset all card sizes</b>.</li>"
             + "</ul>"),
         topic("Devices and Modules", "Input modules",
             "<p>An input module decides which controls of a physical device exist for Gremlin-Platforms. Only <b>claimed</b> controls reach your actions, the viewers, and the Auto Mapper.</p>"
@@ -102,9 +102,9 @@ function topics() {
             + "<li>OK keeps the action in the profile; File → <b>Save Profile</b> writes it to disk.</li>"
             + "</ul>"
             + "<p>An output device opens its <b>Output View</b> instead: a live view of what its output module sends, labelled “View only — driven by input module mappings.”</p>"),
-        topic("Configuration", "Display options",
-            "<p>Display options change how a Configuration page or Output View looks, not what it does. The look is saved in that device's module file.</p>"
-            + "<p><b>Show Editor</b> opens the panel. Changes show at once and are kept only with <b>Save View Settings</b>. <b>Reset View to Default</b> (red) restores the built-in look; <b>Copy View from…</b> copies another device's look. Both still need Save View Settings. Closing the panel with unsaved changes asks first.</p>"
+        topic("Configuration", "Appearance",
+            "<p>Appearance changes how a Configuration page or Output View looks, not what it does. The look is saved in that device's module file.</p>"
+            + "<p><b>Appearance…</b> opens the panel. Changes show at once and are kept only with <b>Save Appearance</b>. <b>Reset Appearance</b> (red) restores the built-in look; <b>Copy Appearance from…</b> copies another device's look. Both still need Save Appearance. Closing the panel with unsaved changes asks first.</p>"
             + "<p>Sections: <b>Screen</b> (background color or image), <b>Shown</b> (child rows, live bars, LED dots, summary), <b>List</b> and <b>Group</b> (spacing and group cards), <b>Parent row</b> and <b>Child row</b> (row size, padding, colors), <b>Text</b>, <b>Selection</b>, and <b>Editor</b> (the action editor beside a row). Use <b>Open all</b> / <b>Close all</b> to expand them.</p>"),
 
         topic("Actions", "Choosing an action",
@@ -187,8 +187,8 @@ function topics() {
             "<p><b>Assign hardware</b> lists claimed physical controls of the same type (keyboard keys for a button; OSC too). Tick a control to add a Map to Logical Device action to it in the current mode; untick to remove that link. <b>Search</b> filters the list.</p>"
             + "<p>The control then shows <b>Written by</b> with the source. On that line an axis has Absolute/Relative and a scale; a button has <b>Invert</b>.</p>"
             + "<p><b>Add Action</b> opens the action editor beside the list, the same editor as on the Configuration page. Click an action row to edit it; right-click it to <b>Open</b> or <b>Delete</b> it.</p>"),
-        topic("Logical Device", "Display",
-            "<p><b>Show Editor</b> (or <b>Display</b> in the menu) opens the Logical Device display editor. Its sections — Shown, Handles, List, Group, Parent row, Action row, Text, Selection — change how the page looks. Changes are kept with <b>Save View Settings</b> (saved for this page, in the program settings); <b>Reset View to Default</b> restores the built-in look.</p>"),
+        topic("Logical Device", "Appearance",
+            "<p><b>Appearance…</b> (also in the menu) opens the Logical Device appearance panel. Its sections — Shown, Handles, List, Group, Parent row, Action row, Text, Selection — change how the page looks. Changes are kept with <b>Save Appearance</b> (saved for this page, in the program settings); <b>Reset Appearance</b> restores the built-in look.</p>"),
         topic("Modes", "Modes",
             "<p>A mode is a set of actions. The same button can do different things in different modes. A mode can <b>inherit</b> from a parent: anything it does not map itself uses the parent's actions.</p>"
             + "<ul>"
@@ -247,7 +247,7 @@ function topics() {
             + "<li><b>Action</b>: the Action list order, and settings for Axis Delta, Change Mode, Double Tap, Macro, Play Sound, Smart Toggle, Tempo, and Text-To-Speech (voice).</li>"
             + "<li><b>Profile</b>: Load profiles automatically — load a profile when a chosen program starts — and Keep running when the program loses focus.</li>"
             + "<li><b>OSC Connection</b>: Enabled, Input host and port, Output address, and press timing.</li>"
-            + "<li><b>Display</b>: Home card options and <b>Reset all card sizes</b>.</li>"
+            + "<li><b>Home</b>: Home card options and <b>Reset all card sizes</b>.</li>"
             + "<li><b>Auto Mapper</b>: Overwrite used inputs and Remember overwrite.</li>"
             + "</ul>"),
         topic("Options and Profile", "Profile Settings",

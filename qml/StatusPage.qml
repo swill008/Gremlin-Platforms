@@ -392,17 +392,17 @@ Item {
     function explainBody() {
         var lines = ["Delete " + _deleteName + "."]
         if (_deleteKeepModule)
-            lines.push("This does not delete the vJoy or Xbox module file. Only wires stored on this device are removed. Wires from input devices stay.")
+            lines.push("This does not delete the vJoy or Xbox module file. Only actions stored on this device are removed. Actions from input devices stay.")
         else if (_deleteForeign)
-            lines.push("This device is using another device's file. That file stays. Only this device's wires are removed.")
+            lines.push("This device is using another device's file. That file stays. Only this device's actions are removed.")
         else if (_deleteShared)
-            lines.push("Another device uses this module file, so the file stays. Only this device's wires are removed. The card stays.")
+            lines.push("Another device uses this module file, so the file stays. Only this device's actions are removed. The card stays.")
         else
-            lines.push("This removes this device's module file, its pictures, and its wires in every mode. The card's size and stack are cleared.")
+            lines.push("This removes this device's module file, its pictures, and its actions in every mode. The card's size and stack are cleared.")
         if (!_deleteKeepModule)
             lines.push("vJoy and Xbox module files stay. Other input devices that use them are not changed.")
         if (!_deleteKeepModule && !_deleteShared && _deleteListed)
-            lines.push("The Windows device stays, and a stub card remains.")
+            lines.push("The Windows device stays, and its card stays without a module.")
         else if (!_deleteListed)
             lines.push("This device is not connected, so no card will remain.")
         if (!_deleteCanPack)
@@ -417,11 +417,11 @@ Item {
         else
             line += " No copy will be saved."
         if (_deleteKeepModule)
-            line += " The output module file stays. Only this device's wires are removed."
+            line += " The output module file stays. Only this device's actions are removed."
         else if (_deleteShared)
             line += " The module file stays."
         else if (_deleteListed)
-            line += " A stub card will remain."
+            line += " Its card will stay, without a module."
         else
             line += " No card will remain."
         return line
@@ -452,15 +452,15 @@ Item {
         else
             done += " No copy was saved."
         if (result.keepModule)
-            done += " The output module file was kept. Only this device's wires were removed."
+            done += " The output module file was kept. Only this device's actions were removed."
         else if (result.keptFile)
             done += " The module file was kept because another device uses it."
         else if (result.stub)
-            done += " A stub card remains."
+            done += " Its card stays, without a module."
         else
             done += " No card remains."
         if (result.profileSaved === false)
-            done += " Save the profile to keep the wire removal."
+            done += " Save the profile to keep the removal of those actions."
         _doneTitle = "Device deleted"
         _doneMessage = done
         _doneDialog.open()
@@ -595,10 +595,11 @@ Item {
                         _page.model.setCompactView(checked)
                 }
             }
-            Label { text: "Split"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
+            Label { text: "Layout"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
             ComboBox {
                 id: _split
-                model: ["None", "Vertical", "Horizontal"]
+                // The same names as View → Home layout.
+                model: ["Single list", "Side by side", "Stacked"]
                 implicitWidth: Style.dp(140)
                 currentIndex: {
                     var mode = _page.model ? _page.model.splitMode : "none"
@@ -960,7 +961,7 @@ Item {
         menuWidth: Style.dp(240)
         build: function() {
             return MenuModel.menu("home", "Home", [
-                MenuModel.action("Unhide all devices", function() {
+                MenuModel.action("Unhide all cards", function() {
                     if (_page.model)
                         _page.model.unignoreAll()
                 }, !!(_page.model && _page.model.hiddenList().length)),

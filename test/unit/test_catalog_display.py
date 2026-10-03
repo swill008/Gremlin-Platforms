@@ -17,8 +17,8 @@ def test_main_has_catalog_display_button() -> None:
     assert "displayPanelOpen(panelKind(), id)" in text
     assert "setDisplayPanelOpen(kind, id, open)" in text
     assert 'return configDirection === "dest" ? "output" : "configuration"' in text
-    assert 'text: catalogPanel ? "Hide Editor" : "Show Editor"' in text
-    assert 'text: outputViewPanel ? "Hide Editor" : "Show Editor"' in text
+    assert 'text: catalogPanel ? "Hide Appearance" : "Appearance…"' in text
+    assert 'text: outputViewPanel ? "Hide Appearance" : "Appearance…"' in text
     assert "property string lastSaveText" in text
     assert "function onSaveNoted" in text
     assert "showPanel: _root.outputViewPanel" in text
@@ -62,14 +62,14 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "signal.inputItemChanged.connect(self.reload)" not in py
     assert "def assignment_summary" in py
     text = _QML.read_text(encoding="utf-8")
-    assert 'text: "Input Configuration — Display Editor"' in text
+    assert 'text: "Input Configuration — Appearance"' in text
     assert 'text: "Open all"' in text
     assert 'text: "Close all"' in text
     assert "Layout.preferredWidth: Style.dp(360)" in text
-    assert 'text: "Save View\\nSettings"' in text
+    assert 'text: "Save\\nAppearance"' in text
     assert "onClicked: resetCatalog()" in text
-    assert 'text: "Reset View\\nto Default"' in text
-    assert 'text: "Copy View\\nfrom…"' in text
+    assert 'text: "Reset\\nAppearance"' in text
+    assert 'text: "Copy Appearance\\nfrom…"' in text
     assert "id: _savedToast" in text
     assert "interval: 2000" in text
     assert "CloseOnPressOutside" in text
@@ -81,13 +81,13 @@ def test_assignment_summary_counts_destinations() -> None:
     assert 'title: "Child row"' in text
     assert 'title: "Selection"' in text
     output = Path(__file__).resolve().parents[2].joinpath("qml/OutputModuleView.qml").read_text(encoding="utf-8")
-    assert 'text: "Output Module View — Display Editor"' in output
+    assert 'text: "Output Module View — Appearance"' in output
     assert 'title: "Screen"' in output
     assert 'title: "Pads"' in output
     assert 'title: "Colors"' in output
     assert "onClicked: resetView()" in output
     assert "onClicked: saveView()" in output
-    assert 'text: "Save View\\nSettings"' in output
+    assert 'text: "Save\\nAppearance"' in output
     assert "Save with module" not in output
     assert 'title: "SCREEN"' not in output
     assert 'title: "Text"' in text

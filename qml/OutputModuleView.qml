@@ -468,7 +468,7 @@ Item {
         _leaveOnly = true
         _saveGate.detail = leaveMessage.length
             ? leaveMessage
-            : "Display options are not saved. Leave this device and they will be lost."
+            : "Appearance changes are not saved. Leave this device and they will be lost."
         _saveGate.ask()
     }
 
@@ -481,7 +481,7 @@ Item {
     function requestClose() {
         _leaveOnly = false
         if (hasUnsaved()) {
-            _saveGate.detail = "Display options are not saved. Close this panel and they will be lost."
+            _saveGate.detail = "Appearance changes are not saved. Close this panel and they will be lost."
             _saveGate.ask()
             return
         }
@@ -815,7 +815,7 @@ Item {
 
                 RowLayout {
                     Label {
-                        text: "Output Module View — Display Editor"
+                        text: "Output Module View — Appearance"
                         color: Style.fg
                         font.bold: true
                         font.pixelSize: Style.dp(13)
@@ -1122,7 +1122,7 @@ Item {
                     Button {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Style.dp(44)
-                        text: "Reset View\nto Default"
+                        text: "Reset\nAppearance"
                         onClicked: resetView()
                         contentItem: Text {
                             text: parent.text
@@ -1142,7 +1142,7 @@ Item {
                         id: _copyButton
                         Layout.fillWidth: true
                         Layout.preferredHeight: Style.dp(44)
-                        text: "Copy View\nfrom…"
+                        text: "Copy Appearance\nfrom…"
                         onClicked: {
                             refreshCopySources()
                             _copyMenu.openBelow(_copyButton)
@@ -1158,7 +1158,7 @@ Item {
                     Button {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Style.dp(44)
-                        text: "Save View\nSettings"
+                        text: "Save\nAppearance"
                         highlighted: true
                         onClicked: saveView()
                         contentItem: Text {

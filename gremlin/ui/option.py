@@ -33,7 +33,7 @@ SECTION_DISPLAY_NAMES = {
     "action": "Action",
     "profile": "Profile",
     "osc": "OSC Connection",
-    "display": "Display",
+    "display": "Home",
     "automap": "Auto Mapper",
     "button-map": "Button Map",
 }

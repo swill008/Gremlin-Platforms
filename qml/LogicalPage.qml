@@ -317,7 +317,7 @@ Item {
                     }
                 }
                 Button {
-                    text: _root.displayOpen ? "Hide Editor" : "Show Editor"
+                    text: _root.displayOpen ? "Hide Appearance" : "Appearance…"
                     // Hiding asks about unsaved display options, like the panel's close.
                     onClicked: {
                         if (_root.displayOpen)
@@ -818,7 +818,7 @@ Item {
 
                 RowLayout {
                     Label {
-                        text: "Logical Device — Display Editor"
+                        text: "Logical Device — Appearance"
                         color: Style.fg
                         font.bold: true
                         font.pixelSize: Style.dp(13)
@@ -1046,7 +1046,7 @@ Item {
                     Button {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Style.dp(44)
-                        text: "Reset View\nto Default"
+                        text: "Reset\nAppearance"
                         onClicked: _root.resetDisplay()
                         contentItem: Text {
                             text: parent.text
@@ -1065,7 +1065,7 @@ Item {
                     Button {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Style.dp(44)
-                        text: "Save View\nSettings"
+                        text: "Save\nAppearance"
                         highlighted: true
                         onClicked: _root.saveDisplay()
                         contentItem: Text {
@@ -1201,7 +1201,7 @@ Item {
         }
         if (onGroup)
             quick.push(MenuModel.action("Rename group", _renameGroup))
-        quick.push(MenuModel.action("Display", function() { displayOpen = true }))
+        quick.push(MenuModel.action("Appearance…", function() { displayOpen = true }))
 
         var moveTo = []
         if (onRow) {
@@ -1931,7 +1931,7 @@ Item {
             displayOpen = false
             return
         }
-        _displayGate.ask("Display options are not saved. Close this panel and they will be lost.")
+        _displayGate.ask("Appearance changes are not saved. Close this panel and they will be lost.")
     }
 
     ColorDialog {
