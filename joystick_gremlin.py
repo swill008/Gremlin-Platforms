@@ -70,9 +70,10 @@ import gremlin.util
 sys.path.insert(0, gremlin.util.data_folder())
 gremlin.util.setup_userprofile()
 
-# The order of these imports matters: several modules set things up when they
-# load, and gremlin.osc_persist ahead of gremlin.ui.backend is a circular
-# import that stops the program from starting (1.0.18). Never sort them.
+# Several of these modules set things up when they load (settings, QML
+# types), in this order; it has not been checked that any other order gives
+# the same result, so keep it. (Circular imports are a separate matter:
+# test_modules_import_alone loads every module on its own.)
 # isort: off
 import gremlin.audio_player
 import gremlin.config

@@ -286,6 +286,7 @@ class CodeRunner:
 
         self._profile = None
         self._running = False
+        self._mode_listening = False
 
     def is_running(self) -> bool:
         return self._running
@@ -352,6 +353,9 @@ class CodeRunner:
             audio_player.AudioPlayer().start()
             tts.TTSManager().start()
 
+            # Listening before the first switch and after the other listeners
+            # (connected when they were made), as when the mode manager did it.
+            self._listen_to_mode_changes(True)
             mode_manager.ModeManager().switch_to(
                 mode_manager.Mode(start_mode, "Default")
             )
@@ -370,6 +374,7 @@ class CodeRunner:
             raise
 
     def stop(self) -> None:
+        self._listen_to_mode_changes(False)
         if self._running:
             evt_lst = event_handler.EventListener()
             bus = InputModuleRuntime()
@@ -405,6 +410,20 @@ class CodeRunner:
         self.event_handler._previous_mode = self._profile.modes.first_mode
         user_script.callback_registry.clear()
         event_helpers.ButtonReleaseActions().reset()
+
+    def _listen_to_mode_changes(self, on: bool) -> None:
+        if on == self._mode_listening:
+            return
+        mm = mode_manager.ModeManager()
+        if on:
+            mm.mode_changed.connect(self._refresh_on_mode_change)
+        else:
+            mm.mode_changed.disconnect(self._refresh_on_mode_change)
+        self._mode_listening = on
+
+    def _refresh_on_mode_change(self, _mode: str) -> None:
+        if Configuration().value("global", "general", "refresh-axis-on-mode-change"):
+            RefreshPhysicalInputs.refresh_axes()
 
     def _refresh_axes(self) -> None:
         vjoy_state = {}

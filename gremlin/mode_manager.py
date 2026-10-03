@@ -11,7 +11,6 @@ from PySide6 import QtCore
 from gremlin import shared_state
 from gremlin.common import SingletonDecorator
 from gremlin.config import Configuration
-from gremlin.input_refresh import RefreshPhysicalInputs
 from gremlin.types import PropertyType
 
 if TYPE_CHECKING:
@@ -197,10 +196,9 @@ class ModeManager(QtCore.QObject):
         config.set("global", "internal", "last-mode-per-profile", stored)
 
     def _update_mode(self) -> None:
+        # The running profile refreshes the axes on a mode change (CodeRunner).
         self._store_last_mode()
         self.mode_changed.emit(self.current.name)
-        if self._config.value("global", "general", "refresh-axis-on-mode-change"):
-            RefreshPhysicalInputs.refresh_axes()
 
     def rename_mode(self, old_name: str, new_name: str) -> None:
         """Keep the running stack and the saved last mode on a renamed mode."""

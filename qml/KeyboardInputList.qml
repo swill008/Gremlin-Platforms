@@ -107,7 +107,7 @@ Item {
             enabled: !editorLocked
 
             text: "Add Key"
-            callback: (inputs) => { _inputList.model.addKey(inputs) }
+            callback: (inputs) => { _inputList.model.addKey(inputs, uiState.currentMode) }
             multipleInputs: false
             eventTypes: ["key"]
         }

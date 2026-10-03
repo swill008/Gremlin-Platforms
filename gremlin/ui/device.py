@@ -39,7 +39,6 @@ from gremlin.types import (
     PropertyType,
     ScanCode,
 )
-from gremlin.ui import backend
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -808,8 +807,9 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
         self._profile.inputs[dill.UUID_Keyboard].remove(item)
         self.endResetModel()
 
-    @QtCore.Slot(list)
-    def addKey(self, data: list[event_handler.Event]) -> None:
+    @QtCore.Slot(list, str)
+    def addKey(self, data: list[event_handler.Event], mode: str) -> None:
+        """Adds the pressed key to the profile in the mode the user is viewing."""
         if not data:
             return
 
@@ -818,7 +818,7 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
             dill.UUID_Keyboard,
             InputType.Keyboard,
             data[0].identifier,
-            backend.Backend().ui_state.currentMode,
+            mode,
             True,
         )
         self.endResetModel()
