@@ -1989,6 +1989,50 @@ def scenario_export(s: Session) -> None:
     s.record("after", image=True)
 
 
+def scenario_break_group(s: Session) -> None:
+    """Break Group leaves everything as it is: each chip where it is drawn,
+    looking as it does in the group (its own style where it has one, the
+    group's otherwise), and each with the group's hotspot."""
+    _load(s, "evo_r")
+    s.call("setSelection", ["b3", "b4"])
+    s.call("groupSelection")
+    group_id = s.state()["selected"][0]
+    s.call("applyField", "color", "#112233")  # the group's colour
+    s.call("beginGroupEdit", group_id)  # its first chip
+    s.call("applyField", "color", "#FF0000")
+    s.call("applyField", "chipSize", 26)
+    s.call("endGroupEdit")
+    s.call("setSelection", [group_id])
+    group = s.node(group_id)
+    first_hw = group["members"][0]["hwId"]
+    hot = (round(group["hotFx"], 4), round(group["hotFy"], 4))
+    drawn = {
+        m["hwId"]: (
+            round(s.call("memberPageFx", group, m), 4),
+            round(s.call("memberPageFy", group, m), 4),
+        )
+        for m in group["members"]
+    }
+    s.record("grouped", image=True)
+
+    s.call("ungroupSelection")
+    s.record("broken", image=True)
+    chips = {
+        n["hwId"]: n
+        for n in s.state()["nodes"]
+        if n.get("hwId") in drawn and "chipFx" in n
+    }
+    assert set(chips) == set(drawn), chips.keys()
+    for hw, (fx, fy) in drawn.items():
+        chip = chips[hw]
+        assert (round(chip["chipFx"], 4), round(chip["chipFy"], 4)) == (fx, fy), hw
+        assert (round(chip["hotFx"], 4), round(chip["hotFy"], 4)) == hot, hw
+        if hw == first_hw:
+            assert chip["color"] == "#FF0000" and chip["chipSize"] == 26, chip
+        else:
+            assert chip["color"] == "#112233", chip
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
@@ -2017,6 +2061,7 @@ SCENARIOS = {
     "hotspots": scenario_hotspots,
     "deletes": scenario_deletes,
     "group_keeps": scenario_group_keeps,
+    "break_group": scenario_break_group,
 }
 
 

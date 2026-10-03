@@ -738,9 +738,14 @@ function ungroupSelection() {
     var st = _styleOf(n)
     var created = []
     var i
+    // Break Group leaves everything as it is: each chip where it is drawn and
+    // looking as it does in the group (its own style where it has one, the
+    // group's otherwise). Each chip gets the group's hotspot.
+    var looks = ["color", "border", "textColor", "highlight", "hlColor", "hlBorder", "hlText",
+                 "fontSize", "chipSize", "circleSize", "chipShape", "chipFill"]
     for (i = 0; i < mem.length; i++) {
         var kindOf = memberKind(n, mem[i])
-        created.push({
+        var chip = {
             id: _uid(kindOf === "btn" ? "b" : kindOf.charAt(0)), kind: kindOf, hwId: mem[i].hwId,
             prefix: kindOf === "axis" ? "A" : "",
             label: "",
@@ -749,10 +754,14 @@ function ungroupSelection() {
             chipFx: memberPageFx(n, mem[i]),
             chipFy: memberPageFy(n, mem[i]),
             pin: st.pin, spines: [], curve: st.curve,
-            color: st.color, border: st.border, textColor: st.textColor,
-            highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
-            hlText: st.hlText, fontSize: st.fontSize, chipSize: st.chipSize, chipShape: st.chipShape, chipFill: st.chipFill, hotSize: st.hotSize, hotShape: st.hotShape, hotFill: st.hotFill
-        })
+            hotSize: st.hotSize, hotShape: st.hotShape, hotFill: st.hotFill
+        }
+        for (var k = 0; k < looks.length; k++) {
+            var look = styleVal(n, mem[i], looks[k], st[looks[k]])
+            if (look !== undefined)
+                chip[looks[k]] = look
+        }
+        created.push(chip)
     }
     var list = nodes || []
     var idx = nodeIndex(n.id)
