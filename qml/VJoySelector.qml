@@ -130,7 +130,7 @@ Item {
             text: "Output not claimed"
             color: Style.warn
             ToolTip.visible: _unclaimedHover.hovered
-            ToolTip.text: "This output is not claimed by its output module. Claim it in Configure output module, or pick a claimed output."
+            ToolTip.text: "This output is not claimed by its output module. Claim it in Output Module Setup, or pick a claimed output."
             HoverHandler { id: _unclaimedHover }
         }
     }

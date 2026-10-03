@@ -17,8 +17,8 @@ function topics() {
         topic("Getting Started", "First setup",
             "<ol>"
             + "<li>Install <b>vJoy</b> and configure its devices. For an Xbox controller, install <b>ViGEmBus</b>. Neither driver ships with this program.</li>"
-            + "<li>On <b>Home</b>, right-click each physical device and choose <b>Module</b> → <b>Configure input module</b>. Press the controls you will use, or tick them, then <b>Save module</b>.</li>"
-            + "<li>Right-click each vJoy device and choose <b>Module</b> → <b>Configure output module</b>. Tick the outputs you will use, then <b>Save module</b>. The Xbox controller needs no setup.</li>"
+            + "<li>On <b>Home</b>, right-click each physical device and choose <b>Module</b> → <b>Module Setup…</b>. Press the controls you will use, or tick them, then <b>Save module</b>.</li>"
+            + "<li>Right-click each vJoy device and choose <b>Module</b> → <b>Module Setup…</b>. Tick the outputs you will use, then <b>Save module</b>. The Xbox controller needs no setup.</li>"
             + "<li>Double-click a physical device to open <b>Configuration</b>. Use <b>Add Action</b> on an input, for example Map to vJoy, then <b>OK</b>.</li>"
             + "<li><b>File → Save Profile</b> (Ctrl+S).</li>"
             + "<li>Press <b>Toggle</b> to run the profile. Use the <b>vJoy Viewer</b> or <b>Xbox Viewer</b> to watch the result.</li>"
@@ -59,7 +59,7 @@ function topics() {
             "<p>Three separate stores. Saving one does not save the others, except where noted.</p>"
             + "<ul>"
             + "<li><b>Profile</b> (File → Save Profile): modes, actions, profile settings, scripts.</li>"
-            + "<li><b>Module file</b>, one per device: claims, friendly names, the device picture, the Button Map layout, the display look of its Configuration page or Output View, and its calibration. Configure input/output module, Button Map, Calibration, and the display editors write it. Saving an output module also saves the profile when the profile already has a file.</li>"
+            + "<li><b>Module file</b>, one per device: claims, friendly names, the device picture, the Button Map layout, the display look of its Configuration page or Output View, and its calibration. Input/Output Module Setup, Button Map, Calibration, and the display editors write it. Saving an output module also saves the profile when the profile already has a file.</li>"
             + "<li><b>Program settings</b>: Options, Home layout and card sizes, window sizes, HidHide choices, and the Logical Device display look.</li>"
             + "</ul>"
             + "<p>After every save the bottom bar names the file that was written.</p>"),
@@ -68,29 +68,29 @@ function topics() {
             "<p>Home shows one card per device: your physical devices, each vJoy device, and the Xbox controller.</p>"
             + "<ul>"
             + "<li><b>Double-click</b> a card to open its Configuration page (or <b>Output View</b> for an output).</li>"
-            + "<li><b>Right-click</b> a card for: Open Configuration, Button Map, Configure input/output module, Auto Mapper, the viewer, Calibration, Device Information, Assign hardware…, stacking, Reset size, Hide device, Reset card layout (its size and stacking), and Delete Device.</li>"
+            + "<li><b>Right-click</b> a card for: Open Configuration, Button Map, Module Setup…, Auto Mapper, the viewer, Calibration, Device Information, Swap device…, stacking, Reset size, Hide card, Reset card layout (its size and stacking), and Delete Device.</li>"
             + "<li><b>Shift-click</b> cards, then <b>Stack selected cards</b>, to group them.</li>"
             + "<li>Each card's <b>last:</b> line shows the latest input it passed or output it sent.</li>"
             + "<li><b>Compact view</b> and <b>Split</b> (None, Vertical, Horizontal) change the layout; View → <b>Home layout</b> chooses Single list, Side by side, or Stacked. Right-click empty space for <b>Unhide all devices</b> and <b>Reset all card sizes</b>.</li>"
             + "</ul>"),
         topic("Devices and Modules", "Input modules",
             "<p>An input module decides which controls of a physical device exist for Gremlin-Platforms. Only <b>claimed</b> controls reach your actions, the viewers, and the Auto Mapper.</p>"
-            + "<p>Open it from the card menu or Tools → Device setup → <b>Configure input module</b>. Press a control on the device to claim it, or tick it; untick to release it. Give a control a <b>Friendly name</b> if you like. <b>Save module</b> writes the module file; <b>Cancel</b> discards.</p>"
+            + "<p>Open it from the card menu or Tools → Device setup → <b>Input Module Setup</b>. Press a control on the device to claim it, or tick it; untick to release it. Give a control a <b>Friendly name</b> if you like. <b>Save module</b> writes the module file; <b>Cancel</b> discards.</p>"
             + "<p><b>Keyboard</b> is an input module too. Key bindings only fire for keys it claims. Until you save a choice, every key is claimed. Typing in Windows and games is never affected.</p>"
             + "<p>Calibration for a stick is stored in its input module (see Calibration).</p>"),
         topic("Devices and Modules", "vJoy output modules",
             "<p>Each vJoy device has an output module. It is the firewall in front of the vJoy driver: only outputs it <b>claims</b> are sent.</p>"
-            + "<p>Open it from the card menu or Tools → Device setup → <b>Configure output module</b>. Tick the axes, buttons, and hats you will use, then <b>Save module</b>. The vJoy driver sets the maximum; the output module sets what Gremlin-Platforms may use.</p>"
+            + "<p>Open it from the card menu or Tools → Device setup → <b>Output Module Setup</b>. Tick the axes, buttons, and hats you will use, then <b>Save module</b>. The vJoy driver sets the maximum; the output module sets what Gremlin-Platforms may use.</p>"
             + "<p>A wire to an output that is not claimed sends nothing. It is kept, and shown as <b>(not claimed)</b> on the Configuration page, Button Map chips, the viewers, and in Map to vJoy, and the log notes it once. Claim the output to make it work.</p>"),
         topic("Devices and Modules", "Xbox output module",
             "<p>The Xbox controller (<b>Xbox 360 Controller</b>, pad 1) is a virtual Xbox 360 pad provided by the <b>ViGEmBus</b> driver. Its output module passes every control straight to the driver; there is nothing to claim.</p>"
             + "<p>Send to it with the <b>Map to Xbox</b> action. Its page (double-click the card) shows whether ViGEmBus is ready and which inputs drive each control. The <b>Xbox Viewer</b> shows the live pad. The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when Toggle is turned off.</p>"),
         topic("Devices and Modules", "Module files and Device Pack",
-            "<p>Each device has its own module file, found by the device first and then by its name. In Configure input/output module, <b>Module file</b> shows the current file and offers <b>Import from</b> (copy another file into this device's file), <b>Browse for File</b>, <b>Open modules folder</b>, and <b>Delete file</b>. <b>Import image…</b> sets the device picture.</p>"
+            "<p>Each device has its own module file, found by the device first and then by its name. In Input/Output Module Setup, <b>Module file</b> shows the current file and offers <b>Import from</b> (copy another file into this device's file), <b>Browse for File</b>, <b>Open modules folder</b>, and <b>Delete file</b>. <b>Import image…</b> sets the device picture.</p>"
             + "<p>Tools → Device setup → <b>Device Pack</b> shares a device setup. <b>Export</b> saves a device's module file and pictures to a zip. <b>Import</b> loads a zip onto a device you choose under <b>Put this pack on</b>.</p>"),
-        topic("Devices and Modules", "Hidden devices",
+        topic("Devices and Modules", "Hidden cards",
             "<p>Hiding a card only removes it from Home. It does not hide the device from Windows or games; use HidHide for that.</p>"
-            + "<p>Hide a card with its <b>×</b> or <b>Hide device</b> in its menu. View → <b>Hidden devices…</b> lists hidden cards with <b>Unhide</b> and <b>Unhide all</b>.</p>"),
+            + "<p>Hide a card with its <b>×</b> or <b>Hide card</b> in its menu. View → <b>Hidden cards…</b> lists hidden cards with <b>Unhide</b> and <b>Unhide all</b>.</p>"),
 
         topic("Configuration", "Adding actions",
             "<p>The Configuration page lists the claimed inputs of one device and the actions on each. Open it by double-clicking a card, or View → <b>Configuration</b>. The arrows beside the title step to the previous or next device.</p>"
@@ -98,7 +98,7 @@ function topics() {
             + "<li><b>Add Action</b> on an input opens the action editor beside it. Build the action and press <b>OK</b>. <b>Close pane after OK</b> closes the editor when OK succeeds.</li>"
             + "<li><b>Delete</b> removes an action. Leaving an input with unsaved editor changes asks first.</li>"
             + "<li>Actions belong to the mode shown in <b>Mode</b> on the toolbar.</li>"
-            + "<li><b>Move empty to Unmapped</b> lists inputs with no actions under an Unmapped heading.</li>"
+            + "<li><b>Move inputs with no actions to the end</b> lists them together under a <b>No actions</b> heading.</li>"
             + "<li>OK keeps the action in the profile; File → <b>Save Profile</b> writes it to disk.</li>"
             + "</ul>"
             + "<p>An output device opens its <b>Output View</b> instead: a live view of what its output module sends, labelled “View only — driven by input module mappings.”</p>"),
@@ -212,15 +212,15 @@ function topics() {
         topic("Tools", "Device Information",
             "<p>Tools → Device setup → <b>Device Information</b> lists every device Windows reports: Name, Axes, Buttons, Hats, VID, PID, Joystick ID, and Device GUID. Use it to tell identical devices apart.</p>"),
         topic("Tools", "Auto Mapper",
-            "<p>Creates Map to vJoy actions in one step: each claimed input of an input module is wired to the same number on a vJoy output module.</p>"
+            "<p>Creates Map to vJoy actions in one step: each claimed input of an input module gets an action to the same number on a vJoy output module.</p>"
             + "<ol>"
             + "<li>Tools → Mapping → <b>Auto Mapper</b> (or a card's menu).</li>"
             + "<li>Tick the input modules and output modules. The first ticked input goes to the first ticked output, the second to the second, and so on.</li>"
-            + "<li>Choose <b>Select Mode</b>, then <b>Create 1:1 mappings</b>.</li>"
+            + "<li>Choose <b>Select Mode</b>, then <b>Create 1:1 actions</b>.</li>"
             + "</ol>"
             + "<ul>"
             + "<li>Only outputs the output module claims are used. Skipped controls are listed with the reason (not claimed, or not on the vJoy device).</li>"
-            + "<li><b>Also claim the matching outputs on the output module</b> (off by default) claims what the mappings need first.</li>"
+            + "<li><b>Also claim the matching outputs on the output module</b> (off by default) claims what the new actions need first.</li>"
             + "<li><b>Overwrite used inputs</b> replaces existing actions on those inputs; off keeps them.</li>"
             + "<li><b>Combine onto Selected Outputs</b> reuses the outputs when you tick more inputs than outputs.</li>"
             + "</ul>"),
@@ -264,7 +264,7 @@ function topics() {
             "<ul>"
             + "<li>Is the profile running? The toolbar button should read <b>Stop</b> and the bottom bar <b>Running</b>.</li>"
             + "<li>Is the input <b>claimed</b> in its input module? Unclaimed inputs are ignored.</li>"
-            + "<li>Does the wire show <b>(not claimed)</b>? Claim that output in Configure output module.</li>"
+            + "<li>Does the wire show <b>(not claimed)</b>? Claim that output in Output Module Setup.</li>"
             + "<li>Is the action in the running <b>Mode</b> (on the toolbar)? Only that mode's actions (and its parents') run.</li>"
             + "<li><b>system.log</b> in the Logs folder (Options → Global → Files) notes each blocked output once.</li>"
             + "</ul>"),
@@ -275,10 +275,10 @@ function topics() {
             + "<li>Check the action uses <b>Map to Xbox</b> with <b>Xbox 360 Controller</b> and the right Target.</li>"
             + "</ul>"),
         topic("Troubleshooting", "A key binding does not fire",
-            "<p>Open Configure input module on <b>Keyboard</b> and check the key is claimed. Once you save a keyboard choice, only claimed keys fire.</p>"),
+            "<p>Open Input Module Setup on <b>Keyboard</b> and check the key is claimed. Once you save a keyboard choice, only claimed keys fire.</p>"),
         topic("Troubleshooting", "A device is missing or seen twice",
             "<ul>"
-            + "<li>Not on Home: check View → <b>Hidden devices…</b>.</li>"
+            + "<li>Not on Home: check View → <b>Hidden cards…</b>.</li>"
             + "<li>A game sees both the physical stick and vJoy: hide the physical stick with <b>HidHide</b>.</li>"
             + "<li>Bindings belong to a device that was replaced: use <b>Swap Devices</b>.</li>"
             + "</ul>")
@@ -311,7 +311,7 @@ function buttonMapTopics() {
         topic("Getting started", "Editor options",
             "<p><b>Edit → Editor options…</b> in the Button Map opens the Button Map's settings. They apply to every device.</p>"
             + "<ul>"
-            + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>Unbound</b> (see Action labels).</li>"
+            + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>No actions</b> (see Action labels).</li>"
             + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror layout and Copy layout from also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
             + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
             + "<li><b>View</b>: <b>Zoom speed</b>, how fast the mouse wheel zooms; <b>Rulers</b>, shown or not (also View → Rulers).</li>"
@@ -367,7 +367,7 @@ function buttonMapTopics() {
             + "<li><b>Map to Keyboard</b>: the keys, such as Ctrl+G. <b>Map to vJoy</b> and <b>Map to Xbox</b>: the output, such as vJoy 1 B5. <b>Change Mode</b>: → and the target mode, or Cycle, Previous mode, Unwind mode. <b>Text to Speech</b>: what it says. Mouse, Macro, Load profile, Run command, Sound, Pause / resume and Logical Device show those words.</li>"
             + "<li>Actions inside Chain, Tempo, Double Tap, Condition and the like give their text; response curves and deadzones give none.</li>"
             + "</ul>"
-            + "<p><b>Several actions</b> shows the first one's text, or all of them joined with +. <b>Unbound</b> sets what a chip shows when its control does nothing in that mode: its name, nothing, or a dash. Labels follow the profile as you edit it.</p>"),
+            + "<p><b>Several actions</b> shows the first one's text, or all of them joined with +. <b>No actions</b> sets what a chip shows when its control does nothing in that mode: its name, nothing, or a dash. Labels follow the profile as you edit it.</p>"),
         topic("Chips", "Hotspots and leaders",
             "<p>Each chip has a <b>hotspot</b>, the dot on the photo marking the physical control, and a <b>leader</b> line between them. Drag the chip and the hotspot separately. A chip's <b>Hotspot</b> section sets how the mark looks: <b>Size</b>; <b>Shape</b> (Round, Square, Diamond, Triangle pointing along the leader, Ring, Target, Crosshair, Plus, X, Pin, or None for no mark); <b>Fill</b> (Filled, Hollow, Half); <b>Line</b> (Thin, Medium, Thick); <b>Opacity</b>; <b>Halo</b>, a soft glow that stands out on busy photos; <b>Number</b>, the control's number inside; <b>Highlight on press</b>, the <b>Pressed colour…</b> while the control is held; <b>Pulse on press</b>, a ring that grows from it on each press; <b>Show on live map</b>, off to see it only while editing; and <b>Hotspot colour…</b>.</p>"
             + "<p>Click a leader to select it. Drag a segment to bend it; that adds a curve point (a spine). Click a spine to select it; hold the right button on a spine for about half a second to delete it.</p>"

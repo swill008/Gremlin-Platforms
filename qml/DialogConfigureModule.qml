@@ -80,7 +80,7 @@ ApplicationWindow {
     height: Style.dp(640)
     minimumWidth: Style.dp(800)
     minimumHeight: Style.dp(480)
-    title: direction === "dest" ? "Configure output module" : "Configure input module"
+    title: direction === "dest" ? "Output Module Setup" : "Input Module Setup"
     color: Style.background
     U.Universal.theme: Style.theme
     flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowSystemMenuHint

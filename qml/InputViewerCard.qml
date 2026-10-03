@@ -116,7 +116,7 @@ ColumnLayout {
 
             JGText {
                 visible: destEmpty
-                text: "Output module has no claimed controls. Configure output module to fill the right half."
+                text: "Output module has no claimed controls. Output Module Setup to fill the right half."
                 color: Style.fgMuted
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -150,7 +150,7 @@ ColumnLayout {
 
             JGText {
                 visible: _axes.count === 0
-                text: destEmpty ? "No dest-claimed axes." : "No claimed axes wired to this dest."
+                text: destEmpty ? "No dest-claimed axes." : "No claimed axes send to this output."
                 opacity: 0.45
                 font.pixelSize: Style.dp(13)
             }
@@ -221,7 +221,7 @@ ColumnLayout {
 
             JGText {
                 visible: _buttons.count === 0
-                text: destEmpty ? "No dest-claimed buttons." : "No claimed buttons wired to this dest."
+                text: destEmpty ? "No dest-claimed buttons." : "No claimed buttons send to this output."
                 opacity: 0.45
                 font.pixelSize: Style.dp(13)
             }

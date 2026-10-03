@@ -1246,7 +1246,7 @@ Item {
                 ComboBox {
                     id: _typeBox
                     Layout.preferredWidth: Style.dp(180)
-                    model: ["All types", "Map to vJoy", "Map to keyboard", "Map to mouse", "Map to Xbox", "Macro", "Change mode", "Other", "Unmapped"]
+                    model: ["All types", "Map to vJoy", "Map to keyboard", "Map to mouse", "Map to Xbox", "Macro", "Change mode", "Other", "No actions"]
                     onActivated: {
                         var tags = ["all", "vjoy", "keyboard", "mouse", "xbox", "macro", "mode", "other", "unmapped"]
                         _catalog.typeFilter = tags[currentIndex]
@@ -1508,7 +1508,7 @@ Item {
                             }
                             Label {
                                 visible: lv.summaryOn || rowKind === "leaf"
-                                text: rowKind === "leaf" ? destLabel : (rowKind === "unmapped-header" ? summary : (rowKind === "unmapped" ? "Not bound" : summary))
+                                text: rowKind === "leaf" ? destLabel : (rowKind === "unmapped-header" ? summary : (rowKind === "unmapped" ? "No actions" : summary))
                                 color: lv.cMuted
                                 font.pixelSize: lv.sFont
                                 elide: Text.ElideRight
@@ -1566,7 +1566,7 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 text: parent._filtered
                     ? "No inputs match the current filters."
-                    : "This window only shows what the input module passes.\nRight-click the card → Configure input module, press the controls to claim, then Save module."
+                    : "This window only shows what the input module passes.\nRight-click the card → Module → Module Setup…, press the controls to claim, then Save module."
             }
             Button {
                 visible: _catalog.count === 0 && parent._filtered
@@ -1820,11 +1820,11 @@ Item {
                             }
                         }
                         FoldSection {
-                            title: "Unmapped Row"
+                            title: "No-actions Row"
                             open: openUnmapped
                             onToggled: (v) => { openUnmapped = v }
                             RowLayout {
-                                Label { text: "Space before Unmapped"; color: Style.fg; Layout.fillWidth: true }
+                                Label { text: "Space before No actions"; color: Style.fg; Layout.fillWidth: true }
                                 TrackSpin { from: 0; to: 80; source: unmappedGap; onUserSet: (v) => { unmappedGap = v; }}
                             }
                         }

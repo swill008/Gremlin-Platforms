@@ -1170,8 +1170,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
         for row in self._rows:
             if str(getattr(row, "name", "") or "") == name:
                 target = str(getattr(row, "target", "") or "")
-                return "Bound to: [" + (target if target else "Not bound") + "]"
-        return "Bound to: [Not bound]"
+                return "Driven by: [" + (target if target else "nothing") + "]"
+        return "Driven by: [nothing]"
 
     @QtCore.Slot(result="QVariantMap")
     def focusedCardMap(self) -> dict:

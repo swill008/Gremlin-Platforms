@@ -1465,7 +1465,7 @@ ApplicationWindow {
                     Label {
                         id: _destBound
                         visible: configDirection === "dest"
-                        text: "Bound to: [Not bound]"
+                        text: "Driven by: [nothing]"
                         color: Style.fgMuted
                         font.pixelSize: Style.dp(12)
                         wrapMode: Text.WordWrap
@@ -1473,7 +1473,7 @@ ApplicationWindow {
                     }
                     Label {
                         visible: configDirection === "dest"
-                        text: "View only — driven by input module mappings."
+                        text: "View only — shows what the input modules' actions send."
                         color: Style.fgMuted
                         font.pixelSize: Style.dp(12)
                     }
@@ -1495,7 +1495,7 @@ ApplicationWindow {
                 }
                 CheckBox {
                     visible: configDirection !== "dest" && configDirection !== "logical"
-                    text: "Move empty to Unmapped"
+                    text: "Move inputs with no actions to the end"
                     checked: _root.parkEmptyInUnmapped
                     onToggled: {
                         _root.parkEmptyInUnmapped = checked
@@ -1504,7 +1504,7 @@ ApplicationWindow {
                             catalog.parkEmptyInUnmapped = checked
                     }
                     PointerTip {
-                        text: "When checked, a control with no actions is listed under Unmapped."
+                        text: "When checked, controls with no actions are listed together under No actions."
                         delay: 400
                         show: true
                     }

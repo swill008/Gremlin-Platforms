@@ -113,9 +113,10 @@ Item {
                 Layout.minimumWidth: Style.dp(110)
                 Layout.maximumWidth: Style.dp(200)
 
-                placeholderText: "Description"
+                // Glossary: "Note" (the Description action keeps its name).
+                placeholderText: "Note"
                 text: _root.inputBinding.rootAction ?
-                    _root.inputBinding.rootAction.actionLabel : "Description"
+                    _root.inputBinding.rootAction.actionLabel : ""
 
                 onTextEdited: () => {
                     _root.inputBinding.rootAction.actionLabel = text

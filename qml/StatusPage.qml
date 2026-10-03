@@ -1171,7 +1171,7 @@ Item {
     Label {
         anchors.centerIn: parent
         visible: model !== null && shownCount === 0
-        text: "No devices to show. Plug in hardware or unhide a card from View → Hidden devices…"
+        text: "No devices to show. Plug in hardware or unhide a card from View → Hidden cards…"
         color: Style.fgMuted
     }
 }

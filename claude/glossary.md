@@ -8,6 +8,7 @@ Tracker refs in brackets.
 |---|---|---|
 | Starting / stopping the profile [D1] | **Run** / **Stop**; status **Running** / **Stopped**; toolbar button "Run" (shows "Stop" while running); tray "Run profile" / "Stop profile" | Toggle, Toggle Active, Active, Not Running, Activate, Deactivate, "Activate Gremlin" |
 | What an input does [D2, D11] | **action** (an input's actions); an input with none: **No actions** | mapping, wired, Unmapped, Not bound, Unbound, Empty ("wire" stays for Button Map lines) |
+| The input device that feeds an output card | **Driven by: [device]**, or **Driven by: [nothing]** | Bound to: [Not bound] |
 | The page where you edit a device's actions [D6] | **Configuration** (unchanged) | |
 | The window for a device's module (claims, file, picture) [D6] | **Module Setup** ("Module Setup…" on the card and in Tools) | Configure input module / Configure output module |
 | The editor for how a page looks (Home, Configuration, Logical) [D9] | **Appearance** ("Appearance…") | Show Editor, Display, Display Editor, View Settings, Display options |

@@ -158,7 +158,7 @@ Rectangle {
         }
 
         Label {
-            text: "Bound to: [" + (target.length ? target : "Not bound") + "]"
+            text: "Driven by: [" + (target.length ? target : "nothing") + "]"
             color: Style.fgMuted
             font.pixelSize: Style.dp(11)
             wrapMode: Text.WordWrap
@@ -308,7 +308,7 @@ Rectangle {
             cursorShape: Qt.PointingHandCursor
             onClicked: _card.ignoreDevice()
         }
-        PointerTip { text: "Hide device" }
+        PointerTip { text: "Hide card" }
     }
 
     Button {
@@ -426,7 +426,7 @@ Rectangle {
             MenuModel.action("Button Map", function() { _card.openButtonMap() })
         ], [
             MenuModel.section("module", "Module", [
-                MenuModel.action(dest ? "Configure output module" : "Configure input module",
+                MenuModel.action("Module Setup…",
                                  function() { _card.configureModule() }),
                 MenuModel.action("Auto Mapper", function() { _card.autoMap() }),
                 dest ? null : MenuModel.action("Calibration", function() { _card.openCalibration() })
@@ -443,8 +443,8 @@ Rectangle {
                 MenuModel.action("Reset all card sizes", function() { _card.resetAllSizes() })
             ]),
             MenuModel.section("device", "Device", [
-                dest ? null : MenuModel.action("Assign hardware…", function() { _card.assignHardware() }),
-                MenuModel.action("Hide device", function() { _card.ignoreDevice() }),
+                dest ? null : MenuModel.action("Swap device…", function() { _card.assignHardware() }),
+                MenuModel.action("Hide card", function() { _card.ignoreDevice() }),
                 MenuModel.action("Reset card layout", function() { _card.clearSettings() }),
                 MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })
             ])

@@ -57,14 +57,14 @@ from pathlib import Path
 
 def test_status_card_always_shows_bound_to() -> None:
     text = Path(__file__).resolve().parents[2].joinpath("qml/StatusCard.qml").read_text(encoding="utf-8")
-    assert 'Bound to: [' in text
-    assert "Not bound" in text
+    assert 'Driven by: [' in text
+    assert '"nothing"' in text
     assert "visible: target.length" not in text
 
 
 def test_bound_line_format_in_qml_and_model() -> None:
     main = Path(__file__).resolve().parents[2].joinpath("qml/Main.qml").read_text(encoding="utf-8")
     model = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/module_model.py").read_text(encoding="utf-8")
-    assert "Bound to: [Not bound]" in main
+    assert "Driven by: [nothing]" in main
     assert "def boundLine" in model
     assert "refreshDestBound" in main

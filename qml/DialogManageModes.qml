@@ -77,7 +77,7 @@ ApplicationWindow {
             Layout.rightMargin: Style.dp(12)
             wrapMode: Text.WordWrap
             color: Style.fgMuted
-            text: "A mode uses its parent's mappings for any input it does not map itself."
+            text: "A mode uses its parent's actions for any input that has none in this mode."
         }
 
         JGListView  {

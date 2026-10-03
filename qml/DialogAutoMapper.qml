@@ -180,7 +180,7 @@ ApplicationWindow {
                 text: "Also claim the matching outputs on the output module"
                 checked: false
                 ToolTip.visible: hovered
-                ToolTip.text: "Off: map only to outputs the output module already claims. On: claim the outputs the mappings need on the output module first."
+                ToolTip.text: "Off: make actions only for outputs the output module already claims. On: claim the outputs the new actions need on the output module first."
             }
         }
 
@@ -188,7 +188,7 @@ ApplicationWindow {
             Layout.topMargin: Style.dp(10)
 
             Button {
-                text: "Create 1:1 mappings"
+                text: "Create 1:1 actions"
 
                 onClicked: () => {
                     var run = function() {
@@ -212,7 +212,7 @@ ApplicationWindow {
                     _overwriteGate.confirmThen("Replace existing actions",
                         "Overwrite used inputs is on. Every action already on the selected inputs in the "
                         + _modeSelector.currentText + " mode, macros included, will be removed and replaced "
-                        + "with the new mappings.\n\nNothing is saved yet: to undo, load the profile again "
+                        + "with the new actions.\n\nNothing is saved yet: to undo, load the profile again "
                         + "without saving.",
                         "Replace them", run, null, true)
                 }
@@ -226,7 +226,7 @@ ApplicationWindow {
                 Layout.leftMargin: Style.dp(10)
                 Layout.rightMargin: Style.dp(10)
 
-                text: "Select an input module and an output module, then create 1:1 mappings."
+                text: "Select an input module and an output module, then create 1:1 actions."
             }
 
             IconButton {
@@ -234,12 +234,12 @@ ApplicationWindow {
                 font.pixelSize: Style.dp(24)
 
                 PointerTip {
-                    text: "Full guide: Help → User Guide → Tools → Auto Mapper. This tool builds a starting 1:1 mapping.\n\n"
+                    text: "Full guide: Help → User Guide → Tools → Auto Mapper. This tool builds starting 1:1 Map to vJoy actions.\n\n"
                         + "Mode selection defaults to the default mode, change this if required for another mode.\n\n"
-                        + "This tool does not match devices by name. It uses the order shown in the lists. The first checked input is wired to the first checked output. The second input is wired to the second output.\n\n"
-                        + "Overwrite used inputs: Replaces wires that already exist on those controls in the selected mode. Leave it off, and those wires stay as they are.\n\n"
+                        + "This tool does not match devices by name. It uses the order shown in the lists. The first checked input gets an action to the first checked output, the second input to the second output, and so on.\n\n"
+                        + "Overwrite used inputs: replaces the actions those controls already have in the selected mode. Leave it off, and those actions stay as they are.\n\n"
                         + "Combine onto Selected Outputs: This should stay off when each input should have its own output. Turn it on when you check more inputs than outputs.\n\n"
-                        + "Also claim the matching outputs: Off, mappings are made only to outputs the output module already claims; the rest are listed as skipped. On, the outputs the mappings need are claimed on the output module first."
+                        + "Also claim the matching outputs: off, actions are made only for outputs the output module already claims; the rest are listed as skipped. On, the outputs the new actions need are claimed on the output module first."
                     delay: 500
                 }
             }

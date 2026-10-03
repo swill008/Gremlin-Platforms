@@ -15,7 +15,7 @@ ApplicationWindow {
     id: _win
     width: 420
     height: 360
-    title: "Hidden devices"
+    title: "Hidden cards"
 
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }

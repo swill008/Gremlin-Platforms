@@ -56,6 +56,7 @@ _ENTRY_TITLES = {
     "enable-auto-loading": "Load profiles automatically",
     "auto-loading": "Programs and their profiles",
     "resolution-mode": "Mode cycle resolution",
+    "unbound": "No actions",
 }
 
 # Group order inside a section; others follow by name.

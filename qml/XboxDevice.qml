@@ -113,7 +113,7 @@ Item {
 
                     Label {
                         visible: incoming.length === 0
-                        text: "Unmapped"
+                        text: "No actions"
                         opacity: 0.45
                         font.pixelSize: Style.dp(11)
                     }
