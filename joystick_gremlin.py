@@ -70,43 +70,48 @@ import gremlin.util
 sys.path.insert(0, gremlin.util.data_folder())
 gremlin.util.setup_userprofile()
 
+# The order of these imports matters: several modules set things up when they
+# load, and gremlin.osc_persist ahead of gremlin.ui.backend is a circular
+# import that stops the program from starting (1.0.18). Never sort them.
+# isort: off
 import gremlin.audio_player
 import gremlin.config
-import gremlin.deferred_write
 import gremlin.device_initialization
 import gremlin.error
 import gremlin.event_handler
 import gremlin.mode_manager
-import gremlin.osc
-import gremlin.osc_persist  # noqa: F401
 import gremlin.plugin_manager
 import gremlin.signal
 import gremlin.tts
 import gremlin.types
 import gremlin.ui.action_image_generator
 import gremlin.ui.backend
-import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
 import gremlin.ui.button_map_options
-import gremlin.ui.debug_mode
-import gremlin.ui.device_names  # noqa: F401
-import gremlin.ui.hidhide  # noqa: F401
-import gremlin.ui.live_debug  # noqa: F401
-import gremlin.ui.log_option  # noqa: F401
-import gremlin.ui.logical_layout  # noqa: F401
-import gremlin.ui.module_calibration  # noqa: F401
-import gremlin.ui.module_model  # noqa: F401
-import gremlin.ui.module_pairing  # noqa: F401
-import gremlin.ui.option
-import gremlin.ui.osc_device_model  # noqa: F401
-import gremlin.ui.osc_option  # noqa: F401
-import gremlin.ui.shell_option  # noqa: F401
 import gremlin.ui.system_tray
+import gremlin.ui.option
+import gremlin.ui.osc_option  # noqa: F401
+import gremlin.ui.log_option  # noqa: F401
 import gremlin.ui.tools
 import gremlin.ui.ui_scale_option
 import gremlin.ui.update_model  # noqa: E402
 import gremlin.ui.util
+import gremlin.osc
+import gremlin.ui.osc_device_model  # noqa: F401
+import gremlin.ui.device_names  # noqa: F401
+import gremlin.ui.hidhide  # noqa: F401
 import gremlin.ui.vjoy_status
 import gremlin.ui.window_placement
+import gremlin.ui.module_model  # noqa: F401
+import gremlin.deferred_write
+import gremlin.ui.debug_mode
+import gremlin.ui.live_debug  # noqa: F401
+import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
+import gremlin.ui.logical_layout  # noqa: F401
+import gremlin.ui.module_pairing  # noqa: F401
+import gremlin.ui.module_calibration  # noqa: F401
+import gremlin.ui.shell_option  # noqa: F401
+import gremlin.osc_persist  # noqa: F401
+# isort: on
 
 
 def configure_logger(config: dict[str, Any]) -> None:
