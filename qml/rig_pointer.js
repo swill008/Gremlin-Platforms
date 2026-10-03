@@ -73,14 +73,7 @@ function applyPointer(mx, my, altOff) {
             moveTablePack(pack, dFx, dFy)
         } else {
             var ids = (selectedIds && selectedIds.length) ? selectedIds : [selectedId]
-            for (var i = 0; i < ids.length; i++) {
-                var q = nodeAt(ids[i])
-                if (!q || isLocked(q))
-                    continue
-                q.chipFx = clamp01(q.chipFx + dFx)
-                q.chipFy = clamp01(q.chipFy + dFy)
-                refreshChipPack(q)
-            }
+            _moveSelected(ids, "", dFx, dFy)
         }
     } else if (dragKind === "spine" && dragSpine >= 0) {
         var Ls = currentLeader(n)
@@ -116,23 +109,30 @@ function applyPointer(mx, my, altOff) {
             return
         }
         var around = n.around || []
+        var stepFx = ddx / Math.max(1, spaceRect().w)
+        var stepFy = ddy / Math.max(1, spaceRect().h)
         if (around.length) {
             var ai
             for (ai = 0; ai < around.length; ai++) {
                 var qn = nodeAt(around[ai])
                 if (!qn || isDraw(qn))
                     continue
-                qn.chipFx = clamp01(qn.chipFx + ddx / Math.max(1, spaceRect().w))
-                qn.chipFy = clamp01(qn.chipFy + ddy / Math.max(1, spaceRect().h))
+                qn.chipFx = clamp01(qn.chipFx + stepFx)
+                qn.chipFy = clamp01(qn.chipFy + stepFy)
             }
         } else {
             var oldFx = n.fx || 0
             var oldFy = n.fy || 0
             n.fx = xToFx(np.x)
             n.fy = yToFy(np.y)
-            shiftIndependentParts(n, n.fx - oldFx, n.fy - oldFy)
+            stepFx = n.fx - oldFx
+            stepFy = n.fy - oldFy
+            shiftIndependentParts(n, stepFx, stepFy)
         }
         followTablePacked(n)
+        // The rest of a selection that holds this drawing moves with it.
+        if ((selectedIds || []).indexOf(n.id) >= 0)
+            _moveSelected(selectedIds, n.id, stepFx, stepFy)
         syncOverlayChips(n)
     } else if (dragKind.indexOf("cell-") === 0) {
         if (!isTable(n) || isLocked(n) || !tableHasTarget())
@@ -167,4 +167,26 @@ function applyPointer(mx, my, altOff) {
     else
         clearMoveGuides()
     repaint()
+}
+
+// Moves the selected items by a page fraction while one of them is dragged
+// (skipId: the dragged drawing, already moved). Chips move as a dragged chip
+// does; drawings, text, tables and pictures move by their box (moveNodeBy,
+// as arrow keys do): they have no chipFx, which used to become NaN.
+function _moveSelected(ids, skipId, dFx, dFy) {
+    var seenPack = {}
+    for (var i = 0; i < (ids || []).length; i++) {
+        if (ids[i] === skipId)
+            continue
+        var q = nodeAt(ids[i])
+        if (!q || isLocked(q))
+            continue
+        if (isDraw(q)) {
+            moveNodeBy(q, dFx, dFy, seenPack)
+            continue
+        }
+        q.chipFx = clamp01(q.chipFx + dFx)
+        q.chipFy = clamp01(q.chipFy + dFy)
+        refreshChipPack(q)
+    }
 }

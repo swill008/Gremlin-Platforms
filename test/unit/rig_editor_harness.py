@@ -2053,6 +2053,30 @@ def scenario_live_color(s: Session) -> None:
     assert s.node("b3").get("color") != "#201840"
 
 
+def scenario_mixed_drag(s: Session) -> None:
+    """Dragging one item of a selection of chips and drawings moves them all
+    by the same amount (drawings used to stay behind and get NaN)."""
+    _load(s, "evo_r")
+    s.call("addDrawFree", "rect", 300, 300, 420, 380)
+    rect_id = s.state()["selected"][0]
+    s.call("setSelection", ["b3", rect_id])
+    chip0 = s.node("b3")
+    rect0 = s.node(rect_id)
+    # A short drag, clear of the page edges (where drawings stop, as with
+    # the arrow keys).
+    start = s.center("b3")
+    s.drag(start, QtCore.QPoint(start.x() + 40, start.y() - 30))
+    chip1 = s.node("b3")
+    rect1 = s.node(rect_id)
+    d_chip = (chip1["chipFx"] - chip0["chipFx"], chip1["chipFy"] - chip0["chipFy"])
+    d_rect = (rect1["fx"] - rect0["fx"], rect1["fy"] - rect0["fy"])
+    assert abs(d_chip[0]) > 0.01, d_chip
+    # The same move; the dragged chip alone may snap to a guide on release.
+    assert all(abs(a - b) < 0.01 for a, b in zip(d_chip, d_rect)), (d_chip, d_rect)
+    assert "chipFx" not in rect1, rect1
+    s.record("chip-dragged", image=True)
+
+
 SCENARIOS = {
     "load_l": scenario_load_l,
     "session_r": scenario_session_r,
@@ -2083,6 +2107,7 @@ SCENARIOS = {
     "group_keeps": scenario_group_keeps,
     "break_group": scenario_break_group,
     "live_color": scenario_live_color,
+    "mixed_drag": scenario_mixed_drag,
 }
 
 
