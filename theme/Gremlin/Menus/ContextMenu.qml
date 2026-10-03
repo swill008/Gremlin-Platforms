@@ -112,6 +112,7 @@ Popup {
     function run(item, value) {
         if (!item || !item.enabled)
             return
+        var kindBefore = model.kind
         if (item.kind === "action") {
             if (!item.keepOpen && !stayOpen)
                 close()
@@ -128,8 +129,13 @@ Popup {
         } else {
             item.run(value)
         }
-        if (opened)
+        if (opened) {
             refresh()
+            // stayOpen: an action that took away what the menu was for (Break
+            // Group, Delete) closes it rather than showing another thing's menu.
+            if (stayOpen && model.kind !== kindBefore)
+                close()
+        }
     }
 
     function _shown(item) {
