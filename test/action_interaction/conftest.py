@@ -32,6 +32,13 @@ from gremlin.types import (
     InputType,
 )
 from gremlin.util import clamp
+from test import fake_hardware
+
+# The fake joystick driver and vJoy before the Gremlin app starts: these
+# tests feed inputs through a logical device and never need the real ones
+# (same results on every PC, and no clash with a Gremlin-Platforms open on
+# this one).
+fake_hardware.install(vjoy_ids=(1,))
 
 
 @pytest.fixture(scope="package", autouse=True)

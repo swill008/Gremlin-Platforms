@@ -178,6 +178,40 @@ def vjoy_control_device(vjoy_control_device_id: int) -> Iterator[vjoy.VJoy]:
         vjoy.VJoyProxy.reset()
 
 
+def _gremlin_platforms_open() -> bool:
+    """True while Gremlin-Platforms runs on this PC (the installed program or
+    joystick_gremlin.py from source)."""
+    import subprocess
+
+    try:
+        found = subprocess.run(
+            [
+                "powershell", "-NoProfile", "-Command",
+                "Get-CimInstance Win32_Process | Where-Object {"
+                " $_.Name -eq 'gremlin_platforms.exe' -or "
+                "$_.Name -eq 'joystick_gremlin.exe' -or "
+                "(($_.Name -eq 'python.exe' -or $_.Name -eq 'pythonw.exe') -and "
+                "$_.CommandLine -match 'joystick_gremlin\\.py')"
+                "} | ForEach-Object { $_.ProcessId }",
+            ],
+            capture_output=True, text=True, timeout=15, creationflags=0x08000000,
+        )
+    except Exception:
+        return False
+    return any(line.strip().isdigit() for line in found.stdout.splitlines())
+
+
+@pytest.fixture(scope="package", autouse=True)
+def _not_while_gremlin_is_open() -> None:
+    """These tests write to a real vJoy device: not while Gremlin-Platforms is
+    open, where the program (and any game) would see those inputs."""
+    if _gremlin_platforms_open():
+        pytest.skip(
+            "Gremlin-Platforms is open: close it to run the integration tests "
+            "(they drive a real vJoy device)."
+        )
+
+
 @pytest.fixture(scope="package")
 def vjoy_di_devices_or_skip() -> list[dill.DeviceSummary]:
     """Returns list of DirectInput vJoy device summaries, else skips dependent tests."""
