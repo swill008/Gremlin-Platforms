@@ -548,6 +548,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._rows: list[ModuleRow] = []
+        self._hidden_names: dict[str, str] = {}
         self._focus = ""
         self._last: dict[str, tuple[str, str]] = {}
         self._last_saved_path = ""
@@ -870,6 +871,14 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(result=list)
     def hiddenList(self) -> list[str]:
         return sorted(_hidden_slugs())
+
+    @QtCore.Slot(result=list)
+    def hiddenCards(self) -> list[dict[str, str]]:
+        """Each hidden card as {slug, name}, by name (Home menu → Hidden
+        Cards). A card whose device is not here now shows its stored id."""
+        names = self._hidden_names
+        cards = [{"slug": s, "name": names.get(s, s)} for s in _hidden_slugs()]
+        return sorted(cards, key=lambda c: c["name"].lower())
 
     @QtCore.Slot(str, str)
     def moveSlugBefore(self, slug: str, before_slug: str) -> None:
@@ -1429,6 +1438,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._dest_targets = {}
         self._source_claims = {}
         hidden = _hidden_slugs()
+        # The names of the hidden cards (Home menu → Hidden Cards).
+        hidden_names: dict[str, str] = {}
+        self._hidden_names = hidden_names
         show_stubs = _show_stubs()
         rows: list[ModuleRow] = []
 
@@ -1436,6 +1448,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             name = dev.name
             slug = _slug(name)
             if slug in hidden:
+                hidden_names[slug] = name
                 continue
             saved = module_exists(name)
             if not _show_unconfigured(slug, saved, show_stubs):
@@ -1471,6 +1484,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
         def extra(slug: str, name: str, guid: str, tab: str, bus: str, direction: str) -> None:
             if slug in hidden:
+                hidden_names[slug] = name
                 return
             saved = module_exists(name)
             if not _show_unconfigured(slug, saved, show_stubs) and direction == "source":
@@ -1501,6 +1515,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             name = f"vJoy {vdev.vjoy_id}"
             slug = _slug(name)
             if slug in hidden:
+                hidden_names[slug] = name
                 continue
             row = ModuleRow()
             row.slug = slug

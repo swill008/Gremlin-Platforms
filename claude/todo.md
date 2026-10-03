@@ -5,7 +5,7 @@ tracker) so the details stay in one place.
 
 ## Next up (added 2026-10-03)
 
-- [ ] **Hidden Cards in the Home menu, no window.** Remove the Hidden Cards
+- [x] **Hidden Cards in the Home menu, no window.** (done 2026-10-03) Remove the Hidden Cards
   window (`qml/DialogHiddenDevices.qml`) and View → Hidden Cards…
   (`qml/main_commands.js` `view.hidden`). In the Home right-click menu
   (`qml/StatusPage.qml`, next to Unhide All Cards), make **Hidden Cards** a

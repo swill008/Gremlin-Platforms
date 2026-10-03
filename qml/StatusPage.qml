@@ -965,8 +965,10 @@ Item {
                     if (_page.model)
                         _page.model.unignoreAll()
                 }, !!(_page.model && _page.model.hiddenList().length)),
-                MenuModel.action("Reset All Card Sizes", function() { _page.resetAllCardSizes() }),
-                MenuModel.command("view.hidden"),
+                MenuModel.action("Reset All Card Sizes", function() { _page.resetAllCardSizes() })
+            ], [
+                // Opens to list each hidden card; clicking one unhides it.
+                MenuModel.section("hidden", "Hidden Cards", _page.hiddenCardRows()),
                 MenuModel.section("layout", "Layout", [
                     MenuModel.command("view.layout.single"),
                     MenuModel.command("view.layout.side"),
@@ -974,6 +976,18 @@ Item {
                 ])
             ])
         }
+    }
+
+    // Home menu → Hidden Cards: a row per hidden card (by name). With none
+    // hidden the section is left out of the menu.
+    function hiddenCardRows() {
+        var cards = _page.model ? _page.model.hiddenCards() : []
+        return cards.map(function(card) {
+            return MenuModel.action(card.name, function() {
+                if (_page.model)
+                    _page.model.unignoreSlug(card.slug)
+            })
+        })
     }
 
     function resetAllCardSizes() {

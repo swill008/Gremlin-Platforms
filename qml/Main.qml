@@ -443,12 +443,6 @@ ApplicationWindow {
         win.requestActivate()
     }
 
-    function openHiddenDevices() {
-        Helpers.createComponent("DialogHiddenDevices.qml", {
-            "moduleModel": _moduleModel
-        })
-    }
-
     // Opens (or brings forward) the card's viewer; it never closes one that
     // is already open (the toolbar's Toggle buttons do that).
     function pairingForCard(card) {
@@ -928,7 +922,6 @@ ApplicationWindow {
                 ThemedMenuItem { command: "view.layout.side" }
                 ThemedMenuItem { command: "view.layout.stacked" }
             }
-            ThemedMenuItem { command: "view.hidden" }
             ThemedMenuItem { command: "view.scripts" }
             ThemedMenuItem { command: "view.settings" }
             ThemedMenuSeparator {}

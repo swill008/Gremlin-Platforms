@@ -70,7 +70,7 @@ function topics() {
             + "<li><b>Right-click</b> a card for: Open Configuration, Button Map, Module Setup…, Auto Mapper, the viewer, Calibration, Device Information, Swap device…, stacking, Reset size, Hide card, Reset card layout (its size and stacking), and Delete Device.</li>"
             + "<li><b>Shift-click</b> cards, then <b>Stack Selected Cards</b>, to group them.</li>"
             + "<li>Each card's <b>last:</b> line shows the latest input it passed or output it sent.</li>"
-            + "<li><b>Compact view</b> and <b>Layout</b> (Single list, Side by side, or Stacked; also View → <b>Home Layout</b>) change how the cards are laid out. Right-click empty space for <b>Unhide All Cards</b> and <b>Reset All Card Sizes</b>.</li>"
+            + "<li><b>Compact view</b> and <b>Layout</b> (Single list, Side by side, or Stacked; also View → <b>Home Layout</b>) change how the cards are laid out. Right-click empty space for <b>Unhide All Cards</b>, <b>Reset All Card Sizes</b>, <b>Hidden Cards</b> (each hidden card; click one to unhide it) and <b>Layout</b>.</li>"
             + "</ul>"),
         topic("Devices and Modules", "Input modules",
             "<p>An input module decides which controls of a physical device exist for Gremlin-Platforms. Only <b>claimed</b> controls reach your actions, the viewers, and the Auto Mapper.</p>"
@@ -89,7 +89,7 @@ function topics() {
             + "<p>Tools → Device Setup → <b>Device Pack</b> shares a device setup. <b>Export</b> saves a device's module file and pictures to a zip. <b>Import</b> loads a zip onto a device you choose under <b>Put this pack on</b>.</p>"),
         topic("Devices and Modules", "Hidden cards",
             "<p>Hiding a card only removes it from Home. It does not hide the device from Windows or games; use HidHide for that.</p>"
-            + "<p>Hide a card with its <b>×</b> or <b>Hide Card</b> in its menu. View → <b>Hidden Cards…</b> lists hidden cards with <b>Unhide</b> and <b>Unhide All</b>.</p>"),
+            + "<p>Hide a card with its <b>×</b> or <b>Hide Card</b> in its menu. To bring one back, right-click empty space on Home and open <b>Hidden Cards</b>: it lists each hidden card, and clicking one unhides it. <b>Unhide All Cards</b> brings them all back.</p>"),
 
         topic("Configuration", "Adding actions",
             "<p>The Configuration page lists the claimed inputs of one device and the actions on each. Open it by double-clicking a card, or View → <b>Configuration</b>. The arrows beside the title step to the previous or next device.</p>"
@@ -286,7 +286,7 @@ function topics() {
             "<p>Open Input Module Setup on <b>Keyboard</b> and check the key is claimed. Once you save a keyboard choice, only claimed keys fire.</p>"),
         topic("Troubleshooting", "A device is missing or seen twice",
             "<ul>"
-            + "<li>Not on Home: check View → <b>Hidden Cards…</b>.</li>"
+            + "<li>Not on Home: right-click empty space on Home and check <b>Hidden Cards</b>.</li>"
             + "<li>A game sees both the physical stick and vJoy: hide the physical stick with <b>HidHide</b>.</li>"
             + "<li>Bindings belong to a device that was replaced: use <b>Swap Devices</b>.</li>"
             + "</ul>")
