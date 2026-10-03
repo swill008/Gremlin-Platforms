@@ -427,6 +427,24 @@ Item {
         return line
     }
 
+    // A damaged module file: move it aside (kept) and set the device up anew.
+    function askStartFresh(card) {
+        var name = String(card.rawName || card.cardName || card.name || "")
+        var guid = String(card.guid || "")
+        _startFreshGate.confirmThen("Start Fresh?",
+            name + "'s module file can't be read (" + card.damaged + "). Start Fresh moves it"
+                + " aside, keeping it as a copy, and starts an empty setup for this device:"
+                + " its Button Map, claims and calibration start over. Nothing is deleted.",
+            "Start Fresh", function() {
+                var copy = model ? model.startFresh(name, guid) : ""
+                _doneTitle = copy ? "Started fresh" : "Start Fresh stopped"
+                _doneMessage = copy
+                    ? "The damaged file was kept as:\n" + copy
+                    : "The file could not be moved. It may be open in another program."
+                _doneDialog.open()
+            }, null, true)
+    }
+
     function runDelete() {
         if (!model || !_deleteCard)
             return
@@ -518,6 +536,7 @@ Item {
                 model.clearCardSettings(card.slug)
         })
         card.onDeleteDevice.connect(function() { _page.askDelete(card) })
+        card.onStartFresh.connect(function() { _page.askStartFresh(card) })
         card.onUnstackCard.connect(function() {
             if (model)
                 model.unstackSlug(card.slug)
@@ -555,6 +574,7 @@ Item {
             card.photo = info.photo || ""
         card.isStub = !!info.isStub
         card.isModule = !!info.isModule
+        card.damaged = info.damaged || ""
         card.tab = info.tab || "physical"
         card.target = info.target || ""
         card.lastLine = info.lastLine || ""
@@ -1150,6 +1170,10 @@ Item {
                 }
             }
         }
+    }
+
+    DismissibleDialog {
+        id: _startFreshGate
     }
 
     Popup {

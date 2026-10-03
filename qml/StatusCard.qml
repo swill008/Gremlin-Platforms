@@ -25,6 +25,8 @@ Rectangle {
     property int hats: 0
     property string photo: ""
     property bool isStub: true
+    // Why the module file can't be read ("" when it is fine).
+    property string damaged: ""
     property bool isModule: false
     property string tab: "physical"
     property string target: ""
@@ -65,6 +67,7 @@ Rectangle {
     signal resetAllSizes()
     signal clearSettings()
     signal deleteDevice()
+    signal startFresh()
     signal unstackCard()
     signal unstackAllCards()
     signal shiftToggled()
@@ -146,7 +149,7 @@ Rectangle {
 
         Label {
             text: status + " · " + bus
-            color: Style.fgMuted
+            color: _card.damaged !== "" ? Style.danger : Style.fgMuted
             font.pixelSize: Style.dp(11)
         }
 
@@ -417,6 +420,8 @@ Rectangle {
                 MenuModel.action("Reset All Card Sizes", function() { _card.resetAllSizes() })
             ]),
             MenuModel.section("device", "Device", [
+                _card.damaged === "" ? null
+                    : MenuModel.action("Start Fresh…", function() { _card.startFresh() }),
                 dest ? null : MenuModel.action("Swap Device…", function() { _card.assignHardware() }),
                 MenuModel.action("Reset Card Layout", function() { _card.clearSettings() }),
                 MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })

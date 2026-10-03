@@ -183,7 +183,9 @@ def test_calibration_save_all_writes_once(
     monkeypatch.setattr(Path, "write_text", counting)
     axes = {0: (0, 10, 20, 30, True), 1: (1, 2, 3, 4, False)}
     assert calibration.write_axes("stick", axes)
-    assert writes == [path]
+    # One write; it goes to a temporary file that then replaces the real one
+    # (module_file.write_text), so a crash can't leave half a file.
+    assert writes == [path.with_name(path.name + ".tmp")]
     saved = json.loads(path.read_text(encoding="utf-8"))["calibration"]
     assert saved == {"0": [0, 10, 20, 30, True], "1": [1, 2, 3, 4, False]}
 

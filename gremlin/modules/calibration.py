@@ -12,7 +12,7 @@ from pathlib import Path
 
 from gremlin.config import Configuration
 from gremlin.device_initialization import physical_devices
-from gremlin.modules import registry
+from gremlin.modules import module_file, registry
 from gremlin.modules.ids import guid_key
 
 _DEFAULT = (-32768, 0, 0, 32767, True)
@@ -115,7 +115,12 @@ def write_axes(slug: str, axes: dict[int, AxisData]) -> bool:
     row = module_for_slug(slug)
     if row is None or not axes:
         return False
-    doc = _load(row["path"])
+    try:
+        doc = module_file.load_for_update(row["path"])
+    except module_file.ModuleFileDamaged as damaged:
+        registry.trace("READ", "Calibration", "write_axis", row["path"], "damaged")
+        module_file.report_refused(damaged)
+        return False
     registry.trace("READ", "Calibration", "write_axis", row["path"], "ok")
     calibration = dict(doc.get("calibration") or {})
     for axis_id, data in axes.items():
@@ -128,7 +133,7 @@ def write_axes(slug: str, axes: dict[int, AxisData]) -> bool:
         ]
     doc["calibration"] = calibration
     try:
-        row["path"].write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        module_file.write_json(row["path"], doc)
     except OSError:
         registry.trace("SAVE", "Calibration", "write_axis", row["path"], "error")
         return False

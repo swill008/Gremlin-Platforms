@@ -22,7 +22,7 @@ from gremlin.types import InputType, PropertyType
 from gremlin import keyboard as gremlin_keyboard
 from gremlin.ui.live_debug import trace
 from gremlin.modules.ids import guid_key
-from gremlin.modules import ids
+from gremlin.modules import ids, module_file
 from gremlin.modules.claim import (
     claim_allows,
     claim_friendly,
@@ -446,6 +446,12 @@ _DEFAULT_VIEW = {
 }
 
 
+def _module_damage(device_name: str, guid: str = "") -> str:
+    """Why the device's module file can't be read ("" when it is fine)."""
+    slug = resolve_module_slug(device_name, guid)
+    return module_file.damage_reason(_maps_dir() / f"{slug}.json")
+
+
 def module_exists(device_name: str) -> bool:
     path = _maps_dir() / f"{resolve_module_slug(device_name)}.json"
     return path.is_file()
@@ -472,6 +478,7 @@ class ModuleRow:
         "pid",
         "last_friendly",
         "last_hardware",
+        "damaged",
     )
 
     def __init__(self) -> None:
@@ -481,6 +488,8 @@ class ModuleRow:
         self.guid = ""
         self.direction = "source"
         self.status = "Stub"
+        # Why the device's module file can't be read ("" when it is fine).
+        self.damaged = ""
         self.bus = "DirectInput"
         self.buttons = 0
         self.axes = 0
@@ -536,6 +545,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 18: QtCore.QByteArray(b"lastLine"),
         QtCore.Qt.ItemDataRole.UserRole + 19: QtCore.QByteArray(b"lastHardware"),
         QtCore.Qt.ItemDataRole.UserRole + 20: QtCore.QByteArray(b"focused"),
+        QtCore.Qt.ItemDataRole.UserRole + 21: QtCore.QByteArray(b"damaged"),
     }
 
     modelResetNeeded = QtCore.Signal()
@@ -645,6 +655,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 return last_h
             case "focused":
                 return row.slug == self._focus
+            case "damaged":
+                return row.damaged
             case _:
                 return None
 
@@ -706,14 +718,13 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if not isinstance(incoming, dict):
             return False
         path = module_json_path(name, guid)
-        doc: dict = {}
-        if path.is_file():
-            try:
-                doc = json.loads(path.read_text(encoding="utf-8"))
-                trace("READ", "Output Configuration", "saveViewConfig", path, "ok")
-            except (OSError, json.JSONDecodeError):
-                doc = {}
-                trace("READ", "Output Configuration", "saveViewConfig", path, "error")
+        try:
+            doc = module_file.load_for_update(path)
+        except module_file.ModuleFileDamaged as damaged:
+            trace("READ", "Output Configuration", "saveViewConfig", path, "damaged")
+            module_file.report_refused(damaged)
+            return False
+        trace("READ", "Output Configuration", "saveViewConfig", path, "ok")
         view = dict(_DEFAULT_VIEW)
         view["meters"] = list(_DEFAULT_VIEW["meters"])
         raw = doc.get("view")
@@ -726,7 +737,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         path.parent.mkdir(parents=True, exist_ok=True)
         _plog("save view", name=name, path=str(path))
         try:
-            path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+            module_file.write_json(path, doc)
             written = json.loads(path.read_text(encoding="utf-8"))
             trace("SAVE", "Output Configuration", "saveViewConfig", path, "ok")
         except (OSError, json.JSONDecodeError) as exc:
@@ -807,14 +818,13 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if not isinstance(incoming, dict):
             return False
         path = _maps_dir() / f"{resolve_module_slug(name, guid_for_module(name, guid))}.json"
-        doc: dict = {}
-        if path.is_file():
-            try:
-                doc = json.loads(path.read_text(encoding="utf-8"))
-                trace("READ", "Input Configuration", "saveCatalogConfig", path, "ok")
-            except (OSError, json.JSONDecodeError):
-                doc = {}
-                trace("READ", "Input Configuration", "saveCatalogConfig", path, "error")
+        try:
+            doc = module_file.load_for_update(path)
+        except module_file.ModuleFileDamaged as damaged:
+            trace("READ", "Input Configuration", "saveCatalogConfig", path, "damaged")
+            module_file.report_refused(damaged)
+            return False
+        trace("READ", "Input Configuration", "saveCatalogConfig", path, "ok")
         catalog = dict(_DEFAULT_CATALOG)
         raw = doc.get("catalog")
         if isinstance(raw, dict):
@@ -826,7 +836,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         path.parent.mkdir(parents=True, exist_ok=True)
         _plog("save catalog", name=name, path=str(path))
         try:
-            path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+            module_file.write_json(path, doc)
             written = json.loads(path.read_text(encoding="utf-8"))
             trace("SAVE", "Input Configuration", "saveCatalogConfig", path, "ok")
         except (OSError, json.JSONDecodeError) as exc:
@@ -1164,6 +1174,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             "lastLine": last_f,
             "lastHardware": last_h,
             "focused": row.slug == self._focus,
+            "damaged": row.damaged,
         }
 
     @QtCore.Slot(str, result="QVariantMap")
@@ -1327,6 +1338,24 @@ class ModuleListModel(QtCore.QAbstractListModel):
         return raw
 
     @QtCore.Slot(str, str, result=str)
+    def startFresh(self, device_name: str, guid: str) -> str:
+        """Moves a damaged module file aside (kept as .bad-<date>) so the
+        device can be set up again. Returns where the copy is, or ""."""
+        slug = resolve_module_slug(device_name, guid)
+        path = _maps_dir() / f"{slug}.json"
+        if not module_file.damage_reason(path):
+            return ""
+        try:
+            copy = module_file.start_fresh(path)
+        except OSError as e:
+            _plog("start fresh failed", path=str(path), error=e)
+            return ""
+        trace("SAVE", "Home", "startFresh", copy, "ok")
+        signal.configChanged.emit()
+        self._reload()
+        return str(copy)
+
+    @QtCore.Slot(str, str, result=str)
     def deleteModuleFile(self, guid: str, device_name: str) -> str:
         message = delete_module_file(device_name, guid)
         if not message:
@@ -1470,6 +1499,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 row.is_stub = False
                 row.is_module = True
                 row.status = "Connected"
+                row.damaged = _module_damage(name, str(dev.device_guid))
+                if row.damaged:
+                    row.status = "Module file damaged – inputs blocked"
                 row.buttons = len(claim["buttons"]) or int(getattr(dev, "button_count", 0) or 0)
                 row.axes = len(claim["axes"]) or int(getattr(dev, "axis_count", 0) or 0)
                 row.hats = len(claim["hats"]) or int(getattr(dev, "hat_count", 0) or 0)
@@ -1502,6 +1534,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.status = "Virtual" if direction == "dest" else ("Connected" if saved else "Stub")
             row.photo = self._hw.profilePhotoUrl(name)
             if saved:
+                row.damaged = _module_damage(name, guid)
+                if row.damaged:
+                    row.status = "Module file damaged – inputs blocked"
                 claim = read_claim(_load_module_doc(name, guid))
                 row.buttons = len(claim["buttons"])
                 row.axes = len(claim["axes"])
@@ -1970,14 +2005,13 @@ class DriverInputModel(QtCore.QAbstractListModel):
         name = device_name or self._device_name
         slug = _slug(name)
         path = _maps_dir() / f"{slug}.json"
-        doc: dict = {}
-        if path.is_file():
-            try:
-                doc = json.loads(path.read_text(encoding="utf-8"))
-                trace("READ", "Configure Module", "saveClaim", path, "ok")
-            except (OSError, json.JSONDecodeError):
-                doc = {}
-                trace("READ", "Configure Module", "saveClaim", path, "error")
+        try:
+            doc = module_file.load_for_update(path)
+        except module_file.ModuleFileDamaged as damaged:
+            trace("READ", "Configure Module", "saveClaim", path, "damaged")
+            module_file.report_refused(damaged)
+            return False
+        trace("READ", "Configure Module", "saveClaim", path, "ok")
         buttons = [int(r["hwId"]) for r in self._rows if r["kind"] == "button" and r["claimed"]]
         axes = [int(r["hwId"]) for r in self._rows if r["kind"] == "axis" and r["claimed"]]
         hats = [int(r["hwId"]) for r in self._rows if r["kind"] == "hat" and r["claimed"]]
@@ -2024,7 +2058,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             friendly=list(friendly),
         )
         try:
-            path.write_text(text, encoding="utf-8")
+            module_file.write_text(path, text)
             written = json.loads(path.read_text(encoding="utf-8"))
             trace("SAVE", "Configure Module", "saveClaim", path, "ok")
         except (OSError, json.JSONDecodeError) as exc:

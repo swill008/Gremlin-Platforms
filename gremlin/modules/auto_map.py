@@ -5,9 +5,7 @@
 
 from __future__ import annotations
 
-import json
-
-from gremlin.modules import output, registry
+from gremlin.modules import module_file, output, registry
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.ids import guid_key
 from gremlin.modules.registry import plain_slug, resolve_module_slug, trace
@@ -125,10 +123,18 @@ def merge_claim_into_output(dest: dict, claim: dict) -> dict:
     if path is None:
         dest["claim"] = merged
         return merged
-    doc = dict(doc)
+    try:
+        # The file as it is now (not the copy read earlier), so nothing saved
+        # since is overwritten; a damaged file is left alone.
+        doc = module_file.load_for_update(path)
+    except module_file.ModuleFileDamaged as damaged:
+        trace("SAVE", "Auto Mapper", "merge_claim_into_output", path, "damaged")
+        module_file.report_refused(damaged)
+        dest["claim"] = merged
+        return merged
     doc["claim"] = merged
     try:
-        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        module_file.write_json(path, doc)
     except OSError:
         trace("SAVE", "Auto Mapper", "merge_claim_into_output", path, "error")
         dest["claim"] = merged

@@ -19,6 +19,7 @@ from PySide6 import (
 )
 
 import gremlin.ui.type_aliases as ta
+from gremlin.modules import module_file
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.ids import stored_guid_key
 from gremlin.modules.registry import (
@@ -2356,11 +2357,14 @@ class HardwareProfile(QtCore.QObject):
         payload["photoWell"] = 0.75
         payload["photo"] = _photo_pose(payload.get("photo"))
         payload = self._pack_assets(name, payload)
-        if path.is_file():
-            try:
-                existing = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                existing = {}
+        try:
+            existing = module_file.load_for_update(path)
+        except module_file.ModuleFileDamaged as damaged:
+            # Its claims, layout and calibration would be lost: refuse.
+            trace("SAVE", "Button Map", "save", path, "damaged")
+            module_file.report_refused(damaged)
+            return False
+        if existing:
             if isinstance(existing, dict):
                 for key in (
                     "claim",
@@ -2374,8 +2378,7 @@ class HardwareProfile(QtCore.QObject):
                         payload[key] = existing[key]
         if is_output_name(name):
             payload["direction"] = "dest"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        module_file.write_json(path, payload)
         trace("SAVE", "Button Map", "save", path, "ok")
         kept = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
         persist_log(
@@ -2403,13 +2406,12 @@ class HardwareProfile(QtCore.QObject):
         if not path.is_file():
             return self.save(name, json_text)
         try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            return False
-        if not isinstance(payload, dict):
+            payload = module_file.load_for_update(path)
+        except module_file.ModuleFileDamaged as damaged:
+            module_file.report_refused(damaged)
             return False
         payload["ui"] = incoming.get("ui", payload.get("ui") or {})
-        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        module_file.write_json(path, payload)
         trace("SAVE", "Button Map", "saveUi", path, "ok")
         persist_log(f"Persist map ui name={name!r} guid={self._device_guid!r} path={path}")
         self._path = str(path)
@@ -2486,12 +2488,13 @@ class HardwareProfile(QtCore.QObject):
         path = _maps_dir() / f"{slug}.json"
         if path.is_file():
             try:
-                loaded = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
+                loaded = module_file.load_for_update(path)
+            except module_file.ModuleFileDamaged as damaged:
+                module_file.report_refused(damaged)
                 loaded = None
-            if isinstance(loaded, dict):
+            if loaded is not None:
                 loaded["image"] = rel
-                path.write_text(json.dumps(loaded, indent=2) + "\n", encoding="utf-8")
+                module_file.write_json(path, loaded)
                 trace("SAVE", "Button Map", "copyImage", path, "ok")
         persist_log(f"Persist photo name={name!r} guid={self._device_guid!r} path={path} image={rel!r}")
         self._path = str(path)
