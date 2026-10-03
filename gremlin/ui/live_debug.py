@@ -16,6 +16,7 @@ from pathlib import Path
 from PySide6 import QtCore, QtGui
 
 import gremlin.ui.type_aliases as ta
+from gremlin import live_capture
 
 QML_IMPORT_NAME = "Gremlin.UI"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -145,6 +146,14 @@ def filter_entries(
     ]
 
 
+def _profile_running() -> bool:
+    from gremlin.event_handler import EventListener
+
+    # Never create the listener here (it hooks the keyboard); read it if it exists.
+    listener = EventListener.instance
+    return bool(listener is not None and listener.gremlin_active)
+
+
 @ta.QmlElement
 class DebugLog(QtCore.QObject):
     """One diagnostic log file, filtered by level and text, for the Live Log
@@ -168,6 +177,12 @@ class DebugLog(QtCore.QObject):
         self._cut = False
         # (size, mtime) of the file as last read; unchanged means no re-read.
         self._stamp: tuple[int, int] | None = None
+        # Live: show the live capture (gremlin.live_capture) instead of a file.
+        self._live = False
+        self._live_version = -1
+        self._live_rows: list[tuple[int, str]] = []
+        self._muted = "#9CA3AF"
+        self._running = False
 
     def _path(self) -> Path:
         from gremlin.util import logs_dir
@@ -180,10 +195,30 @@ class DebugLog(QtCore.QObject):
             self._apply()
 
     def _apply(self) -> None:
-        entries = debug_entries(self._raw or "")
+        if self._live:
+            # Levels do not apply to live capture; Find does.
+            entries = self._live_rows
+            needle = self._find.strip().lower()
+            self._shown = [
+                row for row in entries if not needle or needle in row[1].lower()
+            ]
+        else:
+            entries = debug_entries(self._raw or "")
+            self._shown = filter_entries(entries, self._level, self._find)
         self._total = len(entries)
-        self._shown = filter_entries(entries, self._level, self._find)
         self.changed.emit()
+
+    def _set_live(self, on: bool) -> None:
+        on = bool(on)
+        if on == self._live:
+            return
+        self._live = on
+        live_capture.set_enabled(on)
+        self._live_version = -1
+        if on:
+            self.refresh()
+        else:
+            self._reload()
 
     def _set_file(self, value: str) -> None:
         if value != self._file:
@@ -210,6 +245,18 @@ class DebugLog(QtCore.QObject):
         str, lambda self: self._error, lambda self, v: self._set("_error", v),
         notify=changed,
     )
+    mutedColor = QtCore.Property(
+        str, lambda self: self._muted, lambda self, v: self._set("_muted", v),
+        notify=changed,
+    )
+    live = QtCore.Property(
+        bool, lambda self: self._live, _set_live, notify=changed,
+    )
+
+    @QtCore.Property(bool, notify=changed)
+    def running(self) -> bool:
+        """A profile is running (live capture only sees inputs then)."""
+        return self._running
 
     @QtCore.Property(str, notify=changed)
     def path(self) -> str:
@@ -269,6 +316,8 @@ class DebugLog(QtCore.QObject):
                 text = f'<span style="color:{self._error}">{text}</span>'
             elif rank == 2:
                 text = f'<span style="color:{self._warn}">{text}</span>'
+            elif rank < 0:
+                text = f'<span style="color:{self._muted}">{text}</span>'
             lines.append(text)
         # white-space: pre keeps the view's own font (a <pre> would not).
         return '<div style="white-space:pre">' + "<br>".join(lines) + "</div>"
@@ -276,9 +325,21 @@ class DebugLog(QtCore.QObject):
     @QtCore.Slot()
     def refresh(self) -> None:
         on = self._logging_on()
-        if on != self._on:
-            self._on = on
+        running = _profile_running()
+        if (on, running) != (self._on, self._running):
+            self._on, self._running = on, running
             self.changed.emit()
+        if self._live:
+            current = live_capture.version()
+            if current == self._live_version:
+                return
+            rows = live_capture.entries()
+            self._live_version = live_capture.version()
+            self._live_rows = [
+                (1 if kind == live_capture.RAN else -1, text) for kind, text in rows
+            ]
+            self._apply()
+            return
         path = self._path()
         try:
             stat = path.stat()
@@ -323,6 +384,11 @@ class DebugLog(QtCore.QObject):
         so it is emptied through that handler; otherwise directly."""
         import logging
 
+        if self._live:
+            live_capture.clear()
+            self._live_version = -1
+            self.refresh()
+            return
         path = self._path()
         done = False
         for handler in logging.getLogger(self._file).handlers:

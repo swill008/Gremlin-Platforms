@@ -40,7 +40,12 @@ ApplicationWindow {
         id: _debug
         warningColor: String(Style.warn)
         errorColor: String(Style.dangerText)
+        mutedColor: String(Style.fgMuted)
     }
+
+    // Live capture stops when the window closes.
+    onClosing: _debug.live = false
+    Component.onDestruction: _debug.live = false
 
     readonly property bool _onDebug: _tabs.currentIndex === 1
 
@@ -215,7 +220,8 @@ ApplicationWindow {
                 }
             }
 
-            // Debug: the diagnostic log files.
+            // Debug: the diagnostic log files, or with Live on, each input the
+            // running profile handles and the actions it ran, as it happens.
             ColumnLayout {
                 spacing: Style.dp(8)
 
@@ -223,9 +229,47 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     spacing: Style.dp(8)
 
-                    Label { text: "Log" }
+                    // Live capture on/off: red, brighter with a white dot while on.
+                    Button {
+                        id: _liveButton
+                        checkable: true
+                        checked: _debug.live
+                        onToggled: {
+                            _debug.live = checked
+                            _debugView.toEnd()
+                        }
+                        ToolTip.visible: hovered
+                        ToolTip.delay: 500
+                        ToolTip.text: checked
+                            ? "Stop live capture and show the log file again"
+                            : "Show each input the running profile handles, as it happens"
+                        contentItem: Label {
+                            text: (_liveButton.checked ? "● " : "○ ") + "Live"
+                            color: "white"
+                            font.bold: _liveButton.checked
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        background: Rectangle {
+                            implicitWidth: Style.dp(72)
+                            implicitHeight: Style.dp(32)
+                            radius: Style.dp(3)
+                            color: _liveButton.checked
+                                ? (_liveButton.hovered ? Style.dangerHover : Style.danger)
+                                : (_liveButton.hovered ? Style.dangerHover : Style.dangerFill)
+                            border.color: Style.danger
+                            border.width: Style.dp(1)
+                        }
+                    }
+
+                    Label {
+                        text: "Log"
+                        Layout.leftMargin: Style.dp(8)
+                        enabled: !_debug.live
+                    }
                     ComboBox {
                         id: _file
+                        enabled: !_debug.live
                         textRole: "text"
                         valueRole: "value"
                         implicitContentWidthPolicy: ComboBox.WidestText
@@ -243,9 +287,11 @@ ApplicationWindow {
                     Label {
                         text: "Show"
                         Layout.leftMargin: Style.dp(8)
+                        enabled: !_debug.live
                     }
                     ComboBox {
                         id: _level
+                        enabled: !_debug.live
                         implicitContentWidthPolicy: ComboBox.WidestText
                         model: ["All", "Info", "Warning", "Error"]
                         onActivated: _debug.level = currentText
@@ -262,7 +308,7 @@ ApplicationWindow {
 
                 // Nothing new is written while Diagnostic logs is Off.
                 Rectangle {
-                    visible: !_debug.loggingOn
+                    visible: _debug.live ? !_debug.running : !_debug.loggingOn
                     Layout.fillWidth: true
                     implicitHeight: _offText.implicitHeight + Style.dp(16)
                     radius: Style.dp(3)
@@ -276,8 +322,11 @@ ApplicationWindow {
                         verticalAlignment: Text.AlignVCenter
                         wrapMode: Text.WordWrap
                         color: Style.noteText
-                        text: "Diagnostic logs are off, so nothing new is written. "
-                            + "Pick a level below to turn them on."
+                        text: _debug.live
+                            ? "No profile is running. Run the profile, then use your "
+                                + "devices: each input shows here with the actions it ran."
+                            : "Diagnostic logs are off, so nothing new is written. "
+                                + "Pick a level below to turn them on."
                     }
                 }
 
@@ -285,13 +334,15 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Label {
                         Layout.fillWidth: true
-                        text: _debug.path
-                        color: Style.fgMuted
+                        text: _debug.live
+                            ? "Live capture: inputs the running profile handles, as they happen"
+                            : _debug.path
+                        color: _debug.live ? Style.dangerText : Style.fgMuted
                         elide: Text.ElideMiddle
                     }
                     Label {
                         color: Style.fgMuted
-                        text: !_debug.exists ? "No file yet"
+                        text: !_debug.live && !_debug.exists ? "No file yet"
                             : _debug.shownCount === _debug.totalCount
                                 ? _debug.totalCount + " entries"
                                 : _debug.shownCount + " of " + _debug.totalCount + " entries"
@@ -300,7 +351,7 @@ ApplicationWindow {
 
                 // A big file: only its end is read until asked for all of it.
                 RowLayout {
-                    visible: _debug.truncated
+                    visible: _debug.truncated && !_debug.live
                     Layout.fillWidth: true
                     Label {
                         Layout.fillWidth: true
@@ -358,8 +409,14 @@ ApplicationWindow {
 
                         Button {
                             text: qsTr("Clear Log")
-                            enabled: _debug.exists
+                            enabled: _debug.live || _debug.exists
                             onClicked: {
+                                if (_debug.live) {
+                                    // Nothing is stored: clear at once.
+                                    _debugView.follow = true
+                                    _debug.clear()
+                                    return
+                                }
                                 _clearGate.confirmThen("Clear Log?",
                                     "Empty " + _debug.path.split(/[\\/]/).pop()
                                         + "? Everything in it is removed for good.",

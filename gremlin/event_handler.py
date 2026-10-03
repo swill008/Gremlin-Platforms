@@ -25,6 +25,7 @@ from gremlin import (
     error,
     event_helpers,
     keyboard,
+    live_capture,
     mode_manager,
     signal,
     tree,
@@ -614,7 +615,11 @@ class EventHandler(QtCore.QObject):
             event: the event to process
         """
         # Process callbacks defined via actions or scripts.
-        for cb in self._matching_callbacks(event):
+        callbacks = self._matching_callbacks(event)
+        # Live capture (Live Log Reader): read-only, one check when off.
+        if live_capture.enabled():
+            live_capture.record(event, callbacks, not self.process_callbacks)
+        for cb in callbacks:
             try:
                 cb(event)
             except error.VJoyError as e:
