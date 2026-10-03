@@ -72,41 +72,41 @@ gremlin.util.setup_userprofile()
 
 import gremlin.audio_player
 import gremlin.config
+import gremlin.deferred_write
 import gremlin.device_initialization
 import gremlin.error
 import gremlin.event_handler
 import gremlin.mode_manager
+import gremlin.osc
+import gremlin.osc_persist  # noqa: F401
 import gremlin.plugin_manager
 import gremlin.signal
 import gremlin.tts
 import gremlin.types
 import gremlin.ui.action_image_generator
 import gremlin.ui.backend
+import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
 import gremlin.ui.button_map_options
-import gremlin.ui.system_tray
-import gremlin.ui.option
-import gremlin.ui.osc_option  # noqa: F401
+import gremlin.ui.debug_mode
+import gremlin.ui.device_names  # noqa: F401
+import gremlin.ui.hidhide  # noqa: F401
+import gremlin.ui.live_debug  # noqa: F401
 import gremlin.ui.log_option  # noqa: F401
+import gremlin.ui.logical_layout  # noqa: F401
+import gremlin.ui.module_calibration  # noqa: F401
+import gremlin.ui.module_model  # noqa: F401
+import gremlin.ui.module_pairing  # noqa: F401
+import gremlin.ui.option
+import gremlin.ui.osc_device_model  # noqa: F401
+import gremlin.ui.osc_option  # noqa: F401
+import gremlin.ui.shell_option  # noqa: F401
+import gremlin.ui.system_tray
 import gremlin.ui.tools
 import gremlin.ui.ui_scale_option
 import gremlin.ui.update_model  # noqa: E402
 import gremlin.ui.util
-import gremlin.osc
-import gremlin.ui.osc_device_model  # noqa: F401
-import gremlin.ui.device_names  # noqa: F401
-import gremlin.ui.hidhide  # noqa: F401
 import gremlin.ui.vjoy_status
 import gremlin.ui.window_placement
-import gremlin.ui.module_model  # noqa: F401
-import gremlin.deferred_write
-import gremlin.ui.debug_mode
-import gremlin.ui.live_debug  # noqa: F401
-import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
-import gremlin.ui.logical_layout  # noqa: F401
-import gremlin.ui.module_pairing  # noqa: F401
-import gremlin.ui.module_calibration  # noqa: F401
-import gremlin.ui.shell_option  # noqa: F401
-import gremlin.osc_persist  # noqa: F401
 
 
 def configure_logger(config: dict[str, Any]) -> None:
@@ -145,7 +145,8 @@ def exception_hook(
 
 
 def shutdown_cleanup() -> None:
-    """Stop runtime threads and virtual devices so File/Exit does not leave a process."""
+    """Stop runtime threads and virtual devices so File/Exit does not leave a
+    process."""
     log = logging.getLogger("system")
     try:
         listener = gremlin.event_handler.EventListener()
@@ -326,7 +327,11 @@ def _window_process_ids() -> set[int]:
             pid = ctypes.c_ulong()
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
             value = int(pid.value)
-            if value and value not in protected and _is_gremlin_process(value, python_pids):
+            if (
+                value
+                and value not in protected
+                and _is_gremlin_process(value, python_pids)
+            ):
                 pids.add(value)
             return True
 
@@ -642,7 +647,8 @@ def register_config_options() -> None:
     )
     cfg.register(
         osc_sec, osc_grp, "port", PropertyType.String, "8001",
-        "Input port the program listens on. Must match Companion Target Port.", {}, False,
+        "Input port the program listens on. Must match Companion Target Port.",
+        {}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "output-host", PropertyType.Selection, "127.0.0.1",
