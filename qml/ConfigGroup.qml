@@ -60,8 +60,8 @@ ColumnLayout {
 
     Rectangle {
         Layout.fillWidth: true
-        // Untitled: keep the heading's space above the card.
-        Layout.topMargin: groupName.length > 0 ? 0 : Style.dp(14)
+        // Untitled: a gap above the card stands in for the heading.
+        Layout.topMargin: groupName.length > 0 ? 0 : Style.dp(16)
         implicitHeight: _rows.implicitHeight
         radius: Style.dp(6)
         color: Style.bgCard

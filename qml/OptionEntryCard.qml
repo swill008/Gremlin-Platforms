@@ -21,8 +21,7 @@ Item {
     property bool wide: false
     default property alias optionElement: _control.data
 
-    // Wide rows (a path, a list) get more room so each stands apart.
-    implicitHeight: _layout.implicitHeight + (root.wide ? Style.dp(40) : Style.dp(20))
+    implicitHeight: _layout.implicitHeight + Style.dp(20)
 
     Rectangle {
         visible: root.divider
@@ -41,7 +40,7 @@ Item {
         anchors.rightMargin: Style.dp(14)
         columns: root.wide ? 1 : 2
         columnSpacing: Style.dp(16)
-        rowSpacing: root.wide ? Style.dp(10) : Style.dp(8)
+        rowSpacing: Style.dp(8)
 
         ColumnLayout {
             Layout.fillWidth: true

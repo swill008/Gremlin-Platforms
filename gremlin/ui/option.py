@@ -131,17 +131,15 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ]),
     ]),
     ("Folders", [
-        # One group: no heading under the page title.
-        ("", [
-            ("global", "files", "data-folder"),
-            ("global", "files", "profiles-folder"),
-            ("global", "files", "modules-folder"),
-            ("global", "files", "scripts-folder"),
-            ("global", "files", "export-folder"),
-            ("global", "files", "logs-folder"),
-            ("global", "files", "deleted-devices-folder"),
-            ("global", "files", "plugin-directory"),
-        ]),
+        # Each folder its own untitled card, the page showing between them.
+        ("", [("global", "files", "data-folder")]),
+        ("", [("global", "files", "profiles-folder")]),
+        ("", [("global", "files", "modules-folder")]),
+        ("", [("global", "files", "scripts-folder")]),
+        ("", [("global", "files", "export-folder")]),
+        ("", [("global", "files", "logs-folder")]),
+        ("", [("global", "files", "deleted-devices-folder")]),
+        ("", [("global", "files", "plugin-directory")]),
     ]),
 ]
 
