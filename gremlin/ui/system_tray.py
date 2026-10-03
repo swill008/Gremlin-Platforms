@@ -78,14 +78,17 @@ class SystemTrayIcon(QtCore.QObject):
         self._window_mode_changed_cb(self._window.visibility())
 
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        # Minimize to tray covers the X too: the window hides, the profile
+        # keeps running, and Exit (File menu or tray menu) quits.
         if (
             event.type() == QtCore.QEvent.Type.Close
             and self._icon_present
-            and Configuration().exists("global", "general", "close-to-tray")
-            and Configuration().value("global", "general", "close-to-tray")
+            and Configuration().exists("global", "general", "minimize-to-tray")
+            and Configuration().value("global", "general", "minimize-to-tray")
         ):
             event.ignore()
             self._window.hide()
+            self._tell_once_still_running()
             return True
         return super().eventFilter(watched, event)
 
@@ -181,6 +184,39 @@ class SystemTrayIcon(QtCore.QObject):
             self._icon_present = False
             logging.getLogger("system").warning(
                 "Failed to add the system tray icon", exc_info=True
+            )
+
+    def _tell_once_still_running(self) -> None:
+        """The first time the X hides the window, say the program is still
+        running (a tray balloon); never again after that."""
+        cfg = Configuration()
+        if not cfg.exists("global", "internal", "tray-notice-shown"):
+            return
+        if cfg.value("global", "internal", "tray-notice-shown"):
+            return
+        self.show_balloon(
+            "Gremlin-Platforms is still running",
+            "It is in the system tray. Exit from the tray icon's menu.",
+        )
+        cfg.set("global", "internal", "tray-notice-shown", True)
+
+    def show_balloon(self, title: str, text: str) -> None:
+        """A Windows notification from the tray icon."""
+        with contextlib.suppress(win32gui.error):
+            win32gui.Shell_NotifyIcon(
+                win32gui.NIM_MODIFY,
+                (
+                    self._hwnd,
+                    0,
+                    win32gui.NIF_INFO,
+                    _WM_TRAY,
+                    self._current_icon(),
+                    "Gremlin-Platforms",
+                    text,
+                    10000,
+                    title,
+                    win32gui.NIIF_INFO,
+                ),
             )
 
     def _gremlin_status_change_cb(self) -> None:

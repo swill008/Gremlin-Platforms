@@ -242,7 +242,7 @@ function topics() {
         topic("Options and Profile", "Options",
             "<p>Tools → <b>Options</b> (or <b>Options</b> on the toolbar). Program settings, not stored in the profile; the profile's own are on its <b>Profile Settings</b> tab.</p>"
             + "<ul>"
-            + "<li><b>Global</b>: Close to tray, Minimize to tray, <b>Check for updates</b> (when the program starts; see Installing and updating), <b>Device change behavior</b> (Reload, Ignore, Disable), Turn HidHide on at start, axis refresh on activation and mode change, Diagnostic logs, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
+            + "<li><b>Global</b>: <b>Minimize to tray</b> (minimizing or closing the window keeps the program running in the tray; exit from File → Exit or the tray menu), <b>Check for updates</b> (when the program starts; see Installing and updating), <b>Device change behavior</b> (Reload, Ignore, Disable), Turn HidHide on at start, axis refresh on activation and mode change, Diagnostic logs, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
             + "<li><b>User Interface</b>: Dark mode, UI scale, Ignore Windows display scaling, Display mode (numbers and/or labels), Input highlighting and Highlight source, and the <b>Menu preview</b>.</li>"
             + "<li><b>Action</b>: the Action list order, and settings for Axis Delta, Change Mode, Double Tap, Macro, Play Sound, Smart Toggle, Tempo, and Text-To-Speech (voice).</li>"
             + "<li><b>Profile</b>: Load profiles automatically — load a profile when a chosen program starts — and Keep running when the program loses focus.</li>"
