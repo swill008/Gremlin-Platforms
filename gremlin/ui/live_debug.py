@@ -37,10 +37,9 @@ def log_path() -> Path:
 
 
 def start() -> None:
-    """Clear the log for this run."""
+    """Clear the log for this run. Lines already waiting are from this run
+    (made while the program was starting) and are kept."""
     path = log_path()
-    with _LOCK:
-        _buffer.clear()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("", encoding="utf-8")
@@ -58,7 +57,9 @@ def trace(action: str, window: str, function: str, path: object, result: str = "
             _buffer.append(line)
         from gremlin import deferred_write
 
-        deferred_write.schedule("activity-log", _write_buffer)
+        # Held until the application runs: writing needs the log folder,
+        # which reads the settings, which may be what is being traced.
+        deferred_write.schedule("activity-log", _write_buffer, hold=True)
     except Exception:
         return
 

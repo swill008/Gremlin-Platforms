@@ -796,6 +796,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
 
         self.process_cmd_args(cmd_args)
         self.updater.startup()
+        gremlin.config.announce_damaged_settings()
 
         self.main_window = self.engine.rootObjects()[0]
         # Red debug mode: a frame on every window while debugging.

@@ -65,10 +65,21 @@ def _scheduler() -> _Scheduler | None:
     return _SCHEDULER
 
 
-def schedule(key: str, write: Callable[[], None], delay_ms: int = 1000) -> None:
-    """Run write() once, delay_ms after the last request for this key."""
+def schedule(
+    key: str, write: Callable[[], None], delay_ms: int = 1000, *, hold: bool = False
+) -> None:
+    """Run write() once, delay_ms after the last request for this key.
+
+    Without a scheduler (before the application runs, or off the main
+    thread) the write runs at once, unless hold is True: then it waits for
+    the next request that has a scheduler, a flush, or quitting.
+    """
     scheduler = _scheduler()
     if scheduler is None:
+        if hold:
+            with _LOCK:
+                _pending[key] = write
+            return
         write()
         return
     with _LOCK:

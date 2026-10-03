@@ -9,10 +9,12 @@ import sys
 sys.path.append(".")
 
 import pathlib
+from collections.abc import Iterator
 
 import pytest
 
 import dill
+import gremlin.config
 import gremlin.device_initialization
 import gremlin.event_handler
 
@@ -39,6 +41,14 @@ def get_fake_device_guid(is_virtual: bool) -> dill.GUID:
 def _make_fake_device(is_virtual: bool) -> dill.DeviceSummary:
     """Creates a repeatable, faked DeviceSummary."""
     return dill.DeviceSummary(fake_hardware.raw_device(is_virtual))
+
+
+@pytest.fixture(autouse=True)
+def _no_settings_notice_left() -> Iterator[None]:
+    """A test that reads a damaged settings file must not leave the
+    'Settings Reset' notice for a later test that builds the app."""
+    yield
+    gremlin.config._damaged_copy = ""
 
 
 @pytest.fixture(scope="package", autouse=True)

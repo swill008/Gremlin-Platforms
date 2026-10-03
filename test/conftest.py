@@ -4,8 +4,16 @@
 
 from __future__ import annotations
 
+import os
 import pathlib
 import tempfile
+
+# Tests never put a window on the user's screen: the Gremlin app some tests
+# build (pytest-qt's qapp) and every window it opens stay off-screen.
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+os.environ.setdefault(
+    "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
+)
 
 # Mock before any imports happen
 from unittest.mock import Mock

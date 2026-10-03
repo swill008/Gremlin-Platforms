@@ -23,6 +23,26 @@ from gremlin.ui.live_debug import trace
 _config_file_path = os.path.join(util.userprofile_path(), "configuration.json")
 
 
+def _parse_entry(entry: dict) -> dict:
+    """One saved setting as stored in memory; raises if it can't be read."""
+    data_type = PropertyType.to_enum(entry["data_type"])
+    value = entry["value"]
+    # Saved as "True"/"False": anything else is unreadable, not False.
+    if data_type == PropertyType.Bool and str(value).lower() not in ("true", "false"):
+        raise ValueError(f"not a true/false value: {value!r}")
+    if data_type in util._property_to_string:
+        value = util.property_from_string(data_type, value)
+    properties = entry["properties"]
+    if not isinstance(properties, dict):
+        raise ValueError("properties")
+    return {
+        "value": value,
+        "data_type": data_type,
+        "properties": properties,
+        "expose": bool(entry["expose"]),
+    }
+
+
 _required_properties = {
     PropertyType.Bool: {},
     PropertyType.Int: {"min": int, "max": int},
@@ -34,6 +54,43 @@ _required_properties = {
     PropertyType.Path: {"is_folder": bool},
     PropertyType.Dict: {},
 }
+
+
+# Where a settings file that could not be read was kept aside, until the
+# user has been told (announce_damaged_settings).
+_damaged_copy: str = ""
+
+
+def _keep_damaged_file(reason: str) -> None:
+    """Moves an unreadable settings file aside so nothing overwrites it."""
+    global _damaged_copy
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    copy = f"{_config_file_path}.bad-{stamp}"
+    try:
+        os.replace(_config_file_path, copy)
+    except OSError:
+        copy = ""
+    _damaged_copy = copy or _config_file_path
+    logging.getLogger("system").error(
+        f"Settings file could not be read ({reason}); defaults are used."
+        + (f" The file was kept as {copy}." if copy else "")
+    )
+
+
+def announce_damaged_settings() -> None:
+    """Tells the user once (when the main window is up) that the settings
+    file could not be read and where it was kept."""
+    global _damaged_copy
+    if not _damaged_copy:
+        return
+    from gremlin.signal import signal
+
+    signal.showNotification.emit(
+        "Settings Reset",
+        "Your settings file could not be read, so Gremlin-Platforms started "
+        "with default settings. The old file was kept as:\n" + _damaged_copy,
+    )
+    _damaged_copy = ""
 
 
 class Configuration(metaclass=common.SingletonMetaclass):
@@ -60,40 +117,47 @@ class Configuration(metaclass=common.SingletonMetaclass):
             f"Loading configuration from {_config_file_path}."
         )
 
-        load_successful = False
-        json_data = {}
+        result = "missing"
+        json_data: dict = {}
         if os.path.isfile(_config_file_path):
-            with open(_config_file_path) as hdl:
-                try:
-                    decoder = json.JSONDecoder()
-                    json_data = decoder.decode(hdl.read())
-                    load_successful = True
-                except ValueError:
-                    pass
-        if not load_successful:
-            self._data = {}
-        trace(
-            "READ",
-            "Program Settings",
-            "load",
-            _config_file_path,
-            "ok" if load_successful else "missing",
-        )
+            try:
+                with open(_config_file_path, encoding="utf-8") as hdl:
+                    text = hdl.read()
+                # An empty file holds no settings (nothing to keep aside): the
+                # same as no file. The program never writes one (save_now
+                # writes a temporary file and swaps it in).
+                json_data = json.loads(text) if text.strip() else {}
+                if not isinstance(json_data, dict):
+                    raise ValueError("not a settings file")
+                result = "ok"
+            except (OSError, ValueError) as e:
+                # Unreadable as a whole: kept aside, defaults are used.
+                json_data = {}
+                result = "damaged"
+                _keep_damaged_file(str(e))
+        trace("READ", "Program Settings", "load", _config_file_path, result)
 
         self._data = {}
+        skipped = []
         for section, sec_data in json_data.items():
+            if not isinstance(sec_data, dict):
+                skipped.append(str(section))
+                continue
             for group, grp_data in sec_data.items():
+                if not isinstance(grp_data, dict):
+                    skipped.append(f"{section}/{group}")
+                    continue
                 for name, entry in grp_data.items():
-                    data_type = PropertyType.to_enum(entry["data_type"])
-                    value = entry["value"]
-                    if data_type in util._property_to_string:
-                        value = util.property_from_string(data_type, value)
-                    self._data[(section, group, name)] = {
-                        "value": value,
-                        "data_type": data_type,
-                        "properties": entry["properties"],
-                        "expose": entry["expose"],
-                    }
+                    try:
+                        self._data[(section, group, name)] = _parse_entry(entry)
+                    except Exception:
+                        # A bad setting falls back to its default (register).
+                        skipped.append(f"{section}/{group}/{name}")
+        if skipped:
+            logging.getLogger("system").warning(
+                "Settings with a value that could not be read use their "
+                "default: " + ", ".join(skipped)
+            )
 
         self._last_reload = time.time()
 
@@ -131,6 +195,9 @@ class Configuration(metaclass=common.SingletonMetaclass):
             }
         text = json.JSONEncoder(sort_keys=True, indent=4).encode(json_data)
         temp_path = path + ".tmp"
+        # The folder may not exist yet (first run, or settings saved before
+        # the program set its folders up).
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         try:
             with open(temp_path, "w") as hdl:
                 hdl.write(text)
