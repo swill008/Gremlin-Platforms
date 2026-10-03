@@ -18,13 +18,22 @@
 
 // Old layouts kept a zLayer (1 to 4; drawings 2 and chips 3 by default) and
 // "pinned". Sort once by that layer, keeping the list order within a layer,
-// and turn pinned into locked, so a layout looks as it did.
+// and turn pinned into locked, so a layout looks as it did. A layout without
+// any zLayer is already in stacking order (the list order) and is not sorted:
+// sorting it put every drawing under every chip each time the map was opened
+// or saved, undoing Bring to Front and Layers-panel moves.
 function normalizeStacking() {
     var list = nodes || []
+    var legacy = false
+    for (var l = 0; l < list.length; l++) {
+        if (list[l] && list[l].zLayer !== undefined && list[l].zLayer !== null)
+            legacy = true
+    }
     var keyed = []
     for (var i = 0; i < list.length; i++)
         keyed.push({ n: list[i], i: i, z: _legacyZ(list[i]) })
-    keyed.sort(function(a, b) { return (a.z - b.z) || (a.i - b.i) })
+    if (legacy)
+        keyed.sort(function(a, b) { return (a.z - b.z) || (a.i - b.i) })
     var moved = false
     for (var k = 0; k < keyed.length; k++) {
         if (keyed[k].i !== k)
