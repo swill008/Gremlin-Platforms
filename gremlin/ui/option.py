@@ -58,7 +58,137 @@ _ENTRY_TITLES = {
     "resolution-mode": "Mode cycle resolution",
     "unbound": "No actions",
     "recent-colours": "Recent colors",
+    "display-mode": "Input names",
+    "action-list": "Actions offered",
+    "action-sequence-information": "Action details",
 }
+
+# Where the main Options window shows each setting: sidebar sections, their
+# groups, and the stored keys in each (section, group, name). Showing a
+# setting somewhere else never changes its stored key. A registered setting
+# missing from here still shows, under "Other" at the end of its section's
+# page, so nothing disappears; _HIDDEN lists the ones that must not show.
+_LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
+    ("General", [
+        ("Startup and Tray", [
+            ("global", "general", "check-for-updates"),
+            ("global", "general", "minimize-to-tray"),
+            ("global", "general", "hidhide-on-start"),
+        ]),
+        ("Devices", [
+            ("global", "general", "device-change-behavior"),
+            ("global", "general", "refresh-axis-on-activation"),
+            ("global", "general", "refresh-axis-on-mode-change"),
+        ]),
+        ("Diagnostics", [
+            ("global", "general", "debug"),
+        ]),
+    ]),
+    ("Interface", [
+        ("Display", [
+            ("ui", "general", "dark-mode"),
+            ("ui", "general", "ui-scale"),
+            ("ui", "general", "disable-windows-scaling"),
+        ]),
+        ("Inputs", [
+            ("ui", "general", "display-mode"),
+            ("ui", "general", "input-highlighting"),
+            ("global", "general", "action-sequence-information"),
+        ]),
+    ]),
+    ("Actions", [
+        ("Add Action Menu", [("action", "general", "action-list")]),
+        ("Macro", [("action", "macro", "default-delay")]),
+        ("Change Mode", [("action", "change-mode", "resolution-mode")]),
+        ("Play Sound", [("action", "play-sound", "playback-mode")]),
+        ("Text to Speech", [("action", "text-to-speech", "voice-selection")]),
+    ]),
+    ("Profiles", [
+        ("Auto-load", [
+            ("profile", "automation", "enable-auto-loading"),
+            ("profile", "automation", "auto-loading"),
+            ("profile", "automation", "remain-active-on-focus-loss"),
+        ]),
+    ]),
+    ("Home", [
+        ("Cards", [
+            ("display", "status", "compact-view"),
+            ("display", "status", "show-stubs"),
+            ("display", "status", "last-keep-after-release"),
+            ("display", "status", "reset-card-sizes"),
+        ]),
+    ]),
+    ("OSC", [
+        ("Connection", [
+            ("osc", "connection", "enabled"),
+            ("osc", "connection", "input-host"),
+            ("osc", "connection", "output-address"),
+        ]),
+        ("Messages", [
+            ("osc", "connection", "autorelease-no-arg"),
+            ("osc", "connection", "delay-presets"),
+            ("osc", "connection", "pad-args"),
+        ]),
+    ]),
+    ("Folders", [
+        ("Folders", [
+            ("global", "files", "data-folder"),
+            ("global", "files", "profiles-folder"),
+            ("global", "files", "modules-folder"),
+            ("global", "files", "scripts-folder"),
+            ("global", "files", "export-folder"),
+            ("global", "files", "logs-folder"),
+            ("global", "files", "deleted-devices-folder"),
+            ("global", "files", "plugin-directory"),
+        ]),
+    ]),
+]
+
+# Stored values that are not settings to show: the Action list's raw data.
+_HIDDEN = {("action", "general", "action-priorities")}
+
+# Sections with a window of their own (the Button Map's options).
+_OWN_WINDOW = {"button-map"}
+
+# Which sidebar section an unplaced setting's stored section belongs to.
+_HOME_OF = {
+    "global": "General", "ui": "Interface", "action": "Actions",
+    "profile": "Profiles", "display": "Home", "osc": "OSC",
+}
+
+
+def _shown_keys() -> list[tuple[str, str, str]]:
+    """Every setting that can show in an Options window, from the registry."""
+    cfg = gremlin.config.Configuration()
+    option = MetaConfigOption()
+    keys: set[tuple[str, str, str]] = set()
+    for section in set(cfg.sections() + option.sections()):
+        for group in set(cfg.groups(section) + option.groups(section)):
+            names = cfg.entries(section, group) + option.entries(section, group)
+            for name in set(names):
+                keys.add((section, group, name))
+    return sorted(keys - _HIDDEN)
+
+
+def main_layout() -> list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]]:
+    """The main Options window's sections, groups and settings: _LAYOUT, plus
+    any registered setting it does not place (under "Other"), minus settings
+    that are not registered here (an option module not loaded)."""
+    available = set(_shown_keys())
+    placed = {key for _s, groups in _LAYOUT for _g, keys in groups for key in keys}
+    out = []
+    for title, groups in _LAYOUT:
+        shown = [(g, [k for k in keys if k in available]) for g, keys in groups]
+        extra = sorted(
+            key for key in available - placed
+            if key[0] not in _OWN_WINDOW and _HOME_OF.get(key[0], "General") == title
+        )
+        if extra:
+            shown.append(("Other", extra))
+        shown = [(g, keys) for g, keys in shown if keys]
+        if shown:
+            out.append((title, shown))
+    return out
 
 # Headings for groups whose stored key is spelled differently (glossary: US).
 _GROUP_TITLES = {
@@ -76,7 +206,14 @@ _GROUP_ORDER = {
 
 @ta.QmlElement
 class ConfigSectionModel(QtCore.QAbstractListModel):
-    """Exposes the sections present in the configuration as a list model."""
+    """The sections an Options window lists, each with its groups.
+
+    scope "" is the main Options window: the sections of main_layout(). Any
+    other scope is one stored section shown on its own (the Button Map's
+    options window uses "button-map").
+    """
+
+    scopeChanged = QtCore.Signal()
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
@@ -85,65 +222,54 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
+        self._scope = ""
 
-        self._config = gremlin.config.Configuration()
-        self._option = MetaConfigOption()
+    def _get_scope(self) -> str:
+        return self._scope
+
+    def _set_scope(self, value: str) -> None:
+        if value != self._scope:
+            self.beginResetModel()
+            self._scope = value
+            self.endResetModel()
+            self.scopeChanged.emit()
+
+    scope = QtCore.Property(str, fget=_get_scope, fset=_set_scope, notify=scopeChanged)
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._combined_sections())
+        return len(self._sections())
 
     def data(
         self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
     ) -> ConfigGroupModel | str | None:
         if role not in self.roles:
             return None
-
-        sections = self._combined_sections()
+        sections = self._sections()
         if index.row() >= len(sections):
             return None
-
+        title, groups = sections[index.row()]
         match cast(str, self.roles[role]):
             case "name":
-                raw = sections[index.row()]
-                return SECTION_DISPLAY_NAMES.get(raw, raw)
+                return title
             case "groupModel":
-                return ConfigGroupModel(sections[index.row()])
+                if groups is None:
+                    return ConfigGroupModel(self._scope)
+                return ConfigGroupModel(self._scope, groups=groups)
+        return None
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
 
-    def _combined_sections(self) -> list[str]:
-        def priority(name: str) -> int:
-            match name:
-                case "global":
-                    return 0
-                case "ui":
-                    return 1
-                case "action":
-                    return 2
-                case "profile":
-                    return 3
-                case "osc":
-                    return 4
-                case "display":
-                    return 5
-                case "automap":
-                    return 6
-                case "button-map":
-                    return 7
-                case _:
-                    return 99
-
-        return list(
-            sorted(set(self._config.sections() + self._option.sections()), key=priority)
-        )
+    def _sections(self) -> list[tuple[str, list | None]]:
+        if self._scope:
+            return [(SECTION_DISPLAY_NAMES.get(self._scope, self._scope), None)]
+        return [(title, groups) for title, groups in main_layout()]
 
 
 @ta.QmlElement
 class ConfigGroupModel(QtCore.QAbstractListModel):
-    """Exposes the groups present in a specific configuration section as a
-    list model.
-    """
+    """The groups of one Options page. With groups given, they are display
+    groups of (title, keys); otherwise the stored groups of the section."""
 
     changed = QtCore.Signal()
 
@@ -152,12 +278,18 @@ class ConfigGroupModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"entryModel"),
     }
 
-    def __init__(self, section: str, parent: ta.OQO = None) -> None:
+    def __init__(
+        self,
+        section: str,
+        parent: ta.OQO = None,
+        groups: list[tuple[str, list[tuple[str, str, str]]]] | None = None,
+    ) -> None:
         super().__init__(parent)
 
         self._config = gremlin.config.Configuration()
         self._option = MetaConfigOption()
         self._section_name = section
+        self._groups = groups
 
     @QtCore.Property(str, notify=changed)
     def sectionName(self) -> str:
@@ -173,30 +305,40 @@ class ConfigGroupModel(QtCore.QAbstractListModel):
         if index.row() >= len(groups):
             return None
 
+        title, keys, stored = groups[index.row()]
         match cast(str, self.roles[role]):
             case "entryModel":
-                return ConfigEntryModel(self._section_name, groups[index.row()])
+                return ConfigEntryModel(self._section_name, stored, keys=keys)
             case "groupName":
-                # Shown as the group's heading; the key itself never changes.
-                name = groups[index.row()]
-                return _GROUP_TITLES.get(name, name)
+                return title
             case _:
                 return None
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
 
-    def _combined_groups(self) -> list[str]:
+    def _combined_groups(
+        self,
+    ) -> list[tuple[str, list[tuple[str, str, str]] | None, str]]:
+        """(heading, keys or None, stored group name) for each group."""
+        if self._groups is not None:
+            return [(title, keys, title) for title, keys in self._groups]
         names = set(
             self._config.groups(self._section_name)
             + self._option.groups(self._section_name)
         )
-        return sorted(names, key=lambda name: (_GROUP_ORDER.get(name, 50), name))
+        ordered = sorted(names, key=lambda name: (_GROUP_ORDER.get(name, 50), name))
+        # Shown as the group's heading; the stored key itself never changes.
+        return [
+            (str(_GROUP_TITLES.get(name, name)), None, str(name)) for name in ordered
+        ]
 
 
 @ta.QmlElement
 class ConfigEntryModel(QtCore.QAbstractListModel):
-    """Exposes the entries in a section's group as a list model."""
+    """The settings of one Options group. With keys given, exactly those
+    (section, group, name) settings in that order; otherwise every setting
+    stored in the section's group."""
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"data_type"),
@@ -206,54 +348,63 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"name"),
     }
 
-    def __init__(self, section: str, group: str, parent: ta.OQO = None) -> None:
+    def __init__(
+        self,
+        section: str,
+        group: str,
+        parent: ta.OQO = None,
+        keys: list[tuple[str, str, str]] | None = None,
+    ) -> None:
         super().__init__(parent)
 
         self._config = gremlin.config.Configuration()
         self._option = MetaConfigOption()
         self._section_name = section
         self._group_name = group
+        if keys is None:
+            stored = set(
+                self._config.entries(section, group)
+                + self._option.entries(section, group)
+            )
+            keys = [(section, group, name) for name in sorted(stored)]
+        self._keys = [key for key in keys if key not in _HIDDEN]
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._combined_entries())
+        return len(self._keys)
 
     def data(
         self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
     ) -> str | None:
-        entries = self._combined_entries()
-        if not index.isValid() or index.row() >= len(entries):
+        if (
+            not index.isValid()
+            or index.row() >= len(self._keys)
+            or role not in self.roles
+        ):
             return None
-
+        section, group, name = self._keys[index.row()]
+        role_name = bytes(self.roles[role].data()).decode()
+        if role_name == "name":
+            shown = re.sub(r"^[0-9]+-", "", name)
+            if shown in _ENTRY_TITLES:
+                return _ENTRY_TITLES[shown]
+            return re.sub(r"[_-]+", " ", shown).capitalize()
         value = None
-        if role in self.roles:
-            role_name = bytes(self.roles[role].data()).decode()
-
-            name = entries[index.row()]
-            if role_name == "name":
-                name = re.sub(r"^[0-9]+-", "", name)
-                if name in _ENTRY_TITLES:
-                    return _ENTRY_TITLES[name]
-                return re.sub(r"[_-]+", " ", name).capitalize()
-            if name in self._option.entries(self._section_name, self._group_name):
-                match role_name:
-                    case "description":
-                        value = self._option.description(
-                            self._section_name, self._group_name, name
-                        )
-                    case "value":
-                        value = self._option.qml_widget(
-                            self._section_name, self._group_name, name
-                        )().qml_path
-                    case "data_type":
-                        value = "meta_option"
-            elif self._config.exists(self._section_name, self._group_name, name):
-                key = [self._section_name, self._group_name, entries[index.row()]]
-                value = self._config.get(*key, role_name)
-                if role_name == "value":
-                    if self._config.data_type(*key) == PropertyType.Path:
-                        value = str(value)
-                if isinstance(value, PropertyType):
-                    value = PropertyType.to_string(value)
+        # A custom widget wins over a stored value of the same name.
+        if name in self._option.entries(section, group):
+            match role_name:
+                case "description":
+                    value = self._option.description(section, group, name)
+                case "value":
+                    value = self._option.qml_widget(section, group, name)().qml_path
+                case "data_type":
+                    value = "meta_option"
+        elif self._config.exists(section, group, name):
+            value = self._config.get(section, group, name, role_name)
+            if role_name == "value":
+                if self._config.data_type(section, group, name) == PropertyType.Path:
+                    value = str(value)
+            if isinstance(value, PropertyType):
+                value = PropertyType.to_string(value)
         return value
 
     def setData(
@@ -262,23 +413,17 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
         value: str,
         role: int = QtCore.Qt.ItemDataRole.EditRole,
     ) -> bool:
-        entries = self._combined_entries()
-        if not index.isValid() or index.row() >= len(entries):
+        if not index.isValid() or index.row() >= len(self._keys):
             return False
-
-        name = entries[index.row()]
-        if not self._config.exists(self._section_name, self._group_name, name):
+        section, group, name = self._keys[index.row()]
+        if not self._config.exists(section, group, name):
             raise GremlinError(
-                "Cannot set data for non-config entry "
-                + f"{self._section_name}.{self._group_name}.{name}"
+                f"Cannot set data for non-config entry {section}.{group}.{name}"
             )
-
         if self.roles[role] == "value":
-            key = [self._section_name, self._group_name, entries[index.row()]]
-            if self._config.data_type(*key) == PropertyType.Path:
+            if self._config.data_type(section, group, name) == PropertyType.Path:
                 value = Path(value)
-
-            self._config.set(*key, value)
+            self._config.set(section, group, name, value)
             self.dataChanged.emit(index, index, [role])
             signal.configChanged.emit()
             return True
@@ -289,16 +434,6 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
-
-    def _combined_entries(self) -> list[str]:
-        return list(
-            sorted(
-                set(
-                    self._config.entries(self._section_name, self._group_name)
-                    + self._option.entries(self._section_name, self._group_name)
-                )
-            )
-        )
 
 
 class BaseMetaConfigOptionWidget:
@@ -359,6 +494,7 @@ class ActionSequenceOrdering(QtCore.QAbstractListModel, BaseMetaConfigOptionWidg
             case "visible":
                 data[index.row()][1] = value
                 self._config.set(*self._cfg_key, data)
+                self.dataChanged.emit(index, index, [role])
                 return True
             case "index":
                 return False
@@ -382,6 +518,44 @@ class ActionSequenceOrdering(QtCore.QAbstractListModel, BaseMetaConfigOptionWidg
         data.insert(target_index, item)
         self._config.set(*self._cfg_key, data)
         self.layoutChanged.emit()
+
+    @QtCore.Slot(int, bool)
+    def setShown(self, row: int, shown: bool) -> None:
+        """Offers the action in the Add Action menu, or not."""
+        self.setData(self.index(row, 0), shown, QtCore.Qt.ItemDataRole.UserRole + 2)
+
+    @QtCore.Slot("QVariantList", int, int)
+    def moveAmong(self, rows: list, source: int, before: int) -> None:
+        """Reorders one kind of action among its own rows: source goes just
+        before the row before (-1: after the last). Every other action keeps
+        its place, so the order across kinds (the first three are the quick
+        adds in an action's menu) stays as it was."""
+        rows = [int(r) for r in rows]
+        if source not in rows or source == before:
+            return
+        order = [r for r in rows if r != source]
+        order.insert(order.index(before) if before in order else len(order), source)
+        if order == rows:
+            return
+        self.layoutAboutToBeChanged.emit()
+        data = self._config.value(*self._cfg_key)
+        items = [data[r] for r in order]
+        for slot, item in zip(rows, items):
+            data[slot] = item
+        self._config.set(*self._cfg_key, data)
+        self.layoutChanged.emit()
+
+    @QtCore.Slot()
+    def resetDefaults(self) -> None:
+        """The order and choice a new install starts with: Map to vJoy, Macro
+        and Response Curve first, the rest by name, every one offered."""
+        first = ["Map to vJoy", "Macro", "Response Curve"]
+        names = [name for name, _shown in self._config.value(*self._cfg_key)]
+        rest = sorted(n for n in names if n not in first)
+        ordered = [n for n in first if n in names] + rest
+        self.beginResetModel()
+        self._config.set(*self._cfg_key, [[name, True] for name in ordered])
+        self.endResetModel()
 
     def _qml_path(self) -> str:
         return (
@@ -592,9 +766,8 @@ MetaConfigOption().register(
     "action",
     "general",
     "action-list",
-    "Reorder the order in which actions appear in the drop down menu as desired "
-    "by dragging and dropping them in the list. Actions that are not desired "
-    "can be turned off via the switch next to each action.",
+    "Choose which actions the Add Action menu offers. Drag one by its handle "
+    "to change its place among its kind.",
     ActionSequenceOrdering,
 )
 

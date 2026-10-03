@@ -11,6 +11,7 @@ Tracker refs in brackets.
 | The input device that feeds an output card | **Driven by: [device]**, or **Driven by: [nothing]** | Bound to: [Not bound] |
 | The page where you edit a device's actions [D6] | **Configuration** (unchanged) | |
 | The window for a device's module (claims, file, picture) [D6] | **Module Setup** ("Module Setup…" on the card and in Tools) | Configure input module / Configure output module |
+| The Button Map's settings | **Button Map Options** (Button Map → Edit → Button Map Options…; its own window, not in the main Options) | Editor options, Options → Button Map |
 | The editor for how a page looks (Home, Configuration, Logical) [D9] | **Appearance** ("Appearance…") | Show Editor, Display, Display Editor, View Settings, Display options |
 | The current mode [D10] | one label, **Mode**, on the toolbar; the footer's duplicate goes | "Configuring mode" + "Executing mode" (always the same) |
 | Hiding a card from Home [D3] | **Hide Card** / **Hidden Cards** | Hide device / Hidden devices (too close to HidHide) |

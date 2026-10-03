@@ -10,6 +10,7 @@ import Gremlin.Profile
 import Gremlin.Menus
 import Gremlin.Style
 import "helpers.js" as Helpers
+import "action_kinds.js" as ActionKinds
 
 
 Item {
@@ -282,16 +283,8 @@ Item {
         }
     }
 
-    // What kind of action each is, for the Add sections. Anything not
-    // listed (a new action) goes under Other.
-    readonly property var _actionKinds: ({
-        "Map to vJoy": "map", "Map to Xbox": "map", "Map to Keyboard": "map",
-        "Map to Mouse": "map", "Map to Logical Device": "map",
-        "Response Curve": "axis", "Axis Delta": "axis", "Dual Axis Deadzone": "axis",
-        "Merge Axis": "axis", "Split Axis": "axis", "Hat as Buttons": "axis",
-        "Condition": "logic", "Chain": "logic", "Double Tap": "logic", "Tempo": "logic",
-        "Smart Toggle": "logic", "Macro": "logic", "Change Mode": "logic", "Reference": "logic"
-    })
+    // What kind of action each is, for the Add sections: action_kinds.js,
+    // shared with Options → Actions → Add Action Menu.
 
     // The action's right-click menu (Gremlin.Menus): the three actions used
     // most (the order set in Options) to add straight away, the rest by kind.
@@ -306,7 +299,7 @@ Item {
         var quick = names.slice(0, 3).map(function(n) { return MenuModel.action("Add " + n, add(n).run) })
         var groups = { map: [], axis: [], logic: [], other: [] }
         for (var i = 3; i < names.length; i++)
-            groups[_actionKinds[names[i]] || "other"].push(add(names[i]))
+            groups[ActionKinds.kindOf(names[i])].push(add(names[i]))
         var canDelete = !!(parentAction && action) || !!(compactMode && inputItemModel && inputBinding)
         return MenuModel.menu("action-node", action ? action.name : "Action", quick, [
             MenuModel.section("add-map", "Add: Map to", groups.map),

@@ -6,13 +6,96 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Config
-import "helpers.js" as Helpers
+import Gremlin.Style
 
-JGListView {
-    property ConfigGroupModel groupModel
+// An Options page: the groups (ConfigGroup) of the chosen section. While
+// searching (filterText set) it shows every section's matching settings,
+// each under its section's title. Used by the main Options window and the
+// Button Map's own options window.
+ScrollView {
+    id: _page
 
-    scrollbarAlwaysVisible: true
+    property ConfigSectionModel sectionModel
+    property int currentIndex: 0
+    property string filterText: ""
+    readonly property bool searching: filterText.trim().length > 0
 
-    model: groupModel
-    delegate: ConfigGroup {}
+    contentWidth: availableWidth
+    clip: true
+
+    ColumnLayout {
+        width: _page.availableWidth - Style.dp(40)
+        x: Style.dp(20)
+        spacing: 0
+
+        Repeater {
+            model: _page.sectionModel
+
+            delegate: ColumnLayout {
+                id: _section
+
+                required property int index
+                required property string name
+                required property ConfigGroupModel groupModel
+
+                Layout.fillWidth: true
+                spacing: 0
+                visible: _page.searching ? hasMatch() : index === _page.currentIndex
+
+                // While searching: some group of this section shows.
+                function hasMatch() {
+                    _page.filterText
+                    for (var i = 0; i < children.length; i++) {
+                        var g = children[i]
+                        if (g.firstMatch !== undefined && g.firstMatch >= 0)
+                            return true
+                    }
+                    return false
+                }
+
+                Label {
+                    // Section titles only while searching (the sidebar names
+                    // the section otherwise).
+                    visible: _page.searching
+                    Layout.topMargin: Style.dp(18)
+                    text: _section.name
+                    color: Style.fgStrong
+                    font.pixelSize: Style.dp(16)
+                }
+
+                Repeater {
+                    model: _section.groupModel
+
+                    delegate: ConfigGroup {
+                        Layout.fillWidth: true
+                        filterText: _page.filterText
+                    }
+                }
+            }
+        }
+
+        Label {
+            visible: _page.searching && !_page.anyMatch()
+            Layout.topMargin: Style.dp(24)
+            text: "No setting matches “" + _page.filterText.trim() + "”."
+            color: Style.fgMuted
+        }
+
+        Item { implicitHeight: Style.dp(20) }
+    }
+
+    // Any setting matches the search (some group shows).
+    function anyMatch() {
+        filterText
+        var stack = [contentItem]
+        while (stack.length) {
+            var item = stack.pop()
+            if (item.firstMatch !== undefined && item.firstMatch >= 0)
+                return true
+            var kids = item.children || []
+            for (var i = 0; i < kids.length; i++)
+                stack.push(kids[i])
+        }
+        return false
+    }
 }

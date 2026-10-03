@@ -7,50 +7,49 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Style
-import "helpers.js" as Helpers
 
-Button {
-    id: _text
+// A section in the Options sidebar. The chosen one is highlighted with an
+// accent bar. Clicking it shows that section (and clears a search).
+AbstractButton {
+    id: _button
 
     required property int index
     required property string name
     required property ConfigGroupModel groupModel
 
-    text: name
+    readonly property bool current: _options.currentSection === index
 
-    height: Style.dp(40)
-    width: _sectionSelector.width
+    Layout.fillWidth: true
+    implicitHeight: Style.dp(36)
+    hoverEnabled: true
 
-    background: Row {
+    background: Rectangle {
+        radius: Style.dp(6)
+        color: _button.current ? Style.bgSelected
+            : (_button.hovered ? Style.bgHover : "transparent")
+
         Rectangle {
-            width: Style.dp(5)
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-
-            color: _sectionSelector.currentIndex == index ?
-                Style.accent : Style.background
-        }
-        Rectangle {
-            x: Style.dp(5)
-            width: parent.width - Style.dp(5)
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-
-            color: _sectionSelector.currentIndex == index ?
-                (Style.isDarkMode ? Universal.chromeMediumColor : Style._light.bar) : Style.background
+            visible: _button.current
+            x: Style.dp(4)
+            width: Style.dp(3)
+            height: Style.dp(18)
+            radius: Style.dp(2)
+            anchors.verticalCenter: parent.verticalCenter
+            color: Style.accent
         }
     }
 
-    contentItem: JGText {
-        text: Helpers.capitalize(_text.text)
-        font: _text.font
-        horizontalAlignment: Text.AlignLeft
+    contentItem: Label {
+        leftPadding: Style.dp(16)
+        text: _button.name
+        color: _button.current ? Style.fgStrong : Style.fgSoft
+        font.pixelSize: Style.dp(14)
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
     }
 
-    onClicked: function () {
-        _sectionSelector.currentIndex = index
-        _configSection.groupModel = groupModel
+    onClicked: {
+        _options.currentSection = index
+        _search.text = ""
     }
 }

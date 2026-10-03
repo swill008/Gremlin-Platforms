@@ -118,8 +118,10 @@ def test_button_map_help_is_its_own_guide() -> None:
     ):
         assert feature in section, feature
     # Only the Button Map: no other screens or features.
-    for elsewhere in ("Device Pack", "Tools →", "main window", "Options →"):
+    for elsewhere in ("Device Pack", "Tools →", "main window"):
         assert elsewhere not in section, elsewhere
+    # Its settings are its own window's (Button Map Options), not the main Options.
+    assert not re.search(r"(?<!Button Map )Options →", section)
 
 
 def test_every_action_plugin_has_a_topic() -> None:

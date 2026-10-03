@@ -20,7 +20,7 @@ ApplicationWindow {
     // Never wider or taller than the screen, even at a high UI scale.
     readonly property int _fitW: Math.max(640, Screen.desktopAvailableWidth - 40)
     readonly property int _fitH: Math.max(480, Screen.desktopAvailableHeight - 60)
-    minimumWidth: Math.min(Style.dp(1200), _fitW)
+    minimumWidth: Math.min(Style.dp(900), _fitW)
     minimumHeight: Math.min(Style.dp(600), _fitH)
 
     U.Universal.theme: Style.theme
@@ -31,24 +31,8 @@ ApplicationWindow {
     ToolWindowMemory {
         host: _options
         name: "options"
-        defaultWidth: Math.min(Style.dp(1200), _options._fitW)
+        defaultWidth: Math.min(Style.dp(1000), _options._fitW)
         defaultHeight: Math.min(Style.dp(700), _options._fitH)
-    }
-
-    // Opens on this section (its display name, e.g. "Button Map").
-    property string initialSection: ""
-
-    function showSection(name) {
-        // Roles of ConfigSectionModel: UserRole + 1 name, + 2 groupModel.
-        for (var i = 0; i < _sectionModel.rowCount(); i++) {
-            var index = _sectionModel.index(i, 0)
-            if (_sectionModel.data(index, Qt.UserRole + 1) === name) {
-                _sectionSelector.currentIndex = i
-                _configSection.groupModel = _sectionModel.data(index, Qt.UserRole + 2)
-                _sectionSelector.positionViewAtIndex(i, ListView.Contain)
-                return
-            }
-        }
     }
 
     onClosing: () => {
@@ -59,34 +43,91 @@ ApplicationWindow {
         id: _sectionModel
     }
 
+    property int currentSection: 0
+
     RowLayout {
-        id: _root
-
         anchors.fill: parent
+        spacing: 0
 
-        // Shows the list of all option sections.
-        JGListView {
-            id: _sectionSelector
-
-            Layout.preferredWidth: Style.dp(200)
+        // Sidebar: the sections.
+        Rectangle {
             Layout.fillHeight: true
+            Layout.preferredWidth: Style.dp(200)
+            color: Style.bgPage
 
-            model: _sectionModel
-            delegate: ConfigSectionButton {}
+            Rectangle {
+                anchors.right: parent.right
+                width: Style.dp(1)
+                height: parent.height
+                color: Style.line
+            }
 
-            Component.onCompleted: () => {
-                currentItem.clicked()
-                if (_options.initialSection)
-                    Qt.callLater(function() { _options.showSection(_options.initialSection) })
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: Style.dp(10)
+                spacing: Style.dp(2)
+
+                RowLayout {
+                    Layout.leftMargin: Style.dp(6)
+                    Layout.bottomMargin: Style.dp(10)
+                    spacing: Style.dp(8)
+                    Label {
+                        text: "\uF3E5"
+                        font.family: "bootstrap-icons"
+                        font.pixelSize: Style.dp(18)
+                        color: Style.fgSoft
+                    }
+                    Label {
+                        text: "Options"
+                        font.pixelSize: Style.dp(17)
+                        color: Style.fgStrong
+                    }
+                }
+
+                Repeater {
+                    model: _sectionModel
+                    delegate: ConfigSectionButton {}
+                }
+
+                Item { Layout.fillHeight: true }
             }
         }
 
-        // Shows the contents of the currently selected section.
-        ConfigSection {
-            id: _configSection
-
-            Layout.fillHeight: true
+        // The page: its title, the search box, and the settings.
+        ColumnLayout {
             Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 0
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: Style.dp(20)
+                Layout.rightMargin: Style.dp(20)
+                Layout.topMargin: Style.dp(14)
+                spacing: Style.dp(12)
+
+                Label {
+                    Layout.fillWidth: true
+                    text: _search.text.trim().length
+                        ? "Search"
+                        : String(_sectionModel.data(_sectionModel.index(_options.currentSection, 0), Qt.UserRole + 1) || "")
+                    color: Style.fgStrong
+                    font.pixelSize: Style.dp(20)
+                }
+                TextField {
+                    id: _search
+                    Layout.preferredWidth: Style.dp(240)
+                    placeholderText: "Search options"
+                }
+            }
+
+            ConfigSection {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                sectionModel: _sectionModel
+                currentIndex: _options.currentSection
+                filterText: _search.text
+            }
         }
     }
 }

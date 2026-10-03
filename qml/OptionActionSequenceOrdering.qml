@@ -7,137 +7,217 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Style
+import "action_kinds.js" as ActionKinds
 
+// Options → Actions → Add Action Menu: which actions the menu offers, under
+// the same headings it uses (action_kinds.js), in two columns. Dragging an
+// action by its handle reorders it among its own kind; the other actions
+// keep their places (ActionSequenceOrdering.moveAmong).
 Item {
-    ActionSequenceOrdering {
-        id: _data
-    }
+    id: _root
 
     implicitHeight: _content.implicitHeight
     implicitWidth: _content.implicitWidth
 
+    ActionSequenceOrdering {
+        id: _data
+    }
+
+    // Bumped whenever the stored list changes, so the groups re-read it.
+    property int _rev: 0
+    Connections {
+        target: _data
+        function onLayoutChanged() { _root._rev++ }
+        function onModelReset() { _root._rev++ }
+        function onDataChanged() { _root._rev++ }
+    }
+
+    // UserRole + 1 name, + 2 shown (ActionSequenceOrdering).
+    function nameAt(row) { return String(_data.data(_data.index(row, 0), Qt.UserRole + 1)) }
+    function shownAt(row) { return !!_data.data(_data.index(row, 0), Qt.UserRole + 2) }
+
+    // The stored rows of one kind, in their order.
+    function rowsOf(kind) {
+        _rev
+        var out = []
+        for (var i = 0; i < _data.rowCount(); i++) {
+            var name = nameAt(i)
+            if (!ActionKinds.internal[name] && ActionKinds.kindOf(name) === kind)
+                out.push(i)
+        }
+        return out
+    }
+
+    readonly property var _counts: {
+        _rev
+        var shown = 0
+        var all = 0
+        for (var i = 0; i < _data.rowCount(); i++) {
+            if (ActionKinds.internal[nameAt(i)])
+                continue
+            all++
+            if (shownAt(i))
+                shown++
+        }
+        return { shown: shown, all: all }
+    }
+
+    // The row being dragged and where it would go (a row of its kind, or -1
+    // for after the last one).
+    property int _dragRow: -1
+    property int _dropBefore: -1
+    property string _dragKind: ""
+
     ColumnLayout {
         id: _content
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        spacing: Style.dp(6)
 
-        Repeater {
-            model: _data
-
-            delegate: ActionDisplay {
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignRight
-
-                name: model.name
-                active: model.visible
-           }
+        Label {
+            text: _root._counts.shown + " of " + _root._counts.all + " offered"
+            color: Style.fgMuted
+            font.pixelSize: Style.dp(12)
         }
 
-        DropArea {
-            id: _bottomDropArea
-
+        GridLayout {
             Layout.fillWidth: true
-            height: Style.dp(20)
+            columns: 2
+            columnSpacing: Style.dp(40)
+            rowSpacing: 0
 
-            onDropped: (drop) => {
-                _data.move(drop.text, _data.rowCount())
+            Repeater {
+                // Map to and Axis and Hat on the left, the rest on the right.
+                model: [["map", "axis"], ["logic", "other"]]
+
+                ColumnLayout {
+                    required property var modelData
+                    Layout.alignment: Qt.AlignTop
+                    Layout.fillWidth: true
+                    spacing: 0
+
+                    Repeater {
+                        model: parent.modelData
+                        delegate: _kindGroup
+                    }
+                }
             }
+        }
 
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                y: 0
-                height: Style.dp(1)
-
-                color: Style.accent
-                opacity: parent.containsDrag ? 1.0 : 0.0
+        RowLayout {
+            Layout.fillWidth: true
+            Item { Layout.fillWidth: true }
+            Button {
+                text: "Reset to Default"
+                onClicked: _data.resetDefaults()
             }
         }
     }
 
-    component ActionDisplay : Item {
-        property alias name: _label.text
-        property alias active: _switch.checked
+    Component {
+        id: _kindGroup
 
-        implicitHeight: _item.implicitHeight
+        ColumnLayout {
+            id: _group
 
-        RowLayout {
-            id: _item
+            required property string modelData
+            readonly property string kind: modelData
+            readonly property var rows: _root.rowsOf(kind)
 
-            anchors.fill: parent
-
-            property int index: model.index
-            property bool isDragging: false
-
-            Drag.active: isDragging
-            Drag.dragType: Drag.Automatic
-            Drag.supportedActions: Qt.MoveAction
-            Drag.proposedAction: Qt.MoveAction
-            Drag.source: _item
-            Drag.hotSpot.x: width / 2
-            Drag.hotSpot.y: height / 2
-            Drag.mimeData: {
-                "text/plain": model.index.toString()
-            }
-
-            IconButton {
-                text: bsi.icons.drag_handle
-
-                // Drag handle interaction for drag&drop suppport.
-                MouseArea {
-                    id: _dragArea
-
-                    anchors.fill: parent
-                    drag.target: _item
-                    drag.axis: Drag.YAxis
-
-                    // Create an image of the object being dragged for visualization
-                    onPressed: () => {
-                        _item.isDragging = true
-                        _item.grabToImage((result) => {
-                            _item.Drag.imageSource = result.url
-                        })
-                    }
-
-                    onReleased: () => {
-                        _item.isDragging = false
-                    }
-                }
-            }
+            visible: rows.length > 0
+            spacing: 0
 
             Label {
-                id: _label
-
-                Layout.fillWidth: true
+                Layout.topMargin: Style.dp(6)
+                text: ActionKinds.titles[_group.kind]
+                color: Style.fgMuted
+                font.pixelSize: Style.dp(12)
             }
 
-            CompactSwitch {
-                id: _switch
+            ColumnLayout {
+                id: _list
+                spacing: 0
 
-                text: checked ? "On" : "Off"
+                Repeater {
+                    model: _group.rows
 
-                onToggled: () => { model.visible = checked }
-            }
-        }
+                    RowLayout {
+                        id: _row
 
-        DropArea {
-            id: _dropArea
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: _item.height
-            y: _item.y - height/2
+                        required property int modelData
+                        readonly property int row: modelData
 
-            onDropped: (drop) => {
-                _data.move(drop.text, index)
-            }
+                        spacing: Style.dp(6)
 
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                height: Style.dp(1)
-                y: parent.height / 2
+                        // Where a drop before this row would land.
+                        Rectangle {
+                            Layout.preferredWidth: Style.dp(3)
+                            Layout.preferredHeight: Style.dp(18)
+                            color: _root._dragKind === _group.kind && _root._dropBefore === _row.row
+                                ? Style.accent : "transparent"
+                        }
 
-                color: Style.accent
-                opacity: parent.containsDrag ? 1.0 : 0.0
+                        Label {
+                            text: ""
+                            font.family: "bootstrap-icons"
+                            color: Style.fgMuted
+
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -Style.dp(4)
+                                cursorShape: Qt.SizeVerCursor
+                                preventStealing: true
+
+                                onPressed: {
+                                    _root._dragRow = _row.row
+                                    _root._dragKind = _group.kind
+                                    _root._dropBefore = _row.row
+                                }
+                                onPositionChanged: (mouse) => {
+                                    var p = mapToItem(_list, mouse.x, mouse.y)
+                                    var before = -1
+                                    var kids = _list.children
+                                    for (var i = 0; i < kids.length; i++) {
+                                        var k = kids[i]
+                                        if (k.row === undefined)
+                                            continue
+                                        if (p.y < k.y + k.height / 2) {
+                                            before = k.row
+                                            break
+                                        }
+                                    }
+                                    _root._dropBefore = before
+                                }
+                                onReleased: {
+                                    _data.moveAmong(_group.rows, _root._dragRow, _root._dropBefore)
+                                    _root._dragRow = -1
+                                    _root._dragKind = ""
+                                }
+                                onCanceled: {
+                                    _root._dragRow = -1
+                                    _root._dragKind = ""
+                                }
+                            }
+                        }
+
+                        CheckBox {
+                            text: _root.nameAt(_row.row)
+                            checked: { _root._rev; return _root.shownAt(_row.row) }
+                            font.pixelSize: Style.dp(13)
+                            padding: Style.dp(2)
+                            onToggled: _data.setShown(_row.row, checked)
+                        }
+                    }
+                }
+
+                // A drop after the last action of this kind.
+                Rectangle {
+                    Layout.leftMargin: 0
+                    Layout.preferredWidth: Style.dp(120)
+                    Layout.preferredHeight: Style.dp(2)
+                    color: _root._dragKind === _group.kind && _root._dropBefore === -1
+                        ? Style.accent : "transparent"
+                }
             }
         }
     }

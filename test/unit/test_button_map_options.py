@@ -32,9 +32,14 @@ def test_every_option_is_registered_and_shown_in_options() -> None:
 
 def test_options_list_a_button_map_section_in_group_order() -> None:
     bmo.register()
+    # Only in the Button Map's own window, never in the main Options.
     sections = ConfigSectionModel()
     names = [sections.data(sections.index(i), 257) for i in range(sections.rowCount())]
-    assert "Button Map" in names
+    assert "Button Map" not in names
+    own = ConfigSectionModel()
+    own.setProperty("scope", bmo.SECTION)
+    titles = [own.data(own.index(i), 257) for i in range(own.rowCount())]
+    assert titles == ["Button Map"]
     groups = ConfigGroupModel(bmo.SECTION)
     shown = [groups.data(groups.index(i), 257) for i in range(groups.rowCount())]
     # Headings may be spelled differently from the stored keys ("colours").

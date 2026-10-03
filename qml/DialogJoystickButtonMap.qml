@@ -1387,10 +1387,9 @@ ApplicationWindow {
         }
     }
 
+    // The Button Map's own options window (not part of the main Options).
     function openEditorOptions() {
-        var w = Helpers.createComponent("DialogOptions.qml", { initialSection: "Button Map" })
-        if (w)
-            w.showSection("Button Map")
+        Helpers.createComponent("DialogButtonMapOptions.qml")
     }
 
     function applyGridToEditor() {
@@ -2444,7 +2443,7 @@ ApplicationWindow {
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
-                    text: "Editor Options…"
+                    text: "Button Map Options…"
                     onTriggered: _buttonMap.openEditorOptions()
                 }
             }

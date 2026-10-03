@@ -240,14 +240,17 @@ function topics() {
 
         topic("Options and Profile", "Options",
             "<p>Tools → <b>Options</b> (or <b>Options</b> on the toolbar). Program settings, not stored in the profile; the profile's own are on its <b>Profile Settings</b> tab.</p>"
+            + "<p>Pick a section on the left, or type in <b>Search options</b> to find a setting in any section.</p>"
             + "<ul>"
-            + "<li><b>Global</b>: <b>Minimize to tray</b> (minimizing or closing the window keeps the program running in the tray; exit from File → Exit or the tray menu), <b>Check for updates</b> (when the program starts; see Installing and updating), <b>Device change behavior</b> (Reload, Ignore, Disable), Turn HidHide on at start, axis refresh on activation and mode change, Diagnostic logs, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
-            + "<li><b>User Interface</b>: Dark mode, UI scale, Ignore Windows display scaling, Display mode (numbers and/or labels), and Input highlighting (it stays on the device page you have open).</li>"
-            + "<li><b>Action</b>: the Action list order, and settings for Axis Delta, Change Mode, Double Tap, Macro, Play Sound, Smart Toggle, Tempo, and Text-To-Speech (voice).</li>"
-            + "<li><b>Profile</b>: Load profiles automatically — load a profile when a chosen program starts — and Keep running when the program loses focus.</li>"
-            + "<li><b>OSC Connection</b>: Enabled, Input host and port, Output address, and press timing.</li>"
-            + "<li><b>Home</b>: Home card options and <b>Reset All Card Sizes</b>.</li>"
-            + "</ul>"),
+            + "<li><b>General</b>: Startup and Tray (<b>Check for updates</b>; <b>Minimize to tray</b>, where minimizing or closing the window keeps the program running in the tray, exit from File → Exit or the tray menu; Turn HidHide on at start), Devices (<b>Device change behavior</b>: Reload, Ignore, Disable; refresh axes on activation and mode change), Diagnostics (Diagnostic logs).</li>"
+            + "<li><b>Interface</b>: Display (Dark mode, UI scale, Ignore Windows display scaling) and Inputs (Input names, Input highlighting, which stays on the device page you have open, and Action details).</li>"
+            + "<li><b>Actions</b>: the Add Action Menu (which actions it offers and their order), then Macro, Change Mode, Play Sound and Text to Speech.</li>"
+            + "<li><b>Profiles</b>: Auto-load: Load profiles automatically when a chosen program starts, the programs and their profiles, and Keep running when the program loses focus.</li>"
+            + "<li><b>Home</b>: the Home cards and <b>Reset All Card Sizes</b>.</li>"
+            + "<li><b>OSC</b>: Connection (Enabled, Input host and port, Output address) and Messages (press timing).</li>"
+            + "<li><b>Folders</b>: where profiles, modules, scripts, exports and logs are kept.</li>"
+            + "</ul>"
+            + "<p>The Button Map's settings are in the Button Map: Edit → <b>Button Map Options…</b>.</p>"),
         topic("Options and Profile", "Profile Settings",
             "<p>View → <b>Profile Settings</b>. Stored in the profile; save the profile to keep them.</p>"
             + "<ul>"
@@ -302,12 +305,12 @@ function buttonMapTopics() {
             + "<li><b>Export PDF…</b>, <b>Export PNG…</b>, <b>Export JPG…</b> save the whole page, whatever the zoom, on the window's background color. Selection marks, handles, guides and the grid are left off, and so are hidden items. <b>Export Size</b> picks 1×, 2× (the default) or 3× the size on screen; a PDF page keeps the on-screen size and gets the extra detail. <b>Light Page for Exports</b> exports on white instead: every color has its lightness turned over, so dark chips come out light with dark text and a dark red becomes a light red, while the photo stays as it is. The screen does not change.</li>"
             + "<li><b>Copy Layout from</b> lists the other devices that have a layout. Pick one to replace this map's chips, leaders and drawings with it, mirrored left to right if you like (for the other hand's stick). This device's photo stays; Undo puts the old layout back, and nothing is saved until you save.</li>"
             + "<li><b>Templates</b>: <b>Save Layout as Template…</b> keeps this map's chips, leaders and drawings under a name; <b>Apply Template</b> puts one on any device (it asks first; Undo puts the old layout back); <b>Manage Templates…</b> renames, deletes, exports a template to a file to share, and imports one. A template keeps where its pictures are, not the picture files themselves.</li>"
-            + "<li><b>Print…</b> (Ctrl+P) prints the whole page, as Export draws it, as large as fits on the paper and turned to landscape when wider than tall. Windows' printer dialog comes first. It prints on a light page unless Editor options → Export → <b>Print light</b> is off. To print every mode, Export modes to a PDF and print that.</li>"
+            + "<li><b>Print…</b> (Ctrl+P) prints the whole page, as Export draws it, as large as fits on the paper and turned to landscape when wider than tall. Windows' printer dialog comes first. It prints on a light page unless Button Map Options → Export → <b>Print light</b> is off. To print every mode, Export modes to a PDF and print that.</li>"
             + "<li><b>Export Modes…</b> writes one page per mode, each chip showing what its control does in that mode (Action labels; if chips show names, the export shows actions). Tick the modes, choose PDF (one file, a page per mode), PNG or JPG (a file per mode, named after the file you choose plus the mode). Each page can carry its mode's name at the top.</li>"
             + "<li><b>Close</b>. The last row shows the device's module file.</li>"
             + "</ul>"),
-        topic("Getting started", "Editor options",
-            "<p><b>Edit → Editor options…</b> in the Button Map opens the Button Map's settings. They apply to every device.</p>"
+        topic("Getting started", "Button Map Options",
+            "<p><b>Edit → Button Map Options…</b> opens the Button Map's settings in a window of their own (they are not in the program's main Options). They apply to every device.</p>"
             + "<ul>"
             + "<li><b>Labels</b>: <b>Chip Text</b>, <b>Description first</b>, <b>Several actions</b> and <b>No actions</b> (see Action labels).</li>"
             + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror layout and Copy layout from also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
@@ -318,7 +321,7 @@ function buttonMapTopics() {
             + "<li><b>Library</b>: the saved styles and layout templates, to rename or delete.</li>"
             + "</ul>"),
         topic("The map", "View, zoom and grid",
-            "<p>Scroll to zoom (75% to 600%); the <b>Zoom speed</b> setting in Editor options sets how fast. Drag with the middle button to pan. View → <b>Reset View (View 100%)</b> or Ctrl+0 returns to 100%. View → <b>Zoom to Fit Page</b> (Ctrl+1) shows the whole page; View → <b>Zoom to Selection</b> (Ctrl+2) fills the view with what is selected.</p>"
+            "<p>Scroll to zoom (75% to 600%); the <b>Zoom speed</b> setting in Button Map Options sets how fast. Drag with the middle button to pan. View → <b>Reset View (View 100%)</b> or Ctrl+0 returns to 100%. View → <b>Zoom to Fit Page</b> (Ctrl+1) shows the whole page; View → <b>Zoom to Selection</b> (Ctrl+2) fills the view with what is selected.</p>"
             + "<p>View → <b>Grid</b>: <b>Show Grid</b>, <b>Snap to Grid</b>, <b>Snap to Entities</b> (edges and middles of other items, with guide lines), and the grid <b>Size</b>. Hold <b>Alt</b> while dragging to skip snapping.</p>"
             + "<p>View → <b>Layers</b> and View → <b>Properties</b> show the two side panels (see Layers and Properties panel).</p>"),
         topic("The map", "Rulers and guides",
@@ -330,7 +333,7 @@ function buttonMapTopics() {
             + "<p><b>Adjust Photo…</b> also sets its <b>Look</b>, so the chips stand out against a busy picture: <b>Brightness</b> and <b>Contrast</b> (either way), <b>Greyscale</b> and <b>Fade</b>. <b>Reset Look</b> puts them back; Reset photo leaves the look alone. The look is saved with the layout, shows on the live map and in exports, and Undo steps through it.</p>"
             + "<p>Photo → <b>Choose Photo…</b> uses another picture; <b>Clear Photo</b> returns to the module's picture. The photo has its own row at the bottom of the Layers panel, so it can be hidden or locked like any item.</p>"),
         topic("The map", "Selecting, undo and keys",
-            "<p><b>Press to find</b>: while editing, press a button or hat on the device and its chip is selected and scrolled into view (a group member selects its group). A control that is not on the map yet is shown in the pool, filtered by name; a hidden one is pointed to the Layers panel. Turn it off, or let a pushed axis count too, in Editor options.</p>"
+            "<p><b>Press to find</b>: while editing, press a button or hat on the device and its chip is selected and scrolled into view (a group member selects its group). A control that is not on the map yet is shown in the pool, filtered by name; a hidden one is pointed to the Layers panel. Turn it off, or let a pushed axis count too, in Button Map Options.</p>"
             + "<p>Click selects; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. Arrow keys nudge the selection; Shift+Arrow nudges by the grid size. Undo and Redo are also at the top of every right-click menu.</p>"
             + "<ul>"
             + "<li><b>Ctrl+S</b> Save</li>"
@@ -358,10 +361,10 @@ function buttonMapTopics() {
             + "</ul>"
             + "<p>Ctrl+D duplicates the selection; Ctrl+C and Ctrl+V copy and paste it inside the editor.</p>"),
         topic("Chips", "Action labels",
-            "<p>Chips can show what each control does in the profile instead of its name, so the map reads as a binding sheet: <b>Gear up</b> or <b>Ctrl+G</b> beside the button, not Button 23. View → <b>Chip Text</b> picks <b>Name</b>, <b>Action</b>, or <b>Name and action</b> (also in Editor options → Labels). Renaming a chip still edits its name.</p>"
+            "<p>Chips can show what each control does in the profile instead of its name, so the map reads as a binding sheet: <b>Gear up</b> or <b>Ctrl+G</b> beside the button, not Button 23. View → <b>Chip Text</b> picks <b>Name</b>, <b>Action</b>, or <b>Name and action</b> (also in Button Map Options → Labels). Renaming a chip still edits its name.</p>"
             + "<p>The text comes from the control's actions in one mode. View → <b>Labels Mode</b> picks the mode, or <b>Follow the Program</b>: the running mode while the profile runs, otherwise the mode chosen in the program. A control with no actions in a mode shows its parent mode's, as the running profile does.</p>"
             + "<ul>"
-            + "<li><b>Description</b>: its text. With Editor options → Labels → <b>Description first</b> on (the default), it stands for the whole binding.</li>"
+            + "<li><b>Description</b>: its text. With Button Map Options → Labels → <b>Description first</b> on (the default), it stands for the whole binding.</li>"
             + "<li><b>Map to Keyboard</b>: the keys, such as Ctrl+G. <b>Map to vJoy</b> and <b>Map to Xbox</b>: the output, such as vJoy 1 B5. <b>Change Mode</b>: → and the target mode, or Cycle, Previous mode, Unwind mode. <b>Text to Speech</b>: what it says. Mouse, Macro, Load profile, Run command, Sound, Pause / resume and Logical Device show those words.</li>"
             + "<li>Actions inside Chain, Tempo, Double Tap, Condition and the like give their text; response curves and deadzones give none.</li>"
             + "</ul>"
@@ -378,7 +381,7 @@ function buttonMapTopics() {
             + "<p>Right-click a five-chip hat group: <b>5-way</b> styles it as <b>Plus</b>, <b>Mini hat</b>, <b>Named card</b> or <b>Radial</b>; <b>Clear Format</b> removes the style.</p>"
             + "<p>Grouping chips or text boxes together with a table packs them into the table (see Tables).</p>"),
         topic("Chips", "Mirror layout",
-            "<p><b>Edit → Mirror layout</b> turns the whole map left to right while editing: every chip, group, drawing and picture goes to the other side of the page, with its hotspot, leader bends and loose leader ends. Shapes and lines are mirrored, so an arrow points the other way; text boxes, tables and the arrangement inside a group stay as they are, so they still read. Pictures move but are only flipped when Editor options → Editing → Mirror pictures is on. Undo puts it back.</p>"
+            "<p><b>Edit → Mirror layout</b> turns the whole map left to right while editing: every chip, group, drawing and picture goes to the other side of the page, with its hotspot, leader bends and loose leader ends. Shapes and lines are mirrored, so an arrow points the other way; text boxes, tables and the arrangement inside a group stay as they are, so they still read. Pictures move but are only flipped when Button Map Options → Editing → Mirror pictures is on. Undo puts it back.</p>"
             + "<p>To lay out a left-hand stick from a right-hand one, open the left stick and use <b>File → Copy Layout from</b> with Mirror left to right ticked.</p>"),
         topic("Drawing", "Right-click menu",
             "<p>While editing, the menu shows only what applies to what you right-clicked: a chip, a group, a leader, a shape, a line, a picture, a text box, a table, several selected items, or empty canvas.</p>"
@@ -398,7 +401,7 @@ function buttonMapTopics() {
             + "<p>A selected path shows a small round handle on each point: drag one to move it. Its box's handles resize the whole path, and it turns and flips like a shape.</p>"
             + "<p>Right-click a path: <b>Path</b> → <b>Closed</b> and <b>Smooth</b>; <b>Line</b> → color, width, Solid, Dashed or Dotted, opacity; an open path has <b>Arrowheads</b> at its start and end, a closed one a <b>Fill</b> (Filled or Hollow, Fill color…).</p>"),
         topic("Drawing", "Rotate, flip and resize",
-            "<p>Shapes, text boxes and pictures can be turned. A selected one has a round handle above it: drag it to turn the item to any angle, with Shift for steps (15° unless Editor options → Editing → Rotate snap says otherwise). The <b>Rotate and Flip</b> section has an <b>Angle</b> to type, <b>Turn to</b> 0°, 90°, 180° or 270°, <b>Rotate −15°</b> and <b>Rotate +15°</b>, and <b>Flip Horizontally</b> and <b>Flip Vertically</b>. Properties takes an exact Angle.</p>"
+            "<p>Shapes, text boxes and pictures can be turned. A selected one has a round handle above it: drag it to turn the item to any angle, with Shift for steps (15° unless Button Map Options → Editing → Rotate snap says otherwise). The <b>Rotate and Flip</b> section has an <b>Angle</b> to type, <b>Turn to</b> 0°, 90°, 180° or 270°, <b>Rotate −15°</b> and <b>Rotate +15°</b>, and <b>Flip Horizontally</b> and <b>Flip Vertically</b>. Properties takes an exact Angle.</p>"
             + "<p>Drag the square handles to resize. A turned item resizes along its own sides, and the opposite side stays where it is. From a corner, a shape keeps its proportions when Shift is held; a picture keeps them unless Shift is held.</p>"
             + "<p><b>Several items together</b>: with two or more selected, a dashed box goes round them with one round handle above it. Drag it to turn them all about their middle (the angle shows beside the handle): shapes, text boxes and pictures turn, lines swing round with both ends, and chips, groups and tables move round but stay upright so they still read. Hotspots stay on the photo; locked items stay put. The right-click menu's <b>Turn together</b> turns them by a step, a quarter turn or a half turn. Turning there and back puts them where they were. One selected group turns the same way (see Groups and 5-way formats).</p>"
             + "<p>Lines turn by moving their ends. Tables, chips and hotspots do not turn on their own.</p>"),
@@ -442,7 +445,7 @@ function buttonMapTopics() {
         topic("Drawing", "Saved styles",
             "<p>A look you use again and again can be kept under a name. Right-click a chip, shape, line, path or text box → <b>Saved Styles</b> → <b>Save This Style…</b> and give it a name, such as Weapons, red. A style of the same name and kind is replaced.</p>"
             + "<p>The same section then lists the saved styles for that kind of item: <b>Apply</b> one to put its look on everything selected of that kind, as one step for Undo. A chip's style holds its chip, text, pressed, hotspot and leader colors and sizes; a shape's its fill and outline; a line's its color, width, outline and arrowheads; a text box's its format.</p>"
-            + "<p>Styles are shared by every device. Edit → Editor options… → <b>Library</b> renames and deletes them, and the layout templates too.</p>"),
+            + "<p>Styles are shared by every device. Edit → Button Map Options… → <b>Library</b> renames and deletes them, and the layout templates too.</p>"),
         topic("Panels", "Layers panel",
             "<p>View → <b>Layers</b> shows every item while editing, top of the stack first, then the photo.</p>"
             + "<ul>"

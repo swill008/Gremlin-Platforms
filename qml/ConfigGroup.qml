@@ -12,38 +12,69 @@ import Gremlin.Config
 import "helpers.js" as Helpers
 import Gremlin.Style
 
+// One group of settings in an Options window: a small heading over a card
+// of rows (OptionEntryCard). With filterText set (the search box), only the
+// rows whose name or description contain it show, and a group with none
+// hides.
 ColumnLayout {
+    id: _group
+
     required property int index
     required property string groupName
     required property ConfigEntryModel entryModel
+    property string filterText: ""
 
-    width: parent ? parent.width - Style.dp(40) : implicitWidth
-    anchors.left: parent ? parent.left : undefined
-    anchors.right: parent ? parent.right : undefined
-    // The right margin also holds the 12-wide scrollbar, so both visible gaps are 28.
-    anchors.leftMargin: Style.dp(28)
-    anchors.rightMargin: Style.dp(40)
+    spacing: Style.dp(4)
+    visible: firstMatch >= 0
 
-    JGText {
+    // UserRole + 3 description, + 5 name (ConfigEntryModel).
+    function matches(row) {
+        var needle = filterText.trim().toLowerCase()
+        if (!needle.length)
+            return true
+        var ix = entryModel.index(row, 0)
+        var name = String(entryModel.data(ix, Qt.UserRole + 5) || "")
+        var text = String(entryModel.data(ix, Qt.UserRole + 3) || "")
+        return (name + " " + text).toLowerCase().indexOf(needle) >= 0
+    }
+
+    // The first row that shows (it has no divider above it), or -1.
+    readonly property int firstMatch: {
+        filterText
+        for (var i = 0; i < (entryModel ? entryModel.rowCount() : 0); i++) {
+            if (matches(i))
+                return i
+        }
+        return -1
+    }
+
+    Label {
+        Layout.topMargin: Style.dp(14)
+        // Display groups are already titled; stored ones ("labels") are not.
+        text: /^[a-z]/.test(groupName) ? Helpers.capitalize(groupName) : groupName
+        color: Style.fgMuted
+        font.pixelSize: Style.dp(12)
+    }
+
+    Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: Style.dp(50)
+        implicitHeight: _rows.implicitHeight
+        radius: Style.dp(6)
+        color: Style.bgCard
+        border.color: Style.line
+        border.width: Style.dp(1)
 
-        text: Helpers.capitalize(groupName)
+        ColumnLayout {
+            id: _rows
+            width: parent.width
+            spacing: 0
 
-        font.pixelSize: Style.dp(21)
-        font.weight: 500
-        font.family: "Segoe UI"
-        verticalAlignment: Text.AlignBottom
-    }
+            Repeater {
+                model: _group.entryModel
 
-    Repeater {
-        model: entryModel
-
-        delegate: _entryDelegateChooser
-    }
-
-    LayoutVerticalSpacer {
-        Layout.preferredHeight: Style.dp(5)
+                delegate: _entryDelegateChooser
+            }
+        }
     }
 
     DelegateChooser {
@@ -55,6 +86,8 @@ ColumnLayout {
 
             OptionEntryCard {
                 Layout.fillWidth: true
+                visible: _group.matches(index)
+                divider: index > _group.firstMatch
 
                 title: name
                 explanation: name === "Input highlighting"
@@ -75,8 +108,6 @@ ColumnLayout {
 
                         checked: model.value
 
-                        text: checked ? "On" : "Off"
-
                         onToggled: () => { model.value = checked }
                     }
                 }
@@ -87,6 +118,8 @@ ColumnLayout {
 
             OptionEntryCard {
                 Layout.fillWidth: true
+                visible: _group.matches(index)
+                divider: index > _group.firstMatch
 
                 title: name
                 explanation: description
@@ -107,6 +140,8 @@ ColumnLayout {
 
             OptionEntryCard {
                 Layout.fillWidth: true
+                visible: _group.matches(index)
+                divider: index > _group.firstMatch
 
                 title: name
                 explanation: description
@@ -127,6 +162,9 @@ ColumnLayout {
 
             OptionEntryCard {
                 Layout.fillWidth: true
+                wide: true
+                visible: _group.matches(index)
+                divider: index > _group.firstMatch
 
                 title: name
                 explanation: description
@@ -221,6 +259,9 @@ ColumnLayout {
 
             OptionEntryCard {
                 Layout.fillWidth: true
+                wide: true
+                visible: _group.matches(index)
+                divider: index > _group.firstMatch
 
                 title: name
                 explanation: description
@@ -244,6 +285,8 @@ ColumnLayout {
 
             OptionEntryCard {
                 Layout.fillWidth: true
+                visible: _group.matches(index)
+                divider: index > _group.firstMatch
 
                 title: name
                 explanation: description
@@ -265,8 +308,11 @@ ColumnLayout {
 
             OptionEntryCard {
                 Layout.fillWidth: true
+                wide: true
+                visible: _group.matches(index)
+                divider: index > _group.firstMatch
 
-                title: name === "Input highlight source" ? "Highlight source" : name
+                title: name
                 explanation: description
 
                 DynamicItemLoader {
