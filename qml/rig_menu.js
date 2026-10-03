@@ -308,7 +308,9 @@ function _format() {
     if (!isFiveWay(n) && !ctxHasTheme())
         return null
     return _sect("format", "Style", [
-        _pick("Format", ["plus", "mini", "card", "radial"], ["Plus", "Mini hat", "Named card", "Radial"],
+        // Named card is no longer offered (it becomes a dropped shape); maps
+        // that already use it keep showing it, and Clear Format removes it.
+        _pick("Format", ["plus", "mini", "radial"], ["Plus", "Mini hat", "Radial"],
               function(f) { return fiveWayFormat(ctxTarget()) === f }, applyFiveWayFormat, isFiveWay(n)),
         _act("Clear Format", clearGroupFormat, ctxHasGroupFormat())
     ])
