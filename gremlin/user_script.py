@@ -396,6 +396,17 @@ class ScriptVariableRegistry:
         return self._registry[script_id].get(name, None)
 
 
+def describe_load_error(error_: BaseException, path: Path) -> str:
+    """Why a script could not be loaded, in words for the Scripts page."""
+    if isinstance(error_, FileNotFoundError) or not path.is_file():
+        return "File not found"
+    if isinstance(error_, SyntaxError):
+        return f"Syntax error, line {error_.lineno}: {error_.msg}"
+    if isinstance(error_, error.GremlinError):
+        return str(error_).removeprefix("Script: ")
+    return f"{type(error_).__name__}: {error_}"
+
+
 class Script:
     """Represents the prototype of a script."""
 
@@ -407,10 +418,20 @@ class Script:
         self.path = _resolve_path(path)
         self.name = name
         self.variables: dict[str, AbstractVariable] = {}
+        # Why the script could not be loaded ("" when it loaded). Such a
+        # script stays in the profile: its saved settings are written back
+        # unchanged, it is tried again at each Run, and the Scripts page
+        # shows the reason.
+        self.load_error = ""
+        self._saved_variables: list[ElementTree.Element] = []
 
         if self.path.is_file():
-            self._retrieve_variable_definitions()
-            self.variable_registry.register_script(self)
+            try:
+                self._retrieve_variable_definitions()
+            except Exception as e:
+                self._failed(e)
+            else:
+                self.variable_registry.register_script(self)
 
     @property
     def id(self) -> uuid.UUID:
@@ -494,7 +515,16 @@ class Script:
         self._id = util.read_uuid(node, "script", "id")
         self.path = _resolve_path(util.read_property(node, "path", PropertyType.Path))
         self.name = util.read_property(node, "name", PropertyType.String)
+        # Kept as saved, so a script that can't load loses nothing on save.
+        self._saved_variables = [copy.deepcopy(v) for v in node.iter("variable")]
+        try:
+            self._load_from_xml(node, lookup)
+        except Exception as e:
+            self._failed(e)
+            return
+        self.load_error = ""
 
+    def _load_from_xml(self, node: ElementTree.Element, lookup: dict) -> None:
         # Retrieve variable information from the script and instantiate them
         self._retrieve_variable_definitions()
 
@@ -533,17 +563,49 @@ class Script:
             ],
         )
         node.set("id", util.safe_format(self._id, uuid.UUID))
+        if self.load_error:
+            for saved in self._saved_variables:
+                node.append(copy.deepcopy(saved))
+            return node
         for entry in self.variables.values():
             variable_node = entry.to_xml()
             if variable_node is not None:
                 node.append(variable_node)
         return node
 
-    def reload(self) -> None:
-        """Reloads this script."""
+    def retry(self) -> bool:
+        """Loads a script that could not be loaded again (its file may have
+        been fixed). Returns True when it is loaded now."""
+        if not self.load_error:
+            return True
+        node = self.to_xml()
+        self.from_xml(node)
+        return not self.load_error
+
+    def _failed(self, error_: BaseException) -> None:
+        self.variables = {}
+        self.load_error = describe_load_error(error_, self.path)
+        Script.variable_registry.remove_script(self)
+        logging.getLogger("system").warning(
+            f"Script '{self.name}' ({self.path}) could not be loaded: "
+            f"{self.load_error}"
+        )
+
+    def reload(self) -> bool:
+        """Reloads this script. Returns False (and keeps the reason) when it
+        can't be run."""
+        if self.load_error and not self.retry():
+            return False
         Script.variable_registry.register_script(self)
         self.module._script_id = self.id
-        self.spec.loader.exec_module(self.module)
+        try:
+            self.spec.loader.exec_module(self.module)
+        except Exception as e:
+            nodes = (v.to_xml() for v in self.variables.values())
+            self._saved_variables = [n for n in nodes if n is not None]
+            self._failed(e)
+            return False
+        return True
 
     def _retrieve_variable_definitions(self) -> None:
         """Returns all variable definitions used in the provided script.

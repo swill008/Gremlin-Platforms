@@ -448,8 +448,13 @@ class CodeRunner:
     def _setup_user_scripts(self) -> None:
         system_paths = [os.path.normcase(os.path.abspath(p)) for p in sys.path]
 
+        syslog = logging.getLogger("system")
         user_script.periodic_registry.clear()
         for script in self._profile.scripts.scripts:
+            # Tried again here: the file may have been fixed since loading.
+            if script.load_error and not script.retry():
+                syslog.warning(f"Script '{script.name}' not run: {script.load_error}")
+                continue
             if not script.is_configured:
                 continue
 
@@ -457,7 +462,8 @@ class CodeRunner:
             if script_folder not in system_paths:
                 system_paths.append(script_folder)
 
-            script.reload()
+            if not script.reload():
+                syslog.warning(f"Script '{script.name}' not run: {script.load_error}")
 
         sys.path = system_paths
 

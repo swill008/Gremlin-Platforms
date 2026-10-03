@@ -112,6 +112,8 @@ Item {
         required property string path
         required property string name
         required property var variables
+        // Why the script could not be loaded ("" when it loaded).
+        required property string loadError
 
         JGText {
             Layout.leftMargin: Style.dp(10)
@@ -119,11 +121,15 @@ Item {
             font.pixelSize: Style.dp(18)
         }
 
+        ColumnLayout {
+            Layout.alignment: Qt.AlignVCenter
+            Layout.preferredWidth: _view.width - Style.dp(400)
+            spacing: 0
+
         JGText {
             id: _path
 
-            Layout.alignment: Qt.AlignVCenter
-            Layout.preferredWidth: _view.width - Style.dp(400)
+            Layout.fillWidth: true
 
             text: _item.path
             leftPadding: Style.dp(10)
@@ -142,6 +148,16 @@ Item {
                 id: _hoverPath
                 acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
             }
+        }
+
+        JGText {
+            Layout.fillWidth: true
+            visible: _item.loadError !== ""
+            text: "Can't load: " + _item.loadError + ". Fix the script; it is tried again at Run."
+            leftPadding: Style.dp(10)
+            color: Style.error
+            wrapMode: Text.Wrap
+        }
         }
 
         LayoutHorizontalSpacer {}
@@ -189,6 +205,7 @@ Item {
 
         IconButton {
             text: bsi.icons.configure
+            enabled: _item.loadError === ""
 
             onClicked: {
                 _config.model = variables

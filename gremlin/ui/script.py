@@ -381,6 +381,7 @@ class ScriptListModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray("path".encode()),
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray("name".encode()),
         QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray("variables".encode()),
+        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray("loadError".encode()),
     }
 
     data_class_lookup = {
@@ -441,6 +442,8 @@ class ScriptListModel(QtCore.QAbstractListModel):
                     ScriptListModel.data_class_lookup[type(var)](var, self)
                     for var in script.variables.values()
                 ]
+            case "loadError":
+                return script.load_error
             case _:
                 return None
 
