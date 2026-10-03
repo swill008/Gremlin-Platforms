@@ -234,7 +234,9 @@ function hotFyOf(n) {
     return 0.5
 }
 
-function addChiplet(kind, hwId, wx, wy) {
+// chipOnly (Button Map Options → Chip only): the chip on its own, with no
+// leader and its hotspot hidden; both can be added from its menu later.
+function addChiplet(kind, hwId, wx, wy, chipOnly) {
     kind = leafKind(kind)
     hwId = parseInt(hwId, 10)
     if (!(hwId > 0))
@@ -286,6 +288,10 @@ function addChiplet(kind, hwId, wx, wy) {
         hotSize: st.hotSize,
         hotShape: st.hotShape,
         hotFill: st.hotFill
+    }
+    if (chipOnly) {
+        n.leaders = []
+        n.hotHidden = true
     }
     var list = nodes || []
     list.push(n)

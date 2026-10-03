@@ -970,7 +970,7 @@ ApplicationWindow {
         var local = ed.mapFromItem(_mapHost, vx, vy)
         if (local.x < 0 || local.y < 0 || local.x > ed.width || local.y > ed.height)
             return
-        ed.addChiplet(kind, hw, local.x, local.y)
+        ed.addChiplet(kind, hw, local.x, local.y, _opts.values["chip-only"] === true)
         refreshReservoir()
     }
 
@@ -3118,6 +3118,15 @@ ApplicationWindow {
                                 text: "Reset"
                                 implicitHeight: Style.dp(28)
                                 onClicked: clearPoolFilter()
+                            }
+                            // Button Map Options → Chip only, here where chips are added.
+                            CheckBox {
+                                text: "Chip only"
+                                checked: _opts.values["chip-only"] === true
+                                onToggled: _opts.set("chip-only", checked)
+                                ToolTip.visible: hovered
+                                ToolTip.delay: 500
+                                ToolTip.text: "Add chips with no leader and no hotspot"
                             }
                         }
                         Flickable {

@@ -357,7 +357,7 @@ function buttonMapTopics() {
             + "<li><b>F1</b> This guide</li>"
             + "</ul>"),
         topic("Chips", "Chips",
-            "<p>A chip shows a control's name (Button 10, Axis 1, Hat 1) or its friendly name. Drag one from the pool onto the photo; drag it again to move it.</p>"
+            "<p>A chip shows a control's name (Button 10, Axis 1, Hat 1) or its friendly name. Drag one from the pool onto the photo; drag it again to move it. Click a chip to select it; double-click it to edit its name. Tick <b>Chip only</b> beside the pool filter (also in Button Map Options) to place chips on their own, with no leader and no hotspot; add them later from the chip's menu (Leader → Add Leader, Hotspot → Hide Hotspot).</p>"
             + "<p>Right-click a chip for:</p>"
             + "<ul>"
             + "<li><b>Rename</b> and <b>Delete Chip</b> (back to the pool; Delete or Backspace does the same).</li>"

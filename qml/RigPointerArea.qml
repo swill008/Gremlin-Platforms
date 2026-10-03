@@ -545,33 +545,28 @@ MouseArea {
                 ed.beginTableRename(gn.id, cell2.row, cell2.col, ed.tableExtra)
             return
         }
+        // A click selects, a double-click edits. A group opens on its first
+        // double-click; inside it, a double-click edits the member.
         if (gn && ed.isGroup(gn)) {
-            if (ed.groupEditId !== gn.id)
+            var wasOpen = ed.groupEditId === gn.id
+            if (!wasOpen)
                 ed.beginGroupEdit(gn.id)
             var mi = (hit.member !== undefined && hit.member >= 0) ? hit.member : ed.memberHit(gn, m.x, m.y)
             if (mi >= 0)
                 ed.selectedMember = mi
-            if (mi >= 0 && ed.armRenameId === gn.id && ed.armRenameMember === mi) {
+            ed.armRenameId = ""
+            ed.armRenameMember = -1
+            if (mi >= 0 && wasOpen)
                 ed.beginRename(gn.id, mi)
-                ed.armRenameId = ""
-                ed.armRenameMember = -1
-            } else {
-                ed.armRenameId = gn.id
-                ed.armRenameMember = mi
+            else
                 ed.bump()
-            }
             return
         }
         if (gn && !ed.isDraw(gn) && (hit.kind === "chip" || hit.kind === "member")) {
             ed.setSelection([gn.id])
-            if (ed.armRenameId === gn.id && ed.armRenameMember < 0) {
-                ed.beginRename(gn.id, -1)
-                ed.armRenameId = ""
-                ed.armRenameMember = -1
-            } else {
-                ed.armRenameId = gn.id
-                ed.armRenameMember = -1
-            }
+            ed.armRenameId = ""
+            ed.armRenameMember = -1
+            ed.beginRename(gn.id, -1)
         }
     }
     onWheel: (w) => {

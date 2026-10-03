@@ -284,7 +284,7 @@ Item {
     function catalog() { return RigChips.catalog() }
     function hotFxOf(n) { return RigChips.hotFxOf(n) }
     function hotFyOf(n) { return RigChips.hotFyOf(n) }
-    function addChiplet(kind, hwId, wx, wy) { return RigChips.addChiplet(kind, hwId, wx, wy) }
+    function addChiplet(kind, hwId, wx, wy, chipOnly) { return RigChips.addChiplet(kind, hwId, wx, wy, chipOnly) }
     function ensureFriendly(n) { return RigChips.ensureFriendly(n) }
     function litOf(kind, hwId) { return RigChips.litOf(kind, hwId) }
     function chipXY(n) { return RigChips.chipXY(n) }

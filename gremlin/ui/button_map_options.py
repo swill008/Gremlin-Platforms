@@ -90,6 +90,13 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {},
     ),
     (
+        "editing", "06-chip-only", PropertyType.Bool, False,
+        "Chip only: a chip added from the pool is placed on its own, with no "
+        "leader and no hotspot. Add them later from the chip's menu (Leader → "
+        "Add Leader, Hotspot → Hide Hotspot).",
+        {},
+    ),
+    (
         "autosave", "01-autosave", PropertyType.Bool, True,
         "While you edit a map, keep a recovery copy of unsaved changes. After a "
         "crash, opening the device offers to restore them.",
