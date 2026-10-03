@@ -158,7 +158,7 @@ ApplicationWindow {
         moduleFileMessage = moduleFileError ? message : ("Imported into " + moduleFileLabel)
         if (!moduleFileError)
             reloadModuleControls()
-        _importNotice.titleText = moduleFileError ? "Import failed" : "Imported"
+        _importNotice.titleText = moduleFileError ? "Import Failed" : "Imported"
         _importNotice.messageText = message
         _importNotice.canUndo = !moduleFileError && moduleModel && moduleModel.importCanUndo()
         _importNotice.open()
@@ -450,7 +450,7 @@ ApplicationWindow {
                 onClicked: {
                     if (!moduleModel)
                         return
-                    _deleteGate.confirmThen("Delete module file",
+                    _deleteGate.confirmThen("Delete Module File",
                         "Delete " + moduleFileLabel + "? It holds this device's claimed inputs, calibration and Button Map layout.\n\n"
                         + "A copy is kept in the deleted devices folder, so you can import it back.",
                         "Delete file", function() {
@@ -540,7 +540,7 @@ ApplicationWindow {
                             return
                         var message = moduleModel.undoLastImport()
                         var ok = message.indexOf("Undone") === 0
-                        _importNotice.titleText = ok ? "Undone" : "Undo failed"
+                        _importNotice.titleText = ok ? "Undone" : "Undo Failed"
                         _importNotice.messageText = message
                         _importNotice.canUndo = false
                         refreshModuleFileLabel()

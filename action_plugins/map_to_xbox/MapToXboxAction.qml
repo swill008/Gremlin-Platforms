@@ -74,7 +74,7 @@ Item {
                 Component.onCompleted: currentIndex = Math.max(0, indexOfValue(_root.action.triggerRange))
                 onActivated: _root.action.triggerRange = currentValue
                 PointerTip {
-                    text: "Full axis: -1 is 0%, +1 is 100%. Upper half: centre is 0%, +1 is 100%."
+                    text: "Full axis: -1 is 0%, +1 is 100%. Upper half: center is 0%, +1 is 100%."
                     delay: 300
                     show: true
                 }

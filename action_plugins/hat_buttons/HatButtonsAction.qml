@@ -41,7 +41,7 @@ Item {
                         _hat.action.buttonCount = 4
                         return
                     }
-                    _modeGate.confirmThen("Switch to 4 way",
+                    _modeGate.confirmThen("Switch to 4 Way",
                         (lost === 1 ? "1 action" : lost + " actions")
                         + " on the diagonal directions (North-East, South-East, South-West, North-West) will be removed. North, East, South and West keep theirs.",
                         "Switch to 4 way", function() { _hat.action.buttonCount = 4 }, null, true)

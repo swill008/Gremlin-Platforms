@@ -30,7 +30,7 @@ ApplicationWindow {
         var n = modeHierarchy.bindingCount(mode)
         var what = n === 0 ? "It has no bindings."
             : "Its " + (n === 1 ? "binding" : n + " bindings") + " will be deleted too."
-        _deleteGate.confirmThen("Delete mode \"" + mode + "\"?",
+        _deleteGate.confirmThen("Delete Mode \"" + mode + "\"?",
             what + " Modes under it move up one level.",
             "Delete mode", function() { modeHierarchy.deleteMode(mode) }, null, true)
     }

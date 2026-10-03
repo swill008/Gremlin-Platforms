@@ -1391,7 +1391,7 @@ Configuration().register(
     "action-sequence-information",
     PropertyType.Selection,
     "Full",
-    "Defines how action sequences associated with inputs are displayed.",
+    "How the actions of each input are shown.",
     {"valid_options": ["Full", "Count"]},
     True,
 )

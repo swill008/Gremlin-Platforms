@@ -1348,10 +1348,13 @@ class ProfileDeviceListModel(QtCore.QAbstractListModel):
             case "name":
                 return device.name
             case "nameAndActions":
+                count = device.num_bindings
+                actions = f"{count} action" + ("" if count == 1 else "s")
                 if device.name:
-                    return f"{device.name} - {device.num_bindings} actions"
-                else:
-                    return f"{device.device_uuid} - {device.num_bindings} actions"
+                    return f"{device.name} - {actions}"
+                # No name known (not plugged in): a short id tells two apart.
+                short = str(device.device_uuid).split("-")[0]
+                return f"Unknown device ({short}) - {actions}"
             case "uuid":
                 return str(device.device_uuid)
 

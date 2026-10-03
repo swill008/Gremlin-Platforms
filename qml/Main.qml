@@ -528,7 +528,7 @@ ApplicationWindow {
             doSave()
             return
         }
-        _unfinishedGate.confirmThen("Unfinished actions", unfinishedMessage(unfinished),
+        _unfinishedGate.confirmThen("Unfinished Actions", unfinishedMessage(unfinished),
                                     "Save without them", doSave, onCancel || null, true)
     }
 
@@ -1029,7 +1029,7 @@ ApplicationWindow {
 
             JGToolButton {
                 text: "\uF3F2"
-                tooltip: qsTr("Toggle vJoy Viewer")
+                tooltip: qsTr("Show or hide the vJoy Viewer")
                 caption: "vJoy Viewer"
 
                 onClicked: () => {
@@ -1039,7 +1039,7 @@ ApplicationWindow {
 
             JGToolButton {
                 text: "\uF2D4"
-                tooltip: qsTr("Toggle Xbox Viewer")
+                tooltip: qsTr("Show or hide the Xbox Viewer")
                 caption: "Xbox Viewer"
 
                 onClicked: () => {
@@ -1138,7 +1138,7 @@ ApplicationWindow {
                 }
 
                 PointerTip {
-                    text: qsTr("Mode. This is the map you are editing and the map that runs.")
+                    text: qsTr("Mode: the one you edit is the one that runs.")
                     delay: 500
                 }
             }

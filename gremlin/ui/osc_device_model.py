@@ -214,7 +214,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         self.listenBound.emit(index)
         signal.showNotification.emit(
             f"Bound OSC input {address}",
-            "Map it to vJoy on the right, then activate the profile.",
+            "Map it to vJoy on the right, then run the profile.",
         )
 
     def _get_listening(self) -> bool:

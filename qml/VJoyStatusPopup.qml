@@ -51,7 +51,7 @@ Popup {
         }
 
         Label {
-            text: "Check a device to show its tab. Mapping and New Action Sequence stay available on shown tabs."
+            text: "Check a device to show its tab."
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             opacity: 0.75

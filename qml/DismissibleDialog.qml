@@ -40,7 +40,7 @@ Popup {
             detail = String(message)
         _mode = "ask"
         _resultOk = false
-        titleText = "Unsaved changes"
+        titleText = "Unsaved Changes"
         messageText = detail
         confirmText = "Save"
         discardText = "Discard"
@@ -112,7 +112,7 @@ Popup {
         _onNo = null
         _mode = "result"
         _resultOk = !!ok
-        titleText = ok ? "Saved" : "Save failed"
+        titleText = ok ? "Saved" : "Save Failed"
         messageText = message ? String(message) : ""
         confirmText = "OK"
         discardText = ""

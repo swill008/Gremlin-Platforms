@@ -76,4 +76,6 @@ class Tools(QtCore.QObject):
                 f"Invalid UUID provided for swapping devices: "
                 f"{source_uuid_str}, {target_uuid_str}"
             )
-            return "Failed to swap devices: Invalid UUID provided."
+            return (
+                "Could not swap: choose a profile device and a connected device."
+            )

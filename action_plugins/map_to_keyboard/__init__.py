@@ -177,7 +177,7 @@ class MapToKeyboardData(AbstractActionData):
             messages.append(
                 UserFeedback(
                     UserFeedback.FeedbackType.Error,
-                    "Mapping has no keys assigned to it.",
+                    "No keys chosen: this action does nothing yet.",
                 )
             )
         return messages

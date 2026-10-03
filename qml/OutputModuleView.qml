@@ -452,11 +452,11 @@ Item {
             rememberView()
             _saveGate.announce(true, "Saved to the module file.")
             if (backend)
-                backend.noteSave("Saved the output look to " + moduleModel.lastSavedPath())
+                backend.noteSave("Saved the Appearance to " + moduleModel.lastSavedPath())
         } else {
             _saveGate.announce(false, "Not written. It is still only on this screen.")
             if (backend)
-                backend.noteSave("The output look was not written.")
+                backend.noteSave("The Appearance was not written.")
         }
     }
 

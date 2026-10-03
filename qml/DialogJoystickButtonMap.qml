@@ -565,7 +565,7 @@ ApplicationWindow {
         }
         _pendingRecovery = doc
         var when = String(doc.savedAt || "").replace("T", " at ")
-        _recoverGate.choose("Unsaved edits found",
+        _recoverGate.choose("Unsaved Edits Found",
                             "Button Map has edits to " + targetName + (when.length ? " from " + when : "")
                             + " that were never saved, probably because the program closed unexpectedly.\n\n"
                             + "Restore opens them for editing; save to keep them. Discard deletes them.",
@@ -1802,7 +1802,7 @@ ApplicationWindow {
             return
         if (!replace && _hw.templateExists(clean)) {
             _templateReplace.pendingName = clean
-            _templateReplace.confirm("Replace template", "A template called " + clean + " exists. Replace it with this layout?", "Replace")
+            _templateReplace.confirm("Replace Template", "A template called " + clean + " exists. Replace it with this layout?", "Replace")
             return
         }
         var ok = _hw.saveTemplate(clean, JSON.stringify(layoutNow() || []), targetName)
@@ -1911,7 +1911,7 @@ ApplicationWindow {
                             var to = text.trim()
                             _templatesDlg.renaming = ""
                             if (to.length && to !== from && !_hw.renameTemplate(from, to))
-                                _buttonMap.tellFailure("Rename failed", "Could not rename "
+                                _buttonMap.tellFailure("Rename Failed", "Could not rename "
                                     + from + " to " + to + ". A template may have that name already,"
                                     + " or its file could not be written.")
                             _buttonMap.refreshTemplates()
@@ -1939,7 +1939,7 @@ ApplicationWindow {
                         text: "Delete"
                         onClicked: {
                             var name = modelData.name
-                            _deleteGate.confirmThen("Delete template",
+                            _deleteGate.confirmThen("Delete Template",
                                 "Delete the template “" + name + "”? Layouts made from it are not changed.",
                                 "Delete", function() {
                                     _hw.deleteTemplate(name)
@@ -1974,7 +1974,7 @@ ApplicationWindow {
         nameFilters: ["Button Map template (*.json)"]
         onAccepted: {
             if (!_hw.exportTemplate(templateName, selectedFile))
-                _buttonMap.tellFailure("Export failed",
+                _buttonMap.tellFailure("Export Failed",
                     "Could not write " + templateName + " to that file.")
         }
     }
@@ -2653,7 +2653,7 @@ ApplicationWindow {
                         if (!_hw.clearImage(targetName)) {
                             // It may have stopped part way: put the photo back.
                             _hw.restorePhoto(targetName)
-                            tellFailure("Clear photo failed",
+                            tellFailure("Clear Photo Failed",
                                 "The photo file could not be removed (it may be open in another program).")
                             return
                         }

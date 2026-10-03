@@ -1140,7 +1140,7 @@ Item {
         if (_picked.length === 1 && _menuGroup.length > 0 && !_sameGroup(_menuGroup, name)) {
             _pendingGroup = name
             _moveWarn.confirm(
-                "Already in a group",
+                "Already in a Group",
                 _menuTitle + " is already in " + _menuGroup + ". Move it to " + name + "?",
                 "Move"
             )
@@ -1451,7 +1451,7 @@ Item {
             _layout.deleteAction(parentKey, seq)
         }
         if (editing && _layout.paneDirty()) {
-            _deleteGate.confirmThen("Delete action?",
+            _deleteGate.confirmThen("Delete Action?",
                 "The action editor is open on this input with changes that are not saved."
                     + " Deleting the action closes it and drops those changes.",
                 "Delete", go, null, true)

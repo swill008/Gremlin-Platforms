@@ -24,3 +24,28 @@ Tracker refs in brackets.
 | Options section for Home cards [N19] | **Home** (not "Display"); timing options named for what they time (e.g. "Highlight time", "Last input time") instead of each "Duration" | |
 | Spelling [N20] | US English: **color**, **behavior** (Qt, Windows and most of the program) | colour in some places |
 | File pickers [N20] | titled by what they do: "Open profile", "Save profile as", "Choose photo", "Import picture", "Export PNG" ... | "Please choose a file" and others |
+
+## Core terms
+
+The ideas the program and its help are built on. Use these words with these
+meanings; define a new idea here before it appears on screen.
+
+| Term | Meaning |
+|---|---|
+| **Profile** | The file you load and save (File → Save): modes, actions, Profile Settings and scripts. |
+| **Device** | A physical controller Windows reports (stick, throttle, pedals, keyboard), or a virtual one (vJoy, Xbox pad, the Logical Device). |
+| **Card** | A device's tile on Home. Hiding a card (Hide Card) only takes it off Home. |
+| **Module** / **module file** | A device's own file, one per device, kept apart from profiles: its claims, friendly names, picture, Button Map layout, Appearance and calibration. Set up in Module Setup. |
+| **Input module** / **output module** | The module of a device that feeds the program (input) or that the program sends to (output: vJoy, Xbox). |
+| **Claim** | Marking a control in Module Setup as one this setup uses. Only claimed inputs show in Configuration; only claimed vJoy outputs can be targets. (Xbox has no claims.) |
+| **Control** | One button, axis, hat or key on a device. |
+| **Input** | A control on an input device, as the profile sees it. |
+| **Action** | What an input does: Map to vJoy, Map to Keyboard, Macro, Change Mode… An input with none shows **No actions**. |
+| **Binding** | An input together with its actions, as edited on the Configuration page. |
+| **Mode** | A named set of actions; one runs at a time (toolbar **Mode**). A mode uses its parent's actions for inputs it leaves empty. |
+| **Run / Stop** | Running the profile sends to vJoy, Xbox and the Logical Device; stopped, you only edit. |
+| **Logical Device** | A virtual device inside the program, fed by physical inputs, with actions of its own. |
+| **Output View** | The read-only page of an output device: what its output module sends. |
+| **Appearance** | How a page looks (Configuration, Output View, Logical Device); never what it does. |
+| **Button Map** | A picture of a device with a **chip** per control, a **hotspot** on the photo for each and a **leader** line between them; unplaced chips wait in the **pool**. Layout only: it never changes actions. |
+| **Wire** | Only the Button Map's lines showing where a pressed control goes while running. |

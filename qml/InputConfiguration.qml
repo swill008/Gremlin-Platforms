@@ -95,8 +95,8 @@ Item {
     DismissibleDialog {
         id: _selectInputDialog
 
-        titleText: "Select an input"
-        messageText: "Select an input first before adding an action sequence."
+        titleText: "Select an Input"
+        messageText: "Select an input first, then add an action."
         confirmText: "OK"
     }
 

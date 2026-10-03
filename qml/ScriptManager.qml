@@ -204,7 +204,7 @@ Item {
             onClicked: () => {
                 var p = path
                 var n = name
-                _removeGate.confirmThen("Remove script?",
+                _removeGate.confirmThen("Remove Script?",
                     "Remove " + n + " from this profile? Its settings here go with it."
                         + " The script file itself is not deleted.",
                     "Remove", function() {

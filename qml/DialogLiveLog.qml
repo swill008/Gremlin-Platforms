@@ -148,7 +148,7 @@ ApplicationWindow {
             Button {
                 text: qsTr("Clear Log")
                 onClicked: {
-                    _clearGate.confirmThen("Clear log?",
+                    _clearGate.confirmThen("Clear Log?",
                         "Clear everything shown here? (The log starts empty at every start anyway.)",
                         "Clear", function() {
                             _win._follow = true

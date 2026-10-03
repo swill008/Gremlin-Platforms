@@ -59,8 +59,8 @@ function topics() {
             "<p>Three separate stores. Saving one does not save the others, except where noted.</p>"
             + "<ul>"
             + "<li><b>Profile</b> (File → Save Profile): modes, actions, profile settings, scripts.</li>"
-            + "<li><b>Module File</b>, one per device: claims, friendly names, the device picture, the Button Map layout, the display look of its Configuration page or Output View, and its calibration. Input/Output Module Setup, Button Map, Calibration, and the display editors write it. Saving an output module also saves the profile when the profile already has a file.</li>"
-            + "<li><b>Program settings</b>: Options, Home layout and card sizes, window sizes, HidHide choices, and the Logical Device display look.</li>"
+            + "<li><b>Module File</b>, one per device: claims, friendly names, the device picture, the Button Map layout, the Appearance of its Configuration page or Output View, and its calibration. Input/Output Module Setup, Button Map, Calibration, and the display editors write it. Saving an output module also saves the profile when the profile already has a file.</li>"
+            + "<li><b>Program settings</b>: Options, Home layout and card sizes, window sizes, HidHide choices, and the Logical Device's Appearance.</li>"
             + "</ul>"
             + "<p>After every save the bottom bar names the file that was written.</p>"),
 
@@ -375,7 +375,7 @@ function buttonMapTopics() {
             + "<p>Spines show only while editing; the lines stay on the live map. In the Layers panel, open a chip to hide or lock its hotspot or one leader on its own.</p>"),
         topic("Chips", "Groups and 5-way formats",
             "<p>Select two or more chips (Shift-click, or drag a box on empty space) and choose <b>Group Selected</b> (Ctrl+G). The chips stay exactly where you put them (line them up first with <b>Align</b>, the arrow keys or by dragging), and the group moves as one. <b>Break Group</b> (Ctrl+Shift+G) splits it. <b>Edit Group</b> lets you move and style one member; <b>Done Editing Group</b> or Esc ends that.</p>"
-            + "<p><b>Align Members</b> arranges a group Left, Centre, Right or Free (Free keeps your own arrangement; new groups start as Free).</p>"
+            + "<p><b>Align Members</b> arranges a group Left, Center, Right or Free (Free keeps your own arrangement; new groups start as Free).</p>"
             + "<p><b>Turn a group</b>: select it and drag the round handle above it, or right-click → <b>Turn group</b>. Its chips swing round the group's middle and stay upright so they still read; the hotspot stays on the photo.</p>"
             + "<p>Right-click a five-chip hat group: <b>5-way</b> styles it as <b>Plus</b>, <b>Mini hat</b>, <b>Named card</b> or <b>Radial</b>; <b>Clear Format</b> removes the style.</p>"
             + "<p>Grouping chips or text boxes together with a table packs them into the table (see Tables).</p>"),
@@ -417,7 +417,7 @@ function buttonMapTopics() {
         topic("Drawing", "Text boxes",
             "<p>Draw → <b>Box</b> → <b>Text box</b>, then drag. Double-click a text box (or <b>Edit Text…</b>) to type.</p>"
             + "<ul>"
-            + "<li><b>Text</b>: Font size, Bold, Word wrap, <b>Scale font with box</b>, and alignment Across (Left, Centre, Right) and Down (Top, Middle, Bottom).</li>"
+            + "<li><b>Text</b>: Font size, Bold, Word wrap, <b>Scale font with box</b>, and alignment Across (Left, Center, Right) and Down (Top, Middle, Bottom).</li>"
             + "<li><b>Box</b>: preset Size (Caption, Small, Medium, Large, Title, Wide), Theme (Dark, Hollow, Sheet), Text color…, Fill color…, Outline color…, Fill opacity and Outline opacity.</li>"
             + "<li><b>Copy and Paint Format</b>: <b>Copy Format</b> takes this box's look; <b>Paint format</b> puts it on the next boxes you click; <b>Clear Formatting</b> resets it; <b>Copy Text</b> copies the words.</li>"
             + "</ul>"),
@@ -465,7 +465,7 @@ function buttonMapTopics() {
             + "</ul>"
             + "<p>Type a number and press Enter, or click a color to open the color picker. A locked item's values show but do not change.</p>"),
         topic("Panels", "Align and distribute",
-            "<p>Select several items and right-click one of them. <b>Align and Distribute</b> lines them up <b>Across</b> (Left, Centre, Right) or <b>Down</b> (Top, Middle, Bottom) by their edges or middles. <b>Space Out</b> leaves equal gaps between three or more. Locked items stay where they are.</p>"),
+            "<p>Select several items and right-click one of them. <b>Align and Distribute</b> lines them up <b>Across</b> (Left, Center, Right) or <b>Down</b> (Top, Middle, Bottom) by their edges or middles. <b>Space Out</b> leaves equal gaps between three or more. Locked items stay where they are.</p>"),
         topic("Panels", "Colors",
             "<p>The color picker opens from Colors, Fill color…, Outline color… and the Properties swatches. Drag in the square and the bar, or click a swatch; the change shows at once.</p>"
             + "<p><b>Recent</b> shows the colors you used last, on any device. <b>Pick from Map</b> closes the picker; click anywhere in the window to take the color there (right-click or Esc gives up).</p>")

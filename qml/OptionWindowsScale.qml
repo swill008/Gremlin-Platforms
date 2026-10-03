@@ -34,7 +34,7 @@ Item {
                 _model.setDisabled(checked)
                 if (checked !== _model.runningDisabled)
                     _restartAsk.choose(
-                        "Restart required",
+                        "Restart Required",
                         "Windows scaling changes when Gremlin-Platforms starts. "
                         + "Restart now to use the new setting, choose Later to use it "
                         + "at the next start, or Cancel to undo the change.",

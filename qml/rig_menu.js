@@ -287,7 +287,7 @@ function _align() {
     if (!isGroup(n))
         return null
     return _sect("align", "Align Members", [
-        _pick("Align", ["left", "center", "right", "free"], ["Left", "Centre", "Right", "Free"],
+        _pick("Align", ["left", "center", "right", "free"], ["Left", "Center", "Right", "Free"],
               function(a) { return groupAlignH(ctxTarget()) === a }, setAlignH)
     ])
 }
@@ -510,7 +510,7 @@ function _textSections() {
                  function() { var t = nodeAt(selectedId); applyField("wrap", !(t && t.wrap !== false)) }),
             _tog("Scale font with box", !!(n && n.scaleFont),
                  function() { var t = nodeAt(selectedId); applyField("scaleFont", !(t && t.scaleFont)) }),
-            _pick("Across", ["left", "center", "right"], ["Left", "Centre", "Right"], _field("align", "center"), _set("align")),
+            _pick("Across", ["left", "center", "right"], ["Left", "Center", "Right"], _field("align", "center"), _set("align")),
             _pick("Down", ["top", "middle", "bottom"], ["Top", "Middle", "Bottom"], _field("valign", "middle"), _set("valign"))
         ]),
         _sect("box", "Box", [
@@ -569,7 +569,7 @@ function _tableSections() {
                  hasCell),
             _act("Spawn Empty Cell", spawnEmptyCell),
             _act("Delete This Cell", deleteThisTableCell, tableExtra >= 0),
-            _pick("Place Across", ["left", "center", "right"], ["Far left", "Centre", "Far right"],
+            _pick("Place Across", ["left", "center", "right"], ["Far left", "Center", "Far right"],
                   function() { return false }, placeTableCell, hasCell),
             _pick("Place Down", ["top", "middle", "bottom"], ["Top", "Middle", "Bottom"],
                   function() { return false }, placeTableCell, hasCell)
@@ -612,7 +612,7 @@ function _canvasSections() {
 function _alignSection() {
     var none = function() { return false }
     return _sect("align-many", "Align and Distribute", [
-        _pick("Across", ["left", "center", "right"], ["Left", "Centre", "Right"], none, alignSelection, canAlign()),
+        _pick("Across", ["left", "center", "right"], ["Left", "Center", "Right"], none, alignSelection, canAlign()),
         _pick("Down", ["top", "middle", "bottom"], ["Top", "Middle", "Bottom"], none, alignSelection, canAlign()),
         _pick("Space Out", ["h", "v"], ["Across", "Down"], none, distributeSelection, canDistribute())
     ])

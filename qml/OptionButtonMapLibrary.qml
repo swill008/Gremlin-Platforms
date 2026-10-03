@@ -83,7 +83,7 @@ Item {
                     onClicked: {
                         var name = modelData.name
                         var kind = modelData.kind
-                        _deleteGate.confirmThen("Delete saved style",
+                        _deleteGate.confirmThen("Delete Saved Style",
                             "Delete the saved style “" + name + "”? Items that use it keep their look.",
                             "Delete", function() { _opts.deleteStyle(name, kind) }, null, true)
                     }
@@ -121,7 +121,7 @@ Item {
                         if (to.length && to !== modelData.name && !_hw.renameTemplate(modelData.name, to)) {
                             _failNotice.announce(false, "Could not rename " + modelData.name + " to " + to
                                 + ". A template may have that name already, or its file could not be written.")
-                            _failNotice.titleText = "Rename failed"
+                            _failNotice.titleText = "Rename Failed"
                         }
                         _library.refreshTemplates()
                     }
@@ -141,7 +141,7 @@ Item {
                     text: "Delete"
                     onClicked: {
                         var name = modelData.name
-                        _deleteGate.confirmThen("Delete template",
+                        _deleteGate.confirmThen("Delete Template",
                             "Delete the template “" + name + "”? Layouts made from it are not changed.",
                             "Delete", function() {
                                 _hw.deleteTemplate(name)

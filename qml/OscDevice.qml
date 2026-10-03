@@ -57,7 +57,7 @@ Item {
     DismissibleDialog {
         id: _clearDialog
 
-        titleText: "Clear OSC inputs"
+        titleText: "Clear OSC Inputs"
         messageText: "This will remove every OSC input in the current profile."
         confirmText: "Clear"
         cancelText: "Cancel"

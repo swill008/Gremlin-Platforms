@@ -328,7 +328,7 @@ class Backend(QtCore.QObject):
                     if self._autoload_held != profile_path:
                         self._autoload_held = profile_path
                         signal.showNotification.emit(
-                            "Auto-load waited",
+                            "Auto-load Waited",
                             f"{Path(profile_path).name} was not loaded because "
                             "the open profile has unsaved changes. Save or "
                             "discard them and auto-load switches next time.",
@@ -576,7 +576,9 @@ class Backend(QtCore.QObject):
 
     def _load_profile(self, fpath: str) -> bool:
         if not os.path.isfile(fpath):
-            display_error(f"Unable to load profile '{fpath}', no such file.")
+            display_error(
+                f"Could not load the profile {fpath}: the file does not exist."
+            )
             return False
         self.activate_gremlin(False)
         open_now = self.profile.fpath if self.profile else None

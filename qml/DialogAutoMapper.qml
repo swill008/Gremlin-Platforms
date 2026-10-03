@@ -209,7 +209,7 @@ ApplicationWindow {
                         return
                     }
                     // Overwrite removes every action already on those inputs.
-                    _overwriteGate.confirmThen("Replace existing actions",
+                    _overwriteGate.confirmThen("Replace Existing Actions",
                         "Overwrite used inputs is on. Every action already on the selected inputs in the "
                         + _modeSelector.currentText + " mode, macros included, will be removed and replaced "
                         + "with the new actions.\n\nNothing is saved yet: to undo, load the profile again "
@@ -235,7 +235,7 @@ ApplicationWindow {
 
                 PointerTip {
                     text: "Full guide: Help → User Guide → Tools → Auto Mapper. This tool builds starting 1:1 Map to vJoy actions.\n\n"
-                        + "Mode selection defaults to the default mode, change this if required for another mode.\n\n"
+                        + "Mode starts on the default mode; pick another to make actions there.\n\n"
                         + "This tool does not match devices by name. It uses the order shown in the lists. The first checked input gets an action to the first checked output, the second input to the second output, and so on.\n\n"
                         + "Overwrite used inputs: replaces the actions those controls already have in the selected mode. Leave it off, and those actions stay as they are.\n\n"
                         + "Combine onto Selected Outputs: This should stay off when each input should have its own output. Turn it on when you check more inputs than outputs.\n\n"

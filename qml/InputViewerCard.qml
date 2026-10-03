@@ -307,7 +307,7 @@ ColumnLayout {
 
                                     HoverHandler { id: _vjHover }
                                     PointerTip {
-                                        text: destClaimed ? vjoyLabel : "Dest not claimed"
+                                        text: destClaimed ? vjoyLabel : "Output not claimed"
                                         delay: 200
                                         show: true
                                     }

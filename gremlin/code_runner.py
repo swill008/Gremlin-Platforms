@@ -358,7 +358,7 @@ class CodeRunner:
             self._refresh_axes()
         except ImportError as e:
             signal.display_error(
-                "Unable to launch due to a missing user plugin.", str(e)
+                "Could not run the profile: a user plugin is missing.", str(e)
             )
         except Exception:
             syslog.exception("Gremlin start failed")

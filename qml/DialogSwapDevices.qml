@@ -125,7 +125,7 @@ ApplicationWindow {
                     var from = _profileDeviceSelection.currentValue
                     var to = _physicalDeviceSelection.currentValue
                     // Every binding moves at once: ask first.
-                    _swapGate.confirmThen("Swap bindings",
+                    _swapGate.confirmThen("Swap Bindings",
                         "Move every binding of " + _profileDeviceSelection.currentText
                         + " onto " + _physicalDeviceSelection.currentText + "?\n\n"
                         + "This changes the open profile. Nothing is saved yet: to undo, "

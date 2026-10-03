@@ -166,7 +166,7 @@ Item {
                         model.deleteActionSequnce(binding)
                         return
                     }
-                    _removeGate.confirmThen("Remove binding?",
+                    _removeGate.confirmThen("Remove Binding?",
                         "Remove this binding and its " + (n === 1 ? "action" : n + " actions") + "?",
                         "Remove", function() { model.deleteActionSequnce(binding) }, null, true)
                 }
