@@ -2,8 +2,9 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Live Log Reader: one file log of reads and saves (Config tab), and
-the diagnostic log files (Debug tab)."""
+"""The Live Log Reader: one file log of reads and saves (Config tab), the
+diagnostic log files and the Live log feed (Debug tab), and the Input
+Monitor (Input Monitor tab)."""
 
 from __future__ import annotations
 
@@ -11,12 +12,13 @@ import html
 import os
 import re
 import threading
+import time
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui
 
 import gremlin.ui.type_aliases as ta
-from gremlin import live_capture
+from gremlin import input_monitor, log_feed
 
 QML_IMPORT_NAME = "Gremlin.UI"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -154,10 +156,40 @@ def _profile_running() -> bool:
     return bool(listener is not None and listener.gremlin_active)
 
 
+# The Log dropdown's file keys and the feed's source names.
+SOURCE_OF = {"system": "System", "user": "Scripts", "event": "Events"}
+# A session divider ("── Live started … ──"): always shown, in its own color.
+DIVIDER = 99
+# Most lines a Live session view keeps; older ones drop off the top.
+MAX_SESSION = 20000
+
+
+def _html(rows: list[tuple[int, str]], colors: dict[str, str]) -> str:
+    """Rows as rich text: warnings and errors in color, dividers and dimmed
+    rows in theirs."""
+    lines = []
+    for rank, body in rows:
+        text = html.escape(body).replace("\n", "<br>")
+        color = (
+            colors["divider"] if rank == DIVIDER
+            else colors["error"] if rank >= 3
+            else colors["warn"] if rank == 2
+            else colors["muted"] if rank < 0
+            else ""
+        )
+        if color:
+            text = f'<span style="color:{color}">{text}</span>'
+        lines.append(text)
+    # white-space: pre keeps the view's own font (a <pre> would not).
+    return '<div style="white-space:pre">' + "<br>".join(lines) + "</div>"
+
+
 @ta.QmlElement
 class DebugLog(QtCore.QObject):
-    """One diagnostic log file, filtered by level and text, for the Live Log
-    Reader's Debug tab."""
+    """The Live Log Reader's Debug tab: one diagnostic log file, filtered by
+    level and text; or, with Live on, a session view that keeps what was
+    shown and adds every line the program logs as it happens
+    (gremlin.log_feed)."""
 
     changed = QtCore.Signal()
 
@@ -171,18 +203,20 @@ class DebugLog(QtCore.QObject):
         self._total = 0
         self._warn = "#F0A30A"
         self._error = "#F87171"
+        self._divider = "#F87171"
+        self._muted = "#9CA3AF"
         self._on = True
+        self._running = False
         # Load Whole File: read all of a big file, not just its end.
         self._whole = False
         self._cut = False
         # (size, mtime) of the file as last read; unchanged means no re-read.
         self._stamp: tuple[int, int] | None = None
-        # Live: show the live capture (gremlin.live_capture) instead of a file.
+        # Live: (rank, source, text) rows of this session, or None for the
+        # file view. A session stays after Live stops until Show Log File.
         self._live = False
-        self._live_version = -1
-        self._live_rows: list[tuple[int, str]] = []
-        self._muted = "#9CA3AF"
-        self._running = False
+        self._session: list[tuple[int, str, str]] | None = None
+        self._seq = 0
 
     def _path(self) -> Path:
         from gremlin.util import logs_dir
@@ -195,36 +229,64 @@ class DebugLog(QtCore.QObject):
             self._apply()
 
     def _apply(self) -> None:
-        if self._live:
-            # Levels do not apply to live capture; Find does.
-            entries = self._live_rows
+        if self._session is not None:
+            source = SOURCE_OF.get(self._file, "")
+            least = _MIN_RANK.get(self._level, 0)
             needle = self._find.strip().lower()
-            self._shown = [
-                row for row in entries if not needle or needle in row[1].lower()
+            rows = [
+                (rank, text) for rank, src, text in self._session
+                if rank == DIVIDER or (
+                    (not source or src == source)
+                    and rank >= least
+                    and (not needle or needle in text.lower())
+                )
             ]
+            self._total = sum(1 for rank, _s, _t in self._session if rank != DIVIDER)
+            self._shown = rows
         else:
             entries = debug_entries(self._raw or "")
+            self._total = len(entries)
             self._shown = filter_entries(entries, self._level, self._find)
-        self._total = len(entries)
         self.changed.emit()
+
+    def _set_file(self, value: str) -> None:
+        if value == self._file:
+            return
+        self._file = value
+        if self._session is not None:
+            self._apply()  # a session is only filtered by its source
+            return
+        self._whole = False
+        self._reload()
+
+    def _divide(self, what: str) -> None:
+        if self._session is not None:
+            stamp = time.strftime("%H:%M:%S")
+            self._session.append((DIVIDER, "", f"── Live {what} {stamp} ──"))
 
     def _set_live(self, on: bool) -> None:
         on = bool(on)
         if on == self._live:
             return
         self._live = on
-        live_capture.set_enabled(on)
-        self._live_version = -1
         if on:
-            self.refresh()
+            empty = self._get_start_empty()
+            if self._session is None or empty:
+                # Keep what the file view showed (unless Start empty).
+                source = SOURCE_OF.get(self._file, "System")
+                self._session = [] if empty else [
+                    (rank, source, text)
+                    for rank, text in debug_entries(self._raw or "")
+                ]
+            self._seq = log_feed.last_seq()
+            self._file = "all"
+            self._divide("started")
+            log_feed.start()
         else:
-            self._reload()
-
-    def _set_file(self, value: str) -> None:
-        if value != self._file:
-            self._file = value
-            self._whole = False
-            self._reload()
+            log_feed.stop()
+            self._take_new()
+            self._divide("stopped")
+        self._apply()
 
     file = QtCore.Property(
         str, lambda self: self._file, _set_file, notify=changed,
@@ -245,18 +307,40 @@ class DebugLog(QtCore.QObject):
         str, lambda self: self._error, lambda self, v: self._set("_error", v),
         notify=changed,
     )
-    mutedColor = QtCore.Property(
-        str, lambda self: self._muted, lambda self, v: self._set("_muted", v),
+    dividerColor = QtCore.Property(
+        str, lambda self: self._divider, lambda self, v: self._set("_divider", v),
         notify=changed,
     )
-    live = QtCore.Property(
-        bool, lambda self: self._live, _set_live, notify=changed,
+    live = QtCore.Property(bool, lambda self: self._live, _set_live, notify=changed)
+
+    def _get_start_empty(self) -> bool:
+        from gremlin.config import Configuration
+
+        cfg = Configuration()
+        key = ("global", "internal", "live-start-empty")
+        return bool(cfg.value(*key)) if cfg.exists(*key) else False
+
+    def _set_start_empty(self, value: bool) -> None:
+        from gremlin.config import Configuration
+        from gremlin.types import PropertyType
+
+        cfg = Configuration()
+        # Also registered at startup; registering again changes nothing.
+        cfg.register(
+            "global", "internal", "live-start-empty", PropertyType.Bool, False,
+            "Live Log Reader: Live starts with an empty view.", {}, False,
+        )
+        cfg.set("global", "internal", "live-start-empty", bool(value))
+        self.changed.emit()
+
+    startEmpty = QtCore.Property(
+        bool, _get_start_empty, _set_start_empty, notify=changed,
     )
 
     @QtCore.Property(bool, notify=changed)
-    def running(self) -> bool:
-        """A profile is running (live capture only sees inputs then)."""
-        return self._running
+    def session(self) -> bool:
+        """A Live session is shown (running, or stopped and kept)."""
+        return self._session is not None
 
     @QtCore.Property(str, notify=changed)
     def path(self) -> str:
@@ -264,7 +348,7 @@ class DebugLog(QtCore.QObject):
 
     @QtCore.Property(int, notify=changed)
     def shownCount(self) -> int:
-        return len(self._shown)
+        return sum(1 for rank, _t in self._shown if rank != DIVIDER)
 
     @QtCore.Property(int, notify=changed)
     def totalCount(self) -> int:
@@ -288,6 +372,11 @@ class DebugLog(QtCore.QObject):
         """Diagnostic logs are not Off (read again on every refresh)."""
         return self._on
 
+    @QtCore.Property(bool, notify=changed)
+    def running(self) -> bool:
+        """A profile is running."""
+        return self._running
+
     @staticmethod
     def _logging_on() -> bool:
         from gremlin.config import Configuration
@@ -308,19 +397,24 @@ class DebugLog(QtCore.QObject):
 
     @QtCore.Property(str, notify=changed)
     def html(self) -> str:
-        """The shown entries; warnings and errors in color."""
-        lines = []
-        for rank, body in self._shown:
-            text = html.escape(body).replace("\n", "<br>")
-            if rank >= 3:
-                text = f'<span style="color:{self._error}">{text}</span>'
-            elif rank == 2:
-                text = f'<span style="color:{self._warn}">{text}</span>'
-            elif rank < 0:
-                text = f'<span style="color:{self._muted}">{text}</span>'
-            lines.append(text)
-        # white-space: pre keeps the view's own font (a <pre> would not).
-        return '<div style="white-space:pre">' + "<br>".join(lines) + "</div>"
+        """The shown entries; warnings, errors and dividers in color."""
+        return _html(self._shown, {
+            "warn": self._warn, "error": self._error,
+            "divider": self._divider, "muted": self._muted,
+        })
+
+    def _take_new(self) -> bool:
+        """Add the feed's new lines to the session; True if there were any."""
+        if self._session is None:
+            return False
+        new = log_feed.entries_after(self._seq)
+        if not new:
+            return False
+        self._seq = new[-1].seq
+        self._session.extend((e.rank, e.source, e.text) for e in new)
+        if len(self._session) > MAX_SESSION:
+            del self._session[: len(self._session) - MAX_SESSION]
+        return True
 
     @QtCore.Slot()
     def refresh(self) -> None:
@@ -329,16 +423,9 @@ class DebugLog(QtCore.QObject):
         if (on, running) != (self._on, self._running):
             self._on, self._running = on, running
             self.changed.emit()
-        if self._live:
-            current = live_capture.version()
-            if current == self._live_version:
-                return
-            rows = live_capture.entries()
-            self._live_version = live_capture.version()
-            self._live_rows = [
-                (1 if kind == live_capture.RAN else -1, text) for kind, text in rows
-            ]
-            self._apply()
+        if self._session is not None:
+            if self._live and self._take_new():
+                self._apply()
             return
         path = self._path()
         try:
@@ -379,15 +466,36 @@ class DebugLog(QtCore.QObject):
         self._reload()
 
     @QtCore.Slot()
+    def showFile(self) -> None:
+        """Leave a stopped Live session and show the log file again."""
+        if self._live:
+            return
+        self._session = None
+        if self._file not in DEBUG_FILES:
+            self._file = "system"
+        self._reload()
+        self._apply()
+
+    @QtCore.Slot()
+    def clearView(self) -> None:
+        """Live session: empty the view (never a file). Live keeps going;
+        a stopped session goes back to the log file."""
+        log_feed.clear()
+        if self._live:
+            self._session = []
+            self._seq = log_feed.last_seq()
+            self._apply()
+        else:
+            self.showFile()
+
+    @QtCore.Slot()
     def clear(self) -> None:
         """Empty the shown file. The program's own log handler has it open,
         so it is emptied through that handler; otherwise directly."""
         import logging
 
-        if self._live:
-            live_capture.clear()
-            self._live_version = -1
-            self.refresh()
+        if self._session is not None:
+            self.clearView()
             return
         path = self._path()
         done = False
@@ -415,14 +523,129 @@ class DebugLog(QtCore.QObject):
         self._whole = False
         self._reload()
 
+    def _shown_text(self) -> str:
+        return "\n".join(body for _rank, body in self._shown)
+
     @QtCore.Slot()
     def copyShown(self) -> None:
         clipboard = QtGui.QGuiApplication.clipboard()
         if clipboard is not None:
-            clipboard.setText("\n".join(body for _rank, body in self._shown))
+            clipboard.setText(self._shown_text())
+
+    @QtCore.Slot(str, result=bool)
+    def saveTo(self, url: str) -> bool:
+        """Save Feed…: write what is shown to a text file."""
+        path = QtCore.QUrl(url).toLocalFile() or url
+        try:
+            Path(path).write_text(self._shown_text() + "\n", encoding="utf-8")
+        except OSError:
+            return False
+        return True
 
     @QtCore.Slot()
     def openFolder(self) -> None:
         folder = self._path().parent
         folder.mkdir(parents=True, exist_ok=True)
         QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(folder)))
+
+
+@ta.QmlElement
+class InputMonitor(QtCore.QObject):
+    """The Live Log Reader's Input Monitor tab: each input the running
+    profile handles and the actions it ran (gremlin.input_monitor)."""
+
+    changed = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        self._find = ""
+        self._unbound = True
+        self._muted = "#9CA3AF"
+        self._rows: list[tuple[int, str]] = []
+        self._shown: list[tuple[int, str]] = []
+        self._version = -1
+        self._running = False
+
+    def _set(self, name: str, value: object) -> None:
+        if getattr(self, name) != value:
+            setattr(self, name, value)
+            self._apply()
+
+    def _apply(self) -> None:
+        needle = self._find.strip().lower()
+        self._shown = [
+            (rank, text) for rank, text in self._rows
+            if (self._unbound or rank >= 0)
+            and (not needle or needle in text.lower())
+        ]
+        self.changed.emit()
+
+    def _set_on(self, on: bool) -> None:
+        if bool(on) != input_monitor.enabled():
+            input_monitor.set_enabled(bool(on))
+            self._version = -1
+            self.refresh()
+            self.changed.emit()
+
+    monitoring = QtCore.Property(
+        bool, lambda self: input_monitor.enabled(), _set_on, notify=changed,
+    )
+    find = QtCore.Property(
+        str, lambda self: self._find, lambda self, v: self._set("_find", v),
+        notify=changed,
+    )
+    showUnbound = QtCore.Property(
+        bool, lambda self: self._unbound,
+        lambda self, v: self._set("_unbound", bool(v)), notify=changed,
+    )
+    mutedColor = QtCore.Property(
+        str, lambda self: self._muted, lambda self, v: self._set("_muted", v),
+        notify=changed,
+    )
+
+    @QtCore.Property(bool, notify=changed)
+    def running(self) -> bool:
+        """A profile is running (the monitor only sees inputs then)."""
+        return self._running
+
+    @QtCore.Property(int, notify=changed)
+    def shownCount(self) -> int:
+        return len(self._shown)
+
+    @QtCore.Property(int, notify=changed)
+    def totalCount(self) -> int:
+        return len(self._rows)
+
+    @QtCore.Property(str, notify=changed)
+    def html(self) -> str:
+        return _html(self._shown, {
+            "warn": "", "error": "", "divider": "", "muted": self._muted,
+        })
+
+    @QtCore.Slot()
+    def refresh(self) -> None:
+        running = _profile_running()
+        if running != self._running:
+            self._running = running
+            self.changed.emit()
+        current = input_monitor.version()
+        if current == self._version:
+            return
+        rows = input_monitor.entries()
+        self._version = input_monitor.version()
+        self._rows = [
+            (1 if kind == input_monitor.RAN else -1, text) for kind, text in rows
+        ]
+        self._apply()
+
+    @QtCore.Slot()
+    def clear(self) -> None:
+        input_monitor.clear()
+        self._version = -1
+        self.refresh()
+
+    @QtCore.Slot()
+    def copyShown(self) -> None:
+        clipboard = QtGui.QGuiApplication.clipboard()
+        if clipboard is not None:
+            clipboard.setText("\n".join(text for _rank, text in self._shown))

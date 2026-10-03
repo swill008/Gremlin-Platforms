@@ -96,6 +96,7 @@ import gremlin.ui.hidhide  # noqa: F401
 import gremlin.ui.vjoy_status
 import gremlin.ui.window_placement
 import gremlin.ui.module_model  # noqa: F401
+import gremlin.ui.debug_mode
 import gremlin.ui.live_debug  # noqa: F401
 import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
 import gremlin.ui.logical_layout  # noqa: F401
@@ -573,6 +574,10 @@ def register_config_options() -> None:
     if was_close_to_tray and not cfg.value("global", "general", "minimize-to-tray"):
         cfg.set("global", "general", "minimize-to-tray", True)
     cfg.register(
+        "global", "internal", "live-start-empty", PropertyType.Bool, False,
+        "Live Log Reader: Live starts with an empty view.", {}, False,
+    )
+    cfg.register(
         "global", "internal", "tray-notice-shown", PropertyType.Bool, False,
         "The one-time notice that closing kept the program in the tray was shown.",
         {}, False,
@@ -772,6 +777,8 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.updater.startup()
 
         self.main_window = self.engine.rootObjects()[0]
+        # Red debug mode: a frame on every window while debugging.
+        gremlin.ui.debug_mode.install(self)
         self.color_information_object = self.main_window.findChild(
             QtCore.QObject, "colorInformation"
         )

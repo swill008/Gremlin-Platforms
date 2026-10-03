@@ -4,15 +4,20 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal as U
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import Gremlin.Style
 import Gremlin.UI
 
-// Debug → Live Log Reader. Config: what the program read and saved this run
-// (logs.txt), for checking how profiles, modules and other files load.
+// Debug → Live Log Reader.
+// Config: what the program read and saved this run (logs.txt), for checking
+// how profiles, modules and other files load.
 // Debug: the diagnostic log files that Options → General → Diagnostics
-// writes (system, script and event logs).
+// writes; Live adds every line the program logs as it happens, whatever
+// the Diagnostic logs level (gremlin/log_feed.py).
+// Input Monitor: each input the running profile handles and the actions it
+// ran (gremlin/input_monitor.py).
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
@@ -40,20 +45,34 @@ ApplicationWindow {
         id: _debug
         warningColor: String(Style.warn)
         errorColor: String(Style.dangerText)
+        dividerColor: String(Style.dangerText)
+    }
+
+    InputMonitor {
+        id: _monitor
         mutedColor: String(Style.fgMuted)
     }
 
-    // Live capture stops when the window closes.
-    onClosing: _debug.live = false
-    Component.onDestruction: _debug.live = false
-
-    readonly property bool _onDebug: _tabs.currentIndex === 1
+    // Live and the Input Monitor stop when the window closes.
+    function _stopAll() {
+        _debug.live = false
+        _monitor.monitoring = false
+    }
+    onClosing: _stopAll()
+    Component.onDestruction: _stopAll()
 
     Timer {
         interval: 400
         running: _win.visible
         repeat: true
-        onTriggered: _win._onDebug ? _debug.refresh() : _log.refresh()
+        onTriggered: {
+            if (_tabs.currentIndex === 0)
+                _log.refresh()
+            else if (_tabs.currentIndex === 1)
+                _debug.refresh()
+            else
+                _monitor.refresh()
+        }
     }
 
     Connections {
@@ -63,13 +82,75 @@ ApplicationWindow {
 
     Connections {
         target: _debug
-        function onChanged() { _debugView.show(_debug.html) }
+        function onChanged() {
+            _debugView.show(_debug.html)
+            _file.currentIndex = _file.indexOfValue(_debug.file)
+        }
+    }
+
+    Connections {
+        target: _monitor
+        function onChanged() { _monitorView.show(_monitor.html) }
     }
 
     Component.onCompleted: {
         _log.refresh()
         _debug.refresh()
         _debugView.show(_debug.html)
+        _monitor.refresh()
+        _monitorView.show(_monitor.html)
+    }
+
+    // A red on/off button (Live, Monitor): dark red with ○ when off, bright
+    // red with ● when on.
+    component RedToggle: Button {
+        id: _toggle
+
+        property string caption: ""
+        property string tipOn: ""
+        property string tipOff: ""
+
+        checkable: true
+        ToolTip.visible: hovered
+        ToolTip.delay: 500
+        ToolTip.text: checked ? tipOn : tipOff
+        contentItem: Label {
+            text: (_toggle.checked ? "● " : "○ ") + _toggle.caption
+            color: "white"
+            font.bold: _toggle.checked
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+        background: Rectangle {
+            implicitWidth: Style.dp(92)
+            implicitHeight: Style.dp(32)
+            radius: Style.dp(3)
+            color: _toggle.checked
+                ? (_toggle.hovered ? Style.dangerHover : Style.danger)
+                : (_toggle.hovered ? Style.dangerHover : Style.dangerFill)
+            border.color: Style.danger
+            border.width: Style.dp(1)
+        }
+    }
+
+    // A yellow note across the page.
+    component Note: Rectangle {
+        property alias text: _noteText.text
+
+        Layout.fillWidth: true
+        implicitHeight: _noteText.implicitHeight + Style.dp(16)
+        radius: Style.dp(3)
+        color: Style.noteFill
+        border.color: Style.noteLine
+
+        Label {
+            id: _noteText
+            anchors.fill: parent
+            anchors.margins: Style.dp(8)
+            verticalAlignment: Text.AlignVCenter
+            wrapMode: Text.WordWrap
+            color: Style.noteText
+        }
     }
 
     // A read-only log area that keeps to the end while it is scrolled there.
@@ -177,7 +258,12 @@ ApplicationWindow {
             id: _tabs
             Layout.fillWidth: true
             TabButton { text: "Config"; width: implicitWidth }
-            TabButton { text: "Debug"; width: implicitWidth }
+            // A red dot while Live or the monitor runs, seen from any tab.
+            TabButton { text: _debug.live ? "Debug ●" : "Debug"; width: implicitWidth }
+            TabButton {
+                text: _monitor.monitoring ? "Input Monitor ●" : "Input Monitor"
+                width: implicitWidth
+            }
         }
 
         StackLayout {
@@ -222,8 +308,8 @@ ApplicationWindow {
                 }
             }
 
-            // Debug: the diagnostic log files, or with Live on, each input the
-            // running profile handles and the actions it ran, as it happens.
+            // Debug: the diagnostic log files; with Live on, a session view that
+            // keeps what was shown and adds every new line as it happens.
             ColumnLayout {
                 spacing: Style.dp(8)
 
@@ -231,55 +317,50 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     spacing: Style.dp(8)
 
-                    // Live capture on/off: red, brighter with a white dot while on.
-                    Button {
+                    RedToggle {
                         id: _liveButton
-                        checkable: true
+                        caption: "Live"
                         checked: _debug.live
+                        tipOff: "Catch every line the program logs, as it happens"
+                        tipOn: "Stop Live (what was caught stays on screen)"
                         onToggled: {
                             _debug.live = checked
                             _debugView.toEnd()
                         }
+                    }
+                    CheckBox {
+                        text: "Start empty"
+                        checked: _debug.startEmpty
+                        onToggled: _debug.startEmpty = checked
                         ToolTip.visible: hovered
                         ToolTip.delay: 500
-                        ToolTip.text: checked
-                            ? "Stop live capture and show the log file again"
-                            : "Show each input the running profile handles, as it happens"
-                        contentItem: Label {
-                            text: (_liveButton.checked ? "● " : "○ ") + "Live"
-                            color: "white"
-                            font.bold: _liveButton.checked
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        background: Rectangle {
-                            implicitWidth: Style.dp(72)
-                            implicitHeight: Style.dp(32)
-                            radius: Style.dp(3)
-                            color: _liveButton.checked
-                                ? (_liveButton.hovered ? Style.dangerHover : Style.danger)
-                                : (_liveButton.hovered ? Style.dangerHover : Style.dangerFill)
-                            border.color: Style.danger
-                            border.width: Style.dp(1)
-                        }
+                        ToolTip.text: "When Live starts, clear the view first "
+                            + "(otherwise it keeps what is shown and adds to it)"
                     }
 
                     Label {
                         text: "Log"
                         Layout.leftMargin: Style.dp(8)
-                        enabled: !_debug.live
                     }
                     ComboBox {
                         id: _file
-                        enabled: !_debug.live
                         textRole: "text"
                         valueRole: "value"
                         implicitContentWidthPolicy: ComboBox.WidestText
-                        model: [
-                            { text: "System", value: "system" },
-                            { text: "Scripts", value: "user" },
-                            { text: "Events", value: "event" }
-                        ]
+                        // All logs only while a Live session is shown.
+                        model: _debug.session
+                            ? [
+                                { text: "All logs", value: "all" },
+                                { text: "System", value: "system" },
+                                { text: "Scripts", value: "user" },
+                                { text: "Events", value: "event" }
+                            ]
+                            : [
+                                { text: "System", value: "system" },
+                                { text: "Scripts", value: "user" },
+                                { text: "Events", value: "event" }
+                            ]
+                        onModelChanged: currentIndex = indexOfValue(_debug.file)
                         onActivated: {
                             _debug.file = currentValue
                             _debugView.toEnd()
@@ -289,18 +370,15 @@ ApplicationWindow {
                     Label {
                         text: "Show"
                         Layout.leftMargin: Style.dp(8)
-                        enabled: !_debug.live
                     }
                     ComboBox {
                         id: _level
-                        enabled: !_debug.live
                         implicitContentWidthPolicy: ComboBox.WidestText
                         model: ["All", "Info", "Warning", "Error"]
                         onActivated: _debug.level = currentText
                     }
 
                     TextField {
-                        id: _find
                         Layout.fillWidth: true
                         Layout.leftMargin: Style.dp(8)
                         placeholderText: "Find"
@@ -308,28 +386,12 @@ ApplicationWindow {
                     }
                 }
 
-                // Nothing new is written while Diagnostic logs is Off.
-                Rectangle {
-                    visible: _debug.live ? !_debug.running : !_debug.loggingOn
-                    Layout.fillWidth: true
-                    implicitHeight: _offText.implicitHeight + Style.dp(16)
-                    radius: Style.dp(3)
-                    color: Style.noteFill
-                    border.color: Style.noteLine
-
-                    Label {
-                        id: _offText
-                        anchors.fill: parent
-                        anchors.margins: Style.dp(8)
-                        verticalAlignment: Text.AlignVCenter
-                        wrapMode: Text.WordWrap
-                        color: Style.noteText
-                        text: _debug.live
-                            ? "No profile is running. Run the profile, then use your "
-                                + "devices: each input shows here with the actions it ran."
-                            : "Diagnostic logs are off, so nothing new is written. "
-                                + "Pick a level below to turn them on."
-                    }
+                // Nothing new is written while Diagnostic logs is Off (Live
+                // still catches everything).
+                Note {
+                    visible: !_debug.session && !_debug.loggingOn
+                    text: "Diagnostic logs are off, so nothing new is written. "
+                        + "Pick a level below to turn them on, or use Live."
                 }
 
                 RowLayout {
@@ -337,14 +399,24 @@ ApplicationWindow {
                     Label {
                         Layout.fillWidth: true
                         text: _debug.live
-                            ? "Live capture: inputs the running profile handles, as they happen"
+                            ? "Live: every line the program logs, as it happens "
+                                + "(the files keep the Diagnostic logs level)"
+                            : _debug.session ? "Live stopped. Showing this session."
                             : _debug.path
                         color: _debug.live ? Style.dangerText : Style.fgMuted
                         elide: Text.ElideMiddle
                     }
+                    Button {
+                        visible: _debug.session && !_debug.live
+                        text: qsTr("Show Log File")
+                        onClicked: {
+                            _debug.showFile()
+                            _debugView.toEnd()
+                        }
+                    }
                     Label {
                         color: Style.fgMuted
-                        text: !_debug.live && !_debug.exists ? "No file yet"
+                        text: !_debug.session && !_debug.exists ? "No file yet"
                             : _debug.shownCount === _debug.totalCount
                                 ? _debug.totalCount + " entries"
                                 : _debug.shownCount + " of " + _debug.totalCount + " entries"
@@ -353,7 +425,7 @@ ApplicationWindow {
 
                 // A big file: only its end is read until asked for all of it.
                 RowLayout {
-                    visible: _debug.truncated && !_debug.live
+                    visible: _debug.truncated && !_debug.session
                     Layout.fillWidth: true
                     Label {
                         Layout.fillWidth: true
@@ -388,7 +460,8 @@ ApplicationWindow {
                     columnSpacing: Style.dp(16)
                     rowSpacing: Style.dp(8)
 
-                    // The same setting as Options → General → Diagnostics.
+                    // The same setting as Options → General → Diagnostics:
+                    // what is written to the files.
                     RowLayout {
                         id: _levels
                         spacing: Style.dp(8)
@@ -410,13 +483,13 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
 
                         Button {
-                            text: qsTr("Clear Log")
-                            enabled: _debug.live || _debug.exists
+                            // A session: empty the view only, never a file.
+                            text: _debug.session ? qsTr("Clear View") : qsTr("Clear Log")
+                            enabled: _debug.session || _debug.exists
                             onClicked: {
-                                if (_debug.live) {
-                                    // Nothing is stored: clear at once.
+                                if (_debug.session) {
                                     _debugView.follow = true
-                                    _debug.clear()
+                                    _debug.clearView()
                                     return
                                 }
                                 _clearGate.confirmThen("Clear Log?",
@@ -436,10 +509,111 @@ ApplicationWindow {
                             text: qsTr("Copy Shown")
                             onClicked: _debug.copyShown()
                         }
+                        Button {
+                            visible: _debug.session
+                            text: qsTr("Save Feed…")
+                            onClicked: _saveFeed.open()
+                        }
+                    }
+                }
+            }
+
+            // Input Monitor: each input the running profile handles, as it
+            // happens, with the actions it ran.
+            ColumnLayout {
+                spacing: Style.dp(8)
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Style.dp(8)
+
+                    RedToggle {
+                        caption: "Monitor"
+                        checked: _monitor.monitoring
+                        tipOff: "Show each input the running profile handles, as it happens"
+                        tipOn: "Stop the Input Monitor"
+                        onToggled: {
+                            _monitor.monitoring = checked
+                            _monitorView.toEnd()
+                        }
+                    }
+
+                    TextField {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Style.dp(8)
+                        placeholderText: "Find"
+                        onTextChanged: _monitor.find = text
+                    }
+                }
+
+                Note {
+                    visible: _monitor.monitoring && !_monitor.running
+                    text: "No profile is running. Run the profile, then use your "
+                        + "devices: each input shows here with the actions it ran."
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label {
+                        Layout.fillWidth: true
+                        text: _monitor.monitoring
+                            ? "Inputs the running profile handles, as they happen"
+                            : "Click Monitor to watch inputs and the actions they run."
+                        color: _monitor.monitoring ? Style.dangerText : Style.fgMuted
+                        elide: Text.ElideRight
+                    }
+                    Label {
+                        color: Style.fgMuted
+                        text: _monitor.shownCount === _monitor.totalCount
+                            ? _monitor.totalCount + " entries"
+                            : _monitor.shownCount + " of " + _monitor.totalCount + " entries"
+                    }
+                }
+
+                LogView {
+                    id: _monitorView
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    textFormat: TextEdit.RichText
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    CheckBox {
+                        text: "Inputs with no actions"
+                        checked: _monitor.showUnbound
+                        onToggled: _monitor.showUnbound = checked
+                        ToolTip.visible: hovered
+                        ToolTip.delay: 500
+                        ToolTip.text: "Also show inputs that have no actions (dimmed)"
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Button {
+                        text: qsTr("Clear")
+                        onClicked: {
+                            _monitorView.follow = true
+                            _monitor.clear()
+                        }
+                    }
+                    Button {
+                        text: qsTr("Copy Shown")
+                        onClicked: _monitor.copyShown()
                     }
                 }
             }
         }
+    }
+
+    FileDialog {
+        id: _saveFeed
+        title: "Save Feed"
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "txt"
+        nameFilters: ["Text files (*.txt)"]
+        onAccepted: _debug.saveTo(String(selectedFile))
     }
 
     DismissibleDialog {

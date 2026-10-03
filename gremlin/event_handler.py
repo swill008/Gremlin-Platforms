@@ -24,8 +24,8 @@ from gremlin import (
     device_initialization,
     error,
     event_helpers,
+    input_monitor,
     keyboard,
-    live_capture,
     mode_manager,
     signal,
     tree,
@@ -616,9 +616,9 @@ class EventHandler(QtCore.QObject):
         """
         # Process callbacks defined via actions or scripts.
         callbacks = self._matching_callbacks(event)
-        # Live capture (Live Log Reader): read-only, one check when off.
-        if live_capture.enabled():
-            live_capture.record(event, callbacks, not self.process_callbacks)
+        # Input Monitor (Live Log Reader): read-only, one check when off.
+        if input_monitor.enabled():
+            input_monitor.record(event, callbacks, not self.process_callbacks)
         for cb in callbacks:
             try:
                 cb(event)

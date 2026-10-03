@@ -1635,7 +1635,11 @@ class HardwareProfile(QtCore.QObject):
                 quick = shiboken6.wrapInstance(
                     shiboken6.getCppPointer(window)[0], QtQuick.QQuickWindow
                 )
-            image = quick.grabWindow()
+            # The red debug frame is not part of what the user picks from.
+            from gremlin.ui.debug_mode import hidden_frames
+
+            with hidden_frames(quick):
+                image = quick.grabWindow()
         except Exception:
             return ""
         if image.isNull():

@@ -48,11 +48,15 @@ def test_event_and_script_lines() -> None:
     assert debug_entries("2026-10-03 09:12:01 hello\n")[0][0] == 1
 
 
-def test_window_has_config_and_debug_tabs() -> None:
+def test_window_has_config_debug_and_input_monitor_tabs() -> None:
     qml = (_ROOT / "qml" / "DialogLiveLog.qml").read_text(encoding="utf-8")
     assert 'TabButton { text: "Config"' in qml
-    assert 'TabButton { text: "Debug"' in qml
-    assert "LiveLog {" in qml and "DebugLog {" in qml
+    assert '"Debug ●" : "Debug"' in qml
+    assert '"Input Monitor ●" : "Input Monitor"' in qml
+    assert "LiveLog {" in qml and "DebugLog {" in qml and "InputMonitor {" in qml
+    # Live on the Debug tab, Monitor on the Input Monitor tab.
+    assert 'caption: "Live"' in qml and 'caption: "Monitor"' in qml
+    assert '{ text: "All logs", value: "all" }' in qml
     # The write level (same setting as Options) sits under the Debug log.
     assert "OptionLogLevel {" in qml
 

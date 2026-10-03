@@ -58,7 +58,15 @@ def apply_log_level(value: object | None = None) -> str:
         logger.disabled = disabled
         logger.setLevel(py_level)
         for handler in logger.handlers:
+            # The Live feed's own catcher keeps catching everything.
+            if getattr(handler, "live_feed", False):
+                continue
             handler.setLevel(py_level)
+    # While the Live feed runs, the loggers stay open; the files follow
+    # the level above.
+    from gremlin import log_feed
+
+    log_feed.reassert()
     return level_name
 
 

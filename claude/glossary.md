@@ -12,6 +12,11 @@ Tracker refs in brackets.
 | The page where you edit a device's actions [D6] | **Configuration** (unchanged) | |
 | The window for a device's module (claims, file, picture) [D6] | **Module Setup** ("Module Setup…" on the card and in Tools) | Configure input module / Configure output module |
 | The Button Map's settings | **Button Map Options** (Button Map → Edit → Button Map Options…; its own window, not in the main Options) | Editor options, Options → Button Map |
+| The log window (Debug menu) | **Live Log Reader**, tabs **Config** / **Debug** / **Input Monitor** | Log viewer, Debug window |
+| Watching every log line as it happens | **Live** (red button on the Debug tab); **All logs** in the Log list; **Start empty**, **Clear View**, **Save Feed…**, **Show Log File** | Live capture, Tail, Stream |
+| Watching inputs and the actions they ran | **Input Monitor** (tab), **Monitor** (its red button); an input with none shows **no actions** | Live capture, Event viewer, nothing bound, Unbound |
+| How much the program writes to its log files | **Diagnostic logs** (Off / ALL / Info / Warning / Error) | Debug level, Log level |
+| The red frame while debugging | **red debug mode**; badge **DEBUG** (shows while Diagnostic logs is ALL or Live runs) | Debug overlay, Vignette |
 | The editor for how a page looks (Home, Configuration, Logical) [D9] | **Appearance** ("Appearance…") | Show Editor, Display, Display Editor, View Settings, Display options |
 | The current mode [D10] | one label, **Mode**, on the toolbar; the footer's duplicate goes | "Configuring mode" + "Executing mode" (always the same) |
 | Hiding a card from Home [D3] | **Hide Card** / **Hidden Cards** | Hide device / Hidden devices (too close to HidHide) |

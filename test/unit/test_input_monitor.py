@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Live capture (Live Log Reader → Debug → Live) records what the running
+"""Input Monitor (Live Log Reader → Input Monitor) records what the running
 profile handles, read-only, and only while it is on."""
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from gremlin import live_capture
+from gremlin import input_monitor
 from gremlin.event_handler import Event, EventHandler
 from gremlin.types import InputType
 
@@ -57,11 +57,11 @@ class _Callback:
 
 @pytest.fixture(autouse=True)
 def _fresh() -> Iterator[None]:
-    live_capture.set_enabled(False)
-    live_capture.clear()
+    input_monitor.set_enabled(False)
+    input_monitor.clear()
     yield
-    live_capture.set_enabled(False)
-    live_capture.clear()
+    input_monitor.set_enabled(False)
+    input_monitor.clear()
 
 
 def _button(pressed: bool, button: int = 3) -> Event:
@@ -69,10 +69,10 @@ def _button(pressed: bool, button: int = 3) -> Event:
 
 
 def test_off_by_default_and_records_nothing() -> None:
-    assert not live_capture.enabled()
+    assert not input_monitor.enabled()
     handler = EventHandler()
     handler.process_event(_button(True, 77))
-    assert live_capture.entries() == []
+    assert input_monitor.entries() == []
 
 
 def test_records_input_and_the_actions_it_ran() -> None:
@@ -83,27 +83,27 @@ def test_records_input_and_the_actions_it_ran() -> None:
     )])
     handler.add_callback(_DEV, _MODE, _button(True, 41), cb)
     try:
-        live_capture.set_enabled(True)
+        input_monitor.set_enabled(True)
         handler.process_event(_button(True, 41))
         handler.process_event(_button(True, 42))
     finally:
         handler.callbacks.get(_DEV, {}).get(_MODE, {}).pop(_button(True, 41), None)
     assert cb.calls == 1  # the capture never stops the action
-    (kind1, ran), (kind2, unbound) = live_capture.entries()
-    assert kind1 == live_capture.RAN and kind2 == live_capture.NONE
+    (kind1, ran), (kind2, unbound) = input_monitor.entries()
+    assert kind1 == input_monitor.RAN and kind2 == input_monitor.NONE
     assert "pressed" in ran and "[Default]" in ran
     # The destination label also says when no output module is set up.
     assert "→  Map to vJoy (vJoy 1 B5" in ran
-    assert unbound.endswith("→  nothing bound")
+    assert unbound.endswith("→  no actions")
 
 
 def test_axis_bursts_are_coalesced() -> None:
-    live_capture.set_enabled(True)
+    input_monitor.set_enabled(True)
     for i in range(50):
-        live_capture.record(
+        input_monitor.record(
             Event(InputType.JoystickAxis, 1, _DEV, _MODE, value=i / 50), []
         )
-    rows = live_capture.entries()
+    rows = input_monitor.entries()
     # The first value and the latest; nothing in between.
     assert len(rows) == 2
     assert "+0.000" in rows[0][1] and "+0.980" in rows[1][1]
@@ -111,23 +111,44 @@ def test_axis_bursts_are_coalesced() -> None:
 
 def test_wrapped_and_script_callbacks() -> None:
     cb = _Callback([_Action("Macro", "macro"), _Action("Play Sound", "play-sound")])
-    assert live_capture.callback_text(functools.partial(cb)) == "Macro, Play Sound"
-    assert live_capture.callback_text(lambda event: None) == ""
-    live_capture.set_enabled(True)
-    live_capture.record(_button(True), [lambda event: None])
-    assert live_capture.entries()[0][1].endswith("→  script")
+    assert input_monitor.callback_text(functools.partial(cb)) == "Macro, Play Sound"
+    assert input_monitor.callback_text(lambda event: None) == ""
+    input_monitor.set_enabled(True)
+    input_monitor.record(_button(True), [lambda event: None])
+    assert input_monitor.entries()[0][1].endswith("→  script")
 
 
 def test_a_capture_problem_never_reaches_the_profile() -> None:
-    live_capture.set_enabled(True)
-    live_capture.record(object(), [])  # not an event: dropped quietly
-    assert live_capture.entries() == []
+    input_monitor.set_enabled(True)
+    input_monitor.record(object(), [])  # not an event: dropped quietly
+    assert input_monitor.entries() == []
 
 
 def test_clear_and_bounded() -> None:
-    live_capture.set_enabled(True)
-    for i in range(live_capture.MAX_ENTRIES + 10):
-        live_capture.record(_button(i % 2 == 0), [])
-    assert len(live_capture.entries()) == live_capture.MAX_ENTRIES
-    live_capture.clear()
-    assert live_capture.entries() == []
+    input_monitor.set_enabled(True)
+    for i in range(input_monitor.MAX_ENTRIES + 10):
+        input_monitor.record(_button(i % 2 == 0), [])
+    assert len(input_monitor.entries()) == input_monitor.MAX_ENTRIES
+    input_monitor.clear()
+    assert input_monitor.entries() == []
+
+
+def test_input_monitor_tab_model() -> None:
+    from gremlin.ui.live_debug import InputMonitor
+
+    model = InputMonitor()
+    assert not model.monitoring
+    model.monitoring = True
+    assert input_monitor.enabled()
+    input_monitor.record(_button(True), [_Callback([_Action("Macro", "macro")])])
+    input_monitor.record(_button(True, 9), [])  # no actions
+    model.refresh()
+    assert model.totalCount == 2 and model.shownCount == 2
+    model.showUnbound = False
+    assert model.shownCount == 1
+    model.find = "macro"
+    assert model.shownCount == 1
+    model.clear()
+    assert model.totalCount == 0
+    model.monitoring = False
+    assert not input_monitor.enabled()
