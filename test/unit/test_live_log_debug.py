@@ -53,6 +53,8 @@ def test_window_has_config_and_debug_tabs() -> None:
     assert 'TabButton { text: "Config"' in qml
     assert 'TabButton { text: "Debug"' in qml
     assert "LiveLog {" in qml and "DebugLog {" in qml
+    # The write level (same setting as Options) sits under the Debug log.
+    assert "OptionLogLevel {" in qml
 
 
 def _debug_log(path: Path, name: str) -> DebugLog:

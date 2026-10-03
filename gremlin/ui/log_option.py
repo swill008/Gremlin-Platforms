@@ -62,6 +62,22 @@ def apply_log_level(value: object | None = None) -> str:
     return level_name
 
 
+class _LevelNotifier(QtCore.QObject):
+    """Tells every LogLevelModel (Options, Live Log Reader) of a change."""
+
+    changed = QtCore.Signal()
+
+
+_NOTIFIER: _LevelNotifier | None = None
+
+
+def _notifier() -> _LevelNotifier:
+    global _NOTIFIER
+    if _NOTIFIER is None:
+        _NOTIFIER = _LevelNotifier()
+    return _NOTIFIER
+
+
 @ta.QmlElement
 class LogLevelModel(QtCore.QObject, BaseMetaConfigOptionWidget):
     levelChanged = QtCore.Signal()
@@ -70,6 +86,7 @@ class LogLevelModel(QtCore.QObject, BaseMetaConfigOptionWidget):
         QtCore.QObject.__init__(self, parent)
         BaseMetaConfigOptionWidget.__init__(self)
         self._config = Configuration()
+        _notifier().changed.connect(self.levelChanged)
 
     def _get_level(self) -> str:
         if self._config.exists(LOG_SECTION, LOG_GROUP, LOG_NAME):
@@ -83,7 +100,7 @@ class LogLevelModel(QtCore.QObject, BaseMetaConfigOptionWidget):
             current = normalize_level(self._config.value(LOG_SECTION, LOG_GROUP, LOG_NAME))
         if level_name != current:
             self._config.set(LOG_SECTION, LOG_GROUP, LOG_NAME, level_name)
-        self.levelChanged.emit()
+        _notifier().changed.emit()
 
     @QtCore.Slot(str)
     def setLevel(self, value: str) -> None:

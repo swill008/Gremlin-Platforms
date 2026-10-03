@@ -17,7 +17,7 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
     // ToolWindowMemory sets the saved or default size when the window opens.
-    width: 960
+    width: 1000
     height: 640
     minimumWidth: Style.dp(720)
     minimumHeight: Style.dp(480)
@@ -28,7 +28,7 @@ ApplicationWindow {
     ToolWindowMemory {
         host: _win
         name: "liveLog"
-        defaultWidth: Style.dp(960)
+        defaultWidth: Style.dp(1000)
         defaultHeight: Style.dp(640)
     }
 
@@ -277,7 +277,7 @@ ApplicationWindow {
                         wrapMode: Text.WordWrap
                         color: Style.noteText
                         text: "Diagnostic logs are off, so nothing new is written. "
-                            + "Turn them on in Options → General → Diagnostics."
+                            + "Pick a level below to turn them on."
                     }
                 }
 
@@ -325,28 +325,58 @@ ApplicationWindow {
                     textFormat: TextEdit.RichText
                 }
 
-                RowLayout {
-                    Layout.alignment: Qt.AlignRight
-                    Button {
-                        text: qsTr("Clear Log")
-                        enabled: _debug.exists
-                        onClicked: {
-                            _clearGate.confirmThen("Clear Log?",
-                                "Empty " + _debug.path.split(/[\\/]/).pop()
-                                    + "? Everything in it is removed for good.",
-                                "Clear", function() {
-                                    _debugView.follow = true
-                                    _debug.clear()
-                                }, null, true)
+                // Levels on the left, buttons on the right; on a narrow window
+                // the buttons go under the levels.
+                GridLayout {
+                    id: _bottom
+                    Layout.fillWidth: true
+                    columns: _bottom.width >= _levels.implicitWidth + _actions.implicitWidth
+                        + Style.dp(24) ? 2 : 1
+                    columnSpacing: Style.dp(16)
+                    rowSpacing: Style.dp(8)
+
+                    // The same setting as Options → General → Diagnostics.
+                    RowLayout {
+                        id: _levels
+                        spacing: Style.dp(8)
+                        Label {
+                            text: "Diagnostic logs"
+                            color: Style.fgSoft
+                        }
+                        OptionLogLevel {
+                            // Wide enough for "Warning" on its button.
+                            Layout.preferredWidth: Style.dp(400)
+                            Layout.minimumWidth: Style.dp(400)
                         }
                     }
-                    Button {
-                        text: qsTr("Open Logs Folder")
-                        onClicked: _debug.openFolder()
-                    }
-                    Button {
-                        text: qsTr("Copy Shown")
-                        onClicked: _debug.copyShown()
+
+                    RowLayout {
+                        id: _actions
+                        Layout.fillWidth: true
+
+                        Item { Layout.fillWidth: true }
+
+                        Button {
+                            text: qsTr("Clear Log")
+                            enabled: _debug.exists
+                            onClicked: {
+                                _clearGate.confirmThen("Clear Log?",
+                                    "Empty " + _debug.path.split(/[\\/]/).pop()
+                                        + "? Everything in it is removed for good.",
+                                    "Clear", function() {
+                                        _debugView.follow = true
+                                        _debug.clear()
+                                    }, null, true)
+                            }
+                        }
+                        Button {
+                            text: qsTr("Open Logs Folder")
+                            onClicked: _debug.openFolder()
+                        }
+                        Button {
+                            text: qsTr("Copy Shown")
+                            onClicked: _debug.copyShown()
+                        }
                     }
                 }
             }
