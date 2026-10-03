@@ -121,11 +121,13 @@ ApplicationWindow {
             TextEdit {
                 id: _view
                 width: Math.max(_flick.width - Style.dp(14), contentWidth + Style.dp(16))
-                height: Math.max(_flick.height - Style.dp(14), contentHeight + Style.dp(16))
+                height: Math.max(_flick.height - Style.dp(14), contentHeight + topPadding + bottomPadding)
                 leftPadding: Style.dp(8)
                 topPadding: Style.dp(8)
                 rightPadding: Style.dp(8)
-                bottomPadding: Style.dp(8)
+                // Room under the last line (clear of the horizontal scroll bar)
+                // so the end of the log is plain to see.
+                bottomPadding: Style.dp(48)
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.NoWrap
