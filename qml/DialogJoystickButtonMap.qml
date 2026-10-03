@@ -1658,7 +1658,7 @@ ApplicationWindow {
 
     Dialog {
         id: _copyDlg
-        title: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply template" : "Copy layout"
+        title: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply template" : "Copy Button Map"
         modal: true
         // Another device's layout is usually the other hand's; a template is not.
         onOpened: _copyMirror.checked = !(_buttonMap._copyFrom && _buttonMap._copyFrom.template)
@@ -1702,7 +1702,7 @@ ApplicationWindow {
                     onClicked: _copyDlg.close()
                 }
                 Button {
-                    text: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply template" : "Copy layout"
+                    text: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply template" : "Copy Button Map"
                     highlighted: true
                     onClicked: {
                         var row = _buttonMap._copyFrom
@@ -2321,21 +2321,6 @@ ApplicationWindow {
                     onTriggered: _exportJpgDialog.open()
                 }
                 ThemedMenu {
-                    id: _copyMenu
-                    title: "Copy Layout from"
-                    enabled: _buttonMap.targetName.length > 0 && _buttonMap.savedLayouts.length > 0
-                    Instantiator {
-                        model: _buttonMap.savedLayouts
-                        delegate: ThemedMenuItem {
-                            required property var modelData
-                            text: modelData.name + "…"
-                            onTriggered: _buttonMap.openCopyLayout(modelData)
-                        }
-                        onObjectAdded: (index, object) => _copyMenu.insertItem(index, object)
-                        onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
-                    }
-                }
-                ThemedMenu {
                     id: _templateMenu
                     title: "Templates"
                     enabled: _buttonMap.targetName.length > 0
@@ -2406,6 +2391,10 @@ ApplicationWindow {
             ThemedMenu {
                 id: _editMenu
                 title: "Edit"
+                // The devices with a Button Map, for Copy Button Map from Device.
+                beforeShow: function() {
+                    _buttonMap.savedLayouts = _hw.savedLayouts(_buttonMap.targetName)
+                }
                 ThemedMenuItem {
                     text: "Undo"
                     hint: "Ctrl+Z"
@@ -2448,6 +2437,22 @@ ApplicationWindow {
                     text: "Mirror Layout"
                     enabled: editing
                     onTriggered: _buttonMap.mirrorNow()
+                }
+                // Another device's Button Map onto this one (its photo stays).
+                ThemedMenu {
+                    id: _copyMenu
+                    title: "Copy Button Map from Device"
+                    enabled: _buttonMap.targetName.length > 0 && _buttonMap.savedLayouts.length > 0
+                    Instantiator {
+                        model: _buttonMap.savedLayouts
+                        delegate: ThemedMenuItem {
+                            required property var modelData
+                            text: modelData.name + "…"
+                            onTriggered: _buttonMap.openCopyLayout(modelData)
+                        }
+                        onObjectAdded: (index, object) => _copyMenu.insertItem(index, object)
+                        onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
+                    }
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {

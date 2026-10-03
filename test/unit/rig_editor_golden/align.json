@@ -1417,6 +1417,8 @@
      "Delete",
      "Copy (Ctrl+C)",
      "Paste (Ctrl+V) (off)",
+     "Hide Selected [ ]",
+     "Lock Selected [ ]",
      "v Align and Distribute",
      "  Across: Left | Center | Right",
      "  Down: Top | Middle | Bottom",

@@ -5474,6 +5474,8 @@
      "Delete",
      "Copy (Ctrl+C)",
      "Paste (Ctrl+V) (off)",
+     "Hide Path [ ]",
+     "Lock Path [ ]",
      "> Path",
      "> Line",
      "> Arrowheads",

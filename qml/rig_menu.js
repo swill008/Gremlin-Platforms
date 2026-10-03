@@ -91,6 +91,8 @@ function menuKind() {
         return "multi"
     if (k === "spine" || k === "line" || k === "from" || k === "to")
         return "leader"
+    if (k === "hot" && !isGroup(n))
+        return "hotspot"
     if (isTable(n))
         return "table"
     if (isText(n))
@@ -139,7 +141,46 @@ function menuTitle(kind) {
     if (mem)
         return roleWord(fiveWayRole(mem)) || memberLabel(n, mem)
     var name = friendlyOf(n, mem) || n.id
+    if (kind === "hotspot")
+        return name + " · hotspot"
     return kind === "leader" ? name + " · leader" : name
+}
+
+// --- Hide and Lock (the Layers panel's eye and lock, from the menu) ------------
+
+var _LAYER_WORDS = {
+    chip: "Chip", group: "Group", shape: "Shape", line: "Line", path: "Path",
+    image: "Picture", text: "Text Box", table: "Table", hotspot: "Hotspot", leader: "Leader"
+}
+
+// Hide and Lock for what was right-clicked: the item, its hotspot or the
+// leader clicked; several selected items all at once. Unhide or unlock from
+// the Layers panel (a hidden or locked item cannot be clicked on the map).
+function _hideLock(kind) {
+    var id = _ctx.nodeId
+    if (!id || kind === "canvas")
+        return []
+    var targets = []
+    if (kind === "multi") {
+        targets = (selectedIds || []).map(function(s) { return { id: s, part: "" } })
+    } else {
+        var part = kind === "hotspot" ? "hot"
+            : (kind === "leader" ? "leader:" + Math.max(0, _ctx.leader || 0) : "")
+        targets = [{ id: id, part: part }]
+    }
+    var word = kind === "multi" ? "Selected" : (_LAYER_WORDS[kind] || "Item")
+    function all(flag) {
+        return targets.length > 0 && targets.every(function(t) { return layerFlag(t.id, t.part, flag) })
+    }
+    function flip(flag) {
+        var on = !all(flag)
+        return function() {
+            for (var i = 0; i < targets.length; i++)
+                setLayerFlag(targets[i].id, targets[i].part, flag, on)
+        }
+    }
+    return [_tog("Hide " + word, all("hidden"), flip("hidden")),
+            _tog("Lock " + word, all("locked"), flip("locked"))]
 }
 
 // --- chips, groups and leaders -------------------------------------------
@@ -699,6 +740,9 @@ function menuModel() {
             ? [_act("Done Editing Group", endGroupEdit), _act("Break Group", ungroupSelection)]
             : [_act("Edit Group", function() { beginGroupEdit(_ctx.nodeId) }), _act("Break Group", ungroupSelection)]
         sections = [_format(), _align(), _turnSection(), _chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _around(), _arrange()]
+    } else if (kind === "hotspot") {
+        quick = []
+        sections = [_hotspot()]
     } else if (kind === "leader") {
         quick = [_act("Add Leader", addLeader), _deleteLeaderItem()]
         if (selectedSpine >= 0)
@@ -732,10 +776,11 @@ function menuModel() {
             quick.push(_act("Stop Drawing", function() { drawTool = "" }))
         sections = _canvasSections()
     }
-    // Copy and Paste on everything that can be copied (a leader belongs to
-    // its chip: copy the chip).
-    if (kind !== "canvas" && kind !== "leader" && kind !== "")
+    // Copy and Paste on everything that can be copied (a leader or hotspot
+    // belongs to its chip: copy the chip).
+    if (kind !== "canvas" && kind !== "leader" && kind !== "hotspot" && kind !== "")
         quick = quick.concat(_copyPaste(true))
+    quick = quick.concat(_hideLock(kind))
     return {
         kind: kind, title: menuTitle(kind), quick: quick, sections: _compact(sections),
         // Beside the title.
