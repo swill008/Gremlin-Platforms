@@ -261,10 +261,14 @@ def _process_image_name(pid: int) -> str:
     return ""
 
 
+# Installed build first (joystick_gremlin.spec), then the name older builds used.
+_GREMLIN_EXE_NAMES = ("gremlin_platforms.exe", "joystick_gremlin.exe")
+
+
 def _is_gremlin_process(pid: int, python_pids: set[int] | None = None) -> bool:
     """True if the PID is a Gremlin exe or a Python interpreter running it."""
     name = _process_image_name(pid)
-    if name == "joystick_gremlin.exe":
+    if name in _GREMLIN_EXE_NAMES:
         return True
     if name in ("python.exe", "pythonw.exe"):
         known = python_pids if python_pids is not None else _command_line_process_ids()
@@ -332,6 +336,7 @@ def _window_process_ids() -> set[int]:
 
 def _command_line_process_ids() -> set[int]:
     pids: set[int] = set()
+    exe_match = " -or ".join(f"$_.Name -eq '{name}'" for name in _GREMLIN_EXE_NAMES)
     try:
         completed = subprocess.run(
             [
@@ -339,7 +344,7 @@ def _command_line_process_ids() -> set[int]:
                 "-NoProfile",
                 "-Command",
                 "Get-CimInstance Win32_Process | Where-Object {"
-                " $_.Name -eq 'joystick_gremlin.exe' -or "
+                f" {exe_match} -or "
                 "(($_.Name -eq 'python.exe' -or $_.Name -eq 'pythonw.exe') -and "
                 "$_.CommandLine -and ($_.CommandLine -match 'joystick_gremlin\\.py'))"
                 "} | ForEach-Object { $_.ProcessId }",
