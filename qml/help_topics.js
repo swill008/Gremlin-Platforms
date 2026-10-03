@@ -46,8 +46,7 @@ function topics() {
             + "<li><b>Dropdown lists</b> of ten or more entries have a search box: type part of a name, Up and Down move, Enter picks.</li>"
             + "<li><b>Command Palette</b>: Ctrl+K (or View → <b>Command Palette</b>) lists every menu command you can use now. Type part of a name and press Enter. Shortcuts show beside the commands.</li>"
             + "<li><b>Shortcuts</b>: Ctrl+N new profile, Ctrl+O load, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+K command palette, F1 this guide.</li>"
-            + "</ul>"
-            + "<p>Options → User Interface → <b>Menu preview</b> shows each part and lets you try them.</p>"),
+            + "</ul>"),
         topic("Getting Started", "Profiles",
             "<p>A profile holds the modes, the actions on every input, the profile settings, and the list of scripts.</p>"
             + "<ul>"
@@ -243,12 +242,11 @@ function topics() {
             "<p>Tools → <b>Options</b> (or <b>Options</b> on the toolbar). Program settings, not stored in the profile; the profile's own are on its <b>Profile Settings</b> tab.</p>"
             + "<ul>"
             + "<li><b>Global</b>: <b>Minimize to tray</b> (minimizing or closing the window keeps the program running in the tray; exit from File → Exit or the tray menu), <b>Check for updates</b> (when the program starts; see Installing and updating), <b>Device change behavior</b> (Reload, Ignore, Disable), Turn HidHide on at start, axis refresh on activation and mode change, Diagnostic logs, and <b>Files</b> (data, profiles, modules, logs and other folders).</li>"
-            + "<li><b>User Interface</b>: Dark mode, UI scale, Ignore Windows display scaling, Display mode (numbers and/or labels), Input highlighting and Highlight source, and the <b>Menu preview</b>.</li>"
+            + "<li><b>User Interface</b>: Dark mode, UI scale, Ignore Windows display scaling, Display mode (numbers and/or labels), and Input highlighting (it stays on the device page you have open).</li>"
             + "<li><b>Action</b>: the Action list order, and settings for Axis Delta, Change Mode, Double Tap, Macro, Play Sound, Smart Toggle, Tempo, and Text-To-Speech (voice).</li>"
             + "<li><b>Profile</b>: Load profiles automatically — load a profile when a chosen program starts — and Keep running when the program loses focus.</li>"
             + "<li><b>OSC Connection</b>: Enabled, Input host and port, Output address, and press timing.</li>"
             + "<li><b>Home</b>: Home card options and <b>Reset All Card Sizes</b>.</li>"
-            + "<li><b>Auto Mapper</b>: Overwrite used inputs and Remember overwrite.</li>"
             + "</ul>"),
         topic("Options and Profile", "Profile Settings",
             "<p>View → <b>Profile Settings</b>. Stored in the profile; save the profile to keep them.</p>"

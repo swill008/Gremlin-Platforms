@@ -243,23 +243,16 @@ class Backend(QtCore.QObject):
             return
         if not self.joystick_change_monitor.should_process(event):
             return
-        from gremlin.ui.highlight_option import highlight_follows_any_device
-
         if self.ui_state.currentRoom == "status":
             return
-        follow = highlight_follows_any_device()
+        # Highlighting stays on the device page that is open.
         current_input = self.ui_state.currentInput
         same_device = (
             current_input is not None
             and current_input.device_guid == event.device_guid
         )
-        if follow:
-            if self.ui_state.currentTab != "physical" or not same_device:
-                self.ui_state.setCurrentTab("physical")
-                self.ui_state.setCurrentDevice(str(event.device_guid))
-        else:
-            if self.ui_state.currentTab != "physical" or not same_device:
-                return
+        if self.ui_state.currentTab != "physical" or not same_device:
+            return
         try:
             new_input = InputIdentifier(
                 event.device_guid, event.event_type, event.identifier

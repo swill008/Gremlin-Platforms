@@ -617,6 +617,5 @@ MetaConfigOption().register(
     TTSVoiceSelectionModel,
 )
 
-import gremlin.ui.menu_preview_option  # noqa: E402, F401
 import gremlin.ui.ui_scale_option  # noqa: F401
 import gremlin.ui.windows_scale_option  # noqa: F401

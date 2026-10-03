@@ -54,8 +54,10 @@ def ensure_shell_options() -> None:
         ),
     ]
     for section, group, name, dtype, initial, desc in specs:
+        # The Auto Mapper remembers its own checkbox; it is not an Options entry.
+        shown = section != SECTION_AUTOMAP
         if not cfg.exists(section, group, name):
-            cfg.register(section, group, name, dtype, initial, desc, {}, True)
+            cfg.register(section, group, name, dtype, initial, desc, {}, shown)
         else:
             cfg.register(
                 section,
@@ -65,7 +67,7 @@ def ensure_shell_options() -> None:
                 cfg.value(section, group, name),
                 desc,
                 {},
-                True,
+                shown,
             )
 
 

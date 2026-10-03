@@ -1,12 +1,17 @@
 // -*- coding: utf-8; -*-
 // SPDX-License-Identifier: GPL-3.0-only
 
+// Test fixture: one of every shared menu piece, for MenusHarness.qml (it
+// was the Options "Menu preview" entry, removed from the program).
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Menus
 import Gremlin.Style
+
+import "../../../qml"
 
 // Options, UI section: every part of the program's menu style in
 // the current mode, and live samples to try.

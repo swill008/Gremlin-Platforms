@@ -64,7 +64,7 @@ ApplicationWindow {
         anchors.margins: 20
         spacing: 12
 
-        OptionMenuPreview {
+        MenuSamples {
             id: _preview
             width: 600
         }
