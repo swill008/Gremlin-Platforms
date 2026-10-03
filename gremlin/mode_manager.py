@@ -84,6 +84,35 @@ class ModeSequence:
         return self.modes[self._current_index]
 
 
+# The last mode per profile, changed while a profile runs: kept here and
+# saved when it stops or the program quits (and at most hourly), not on every
+# mode switch during play.
+_pending_last: dict[str, str] = {}
+_LAST_KEY = ("global", "internal", "last-mode-per-profile")
+
+
+def _stored_last_modes() -> dict[str, str]:
+    stored = dict(Configuration().value(*_LAST_KEY))
+    stored.update(_pending_last)
+    return stored
+
+
+def flush_last_modes() -> None:
+    """Save the last modes kept in memory (profile stop, quit)."""
+    if not _pending_last:
+        return
+    stored = _stored_last_modes()
+    _pending_last.clear()
+    Configuration().set(*_LAST_KEY, stored)
+
+
+def _profile_running() -> bool:
+    from gremlin.event_handler import EventListener
+
+    listener = EventListener.instance
+    return bool(listener is not None and listener.gremlin_active)
+
+
 def resolve_start_mode(active_profile: Profile) -> str:
     """Returns the mode a profile is put in when it is loaded.
 
@@ -96,8 +125,7 @@ def resolve_start_mode(active_profile: Profile) -> str:
     if startup_mode in mode_names:
         return startup_mode
     if startup_mode == "Last Active" and active_profile.fpath is not None:
-        stored = Configuration().value("global", "internal", "last-mode-per-profile")
-        last_mode = dict(stored).get(str(active_profile.fpath))
+        last_mode = _stored_last_modes().get(str(active_profile.fpath))
         if last_mode in mode_names:
             return last_mode
     return active_profile.modes.first_mode
@@ -137,17 +165,28 @@ class ModeManager(QtCore.QObject):
         )
         if last_mode is None:
             return
+        key = str(profile.fpath)
+        if _profile_running():
+            if _stored_last_modes().get(key) != last_mode.name:
+                _pending_last[key] = last_mode.name
+                from gremlin import deferred_write
+
+                # Saved on stop or quit; an hour is only a safety net.
+                deferred_write.schedule("last-mode", flush_last_modes, 3_600_000)
+            return
         config = Configuration()
-        stored = dict(config.value("global", "internal", "last-mode-per-profile"))
-        stored[str(profile.fpath)] = last_mode.name
-        config.set("global", "internal", "last-mode-per-profile", stored)
+        stored = _stored_last_modes()
+        _pending_last.clear()
+        stored[key] = last_mode.name
+        config.set(*_LAST_KEY, stored)
 
     def _rewrite_stored_name(self, old_name: str, new_name: str | None) -> None:
         profile = shared_state.current_profile
         if profile is None or profile.fpath is None:
             return
         config = Configuration()
-        stored = dict(config.value("global", "internal", "last-mode-per-profile"))
+        stored = _stored_last_modes()
+        _pending_last.clear()
         key = str(profile.fpath)
         if stored.get(key) != old_name:
             return

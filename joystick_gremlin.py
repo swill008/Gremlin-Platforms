@@ -96,6 +96,7 @@ import gremlin.ui.hidhide  # noqa: F401
 import gremlin.ui.vjoy_status
 import gremlin.ui.window_placement
 import gremlin.ui.module_model  # noqa: F401
+import gremlin.deferred_write
 import gremlin.ui.debug_mode
 import gremlin.ui.live_debug  # noqa: F401
 import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
@@ -694,7 +695,8 @@ def update_action_priorities() -> None:
     key = ["action", "general", "action-priorities"]
     priorities = []
     if cfg.exists(*key):
-        priorities = cfg.value(*key)
+        # A copy, so set() below saves only when the list really changed.
+        priorities = [list(v) for v in cfg.value(*key)]
     priority_names = [v[0] for v in priorities]
     priority_actions = ["Map to vJoy", "Macro", "Response Curve"]
     plugin_names = [
@@ -705,7 +707,7 @@ def update_action_priorities() -> None:
     )
     for tag in plugin_names:
         if tag not in priority_names:
-            priorities.append((tag, True))
+            priorities.append([tag, True])
     to_delete = []
     for i, tag in enumerate(priority_names):
         if tag not in plugin_names:
@@ -886,6 +888,9 @@ def main() -> int:
         shutdown_cleanup()
     except Exception:
         logging.getLogger("system").exception("Shutdown after exec")
+    # Writes still waiting (settings, the activity log): os._exit below skips
+    # atexit, and a restart must start from saved settings.
+    gremlin.deferred_write.flush_all()
     if lock is not None:
         try:
             lock.unlock()

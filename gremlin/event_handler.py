@@ -476,8 +476,12 @@ class EventListener(QtCore.QObject):
         if key in self._calibrations:
             return self._calibrations[key](event.value)
         else:
-            logging.getLogger("system").warning(
-                f"No calibration data for {key[0]} - Axis {key[1]}"
+            # Once per axis: this runs on every move of that axis.
+            from gremlin.log_once import log_once
+
+            log_once(
+                "system", ("calibration", key), logging.WARNING,
+                f"No calibration data for {key[0]} - Axis {key[1]}",
             )
             return util.with_default_center_calibration(event.value)
 

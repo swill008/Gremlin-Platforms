@@ -1114,13 +1114,15 @@ ApplicationWindow {
         notePhotoChange()
     }
 
-    // The photo's look: an adjusted copy, made once the sliders rest.
+    // The photo's look: an adjusted copy (a cached image file), made once
+    // the sliders rest and never while one is held.
+    property bool _lookSliding: false
     Timer {
         id: _lookTimer
         interval: 150
         onTriggered: {
             var e = _buttonMap._ed()
-            if (!e)
+            if (!e || _buttonMap._lookSliding)
                 return
             e.photoLookUrl = _hw.adjustedPhotoUrl(String(e.photoBaseUrl), e.photoBright,
                                                   e.photoContrast, e.photoGrey)
@@ -2244,6 +2246,12 @@ ApplicationWindow {
                         stepSize: 0.01
                         value: parent.current
                         onMoved: { var e = _buttonMap._ed(); if (e) e.setPhotoLook(modelData.key, value) }
+                        // Let go: the adjusted copy is made now, once.
+                        onPressedChanged: {
+                            _buttonMap._lookSliding = pressed
+                            if (!pressed)
+                                _lookTimer.restart()
+                        }
                     }
                 }
             }

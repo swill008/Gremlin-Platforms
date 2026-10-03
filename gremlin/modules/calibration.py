@@ -102,20 +102,30 @@ def values_for_module(slug: str, device_id: uuid.UUID, axis_id: int) -> Curve:
     return stored if stored is not None else _from_config(device_id, axis_id)
 
 
-def write_axis(slug: str, axis_id: int, data: tuple[int, int, int, int, bool]) -> bool:
+AxisData = tuple[int, int, int, int, bool]
+
+
+def write_axis(slug: str, axis_id: int, data: AxisData) -> bool:
+    return write_axes(slug, {axis_id: data})
+
+
+def write_axes(slug: str, axes: dict[int, AxisData]) -> bool:
+    """Write several axes' calibration in one save of the module file
+    (Save All writes the file once, not once per axis)."""
     row = module_for_slug(slug)
-    if row is None:
+    if row is None or not axes:
         return False
     doc = _load(row["path"])
     registry.trace("READ", "Calibration", "write_axis", row["path"], "ok")
     calibration = dict(doc.get("calibration") or {})
-    calibration[str(int(axis_id))] = [
-        int(data[0]),
-        int(data[1]),
-        int(data[2]),
-        int(data[3]),
-        bool(data[4]),
-    ]
+    for axis_id, data in axes.items():
+        calibration[str(int(axis_id))] = [
+            int(data[0]),
+            int(data[1]),
+            int(data[2]),
+            int(data[3]),
+            bool(data[4]),
+        ]
     doc["calibration"] = calibration
     try:
         row["path"].write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")

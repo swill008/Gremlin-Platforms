@@ -268,7 +268,7 @@ Item {
         _ready = true
     }
 
-    onPaneUnitsChanged: _saveDock()
+    // The pane width is saved when the grip is let go, not per pixel.
     onCloseAfterOkChanged: _saveDock()
     onDisplayOpenChanged: _saveDisplayOpen()
     onModeChanged: _layout.setMode(mode)
@@ -752,6 +752,7 @@ Item {
                     var x = mapToItem(_root, mouse.x, mouse.y).x
                     _root.paneUnits = Math.round(Math.max(Style.dp(420), Math.min(Style.dp(1600), originW - (x - originX))) * 100 / Style.uiScale)
                 }
+                onReleased: _root._saveDock()
             }
         }
 

@@ -888,8 +888,12 @@ class VJoyAction(AbstractAction):
             elif self.input_type == InputType.JoystickHat:
                 output.write_vjoy(vid, "hat", iid, self.value)
         except Exception as e:
-            logging.getLogger("event").error(
-                f"Failed to execute vJoy macro entry due to: {e}"
+            # Once per error: a macro can repeat this many times a second.
+            from gremlin.log_once import log_once
+
+            log_once(
+                "event", ("macro-vjoy", str(e)), logging.ERROR,
+                f"Failed to execute vJoy macro entry due to: {e}",
             )
 
     def to_xml(self) -> ElementTree.Element:

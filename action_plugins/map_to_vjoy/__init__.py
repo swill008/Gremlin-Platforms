@@ -115,8 +115,15 @@ class MapToVjoyFunctor(AbstractFunctor):
             elif self.data.vjoy_input_type == InputType.JoystickHat:
                 output.write_vjoy(vjoy_id, "hat", input_id, value.current)
         except error.VJoyError as e:
-            logging.getLogger("event").error(
-                f"Failed to execute {self.data.name} action due to vJoy error: {e}."
+            # Once per output and error: this runs on every input while vJoy
+            # is failing.
+            from gremlin.log_once import log_once
+
+            log_once(
+                "event",
+                ("map-to-vjoy", self.data.vjoy_device_id, str(e)),
+                logging.ERROR,
+                f"Failed to execute {self.data.name} action due to vJoy error: {e}.",
             )
 
     def relative_axis_thread(self) -> None:

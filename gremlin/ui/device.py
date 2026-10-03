@@ -1156,22 +1156,26 @@ class AxisCalibration(QtCore.QAbstractListModel):
             return False
 
         axis_id = self._device.axis_map[index].axis_index
-        saved = write_axis(
-            self._module_slug,
-            axis_id,
-            (
-                self._state[index]["low"],
-                self._state[index]["centerLow"],
-                self._state[index]["centerHigh"],
-                self._state[index]["high"],
-                self._state[index]["withCenter"],
-            ),
-        )
+        saved = write_axis(self._module_slug, axis_id, self._axis_data(index))
         if not saved:
             persist_log(
                 f"Persist calibration skipped slug={self._module_slug} axis={axis_id} reason='write failed'"
             )
             return False
+        self._saved(index)
+        return True
+
+    def _axis_data(self, index: int) -> tuple[int, int, int, int, bool]:
+        row = self._state[index]
+        return (
+            row["low"], row["centerLow"], row["centerHigh"], row["high"],
+            row["withCenter"],
+        )
+
+    def _saved(self, index: int) -> None:
+        """After an axis is written: mark it saved and use it at once."""
+        assert self._device is not None
+        axis_id = self._device.axis_map[index].axis_index
         self._state[index]["unsavedChanges"] = False
         self._event_listener.reload_calibration(
             self._device.device_guid,
@@ -1181,7 +1185,6 @@ class AxisCalibration(QtCore.QAbstractListModel):
         persist_log(
             f"Persist calibration ok slug={self._module_slug} guid={self._device_uuid} axis={axis_id}"
         )
-        return True
 
     @QtCore.Slot(result=str)
     def moduleFilePath(self) -> str:
@@ -1198,11 +1201,31 @@ class AxisCalibration(QtCore.QAbstractListModel):
 
     @QtCore.Slot(result=bool)
     def saveAll(self) -> bool:
-        ok = True
-        for index, row in enumerate(list(self._state)):
-            if row.get("unsavedChanges"):
-                ok = self.save(index) and ok
-        return ok
+        """Every unsaved axis, written to the module file in one save."""
+        indexes = [
+            i for i, row in enumerate(self._state) if row.get("unsavedChanges")
+        ]
+        if not indexes:
+            return True
+        if (
+            self._device_uuid is None or self._device is None
+            or not self._module_slug
+        ):
+            persist_log("Persist calibration skipped (save all) reason='no module'")
+            return False
+        from gremlin.modules.calibration import write_axes
+
+        axes = {
+            self._device.axis_map[i].axis_index: self._axis_data(i) for i in indexes
+        }
+        if not write_axes(self._module_slug, axes):
+            persist_log(
+                f"Persist calibration skipped slug={self._module_slug} reason='write failed'"
+            )
+            return False
+        for i in indexes:
+            self._saved(i)
+        return True
 
     @QtCore.Slot()
     def discard(self) -> None:

@@ -24,6 +24,10 @@ QML_IMPORT_NAME = "Gremlin.UI"
 QML_IMPORT_MAJOR_VERSION = 1
 
 _LOCK = threading.Lock()
+# Activity lines waiting to be written: they go to logs.txt in one append
+# about a second after the last one (and always on quit), not one file
+# open/append/close per read or save.
+_buffer: list[str] = []
 
 
 def log_path() -> Path:
@@ -35,6 +39,8 @@ def log_path() -> Path:
 def start() -> None:
     """Clear the log for this run."""
     path = log_path()
+    with _LOCK:
+        _buffer.clear()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("", encoding="utf-8")
@@ -48,13 +54,36 @@ def trace(action: str, window: str, function: str, path: object, result: str = "
     try:
         shown = os.path.normcase(os.path.abspath(str(path or "")))
         line = f"{action} | {window} | {function} | {shown} | {result}\n"
-        dest = log_path()
         with _LOCK:
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            with dest.open("a", encoding="utf-8") as handle:
-                handle.write(line)
+            _buffer.append(line)
+        from gremlin import deferred_write
+
+        deferred_write.schedule("activity-log", _write_buffer)
     except Exception:
         return
+
+
+def _write_buffer() -> None:
+    """Append the waiting activity lines to logs.txt in one write."""
+    with _LOCK:
+        lines = list(_buffer)
+        _buffer.clear()
+    if not lines:
+        return
+    try:
+        dest = log_path()
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with dest.open("a", encoding="utf-8") as handle:
+            handle.write("".join(lines))
+    except Exception:
+        return
+
+
+def flush() -> None:
+    """Write the waiting activity lines now (the Config tab shows them)."""
+    from gremlin import deferred_write
+
+    deferred_write.flush("activity-log")
 
 
 @ta.QmlElement
@@ -64,6 +93,8 @@ class LiveLog(QtCore.QObject):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._text = ""
+        # (size, mtime) of logs.txt as last read; unchanged means no re-read.
+        self._stamp: tuple[int, int] | None = None
 
     @QtCore.Property(str, notify=textChanged)
     def text(self) -> str:
@@ -75,8 +106,18 @@ class LiveLog(QtCore.QObject):
 
     @QtCore.Slot()
     def refresh(self) -> None:
+        flush()  # lines still waiting in memory are shown too
+        path = log_path()
         try:
-            data = log_path().read_text(encoding="utf-8")
+            stat = path.stat()
+            stamp: tuple[int, int] | None = (stat.st_size, stat.st_mtime_ns)
+        except OSError:
+            stamp = None
+        if stamp == self._stamp:
+            return  # nothing new: no re-read
+        self._stamp = stamp
+        try:
+            data = path.read_text(encoding="utf-8") if stamp else ""
         except OSError:
             data = ""
         if data == self._text:
@@ -89,11 +130,13 @@ class LiveLog(QtCore.QObject):
         dest = log_path()
         try:
             with _LOCK:
+                _buffer.clear()
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_text("", encoding="utf-8")
         except OSError:
             return
         self._text = ""
+        self._stamp = None
         self.textChanged.emit()
 
     @QtCore.Slot()

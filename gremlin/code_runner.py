@@ -305,6 +305,10 @@ class CodeRunner:
         # Each run reads the output modules fresh and logs blocked outputs anew.
         output.refresh()
         output.clear_blocked_log()
+        # Repeating problems may be logged once again in this run.
+        from gremlin import log_once
+
+        log_once.reset()
 
         try:
             self._setup_user_scripts()
@@ -375,6 +379,10 @@ class CodeRunner:
                     pass
             evt_lst.virtual_event.disconnect(self.event_handler.process_event)
             evt_lst.gremlin_active = False
+            # The last mode, kept in memory during play, is saved now.
+            from gremlin import mode_manager
+
+            mode_manager.flush_last_modes()
         self._running = False
 
         user_script.callback_registry.clear()

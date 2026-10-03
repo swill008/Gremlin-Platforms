@@ -271,12 +271,20 @@ ColumnLayout {
                 explanation: description
 
                 JGTextField {
+                    id: _stringField
                     Layout.alignment: Qt.AlignRight
                     Layout.fillWidth: true
 
                     text: model.value
 
-                    onTextEdited: () => { model.value = text }
+                    // Saved when the field is left or Enter is pressed (or
+                    // the window closes), not on every keystroke.
+                    function commit() {
+                        if (model && text !== model.value)
+                            model.value = text
+                    }
+                    onEditingFinished: commit()
+                    Component.onDestruction: commit()
 
                     PointerTip {
                         text: parent.text

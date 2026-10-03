@@ -51,6 +51,10 @@ class Configuration(metaclass=common.SingletonMetaclass):
     def load(self) -> None:
         if self._should_skip_reload():
             return
+        # A save still waiting goes to disk first, so the file read is current.
+        from gremlin import deferred_write
+
+        deferred_write.flush("configuration")
 
         logging.getLogger("system").info(
             f"Loading configuration from {_config_file_path}."
@@ -94,6 +98,19 @@ class Configuration(metaclass=common.SingletonMetaclass):
         self._last_reload = time.time()
 
     def save(self) -> None:
+        """Save soon: one write about a second after the last change (and
+        always on quit), not one per change (gremlin.deferred_write)."""
+        from gremlin import deferred_write
+
+        # The file as it is named now: a later path change cannot redirect it.
+        path = _config_file_path
+        deferred_write.schedule("configuration", lambda: self.save_now(path))
+
+    def save_now(self, path: str | None = None) -> None:
+        """Write configuration.json now. It is written to a temporary file
+        first and then swapped in, so a crash mid-write cannot leave a
+        broken file."""
+        path = path or _config_file_path
         json_data = {}
         for key, entry in self._data.items():
             section = key[0]
@@ -112,10 +129,22 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 "properties": entry["properties"],
                 "expose": entry["expose"],
             }
-        with open(_config_file_path, "w") as hdl:
-            encoder = json.JSONEncoder(sort_keys=True, indent=4)
-            hdl.write(encoder.encode(json_data))
-        trace("SAVE", "Program Settings", "save", _config_file_path, "ok")
+        text = json.JSONEncoder(sort_keys=True, indent=4).encode(json_data)
+        temp_path = path + ".tmp"
+        try:
+            with open(temp_path, "w") as hdl:
+                hdl.write(text)
+            os.replace(temp_path, path)
+        except OSError:
+            # Windows refuses the swap while another program (antivirus, an
+            # indexer) has the file open: write it directly instead.
+            with open(path, "w") as hdl:
+                hdl.write(text)
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+        trace("SAVE", "Program Settings", "save", path, "ok")
 
     def register(
         self,

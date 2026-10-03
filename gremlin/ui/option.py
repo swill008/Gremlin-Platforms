@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import copy
 import logging
 import re
 from pathlib import Path
@@ -488,7 +489,9 @@ class ActionSequenceOrdering(QtCore.QAbstractListModel, BaseMetaConfigOptionWidg
         value: bool,
         role: int = QtCore.Qt.ItemDataRole.EditRole,
     ) -> bool:
-        data = self._config.value(*self._cfg_key)
+        # A copy: editing the stored list in place would defeat set()'s
+        # "changed?" check and save every time.
+        data = copy.deepcopy(self._config.value(*self._cfg_key))
         match cast(str, self.roles[role]):
             case "visible":
                 data[index.row()][1] = value
@@ -512,7 +515,9 @@ class ActionSequenceOrdering(QtCore.QAbstractListModel, BaseMetaConfigOptionWidg
         if source_index == target_index:
             return
         self.layoutAboutToBeChanged.emit()
-        data = self._config.value(*self._cfg_key)
+        # A copy: editing the stored list in place would defeat set()'s
+        # "changed?" check and save every time.
+        data = copy.deepcopy(self._config.value(*self._cfg_key))
         item = data.pop(source_index)
         data.insert(target_index, item)
         self._config.set(*self._cfg_key, data)
@@ -537,7 +542,9 @@ class ActionSequenceOrdering(QtCore.QAbstractListModel, BaseMetaConfigOptionWidg
         if order == rows:
             return
         self.layoutAboutToBeChanged.emit()
-        data = self._config.value(*self._cfg_key)
+        # A copy: editing the stored list in place would defeat set()'s
+        # "changed?" check and save every time.
+        data = copy.deepcopy(self._config.value(*self._cfg_key))
         items = [data[r] for r in order]
         for slot, item in zip(rows, items):
             data[slot] = item
@@ -581,7 +588,9 @@ class ProfileAutoLoadingModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWid
     def newEntry(self) -> None:
         """Creates a new empty auto-load entry."""
         self.beginInsertRows(QtCore.QModelIndex(), self.rowCount(), self.rowCount())
-        data = self._config.value(*self._cfg_key)
+        # A copy: editing the stored list in place would defeat set()'s
+        # "changed?" check and save every time.
+        data = copy.deepcopy(self._config.value(*self._cfg_key))
         data.append(["", "", False])
         self._config.set(*self._cfg_key, data)
         self.endInsertRows()
@@ -589,7 +598,9 @@ class ProfileAutoLoadingModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWid
     @QtCore.Slot(int)
     def removeEntry(self, index: int) -> None:
         self.beginRemoveRows(QtCore.QModelIndex(), index, index)
-        data = self._config.value(*self._cfg_key)
+        # A copy: editing the stored list in place would defeat set()'s
+        # "changed?" check and save every time.
+        data = copy.deepcopy(self._config.value(*self._cfg_key))
         del data[index]
         self._config.set(*self._cfg_key, data)
         self.endRemoveRows()
@@ -617,7 +628,9 @@ class ProfileAutoLoadingModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWid
         value: bool | str,
         role: int = QtCore.Qt.ItemDataRole.EditRole,
     ) -> bool:
-        data = self._config.value(*self._cfg_key)
+        # A copy: editing the stored list in place would defeat set()'s
+        # "changed?" check and save every time.
+        data = copy.deepcopy(self._config.value(*self._cfg_key))
         match cast(str, self.roles[role]):
             case "profile":
                 data[index.row()][0] = value
