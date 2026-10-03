@@ -311,8 +311,19 @@ ApplicationWindow {
             return
         function pos(v) { return Math.max(0, Math.min(1, 0.25 + (v || 0) * 0.5)) }
         function sz(v) { return (v || 0) * 0.5 }
+        // While editing, a node's older spine list (n.spines) and its leader's
+        // are often the same array, and ends can be shared too: shift each
+        // point once, or spines land far off toward the middle (as rig_mirror
+        // does with its done list).
+        var done = []
+        function once(obj) {
+            if (!obj || done.indexOf(obj) >= 0)
+                return false
+            done.push(obj)
+            return true
+        }
         function mapEnd(e) {
-            if (e && e.type === "free") {
+            if (e && e.type === "free" && once(e)) {
                 e.fx = pos(e.fx)
                 e.fy = pos(e.fy)
             }
@@ -322,6 +333,8 @@ ApplicationWindow {
                 return
             var s
             for (s = 0; s < arr.length; s++) {
+                if (!once(arr[s]))
+                    continue
                 arr[s].fx = pos(arr[s].fx)
                 arr[s].fy = pos(arr[s].fy)
             }
