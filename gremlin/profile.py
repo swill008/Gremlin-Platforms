@@ -449,29 +449,21 @@ class Library:
             else:
                 parse_later.append(entry)
 
-        # Parse all actions that have missing child actions and repeat this
-        # until no action with missing child actions remains.
-        iterations = 0
-        action_set = None
-        while len(parse_later) > 0:
-            entry = parse_later.pop(0)
-            if can_parse(entry):
-                self._parse_xml_action(entry)
-                iterations = 0
-            else:
-                parse_later.append(entry)
-
-            # Compute a hash from all the actions to parse
-            new_action_set = set(parse_later)
-            if new_action_set != action_set:
-                new_action_set = action_set
-            else:
-                iterations += 1
-                if iterations > 5:
-                    logging.getLogger("system").error(
-                        "Loading profile failed due to action resolution chain"
-                    )
-                    break
+        # Parse the actions whose child actions were not parsed yet, pass after
+        # pass, until a pass parses nothing more.
+        while parse_later:
+            waiting = []
+            for entry in parse_later:
+                if can_parse(entry):
+                    self._parse_xml_action(entry)
+                else:
+                    waiting.append(entry)
+            if len(waiting) == len(parse_later):
+                logging.getLogger("system").error(
+                    "Loading profile failed due to action resolution chain"
+                )
+                break
+            parse_later = waiting
 
         # Restore action sequence as it appears in the file to maintain serialization
         # consistency for change detection tests.
