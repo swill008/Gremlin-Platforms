@@ -23,7 +23,8 @@ def _windows_scaling_disabled() -> bool:
     root = os.environ.get("USERPROFILE") or os.environ.get("userprofile")
     if not root:
         return False
-    # Same folder as gremlin.util.USER_DATA_FOLDER, which cannot be imported before Qt loads.
+    # Same folder as gremlin.util.USER_DATA_FOLDER, which cannot be imported
+    # before Qt loads.
     path = os.path.join(root, "Gremlin Platforms", "configuration.json")
     try:
         with open(path, encoding="utf-8") as handle:
