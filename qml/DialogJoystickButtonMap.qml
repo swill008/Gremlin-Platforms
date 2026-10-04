@@ -1327,7 +1327,7 @@ ApplicationWindow {
             snapOn = ui.snapOn
         if (ui.snapEntOn === true || ui.snapEntOn === false)
             snapEntOn = ui.snapEntOn
-        if (ui.gridSize >= 4)
+        if (ui.gridSize >= 1)
             gridSize = ui.gridSize
         if (ui.viewPct > 0)
             viewPctSave = ui.viewPct
@@ -2720,6 +2720,18 @@ ApplicationWindow {
                     ThemedMenuSeparator {}
                     ThemedMenu {
                         title: "Size"
+                        ThemedMenuItem {
+                            text: "1"
+                            checkable: true
+                            checked: { var e = _ed(); return e && e.gridSize === 1 }
+                            onTriggered: _buttonMap.setGridPref("gridSize", 1)
+                        }
+                        ThemedMenuItem {
+                            text: "2"
+                            checkable: true
+                            checked: { var e = _ed(); return e && e.gridSize === 2 }
+                            onTriggered: _buttonMap.setGridPref("gridSize", 2)
+                        }
                         ThemedMenuItem {
                             text: "4"
                             checkable: true
