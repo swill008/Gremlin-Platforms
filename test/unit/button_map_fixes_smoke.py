@@ -48,6 +48,8 @@ def main() -> None:
     out["shapes"] = [s.node(i)["shape"] for i in (rect, text, line)]
     before = s.state()["histAt"]
     s.right_click(s.center(rect))
+    # BM18: a mixed selection only gets the rows that apply to all of it.
+    out["mixed-menu"] = [line.strip("> v").strip() for line in s.state()["menu"]]
     s.open_menu_section("Arrange")
     s.click_menu_row("Hide")
     s.close_menus()

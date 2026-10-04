@@ -51,6 +51,12 @@ def test_arrange_hide_hides_the_selection_in_one_step(results: dict) -> None:
     assert results["arrange-hide-steps"] == 1
 
 
+def test_a_mixed_selection_gets_only_shared_rows(results: dict) -> None:
+    menu = results["mixed-menu"]
+    assert "Align and Distribute" in menu and "Arrange" in menu
+    assert "Shape" not in menu and "Fill and Outline" not in menu
+
+
 def test_hide_selected_is_one_step(results: dict) -> None:
     assert results["hide-selected-steps"] == 1
 

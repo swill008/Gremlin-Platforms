@@ -736,6 +736,53 @@ function _savedStyles() {
 
 // --- the menu ----------------------------------------------------------------
 
+// Several selected: a kind's rows show only when every selected item is of
+// that kind (Shape, Fill or a font size used to reach pictures, chips and
+// lines too). A mix gets the rows that work on anything: Align, Turn,
+// Arrange.
+function _multiKind(n) {
+    if (!isDraw(n))
+        return "chip"
+    if (isTable(n))
+        return "table"
+    if (isText(n))
+        return "text"
+    if (isOverlay(n))
+        return "image"
+    if (isLine(n))
+        return "line"
+    if (isPath(n))
+        return "path"
+    return "shape"
+}
+
+// Sections for one item only (its handles, its rows and columns, its file).
+var _SINGLE_ONLY = ["transform", "rotate", "rows", "cell", "image"]
+
+function _multiSections() {
+    var kinds = {}
+    var ids = selectedIds || []
+    for (var i = 0; i < ids.length; i++) {
+        var n = nodeAt(ids[i])
+        if (n)
+            kinds[_multiKind(n)] = true
+    }
+    var list = Object.keys(kinds)
+    var common = [_alignSection(), _turnSection()]
+    if (list.length !== 1)
+        return common.concat([_arrange()])
+    var k = list[0]
+    var own = k === "chip" ? [_chipStyle(), _chipColours(), _hotspot(), _leader(), _around(), _arrange()]
+        : k === "shape" ? _shapeSections()
+        : k === "line" ? _lineSections()
+        : k === "path" ? _pathSections()
+        : k === "text" ? _textSections()
+        : k === "table" ? _tableSections()
+        : _imageSections()
+    own = _compact(own).filter(function(s) { return _SINGLE_ONLY.indexOf(s.key) < 0 })
+    return common.concat([_savedStyles()], own)
+}
+
 function _compact(list) {
     return list.filter(function(s) { return !!s })
 }
@@ -779,9 +826,7 @@ function menuModel() {
         sections = _tableSections()
     } else if (kind === "multi") {
         quick = [_act("Group Selected", groupSelection, canGroup()), _act("Duplicate", duplicateSelection), _act("Delete", function() { deleteSelected() })]
-        var first = nodeAt(_ctx.nodeId)
-        sections = [_alignSection(), _turnSection(), _savedStyles()].concat(isDraw(first) ? (isLine(first) ? _lineSections() : _shapeSections())
-                                 : [_chipStyle(), _chipColours(), _hotspot(), _leader(), _around()])
+        sections = _multiSections()
     } else {
         quick = quick.concat(_copyPaste(false))
         if (drawTool.length)
