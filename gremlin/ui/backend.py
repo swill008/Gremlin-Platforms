@@ -186,6 +186,11 @@ class UIState(QtCore.QObject):
         )
 
 
+def _open_folder(folder: str) -> None:
+    """Shows a folder in Explorer."""
+    QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(folder))
+
+
 @common.SingletonDecorator
 class Backend(QtCore.QObject):
     windowTitleChanged = QtCore.Signal()
@@ -301,6 +306,18 @@ class Backend(QtCore.QObject):
         mm = mode_manager.ModeManager()
         if mm.current.name != name:
             mm.switch_to(mode_manager.Mode(name, mm.current.name))
+
+    @QtCore.Slot()
+    def openProgramFolder(self) -> None:
+        """File -> Open Program Folder: where Gremlin-Platforms is."""
+        _open_folder(util.program_folder())
+
+    @QtCore.Slot()
+    def openDataFolder(self) -> None:
+        """File -> Open Data Folder: profiles, modules and settings (the
+        folder chosen in Options, by default Gremlin Platforms in the user's
+        profile)."""
+        _open_folder(util.data_folder())
 
     @QtCore.Slot()
     def requestRestart(self) -> None:

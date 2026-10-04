@@ -909,6 +909,9 @@ ApplicationWindow {
             ThemedMenuItem { command: "file.save" }
             ThemedMenuItem { command: "file.saveAs" }
             ThemedMenuSeparator {}
+            ThemedMenuItem { command: "file.programFolder" }
+            ThemedMenuItem { command: "file.dataFolder" }
+            ThemedMenuSeparator {}
             ThemedMenuItem { command: "file.exit" }
         }
 

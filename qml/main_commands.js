@@ -35,6 +35,11 @@ function commandList() {
           run: function() { saveCurrentProfile() } },
         { id: "file.saveAs", text: "Save Profile As…", group: "File", shortcut: "Ctrl+Shift+S",
           run: function() { openSaveAs() } },
+        { id: "file.programFolder", text: "Open Program Folder", group: "File",
+          keywords: "install explorer", run: function() { backend.openProgramFolder() } },
+        { id: "file.dataFolder", text: "Open Data Folder", group: "File",
+          keywords: "profiles modules settings user explorer",
+          run: function() { backend.openDataFolder() } },
         { id: "file.exit", text: "Exit", group: "File", keywords: "quit close",
           run: function() { quitGremlin() } },
 

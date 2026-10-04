@@ -824,6 +824,14 @@ def userprofile_path() -> str:
     return str((Path(os.getenv("userprofile")) / USER_DATA_FOLDER).resolve())
 
 
+def program_folder() -> str:
+    """Where Gremlin-Platforms is: the folder of gremlin_platforms.exe when
+    installed (or unzipped), the source folder when run from source."""
+    if getattr(sys, "frozen", False):
+        return str(Path(sys.executable).resolve().parent)
+    return str(Path(__file__).resolve().parents[1])
+
+
 def _configured_data_folder() -> str:
     """The data folder chosen in Options, or nothing when it is still the default."""
     try:
