@@ -282,7 +282,8 @@ Item {
                     z: -1
                     hoverEnabled: true
                     enabled: _btn.usableNow
-                    cursorShape: _btn.locked ? Qt.PointingHandCursor : Qt.SizeHorCursor
+                    // A hand, as over the pool's chips; closed while dragging it.
+                    cursorShape: pressed && _moved ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                     property real _startX: 0
                     property bool _moved: false
                     onPressed: (m) => {
