@@ -2172,6 +2172,33 @@ ApplicationWindow {
     property var _modesPicked: []
     property string _modesFormat: "pdf"
 
+    // File > Print & Export: its window, and the print area shown on the
+    // map to move and resize while it is open.
+    function openPrintExport() {
+        _tools.setOpen("printArea", true)
+        _printWin.show()
+        _printWin.raise()
+        _printWin.requestActivate()
+    }
+
+    // The file dialogs, for Print & Export's buttons.
+    function openExportFile(kind) {
+        if (kind === "pdf")
+            _exportPdfDialog.open()
+        else if (kind === "jpg")
+            _exportJpgDialog.open()
+        else
+            _exportPngDialog.open()
+    }
+
+    function buttonMapOptions() { return _opts }
+
+    PrintExportWindow {
+        id: _printWin
+        host: _buttonMap
+        transientParent: _buttonMap
+    }
+
     function openExportModes() {
         _modesPicked = profileModes.slice()
         _modesDlg.open()
@@ -2476,6 +2503,11 @@ ApplicationWindow {
                     onTriggered: fitToPhotoFrame()
                 }
                 ThemedMenuSeparator {}
+                ThemedMenuItem {
+                    text: "Print & Export…"
+                    enabled: _buttonMap.targetName.length > 0
+                    onTriggered: _buttonMap.openPrintExport()
+                }
                 ThemedMenuItem {
                     text: "Export PDF…"
                     enabled: _buttonMap.targetName.length > 0

@@ -103,7 +103,8 @@ def test_button_map_help_is_its_own_guide() -> None:
     assert main_titles.count("Button Map") == 1
     section = _text(guide)
     for feature in (
-        "Edit Mapping", "Export Size", "Snap to Entities", "Adjust Photo",
+        "Edit Mapping", "Print & Export", "Print Area", "Snap to Entities",
+        "Adjust Photo",
         "Highlight on press", "Pressed Fill", "Hotspot", "spine", "Leader Ends",
         "Group Selected", "Mini hat", "Radial", "Undo", "Rounded", "Double arrow",
         "Shape Around Selection", "Arrowheads", "Swap Heads", "Dashed",

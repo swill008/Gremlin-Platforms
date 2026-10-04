@@ -95,6 +95,8 @@ Item {
     readonly property color photoButtonHover: "#CC000000"
     readonly property color onLight: "#111111"
     readonly property color clear: "#00000000"
+    // A sheet of paper (Print & Export's preview): white in either theme.
+    readonly property color paper: "#FFFFFF"
     // Backdrop behind a modal dialog.
     readonly property color dim: "#66000000"
     // Delete buttons: white text on red in both modes.
