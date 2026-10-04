@@ -178,6 +178,29 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
     return dev
 
 
+def vjoy_ids() -> list[int]:
+    """The vJoy devices set up in the driver (1-16)."""
+    from vjoy import vjoy
+
+    return [i for i in range(1, 17) if vjoy.device_exists(i)]
+
+
+def vjoy_layout(vjoy_id: int) -> tuple[int, int, int]:
+    """(axes, buttons, hats) of a vJoy device, as the driver sets it up."""
+    from vjoy import vjoy
+
+    return (
+        vjoy.axis_count(vjoy_id), vjoy.button_count(vjoy_id), vjoy.hat_count(vjoy_id)
+    )
+
+
+def vjoy_hats_continuous(vjoy_id: int) -> bool:
+    """Whether the vJoy device's hats are continuous (Gremlin needs that)."""
+    from vjoy import vjoy
+
+    return bool(vjoy.hat_configuration_valid(vjoy_id))
+
+
 def vjoy_in_use_elsewhere(vjoy_id: int) -> bool:
     """Whether another program holds the vJoy device, so Gremlin can't use it."""
     try:

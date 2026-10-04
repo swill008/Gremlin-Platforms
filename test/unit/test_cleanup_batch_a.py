@@ -195,3 +195,15 @@ def test_pane_dividers_live_with_the_window_layout() -> None:
         assert window_placement._split_map(cfg) == {"hardwareHide": 0.7, "home": 0.3}
     finally:
         cfg.set(*key, before)
+
+
+def test_layer_rule_no_direct_hardware_reads() -> None:
+    # N24: the UI reads devices through the input side (gremlin.modules
+    # .hardware); device start-up asks vJoy through the output module.
+    ui = _ROOT / "gremlin" / "ui"
+    direct = [
+        p.name for p in ui.glob("*.py") if "dill.DILL." in p.read_text(encoding="utf-8")
+    ]
+    assert direct == []
+    start = _text("gremlin/device_initialization.py")
+    assert "from vjoy import vjoy" not in start and "output.vjoy_layout(" in start

@@ -9,7 +9,6 @@ from pathlib import Path
 
 from PySide6 import QtCore
 
-import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import (
     config,
@@ -52,6 +51,7 @@ from gremlin.ui.hardware_profile import (
     module_json_path,
     persist_log,
 )
+from gremlin.modules import hardware
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -455,7 +455,7 @@ def _module_damage(device_name: str, guid: str = "") -> str:
 def _device_connected(guid: str) -> bool:
     """True when the joystick driver sees a device with this GUID."""
     try:
-        return bool(dill.DILL.device_exists(dill.GUID.from_str(guid)))
+        return hardware.device_connected(guid)
     except Exception:
         # A GUID the driver can't read is not one of its devices.
         return False
@@ -1700,7 +1700,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         info = None
         if guid:
             try:
-                info = dill.DILL.get_device_information_by_guid(dill.GUID.from_str(guid))
+                info = hardware.device_info(guid)
             except Exception:
                 info = None
         if self._is_keyboard():

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from PySide6 import QtCore
 
-import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import common, shared_state
 from gremlin.config import Configuration
@@ -14,6 +13,7 @@ from gremlin.signal import signal
 from gremlin.ui.device import _description_from_item, _generate_action_sequence_descriptor
 from gremlin.ui.module_model import _load_module_doc
 from gremlin.modules.claim import claim_friendly, claim_ids, read_claim, type_of
+from gremlin.modules import hardware
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -66,9 +66,7 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
         self._mapping = None
         if text and text.lower() not in ("unknown", ""):
             try:
-                self._device = dill.DILL.get_device_information_by_guid(
-                    dill.GUID.from_str(text)
-                )
+                self._device = hardware.device_info(text)
                 self._mapping = DeviceDatabase().get_mapping(self._device)
             except Exception:
                 self._device = None

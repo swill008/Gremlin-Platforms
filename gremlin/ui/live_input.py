@@ -10,7 +10,7 @@ from PySide6 import QtCore
 import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import event_handler, shared_state
-from gremlin.modules import output
+from gremlin.modules import hardware, output
 from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.types import InputType
@@ -162,9 +162,7 @@ class DeviceLiveState(QtCore.QObject):
         if self._guid == incoming and self._device is not None:
             return
         try:
-            self._device = dill.DILL.get_device_information_by_guid(
-                dill.GUID.from_str(guid)
-            )
+            self._device = hardware.device_info(guid)
             self._device_uuid = uuid.UUID(incoming)
             self._guid = incoming
         except Exception:

@@ -19,7 +19,7 @@ from PySide6 import (
 )
 
 import gremlin.ui.type_aliases as ta
-from gremlin.modules import module_file
+from gremlin.modules import hardware, module_file
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.ids import stored_guid_key
 from gremlin.modules.registry import (
@@ -520,8 +520,7 @@ def _connected_input_ids(guid: str) -> tuple[set[int], set[int], set[int]] | Non
     if not str(guid or "").strip():
         return None
     try:
-        import dill
-        info = dill.DILL.get_device_information_by_guid(dill.GUID.from_str(guid))
+        info = hardware.device_info(guid)
     except Exception:
         info = None
     if info is None:
@@ -1410,8 +1409,7 @@ def _device_input_ids(guid: str) -> tuple[list[int], list[int], list[int]]:
     axes: list[int] = []
     hats: list[int] = []
     try:
-        import dill
-        info = dill.DILL.get_device_information_by_guid(dill.GUID.from_str(guid))
+        info = hardware.device_info(guid)
     except Exception:
         info = None
     if info is None:

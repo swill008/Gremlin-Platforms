@@ -39,6 +39,7 @@ from gremlin.types import (
     PropertyType,
     ScanCode,
 )
+from gremlin.modules import hardware
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -151,9 +152,7 @@ class InputIdentifier(QtCore.QObject):
         if not self.isValid:
             raise GremlinError("Cannot compute linear index of invalid input")
 
-        device_info = dill.DILL.get_device_information_by_guid(
-            dill.GUID.from_uuid(self.device_guid)
-        )
+        device_info = hardware.device_info(self.device_guid)
         match self.input_type:
             case InputType.JoystickAxis:
                 for i, axis in enumerate(device_info.axis_map):
@@ -354,9 +353,7 @@ class Device(QtCore.QAbstractListModel):
         self.beginResetModel()
         # QML binds "" while no device is selected or during teardown.
         try:
-            self._device = dill.DILL.get_device_information_by_guid(
-                dill.GUID.from_str(guid)
-            )
+            self._device = hardware.device_info(guid)
             self._device_mapping = DeviceDatabase().get_mapping(self._device)
         except ValueError:
             self._device = None
@@ -898,9 +895,7 @@ class DeviceAxisSeries(QtCore.QObject):
         self._state = []
         self._identifier_map = {}
         try:
-            self._device = dill.DILL.get_device_information_by_guid(
-                dill.GUID.from_str(guid)
-            )
+            self._device = hardware.device_info(guid)
             self._device_uuid = uuid.UUID(guid)
         except ValueError:
             self._device = None
@@ -1411,9 +1406,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
             return
         try:
             device_uuid = uuid.UUID(str(row["guid"]))
-            device = dill.DILL.get_device_information_by_guid(
-                dill.GUID.from_str(str(row["guid"]))
-            )
+            device = hardware.device_info(str(row["guid"]))
         except Exception:
             return
         if device is None:

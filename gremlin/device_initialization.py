@@ -14,7 +14,6 @@ from gremlin import (
     error,
     shared_state,
 )
-from vjoy import vjoy
 
 _joystick_devices: dict[uuid.UUID, dill.DeviceSummary] = collections.OrderedDict()
 # vJoy devices left out because of a set-up problem (their DirectInput ids),
@@ -204,10 +203,11 @@ def _initialize_devices() -> None:
     problems: list[tuple[int, str]] = []
     alike: dict[tuple, list[int]] = {}
     linked: dict[tuple, int] = {}
-    for i in range(1, 17):
-        if not vjoy.device_exists(i):
-            continue
-        hash_value = (vjoy.axis_count(i), vjoy.button_count(i), vjoy.hat_count(i))
+    # The vJoy driver is asked through the output module (the layer rule).
+    from gremlin.modules import output
+
+    for i in output.vjoy_ids():
+        hash_value = output.vjoy_layout(i)
         if hash_value in same:
             alike.setdefault(hash_value, []).append(i)
             continue
@@ -219,7 +219,7 @@ def _initialize_devices() -> None:
             same.add(hash_value)
             alike.setdefault(hash_value, []).extend([first, i])
             continue
-        if not vjoy.hat_configuration_valid(i):
+        if not output.vjoy_hats_continuous(i):
             problems.append((i, (
                 f"vJoy {i}: its hats are set to discrete; Gremlin-Platforms "
                 "needs continuous hats. Change them in Configure vJoy."
