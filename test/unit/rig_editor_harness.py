@@ -1360,6 +1360,52 @@ def scenario_labels(s: Session) -> None:
     s.set_prop("exporting", False)
 
 
+def scenario_two_rows(s: Session) -> None:
+    """A chip's name on two rows: Shift+Enter starts the second (not a
+    third), Enter keeps it; the chip grows to fit; Text Align lines the rows
+    up together, Align Rows Separately each on its own; lists show it on one
+    line."""
+    _load(s, "evo_r")
+    chip = next(n for n in s.state()["nodes"] if n.get("kind") == "btn")["id"]
+    s.call("setSelection", [chip])
+    before = s._box(chip)
+    s.call("beginRename", chip, -1)
+    s.wait(150)
+    Key = QtCore.Qt.Key
+    shift = QtCore.Qt.KeyboardModifier.ShiftModifier
+    s.type_text("Axis")
+    QtTest.QTest.keyClick(s.win, Key.Key_Return, shift)
+    s.type_text("3")
+    # Two rows at most: a third Shift+Enter does nothing.
+    QtTest.QTest.keyClick(s.win, Key.Key_Return, shift)
+    QtTest.QTest.keyClick(s.win, Key.Key_Return)
+    s.wait(150)
+    s.record("two-rows", image=True)
+    after = s._box(chip)
+    s.steps[-1]["state"]["name"] = s.node(chip).get("friendly")
+    s.steps[-1]["state"]["taller"] = after["h"] > before["h"]
+    s.steps[-1]["state"]["layerName"] = json.loads(
+        s.js("callOnNode", "layerName", chip, "[]"))
+    # The chip's menu: Text Align and the tick box in Chip Style.
+    s.right_click(s.center(chip))
+    s.open_menu_section("Chip Style")
+    s.steps[-1]["state"]["menuAll"] = s.state()["menu"]
+    s.click_menu_row("Align Rows Separately")
+    s.record("menu-apart")
+    s.close_menus()
+    s.call("setSelection", [chip])
+    s.call("applyField", "alignRowsApart", False)
+    s.call("applyField", "textAlign", "left")
+    s.call("setSelection", [])
+    s.record("left", image=True)
+    s.call("setSelection", [chip])
+    s.call("applyField", "alignRowsApart", True)
+    s.call("applyField", "rowAlign1", "left")
+    s.call("applyField", "rowAlign2", "right")
+    s.call("setSelection", [])
+    s.record("rows-apart", image=True)
+
+
 def scenario_mirror(s: Session) -> None:
     """Mirror layout: chips, hotspots and leaders to the other side, a block
     arrow and an arrow line pointing the other way; twice is the start."""
@@ -2108,6 +2154,7 @@ SCENARIOS = {
     "break_group": scenario_break_group,
     "live_color": scenario_live_color,
     "mixed_drag": scenario_mixed_drag,
+    "two_rows": scenario_two_rows,
 }
 
 

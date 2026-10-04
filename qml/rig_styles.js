@@ -10,6 +10,7 @@
 
 var _FIELDS = {
     chip: ["chipShape", "chipSize", "circleSize", "chipFill", "fontSize", "color", "border", "textColor",
+           "textAlign", "alignRowsApart", "rowAlign1", "rowAlign2",
            "highlight", "hlColor", "hlBorder", "hlText", "hotSize", "hotShape", "hotFill",
            "hotColor", "hotLine", "hotOpacity", "hotHalo", "hotNumber", "hotPress", "hotPressColor",
            "hotPulse", "hotLive", "leaderColor", "leaderWidth"],

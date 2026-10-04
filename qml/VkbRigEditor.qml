@@ -300,6 +300,10 @@ Item {
     function fullNameOf(kind, hwId) { return RigChips.fullNameOf(kind, hwId) }
     function placedId(kind, hwId) { return RigChips.placedId(kind, hwId) }
     function chipText(n, mem) { return RigChips.chipText(n, mem) }
+    function chipRows(n, mem) { return RigChips.chipRows(n, mem) }
+    function chipRowsApart(n, mem) { return RigChips.chipRowsApart(n, mem) }
+    function chipRowAlign(n, mem, row) { return RigChips.chipRowAlign(n, mem, row) }
+    function oneLine(s) { return RigChips.oneLine(s) }
     function catalog() { return RigChips.catalog() }
     function hotFxOf(n) { return RigChips.hotFxOf(n) }
     function hotFyOf(n) { return RigChips.hotFyOf(n) }
@@ -1296,7 +1300,9 @@ Item {
         font.pixelSize: 12
     }
 
-    TextInput {
+    // Names, text boxes and table cells: Enter keeps what was typed,
+    // Shift+Enter starts a new line (a chip's name has two rows at most).
+    TextEdit {
         id: _nameEdit
         z: 12
         visible: _ed.showChrome && _ed.renameId.length > 0
@@ -1322,7 +1328,7 @@ Item {
             _ed.anyTick
             var n = _ed.nodeAt(_ed.renameId)
             var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
-            return Math.max(18, _ed.chipScreenRect(n, mem).height)
+            return Math.max(18, _ed.chipScreenRect(n, mem).height, contentHeight + topPadding + bottomPadding)
         }
         transformOrigin: Item.Center
         rotation: {
@@ -1337,14 +1343,31 @@ Item {
             var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
             return _ed.styleVal(n, mem, "fontSize", 10)
         }
-        horizontalAlignment: TextInput.AlignHCenter
-        verticalAlignment: TextInput.AlignVCenter
+        horizontalAlignment: TextEdit.AlignHCenter
+        verticalAlignment: TextEdit.AlignVCenter
         selectByMouse: true
         clip: true
+        wrapMode: TextEdit.NoWrap
         leftPadding: Style.dp(4)
         rightPadding: Style.dp(4)
+        topPadding: Style.dp(2)
+        bottomPadding: Style.dp(2)
         onTextChanged: _ed.renameDraft = text
-        onAccepted: _ed.commitRename()
+        Keys.onReturnPressed: (event) => _nameEdit.newLineOrKeep(event)
+        Keys.onEnterPressed: (event) => _nameEdit.newLineOrKeep(event)
+        function newLineOrKeep(event) {
+            event.accepted = true
+            if (!(event.modifiers & Qt.ShiftModifier)) {
+                _ed.commitRename()
+                return
+            }
+            var n = _ed.nodeAt(_ed.renameId)
+            var chip = n && !_ed.isText(n) && !_ed.isTable(n)
+            if (chip && text.split("\n").length >= RigChips.CHIP_ROWS)
+                return
+            remove(selectionStart, selectionEnd)
+            insert(cursorPosition, "\n")
+        }
         Keys.onEscapePressed: (event) => {
             _ed.cancelRename()
             event.accepted = true

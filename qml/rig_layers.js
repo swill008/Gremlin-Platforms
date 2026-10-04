@@ -384,7 +384,7 @@ function layerName(n) {
         return _KIND_NAMES[n.shape || "rect"] || "Drawing"
     if (isGroup(n))
         return "Group: " + (n.members || []).map(function(m) { return memberLabel(n, m) }).join(", ")
-    return friendlyOf(n, null) || hardwareLabel(n.kind, n.hwId) || n.id
+    return oneLine(friendlyOf(n, null)) || hardwareLabel(n.kind, n.hwId) || n.id
 }
 
 // Names a drawing (chips are renamed on the map, as their name is their label).

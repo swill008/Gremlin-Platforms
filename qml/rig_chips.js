@@ -144,6 +144,9 @@ function fullNameOf(kind, hwId) {
 // What a chip shows (Options → Button Map → Labels): its name, what the
 // control does in the profile (actionLabels, filled by the window for the
 // chosen mode), or both. Renaming always edits the name.
+// A chip's name has at most this many rows (Shift+Enter starts the next).
+var CHIP_ROWS = 2
+
 function chipText(n, mem) {
     var name = mem ? memberLabel(n, mem) : friendlyOf(n, null)
     if (chipTextMode !== "Action" && chipTextMode !== "Name and action")
@@ -151,8 +154,9 @@ function chipText(n, mem) {
     var kind = mem ? memberKind(n, mem) : leafKind(n.kind)
     var hwId = mem ? mem.hwId : n.hwId
     var act = (actionLabels && actionLabels[kind + ":" + hwId]) || ""
+    // A name on two rows gets the action on a row of its own.
     if (chipTextMode === "Name and action")
-        return act.length ? name + ": " + act : name
+        return act.length ? name + (String(name).indexOf("\n") >= 0 ? "\n" : ": ") + act : name
     if (act.length)
         return act
     if (unboundText === "Blank")
@@ -354,7 +358,43 @@ function chipH(n, mem) {
         return uiPx(circleD(n, mem))
     var sz = styleVal(n, mem, "chipSize", 18)
     var fs = styleVal(n, mem, "fontSize", 10)
-    return uiPx(Math.max(sz, fs + 8))
+    return uiPx(Math.max(sz, fs + 8 + _extraRowsH(n, mem, fs)))
+}
+
+// The rows a chip shows (its name's rows, and the action's row).
+function chipRows(n, mem) {
+    return String(chipText(n, mem)).split("\n")
+}
+
+// Height the rows after the first add (a line of text each).
+function _extraRowsH(n, mem, fs) {
+    return (chipRows(n, mem).length - 1) * fs * 1.35
+}
+
+function _longestRow(s) {
+    var rows = String(s).split("\n")
+    var most = 0
+    for (var i = 0; i < rows.length; i++)
+        most = Math.max(most, rows[i].length)
+    return most
+}
+
+// A name on one line, for lists and titles (its rows joined by a space).
+function oneLine(s) {
+    return String(s === undefined || s === null ? "" : s).replace(/\s*\n\s*/g, " ")
+}
+
+// How a chip's row lines up: Text Align for all rows, or each row's own
+// (Align Rows Separately). row counts from 0.
+function chipRowsApart(n, mem) {
+    return !!styleVal(n, mem, "alignRowsApart", false)
+}
+
+function chipRowAlign(n, mem, row) {
+    var all = styleVal(n, mem, "textAlign", "center")
+    if (row < CHIP_ROWS && chipRowsApart(n, mem))
+        return styleVal(n, mem, "rowAlign" + (row + 1), all)
+    return all
 }
 
 function chipR(n, h, mem) {
@@ -383,8 +423,8 @@ function circleD(n, mem) {
         return fixed
     var fs = styleVal(n, mem, "fontSize", 10)
     var sz = styleVal(n, mem, "chipSize", 18)
-    var textW = _chipLabel(n, mem).length * fs * 0.5
-    return Math.max(sz, fs + 8, textW + Math.max(8, fs * 0.8))
+    var textW = _longestRow(_chipLabel(n, mem)) * fs * 0.5
+    return Math.max(sz, fs + 8 + _extraRowsH(n, mem, fs), textW + Math.max(8, fs * 0.8))
 }
 
 function circleFont(n, mem) {
@@ -392,7 +432,7 @@ function circleFont(n, mem) {
     if (!isCircle(n, mem))
         return fs
     var d = circleD(n, mem)
-    var len = Math.max(1, _chipLabel(n, mem).length)
+    var len = Math.max(1, _longestRow(_chipLabel(n, mem)))
     return Math.max(6, Math.min(fs, (d - Math.max(6, d * 0.15)) / (len * 0.5)))
 }
 
@@ -507,6 +547,11 @@ function commitRename() {
         return
     }
     var t = String(renameDraft || "").trim()
+    if (!isText(n) && !isTable(n)) {
+        // A chip's name: its rows each trimmed, empty ones dropped, two at most.
+        t = t.split("\n").map(function(r) { return r.trim() })
+             .filter(function(r) { return r.length > 0 }).slice(0, CHIP_ROWS).join("\n")
+    }
     if (isText(n)) {
         n.text = t
         fitTextBox(n)
@@ -543,5 +588,5 @@ function chipWGuess(n, mem) {
         return uiPx(Math.max(18, fs + 10))
     if (isCircle(n, mem))
         return uiPx(circleD(n, mem))
-    return uiPx(String(s).length * fs * 0.50 + pad)
+    return uiPx(_longestRow(s) * fs * 0.50 + pad)
 }

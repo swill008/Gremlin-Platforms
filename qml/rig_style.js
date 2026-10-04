@@ -127,7 +127,8 @@ function resetMemberStyle() {
     var mem = targetMember()
     if (!mem)
         return
-    var keys = ["chipShape", "chipSize", "circleSize", "chipFill", "fontSize", "color", "border", "textColor", "hlColor", "hlBorder", "hlText", "offX", "offY"]
+    var keys = ["chipShape", "chipSize", "circleSize", "chipFill", "fontSize", "color", "border", "textColor", "hlColor", "hlBorder", "hlText", "offX", "offY",
+                "textAlign", "alignRowsApart", "rowAlign1", "rowAlign2"]
     var i
     for (i = 0; i < keys.length; i++)
         delete mem[keys[i]]

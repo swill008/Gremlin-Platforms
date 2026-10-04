@@ -140,7 +140,7 @@ function menuTitle(kind) {
     var mem = targetMember()
     if (mem)
         return roleWord(fiveWayRole(mem)) || memberLabel(n, mem)
-    var name = friendlyOf(n, mem) || n.id
+    var name = oneLine(friendlyOf(n, mem)) || n.id
     if (kind === "hotspot")
         return name + " · hotspot"
     return kind === "leader" ? name + " · leader" : name
@@ -212,10 +212,30 @@ function _chipStyle() {
                     _field("circleSize", 0), _set("circleSize"))
             : null,
         _pick("Fill", ["filled", "hollow"], ["Filled", "Hollow"], _field("chipFill", "filled"), _set("chipFill")),
+    ].concat(_rowAlign(n), [
         _tog("Highlight on press", !n || n.highlight !== false,
              function() { var c = nodeAt(selectedId); applyField("highlight", !(c && c.highlight !== false)) }),
         _act("Reset This Cell", resetMemberStyle, targetMember() !== null)
-    ])
+    ]))
+}
+
+// A name on two rows lines up by Text Align, or each row by its own.
+function _rowAlign(n) {
+    var mem = targetMember()
+    if (!n || chipRows(n, mem).length < 2)
+        return []
+    var where = ["left", "center", "right"]
+    var words = ["Left", "Center", "Right"]
+    var apart = fieldEq("alignRowsApart", true, false)
+    var out = [
+        _pick("Text Align", where, words, _field("textAlign", "center"), _set("textAlign")),
+        _tog("Align Rows Separately", apart, function() { applyField("alignRowsApart", !apart) })
+    ]
+    if (apart) {
+        out.push(_pick("Row 1", where, words, _field("rowAlign1", "center"), _set("rowAlign1")))
+        out.push(_pick("Row 2", where, words, _field("rowAlign2", "center"), _set("rowAlign2")))
+    }
+    return out
 }
 
 function _chipColours() {

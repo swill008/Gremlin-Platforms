@@ -64,16 +64,20 @@ Rectangle {
             return "#FBBF24"
         }
     }
-    Text {
-        renderType: Text.NativeRendering
+    RigChipLabel {
         id: t
-        anchors.centerIn: parent
+        // Fills the chip: its text is centred in the chip itself, as before.
+        anchors.fill: parent
+        ed: _miniRoot.ed
+        node: _miniRoot.node
+        mem: _miniRoot.mem
+        rev: _miniRoot.rev
         color: {
             _miniRoot.rev
             var hl = ed.styleVal(node, mem, "highlight", true)
             return ed.ink(parent.on && hl ? ed.styleVal(node, mem, "hlText", "#BBF7D0") : ed.styleVal(node, mem, "textColor", "#E4E4E7"))
         }
-        font.pixelSize: { _miniRoot.rev; return ed.uiPx(ed.isCircle(node, mem) ? ed.circleFont(node, mem) : ed.styleVal(node, mem, "fontSize", 10)) }
+        pixelSize: { _miniRoot.rev; return ed.uiPx(ed.isCircle(node, mem) ? ed.circleFont(node, mem) : ed.styleVal(node, mem, "fontSize", 10)) }
         visible: {
             _miniRoot.rev
             return !(ed.renameId === node.id && ed.renameMember === memberIndex)

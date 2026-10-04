@@ -41,15 +41,18 @@ Rectangle {
     RigSelRing {
         on: { _chipRoot.rev; return ed.isSelected(node.id) && !ed.exporting }
     }
-    Text {
-        renderType: Text.NativeRendering
+    RigChipLabel {
         id: _lab
-        anchors.centerIn: parent
+        // Fills the chip: its text is centred in the chip itself, as before.
+        anchors.fill: parent
+        ed: _chipRoot.ed
+        node: _chipRoot.node
+        rev: _chipRoot.rev
         color: {
             _chipRoot.rev
             return ed.ink(on && node.highlight ? (node.hlText || "#BBF7D0") : (node.textColor || "#E4E4E7"))
         }
-        font.pixelSize: { _chipRoot.rev; return ed.uiPx(ed.isCircle(node, null) ? ed.circleFont(node, null) : (node.fontSize || 10)) }
+        pixelSize: { _chipRoot.rev; return ed.uiPx(ed.isCircle(node, null) ? ed.circleFont(node, null) : (node.fontSize || 10)) }
         text: {
             _chipRoot.rev
             return ed.chipText(node, null)
