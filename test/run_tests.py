@@ -334,6 +334,13 @@ def run(parts: list[Part], quick: bool, log) -> tuple[list[tuple[float, str]], f
 
 
 def main() -> int:
+    # A test's output may hold characters the console (or a redirect) can't
+    # show: show a stand-in rather than stop the run.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     parser.add_argument("targets", nargs="*", help="test files or folders")
     parser.add_argument("--failed", action="store_true",
