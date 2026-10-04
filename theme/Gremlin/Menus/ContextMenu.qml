@@ -13,7 +13,11 @@ import "menu_model.js" as MenuModel
 // what applies to what was clicked (build() returns the list, made with
 // menu_model.js): a title, a few quick rows, then collapsed sections that
 // open one at a time. It reopens the section last used for that kind of
-// thing, flips to stay inside the window and scrolls when taller than it.
+// thing. It opens at the pointer and never jumps: what would go below the
+// window (from the first section that does not fit) goes into a second
+// column beside it, on the right when there is room, else on the left. That
+// column sits as high as it needs to fit above the window's bottom, and
+// scrolls only when taller than the window.
 // Keys: Up/Down move, Enter acts, Right/Left open/close a section or step a
 // row of values, Esc closes.
 //
@@ -59,25 +63,133 @@ Popup {
         focusRow = index
     }
 
-    parent: Overlay.overlay
-    padding: Style.menuPad
-    width: menuWidth
-    height: Math.min(_column.implicitHeight + topPadding + bottomPadding, parent ? parent.height - 2 * edge : 400)
-    x: {
+    // The second column: the row it starts at (-1: one column), and its side.
+    property int splitAt: -1
+    // Between the two columns' panels (each has its own padding).
+    readonly property real gap: 2 * Style.menuPad + Style.dp(6)
+    readonly property real colW: menuWidth - leftPadding - rightPadding
+    // Heights laid out by _layout(): the first column (title, quick rows and
+    // the sections that fit), the second, and the part always in the first
+    // (title and quick rows).
+    property real _col1H: 0
+    property real _col2H: 0
+    property real _fixedH: 0
+
+    // Where the first column is: at the pointer, or to its left when the
+    // menu would go past the window's right edge (as before).
+    readonly property real _mainX: {
         var pw = parent ? parent.width : 0
         if (_dragged)
-            return Math.max(edge, Math.min(anchorX, pw - edge - width))
-        if (anchorX + width > pw - edge)
-            return Math.max(edge, anchorX - width)
+            return Math.max(edge, Math.min(anchorX, pw - edge - menuWidth))
+        if (anchorX + menuWidth > pw - edge)
+            return Math.max(edge, anchorX - menuWidth)
         return anchorX
     }
-    y: {
+    readonly property bool secondLeft: {
+        var pw = parent ? parent.width : 0
+        return splitAt >= 0 && _mainX + menuWidth + gap + colW > pw - edge
+            && _mainX - gap - colW >= edge
+    }
+
+    // The first column's top: at the pointer; moved up only as far as the
+    // title and quick rows need (right at the window's bottom).
+    readonly property real _mainY: {
         var ph = parent ? parent.height : 0
-        if (_dragged)
-            return Math.max(edge, Math.min(anchorY, ph - edge - height))
-        if (anchorY + height > ph - edge)
-            return Math.max(edge, Math.min(anchorY - height, ph - edge - height))
-        return anchorY
+        var need = _fixedH + topPadding + bottomPadding
+        return Math.max(edge, Math.min(anchorY, ph - edge - need))
+    }
+    readonly property real _pads: topPadding + bottomPadding
+    // The first column's height: what it holds, inside the window.
+    readonly property real _col1Box: Math.min(_col1H + _pads, (parent ? parent.height : 400) - edge - _mainY)
+    // The second column: as tall as it needs (the window at most), level with
+    // the first column, or higher when it would go below the window.
+    readonly property real _col2Box: splitAt >= 0
+        ? Math.min(_col2H + _pads, (parent ? parent.height : 400) - 2 * edge) : 0
+    readonly property real _col2Y: {
+        var ph = parent ? parent.height : 0
+        return Math.max(edge, Math.min(_mainY, ph - edge - _col2Box))
+    }
+
+    parent: Overlay.overlay
+    padding: Style.menuPad
+    width: menuWidth + (splitAt >= 0 ? gap + colW : 0)
+    x: secondLeft ? _mainX - gap - colW : _mainX
+    y: splitAt >= 0 ? Math.min(_mainY, _col2Y) : _mainY
+    height: Math.max(_mainY + _col1Box, splitAt >= 0 ? _col2Y + _col2Box : 0) - y
+    onRowsChanged: _relayout()
+    onOpened: _relayout()
+    onAnchorYChanged: _relayout()
+    Connections {
+        target: _menu.parent
+        function onHeightChanged() { _menu._relayout() }
+    }
+
+    function _relayout() {
+        Qt.callLater(_layout)
+    }
+
+    // Puts each row in the first column, or (from the first section that
+    // would go below the window) in the second, top to bottom.
+    function _layout() {
+        if (!_rowsHost || !_col2Host)
+            return
+        var n = rows.length
+        var heights = []
+        for (var i = 0; i < n; i++) {
+            var it = _repeater.itemAt(i)
+            heights.push(it ? it.height : rowH)
+        }
+        var titleH = _titleBlock.visible ? _titleBlock.height + _titleLine.height : 0
+        var first = n
+        for (i = 0; i < n; i++) {
+            if (rows[i].type === "header") {
+                first = i
+                break
+            }
+        }
+        var fixed = titleH
+        for (i = 0; i < first; i++)
+            fixed += heights[i]
+        _fixedH = fixed
+        var ph = parent ? parent.height : 0
+        var avail = ph - edge - _mainY - topPadding - bottomPadding
+        var split = -1
+        var used = fixed
+        i = first
+        while (i < n) {
+            var j = i + 1
+            while (j < n && rows[j].type !== "header")
+                j++
+            var sectionH = 0
+            for (var k = i; k < j; k++)
+                sectionH += heights[k]
+            if (used + sectionH > avail + 0.5) {
+                split = i
+                break
+            }
+            used += sectionH
+            i = j
+        }
+        splitAt = split
+        var y1 = 0
+        var y2 = 0
+        for (i = 0; i < n; i++) {
+            var row = _repeater.itemAt(i)
+            if (!row)
+                continue
+            if (split >= 0 && i >= split) {
+                row.parent = _col2Host
+                row.y = y2
+                y2 += heights[i]
+            } else {
+                row.parent = _rowsHost
+                row.y = y1
+                y1 += heights[i]
+            }
+            row.x = 0
+        }
+        _col1H = titleH + y1
+        _col2H = y2
     }
     modal: false
     focus: true
@@ -86,12 +198,33 @@ Popup {
 
     // Clicks, the wheel and the pointer on the menu stay on the menu: nothing
     // under it (the Button Map) reacts to them.
-    background: MenuSurface {
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.AllButtons
-            hoverEnabled: true
-            onWheel: (w) => { w.accepted = true }
+    // One panel per column: the menu at the pointer, and the second column
+    // beside it as high as it needs.
+    background: Item {
+        MenuSurface {
+            x: _menu.secondLeft ? _menu.colW + _menu.gap : 0
+            y: _menu._mainY - _menu.y
+            width: _menu.menuWidth
+            height: _menu._col1Box
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+                hoverEnabled: true
+                onWheel: (w) => { w.accepted = true }
+            }
+        }
+        MenuSurface {
+            visible: _menu.splitAt >= 0
+            x: _menu.secondLeft ? 0 : _menu.colW + _menu.gap
+            y: _menu._col2Y - _menu.y
+            width: _menu.menuWidth
+            height: _menu._col2Box
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+                hoverEnabled: true
+                onWheel: (w) => { w.accepted = true }
+            }
         }
     }
 
@@ -225,6 +358,8 @@ Popup {
 
     // A row's rectangle in window coordinates.
     function rowRect(i) {
+        // Rows just rebuilt (a section opened) are placed on the next turn.
+        _layout()
         var it = _repeater.itemAt(i)
         if (!it)
             return null
@@ -276,7 +411,7 @@ Popup {
 
     contentItem: FocusScope {
         id: _keys
-        implicitHeight: _column.implicitHeight
+        implicitHeight: Math.max(_menu._col1H, _menu._col2H)
 
         Keys.onPressed: (e) => {
             var r = _menu.rows[_menu.focusRow]
@@ -307,7 +442,10 @@ Popup {
 
         Flickable {
             id: _flick
-            anchors.fill: parent
+            x: _menu.secondLeft ? _menu.colW + _menu.gap : 0
+            y: _menu._mainY - _menu.y
+            width: _menu.colW
+            height: _menu._col1Box - _menu._pads
             clip: true
             contentWidth: width
             contentHeight: _column.implicitHeight
@@ -322,11 +460,13 @@ Popup {
                 var item = _repeater.itemAt(i)
                 if (!item)
                     return
-                var top = item.y + _rowsColumn.y
-                if (top < contentY)
-                    contentY = top
-                else if (top + item.height > contentY + height)
-                    contentY = top + item.height - height
+                var second = _menu.splitAt >= 0 && i >= _menu.splitAt
+                var flick = second ? _flick2 : _flick
+                var top = item.y + (second ? 0 : _rowsHost.y)
+                if (top < flick.contentY)
+                    flick.contentY = top
+                else if (top + item.height > flick.contentY + flick.height)
+                    flick.contentY = top + item.height - flick.height
             }
 
             Column {
@@ -338,6 +478,7 @@ Popup {
                 // Title: what was clicked, with its header buttons and the
                 // pin. With stayOpen or pinned, drag it to move the menu.
                 RowLayout {
+                    id: _titleBlock
                     visible: _menu.model.title.length > 0 || _menu.model.header.length > 0
                     width: parent.width
                     height: visible ? _menu.rowH + Style.dp(4) : 0
@@ -351,7 +492,7 @@ Popup {
                             property point _origin
                             onPressed: (m) => {
                                 _start = mapToItem(_menu.parent, m.x, m.y)
-                                _origin = Qt.point(_menu.x, _menu.y)
+                                _origin = Qt.point(_menu._mainX, _menu._mainY)
                             }
                             onPositionChanged: (m) => {
                                 if (!pressed)
@@ -428,32 +569,62 @@ Popup {
                     }
                 }
                 Rectangle {
+                    id: _titleLine
                     visible: _menu.model.title.length > 0 || _menu.model.header.length > 0
                     width: parent.width
                     height: visible ? 1 : 0
                     color: Style.menuDivider
                 }
 
-                Column {
-                    id: _rowsColumn
+                // The first column's rows (placed by _layout()).
+                Item {
+                    id: _rowsHost
                     width: parent.width
-
-                    Repeater {
-                        id: _repeater
-                        model: _menu.rows
-                        delegate: Loader {
-                            required property var modelData
-                            required property int index
-                            width: _rowsColumn.width
-                            sourceComponent: modelData.type === "header" ? _header
-                                : ({ choice: _choice, number: _number, entry: _entry })[modelData.item.kind] || _plain
-                            onLoaded: {
-                                item.row = Qt.binding(function() { return modelData })
-                                item.rowIndex = Qt.binding(function() { return index })
-                            }
-                        }
-                    }
+                    height: _menu._col1H - (_titleBlock.visible ? _titleBlock.height + _titleLine.height : 0)
                 }
+            }
+        }
+
+        // The second column: the sections that would go below the window.
+        Flickable {
+            id: _flick2
+            visible: _menu.splitAt >= 0
+            x: _menu.secondLeft ? 0 : _menu.colW + _menu.gap
+            y: _menu._col2Y - _menu.y
+            width: _menu.colW
+            height: _menu._col2Box - _menu._pads
+            clip: true
+            contentWidth: width
+            contentHeight: _menu._col2H
+            boundsBehavior: Flickable.StopAtBounds
+            readonly property bool scrolls: contentHeight > height + 1
+            ScrollBar.vertical: ScrollBar {
+                id: _bar2
+                policy: _flick2.scrolls ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+            }
+            Item {
+                id: _col2Host
+                width: _flick2.width - (_flick2.scrolls ? _bar2.width : 0)
+                height: _menu._col2H
+            }
+        }
+
+        // Every row, made once; _layout() puts each in its column.
+        Repeater {
+            id: _repeater
+            model: _menu.rows
+            delegate: Loader {
+                required property var modelData
+                required property int index
+                width: parent ? parent.width : 0
+                sourceComponent: modelData.type === "header" ? _header
+                    : ({ choice: _choice, number: _number, entry: _entry })[modelData.item.kind] || _plain
+                onLoaded: {
+                    item.row = Qt.binding(function() { return modelData })
+                    item.rowIndex = Qt.binding(function() { return index })
+                    _menu._relayout()
+                }
+                onHeightChanged: _menu._relayout()
             }
         }
     }

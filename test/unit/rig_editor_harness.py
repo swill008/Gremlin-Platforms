@@ -941,8 +941,9 @@ def scenario_menu(s: Session) -> None:
     s.record("line-heads", image=True)
     s.close_menus()
 
-    # A small window: opened near the bottom-right corner the menu flips to
-    # stay inside, and a long section scrolls.
+    # A small window: opened near the bottom-right corner the menu stays at
+    # the pointer (moved up only for its title and quick rows), and what would
+    # go below the window is in a second column beside it, raised to fit.
     s.js("resize", 700, 420)
     s.wait(300)
     s.right_click(QtCore.QPoint(690, 410))
@@ -955,7 +956,8 @@ def scenario_menu(s: Session) -> None:
         and box["x"] + box["w"] <= 700
         and box["y"] + box["h"] <= 420
     )
-    # It reopens on the remembered Draw section; closing it stays inside too.
+    # It reopens on the remembered Draw section; closed, its header still
+    # does not fit below the menu and stays in the second column.
     s.click_menu_row("Draw")
     box = json.loads(s.js("menuBox"))
     s.record("small-window-section-closed", image=True)
