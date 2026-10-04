@@ -21,7 +21,12 @@ import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.signal import signal
 from gremlin.types import PropertyType
-from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
+from gremlin.ui.option import (
+    BaseMetaConfigOptionWidget,
+    MetaConfigOption,
+    entry_title,
+    group_title,
+)
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -258,6 +263,18 @@ def set_value(key: str, new_value: object) -> None:
     cfg.set(SECTION, *found, new_value)
 
 
+# The Button Map's Options pane: the group last shown.
+_PANE_GROUP = ("global", "internal", "button-map-options-group")
+
+
+def _register_pane_group(cfg: Configuration) -> None:
+    # Registering again changes nothing.
+    cfg.register(
+        *_PANE_GROUP, PropertyType.String, GROUPS[0],
+        "Button Map: the Options pane's group last shown.", {}, False,
+    )
+
+
 @ta.QmlElement
 class ButtonMapOptions(QtCore.QObject):
     """The Button Map options for QML: values[name], and set(name, value)."""
@@ -281,6 +298,59 @@ class ButtonMapOptions(QtCore.QObject):
             for group, name, *_rest in OPTIONS
             if cfg.exists(SECTION, group, name)
         }
+
+    @QtCore.Property(list, constant=True)
+    def groups(self) -> list:
+        """The groups in order, for the Options pane: [{key, title}]."""
+        return [{"key": g, "title": group_title(g)} for g in GROUPS]
+
+    @QtCore.Property(list, constant=True)
+    def entries(self) -> list:
+        """Every option for the Options pane, in order: {group, key, title,
+        kind ("bool", "int", "choice", "color" or "text"), description,
+        choices, min, max}. Values come from `values`."""
+        out = []
+        ordered = sorted(OPTIONS, key=lambda o: (GROUPS.index(o[0]), o[1]))
+        for group, name, kind, _default, description, props in ordered:
+            key = key_of(name)
+            if kind == PropertyType.Bool:
+                shown = "bool"
+            elif kind == PropertyType.Int:
+                shown = "int"
+            elif kind == PropertyType.Selection:
+                shown = "choice"
+            elif key.endswith("-color"):
+                shown = "color"
+            else:
+                shown = "text"
+            out.append({
+                "group": group,
+                "key": key,
+                "title": entry_title(name),
+                "kind": shown,
+                "description": description,
+                "choices": list(props.get("valid_options", [])),
+                "min": props.get("min", 0),
+                "max": props.get("max", 100000),
+            })
+        return out
+
+    def _get_pane_group(self) -> str:
+        cfg = Configuration()
+        _register_pane_group(cfg)
+        value = str(cfg.value(*_PANE_GROUP) or "")
+        return value if value in GROUPS else GROUPS[0]
+
+    def _set_pane_group(self, value: str) -> None:
+        if value not in GROUPS:
+            return
+        cfg = Configuration()
+        _register_pane_group(cfg)
+        cfg.set(*_PANE_GROUP, value)
+        self.changed.emit()
+
+    # The Options pane's group, kept for next time.
+    paneGroup = QtCore.Property(str, _get_pane_group, _set_pane_group, notify=changed)
 
     @QtCore.Property(list, notify=changed)
     def styles(self) -> list:

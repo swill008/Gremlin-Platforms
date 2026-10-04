@@ -71,7 +71,7 @@ def main() -> None:
         out[tag] = json.loads(ev(
             "JSON.stringify({chips: _poolFloat.visible, props: _tools.isOpen('props'),"
             " layers: _layersPanel.visible, palette: _palette.opened,"
-            " order: _tools.order()})"
+            " order: _tools.order('bottom')})"
         ))
 
     def step(code: str, tag: str, wait: int = 250) -> None:
@@ -105,7 +105,7 @@ def main() -> None:
 
     def places() -> dict:
         return json.loads(ev(
-            "(function(){ var o = {}; var ids = _tools.order();"
+            "(function(){ var o = {}; var ids = _tools.order('bottom');"
             " for (var i = 0; i < ids.length; i++) o[ids[i]] = _tools.placeOf(ids[i]);"
             " return JSON.stringify(o) })()"
         ))
@@ -118,7 +118,7 @@ def main() -> None:
     QtTest.QTest.qWait(200)
     out["chips-onto-palette"] = places()
     out["widths"] = json.loads(ev(
-        "(function(){ var o = {}; var ids = _tools.order();"
+        "(function(){ var o = {}; var ids = _tools.order('bottom');"
         " for (var i = 0; i < ids.length; i++) { var b = _bottomRow._button(ids[i]);"
         " o[ids[i]] = b.width } return JSON.stringify(o) })()"
     ))

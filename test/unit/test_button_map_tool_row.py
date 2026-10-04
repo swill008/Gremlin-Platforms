@@ -101,7 +101,9 @@ def test_status_line_and_docked_pool(run: dict) -> None:
 
 def test_the_row_is_saved(run: dict) -> None:
     saved = run["saved"]
-    assert saved["order"] == ["palette", "chips", "props", "layers", "printArea"]
+    # Options is on the top row (saved in the same order).
+    order = [t for t in saved["order"] if t != "options"]
+    assert order == ["palette", "chips", "props", "layers", "printArea"]
     assert saved["items"]["chips"]["pinned"] is True
     assert saved["items"]["palette"]["locked"] is True
     assert saved["items"]["props"]["pinned"] is True
@@ -110,7 +112,8 @@ def test_the_row_is_saved(run: dict) -> None:
 def test_the_top_row_is_always_there(run: dict) -> None:
     assert run["top-row"]["visible"] is True
     assert run["top-row"]["height"] >= 24
-    assert run["top-row"]["tools"] == 0
+    # Options starts there; the rest on the bottom row.
+    assert run["top-row"]["tools"] == 1
     # 10 px between the map and each row.
     assert all(abs(g - run["dp10"]) <= 1 for g in run["gaps"]), run["gaps"]
 
@@ -118,7 +121,7 @@ def test_the_top_row_is_always_there(run: dict) -> None:
 def test_a_button_moves_to_the_top_row_with_its_panel(run: dict) -> None:
     side, dock, top, bottom = run["chips-up"]
     assert (side, dock) == ("top", "top")
-    assert top == ["chips"] and "chips" not in bottom
+    assert sorted(top) == ["chips", "options"] and "chips" not in bottom
     # The pool docks under the top row.
     assert 0 <= run["pool-at-top"] <= 12
 
@@ -134,7 +137,8 @@ def test_rows_and_docks_are_kept_and_reset(run: dict) -> None:
     assert run["kept"] == ["top", "bottom"]
     items = run["saved-top"]["items"]["chips"]
     assert (items["side"], items["dock"]) == ("top", "bottom")
-    assert run["reset-rows"] == [0, "bottom"]
+    # Each back on the row it starts on: Options on the top one.
+    assert run["reset-rows"] == [1, "bottom"]
 
 
 def test_the_view_zooms_out_to_half(run: dict) -> None:

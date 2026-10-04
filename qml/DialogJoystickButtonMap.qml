@@ -1533,11 +1533,6 @@ ApplicationWindow {
         }
     }
 
-    // The Button Map's own options window (not part of the main Options).
-    function openEditorOptions() {
-        Helpers.createComponent("DialogButtonMapOptions.qml")
-    }
-
     function applyGridToEditor() {
         if (!faceLive)
             return
@@ -2494,7 +2489,7 @@ ApplicationWindow {
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
                     text: "Button Map Options…"
-                    onTriggered: _buttonMap.openEditorOptions()
+                    onTriggered: _tools.setOpen("options", true)
                 }
             }
             ThemedMenu {
@@ -2952,6 +2947,79 @@ ApplicationWindow {
                     property var item: null
                 }
 
+                // Button Map Options as a pane (the Options tool, or Edit >
+                // Button Map Options...): docked along the top or the bottom,
+                // next to the row with its button (it follows the button to
+                // the other row), nearest the edge when the pool is there too.
+                // Unlocked: drag it by its border to the other edge (it snaps
+                // there). As tall as its group needs.
+                Item {
+                    id: _optionsFloat
+                    objectName: "optionsPane"
+                    readonly property bool atTop: { _tools.rev; return _tools.dockOf("options") === "top" }
+                    property real dragDy: 0
+                    visible: _tools.isOpen("options")
+                    z: 32
+                    x: Style.dp(8)
+                    width: parent.width - Style.dp(16)
+                    height: Math.min(_optionsPanel.wanted + Style.dp(10), parent.height * 0.6)
+                    y: (atTop ? Style.dp(8) : parent.height - height - Style.dp(8)) + dragDy
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Style.dp(10)
+                        color: Qt.rgba(Style.bgRaised.r, Style.bgRaised.g, Style.bgRaised.b, 0.96)
+                        border.color: Style.lineStrong
+                        border.width: 1
+                    }
+                    // Its border: takes the clicks (not the map's), and drags
+                    // the pane to the other edge (unlocked).
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.AllButtons
+                        hoverEnabled: true
+                        readonly property bool canMove: !_tools.isLocked("options")
+                        cursorShape: !canMove ? Qt.ArrowCursor
+                                     : (pressed && moved ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+                        property real startY: 0
+                        property bool moved: false
+                        onPressed: (m) => {
+                            m.accepted = true
+                            startY = mapToItem(_optionsFloat.parent, m.x, m.y).y
+                            moved = false
+                        }
+                        onPositionChanged: (m) => {
+                            if (!pressed || !canMove || m.buttons !== Qt.LeftButton)
+                                return
+                            var dy = mapToItem(_optionsFloat.parent, m.x, m.y).y - startY
+                            if (Math.abs(dy) > Style.dp(6))
+                                moved = true
+                            if (moved)
+                                _optionsFloat.dragDy = dy
+                        }
+                        onReleased: {
+                            if (!moved)
+                                return
+                            var middle = _optionsFloat.y + _optionsFloat.height / 2
+                            _optionsFloat.dragDy = 0
+                            moved = false
+                            _tools.setDock("options", middle < _optionsFloat.parent.height / 2 ? "top" : "bottom")
+                        }
+                        onCanceled: {
+                            _optionsFloat.dragDy = 0
+                            moved = false
+                        }
+                        onWheel: (w) => { w.accepted = true }
+                    }
+                    RigOptionsPanel {
+                        id: _optionsPanel
+                        anchors.fill: parent
+                        anchors.margins: Style.dp(5)
+                        opts: _opts
+                        onColorRequested: (key, hex, anchor) => _buttonMap.openColorField("printAreaColor", hex, anchor)
+                    }
+                }
+
                 // The chips not on the map: docked along the top or the
                 // bottom, next to the row with its Chips button (it follows
                 // the button to the other row). Unlocked: drag it to the
@@ -2967,8 +3035,11 @@ ApplicationWindow {
                     z: 30
                     x: Style.dp(8)
                     width: parent.width - Style.dp(16)
-                    height: Math.max(Style.dp(90), Math.min(panelH, parent.height - Style.dp(16)))
-                    y: (atTop ? Style.dp(8) : parent.height - height - Style.dp(8)) + dragDy
+                    // The Options pane on the same edge comes first.
+                    readonly property real paneRoom: (_optionsFloat.visible && _optionsFloat.atTop === atTop)
+                                                     ? _optionsFloat.height + Style.dp(8) : 0
+                    height: Math.max(Style.dp(90), Math.min(panelH, parent.height - Style.dp(16) - paneRoom))
+                    y: (atTop ? Style.dp(8) + paneRoom : parent.height - height - Style.dp(8) - paneRoom) + dragDy
 
                     component PoolGrip: MouseArea {
                         required property string edge
@@ -3253,15 +3324,25 @@ ApplicationWindow {
                     z: 31
                     width: _buttonMap.layersW
                     x: parent.width - width - Style.dp(12)
-                    // Clear of the pool: below it when it is docked at the
-                    // top, above it at the bottom. (Of the parent's height:
-                    // the panel's own would loop.)
-                    y: (_poolFloat.visible && _poolFloat.atTop)
-                       ? _poolFloat.y + _poolFloat.height + Style.dp(8) : Style.dp(12)
+                    // Clear of the pool and the Options pane: below those
+                    // docked at the top, above those at the bottom. (Of the
+                    // parent's height: the panel's own would loop.)
+                    y: {
+                        var top = Style.dp(12)
+                        var docked = [_poolFloat, _optionsFloat]
+                        for (var i = 0; i < docked.length; i++) {
+                            if (docked[i].visible && docked[i].atTop)
+                                top = Math.max(top, docked[i].y + docked[i].height + Style.dp(8))
+                        }
+                        return top
+                    }
                     height: {
                         var bottom = parent.height - Style.dp(12)
-                        if (_poolFloat.visible && !_poolFloat.atTop)
-                            bottom = Math.min(bottom, _poolFloat.y - Style.dp(8))
+                        var docked = [_poolFloat, _optionsFloat]
+                        for (var i = 0; i < docked.length; i++) {
+                            if (docked[i].visible && !docked[i].atTop)
+                                bottom = Math.min(bottom, docked[i].y - Style.dp(8))
+                        }
                         return Math.max(Style.dp(120), bottom - y)
                     }
                     onCloseRequested: _tools.setOpen("layers", false)
@@ -3341,11 +3422,15 @@ ApplicationWindow {
                 { id: "layers", label: "Layers", tip: "Every item, with an eye and a lock, top of the stack first" },
                 { id: "palette", label: "Command Palette", tip: "Every command, by name (Ctrl+K)" },
                 { id: "printArea", label: "Print Area",
-                  tip: "The part of the page every export and print takes: Alt+drag on the map to set it" }
+                  tip: "The part of the page every export and print takes: Alt+drag on the map to set it" },
+                { id: "options", label: "Options",
+                  tip: "The Button Map's settings (also Edit → Button Map Options…)" }
             ]
             // Chips (so a new user sees the pool) and Properties (as before)
             // start open and pinned; the others start hidden.
-            defaults: ({ chips: { open: true, pinned: true }, props: { open: true, pinned: true } })
+            // Options starts on the top row, hidden.
+            defaults: ({ chips: { open: true, pinned: true }, props: { open: true, pinned: true },
+                         options: { side: "top" } })
             // Only while editing: the pool, Properties, Layers, and the print
             // area's frame on the map.
             usable: ({ chips: _buttonMap.editing, props: _buttonMap.editing, layers: _buttonMap.editing,

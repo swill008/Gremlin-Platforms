@@ -197,6 +197,19 @@ _GROUP_TITLES = {
     "colours": "colors",
 }
 
+
+def entry_title(name: str) -> str:
+    """An option's name as Options shows it ("01-chip-text" -> "Chip text")."""
+    shown = re.sub(r"^[0-9]+-", "", name)
+    if shown in _ENTRY_TITLES:
+        return _ENTRY_TITLES[shown]
+    return re.sub(r"[_-]+", " ", shown).capitalize()
+
+
+def group_title(name: str) -> str:
+    """A group's heading as Options shows it ("colours" -> "Colors")."""
+    return str(_GROUP_TITLES.get(name, name)).capitalize()
+
 # Group order inside a section; others follow by name.
 _GROUP_ORDER = {
     "general": 0, "files": 1, "input-names": 2,
@@ -386,10 +399,7 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
         section, group, name = self._keys[index.row()]
         role_name = bytes(self.roles[role].data()).decode()
         if role_name == "name":
-            shown = re.sub(r"^[0-9]+-", "", name)
-            if shown in _ENTRY_TITLES:
-                return _ENTRY_TITLES[shown]
-            return re.sub(r"[_-]+", " ", shown).capitalize()
+            return entry_title(name)
         value = None
         # A custom widget wins over a stored value of the same name.
         if name in self._option.entries(section, group):

@@ -32,7 +32,9 @@ Item {
     property string name: ""
     // [{ id, label, tip }] in their first order.
     property var tools: []
-    // Starting state for a tool never used: { id: { open, pinned, locked } }.
+    // Starting state for a tool never used: { id: { open, pinned, locked,
+    // side } } (side: the row it starts on, "bottom" unless said; its panel
+    // docks there too).
     property var defaults: ({})
     // Tools that can't be used now (e.g. only while editing): id -> false.
     property var usable: ({})
@@ -69,7 +71,8 @@ Item {
         var s = _state[id]
         if (!s) {
             var d = defaults[id] || {}
-            s = { open: !!d.open, pinned: !!d.pinned, locked: !!d.locked, side: "bottom", dock: "bottom" }
+            var home = _side(d.side)
+            s = { open: !!d.open, pinned: !!d.pinned, locked: !!d.locked, side: home, dock: home }
             _state[id] = s
         }
         return s
@@ -95,8 +98,10 @@ Item {
                 s.locked = !!keep.locked
                 // Only a pinned tool reopens in a new session.
                 s.open = !!keep.open && s.pinned
-                s.side = _side(keep.side)
-                s.dock = _side(keep.dock || keep.side)
+                if (keep.side !== undefined) {
+                    s.side = _side(keep.side)
+                    s.dock = _side(keep.dock || keep.side)
+                }
             }
         }
         // The saved order, then any tool it doesn't have yet.
@@ -235,14 +240,16 @@ Item {
         relayout()
     }
 
-    // Back to every button on the bottom row, together and centred, every
-    // panel docked at the bottom (View > Reset Tool Rows).
+    // Back to every button on the row it starts on (the bottom unless its
+    // defaults say), together and centred, its panel docked there (View >
+    // Reset Tool Rows).
     function resetPlaces() {
         _pos = {}
         for (var i = 0; i < tools.length; i++) {
             var s = _entry(tools[i].id)
-            s.side = "bottom"
-            s.dock = "bottom"
+            var home = _side((defaults[tools[i].id] || {}).side)
+            s.side = home
+            s.dock = home
         }
         _save()
         relayout()
