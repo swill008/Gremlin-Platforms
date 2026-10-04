@@ -384,7 +384,8 @@ ApplicationWindow {
                             : [
                                 { text: "System", value: "system" },
                                 { text: "Scripts", value: "user" },
-                                { text: "Events", value: "event" }
+                                { text: "Events", value: "event" },
+                                { text: "Qt", value: "qt" }
                             ]
                         onModelChanged: currentIndex = indexOfValue(_debug.file)
                         onActivated: {

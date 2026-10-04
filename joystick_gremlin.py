@@ -110,6 +110,7 @@ import gremlin.ui.module_model  # noqa: F401
 import gremlin.deferred_write
 import gremlin.threads
 import gremlin.watchdog
+import gremlin.qt_log
 import gremlin.ui.debug_mode
 import gremlin.ui.live_debug  # noqa: F401
 import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
@@ -998,6 +999,11 @@ def main() -> int:
     lock, start = _check_second_copy()
     if not start:
         return 0
+    # Qt's own messages (QML warnings, binding notices) in logs/qt.log too.
+    try:
+        gremlin.qt_log.install(gremlin.util.logs_dir())
+    except Exception:
+        logging.getLogger("system").exception("Could not start qt.log")
     try:
         app = JoystickGremlinApp(sys.argv)
     except Exception as e:

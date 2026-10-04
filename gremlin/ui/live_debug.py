@@ -152,6 +152,9 @@ DEBUG_FILES = {
     "system": "system.log",
     "user": "user.log",
     "event": "event.log",
+    # Qt's own messages (gremlin.qt_log); not in Live, which follows the
+    # program's logging.
+    "qt": "qt.log",
 }
 # Shown levels, lowest first; "All" shows everything.
 DEBUG_LEVELS = ("All", "Info", "Warning", "Error")
