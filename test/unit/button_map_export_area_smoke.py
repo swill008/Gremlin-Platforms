@@ -119,13 +119,17 @@ def main() -> None:
     drag(start, end, Mods.AltModifier)
     out["area"] = json.loads(ev("JSON.stringify(_buttonMap.exportArea)"))
     out["shown"] = [ev("_ed().exportAreaShown"), ev("_tools.isOpen('exportArea')")]
-    # A click on the map leaves it on screen (only its button hides it).
+    # Like every tool: pinned it stays when the map is clicked, unpinned
+    # it hides.
+    ev("_tools.setPinned('exportArea', true)")
     ev("_ed().mapPressed()")
     QtTest.QTest.qWait(200)
-    out["after-map-click"] = ev("_tools.isOpen('exportArea')")
-    ev("_tools.toggle('exportArea')")
-    out["after-button"] = ev("_tools.isOpen('exportArea')")
-    ev("_tools.toggle('exportArea')")
+    out["pinned-after-map-click"] = ev("_tools.isOpen('exportArea')")
+    ev("_tools.setPinned('exportArea', false)")
+    ev("_ed().mapPressed()")
+    QtTest.QTest.qWait(200)
+    out["unpinned-after-map-click"] = ev("_tools.isOpen('exportArea')")
+    ev("_tools.setOpen('exportArea', true)")
     doc = json.loads(hp.module_json_path("pJoy Pro", GUID).read_text(encoding="utf-8"))
     out["saved"] = (doc.get("ui") or {}).get("exportArea")
     out["export"] = export()

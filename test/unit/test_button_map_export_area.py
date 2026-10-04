@@ -10,8 +10,8 @@
 - An export takes only the area (its size follows the area), and the whole
   page again once the area is cleared.
 - The frame's handle resizes it; locked, Alt+drag leaves it as it is.
-- Its frame stays on screen until its button is clicked again (a click on
-  the map leaves it).
+- Its tool follows the tool row's rules: pinned it stays when the map is
+  clicked, unpinned it hides.
 """
 
 from __future__ import annotations
@@ -55,9 +55,9 @@ def test_alt_drag_sets_and_shows_the_area(run: dict) -> None:
     assert run["shown"] == [True, True]
 
 
-def test_it_stays_until_its_button_is_clicked(run: dict) -> None:
-    assert run["after-map-click"] is True
-    assert run["after-button"] is False
+def test_pinned_stays_unpinned_hides(run: dict) -> None:
+    assert run["pinned-after-map-click"] is True
+    assert run["unpinned-after-map-click"] is False
 
 
 def test_the_area_is_saved_with_the_map(run: dict) -> None:

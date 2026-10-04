@@ -3344,8 +3344,7 @@ ApplicationWindow {
                 { id: "props", label: "Properties", tip: "The selected item's place, size, angle and style" },
                 { id: "layers", label: "Layers", tip: "Every item, with an eye and a lock, top of the stack first" },
                 { id: "palette", label: "Command Palette", tip: "Every command, by name (Ctrl+K)" },
-                // Stays on screen until its button is clicked again.
-                { id: "exportArea", label: "Export Area", sticky: true,
+                { id: "exportArea", label: "Export Area",
                   tip: "The part of the page every export and print takes: Alt+drag on the map to set it" }
             ]
             // Properties shows the selection as before (pinned); the others
