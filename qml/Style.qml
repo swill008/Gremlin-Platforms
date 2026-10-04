@@ -89,6 +89,10 @@ Item {
     readonly property color fgDisabled: _scheme.fgDisabled
     // Text on a saturated fill, and on a light swatch, in both modes.
     readonly property color onColor: "#FFFFFF"
+    // A button drawn over a device photo: the same in both themes (the
+    // photos are dark), white text on see-through black.
+    readonly property color photoButton: "#99000000"
+    readonly property color photoButtonHover: "#CC000000"
     readonly property color onLight: "#111111"
     readonly property color clear: "#00000000"
     // Backdrop behind a modal dialog.

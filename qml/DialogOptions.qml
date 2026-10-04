@@ -14,6 +14,8 @@ import "helpers.js" as Helpers
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _options
+
+    EscapeCloses { host: _options }
     // ToolWindowMemory sets the saved or default size when the window opens.
     width: 1200
     height: 700

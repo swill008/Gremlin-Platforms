@@ -15,6 +15,8 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _root
 
+    EscapeCloses { host: _root }
+
     minimumWidth: Style.fitWidth(Style.dp(900), Screen)
     minimumHeight: Style.fitHeight(Style.dp(500), Screen)
 

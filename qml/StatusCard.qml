@@ -77,8 +77,36 @@ Rectangle {
     radius: Style.dp(4)
     clip: true
     color: selected ? Style.bgSelected : Style.bgCard
-    border.width: focused || selected || dropStacking ? Style.dp(2) : Style.dp(1)
-    border.color: dropStacking ? Style.ok : (focused || selected ? Style.fg : Style.line)
+    border.width: activeFocus || focused || selected || dropStacking ? Style.dp(2) : Style.dp(1)
+    border.color: dropStacking ? Style.ok
+        : (activeFocus ? Style.accent : (focused || selected ? Style.fg : Style.line))
+
+    // Keyboard: Tab and the arrow keys move between cards, Enter opens
+    // Configuration as a double-click does, Space picks the card as a click
+    // does. A click never gives a card the keys: a stick button that sends
+    // Return must not open windows.
+    objectName: "statusCard"
+    activeFocusOnTab: true
+    Keys.onReturnPressed: openConfiguration()
+    Keys.onEnterPressed: openConfiguration()
+    Keys.onSpacePressed: cardFocused()
+    Keys.onRightPressed: _focusNextCard(true)
+    Keys.onDownPressed: _focusNextCard(true)
+    Keys.onLeftPressed: _focusNextCard(false)
+    Keys.onUpPressed: _focusNextCard(false)
+
+    function _focusNextCard(forward) {
+        var item = _card
+        for (var i = 0; i < 500; i++) {
+            item = item.nextItemInFocusChain(forward)
+            if (!item || item === _card)
+                return
+            if (item.objectName === "statusCard") {
+                item.forceActiveFocus(forward ? Qt.TabFocusReason : Qt.BacktabFocusReason)
+                return
+            }
+        }
+    }
 
     ColumnLayout {
         id: _body
@@ -287,6 +315,7 @@ Rectangle {
     }
 
     Button {
+        id: _outputButton
         visible: _card.direction === "dest" && !_card.compactView
         z: 32
         anchors.left: parent.left
@@ -297,6 +326,18 @@ Rectangle {
         height: Style.dp(28)
         text: "Output View"
         onClicked: _card.openOutputView()
+        contentItem: Label {
+            text: _outputButton.text
+            color: Style.onColor
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+        background: Rectangle {
+            radius: Style.dp(3)
+            color: _outputButton.hovered || _outputButton.down ? Style.photoButtonHover : Style.photoButton
+            border.width: _outputButton.visualFocus ? Style.dp(2) : 0
+            border.color: Style.onColor
+        }
     }
 
     function _clampW(w) { return Math.max(220, Math.min(720, w)) }

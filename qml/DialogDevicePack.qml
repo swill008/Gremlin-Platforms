@@ -369,6 +369,7 @@ ApplicationWindow {
             currentIndex: _pages.currentIndex
 
             ColumnLayout {
+                id: _exportPage
                 spacing: Style.dp(10)
                 ComboBox {
                     id: _exportDevice
@@ -385,7 +386,11 @@ ApplicationWindow {
                     spacing: Style.dp(28)
                     Rectangle {
                         Layout.fillHeight: true
-                        Layout.preferredWidth: Math.min(_exportRow.height, Style.dp(560))
+                        // From the page, not the row: the row's height follows
+                        // its contents, this width included (a layout loop).
+                        Layout.preferredWidth: Math.max(0, Math.min(
+                            _exportPage.height - _exportDevice.height - _exportPage.spacing,
+                            Style.dp(560)))
                         Layout.maximumWidth: Style.dp(560)
                         color: Style.bgCard
                         border.color: Style.line

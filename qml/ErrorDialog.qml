@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Style
@@ -59,22 +60,39 @@ Popup {
             }
 
             TextArea {
-                Universal.theme: Style.theme
+                id: _details
+                U.Universal.theme: Style.theme
 
                 text: root.detailedText
                 selectByMouse: true
                 font.family: "Consolas"
+                // Long traceback lines wrap instead of running off the side.
+                wrapMode: TextEdit.WrapAnywhere
 
                 readOnly: true
             }
         }
 
-        Button {
+        RowLayout {
             Layout.alignment: Qt.AlignRight
+            spacing: Style.dp(8)
 
-            text: "OK"
+            // For a bug report: the details as text.
+            Button {
+                text: "Copy Details"
+                visible: root.detailedText.length > 0
+                onClicked: () => {
+                    _details.selectAll()
+                    _details.copy()
+                    _details.deselect()
+                }
+            }
 
-            onClicked: () => { root.close() }
+            Button {
+                text: "OK"
+
+                onClicked: () => { root.close() }
+            }
         }
     }
 }

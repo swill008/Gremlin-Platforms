@@ -455,7 +455,7 @@ ApplicationWindow {
         }
 
         // Spacer at the bottom to leave some empty space below the ListView
-        Rectangle {
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: Style.dp(10)
         }

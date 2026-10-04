@@ -10,6 +10,9 @@ import QtQuick.Window
 import Gremlin.Style
 
 ApplicationWindow {
+    id: _about
+
+    EscapeCloses { host: _about }
     font.pixelSize: Style.fontSize
     minimumWidth: Style.fitWidth(Style.dp(500), Screen)
     minimumHeight: Style.fitHeight(Style.dp(300), Screen)

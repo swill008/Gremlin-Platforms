@@ -13,6 +13,8 @@ import "help_topics.js" as HelpTopics
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
+
+    EscapeCloses { host: _win }
     // ToolWindowMemory sets the saved or default size when the window opens.
     width: 920
     height: 640

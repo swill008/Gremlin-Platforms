@@ -13,6 +13,8 @@ import Gremlin.Style
 ApplicationWindow {
     id: _root
 
+    EscapeCloses { host: _root }
+
     font.pixelSize: Style.fontSize
     minimumWidth: Style.fitWidth(Style.dp(520), Screen)
     minimumHeight: Style.fitHeight(Style.dp(230), Screen)
