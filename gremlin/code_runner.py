@@ -343,6 +343,10 @@ class CodeRunner:
             module_bus.reload()
             # Joystick and keyboard events both come through the input
             # modules: only claimed inputs reach the profile.
+            # Noted before connecting: stop() disconnects whenever this is
+            # set, also after a start() that failed later on (they stayed
+            # connected, and the next Run handled every event twice).
+            self._connected = True
             module_bus.event.connect(self.event_handler.process_event)
             module_bus.key_event.connect(self.event_handler.process_event)
             evt_listener.virtual_event.connect(self.event_handler.process_event)
@@ -375,16 +379,17 @@ class CodeRunner:
 
     def stop(self) -> None:
         self._listen_to_mode_changes(False)
-        if self._running:
+        if getattr(self, "_connected", False):
             evt_lst = event_handler.EventListener()
             bus = InputModuleRuntime()
-            for sig in (bus.event, bus.key_event):
+            for sig in (bus.event, bus.key_event, evt_lst.virtual_event):
                 try:
                     sig.disconnect(self.event_handler.process_event)
                 except (TypeError, RuntimeError):
                     pass
-            evt_lst.virtual_event.disconnect(self.event_handler.process_event)
             evt_lst.gremlin_active = False
+            self._connected = False
+        if self._running:
             # The last mode, kept in memory during play, is saved now.
             from gremlin import mode_manager
 

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import (
     TYPE_CHECKING,
     List,
@@ -40,12 +41,24 @@ if TYPE_CHECKING:
 class SplitAxisFunctor(AbstractFunctor):
     def __init__(self, action: SplitAxisData) -> None:
         super().__init__(action)
+        # The half the input was in last time ("lower" / "upper").
+        self._side: str | None = None
 
     @override
     def __call__(
         self, event: Event, value: Value, properties: list[ActionProperty] = []
     ) -> None:
-        if value.current < self.data.split_value:
+        side = "lower" if value.current < self.data.split_value else "upper"
+        if self._side is not None and side != self._side:
+            # Crossing the split: the half being left goes to rest (-1), as it
+            # would with a slow move; with a fast one it kept its last value
+            # (a throttle/brake split stayed partly on).
+            rest = copy.copy(value)
+            rest.current = -1.0
+            for functor in self.functors[self._side]:
+                functor(event, rest, properties)
+        self._side = side
+        if side == "lower":
             value.current = -util.linear_axis_value_interpolation(
                 value.current, -1.0, self.data.split_value
             )

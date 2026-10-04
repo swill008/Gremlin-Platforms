@@ -171,7 +171,7 @@ class TempoFunctor(AbstractFunctor):
     def _start_timer(self, *args: Any) -> None:  # noqa: ANN401
         if self.timer:
             self.timer.cancel()
-        self.timer = threads.timer(
+        self.timer = threads.main_timer(
             "tempo", self.data.threshold, self._timeout
         )
 

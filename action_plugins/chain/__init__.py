@@ -47,6 +47,8 @@ class ChainFunctor(AbstractFunctor["ChainData"]):
 
         self.current_index = 0
         self.last_execution = 0.0
+        # The step the current press went to: its release goes there too.
+        self._pressed_index: int | None = None
 
     @override
     def __call__(
@@ -58,19 +60,29 @@ class ChainFunctor(AbstractFunctor["ChainData"]):
         # Every sequence removed: nothing to run (it used to raise KeyError).
         if not self.data.chain_sequences:
             return
-        if self.data.timeout > 0.0:
-            if self.last_execution + self.data.timeout < time.time():
-                self.current_index = 0
-            self.last_execution = time.time()
+        count = len(self.data.chain_sequences)
+        pressed = getattr(self, "_pressed_index", None)
+        if value.current:
+            # The timeout is checked on a press only: checked on a release
+            # too, a step held past it was reset to step 0 before its release
+            # was sent, and stayed down.
+            if self.data.timeout > 0.0:
+                if self.last_execution + self.data.timeout < time.time():
+                    self.current_index = 0
+                self.last_execution = time.time()
+            self.current_index %= count
+            index = self._pressed_index = self.current_index
+        else:
+            if self.data.timeout > 0.0:
+                self.last_execution = time.time()
+            index = pressed if pressed is not None else self.current_index % count
 
-        self.current_index %= len(self.data.chain_sequences)
-        for functor in self.functors.get(str(self.current_index), []):
+        for functor in self.functors.get(str(index), []):
             functor(event, value, properties)
 
         if not value.current:
-            self.current_index = (self.current_index + 1) % len(
-                self.data.chain_sequences
-            )
+            self.current_index = (index + 1) % count
+            self._pressed_index = None
 
 
 class ChainModel(ActionModel):

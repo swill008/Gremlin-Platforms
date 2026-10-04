@@ -79,6 +79,9 @@ class MacroManager(metaclass=SingletonMetaclass):
         """Starts the scheduler."""
         self._scheduled_macro = {}
         self._executing_macro = {}
+        # Macros queued before the last Stop don't run now.
+        with self._queued_macros_lock:
+            self._queued_macros = []
         self._is_executing_preemptive = False
         self._is_executing_exclusive = False
         self._is_running = True
@@ -97,6 +100,8 @@ class MacroManager(metaclass=SingletonMetaclass):
     def stop(self) -> None:
         """Stops the scheduler."""
         self._is_running = False
+        with self._queued_macros_lock:
+            self._queued_macros = []
         if (
             self._run_scheduler_thread is not None
             and self._run_scheduler_thread.is_alive()
@@ -148,26 +153,24 @@ class MacroManager(metaclass=SingletonMetaclass):
             with self._queued_macros_lock:
                 entries_to_remove = []
                 has_exclusive = False
-                for entry in self._queued_macros:
+                # A copy: entries are removed from the queue along the way.
+                for entry in list(self._queued_macros):
+                    if entry not in self._queued_macros:
+                        continue  # removed by a stop request above
                     # Terminate macro if needed.
                     if entry.state is False:
-                        if (
-                            entry.macro.id in self._executing_macro
-                            and self._executing_macro[entry.macro.id]
-                        ):
-                            # Terminate currently running macro.
-                            with self._executing_macro_lock:
+                        # The running one stops (its flag is set when it is
+                        # dispatched, so a release that came first finds it).
+                        with self._executing_macro_lock:
+                            if self._executing_macro.get(entry.macro.id):
                                 self._executing_macro[entry.macro.id] = False
-
-                            # Remove all queued up macros with the same id as they
-                            # should have been impossible to queue up in the first
-                            # place.
-                            removal_list = []
-                            for queue_entry in self._queued_macros:
-                                if queue_entry.macro.id == entry.macro.id:
-                                    removal_list.append(queue_entry)
-                            for queue_entry in removal_list:
-                                self._queued_macros.remove(queue_entry)
+                        # Queued ones with the same id go, and so does this
+                        # request (it used to stay, and a Hold macro released
+                        # before it started kept running).
+                        self._queued_macros = [
+                            queue_entry for queue_entry in self._queued_macros
+                            if queue_entry.macro.id != entry.macro.id
+                        ]
                     # Don't run a queued macro if the same instance is already running.
                     elif entry.macro.id in self._scheduled_macro:
                         continue
@@ -207,6 +210,11 @@ class MacroManager(metaclass=SingletonMetaclass):
         """
         if macro.id not in self._scheduled_macro:
             self._scheduled_macro[macro.id] = macro
+            if macro.repeat is not None:
+                # Set here, not in the thread: a release that comes before the
+                # thread starts must find it running.
+                with self._executing_macro_lock:
+                    self._executing_macro[macro.id] = True
             threads.start(
                 "macro",
                 self._execute_macro,
@@ -256,9 +264,6 @@ class MacroManager(metaclass=SingletonMetaclass):
         if macro.repeat is not None:
             delay = macro.repeat.delay
 
-            with self._executing_macro_lock:
-                self._executing_macro[macro.id] = True
-
             # Handle count repeat mode
             if isinstance(macro.repeat, CountRepeat):
                 count = 0
@@ -271,7 +276,12 @@ class MacroManager(metaclass=SingletonMetaclass):
 
             # Handle continuous repeat modes
             elif type(macro.repeat) in [HoldRepeat, ToggleRepeat]:
-                while self._executing_macro.get(macro.id, False):
+                # The first round runs even if a release already came (a tap
+                # released before the run started ran once before, too); after
+                # that, as before, each round checks first.
+                first = True
+                while first or self._executing_macro.get(macro.id, False):
+                    first = False
                     for action in macro.sequence:
                         self._wait_while_paused(macro)
                         action()

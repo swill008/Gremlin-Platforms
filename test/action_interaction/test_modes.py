@@ -94,3 +94,20 @@ def test_temporary_tricky(jgbot: JoystickGremlinBot, profile_dir: Path) -> None:
     assert jgbot.current_mode() == "Parent"
     jgbot.release_button(inout.IN_BUTTON_3)
     assert jgbot.current_mode() == "Default"
+
+
+def test_switching_to_a_mode_the_profile_does_not_have_is_ignored(
+    jgbot: JoystickGremlinBot, profile_dir: Path
+) -> None:
+    # ACT2: a Change Mode naming a deleted mode moved the profile into it,
+    # and every input stopped doing anything until Stop/Run.
+    from gremlin.mode_manager import Mode, ModeManager
+
+    jgbot.load_profile(profile_dir / "modes.xml")
+    jgbot.tap_button(inout.IN_BUTTON_1)
+    assert jgbot.current_mode() == "Parent"
+    ModeManager().switch_to(Mode("A deleted mode", "Parent"))
+    assert jgbot.current_mode() == "Parent"
+    jgbot.tap_button(inout.IN_BUTTON_3)  # inputs still work: Cycle moves on
+    assert jgbot.current_mode() == "Child 1"
+

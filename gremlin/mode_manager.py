@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from PySide6 import QtCore
@@ -72,14 +73,27 @@ class ModeSequence:
         self.modes = modes
         self._current_index = -1
 
-    def next(self) -> str:
+    def next(self, current: str | None = None) -> str:
         """Returns the next mode in the sequence.
+
+        Args:
+            current: the mode now active: the result is the one after it (the
+                first when it isn't in the sequence). Without it, the
+                sequence's own counter is used.
 
         Returns:
             Next mode in the sequence, wrapping around at the end.
         """
-        # next_index = self._current_index % len(self.modes)
-        self._current_index = (self._current_index + 1) % len(self.modes)
+        if current is not None:
+            # From the current mode: the first press goes somewhere, and copies
+            # of the same Cycle action in different modes stay in step (each
+            # had its own counter).
+            if current in self.modes:
+                self._current_index = (self.modes.index(current) + 1) % len(self.modes)
+            else:
+                self._current_index = 0
+        else:
+            self._current_index = (self._current_index + 1) % len(self.modes)
         return self.modes[self._current_index]
 
 
@@ -234,7 +248,9 @@ class ModeManager(QtCore.QObject):
     def cycle(self, sequence: ModeSequence) -> None:
         if not sequence.modes:  # nothing to cycle through
             return
-        self.switch_to(Mode(sequence.next(), self.current.name))
+        self.switch_to(
+            Mode(sequence.next(self.current.name), self.current.name)
+        )
 
     def previous(self) -> None:
         if len(self._mode_stack) < 2:
@@ -256,6 +272,24 @@ class ModeManager(QtCore.QObject):
         self._update_mode()
 
     def switch_to(self, mode: Mode) -> None:
+        # A mode the profile no longer has (deleted after an action named
+        # it): switching to it left every input with nothing to do. The
+        # running profile's modes; with none running, the open profile's.
+        from gremlin.event_handler import EventHandler
+
+        known = set(getattr(EventHandler(), "known_modes", set()))
+        if not known and shared_state.current_profile is not None:
+            known = set(shared_state.current_profile.modes.mode_names())
+        if known and mode.name not in known:
+            from gremlin.log_once import log_once
+
+            log_once(
+                "system",
+                ("unknown mode", mode.name),
+                logging.WARNING,
+                f"Mode '{mode.name}' is not in the profile: the mode was not changed.",
+            )
+            return
         # Detect cycle in the mode stack and resolve it
         if self._exists(mode):
             resolution_mode = Configuration().value(

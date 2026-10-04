@@ -559,8 +559,9 @@ class Backend(QtCore.QObject):
         new_profile = profile.Profile()
         profile_was_converted = new_profile.from_xml(Path(fpath))
         profile_folder = os.path.dirname(fpath)
+        # Added once, in front; the rest keeps its order (it was made a set,
+        # so a script folder's module could hide a library one at random).
         if profile_folder not in sys.path:
-            sys.path = list(set(sys.path))
             sys.path.insert(0, profile_folder)
         self.profile = new_profile
         persist_log(f"Persist profile load path={fpath}")

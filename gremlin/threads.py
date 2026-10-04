@@ -90,6 +90,42 @@ def timer(
     return t
 
 
+class MainTimer:
+    """A one-shot timer whose function runs on the main thread (the Qt event
+    loop), with the same cancel() / is_alive() as threading.Timer."""
+
+    def __init__(
+        self, name: str, seconds: float, function: Callable[..., Any], args: tuple
+    ) -> None:
+        from PySide6 import QtCore
+
+        self.name = PREFIX + name
+        self._timer = QtCore.QTimer()
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(lambda: function(*args))
+        self._timer.start(max(0, round(seconds * 1000)))
+
+    def cancel(self) -> None:
+        self._timer.stop()
+
+    def is_alive(self) -> bool:
+        return self._timer.isActive()
+
+
+def main_timer(
+    name: str, seconds: float, function: Callable[..., Any], *args: object
+) -> MainTimer | threading.Timer:
+    """Calls function(*args) on the main thread after seconds.
+
+    For actions: what they run (other actions, a mode change) then runs on the
+    main thread like every other action, not on a timer thread. Made from
+    another thread (no event loop there to run it), it falls back to timer().
+    """
+    if threading.current_thread() is not threading.main_thread():
+        return timer(name, seconds, function, *args)
+    return MainTimer(name, seconds, function, args)
+
+
 def running() -> list[str]:
     """The names of the program's threads that are still running."""
     with _LOCK:

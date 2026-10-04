@@ -137,10 +137,22 @@ class TestModeHierarchy:
         assert len(p.inputs[uuid.UUID("684e9af0-03c4-11ef-8005-444553540000")]) == 2
 
 
+
+def _profile_with_modes(names: str) -> Profile:
+    """The open profile, with these modes (a switch to a mode the profile
+    doesn't have is ignored)."""
+    import gremlin.event_handler
+
+    p = Profile()
+    for name in names:
+        p.modes.add_mode(name)
+    gremlin.shared_state.current_profile = p
+    gremlin.event_handler.EventHandler().known_modes = set()  # none running
+    return p
+
 class TestModeManager:
     def test_cycling(self) -> None:
-        p = Profile()
-        gremlin.shared_state.current_profile = p
+        _profile_with_modes("ABCDE")
 
         mm = ModeManager()
         cfg = Configuration()
@@ -173,8 +185,7 @@ class TestModeManager:
         assert ml[2].name == "B"
 
     def test_temporaries(self) -> None:
-        p = Profile()
-        gremlin.shared_state.current_profile = p
+        _profile_with_modes("ABCDE")
 
         mm = ModeManager()
 

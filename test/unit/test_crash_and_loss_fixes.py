@@ -48,6 +48,7 @@ def test_split_axis_at_the_end_handles_full_deflection(split: float) -> None:
 
     functor = object.__new__(SplitAxisFunctor)
     functor.data = SimpleNamespace(split_value=split)
+    functor._side = None
     seen = []
     functor.functors = {
         "lower": [lambda e, v, p: seen.append(("lower", v.current))],
@@ -55,7 +56,8 @@ def test_split_axis_at_the_end_handles_full_deflection(split: float) -> None:
     }
     for value in (-1.0, 0.0, 1.0):
         functor(None, SimpleNamespace(current=value), [])
-    assert len(seen) == 3 and all(-1.0 <= v <= 1.0 for _, v in seen)
+    # (crossing the split also puts the half it leaves at rest: ACT4)
+    assert seen and all(-1.0 <= v <= 1.0 for _, v in seen)
 
 
 # ACT7, ACT8, ACT9 ---------------------------------------------------------------

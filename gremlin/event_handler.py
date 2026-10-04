@@ -528,6 +528,7 @@ class EventHandler(QtCore.QObject):
         self.plugins = {}
         self.callbacks = {}
         self._event_lookup = {}
+        self.known_modes: set[str] = set()
 
     def add_plugin(self, plugin: Any) -> None:  # noqa: ANN401
         """Adds a new plugin to be attached to event callbacks.
@@ -591,6 +592,8 @@ class EventHandler(QtCore.QObject):
         Args:
             modes: information about the mode hierarchy
         """
+        # The running profile's modes (a mode change to any other is ignored).
+        self.known_modes = {mode.value for mode in mode_list}
         for mode in mode_list:
             # Each device is treated separately
             for device_guid in self.callbacks:
@@ -626,6 +629,7 @@ class EventHandler(QtCore.QObject):
     def clear(self) -> None:
         """Removes all attached callbacks."""
         self.callbacks = {}
+        self.known_modes = set()
 
     @QtCore.Slot(Event)
     def process_event(self, event: Event) -> None:
@@ -675,7 +679,9 @@ class EventHandler(QtCore.QObject):
 
         # Filter events when the system is paused
         if not self.process_callbacks:
-            return [c for c in callback_list if c.always_execute]
+            # A user-script callback is a plain function, without always_execute:
+            # reading it raised, so nothing ran while paused, not even Resume.
+            return [c for c in callback_list if getattr(c, "always_execute", False)]
         else:
             return callback_list
 
