@@ -1826,7 +1826,8 @@ def scenario_rulers(s: Session) -> None:
         # Most of each ruler's strip is its background (marks are thin).
         across = range(30, shot.width(), 9)
         top = [shot.pixelColor(x, 2).name() == card for x in across]
-        left = [shot.pixelColor(2, y).name() == card for y in range(30, shot.height(), 9)]
+        down = range(30, shot.height(), 9)
+        left = [shot.pixelColor(2, y).name() == card for y in down]
         shown[str(zoom)] = sum(top) > len(top) / 2 and sum(left) > len(left) / 2
     s.record("zoomed", image=True)
     s.steps[-1]["state"]["rulersShownZoomed"] = shown
