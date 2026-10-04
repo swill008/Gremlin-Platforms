@@ -85,7 +85,6 @@ Item {
             onLoaded: {
                 item.width = Qt.binding(() => _deviceLoader.width)
                 item.model = Qt.binding(() => _vjoy ? _vjoy.vjoyDevices : [])
-                item.popup.contentItem.showScrollBar = false
             }
         }
 
