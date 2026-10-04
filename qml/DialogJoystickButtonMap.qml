@@ -1611,12 +1611,30 @@ ApplicationWindow {
             _tools.layoutRev
             return opened ? _tools.tabRect("palette", _buttonMap.contentItem) : null
         }
-        readonly property bool atTop: { _tools.rev; return _tools.sideOf("palette") === "top" }
+        readonly property string side: { _tools.rev; return _tools.sideOf("palette") }
         modal: false
-        x: tab ? Math.max(Style.dp(8), Math.min(tab.x, (parent ? parent.width : 0) - width - Style.dp(8)))
-               : (parent ? Math.round((parent.width - width) / 2) : 0)
-        y: tab ? (atTop ? tab.y + tab.h : tab.y - height)
-               : (parent ? Math.round(parent.height * 0.12) : 0)
+        // On the map side of its tab: under a top-row tab, over a bottom-row
+        // one, beside a side-row one; kept in the window.
+        x: {
+            var w = parent ? parent.width : 0
+            if (!tab)
+                return Math.round((w - width) / 2)
+            if (side === "left")
+                return tab.x + tab.w
+            if (side === "right")
+                return tab.x - width
+            return Math.max(Style.dp(8), Math.min(tab.x, w - width - Style.dp(8)))
+        }
+        y: {
+            var h = parent ? parent.height : 0
+            if (!tab)
+                return Math.round(h * 0.12)
+            if (side === "top")
+                return tab.y + tab.h
+            if (side === "bottom")
+                return tab.y - height
+            return Math.max(Style.dp(8), Math.min(tab.y, h - height - Style.dp(8)))
+        }
         Component.onCompleted: _tools.setPaneColor("palette", Style.menuBg)
         beforeOpen: function() {
             Commands.removeOwner("buttonmap")
@@ -2762,15 +2780,25 @@ ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            // Room between the map (its rulers) and each tool row.
-            Layout.topMargin: Style.dp(10)
-            Layout.bottomMargin: Style.dp(10)
             spacing: 0
+
+            // The left tool row (always shown, between the top and bottom
+            // rows): tools dragged there, and tools to come.
+            ToolRow {
+                id: _leftRow
+                objectName: "toolRowLeft"
+                Layout.fillHeight: true
+                Layout.preferredWidth: implicitWidth
+                dock: _tools
+                side: "left"
+            }
 
             Item {
                 id: _mapHost
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                // Room between the map (its rulers) and each tool row.
+                Layout.margins: Style.dp(10)
 
                 JGText {
                     anchors.centerIn: parent
@@ -3255,6 +3283,15 @@ ApplicationWindow {
                 }
             }
 
+            // The right tool row.
+            ToolRow {
+                id: _rightRow
+                objectName: "toolRowRight"
+                Layout.fillHeight: true
+                Layout.preferredWidth: implicitWidth
+                dock: _tools
+                side: "right"
+            }
         }
 
         // The tool row: Chips, Properties, Layers and Command Palette, centred.

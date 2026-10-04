@@ -224,6 +224,45 @@ def main() -> None:
         ev(f"{face}.zoomAt(NaN, NaN, 0.8)")
     QtTest.QTest.qWait(100)
     out["out-most"] = ev(f"Math.round({face}.viewPct * 100)")
+
+    # --- the side rows ---------------------------------------------------------
+    left = scene_rect("_leftRow")
+    right = scene_rect("_rightRow")
+    host = scene_rect("_mapHost")
+    out["side-rows"] = {
+        "visible": [ev("_leftRow.visible"), ev("_rightRow.visible")],
+        "width": [round(left["w"]), round(right["w"])],
+        "gaps": [round(host["x"] - (left["x"] + left["w"])),
+                 round(right["x"] - (host["x"] + host["w"]))],
+        # Between the top and bottom rows.
+        "between": [round(left["y"] - (top["y"] + top["h"])),
+                    round(bottom["y"] - (left["y"] + left["h"]))],
+    }
+    # Layers dragged from the bottom row onto the left one, by its name.
+    ev("_tools.setOpen('layers', false)")
+    QtTest.QTest.qWait(100)
+    button = scene_rect("_bottomRow._button('layers')")
+    grab = QtCore.QPointF(button["x"] + 10, middle(button).y())
+    drag(grab, QtCore.QPointF(middle(left).x(), left["y"] + left["h"] * 0.3))
+    out["layers-left"] = [ev("_tools.sideOf('layers')"), ev("_tools.order('left')")]
+    tab = scene_rect("_leftRow._button('layers')")
+    out["tab-upright"] = tab["h"] > tab["w"]
+    ev("_tools.setOpen('layers', true)")
+    QtTest.QTest.qWait(300)
+    pane = scene_rect("_layersPane")
+    # Beside its tab, reaching the row, the tab within its height.
+    out["layers-pane"] = {
+        "joined": round(pane["x"] - (left["x"] + left["w"])),
+        "beside-tab": (pane["y"] <= tab["y"] + 0.5
+                       and tab["y"] + tab["h"] <= pane["y"] + pane["h"] + 0.5),
+    }
+    # Its edge facing the map (the right one) makes it wider.
+    edge = QtCore.QPointF(pane["x"] + pane["w"] - 2, pane["y"] + pane["h"] / 3)
+    drag(edge, edge + QtCore.QPointF(40, 0))
+    out["layers-wider"] = round(scene_rect("_layersPane")["w"] - pane["w"])
+    ev("_tools.resetPlaces()")
+    QtTest.QTest.qWait(300)
+    out["layers-reset"] = ev("_tools.sideOf('layers')")
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)
 

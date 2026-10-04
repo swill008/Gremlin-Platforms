@@ -86,7 +86,10 @@ Item {
         return s
     }
 
-    function _side(v) { return v === "top" ? "top" : "bottom" }
+    // The rows: "top", "bottom", "left", "right" (anything else: bottom).
+    function _side(v) {
+        return (v === "top" || v === "left" || v === "right") ? v : "bottom"
+    }
 
     function _load() {
         var saved = {}
@@ -379,8 +382,12 @@ Item {
             var row = rows[side]
             if (!row || !row.visible)
                 continue
+            // Along the row exactly; across it, a little either side.
             var p = row.mapFromItem(null, sceneX, sceneY)
-            if (p.x >= 0 && p.x <= row.width && p.y >= -reach && p.y <= row.height + reach)
+            var along = row.vertical ? (p.y >= 0 && p.y <= row.height) : (p.x >= 0 && p.x <= row.width)
+            var across = row.vertical ? (p.x >= -reach && p.x <= row.width + reach)
+                                      : (p.y >= -reach && p.y <= row.height + reach)
+            if (along && across)
                 return side
         }
         return ""

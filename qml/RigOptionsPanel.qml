@@ -131,7 +131,7 @@ Item {
                         }
                         // The description, on hover.
                         Label {
-                            text: ""
+                            text: "\uF431"
                             font.family: Style.iconFont
                             font.pixelSize: Style.dp(12)
                             color: _info.containsMouse ? Style.fg : Style.fgMuted

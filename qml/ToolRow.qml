@@ -5,13 +5,15 @@ import QtQuick
 import QtQuick.Controls
 import Gremlin.Style
 
-// One of a window's tool rows ("top", under the menus, or "bottom"): the
-// tabs of the tools on it. An open tool's tab takes its panel's color and
-// has no line on the side facing the map, where its panel (ToolPane) joins
-// it; a closed one is an outline. What each tool does, and where its button
-// sits, is the ToolDock's (`dock`); see there for the rules. A button can be
-// dragged along the row or onto the other row (unlocked); the row it would
-// land on lights up.
+// One of a window's tool rows: "top" (under the menus), "bottom", or a side
+// row, "left" or "right" (between the top and bottom rows; its tabs read up
+// the left one and down the right one). It holds the tabs of the tools on
+// it. An open tool's tab takes its panel's color and has no line on the side
+// facing the map, where its panel (ToolPane) joins it; a closed one is an
+// outline. What each tool does, and where its tab sits, is the ToolDock's
+// (`dock`); see there for the rules. A tab can be dragged along its row or
+// onto another row (unlocked); the row it would land on lights up. Places
+// along a row are kept as shares of its length.
 //
 //   ToolRow { dock: _tools; side: "top" }
 Item {
@@ -19,13 +21,17 @@ Item {
 
     property var dock: null
     property string side: "bottom"
+    readonly property bool vertical: side === "left" || side === "right"
     readonly property real gap: Style.dp(6)
     readonly property real grid: Style.dp(8)
-    // A button is being dragged here from the other row, or along this one.
+    // A tab is being dragged here from another row, or along this one.
     readonly property bool dropTarget: !!dock && dock.dragging.length > 0 && dock.dropSide === side
+    // The row's length (along its tabs).
+    readonly property real span: vertical ? _buttons.height : _buttons.width
 
-    implicitHeight: Style.dp(30)
-    // A button dragged off this row is drawn over the map.
+    implicitHeight: vertical ? 0 : Style.dp(30)
+    implicitWidth: vertical ? Style.dp(30) : 0
+    // A tab dragged off this row is drawn over the map.
     z: (dock && dock.dragging.length && dock.sideOf(dock.dragging) === side) ? 50 : 0
 
     Component.onCompleted: _register()
@@ -43,15 +49,25 @@ Item {
         relayout()
     }
 
-    // Where a tool's button sits: its left edge, or -1 (for tests).
-    function placeOf(id) {
-        var b = _button(id)
-        return b ? b.x : -1
+    // A tab's place along the row, and its length there.
+    function _at(b) { return vertical ? b.y : b.x }
+    function _len(b) { return vertical ? b.height : b.width }
+    function _place(b, v) {
+        if (vertical)
+            b.y = v
+        else
+            b.x = v
     }
 
-    function buttonWidth(id) {
+    // Where a tool's tab sits: its start along the row, or -1 (for tests).
+    function placeOf(id) {
         var b = _button(id)
-        return b ? b.width : 0
+        return b ? _at(b) : -1
+    }
+
+    function buttonLength(id) {
+        var b = _button(id)
+        return b ? _len(b) : 0
     }
 
     function _button(id) {
@@ -67,44 +83,43 @@ Item {
         Qt.callLater(_layout)
     }
 
-    // Each button's middle as a share of the row's width (the dock keeps
-    // these once one button is moved).
+    // Each tab's middle as a share of the row's length (the dock keeps
+    // these once one tab is moved).
     function shares() {
         var out = {}
-        var w = _buttons.width
-        if (!(w > 0))
+        if (!(span > 0))
             return out
         for (var i = 0; i < _rep.count; i++) {
             var b = _rep.itemAt(i)
             if (b)
-                out[b.modelData] = (b.x + b.width / 2) / w
+                out[b.modelData] = (_at(b) + _len(b) / 2) / span
         }
         return out
     }
 
-    // A button let go here with its left edge at x: snapped, then the
-    // nearest free spot among this row's other buttons, as a share.
-    function shareAt(id, x) {
-        var width = buttonWidth(id)
-        if (!(width > 0) && dock) {
+    // A tab let go here with its start at `at`: snapped, then the nearest
+    // free spot among this row's other tabs, as a share.
+    function shareAt(id, at) {
+        var length = buttonLength(id)
+        if (!(length > 0) && dock) {
             for (var k in dock.rows) {
                 if (dock.rows[k] && dock.rows[k] !== _row)
-                    width = Math.max(width, dock.rows[k].buttonWidth(id))
+                    length = Math.max(length, dock.rows[k].buttonLength(id))
             }
         }
         var others = []
         for (var j = 0; j < _rep.count; j++) {
             var ob = _rep.itemAt(j)
             if (ob && ob.modelData !== id)
-                others.push({ x: ob.x, w: ob.width })
+                others.push({ x: _at(ob), w: _len(ob) })
         }
-        var left = _freeSpot(_snap(x, width), width, others)
-        return (left + width / 2) / Math.max(1, _buttons.width)
+        var start = _freeSpot(_snap(at, length), length, others)
+        return (start + length / 2) / Math.max(1, span)
     }
 
-    // Places the buttons: together and centred, or each where it was put.
+    // Places the tabs: together and centred, or each where it was put.
     function _layout() {
-        var w = _buttons.width
+        var w = span
         if (!(w > 0) || !dock)
             return
         var ids = dock.order(side)
@@ -117,13 +132,13 @@ Item {
                 if (!b)
                     continue
                 shown.push(b)
-                total += b.width
+                total += _len(b)
             }
             total += _row.gap * Math.max(0, shown.length - 1)
             var x = Math.round((w - total) / 2)
             for (var j = 0; j < shown.length; j++) {
-                shown[j].x = x
-                x += shown[j].width + _row.gap
+                _place(shown[j], x)
+                x += _len(shown[j]) + _row.gap
             }
             dock.layoutRev++
             return
@@ -134,25 +149,25 @@ Item {
             if (!bk)
                 continue
             var at = pos[ids[k]]
-            var want = at === undefined ? (w - bk.width) / 2 : at * w - bk.width / 2
+            var want = at === undefined ? (w - _len(bk)) / 2 : at * w - _len(bk) / 2
             // One not placed yet (new) goes to the free spot nearest the middle.
-            bk.x = Math.round(_freeSpot(want, bk.width, placed))
-            placed.push({ x: bk.x, w: bk.width })
+            _place(bk, Math.round(_freeSpot(want, _len(bk), placed)))
+            placed.push({ x: _at(bk), w: _len(bk) })
         }
         dock.layoutRev++
     }
 
-    // The left edge nearest `want` where a button this wide fits on the row
-    // without covering one of `others` ([{x, w}]).
-    function _freeSpot(want, width, others) {
+    // The start nearest `want` where a tab this long fits on the row
+    // without covering one of `others` ([{x, w}], along the row).
+    function _freeSpot(want, length, others) {
         var lo = _row.gap
-        var hi = Math.max(lo, _buttons.width - _row.gap - width)
+        var hi = Math.max(lo, span - _row.gap - length)
         function fits(x) {
             if (x < lo - 0.5 || x > hi + 0.5)
                 return false
             for (var i = 0; i < others.length; i++) {
                 var o = others[i]
-                if (x < o.x + o.w + _row.gap && x + width + _row.gap > o.x)
+                if (x < o.x + o.w + _row.gap && x + length + _row.gap > o.x)
                     return false
             }
             return true
@@ -164,7 +179,7 @@ Item {
         var bestD = Infinity
         var tries = [lo, hi]
         for (var j = 0; j < others.length; j++) {
-            tries.push(others[j].x - _row.gap - width)
+            tries.push(others[j].x - _row.gap - length)
             tries.push(others[j].x + others[j].w + _row.gap)
         }
         for (var t = 0; t < tries.length; t++) {
@@ -177,10 +192,10 @@ Item {
         return best
     }
 
-    // Snapping: the row's edges and middle when close, else a small grid.
-    function _snap(x, width) {
+    // Snapping: the row's ends and middle when close, else a small grid.
+    function _snap(x, length) {
         var near = Style.dp(10)
-        var spots = [_row.gap, (_buttons.width - width) / 2, _buttons.width - _row.gap - width]
+        var spots = [_row.gap, (span - length) / 2, span - _row.gap - length]
         for (var i = 0; i < spots.length; i++) {
             if (Math.abs(x - spots[i]) <= near)
                 return spots[i]
@@ -193,12 +208,13 @@ Item {
         color: Style.bgRaised
         // The line on the side facing the map.
         Rectangle {
-            width: parent.width
-            height: 1
+            x: _row.side === "left" ? parent.width - 1 : 0
             y: _row.side === "top" ? parent.height - 1 : 0
+            width: _row.vertical ? 1 : parent.width
+            height: _row.vertical ? parent.height : 1
             color: Style.line
         }
-        // Lit while a button would land here.
+        // Lit while a tab would land here.
         Rectangle {
             anchors.fill: parent
             visible: _row.dropTarget
@@ -212,6 +228,7 @@ Item {
         id: _buttons
         anchors.fill: parent
         onWidthChanged: _row.relayout()
+        onHeightChanged: _row.relayout()
 
         Repeater {
             id: _rep
@@ -229,96 +246,111 @@ Item {
                 objectName: "tool:" + modelData
                 // A tab: from near the row's outer edge to its inner edge
                 // (the side facing the map, where an open tool's panel joins).
-                readonly property bool atTop: _row.side === "top"
+                readonly property string side: _row.side
                 // Joined to its panel (showing); open without one: lit.
                 readonly property bool joined: open && !!_row.dock.paneShown[modelData]
                 readonly property color edge: open ? Style.lineStrong : Style.line
-                width: _inner.implicitWidth + Style.dp(14)
-                height: _row.height - Style.dp(4)
-                y: atTop ? Style.dp(4) : 0
+                readonly property real lengthWanted: _inner.implicitWidth + Style.dp(14)
+                width: _row.vertical ? _row.width - Style.dp(4) : lengthWanted
+                height: _row.vertical ? lengthWanted : _row.height - Style.dp(4)
+                x: _row.side === "left" ? Style.dp(4) : 0
+                y: _row.side === "top" ? Style.dp(4) : 0
                 onWidthChanged: _row.relayout()
+                onHeightChanged: _row.relayout()
                 onXChanged: if (_row.dock) _row.dock.layoutRev++
+                onYChanged: if (_row.dock) _row.dock.layoutRev++
                 Component.onCompleted: _row.relayout()
                 opacity: usableNow ? 1 : 0.45
                 color: joined ? _row.dock.paneColor(modelData)
                        : open ? Style.bgSelected
                        : (_main.containsMouse && usableNow ? Style.bgCard : Style.clear)
-                // Its sides and outer edge; its inner edge only while closed.
-                Rectangle { width: 1; height: parent.height; color: _btn.edge }
-                Rectangle { x: parent.width - 1; width: 1; height: parent.height; color: _btn.edge }
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    y: _btn.atTop ? 0 : parent.height - 1
-                    color: _btn.open ? Style.accent : _btn.edge
+
+                // Its outer edge (accent while open), its two sides, and its
+                // inner edge only while not joined.
+                component Edge: Rectangle {
+                    // "top", "bottom", "left" or "right" of the tab.
+                    required property string at
+                    x: at === "right" ? _btn.width - 1 : 0
+                    y: at === "bottom" ? _btn.height - 1 : 0
+                    width: (at === "left" || at === "right") ? 1 : _btn.width
+                    height: (at === "top" || at === "bottom") ? 1 : _btn.height
                 }
-                Rectangle {
-                    visible: !_btn.joined
-                    width: parent.width
-                    height: 1
-                    y: _btn.atTop ? parent.height - 1 : 0
-                    color: _btn.edge
-                }
-                // How far it is being dragged (an unlocked button).
+                readonly property string outer: side
+                readonly property string inner: ({ top: "bottom", bottom: "top", left: "right", right: "left" })[side]
+                readonly property var sides: _row.vertical ? ["top", "bottom"] : ["left", "right"]
+                Edge { at: _btn.outer; color: _btn.open ? Style.accent : _btn.edge }
+                Edge { at: _btn.sides[0]; color: _btn.edge }
+                Edge { at: _btn.sides[1]; color: _btn.edge }
+                Edge { at: _btn.inner; color: _btn.edge; visible: !_btn.joined }
+
+                // How far it is being dragged (an unlocked tab).
                 property real dragDx: 0
                 property real dragDy: 0
                 transform: Translate { x: _btn.dragDx; y: _btn.dragDy }
                 z: _main.pressed ? 2 : 1
 
-                Row {
-                    id: _inner
+                // Its name, pin and lock; turned on a side row (reading up
+                // the left row, down the right one).
+                Item {
                     anchors.centerIn: parent
-                    spacing: Style.dp(6)
-                    Label {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: _btn.tool ? _btn.tool.label : _btn.modelData
-                        font.pixelSize: Style.dp(12)
-                        color: _btn.open ? Style.fg : Style.fgMuted
-                    }
-                    // Pin: stays open when the map is clicked.
-                    Label {
-                        id: _pin
-                        anchors.verticalCenter: parent.verticalCenter
-                        font.family: Style.iconFont
-                        font.pixelSize: Style.dp(11)
-                        text: _btn.pinned ? "\uF4EC" : "\uF4EB"
-                        color: _btn.pinned ? Style.accent : (_pinArea.containsMouse ? Style.fg : Style.fgMuted)
-                        MouseArea {
-                            id: _pinArea
-                            anchors.fill: parent
-                            anchors.margins: -Style.dp(3)
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: _btn.dock.setPinned(_btn.modelData, !_btn.pinned)
+                    width: _row.vertical ? _inner.implicitHeight : _inner.implicitWidth
+                    height: _row.vertical ? _inner.implicitWidth : _inner.implicitHeight
+                    Row {
+                        id: _inner
+                        anchors.centerIn: parent
+                        spacing: Style.dp(6)
+                        rotation: _row.side === "left" ? -90 : (_row.side === "right" ? 90 : 0)
+                        Label {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: _btn.tool ? _btn.tool.label : _btn.modelData
+                            font.pixelSize: Style.dp(12)
+                            color: _btn.open ? Style.fg : Style.fgMuted
                         }
-                        ToolTip.visible: _pinArea.containsMouse
-                        ToolTip.delay: 600
-                        ToolTip.text: _btn.pinned ? "Unpin: hides when you click the map" : "Pin: stays open when you click the map"
-                    }
-                    // Lock: can't be dragged or resized.
-                    Label {
-                        id: _lock
-                        anchors.verticalCenter: parent.verticalCenter
-                        font.family: Style.iconFont
-                        font.pixelSize: Style.dp(11)
-                        text: _btn.locked ? "\uF47A" : "\uF600"
-                        color: _btn.locked ? Style.accent : (_lockArea.containsMouse ? Style.fg : Style.fgMuted)
-                        MouseArea {
-                            id: _lockArea
-                            anchors.fill: parent
-                            anchors.margins: -Style.dp(3)
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: _btn.dock.setLocked(_btn.modelData, !_btn.locked)
+                        // Pin: stays open when the map is clicked.
+                        Label {
+                            id: _pin
+                            anchors.verticalCenter: parent.verticalCenter
+                            font.family: Style.iconFont
+                            font.pixelSize: Style.dp(11)
+                            text: _btn.pinned ? "\uF4EC" : "\uF4EB"
+                            color: _btn.pinned ? Style.accent : (_pinArea.containsMouse ? Style.fg : Style.fgMuted)
+                            MouseArea {
+                                id: _pinArea
+                                anchors.fill: parent
+                                anchors.margins: -Style.dp(3)
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: _btn.dock.setPinned(_btn.modelData, !_btn.pinned)
+                            }
+                            ToolTip.visible: _pinArea.containsMouse
+                            ToolTip.delay: 600
+                            ToolTip.text: _btn.pinned ? "Unpin: hides when you click the map" : "Pin: stays open when you click the map"
                         }
-                        ToolTip.visible: _lockArea.containsMouse
-                        ToolTip.delay: 600
-                        ToolTip.text: _btn.locked ? "Unlock: can be moved and resized" : "Lock: can't be moved or resized"
+                        // Lock: can't be dragged or resized.
+                        Label {
+                            id: _lock
+                            anchors.verticalCenter: parent.verticalCenter
+                            font.family: Style.iconFont
+                            font.pixelSize: Style.dp(11)
+                            text: _btn.locked ? "\uF47A" : "\uF600"
+                            color: _btn.locked ? Style.accent : (_lockArea.containsMouse ? Style.fg : Style.fgMuted)
+                            MouseArea {
+                                id: _lockArea
+                                anchors.fill: parent
+                                anchors.margins: -Style.dp(3)
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: _btn.dock.setLocked(_btn.modelData, !_btn.locked)
+                            }
+                            ToolTip.visible: _lockArea.containsMouse
+                            ToolTip.delay: 600
+                            ToolTip.text: _btn.locked ? "Unlock: can be moved and resized" : "Lock: can't be moved or resized"
+                        }
                     }
                 }
 
                 // Click: open or hide. Drag (unlocked): move along the row or
-                // onto the other one.
+                // onto another one.
                 MouseArea {
                     id: _main
                     anchors.fill: parent
@@ -355,19 +387,20 @@ Item {
                             dock.toggle(_btn.modelData)
                             return
                         }
-                        // Where it was let go: on this row or the other,
-                        // snapped, then the nearest free spot there.
+                        // Where it was let go: on this row or another, along
+                        // that row, snapped, then the nearest free spot there.
                         var target = dock.dropSide || _row.side
                         var row = (dock.rows || {})[target] || _row
-                        var left = row.mapFromItem(_buttons, _btn.x + _btn.dragDx, 0).x
+                        var p = row.mapFromItem(_buttons, _btn.x + _btn.dragDx, _btn.y + _btn.dragDy)
+                        var along = row.vertical ? p.y : p.x
                         _btn.dragDx = 0
                         _btn.dragDy = 0
                         dock.dragging = ""
                         dock.dropSide = ""
-                        // After this handler: a button put on the other row
-                        // leaves this one (its delegate goes).
+                        // After this handler: a tab put on another row leaves
+                        // this one (its delegate goes).
                         var id = _btn.modelData
-                        Qt.callLater(function() { dock.dropAt(id, left, target) })
+                        Qt.callLater(function() { dock.dropAt(id, along, target) })
                     }
                     onCanceled: {
                         _btn.dragDx = 0

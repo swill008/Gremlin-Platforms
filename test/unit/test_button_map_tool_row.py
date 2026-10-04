@@ -142,6 +142,24 @@ def test_rows_and_docks_are_kept_and_reset(run: dict) -> None:
     assert run["reset-rows"] == [1, True]
 
 
+def test_side_rows_hold_tabs_with_their_panels(run: dict) -> None:
+    rows = run["side-rows"]
+    assert rows["visible"] == [True, True]
+    assert all(24 <= w <= 34 for w in rows["width"])
+    # 10 px between the map and each side row; the side rows run between
+    # the top and bottom rows.
+    assert all(abs(g - run["dp10"]) <= 1 for g in rows["gaps"]), rows["gaps"]
+    assert rows["between"] == [0, 0]
+    # A tab dragged onto the left row: there, upright; its panel beside it,
+    # joined, resized by its edge facing the map; Reset puts it back.
+    assert run["layers-left"] == ["left", ["layers"]]
+    assert run["tab-upright"] is True
+    assert abs(run["layers-pane"]["joined"]) <= 1
+    assert run["layers-pane"]["beside-tab"] is True
+    assert abs(run["layers-wider"] - 40) <= 3
+    assert run["layers-reset"] == "bottom"
+
+
 def test_the_view_zooms_out_to_half(run: dict) -> None:
     zoom, pct = run["page-zoom"]
     assert zoom == 1 and abs(pct - 0.75) < 0.001
