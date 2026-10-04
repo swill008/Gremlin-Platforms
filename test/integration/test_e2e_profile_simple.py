@@ -11,7 +11,8 @@ from __future__ import annotations
 import itertools
 import sys
 import threading
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from unittest import mock
 
 sys.path.append(".")
@@ -19,8 +20,10 @@ sys.path.append(".")
 import pytest
 
 import dill
+import gremlin.input_cache
 from action_plugins import map_to_vjoy
 from gremlin import (
+    clock,
     types,
     util,
 )
@@ -33,22 +36,39 @@ from vjoy import (
 
 @pytest.fixture
 def patched_time() -> Iterator[threading.Semaphore]:
-    """Patches the time module in map_to_vjoy.
+    """Runs the relative axis loops on a clock the test steps itself.
 
-    The sleep() function is replaced with a mock that we can
-    step through at will by calling release() on the yielded semaphore.
-    The time() function is replaced by a counter that increments on each call.
+    Each sleep() waits for a release() on the yielded semaphore; now() is a
+    counter that moves one step on each call.
     """
     time_stepper = threading.Semaphore(value=0)
     time_counter = itertools.count(
         step=map_to_vjoy.MapToVjoyFunctor.THREAD_SLEEP_DURATION_S
     )
-    # Don't mock time() and sleep() globally; instead, mock out the "time" name
-    # in the map_to_vjoy module only.
-    with mock.patch.object(map_to_vjoy, "time", autospec=True) as mock_time:
-        mock_time.sleep.side_effect = lambda _: time_stepper.acquire(timeout=2)
-        mock_time.time.side_effect = lambda: next(time_counter)
+    with (
+        mock.patch.object(
+            clock, "sleep", side_effect=lambda _: time_stepper.acquire(timeout=2)
+        ),
+        mock.patch.object(clock, "now", side_effect=lambda: next(time_counter)),
+    ):
         yield time_stepper
+
+
+def _settled(
+    read: Callable[[], float], quiet: float = 0.2, limit: float = 3.0
+) -> float:
+    """read()'s value once it has stopped changing for quiet seconds."""
+    deadline = time.monotonic() + limit
+    last = read()
+    since = time.monotonic()
+    while time.monotonic() < deadline:
+        time.sleep(0.02)
+        value = read()
+        if value != last:
+            last, since = value, time.monotonic()
+        elif time.monotonic() - since >= quiet:
+            break
+    return last
 
 
 @pytest.fixture(scope="module")
@@ -172,11 +192,14 @@ class TestSimpleProfile:
         input_axis_id = 2
         output_axis_id = 4
         sleep_calls_per_subtest = 10
-        # The thread updating output axis values takes one step before we can
-        # pause it with our semaphore, hence the +1 in the values below.
-        for di_input, steps in [
-            (tester.AXIS_MAX_INT, [11, 21, 31]),
-            (-tester.AXIS_MAX_INT, [21, 11, 1, -9, -19, -29]),
+        step_size = (
+            map_to_vjoy.MapToVjoyFunctor.SCALING_MULTIPLIER
+            * map_to_vjoy.MapToVjoyData.DEFAULT_SCALING
+        )
+        cache = gremlin.input_cache.Joystick()[vjoy_di_device.device_guid.uuid]
+        for di_input, direction, subtest_count in [
+            (tester.AXIS_MAX_INT, 1, 3),
+            (-tester.AXIS_MAX_INT, -1, 6),
         ]:
             calibrated_value = util.with_default_center_calibration(di_input)
             vjoy_control_device.axis(
@@ -190,29 +213,40 @@ class TestSimpleProfile:
                 tester.assert_cached_axis_eventually_equals(
                     vjoy_di_device.device_guid.uuid, input_axis_id, calibrated_value
                 )
-            for step in steps:
-                absolute_change = (
-                    step
-                    * map_to_vjoy.MapToVjoyFunctor.SCALING_MULTIPLIER
-                    * map_to_vjoy.MapToVjoyData.DEFAULT_SCALING
-                )
+            # The loop may step before the input has settled (with a value on
+            # the way): count from where the output is once it is paused.
+            start = _settled(lambda: cache.axis(output_axis_id).value)
+            for n in range(1, subtest_count + 1):
+                expected = start + direction * n * sleep_calls_per_subtest * step_size
                 with subtests.test(
-                    "output",
-                    di_input=di_input,
-                    step=step,
-                    absolute_change=absolute_change,
+                    "output", di_input=di_input, steps=n * sleep_calls_per_subtest
                 ):
                     patched_time.release(sleep_calls_per_subtest)
                     tester.assert_cached_axis_eventually_equals(
-                        vjoy_di_device.device_guid.uuid,
-                        output_axis_id,
-                        absolute_change,
+                        vjoy_di_device.device_guid.uuid, output_axis_id, expected
                     )
                     tester.assert_axis_eventually_equals(
                         vjoy_di_device.device_guid,
                         output_axis_id,
-                        absolute_change * tester.AXIS_MAX_INT,
+                        expected * tester.AXIS_MAX_INT,
                     )
+
+        # Let go of the stick: the relative axis stops driving the output a
+        # second (100 clock steps) later, and its thread ends.
+        vjoy_control_device.axis(
+            linear_index=input_axis_id
+        ).value = util.with_default_center_calibration(0)
+        tester.assert_cached_axis_eventually_equals(
+            vjoy_di_device.device_guid.uuid,
+            input_axis_id,
+            util.with_default_center_calibration(0),
+        )
+        patched_time.release(200)
+        axis_threads = [t for t in threading.enumerate() if "relative axis" in t.name]
+        assert axis_threads, "no relative axis thread found"
+        for thread in axis_threads:
+            thread.join(timeout=5)
+            assert not thread.is_alive(), "the relative axis kept running"
 
     @pytest.mark.parametrize(
         ("di_input", "vjoy_output", "cached_value"),

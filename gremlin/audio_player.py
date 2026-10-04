@@ -8,7 +8,7 @@ import array
 import logging
 import threading
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 import miniaudio
 
@@ -56,9 +56,12 @@ class AudioSample:
         self._playback_done_event = threading.Event()
         self._generator: AudioSample.Generator_T | None = None
 
-    def block(self) -> None:
-        """Blocks the calling thread until playback is complete."""
-        self._playback_done_event.wait()
+    def block(self, still_wanted: Callable[[], bool]) -> None:
+        """Blocks the calling thread until playback is complete, or until
+        still_wanted() is False (the player stopped)."""
+        while not self._playback_done_event.wait(0.5):
+            if not still_wanted():
+                return
 
     def cancel(self) -> None:
         """Stops the playback immediately."""
@@ -152,7 +155,7 @@ class AudioPlayer(metaclass=SingletonMetaclass):
                         sample = self._play_list.pop(0)
                         self._currently_playing.append(sample)
                         sample.play()
-                        sample.block()
+                        sample.block(lambda: self._is_ready)
                 case "Overlap":
                     if self._play_list:
                         sample = self._play_list.pop(0)

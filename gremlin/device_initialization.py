@@ -18,6 +18,7 @@ from vjoy import vjoy
 
 _joystick_devices: dict[uuid.UUID, dill.DeviceSummary] = collections.OrderedDict()
 _joystick_init_lock = threading.Lock()
+SCAN_WAIT_S = 10.0
 
 
 # Two connected devices with the same name (a pair of identical sticks) used
@@ -109,9 +110,16 @@ def joystick_devices_initialization() -> None:
     windows id assigned to it.
     """
     # Always released, also when a vJoy check below raises: a lock left held
-    # blocked every later device update (hot-plug) for good.
-    with _joystick_init_lock:
+    # blocked every later device update (hot-plug) for good. A scan that is
+    # still busy after SCAN_WAIT_S is reported instead of waited for forever.
+    if not _joystick_init_lock.acquire(timeout=SCAN_WAIT_S):
+        raise error.GremlinError(
+            f"The device scan is still busy after {SCAN_WAIT_S:.0f} s."
+        )
+    try:
         _initialize_devices()
+    finally:
+        _joystick_init_lock.release()
 
 
 def _initialize_devices() -> None:

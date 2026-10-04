@@ -22,6 +22,10 @@ user32 = ctypes.WinDLL("user32")
 g_keyboard_callbacks = []
 g_mouse_callbacks = []
 
+# False: start() installs no hook. Tests turn it off, so they never hook
+# the keyboard and mouse of the PC they run on; the program never does.
+enabled = True
+
 
 # The following pages are references to the various functions used:
 #
@@ -264,7 +268,7 @@ class _Hook:
 
     def start(self) -> None:
         """Starts the hook if it is not yet running."""
-        if self._running:
+        if self._running or not enabled:
             return
         self._running = True
         self._listen_thread = threads.start(

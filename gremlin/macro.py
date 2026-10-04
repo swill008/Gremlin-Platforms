@@ -231,10 +231,16 @@ class MacroManager(metaclass=SingletonMetaclass):
         Args:
             macro: the macro whose thread is calling this method
         """
+        # In short waits, so a stop (of the macros or of this macro) ends it.
         with self._preemptive_condition:
-            self._preemptive_condition.wait_for(
-                lambda: not self._is_executing_preemptive or macro.is_preempting
-            )
+            while not self._preemptive_condition.wait_for(
+                lambda: not self._is_executing_preemptive or macro.is_preempting,
+                timeout=0.5,
+            ):
+                if not self._is_running or not self._executing_macro.get(
+                    macro.id, True
+                ):
+                    return
 
     def _execute_macro(self, macro: Macro) -> None:
         """Executes a given macro in a separate thread.

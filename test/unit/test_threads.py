@@ -100,9 +100,12 @@ def test_an_error_in_a_thread_still_takes_it_off_the_list() -> None:
 
 
 @pytest.mark.parametrize("hook_name", ["KeyboardHook", "MouseHook"])
-def test_a_hook_stopped_right_after_starting_does_not_hang(hook_name: str) -> None:
+def test_a_hook_stopped_right_after_starting_does_not_hang(
+    hook_name: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from gremlin import windows_event_hook
 
+    monkeypatch.setattr(windows_event_hook, "enabled", True)
     hook = getattr(windows_event_hook, hook_name)()
     with _put_back(hook._running, hook.start):
         hook.stop()

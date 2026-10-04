@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 from typing import (
     TYPE_CHECKING,
     List,
@@ -17,6 +16,7 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import (
+    clock,
     device_initialization,
     error,
     event_handler,
@@ -60,7 +60,7 @@ class MapToVjoyFunctor(AbstractFunctor):
         self.needs_auto_release = False  # self._check_for_auto_release(action)
         self.thread_running = False
         self.should_stop_thread = False
-        self.thread_last_update = time.time()
+        self.thread_last_update = clock.now()
         self.thread = None
         self.axis_delta_value = 0.0
         self.axis_value = 0.0
@@ -86,18 +86,9 @@ class MapToVjoyFunctor(AbstractFunctor):
                     self.axis_delta_value = value.current * (
                         self.data.axis_scaling * self.SCALING_MULTIPLIER
                     )
-                    self.thread_last_update = time.time()
+                    self.thread_last_update = clock.now()
                     if self.thread_running is False:
-                        if isinstance(self.thread, threading.Thread):
-                            self.thread.join()
-                        # Set here, not in the thread: a second event before the
-                        # thread starts would otherwise join it, on the main thread.
-                        self.thread_running = True
-                        self.thread = threads.start(
-                            "vJoy relative axis",
-                            self.relative_axis_thread,
-                            stop=self._ask_to_stop,
-                        )
+                        self._start_loop()
 
             elif self.data.vjoy_input_type in [
                 InputType.JoystickButton,
@@ -133,6 +124,32 @@ class MapToVjoyFunctor(AbstractFunctor):
                 f"Failed to execute {self.data.name} action due to vJoy error: {e}.",
             )
 
+    def _start_loop(self) -> None:
+        """Starts the relative axis loop, once the previous one has ended."""
+        if isinstance(self.thread, threading.Thread):
+            # Waits briefly for the old loop (it is ending); one that doesn't
+            # end is logged instead of freezing the main thread.
+            self.thread.join(timeout=1.0)
+            if self.thread.is_alive():
+                self._report_stuck_loop()
+                return
+        # Set here, not in the thread: a second event before the thread
+        # starts would otherwise join it, on the main thread.
+        self.thread_running = True
+        self.thread = threads.start(
+            "vJoy relative axis", self.relative_axis_thread, stop=self._ask_to_stop
+        )
+
+    def _report_stuck_loop(self) -> None:
+        from gremlin.log_once import log_once
+
+        log_once(
+            "system",
+            ("relative axis still running", id(self)),
+            logging.WARNING,
+            "The relative axis loop did not end within 1 s; not started again.",
+        )
+
     def _ask_to_stop(self) -> None:
         """Ends the relative axis loop after its current step."""
         self.thread_running = False
@@ -167,10 +184,10 @@ class MapToVjoyFunctor(AbstractFunctor):
 
                 if (
                     self.should_stop_thread
-                    and self.thread_last_update + 1.0 < time.time()
+                    and self.thread_last_update + 1.0 < clock.now()
                 ):
                     self.thread_running = False
-                time.sleep(self.THREAD_SLEEP_DURATION_S)
+                clock.sleep(self.THREAD_SLEEP_DURATION_S)
             except error.VJoyError:
                 self.thread_running = False
 

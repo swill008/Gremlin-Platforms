@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import sys
 import tempfile
 
 # Tests never put a window on the user's screen: the Gremlin app some tests
@@ -25,7 +26,17 @@ import gremlin.util
 gremlin.util.userprofile_path = Mock(return_value=tempfile.mkdtemp())
 
 import gremlin.ui.backend  # noqa: E402
+import gremlin.windows_event_hook  # noqa: E402
 import joystick_gremlin  # noqa: E402
+
+# By its folder: as a plain module (pytest -p conftest), "test" is Python's own.
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+import fake_input  # noqa: E402  # pyright: ignore[reportMissingImports]
+
+# Tests never hook the keyboard and mouse of the PC they run on, and never
+# send keys or mouse input to it (test/fake_input.py).
+gremlin.windows_event_hook.enabled = False
+fake_input.install()
 
 
 def pytest_collection_modifyitems(
