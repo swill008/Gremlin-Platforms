@@ -356,7 +356,7 @@ ApplicationWindow {
             Button {
                 // Output modules keep their claims in the profile too.
                 text: direction === "dest" && backend && backend.profilePath() !== ""
-                    ? "Save module and profile" : "Save module"
+                    ? "Save Module and Profile" : "Save Module"
                 focusPolicy: Qt.NoFocus
                 onClicked: {
                     saveIntent = "stay"

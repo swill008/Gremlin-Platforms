@@ -1252,7 +1252,7 @@ Item {
                         _catalog.typeFilter = tags[currentIndex]
                     }
                 }
-                Label { text: "Destination"; color: colorMuted }
+                Label { text: "Output"; color: colorMuted }
                 OutputModuleDevices { id: _destModules }
                 ComboBox {
                     id: _destBox
@@ -1566,7 +1566,7 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 text: parent._filtered
                     ? "No inputs match the current filters."
-                    : "This window only shows what the input module passes.\nRight-click the card → Module → Module Setup…, press the controls to claim, then Save module."
+                    : "This window only shows what the input module passes.\nRight-click the card → Module → Module Setup…, press the controls to claim, then Save Module."
             }
             Button {
                 visible: _catalog.count === 0 && parent._filtered
@@ -1695,7 +1695,7 @@ Item {
 
                 RowLayout {
                     Label {
-                        text: "Input Configuration — Appearance"
+                        text: "Configuration — Appearance"
                         color: Style.fg
                         font.bold: true
                         font.pixelSize: Style.dp(13)

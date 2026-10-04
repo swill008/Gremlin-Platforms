@@ -204,7 +204,7 @@ Item {
                         Layout.alignment: Qt.AlignTop
 
                         text: "Defines the initial values for vJoy axes to use " +
-                            "when a profile is activated."
+                            "when the profile runs."
                     }
                 }
             }

@@ -1820,7 +1820,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: Style.fgMuted
-                text: "Keeps this look under a name, to put on other items of the same kind from their right-click menu (Saved styles). A style of the same name is replaced. Options → Button Map → Library renames and deletes them."
+                text: "Keeps this look under a name, to put on other items of the same kind from their right-click menu (Saved styles). A style of the same name is replaced. Edit → Button Map Options… → Library renames and deletes them."
             }
             TextField {
                 id: _styleName
@@ -3408,25 +3408,6 @@ ApplicationWindow {
             text: poolName
             color: "#BBF7D0"
             font.pixelSize: Style.dp(11)
-        }
-    }
-
-    component ColorSwatch: Rectangle {
-        id: _sw
-        property string hex: "#18181B"
-        signal picked()
-        Layout.preferredWidth: Style.dp(72)
-        Layout.preferredHeight: Style.dp(24)
-        width: Style.dp(72)
-        height: Style.dp(24)
-        radius: Style.dp(4)
-        color: hex
-        border.color: "#52525B"
-        border.width: Style.dp(1)
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: _sw.picked()
         }
     }
 

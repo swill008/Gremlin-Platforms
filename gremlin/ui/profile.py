@@ -389,19 +389,6 @@ class InputItemBindingModel(QtCore.QObject):
         self._create_action_models()
         self.rootActionChanged.emit()
 
-    def action_information(self, index: int) -> ActionModel:
-        """Returns the action model corresponding to the given index.
-
-        Args:
-            index: sequence index of the action to return
-
-        Returns:
-            ActionModel corresponding to the given index
-        """
-        if index not in self._index_lookup:
-            raise GremlinError(f"No action with provided index: {index}")
-        return self._action_models[self._index_lookup[index]]._data
-
     def move_action(
         self, source_idx: int, target_idx: int, container: str | None = None
     ) -> None:

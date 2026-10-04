@@ -411,6 +411,8 @@ function attachNear(x, y) {
     var bestD = 16
     var i
     for (i = 0; i < list.length; i++) {
+        if (isDraw(list[i]))
+            continue  // drawings have no hotspot (it fell back to the centre)
         var h = hotPt(list[i])
         var hd = Math.hypot(x - h.x, y - h.y)
         var lim = hotSz(list[i]) * 0.5 + 10

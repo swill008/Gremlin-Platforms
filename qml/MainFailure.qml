@@ -47,7 +47,7 @@ ApplicationWindow {
             Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
             Layout.preferredWidth: Style.dp(100)
 
-            text: qsTr("Ok")
+            text: qsTr("OK")
 
             onClicked: () => { Qt.quit() }
         }

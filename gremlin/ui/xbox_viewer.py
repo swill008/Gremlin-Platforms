@@ -15,7 +15,6 @@ import gremlin.ui.type_aliases as ta
 from gremlin.modules.ids import guid_key
 from gremlin.modules import ids, output, wiring
 from gremlin.modules.runtime import InputModuleRuntime
-from vigem.xbox import XboxTarget
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -46,13 +45,6 @@ def _connected_keys() -> set[str]:
 
 def _xbox_maps_for_item(item) -> list[tuple[int, str]]:
     return xbox_maps.xbox_maps_for_item(item)
-
-
-def _xbox_label(target: str) -> str:
-    try:
-        return XboxTarget.from_string(target).label
-    except Exception:
-        return str(target or "Xbox")
 
 
 def _chip(target: str) -> str:

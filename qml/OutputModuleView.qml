@@ -838,7 +838,7 @@ Item {
 
                 RowLayout {
                     Label {
-                        text: "Output Module View — Appearance"
+                        text: "Output View — Appearance"
                         color: Style.fg
                         font.bold: true
                         font.pixelSize: Style.dp(13)

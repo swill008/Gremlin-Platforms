@@ -104,7 +104,7 @@ ColumnLayout {
                     Repeater {
                         model: _xboxPads
                         delegate: Xbox360Face {
-                            required property int padId
+                            padId: model.padId
                             live: _live
                             stamp: xboxStamp
                         }

@@ -603,19 +603,6 @@ def _stage_images(files: dict[str, bytes]) -> tuple[str, dict[str, str]]:
 _preview_dir = ""
 
 
-def _with_urls(pictures: list[dict], urls: dict[str, str]) -> list[dict]:
-    rows = []
-    for picture in pictures:
-        item = dict(picture["item"])
-        item["url"] = urls.get(picture["arc"], "")
-        rows.append({
-            "arc": picture["arc"],
-            "onMap": picture.get("onMap"),
-            "item": item,
-        })
-    return rows
-
-
 def describe_zip(path: Path) -> dict | str:
     loaded = _read_zip(path)
     if isinstance(loaded, str):

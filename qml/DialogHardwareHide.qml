@@ -393,7 +393,7 @@ ApplicationWindow {
                                     }
                                 }
                                 Button {
-                                    text: row.photo ? "Change image" : "Add image"
+                                    text: row.photo ? "Change Image" : "Add Image"
                                     onClicked: {
                                         _pickPhoto.targetId = row.instanceId
                                         _pickPhoto.open()

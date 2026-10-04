@@ -130,7 +130,7 @@ Popup {
             Button {
                 id: _button
 
-                text: "Ok"
+                text: "OK"
 
                 onClicked: _root._accept()
             }

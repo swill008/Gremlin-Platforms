@@ -1247,7 +1247,7 @@ Item {
                 add("Hats", "hat")
             ]),
             locked ? null : MenuModel.section("groups", "Groups", [
-                MenuModel.entry("New group", function(name) { _layout.addGroup(name) }, true,
+                MenuModel.entry("New Group", function(name) { _layout.addGroup(name) }, true,
                                 { placeholder: "Name, then Enter", keepOpen: true }),
                 onGroup ? MenuModel.action("Move Group Up", function() { _layout.moveGroupUp(_groupName) }) : null,
                 onGroup ? MenuModel.action("Move Group Down", function() { _layout.moveGroupDown(_groupName) }) : null,

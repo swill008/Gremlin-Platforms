@@ -62,7 +62,7 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "signal.inputItemChanged.connect(self.reload)" not in py
     assert "def assignment_summary" in py
     text = _QML.read_text(encoding="utf-8")
-    assert 'text: "Input Configuration — Appearance"' in text
+    assert 'text: "Configuration — Appearance"' in text
     assert 'text: "Open All"' in text
     assert 'text: "Close All"' in text
     assert "Layout.preferredWidth: Style.dp(360)" in text
@@ -81,7 +81,7 @@ def test_assignment_summary_counts_destinations() -> None:
     assert 'title: "Child Row"' in text
     assert 'title: "Selection"' in text
     output = Path(__file__).resolve().parents[2].joinpath("qml/OutputModuleView.qml").read_text(encoding="utf-8")
-    assert 'text: "Output Module View — Appearance"' in output
+    assert 'text: "Output View — Appearance"' in output
     assert 'title: "Screen"' in output
     assert 'title: "Pads"' in output
     assert 'title: "Colors"' in output

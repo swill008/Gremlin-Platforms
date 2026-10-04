@@ -413,10 +413,6 @@ def module_file_choices(device_name: str, guid: str = "") -> list[str]:
     ]
 
 
-def own_module_slug(device_name: str) -> str:
-    return _slug(device_name)
-
-
 def foreign_module_file(device_name: str, guid: str = "") -> str:
     """A binding that still points this device at some other file."""
     bound = resolve_module_slug(device_name, guid)
@@ -891,11 +887,6 @@ def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
     return slug
 
 
-def module_file_exists(device_name: str, guid: str = "") -> bool:
-    slug = resolve_module_slug(device_name, guid)
-    return bool(slug) and (_maps_dir() / f"{slug}.json").is_file()
-
-
 def _live_devices() -> list:
     try:
         from gremlin import device_initialization
@@ -917,10 +908,6 @@ def _users_of_slug(slug: str) -> set[str]:
         if guid and name and resolve_module_slug(name, guid) == slug:
             users.add(guid)
     return users
-
-
-def load_module_file(device_name: str, guid: str, source_url: str, direction: str = "source") -> str:
-    return import_module_file(device_name, guid, source_url, direction)
 
 
 def delete_module_file(device_name: str, guid: str) -> str:

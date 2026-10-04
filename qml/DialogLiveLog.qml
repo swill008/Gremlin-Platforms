@@ -119,7 +119,7 @@ ApplicationWindow {
         ToolTip.text: checked ? tipOn : tipOff
         contentItem: Label {
             text: (_toggle.checked ? "● " : "○ ") + _toggle.caption
-            color: "white"
+            color: _toggle.checked || _toggle.hovered ? "white" : Style.dangerText
             font.bold: _toggle.checked
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

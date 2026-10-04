@@ -663,7 +663,7 @@ def register_config_options() -> None:
     cfg.register(
         "global", "general", "refresh-axis-on-activation", PropertyType.Bool, True,
         "Use known physical device state to perform actions using these values "
-        "upon profile activation.", {}, True,
+        "when the profile starts running.", {}, True,
     )
     cfg.register(
         "global", "general", "refresh-axis-on-mode-change", PropertyType.Bool, True,

@@ -249,7 +249,7 @@ class DualAxisDeadzoneData(AbstractActionData):
     version = 1
     name = "Dual Axis Deadzone"
     tag = "dual-axis-deadzone"
-    icon = "\uf18c"
+    icon = "\uf1de"
 
     functor = DualAxisDeadzoneFunctor
     model = DualAxisDeadzoneModel

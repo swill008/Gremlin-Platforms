@@ -168,27 +168,6 @@ ApplicationWindow {
         id: _moduleModel
     }
 
-    function focusedCard() {
-        var slug = _moduleModel.focusedSlug
-        for (var i = 0; i < _moduleModel.rowCount(); ++i) {
-            var ix = _moduleModel.index(i, 0)
-            if (_moduleModel.data(ix, 0x0101) === slug)
-                return ix
-        }
-        return null
-    }
-
-    function moduleField(rolePlus, slug) {
-        // roles start at UserRole+1 = 0x0101
-        for (var i = 0; i < _moduleModel.rowCount(); ++i) {
-            var ix = _moduleModel.index(i, 0)
-            if (String(_moduleModel.data(ix, 257)) === String(slug)) {
-                return _moduleModel.data(ix, 256 + rolePlus)
-            }
-        }
-        return ""
-    }
-
     function moduleFileName(card) {
         if (!card)
             return ""
@@ -821,10 +800,6 @@ ApplicationWindow {
         id: _saveResultDialog
 
         confirmText: "OK"
-    }
-
-    VJoyStatusPopup {
-        id: _vjoyStatusPopup
     }
 
     FileDialog {
@@ -1481,13 +1456,13 @@ ApplicationWindow {
                         spacing: Style.dp(8)
                         Label {
                             visible: configDirection === "dest"
-                            text: "Output Module View"
+                            text: "Output View"
                             font.pixelSize: Style.dp(22)
                             font.bold: true
                         }
                         Label {
                             visible: configDirection !== "dest" && configDirection !== "logical"
-                            text: "Input Configuration"
+                            text: "Configuration"
                             font.pixelSize: Style.dp(22)
                             font.bold: true
                         }
@@ -1829,22 +1804,6 @@ ApplicationWindow {
                     }
                     onLeaveResolved: _root.continueDisplayLeave()
                     onLeaveCancelled: _root.cancelDisplayLeave()
-                }
-            }
-
-            Loader {
-                id: _logicalListLoader
-                active: uiState && uiState.currentTab === "logical"
-                visible: active
-                SplitView.minimumWidth: Style.dp(360)
-                SplitView.preferredWidth: Style.dp(420)
-                SplitView.fillHeight: true
-                sourceComponent: LogicalDevice {
-                    onInputIdentifierChanged: () => {
-                        if (uiState) {
-                            uiState.setCurrentInput(inputIdentifier, inputIndex)
-                        }
-                    }
                 }
             }
 

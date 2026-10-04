@@ -516,6 +516,18 @@ def _dill_matches() -> list:
         return []
 
 
+def _drop_unused_photos(photos: dict[str, str]) -> None:
+    """Deletes pictures in the photo folder that no device uses (left by
+    earlier sessions or a replaced photo)."""
+    used = {Path(p).resolve() for p in photos.values()}
+    for path in _photo_dir().iterdir():
+        if path.is_file() and path.resolve() not in used:
+            try:
+                path.unlink()
+            except OSError:
+                pass
+
+
 def _photo_dir() -> Path:
     root = Path(sys.argv[0]).resolve().parent
     folder = root / "qml" / "maps" / "hidhide_photos"
@@ -880,33 +892,8 @@ def set_blacklist(ids: list[str]) -> bool:
     return _set_multi(IOCTL_SET_BLACKLIST, ids)
 
 
-def get_whitelist() -> list[str]:
-    return _get_multi(IOCTL_GET_WHITELIST)
-
-
 def set_whitelist(paths: list[str]) -> bool:
     return _set_multi(IOCTL_SET_WHITELIST, paths)
-
-
-def _is_virtual(instance: str, name: str) -> bool:
-    blob = f"{instance} {name}".upper()
-    return any(
-        tag in blob
-        for tag in (
-            "VID_1234",
-            "VJOY",
-            "VIGEM",
-            "XBOX 360 CONTROLLER",
-            "VIRTUAL HID",
-            "ROOT\\SYSTEM",
-        )
-    )
-
-
-def _is_keyboard_mouse(instance: str, name: str) -> bool:
-    blob = f"{instance} {name}".upper()
-    return "KEYBOARD" in blob or "MOUSE" in blob or "&MI_01" in blob and "KBD" in blob
-
 
 
 def list_hid_devices(gaming_only: bool) -> list[dict]:
@@ -914,14 +901,6 @@ def list_hid_devices(gaming_only: bool) -> list[dict]:
     if os.name != "nt":
         return []
     return _list_hidhide_class_enum(gaming_only)
-
-
-def _hid_guid():
-    import ctypes
-    hid = ctypes.WinDLL("hid")
-    guid = (ctypes.c_ubyte * 16)()
-    hid.HidD_GetHidGuid(ctypes.byref(guid))
-    return guid
 
 
 def _is_gaming(vid: int, pid: int, usage_page: int, usage: int) -> bool:
@@ -1400,11 +1379,6 @@ def _display_name(vendor: str, product: str, description: str, dill_name: str = 
     return desc or "HID-compliant game controller"
 
 
-def _friendly_name(instance: str) -> str:
-    return _usable_name(_device_description(instance))
-
-
-
 def _enrich_devices(rows: list[dict]) -> list[dict]:
     photos = _load_photos()
     links = _load_links()
@@ -1786,7 +1760,12 @@ class HidHideModel(QtCore.QObject):
             src = Path(text)
         if not src.is_file():
             return False
-        dest = _photo_dir() / f"{abs(hash(instance_id)) & 0xFFFFFFFF:08x}{src.suffix.lower() or '.jpg'}"
+        # Named from the device id the same way every run (Python's hash()
+        # changes per run, so each session wrote a new file).
+        import hashlib
+
+        stem = hashlib.sha1(instance_id.encode("utf-8")).hexdigest()[:16]
+        dest = _photo_dir() / f"{stem}{src.suffix.lower() or '.jpg'}"
         try:
             from gremlin.ui.hardware_profile import limit_image_file
             limit_image_file(src, dest)
@@ -1795,6 +1774,7 @@ class HidHideModel(QtCore.QObject):
         photos = _load_photos()
         photos[instance_id] = str(dest)
         _save_photos(photos)
+        _drop_unused_photos(photos)
         self.reload()
         return True
 
@@ -1818,9 +1798,6 @@ class HidHideModel(QtCore.QObject):
             )
         except OSError as exc:
             _hh_log(f"joy.cpl failed: {exc}", logging.WARNING)
-
-    def _ensure_gremlin_whitelisted(self) -> None:
-        self._sync_whitelist()
 
     def _sync_whitelist(self) -> None:
         if not self._present:

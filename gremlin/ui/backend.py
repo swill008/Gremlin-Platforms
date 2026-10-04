@@ -283,9 +283,6 @@ class Backend(QtCore.QObject):
                     self.activate_gremlin(False)
                     self.activate_gremlin(True)
 
-    def _emit_change(self) -> None:
-        self.propertyChanged.emit()
-
     def _on_mode_changed(self, name: str) -> None:
         self.ui_state.setCurrentMode(str(name or ""))
         self.propertyChanged.emit()

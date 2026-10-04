@@ -176,7 +176,7 @@ Rectangle {
         }
 
         Label {
-            text: status + " · " + bus
+            text: (status === "Stub" ? "No module" : status) + " · " + bus
             color: _card.damaged !== "" ? Style.danger : Style.fgMuted
             font.pixelSize: Style.dp(11)
         }
