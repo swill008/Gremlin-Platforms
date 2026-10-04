@@ -139,8 +139,12 @@ MouseArea {
         var shift = (m.modifiers & Qt.ShiftModifier) || (m.modifiers & Qt.ControlModifier)
         if (m.button === Qt.RightButton) {
             if (hit.kind === "spine") {
-                if (!shift && !ed.isSelected(hit.id))
+                // Picked as a left click picks it, drawn at once (a part of a
+                // selection keeps the selection: the menu acts on all of it).
+                if (!shift && !ed.isSelected(hit.id)) {
                     ed.setSelection([hit.id])
+                    ed.bump()
+                }
                 ed.selectedId = hit.id
                 ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
                 ed.selectedSpine = hit.spine
@@ -158,8 +162,10 @@ MouseArea {
                 return
             }
             if (hit.id) {
-                if (!shift && !ed.isSelected(hit.id))
+                if (!shift && !ed.isSelected(hit.id)) {
                     ed.setSelection([hit.id])
+                    ed.bump()
+                }
                 menuTarget.nodeId = hit.id
                 menuTarget.kind = hit.kind || ""
                 menuTarget.seg = (hit.seg !== undefined) ? hit.seg : -1

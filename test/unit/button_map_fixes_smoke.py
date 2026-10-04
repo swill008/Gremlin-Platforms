@@ -99,6 +99,29 @@ def main() -> None:
     s.wait(100)
     out["layers-then-arrow"] = s.node(rect)["fx"] > start
 
+    # A right-click on a Layers row picks it, as a left click does, and its
+    # menu opens; on a row in a selection, the selection stays.
+    def right_click_layer(node: str) -> None:
+        r = s.layer_row(s.call_on_node("layerName", node))
+        middle = QtCore.QPoint(round(r["x"] + r["w"] / 2), round(r["y"] + r["h"] / 2))
+        s.right_click(middle)
+        s.wait(200)
+
+    s.call("setSelection", [rect])
+    right_click_layer(text)
+    from PySide6 import QtQml
+
+    menu = QtQml.QQmlExpression(QtQml.qmlContext(s.win), s.win, "_layers.rowMenuOpen")
+    opened = menu.evaluate()
+    opened = opened[0] if isinstance(opened, tuple) else opened
+    out["layers-right-click"] = [s.state()["selected"], opened, text]
+    s.close_menus()
+    s.call("setSelection", [rect, text])
+    right_click_layer(text)
+    kept = sorted(s.state()["selected"]) == sorted([rect, text])
+    out["layers-right-click-in-selection"] = kept
+    s.close_menus()
+
     # BM13: mid-drag, only the dragged chip follows the drag tick; it is
     # drawn where its data says, and so is a chip that stays.
     from PySide6 import QtQml

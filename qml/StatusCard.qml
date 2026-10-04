@@ -292,6 +292,11 @@ Rectangle {
             }
             if (button === Qt.RightButton) {
                 lastClickAt = 0
+                // The card the menu is for shows as picked, as a left click
+                // does; a card in a Shift selection keeps the selection (the
+                // menu can act on all of it).
+                if (!_card.selected)
+                    _card.cardFocused()
                 // Open after this release. Opening during the release makes
                 // Qt treat it as a click outside and close the menu at once.
                 Qt.callLater(function() {

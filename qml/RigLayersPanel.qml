@@ -20,6 +20,8 @@ Rectangle {
     id: _panel
 
     property var ed: null
+    // A row's menu is open (for tests).
+    readonly property bool rowMenuOpen: _rowMenu.opened
     property string filter: "all"
     // Chip ids whose hotspot and leader rows are open.
     property var expanded: ({})
@@ -270,8 +272,24 @@ Rectangle {
                             onPressed: (m) => {
                                 pressY = m.y
                                 if (m.button === Qt.RightButton) {
-                                    _panel.menuRow = _row.row
-                                    _rowMenu.openAt(this, m.x, m.y)
+                                    // The row the menu is for shows as picked,
+                                    // as a left click does (a row in a Shift
+                                    // selection keeps the selection: the menu
+                                    // acts on all of it). Selecting rebuilds
+                                    // the rows, this one included: after this
+                                    // handler, with the menu placed on the panel.
+                                    var panel = _panel
+                                    var menu = _rowMenu
+                                    var row = _row.row
+                                    var at = mapToItem(panel, m.x, m.y)
+                                    panel.menuRow = row
+                                    Qt.callLater(function() {
+                                        if (!row.selected && row.id && row.part !== "photo") {
+                                            panel.ed.setSelection([row.id])
+                                            panel.ed.bump()
+                                        }
+                                        menu.openAt(panel, at.x, at.y)
+                                    })
                                 }
                             }
                             onPositionChanged: (m) => {
