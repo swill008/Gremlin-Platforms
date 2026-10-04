@@ -516,8 +516,13 @@ function canUngroup() {
     return isGroup(n)
 }
 
+// Break Group, paste and the like make several ids in one millisecond, where
+// the clock and a random number alone can repeat; the count cannot.
+var _uidCount = 0
+
 function _uid(prefix) {
-    return prefix + "_" + Date.now().toString(36) + Math.floor(Math.random() * 1000)
+    _uidCount++
+    return prefix + "_" + Date.now().toString(36) + Math.floor(Math.random() * 1000) + "_" + _uidCount.toString(36)
 }
 
 function _styleOf(n) {
