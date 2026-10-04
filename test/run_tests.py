@@ -11,7 +11,8 @@
 
 The folders run at the same time in separate pytest runs (test/unit can't
 share a process with the two that need the Gremlin app), and test/unit is
-split into parts, balanced by how long each file took last time. Every
+split into parts, balanced by how long each file took last time (chosen
+unit files and --failed tests too: a heavy file test by test). Every
 line shows the time since the start, which part it is from and how many
 tests of all are done. A part that prints nothing for a while says which
 test it is in; a part that runs longer than LIMIT_S is stopped. At the end:
@@ -127,7 +128,8 @@ def _units(files: list[str], parts: int, times: dict[str, float]) -> tuple[
     weights: dict[str, float] = {}
     for f in files:
         took = times.get(f, 1.0)
-        tests = _tests_in(f) if took > share / 2 else []
+        # A single test (from --failed) is never split further.
+        tests = _tests_in(f) if took > share / 2 and "::" not in f else []
         if len(tests) > 1:
             for test in tests:
                 units.append(test)
@@ -146,13 +148,21 @@ def plan(targets: list[str], parts: int) -> list[Part]:
     times = _load("file-times.json", {})
     for folder, chosen in by_folder.items():
         short = folder.split("/")[-1]
-        if folder == "test/unit" and chosen == [folder] and parts > 1:
-            files = sorted(
-                p.relative_to(_ROOT).as_posix()
-                for p in (_ROOT / folder).glob("test_*.py")
-            )
+        if folder == "test/unit" and parts > 1:
+            if chosen == [folder]:
+                files = sorted(
+                    p.relative_to(_ROOT).as_posix()
+                    for p in (_ROOT / folder).glob("test_*.py")
+                )
+            else:
+                # Chosen files and --failed tests are spread the same way.
+                files = sorted({t.replace("\\", "/") for t in chosen})
             units, weights = _units(files, parts, times)
-            for i, part_units in enumerate(_split(units, parts, weights), 1):
+            split = _split(units, min(parts, len(units)), weights)
+            if len(split) == 1:
+                jobs.append(Part("unit", folder, split[0]))
+                continue
+            for i, part_units in enumerate(split, 1):
                 jobs.append(Part(f"unit-{i}", folder, part_units))
         else:
             jobs.append(Part(short, folder, chosen))
@@ -293,7 +303,10 @@ def main() -> int:
         for p in parts:  # a file spread over parts: add its shares up
             for test_file, seconds in p.file_times.items():
                 measured[test_file] = measured.get(test_file, 0.0) + seconds
-        times.update(measured)
+        # Only some of a file's tests ran (--failed, file::test): its time
+        # is not the file's, and would leave a heavy file unsplit next time.
+        partial = {t.replace("\\", "/").split("::")[0] for t in targets if "::" in t}
+        times.update({f: t for f, t in measured.items() if f not in partial})
         _save("file-times.json", times)
         out = ["", f"=== All done in {int(took) // 60:02d}:{int(took) % 60:02d}"]
         out += [f"  {p.name:<11} {p.summary} ({p.took:.0f} s)" for p in parts]

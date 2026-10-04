@@ -36,16 +36,21 @@ _DOWNLOAD_STALL_MS = 30000
 # put the previous version back.
 _PENDING = ("global", "internal", "update-pending-version")
 _PENDING_SETUP = ("global", "internal", "update-pending-setup")
-from gremlin.types import PropertyType  # noqa: E402
 
-Configuration().register(
-    *_PENDING, PropertyType.String, "",
-    "Version the in-app update was installing (checked on the next start).", {},
-)
-Configuration().register(
-    *_PENDING_SETUP, PropertyType.String, "",
-    "Installer the in-app update ran (its log is beside it).", {},
-)
+
+def _register(config: Configuration) -> None:
+    """The settings the update keeps between runs (registering again
+    changes nothing)."""
+    from gremlin.types import PropertyType
+
+    config.register(
+        *_PENDING, PropertyType.String, "",
+        "Version the in-app update was installing (checked on the next start).", {},
+    )
+    config.register(
+        *_PENDING_SETUP, PropertyType.String, "",
+        "Installer the in-app update ran (its log is beside it).", {},
+    )
 
 
 def _one_off_request(url: str) -> QtNetwork.QNetworkRequest:
@@ -78,6 +83,7 @@ class UpdateModel(QtCore.QObject):
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self._config = Configuration()
+        _register(self._config)
         self._network = QtNetwork.QNetworkAccessManager(self)
         self._state = "idle"
         self._error = ""

@@ -44,6 +44,20 @@ def _make_fake_device(is_virtual: bool) -> dill.DeviceSummary:
 
 
 @pytest.fixture(autouse=True)
+def _settings_kept() -> Iterator[None]:
+    """A test that makes its own Configuration (a fresh settings file) must
+    not leave it behind: the program's settings, registered when modules
+    load (Tempo's duration...), would be missing for every later test in the
+    same run. Which tests follow depends on how the runner splits them."""
+    from gremlin.common import SingletonMetaclass
+
+    original = SingletonMetaclass._instances.get(gremlin.config.Configuration)
+    yield
+    if original is not None:
+        SingletonMetaclass._instances[gremlin.config.Configuration] = original
+
+
+@pytest.fixture(autouse=True)
 def _no_settings_notice_left() -> Iterator[None]:
     """A test that reads a damaged settings file must not leave the
     'Settings Reset' notice for a later test that builds the app."""
