@@ -109,3 +109,58 @@ def test_clear_empties_the_file_through_its_handler(tmp_path: Path) -> None:
     finally:
         logger.removeHandler(handler)
         handler.close()
+
+
+def test_all_logs_merges_every_file_by_time(tmp_path: Path) -> None:
+    (tmp_path / "system.log").write_text(
+        "2026-10-04 10:00:01       INFO started\n"
+        "2026-10-04 10:00:05    WARNING slow\n", encoding="utf-8")
+    (tmp_path / "event.log").write_text(
+        "2026-10-04 10:00:03 Button 1 pressed\n", encoding="utf-8")
+    (tmp_path / "qt.log").write_text(
+        "2026-10-04 10:00:02 qrc:/x.qml: a QML warning\n"
+        "2026-10-04 10:00:05 later, same second\n", encoding="utf-8")
+    log = _debug_log(tmp_path, "all")
+    log.refresh()
+    texts = [text for _rank, text in log._shown]
+    assert texts == [
+        "2026-10-04 10:00:01 [System]       INFO started",
+        "2026-10-04 10:00:02 [Qt] qrc:/x.qml: a QML warning",
+        "2026-10-04 10:00:03 [Events] Button 1 pressed",
+        "2026-10-04 10:00:05 [System]    WARNING slow",
+        "2026-10-04 10:00:05 [Qt] later, same second",
+    ]
+    assert log.exists
+    # The levels still read: Warning shows only the warning.
+    log.setProperty("level", "Warning")
+    assert [t for _r, t in log._shown] == [
+        "2026-10-04 10:00:05 [System]    WARNING slow"
+    ]
+    # A new line in any file shows on the next refresh.
+    with (tmp_path / "user.log").open("a", encoding="utf-8") as f:
+        f.write("2026-10-04 10:00:09 ERROR script failed\n")
+    log.setProperty("level", "All")
+    log.refresh()
+    last = log._shown[-1][1]
+    assert last == "2026-10-04 10:00:09 [Scripts] ERROR script failed"
+
+
+def test_picking_a_log_after_live_stops_shows_that_log(tmp_path: Path) -> None:
+    (tmp_path / "qt.log").write_text(
+        "2026-10-04 10:00:02 a Qt line\n", encoding="utf-8"
+    )
+    log = _debug_log(tmp_path, "all")
+    log.setProperty("live", True)
+    log.setProperty("live", False)
+    assert log.session
+    log._path = lambda: tmp_path / (  # type: ignore[method-assign]
+        "qt.log" if log._file == "qt" else ""
+    )
+    log.setProperty("file", "qt")
+    assert not log.session
+    assert [t for _r, t in log._shown] == ["2026-10-04 10:00:02 a Qt line"]
+    page = (Path(__file__).parents[2] / "qml" / "DialogLiveLog.qml").read_text(
+        encoding="utf-8"
+    )
+    # The list without Live: All logs and every file, Qt included.
+    assert 'model: _debug.live' in page

@@ -104,8 +104,9 @@ def test_debug_tab_keeps_the_view_and_adds_live_lines(
     log.live = False
     assert log.session  # stays on screen after Live stops
     assert log._shown[-1][0] == DIVIDER and "stopped" in log._shown[-1][1]
+    # Back to the files: All logs (every file, merged), as the session was.
     log.showFile()
-    assert not log.session and log.file == "system"
+    assert not log.session and log.file == "all"
 
 
 def test_start_empty_and_clear_view(

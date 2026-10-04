@@ -373,8 +373,11 @@ ApplicationWindow {
                         textRole: "text"
                         valueRole: "value"
                         implicitContentWidthPolicy: ComboBox.WidestText
-                        // All logs only while a Live session is shown.
-                        model: _debug.session
+                        // While Live runs: its sources (Qt's messages are not
+                        // in Live). Otherwise every log, and All logs merges
+                        // them; picking one after Live stops leaves the
+                        // session for that log.
+                        model: _debug.live
                             ? [
                                 { text: "All logs", value: "all" },
                                 { text: "System", value: "system" },
@@ -382,6 +385,7 @@ ApplicationWindow {
                                 { text: "Events", value: "event" }
                             ]
                             : [
+                                { text: "All logs", value: "all" },
                                 { text: "System", value: "system" },
                                 { text: "Scripts", value: "user" },
                                 { text: "Events", value: "event" },
@@ -513,7 +517,8 @@ ApplicationWindow {
                         Button {
                             // A session: empty the view only, never a file.
                             text: _debug.session ? qsTr("Clear View") : qsTr("Clear Log")
-                            enabled: _debug.session || _debug.exists
+                            // All logs: one file at a time is cleared, not all.
+                            enabled: _debug.session || (_debug.exists && _debug.file !== "all")
                             onClicked: {
                                 if (_debug.session) {
                                     _debugView.follow = true

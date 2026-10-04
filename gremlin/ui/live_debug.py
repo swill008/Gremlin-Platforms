@@ -205,6 +205,34 @@ def _profile_running() -> bool:
 
 # The Log dropdown's file keys and the feed's source names.
 SOURCE_OF = {"system": "System", "user": "Scripts", "event": "Events"}
+# All logs, outside Live: every file, merged by time, each entry tagged
+# with the log it came from.
+MERGED_NAMES = {"system": "System", "user": "Scripts", "event": "Events", "qt": "Qt"}
+
+
+def tagged(entries: list[tuple[int, str]], name: str) -> list[tuple[int, str]]:
+    """Entries with their log's name after the time stamp ("... [Qt] ...")."""
+    out = []
+    for rank, text in entries:
+        match = re.match(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d", text)
+        if match:
+            end = match.end()
+            text = text[:end] + f" [{name}]" + text[end:]
+        else:
+            text = f"[{name}] " + text
+        out.append((rank, text))
+    return out
+
+
+def merged_entries(files: dict[str, str]) -> list[tuple[int, str]]:
+    """Every file's entries (name -> its text), tagged, in time order; the
+    same second keeps each file's own order."""
+    rows: list[tuple[str, int, int, str]] = []
+    for name, text in files.items():
+        for index, (rank, body) in enumerate(tagged(debug_entries(text), name)):
+            rows.append((body[:19] if body[:4].isdigit() else "", index, rank, body))
+    rows.sort(key=lambda row: (row[0], row[1]))
+    return [(rank, body) for _stamp, _index, rank, body in rows]
 # A session divider ("── Live started … ──"): always shown, in its own color.
 DIVIDER = 99
 # Most lines a Live session view keeps; older ones drop off the top.
@@ -274,10 +302,14 @@ class DebugLog(QtCore.QObject):
         self._live = False
         self._session: list[tuple[int, str, str]] | None = None
         self._seq = 0
+        # All logs (file view): the merged entries, or None.
+        self._merged: list[tuple[int, str]] | None = None
 
     def _path(self) -> Path:
         from gremlin.util import logs_dir
 
+        if self._file == "all":
+            return logs_dir()
         return logs_dir() / DEBUG_FILES.get(self._file, "system.log")
 
     def _set(self, name: str, value: str) -> None:
@@ -306,7 +338,10 @@ class DebugLog(QtCore.QObject):
             self._total = sum(1 for rank, _s, _t in self._session if rank != DIVIDER)
             self._shown = self._session_rows(self._session)[-MAX_SESSION:]
         else:
-            entries = debug_entries(self._raw or "")
+            if self._file == "all":
+                entries = self._merged or []
+            else:
+                entries = debug_entries(self._raw or "")
             self._total = len(entries)
             self._shown = filter_entries(entries, self._level, self._find)
         self._drawn = True
@@ -366,10 +401,14 @@ class DebugLog(QtCore.QObject):
             return
         self._file = value
         if self._session is not None:
-            self._apply()  # a session is only filtered by its source
-            return
+            if self._live:
+                self._apply()  # a session is only filtered by its source
+                return
+            # Live stopped: picking a log leaves the session for that log.
+            self._session = None
         self._whole = False
         self._reload()
+        self._apply()
 
     def _divide(self, what: str) -> None:
         if self._session is not None:
@@ -468,6 +507,8 @@ class DebugLog(QtCore.QObject):
 
     @QtCore.Property(bool, notify=changed)
     def exists(self) -> bool:
+        if self._file == "all":
+            return any((self._path() / DEBUG_FILES[k]).is_file() for k in MERGED_NAMES)
         return self._path().is_file()
 
     @QtCore.Property(bool, notify=changed)
@@ -539,35 +580,66 @@ class DebugLog(QtCore.QObject):
                 if new:
                     self._extend(new)
             return
+        if self._file == "all":
+            self._refresh_all()
+            return
         path = self._path()
-        try:
-            stat = path.stat()
-            stamp = (stat.st_size, stat.st_mtime_ns)
-        except OSError:
-            stamp = None
+        stamp = self._stamp_of(path)
         if stamp == self._stamp and self._raw is not None:
             return
         self._stamp = stamp
-        cut = False
-        data = ""
-        if stamp is not None:
-            try:
-                with path.open("rb") as handle:
-                    if stamp[0] > _TAIL_BYTES and not self._whole:
-                        handle.seek(stamp[0] - _TAIL_BYTES)
-                        handle.readline()  # drop the cut-off line
-                        cut = True
-                    data = handle.read().decode("utf-8", errors="replace")
-            except OSError:
-                data = ""
+        data, cut = self._read(path, stamp)
         if data == self._raw and cut == self._cut:
             return
         self._raw = data
         self._cut = cut
         self._apply()
 
+    @staticmethod
+    def _stamp_of(path: Path) -> tuple[int, int] | None:
+        try:
+            stat = path.stat()
+        except OSError:
+            return None
+        return (stat.st_size, stat.st_mtime_ns)
+
+    def _read(self, path: Path, stamp: tuple[int, int] | None) -> tuple[str, bool]:
+        """The file's text (its end only when big, unless Load Whole File),
+        and whether it was cut."""
+        if stamp is None:
+            return "", False
+        cut = False
+        try:
+            with path.open("rb") as handle:
+                if stamp[0] > _TAIL_BYTES and not self._whole:
+                    handle.seek(stamp[0] - _TAIL_BYTES)
+                    handle.readline()  # drop the cut-off line
+                    cut = True
+                return handle.read().decode("utf-8", errors="replace"), cut
+        except OSError:
+            return "", False
+
+    def _refresh_all(self) -> None:
+        """All logs: every file read again when one changed, merged."""
+        folder = self._path()
+        paths = {MERGED_NAMES[k]: folder / DEBUG_FILES[k] for k in MERGED_NAMES}
+        stamps = tuple(self._stamp_of(p) for p in paths.values())
+        if stamps == self._stamp and self._merged is not None:
+            return
+        self._stamp = stamps  # type: ignore[assignment]
+        texts = {}
+        cut = False
+        for (name, path), stamp in zip(paths.items(), stamps):
+            text, was_cut = self._read(path, stamp)
+            texts[name] = text
+            cut = cut or was_cut
+        self._merged = merged_entries(texts)
+        self._cut = cut
+        self._apply()
+
     def _reload(self) -> None:
         self._raw = None
+        self._merged = None
         self._stamp = None
         self.refresh()
 
@@ -583,7 +655,7 @@ class DebugLog(QtCore.QObject):
         if self._live:
             return
         self._session = None
-        if self._file not in DEBUG_FILES:
+        if self._file not in DEBUG_FILES and self._file != "all":
             self._file = "system"
         self._reload()
         self._apply()
