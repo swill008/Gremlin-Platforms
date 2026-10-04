@@ -157,7 +157,7 @@ Item {
             Label {
                 id: _headerIcon
 
-                font.family: "bootstrap-icons"
+                font.family: Style.iconFont
                 font.pixelSize: Style.dp(24)
 
                 text: _root.action ? _root.action.icon : ""
@@ -215,7 +215,7 @@ Item {
             Label {
                 visible: _root.action && _root.action.userFeedback.length > 0
 
-                font.family: "bootstrap-icons"
+                font.family: Style.iconFont
                 font.pixelSize: Style.dp(24)
 
                 text: _root.action ? Helpers.determineHintIcon(_root.action.userFeedback) : ""

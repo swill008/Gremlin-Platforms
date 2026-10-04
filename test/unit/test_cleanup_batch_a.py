@@ -93,3 +93,27 @@ def test_a_leader_end_skips_drawings_hotspots() -> None:
     leaders = _text("qml/rig_leaders.js").replace("\r", "")
     loop = leaders[leaders.index("function attachNear("):][:600]
     assert "if (isDraw(list[i]))\n            continue" in loop
+
+
+# Batch B: light theme, typed colors, fonts (E5, E6, BM17).
+
+
+def test_colour_picker_follows_the_theme_and_takes_a_hex() -> None:
+    qml = _text("qml/DialogJoystickButtonMap.qml")
+    picker = qml[qml.index("id: _colorPop"):][:12000]
+    assert '"#18181B"\n            border.color' not in picker.replace("\r", "")
+    assert "color: Style.bgRaised" in picker
+    assert "id: _hexField" in picker and "_colorPop.takeHex(t.toUpperCase())" in picker
+
+
+def test_fonts_come_from_style() -> None:
+    import re
+
+    hard = []
+    for folder in ("qml", "action_plugins", "theme"):
+        for path in (_ROOT / folder).rglob("*.qml"):
+            if path.name != "Style.qml" and re.search(
+                r'font\.family: "', path.read_text(encoding="utf-8")
+            ):
+                hard.append(path.name)
+    assert hard == []

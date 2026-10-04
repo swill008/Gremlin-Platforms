@@ -318,6 +318,13 @@ def main() -> None:
         saved = json.loads(Path(where).read_text(encoding="utf-8"))
         texts = [n.get("text") for n in saved.get("nodes", []) if n.get("id") == "t1"]
         print(f"RESULT save-while-typing {texts}", flush=True)
+        # The colour picker takes a typed hex (#RGB too), and follows the
+        # theme (BM17, E5).
+        typed = js("_colorPop.openField('color', '#112233', null);"
+                   " _hexField.text = 'abc'; _hexField.take();"
+                   " var r = _buttonMap._toHex(_colorPop.live) + ' ' + _hexField.text;"
+                   " _colorPop.close(); r")
+        print(f"RESULT typed-hex {typed}", flush=True)
     for warning in warnings:
         print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)
     print("done", flush=True)

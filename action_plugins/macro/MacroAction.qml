@@ -676,13 +676,13 @@ Item {
 
             Label {
                 text: bsi.icons.drag_handle
-                font.family: "bootstrap-icons"
+                font.family: Style.iconFont
                 font.pixelSize: Style.dp(16)
             }
             Label {
                 visible: iconName !== ""
                 text: iconName
-                font.family: "bootstrap-icons"
+                font.family: Style.iconFont
                 font.pixelSize: Style.dp(16)
             }
             Image {

@@ -134,7 +134,7 @@ Item {
             Label {
                 visible: _root.inputBinding.userFeedback.length > 0
 
-                font.family: "bootstrap-icons"
+                font.family: Style.iconFont
                 font.pixelSize: Style.dp(24)
 
                 text: Helpers.determineHintIcon(_root.inputBinding.userFeedback)

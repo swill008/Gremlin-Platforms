@@ -16,7 +16,7 @@ RoundButton {
             Layout.leftMargin: Style.dp(4)
             Layout.alignment: Qt.AlignVCenter
             text: "\uF518"
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
         }
         Label {
             id: _description

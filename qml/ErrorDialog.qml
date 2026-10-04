@@ -65,7 +65,7 @@ Popup {
 
                 text: root.detailedText
                 selectByMouse: true
-                font.family: "Consolas"
+                font.family: Style.monoFont
                 // Long traceback lines wrap instead of running off the side.
                 wrapMode: TextEdit.WrapAnywhere
 

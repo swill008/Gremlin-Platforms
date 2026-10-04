@@ -3133,8 +3133,8 @@ ApplicationWindow {
                         anchors.fill: parent
                         z: 1
                         radius: Style.dp(12)
-                        color: "#CC0C0C0E"
-                        border.color: _poolFloat.dropHot ? Style.accent : "#3F3F46"
+                        color: Qt.rgba(Style.bgRaised.r, Style.bgRaised.g, Style.bgRaised.b, 0.92)
+                        border.color: _poolFloat.dropHot ? Style.accent : Style.lineStrong
                         border.width: _poolFloat.dropHot ? Style.dp(3) : 1
                     }
                     Label {
@@ -3177,7 +3177,7 @@ ApplicationWindow {
                                     anchors.rightMargin: Style.dp(8)
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "×"
-                                    color: "#A1A1AA"
+                                    color: Style.fgMuted
                                     font.pixelSize: Style.dp(16)
                                     z: 2
                                     MouseArea {
@@ -3309,8 +3309,8 @@ ApplicationWindow {
                         width: Style.dp(10)
                         height: Style.dp(10)
                         opacity: 0.55
-                        Rectangle { width: Style.dp(8); height: Style.dp(1); color: "#A1A1AA"; rotation: -45; x: Style.dp(2); y: Style.dp(7) }
-                        Rectangle { width: Style.dp(5); height: Style.dp(1); color: "#A1A1AA"; rotation: -45; x: Style.dp(5); y: Style.dp(8) }
+                        Rectangle { width: Style.dp(8); height: Style.dp(1); color: Style.fgMuted; rotation: -45; x: Style.dp(2); y: Style.dp(7) }
+                        Rectangle { width: Style.dp(5); height: Style.dp(1); color: Style.fgMuted; rotation: -45; x: Style.dp(5); y: Style.dp(8) }
                     }
                 }
 
@@ -3473,8 +3473,8 @@ ApplicationWindow {
         property real vv: 0.12
         readonly property color live: Qt.hsva(hh, ss, vv, 1)
         background: Rectangle {
-            color: "#18181B"
-            border.color: "#3F3F46"
+            color: Style.bgRaised
+            border.color: Style.lineStrong
             radius: Style.dp(8)
             // Clicks, the wheel and the pointer on the picker stay on it:
             // nothing under it (the menu, the map) reacts to them.
@@ -3555,7 +3555,7 @@ ApplicationWindow {
                 Label {
                     Layout.fillWidth: true
                     text: "Pick Color"
-                    color: "#E4E4E7"
+                    color: Style.fg
                     font.bold: true
                     MouseArea {
                         anchors.fill: parent
@@ -3579,7 +3579,7 @@ ApplicationWindow {
                     }
                 }
                 Label {
-                    font.family: "bootstrap-icons"
+                    font.family: Style.iconFont
                     font.pixelSize: Style.dp(14)
                     // pin-fill when pinned, pin-angle when not.
                     text: _colorPop.pinned ? "\uF4EC" : "\uF4EB"
@@ -3696,14 +3696,35 @@ ApplicationWindow {
                     height: Style.dp(24)
                     radius: Style.dp(4)
                     color: _colorPop.live
-                    border.color: "#52525B"
+                    border.color: Style.lineStrong
                 }
-                Label {
+                // The color as #RRGGBB; type one (#RGB, with or without #)
+                // and press Enter.
+                TextField {
+                    id: _hexField
                     Layout.fillWidth: true
                     text: _buttonMap._toHex(_colorPop.live)
-                    color: "#E4E4E7"
-                    font.family: "Consolas"
+                    font.family: Style.monoFont
                     font.pixelSize: Style.dp(13)
+                    selectByMouse: true
+                    validator: RegularExpressionValidator {
+                        regularExpression: /#?[0-9A-Fa-f]{0,6}/
+                    }
+                    onAccepted: _hexField.take()
+                    onEditingFinished: _hexField.take()
+
+                    function take() {
+                        var t = text.trim()
+                        if (t.length && t[0] !== "#")
+                            t = "#" + t
+                        if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(t)) {
+                            if (t.length === 4)
+                                t = "#" + t[1] + t[1] + t[2] + t[2] + t[3] + t[3]
+                            _colorPop.takeHex(t.toUpperCase())
+                        }
+                        // Shows the picked color again (and follows it).
+                        text = Qt.binding(() => _buttonMap._toHex(_colorPop.live))
+                    }
                 }
             }
             Flow {
@@ -3717,7 +3738,7 @@ ApplicationWindow {
                         height: Style.dp(16)
                         radius: Style.dp(3)
                         color: modelData
-                        border.color: "#52525B"
+                        border.color: Style.lineStrong
                         MouseArea {
                             anchors.fill: parent
                             onClicked: _colorPop.takeHex(modelData)

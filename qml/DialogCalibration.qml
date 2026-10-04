@@ -370,7 +370,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
 
                         text: bsi.icons.reload
-                        font.family: "bootstrap-icons"
+                        font.family: Style.iconFont
                         font.pixelSize: Style.dp(20)
                         font.bold: true
 
@@ -381,7 +381,7 @@ ApplicationWindow {
 
                         text: bsi.icons.save
                         font.pixelSize: Style.dp(20)
-                        font.family: "bootstrap-icons"
+                        font.family: Style.iconFont
                         font.bold: true
 
                         onClicked: {

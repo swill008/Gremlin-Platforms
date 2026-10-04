@@ -37,7 +37,7 @@ ApplicationWindow {
 
             text: errorString
             selectByMouse: true
-            font.family: "Consolas"
+            font.family: Style.monoFont
             wrapMode: Text.WordWrap
 
             readOnly: true

@@ -20,7 +20,7 @@ Item {
         id: _checkboxes
 
         Compact.CheckBox {
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
             font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_n
@@ -29,7 +29,7 @@ Item {
         }
 
         Compact.CheckBox {
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
             font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_ne
@@ -38,7 +38,7 @@ Item {
         }
 
         Compact.CheckBox {
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
             font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_e
@@ -47,7 +47,7 @@ Item {
         }
 
         Compact.CheckBox {
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
             font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_se
@@ -56,7 +56,7 @@ Item {
         }
 
         Compact.CheckBox {
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
             font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_s
@@ -65,7 +65,7 @@ Item {
         }
 
         Compact.CheckBox {
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
             font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_sw
@@ -74,7 +74,7 @@ Item {
         }
 
         Compact.CheckBox {
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
             font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_w
@@ -83,7 +83,7 @@ Item {
         }
 
         Compact.CheckBox {
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
             font.pixelSize: Style.dp(14)
             font.weight: 800
             text: bsi.icons.hat_nw

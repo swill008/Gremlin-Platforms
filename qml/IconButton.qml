@@ -10,7 +10,7 @@ Button {
     property alias backgroundColor: _bg.color
     property alias textColor: _text.color
 
-    font.family: "bootstrap-icons"
+    font.family: Style.iconFont
     font.pixelSize: Style.dp(17)
 
     contentItem: Text {

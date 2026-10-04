@@ -43,7 +43,7 @@ ToolButton {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
             text: _button.text
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
             font.pixelSize: Style.dp(48)
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

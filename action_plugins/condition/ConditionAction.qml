@@ -359,7 +359,7 @@ Item {
                 Label {
                     visible: typeIcon !== ""
                     text: typeIcon
-                    font.family: "bootstrap-icons"
+                    font.family: Style.iconFont
                     font.pixelSize: Style.dp(16)
                 }
                 Image {
@@ -396,7 +396,7 @@ Item {
         Label {
             visible: modelData.isValid != true
 
-            font.family: "bootstrap-icons"
+            font.family: Style.iconFont
             font.pixelSize: Style.dp(24)
 
             text: bsi.icons.error

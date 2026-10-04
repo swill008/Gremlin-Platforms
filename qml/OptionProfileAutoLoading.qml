@@ -221,7 +221,7 @@ Item {
                 }
                 Button {
                     text: bsi.icons.edit
-                    font.family: "bootstrap-icons"
+                    font.family: Style.iconFont
 
                     checkable: true
 

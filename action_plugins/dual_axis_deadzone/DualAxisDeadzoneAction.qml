@@ -158,7 +158,7 @@ Item {
             // First axis selection
             Label {
                 text: "First axis: "
-                font.family: "Segoe UI"
+                font.family: Style.uiFont
                 font.weight: 600
             }
             Label {
@@ -178,7 +178,7 @@ Item {
             // Second axis selection
             Label {
                 text: "Second axis: "
-                font.family: "Segoe UI"
+                font.family: Style.uiFont
                 font.weight: 600
             }
             Label {

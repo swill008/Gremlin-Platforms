@@ -65,3 +65,5 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
     assert results["copy-undo"] == "c1 p1"
     # Ctrl+S while typing keeps the typed text (BM15).
     assert results["save-while-typing"] == "['typed']"
+    # A typed hex sets the colour, and the field shows it in full (BM17).
+    assert results["typed-hex"] == "#aabbcc #aabbcc"

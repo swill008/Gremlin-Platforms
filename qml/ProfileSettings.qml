@@ -218,7 +218,7 @@ Item {
     component UIHeader : JGText {
         font.pixelSize: Style.dp(19)
         font.weight: 500
-        font.family: "Segoe UI"
+        font.family: Style.uiFont
     }
 
     component UIText : JGText {
@@ -227,7 +227,7 @@ Item {
         wrapMode: Text.Wrap
 
         font.pixelSize: Style.dp(15)
-        font.family: "Segoe UI"
+        font.family: Style.uiFont
     }
 
     component OutputVJoyInitialValueEntryDelegate : ColumnLayout {

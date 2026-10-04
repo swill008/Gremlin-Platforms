@@ -66,7 +66,7 @@ Item {
                  width: bootstrap.length > 0 ? Style.dp(30) : 0
                  verticalAlignment: Text.AlignBottom
 
-                 font.family: "bootstrap-icons"
+                 font.family: Style.iconFont
                  font.pixelSize: Style.dp(20)
              }
              Label {

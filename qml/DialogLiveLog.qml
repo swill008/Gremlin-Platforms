@@ -236,7 +236,7 @@ ApplicationWindow {
                 color: Style.fg
                 selectionColor: Style.line
                 selectedTextColor: Style.fg
-                font.family: "Consolas"
+                font.family: Style.monoFont
                 font.pixelSize: Style.dp(13)
                 textFormat: _area.textFormat
                 onSelectedTextChanged: {

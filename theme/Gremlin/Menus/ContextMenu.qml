@@ -373,7 +373,7 @@ Popup {
                     Label {
                         id: _pin
                         Layout.rightMargin: Style.dp(2)
-                        font.family: "bootstrap-icons"
+                        font.family: Style.iconFont
                         font.pixelSize: _menu.textPx
                         // pin-fill when pinned, pin-angle when not.
                         text: _menu.pinned ? "\uF4EC" : "\uF4EB"

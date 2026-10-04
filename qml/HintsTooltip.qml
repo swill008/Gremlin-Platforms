@@ -45,7 +45,7 @@ Popup {
                     text: Helpers.hintIcon(modelData.type)
                     color: Helpers.hintColor(modelData.type)
 
-                    font.family: "bootstrap-icons"
+                    font.family: Style.iconFont
                     font.pixelSize: _tooltip.iconSize
                     font.bold: true
                 }

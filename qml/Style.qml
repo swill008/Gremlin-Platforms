@@ -169,6 +169,11 @@ Item {
 
     // Program text size in pixels.
     readonly property int fontSize: dp(15)
+    // Fonts: the program's own, fixed-width text (logs, values), and the
+    // icon font (bootstrap-icons, loaded at start).
+    readonly property string uiFont: "Segoe UI"
+    readonly property string monoFont: "Consolas"
+    readonly property string iconFont: "bootstrap-icons"
 
     // Menus, dropdown lists and the command palette (Gremlin.Menus): one look
     // everywhere, the Button Map's. A raised surface with a strong line, rows

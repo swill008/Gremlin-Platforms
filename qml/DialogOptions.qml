@@ -73,7 +73,7 @@ ApplicationWindow {
                     spacing: Style.dp(8)
                     Label {
                         text: "\uF3E5"
-                        font.family: "bootstrap-icons"
+                        font.family: Style.iconFont
                         font.pixelSize: Style.dp(18)
                         color: Style.fgSoft
                     }

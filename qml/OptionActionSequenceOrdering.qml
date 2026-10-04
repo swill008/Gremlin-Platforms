@@ -159,7 +159,7 @@ Item {
 
                         Label {
                             text: ""
-                            font.family: "bootstrap-icons"
+                            font.family: Style.iconFont
                             color: Style.fgMuted
 
                             MouseArea {

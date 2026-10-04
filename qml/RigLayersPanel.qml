@@ -317,7 +317,7 @@ Rectangle {
                             Label {
                                 Layout.preferredWidth: Style.dp(14)
                                 text: _row.row.canOpen ? (_row.row.open ? "" : "") : ""
-                                font.family: "bootstrap-icons"
+                                font.family: Style.iconFont
                                 font.pixelSize: Style.dp(10)
                                 color: Style.fgMuted
                                 MouseArea {
@@ -337,7 +337,7 @@ Rectangle {
                                     }
                                     return icons[t] || ""
                                 }
-                                font.family: "bootstrap-icons"
+                                font.family: Style.iconFont
                                 font.pixelSize: Style.dp(12)
                                 color: Style.fgSoft
                             }
@@ -382,7 +382,7 @@ Rectangle {
                                 horizontalAlignment: Text.AlignHCenter
                                 visible: _row.row.part !== "photo"
                                 text: ""
-                                font.family: "bootstrap-icons"
+                                font.family: Style.iconFont
                                 font.pixelSize: Style.dp(13)
                                 color: !can ? Style.fgDisabled : (_trashArea.containsMouse ? Style.dangerText : Style.fgMuted)
                                 MouseArea {
@@ -410,7 +410,7 @@ Rectangle {
                                     horizontalAlignment: Text.AlignHCenter
                                     text: modelData === "hidden" ? ((on || from) ? "" : "")
                                                                  : ((on || from) ? "" : "")
-                                    font.family: "bootstrap-icons"
+                                    font.family: Style.iconFont
                                     font.pixelSize: Style.dp(13)
                                     color: on ? Style.accent : (from ? Style.fgDisabled : (_flagArea.containsMouse ? Style.fg : Style.fgMuted))
                                     MouseArea {

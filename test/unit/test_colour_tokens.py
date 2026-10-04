@@ -19,7 +19,7 @@ _REMAINING = {
     "qml/LogicalPage.qml": 11,
     "qml/OutputModuleView.qml": 12,
     # Overlays on the device photo and the colour picker's fixed palette.
-    "qml/DialogJoystickButtonMap.qml": 48,
+    "qml/DialogJoystickButtonMap.qml": 37,
     # Counted since .js files are scanned too; older than the scan.
     "qml/helpers.js": 4,
     # Drawn on the device photo, which looks the same in both modes. The

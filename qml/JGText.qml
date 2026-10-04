@@ -9,5 +9,5 @@ import Gremlin.Style
 Text {
     color: Style.foreground
     font.pixelSize: Style.dp(16)
-    font.family: "Segoe UI"
+    font.family: Style.uiFont
 }
