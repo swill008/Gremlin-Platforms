@@ -84,6 +84,9 @@ var
     finishes. }
   MovedAside: Boolean;
   Finished: Boolean;
+  { The program to start again if an in-app update doesn't finish; set
+    once setup reaches the install step. }
+  AppExe: String;
 
 function LaunchAfterSilentUpdate: Boolean;
 begin
@@ -155,6 +158,7 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
+  AppExe := AppFile('{#MyAppExeName}');
   if not OursIsHere then
   begin
     { A new install. Another program's _internal folder must not be moved
@@ -211,6 +215,8 @@ begin
 end;
 
 procedure DeinitializeSetup;
+var
+  ResultCode: Integer;
 begin
   { Failed or cancelled after the old program was moved aside: put it back,
     so the version that worked before still starts. }
@@ -220,6 +226,14 @@ begin
     PutBack('_internal');
     PutBack('{#MyAppExeName}');
     DeleteFile(MarkerFile);
+  end;
+  { An in-app update that didn't finish: start the version that is there
+    again (it says the update didn't finish and offers Try Again). }
+  if (AppExe <> '') and not Finished and LaunchAfterSilentUpdate
+    and FileExists(AppExe) then
+  begin
+    Log('Update did not finish; starting the previous version again.');
+    ExecAsOriginalUser(AppExe, '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
   end;
 end;
 

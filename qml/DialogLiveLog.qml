@@ -86,6 +86,8 @@ ApplicationWindow {
             _debugView.show(_debug.html)
             _file.currentIndex = _file.indexOfValue(_debug.file)
         }
+        // Live added rows to the view itself: only keep to the end.
+        function onAppended() { _debugView.added() }
     }
 
     Connections {
@@ -94,6 +96,7 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        _debug.attachView(_debugView.document)
         _log.refresh()
         _debug.refresh()
         _debugView.show(_debug.html)
@@ -154,13 +157,25 @@ ApplicationWindow {
     }
 
     // A read-only log area that keeps to the end while it is scrolled there.
+    // While text is selected it isn't redrawn (that would drop the
+    // selection): it shows the latest text from source() once the selection
+    // is cleared.
     component LogView: Rectangle {
         id: _area
 
         property bool follow: true
         property int textFormat: TextEdit.PlainText
+        // The text to show after a held redraw.
+        property var source: null
+        readonly property var document: _view.textDocument
+        property bool _held: false
 
         function show(text) {
+            if (_view.selectedText.length > 0) {
+                _held = true
+                return
+            }
+            _held = false
             var at = _view.cursorPosition
             _view.text = text
             if (follow) {
@@ -174,6 +189,12 @@ ApplicationWindow {
         function toEnd() {
             follow = true
             Qt.callLater(_flick.scrollToEnd)
+        }
+
+        // Rows were added to the document directly.
+        function added() {
+            if (follow && _view.selectedText.length === 0)
+                Qt.callLater(_flick.scrollToEnd)
         }
 
         color: Style.bgPage
@@ -218,6 +239,10 @@ ApplicationWindow {
                 font.family: "Consolas"
                 font.pixelSize: Style.dp(13)
                 textFormat: _area.textFormat
+                onSelectedTextChanged: {
+                    if (selectedText.length === 0 && _area._held && _area.source)
+                        _area.show(_area.source())
+                }
             }
 
             ScrollBar.vertical: ScrollBar {
@@ -286,6 +311,7 @@ ApplicationWindow {
                     id: _configView
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    source: () => _log.text
                 }
 
                 RowLayout {
@@ -448,6 +474,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     textFormat: TextEdit.RichText
+                    source: () => _debug.html
                 }
 
                 // Levels on the left, buttons on the right; on a narrow window
@@ -575,6 +602,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     textFormat: TextEdit.RichText
+                    source: () => _monitor.html
                 }
 
                 RowLayout {

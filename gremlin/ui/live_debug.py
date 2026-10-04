@@ -15,7 +15,7 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6 import QtCore, QtGui
+from PySide6 import QtCore, QtGui, QtQuick
 
 import gremlin.ui.type_aliases as ta
 from gremlin import input_monitor, log_feed
@@ -210,7 +210,9 @@ MAX_SESSION = 20000
 
 def _html(rows: list[tuple[int, str]], colors: dict[str, str]) -> str:
     """Rows as rich text: warnings and errors in color, dividers and dimmed
-    rows in theirs."""
+    rows in theirs. Each row is its own paragraph, so rows can be added at
+    the end and dropped from the top without laying the whole view out
+    again."""
     lines = []
     for rank, body in rows:
         text = html.escape(body).replace("\n", "<br>")
@@ -223,9 +225,9 @@ def _html(rows: list[tuple[int, str]], colors: dict[str, str]) -> str:
         )
         if color:
             text = f'<span style="color:{color}">{text}</span>'
-        lines.append(text)
-    # white-space: pre keeps the view's own font (a <pre> would not).
-    return '<div style="white-space:pre">' + "<br>".join(lines) + "</div>"
+        # white-space: pre keeps the view's own font (a <pre> would not).
+        lines.append(f'<p style="margin:0;white-space:pre">{text}</p>')
+    return "".join(lines)
 
 
 @ta.QmlElement
@@ -236,9 +238,17 @@ class DebugLog(QtCore.QObject):
     (gremlin.log_feed)."""
 
     changed = QtCore.Signal()
+    # Live added rows straight to the view (no redraw): the view keeps to
+    # the end if it was there.
+    appended = QtCore.Signal()
+    countsChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
+        # The view's document (attachView): Live adds rows to it directly.
+        self._view: QtQuick.QQuickTextDocument | None = None
+        # The view shows self._shown (set by each full redraw).
+        self._drawn = False
         self._file = "system"
         self._level = "All"
         self._find = ""
@@ -272,26 +282,81 @@ class DebugLog(QtCore.QObject):
             setattr(self, name, value)
             self._apply()
 
+    def _session_rows(
+        self, entries: list[tuple[int, str, str]]
+    ) -> list[tuple[int, str]]:
+        """The session entries the filters let through."""
+        source = SOURCE_OF.get(self._file, "")
+        least = _MIN_RANK.get(self._level, 0)
+        needle = self._find.strip().lower()
+        return [
+            (rank, text) for rank, src, text in entries
+            if rank == DIVIDER or (
+                (not source or src == source)
+                and rank >= least
+                and (not needle or needle in text.lower())
+            )
+        ]
+
     def _apply(self) -> None:
         if self._session is not None:
-            source = SOURCE_OF.get(self._file, "")
-            least = _MIN_RANK.get(self._level, 0)
-            needle = self._find.strip().lower()
-            rows = [
-                (rank, text) for rank, src, text in self._session
-                if rank == DIVIDER or (
-                    (not source or src == source)
-                    and rank >= least
-                    and (not needle or needle in text.lower())
-                )
-            ]
             self._total = sum(1 for rank, _s, _t in self._session if rank != DIVIDER)
-            self._shown = rows
+            self._shown = self._session_rows(self._session)[-MAX_SESSION:]
         else:
             entries = debug_entries(self._raw or "")
             self._total = len(entries)
             self._shown = filter_entries(entries, self._level, self._find)
+        self._drawn = True
         self.changed.emit()
+        self.countsChanged.emit()
+
+    @QtCore.Slot(QtQuick.QQuickTextDocument)
+    def attachView(self, document: QtQuick.QQuickTextDocument) -> None:
+        """The Debug view's document, so Live can add rows to it."""
+        self._view = document
+
+    def _colors(self) -> dict[str, str]:
+        return {
+            "warn": self._warn, "error": self._error,
+            "divider": self._divider, "muted": self._muted,
+        }
+
+    def _extend(self, new: list[tuple[int, str, str]]) -> None:
+        """Live's new lines: added at the end of the view and the oldest
+        dropped from the top, instead of drawing the whole view again (which
+        took about a third of a second with 20,000 rows and lost a
+        selection)."""
+        rows = self._session_rows(new)
+        self._total = sum(1 for rank, _s, _t in self._session or [] if rank != DIVIDER)
+        had = len(self._shown)
+        self._shown.extend(rows)
+        cut = max(0, len(self._shown) - MAX_SESSION)
+        if cut:
+            del self._shown[:cut]
+        doc = self._view.textDocument() if self._view is not None else None
+        if doc is None or not self._drawn:
+            self._apply()
+            return
+        if not rows and not cut:
+            self.countsChanged.emit()
+            return
+        if rows:
+            cursor = QtGui.QTextCursor(doc)
+            cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
+            if had:
+                cursor.insertBlock()
+            cursor.insertHtml(_html(rows, self._colors()))
+        if cut:
+            cursor = QtGui.QTextCursor(doc)
+            cursor.movePosition(QtGui.QTextCursor.MoveOperation.Start)
+            cursor.movePosition(
+                QtGui.QTextCursor.MoveOperation.NextBlock,
+                QtGui.QTextCursor.MoveMode.KeepAnchor,
+                cut,
+            )
+            cursor.removeSelectedText()
+        self.appended.emit()
+        self.countsChanged.emit()
 
     def _set_file(self, value: str) -> None:
         if value == self._file:
@@ -390,11 +455,11 @@ class DebugLog(QtCore.QObject):
     def path(self) -> str:
         return str(self._path())
 
-    @QtCore.Property(int, notify=changed)
+    @QtCore.Property(int, notify=countsChanged)
     def shownCount(self) -> int:
         return sum(1 for rank, _t in self._shown if rank != DIVIDER)
 
-    @QtCore.Property(int, notify=changed)
+    @QtCore.Property(int, notify=countsChanged)
     def totalCount(self) -> int:
         return self._total
 
@@ -442,23 +507,21 @@ class DebugLog(QtCore.QObject):
     @QtCore.Property(str, notify=changed)
     def html(self) -> str:
         """The shown entries; warnings, errors and dividers in color."""
-        return _html(self._shown, {
-            "warn": self._warn, "error": self._error,
-            "divider": self._divider, "muted": self._muted,
-        })
+        return _html(self._shown, self._colors())
 
-    def _take_new(self) -> bool:
-        """Add the feed's new lines to the session; True if there were any."""
+    def _take_new(self) -> list[tuple[int, str, str]]:
+        """Add the feed's new lines to the session and return them."""
         if self._session is None:
-            return False
+            return []
         new = log_feed.entries_after(self._seq)
         if not new:
-            return False
+            return []
         self._seq = new[-1].seq
-        self._session.extend((e.rank, e.source, e.text) for e in new)
+        added = [(e.rank, e.source, e.text) for e in new]
+        self._session.extend(added)
         if len(self._session) > MAX_SESSION:
             del self._session[: len(self._session) - MAX_SESSION]
-        return True
+        return added
 
     @QtCore.Slot()
     def refresh(self) -> None:
@@ -468,8 +531,10 @@ class DebugLog(QtCore.QObject):
             self._on, self._running = on, running
             self.changed.emit()
         if self._session is not None:
-            if self._live and self._take_new():
-                self._apply()
+            if self._live:
+                new = self._take_new()
+                if new:
+                    self._extend(new)
             return
         path = self._path()
         try:

@@ -55,6 +55,9 @@ from gremlin.config import Configuration
 from gremlin.types import PropertyType
 
 install_path = os.path.normcase(os.path.dirname(os.path.abspath(sys.argv[0])))
+# The folder the program was started from: a relative --profile path is read
+# from there, not from the install folder.
+launch_dir = os.getcwd()
 os.chdir(install_path)
 
 # Universal with scaled sizes, from theme/GremlinStyle.
@@ -311,13 +314,26 @@ def _process_image_name(pid: int) -> str:
 _GREMLIN_EXE_NAMES = ("gremlin_platforms.exe", "joystick_gremlin.exe")
 
 
+# While main() checks for a second copy, the process scan (1-2 s) runs at
+# most once; None outside that check.
+_scan_cache: dict[str, set[int]] | None = None
+
+
+def _gremlin_command_line_pids() -> set[int]:
+    if _scan_cache is None:
+        return _command_line_process_ids()
+    if "pids" not in _scan_cache:
+        _scan_cache["pids"] = _command_line_process_ids()
+    return _scan_cache["pids"]
+
+
 def _is_gremlin_process(pid: int, python_pids: set[int] | None = None) -> bool:
     """True if the PID is a Gremlin exe or a Python interpreter running it."""
     name = _process_image_name(pid)
     if name in _GREMLIN_EXE_NAMES:
         return True
     if name in ("python.exe", "pythonw.exe"):
-        known = python_pids if python_pids is not None else _command_line_process_ids()
+        known = python_pids if python_pids is not None else _gremlin_command_line_pids()
         return pid in known
     return False
 
@@ -325,7 +341,6 @@ def _is_gremlin_process(pid: int, python_pids: set[int] | None = None) -> bool:
 def _gremlin_window_titles() -> list[str]:
     titles: list[str] = []
     protected = _this_process_tree()
-    python_pids = _command_line_process_ids()
     try:
         user32 = ctypes.windll.user32
 
@@ -342,7 +357,7 @@ def _gremlin_window_titles() -> list[str]:
             pid = ctypes.c_ulong()
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
             value = int(pid.value)
-            if value in protected or not _is_gremlin_process(value, python_pids):
+            if value in protected or not _is_gremlin_process(value):
                 return True
             titles.append(title)
             return True
@@ -356,7 +371,6 @@ def _gremlin_window_titles() -> list[str]:
 def _window_process_ids() -> set[int]:
     pids: set[int] = set()
     protected = _this_process_tree()
-    python_pids = _command_line_process_ids()
     try:
         user32 = ctypes.windll.user32
 
@@ -373,7 +387,7 @@ def _window_process_ids() -> set[int]:
             if (
                 value
                 and value not in protected
-                and _is_gremlin_process(value, python_pids)
+                and _is_gremlin_process(value)
             ):
                 pids.add(value)
             return True
@@ -428,7 +442,7 @@ def _lock_owner_pid() -> int | None:
 
 def _other_gremlin_pids() -> list[int]:
     protected = _this_process_tree()
-    pids = _window_process_ids() | _command_line_process_ids()
+    pids = _window_process_ids() | _gremlin_command_line_pids()
     owner = _lock_owner_pid()
     if owner:
         pids.add(owner)
@@ -886,8 +900,18 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.backend.ui_state.bumpThemeRevision()
 
     def process_cmd_args(self, args: argparse.Namespace) -> None:
-        if args.profile is not None and os.path.isfile(args.profile):
-            self.backend.loadProfile(args.profile)
+        profile = None
+        if args.profile is not None:
+            profile = os.path.normpath(os.path.join(launch_dir, args.profile))
+            if not os.path.isfile(profile):
+                self.syslog.warning(f"--profile not found: {profile}")
+                gremlin.signal.display_error(
+                    "Profile not found.",
+                    f"{profile}\n\nThe last profile used was opened instead.",
+                )
+                profile = None
+        if profile is not None:
+            self.backend.loadProfile(profile)
         else:
             last_profile = Path(
                 Configuration().value("global", "internal", "last-profile")
@@ -945,17 +969,34 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.engine.rootContext().setContextProperty("updater", self.updater)
 
 
+def _check_second_copy() -> tuple[QtCore.QLockFile | None, bool]:
+    """The instance lock, and False when the user chose not to start.
+
+    A clean start (lock taken, no Gremlin-Platforms window) runs no process
+    scan; otherwise the scan runs once.
+    """
+    global _scan_cache
+    _scan_cache = {}
+    try:
+        lock = acquire_instance_lock()
+        windows = _gremlin_window_titles()
+        if lock is None or windows:
+            pids = _other_gremlin_pids()
+            choice = _confirm_second_instance(lock is None, windows, pids)
+            if choice == "quit":
+                return lock, False
+            if choice == "close_others":
+                _terminate_other_gremlin(pids)
+                lock = acquire_instance_lock()
+        return lock, True
+    finally:
+        _scan_cache = None
+
+
 def main() -> int:
-    lock = acquire_instance_lock()
-    windows = _gremlin_window_titles()
-    pids = _other_gremlin_pids()
-    if lock is None or windows:
-        choice = _confirm_second_instance(lock is None, windows, pids)
-        if choice == "quit":
-            return 0
-        if choice == "close_others":
-            _terminate_other_gremlin(pids)
-            lock = acquire_instance_lock()
+    lock, start = _check_second_copy()
+    if not start:
+        return 0
     try:
         app = JoystickGremlinApp(sys.argv)
     except Exception as e:

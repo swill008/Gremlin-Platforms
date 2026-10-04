@@ -15,6 +15,7 @@ import miniaudio
 from gremlin import threads
 from gremlin.common import SingletonMetaclass
 from gremlin.config import Configuration
+from gremlin.log_once import log_once
 from gremlin.types import PropertyType
 from gremlin.util import clamp
 
@@ -55,6 +56,11 @@ class AudioSample:
         )
         self._playback_done_event = threading.Event()
         self._generator: AudioSample.Generator_T | None = None
+
+    @property
+    def done(self) -> bool:
+        """Playback has finished or was cancelled."""
+        return self._playback_done_event.is_set()
 
     def block(self, still_wanted: Callable[[], bool]) -> None:
         """Blocks the calling thread until playback is complete, or until
@@ -98,7 +104,9 @@ class AudioPlayer(metaclass=SingletonMetaclass):
     """Manages the playing of audio files."""
 
     def __init__(self) -> None:
-        self._play_list: list[AudioSample] = []
+        # (file, volume) waiting to play: decoded on the playback thread, not
+        # on the thread that queued them (the event thread).
+        self._play_list: list[tuple[str, int]] = []
         self._currently_playing: list[AudioSample] = []
         self._playback_mode = Configuration().value(
             "action", "play-sound", "playback-mode"
@@ -126,7 +134,8 @@ class AudioPlayer(metaclass=SingletonMetaclass):
     def _ask_to_stop(self) -> None:
         self._is_ready = False
         self._play_list = []
-        [s.cancel() for s in self._currently_playing]
+        for sample in list(self._currently_playing):
+            sample.cancel()
 
     def stop(self) -> None:
         """Stops the audio playback thread."""
@@ -144,30 +153,40 @@ class AudioPlayer(metaclass=SingletonMetaclass):
             volume: The volume of the playback, the value is in the range
                 [0, 100] with 0 being mute and 100 maximum
         """
-        self._play_list.append(AudioSample(file_name, volume))
+        self._play_list.append((file_name, volume))
+
+    def _next_sample(self) -> AudioSample | None:
+        """The next queued sound, decoded and started; None if there is none
+        or it can't be played (logged)."""
+        if not self._play_list:
+            return None
+        file_name, volume = self._play_list.pop(0)
+        try:
+            sample = AudioSample(file_name, volume)
+            if self._playback_mode == "Interrupt":
+                while self._currently_playing:
+                    self._currently_playing.pop(0).cancel()
+            self._currently_playing.append(sample)
+            sample.play()
+        except Exception as exc:
+            # A file that can't be decoded (damaged, unsupported format).
+            log_once(
+                "user", ("play-sound-unreadable", file_name), logging.WARNING,
+                f"Play Sound: could not play '{file_name}': {exc}",
+            )
+            return None
+        return sample
 
     def _playback(self) -> None:
         """Background thread which ensures audio is played."""
         while self._is_ready:
-            match self._playback_mode:
-                case "Sequential":
-                    if self._play_list:
-                        sample = self._play_list.pop(0)
-                        self._currently_playing.append(sample)
-                        sample.play()
-                        sample.block(lambda: self._is_ready)
-                case "Overlap":
-                    if self._play_list:
-                        sample = self._play_list.pop(0)
-                        self._currently_playing.append(sample)
-                        sample.play()
-                case "Interrupt":
-                    if self._play_list:
-                        while self._currently_playing:
-                            self._currently_playing.pop(0).cancel()
-                        sample = self._play_list.pop(0)
-                        self._currently_playing.append(sample)
-                        sample.play()
+            sample = self._next_sample()
+            if sample is not None and self._playback_mode == "Sequential":
+                sample.block(lambda: self._is_ready)
+            # Finished sounds go, with their decoded audio.
+            self._currently_playing = [
+                s for s in self._currently_playing if not s.done
+            ]
             time.sleep(0.01)
 
 

@@ -55,6 +55,14 @@ ApplicationWindow {
                 + updater.latestVersion + " and start again."
         case "error":
             return updater.errorText
+        case "failed":
+            var failed = "The update to <b>Gremlin-Platforms " + updater.failedVersion
+                + "</b> didn't finish, so the previous version (" + updater.currentVersion
+                + ") was put back. Your profiles and settings are unchanged.<br><br>"
+                + "Try Again installs it again."
+            if (updater.failedLog)
+                failed += " Setup's log: " + updater.failedLog
+            return failed
         }
         return ""
     }
@@ -126,6 +134,12 @@ ApplicationWindow {
                 text: qsTr("Try Again")
                 visible: _root.state_ === "error"
                 onClicked: () => { updater.check(true) }
+            }
+            Button {
+                text: qsTr("Try Again")
+                visible: _root.state_ === "failed"
+                highlighted: true
+                onClicked: () => { updater.retryUpdate() }
             }
             Button {
                 text: _root.state_ === "available" || _root.state_ === "ready"

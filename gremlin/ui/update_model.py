@@ -31,6 +31,21 @@ from gremlin.signal import signal
 _CHECK_TIMEOUT_MS = 10000
 _DOWNLOAD_STALL_MS = 30000
 
+# The update being installed: set just before setup starts, read and cleared
+# on the next start. Still on an older version then means setup failed and
+# put the previous version back.
+_PENDING = ("global", "internal", "update-pending-version")
+_PENDING_SETUP = ("global", "internal", "update-pending-setup")
+from gremlin.types import PropertyType  # noqa: E402
+
+Configuration().register(
+    *_PENDING, PropertyType.String, "",
+    "Version the in-app update was installing (checked on the next start).", {},
+)
+Configuration().register(
+    *_PENDING_SETUP, PropertyType.String, "",
+    "Installer the in-app update ran (its log is beside it).", {},
+)
 
 
 def _one_off_request(url: str) -> QtNetwork.QNetworkRequest:
@@ -49,7 +64,8 @@ class UpdateModel(QtCore.QObject):
     """State of the update check, shown by DialogUpdate.qml.
 
     state: "idle", "checking", "upToDate", "available", "downloading",
-    "ready" (downloaded and verified) or "error".
+    "ready" (downloaded and verified), "error" or "failed" (the last update
+    did not finish; the previous version was put back).
     """
 
     changed = QtCore.Signal()
@@ -69,9 +85,17 @@ class UpdateModel(QtCore.QObject):
         self._manual = False
         self._reply: QtNetwork.QNetworkReply | None = None
         self._file: QtCore.QFile | None = None
+        # Why the download couldn't be saved (a full disk), or "".
+        self._write_error = ""
         self._received = 0
         self._ready_path: Path | None = None
         self._install_on_exit = False
+        # The update that didn't finish (state "failed"), and its setup log.
+        self._failed_version = ""
+        self._failed_log = ""
+        # Try Again after a failed update: install as soon as the check
+        # finds that version.
+        self._retry = False
         self._kind = updater.install_kind(
             bool(getattr(sys, "frozen", False)), Path(sys.executable).parent
         )
@@ -98,6 +122,14 @@ class UpdateModel(QtCore.QObject):
     def releasePageUrl(self) -> str:
         return self._release.page_url if self._release else updater.RELEASES_PAGE_URL
 
+    @QtCore.Property(str, notify=changed)
+    def failedVersion(self) -> str:
+        return self._failed_version
+
+    @QtCore.Property(str, notify=changed)
+    def failedLog(self) -> str:
+        return self._failed_log
+
     @QtCore.Property(str, constant=True)
     def installKind(self) -> str:
         return self._kind
@@ -122,6 +154,8 @@ class UpdateModel(QtCore.QObject):
     def startup(self) -> None:
         """Run once the main window is up: say so after an update, then check
         if the user wants startup checks."""
+        if self._note_failed_update():
+            return
         self._note_finished_update()
         if self._config.value("global", "general", "check-for-updates"):
             self.check(False)
@@ -156,6 +190,10 @@ class UpdateModel(QtCore.QObject):
             self._fail("GitHub did not report a release version.")
             return
         self._release = release
+        retry, self._retry = self._retry, False
+        if retry and release.version == self._failed_version and self.canInstall:
+            self.download()
+            return
         skipped = self._config.value("global", "internal", "skipped-update-version")
         if updater.should_offer(
             release.version, self.currentVersion, skipped, self._manual
@@ -192,7 +230,11 @@ class UpdateModel(QtCore.QObject):
             return
         setup = self._release.setup
         folder = updater.updates_dir()
-        folder.mkdir(parents=True, exist_ok=True)
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            self._fail(f"Could not save the download to {folder}: {exc}")
+            return
         target = folder / setup.name
         if updater.file_matches(target, setup.size, setup.sha256):
             self._ready(target)
@@ -202,6 +244,7 @@ class UpdateModel(QtCore.QObject):
             self._file = None
             self._fail(f"Could not write to {folder}.")
             return
+        self._write_error = ""
         self._received = 0
         self.progressChanged.emit()
         request = _one_off_request(setup.url)
@@ -220,7 +263,17 @@ class UpdateModel(QtCore.QObject):
 
     def _on_data(self) -> None:
         if self._reply is not None and self._file is not None:
-            self._file.write(self._reply.readAll())
+            if not self._write(self._file, self._reply.readAll()):
+                self._reply.abort()
+
+    def _write(self, file: QtCore.QFile, data: QtCore.QByteArray) -> bool:
+        """Write a piece of the download; False (and why kept) if it failed."""
+        if self._write_error:
+            return False
+        if file.write(data) == data.size():
+            return True
+        self._write_error = file.errorString() or "the disk may be full"
+        return False
 
     def _on_progress(self, received: int, _total: int) -> None:
         self._received = int(received)
@@ -232,10 +285,19 @@ class UpdateModel(QtCore.QObject):
         if reply is None or file is None:
             return
         reply.deleteLater()
-        file.write(reply.readAll())
+        self._write(file, reply.readAll())
+        if not file.flush() and not self._write_error:
+            self._write_error = file.errorString() or "the disk may be full"
         file.close()
         part = Path(file.fileName())
         setup = self._release.setup
+        if self._write_error:
+            part.unlink(missing_ok=True)
+            self._fail(
+                f"Could not save the download to {part.parent}: "
+                f"{self._write_error}. Nothing was installed."
+            )
+            return
         if reply.error() == QtNetwork.QNetworkReply.NetworkError.OperationCanceledError:
             part.unlink(missing_ok=True)
             self._set_state("available")
@@ -252,14 +314,31 @@ class UpdateModel(QtCore.QObject):
             )
             return
         target = part.with_name(setup.name)
-        target.unlink(missing_ok=True)
-        part.rename(target)
+        try:
+            target.unlink(missing_ok=True)
+            part.rename(target)
+        except OSError as exc:
+            part.unlink(missing_ok=True)
+            self._fail(
+                f"Could not save the download to {part.parent}: {exc}. "
+                "Nothing was installed."
+            )
+            return
         self._ready(target)
 
     def _ready(self, path: Path) -> None:
         self._ready_path = path
         self._set_state("ready")
         self.installRequested.emit()
+
+    @QtCore.Slot()
+    def retryUpdate(self) -> None:
+        """Try Again after a failed update: check, then download (or reuse the
+        verified download) and install that version."""
+        if self._state != "failed":
+            return
+        self._retry = True
+        self.check(True)
 
     @QtCore.Slot()
     def install(self) -> None:
@@ -287,13 +366,40 @@ class UpdateModel(QtCore.QObject):
         logging.getLogger("system").info(
             "Update: starting %s (log: %s)", self._ready_path, log_path
         )
-        return bool(
+        self._config.set(*_PENDING, self._release.version if self._release else "")
+        self._config.set(*_PENDING_SETUP, str(self._ready_path))
+        started = bool(
             QtCore.QProcess.startDetached(
                 str(self._ready_path),
                 updater.setup_arguments(str(log_path)),
                 str(self._ready_path.parent),
             )
         )
+        if not started:
+            self._config.set(*_PENDING, "")
+            self._config.set(*_PENDING_SETUP, "")
+        return started
+
+    def _note_failed_update(self) -> bool:
+        """After an update that didn't finish (setup put the previous version
+        back): open the dialog to say so, with Try Again. True if it did."""
+        pending = str(self._config.value(*_PENDING) or "")
+        setup = str(self._config.value(*_PENDING_SETUP) or "")
+        if not pending:
+            return False
+        self._config.set(*_PENDING, "")
+        self._config.set(*_PENDING_SETUP, "")
+        if not updater.is_newer(pending, util.get_code_version()):
+            return False
+        logging.getLogger("system").warning(
+            "Update: the update to %s did not finish; still %s",
+            pending, self.currentVersion,
+        )
+        self._failed_version = pending
+        self._failed_log = str(Path(setup).with_suffix(".log")) if setup else ""
+        self._set_state("failed")
+        self.offerUpdate.emit()
+        return True
 
     def _note_finished_update(self) -> None:
         """After an update: say so once and delete the downloaded installer."""
