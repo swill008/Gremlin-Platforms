@@ -1700,15 +1700,15 @@ ApplicationWindow {
     // own size; the map on screen is never touched.
     RigRenderer { id: _renderer }
 
-    // A job for the renderer: the map as it is now, at pixels (the
-    // export's size unless given), on Print & Export's background;
-    // onPicture(grab result, or null) once drawn.
-    function _renderJob(onPicture, pixels) {
+    // A job for the renderer: the map as it is now (the whole page with
+    // whole), at pixels (the export's size unless given), on Print &
+    // Export's background; onPicture(grab result, or null) once drawn.
+    function _renderJob(onPicture, pixels, whole) {
         var e = _ed()
         if (!e)
             return null
         return {
-            snap: _renderer.snapshot(e),
+            snap: _renderer.snapshot(e, whole === true),
             pixels: pixels || exportPixels(),
             light: printSetup.light === true,
             onPicture: onPicture
@@ -1749,17 +1749,29 @@ ApplicationWindow {
             _renderer.enqueue(job)
     }
 
-    // Print & Export's preview: the print area as the export draws it, at
-    // most maxW x maxH pixels; done(grab result) once drawn.
-    function renderPreview(maxW, maxH, done) {
-        var px = exportPixels()
-        var k = Math.min(1, maxW / Math.max(1, px.w), maxH / Math.max(1, px.h))
-        var size = { w: Math.max(1, Math.round(px.w * k)), h: Math.max(1, Math.round(px.h * k)) }
-        var job = _renderJob(done, size)
+    // Print & Export's preview, at most maxW x maxH pixels; done(grab
+    // result) once drawn. kind "page": the whole page (cut to the print
+    // area as it moves); "area": the print area as the export draws it.
+    function renderPreview(kind, maxW, maxH, done) {
+        var e = _ed()
+        if (!e)
+            return
+        var whole = kind === "page"
+        var r = whole ? e.spaceRect() : exportPixels()
+        var k = Math.min(maxW / Math.max(1, r.w), maxH / Math.max(1, r.h))
+        if (!whole)
+            k = Math.min(1, k)
+        var size = { w: Math.max(1, Math.round(r.w * k)), h: Math.max(1, Math.round(r.h * k)) }
+        var job = _renderJob(done, size, whole)
         if (!job)
             return
-        job.preview = true
+        job.preview = kind
         _renderer.enqueue(job)
+    }
+
+    // A preview of this kind waiting to be drawn is no longer wanted.
+    function dropPreview(kind) {
+        _renderer.drop(kind)
     }
 
     FileDialog {

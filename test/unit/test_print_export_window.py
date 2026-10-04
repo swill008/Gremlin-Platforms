@@ -111,6 +111,20 @@ def test_the_page_and_its_preview(run: dict) -> None:
     assert run["scale-box"] == 50
 
 
+@pytest.mark.parametrize("scale", _SCALES)
+def test_the_preview_follows_the_area_at_once(runs: dict, scale: str) -> None:
+    """Moving the print area: the preview takes its shape at once (the page
+    picture cut to it, nothing drawn), then the sharp picture of the area,
+    which looks the same, takes over."""
+    result = runs[scale][0]
+    now = result["moved-at-once"]
+    assert abs(now["aspect"] - (32 / 18) * 0.3 / 0.6) < 0.01
+    assert now["crop"] == [True, False]
+    assert abs(now["offset"][0] - 0.1) < 0.001 and abs(now["offset"][1] - 0.15) < 0.001
+    assert result["moved-later"] == [False, True]
+    assert result["crop-vs-sharp"] < 8
+
+
 def test_freeform_is_no_paper(run: dict) -> None:
     # The Paper list has only papers; Freeform (As Drawn) is the tick box.
     assert run["paper-count"] == 6

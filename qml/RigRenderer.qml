@@ -14,8 +14,9 @@ import Gremlin.Style
 // map on screen keeps its zoom and its editing marks the whole time.
 //
 // Jobs wait their turn: a preview waits behind an export. A job is
-//   { snap: snapshot(editor), pixels: { w, h }, light: bool,
-//     onPicture: function(grabResult or null) }
+//   { snap: snapshot(editor, whole), pixels: { w, h }, light: bool,
+//     preview: "" or its kind, onPicture: function(grabResult or null) }
+// A preview replaces a waiting one of its kind; drop(kind) takes it away.
 Item {
     id: _r
 
@@ -34,8 +35,9 @@ Item {
     readonly property real dpr: Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1
 
     // What a picture is drawn from, taken when it is asked for: later
-    // changes on screen don't reach a job already waiting.
-    function snapshot(e) {
+    // changes on screen don't reach a job already waiting. whole: the whole
+    // page, whatever the print area.
+    function snapshot(e, whole) {
         var f = e ? e.face : null
         var keys = ["photoScale", "photoOffX", "photoOffY", "photoRot", "photoHidden", "photoFade",
                     "photoBright", "photoContrast", "photoGrey", "photoLookUrl", "chipTextMode",
@@ -43,6 +45,8 @@ Item {
         var props = {}
         for (var i = 0; e && i < keys.length; i++)
             props[keys[i]] = e[keys[i]]
+        if (whole)
+            props.printArea = null
         return {
             nodes: JSON.stringify(e ? (e.nodes || []) : []),
             props: props,
@@ -51,20 +55,25 @@ Item {
             chipRows: f ? f.chipRows : [],
             w: e ? e.width : 1,
             h: e ? e.height : 1,
-            area: e ? e.printAreaRect() : { x: 0, y: 0, w: 1, h: 1 }
+            area: e ? (whole ? e.spaceRect() : e.printAreaRect()) : { x: 0, y: 0, w: 1, h: 1 }
         }
     }
 
     function enqueue(job) {
         var q = _queue.slice()
-        // Only the latest preview is worth drawing.
+        // Only the latest preview of each kind is worth drawing.
         if (job.preview)
-            q = q.filter(function(j) { return !j.preview })
+            q = q.filter(function(j) { return j.preview !== job.preview })
         q.push(job)
         // Exports first.
         q.sort(function(a, b) { return (a.preview ? 1 : 0) - (b.preview ? 1 : 0) })
         _queue = q
         Qt.callLater(_next)
+    }
+
+    // A waiting preview of this kind is no longer wanted.
+    function drop(kind) {
+        _queue = _queue.filter(function(j) { return j.preview !== kind })
     }
 
     function _next() {

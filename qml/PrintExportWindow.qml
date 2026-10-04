@@ -47,10 +47,22 @@ Window {
         if (paper.length && paper !== "fit")
             lastPaper = paper
     }
-    // The preview picture (the print area as exported, on its background):
-    // the grab result is kept, its url is only good while it lives.
+    // The preview: a picture of the whole page, cut to the print area as it
+    // moves (nothing is drawn while the area is dragged, so it keeps up),
+    // and once the area rests, the area drawn as the export draws it. Grab
+    // results are kept: their urls are only good while they live.
+    property var pageResult: null
+    property string pageKey: ""
     property var shotResult: null
-    readonly property url shot: shotResult ? shotResult.url : ""
+    property string shotKey: ""
+    // The print area now ({fx, fy, fw, fh} of the page; null: all of it).
+    property var area: null
+    readonly property var areaNow: (area && area.fw > 0 && area.fh > 0)
+                                   ? area : { fx: 0, fy: 0, fw: 1, fh: 1 }
+    readonly property string lightKey: setup.light ? "light" : "dark"
+    readonly property string areaKey: JSON.stringify(areaNow) + lightKey
+    // The sharp picture is of the area as it is now.
+    readonly property bool sharp: !!shotResult && shotKey === areaKey
     // Bumped when anything the result depends on changes.
     property int rev: 0
     // The export's size in pixels.
@@ -103,42 +115,84 @@ Window {
         return onPaper && host ? (host.marginInches[setup.margin] || 0) : 0
     }
 
-    // A new preview, a moment after the last change.
+    function _dpr() { return Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1 }
+
+    // The map changed: a new page picture, then the sharp one.
     function refreshSoon() {
         rev++
-        if (visible)
-            _refresh.restart()
+        if (visible) {
+            _pageTimer.restart()
+            _sharpTimer.restart()
+        }
     }
 
-    function refresh() {
+    // The print area moved: the crop follows at once; a sharp picture
+    // waiting to be drawn is dropped, and asked for again once it rests.
+    function areaMoved() {
+        var e = host ? host._ed() : null
+        area = e ? e.printArea : (host ? host.printArea : null)
+        rev++
+        if (!visible)
+            return
+        if (host)
+            host.dropPreview("area")
+        _sharpTimer.restart()
+    }
+
+    function renderPage() {
         if (!host || !visible)
             return
-        var dpr = Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1
-        host.renderPreview(Style.dp(520) * dpr, Style.dp(520) * dpr, function(result) {
-            if (result)
-                _win.shotResult = result
+        var key = lightKey
+        // Twice the preview's size: a small area shown large stays clear.
+        var side = Style.dp(1040) * _dpr()
+        host.renderPreview("page", side, side, function(result) {
+            if (!result)
+                return
+            _win.pageResult = result
+            _win.pageKey = key
         })
     }
 
-    onVisibleChanged: if (visible) refreshSoon()
+    function renderSharp() {
+        if (!host || !visible)
+            return
+        var key = areaKey
+        var side = Style.dp(520) * _dpr()
+        host.renderPreview("area", side, side, function(result) {
+            if (!result)
+                return
+            _win.shotResult = result
+            _win.shotKey = key
+        })
+    }
+
+    onVisibleChanged: {
+        if (!visible)
+            return
+        areaMoved()
+        refreshSoon()
+    }
 
     Timer {
-        id: _refresh
-        interval: 250
-        onTriggered: _win.refresh()
+        id: _pageTimer
+        interval: 150
+        onTriggered: _win.renderPage()
+    }
+    Timer {
+        id: _sharpTimer
+        interval: 300
+        onTriggered: _win.renderSharp()
     }
 
     Connections {
         target: _win.host
-        function onPrintAreaChanged() { _win.refreshSoon() }
+        function onPrintAreaChanged() { _win.areaMoved() }
         function onPrintSetupChanged() { _win.refreshSoon() }
-    }
-    Connections {
-        target: _win.host
         function onPhotoOverrideChanged() { _win.refreshSoon() }
     }
     Connections {
         target: _win.host ? _win.host._ed() : null
+        function onPrintAreaChanged() { _win.areaMoved() }
         function onHistoryChanged() { _win.refreshSoon() }
         function onActionLabelsChanged() { _win.refreshSoon() }
         function onChipTextModeChanged() { _win.refreshSoon() }
@@ -195,19 +249,47 @@ Window {
                         border.width: 1
                     }
 
-                    // The print area in its shape, as large as fits inside
-                    // the margins: drawn as the export draws it.
-                    Image {
-                        id: _preview
-                        objectName: "printPreviewImage"
-                        readonly property real aspect: _win.pixels.h > 0 ? _win.pixels.w / _win.pixels.h : 1
+                    // The print area in its shape (as it is now), as large as
+                    // fits inside the margins: the page picture cut to it,
+                    // or once it rests the area drawn as the export draws it.
+                    Item {
+                        id: _content
+                        objectName: "printPreviewArea"
+                        readonly property var a: _win.areaNow
+                        readonly property real pageAspect: 32000 / 18000
+                        readonly property real aspect: pageAspect * a.fw / Math.max(1e-6, a.fh)
                         width: Math.min(parent.width, parent.height * aspect)
                         height: width / aspect
                         anchors.centerIn: parent
-                        source: _win.shot
-                        cache: false
-                        smooth: true
-                        mipmap: true
+                        clip: true
+
+                        Rectangle {
+                            anchors.fill: parent
+                            color: _win.setup.light ? Style.paper : Style.background
+                        }
+                        Image {
+                            id: _crop
+                            objectName: "printPreviewCrop"
+                            visible: !_win.sharp && _win.pageKey === _win.lightKey
+                            width: _content.width / Math.max(1e-6, _content.a.fw)
+                            height: _content.height / Math.max(1e-6, _content.a.fh)
+                            x: -_content.a.fx * width
+                            y: -_content.a.fy * height
+                            source: _win.pageResult ? _win.pageResult.url : ""
+                            cache: false
+                            smooth: true
+                            mipmap: true
+                        }
+                        Image {
+                            id: _preview
+                            objectName: "printPreviewImage"
+                            visible: _win.sharp
+                            anchors.fill: parent
+                            source: _win.shotResult ? _win.shotResult.url : ""
+                            cache: false
+                            smooth: true
+                            mipmap: true
+                        }
                     }
                 }
             }

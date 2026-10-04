@@ -40,19 +40,51 @@ import joystick_gremlin  # noqa: E402
 
 GUID = str(dill.GUID(fake.devices[0].device_guid).uuid)
 
-# A few chips on the stand-in stick's map, for the preview to show.
+# A few chips on the stand-in stick's map, for the preview to show
+# (SMOKE_CHIPS: that many instead, and SMOKE_PHOTO: a photo, to time a big
+# map).
 from gremlin.ui import hardware_profile  # noqa: E402
 
 _map = hardware_profile.module_json_path("pJoy Pro", GUID)
 _map.parent.mkdir(parents=True, exist_ok=True)
-_map.write_text(json.dumps({
+_chips = int(os.environ.get("SMOKE_CHIPS", "5"))
+_doc: dict = {
     "kind": "control.hardware", "device": "pJoy Pro",
     "nodes": [
         {"kind": "btn", "id": f"b{i}", "label": f"Button {i}",
+         "chipFx": 0.25 + 0.5 * ((i * 37) % 100) / 100,
+         "chipFy": 0.3 + 0.4 * ((i * 61) % 100) / 100}
+        if _chips != 5 else
+        {"kind": "btn", "id": f"b{i}", "label": f"Button {i}",
          "chipFx": 0.25 + 0.1 * i, "chipFy": 0.3 + 0.08 * i}
-        for i in range(1, 6)
+        for i in range(1, _chips + 1)
     ],
-}), encoding="utf-8")
+}
+if os.environ.get("SMOKE_PHOTO"):
+    import shutil
+
+    (_map.parent / "timing").mkdir(exist_ok=True)
+    shutil.copy(os.environ["SMOKE_PHOTO"], _map.parent / "timing" / "photo.jpg")
+    _doc["image"] = "timing/photo.jpg"
+_map.write_text(json.dumps(_doc), encoding="utf-8")
+
+
+def _difference(a: QtGui.QImage, b: QtGui.QImage) -> float:
+    """Mean difference per color channel (0-255), b scaled to a's size."""
+    a = a.convertToFormat(QtGui.QImage.Format.Format_RGB32)
+    b = b.convertToFormat(QtGui.QImage.Format.Format_RGB32).scaled(
+        a.size(), QtCore.Qt.AspectRatioMode.IgnoreAspectRatio,
+        QtCore.Qt.TransformationMode.SmoothTransformation)
+    total = 0
+    count = 0
+    for y in range(0, a.height(), 2):
+        for x in range(0, a.width(), 2):
+            p = a.pixelColor(x, y)
+            q = b.pixelColor(x, y)
+            total += (abs(p.red() - q.red()) + abs(p.green() - q.green())
+                      + abs(p.blue() - q.blue()))
+            count += 3
+    return round(total / max(1, count), 2)
 
 
 def call(obj: QtCore.QObject, name: str, *args: object) -> object:
@@ -112,6 +144,57 @@ def main() -> None:
     px = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
     out["pixels"] = [px["w"], px["h"]]
     out["dpr"] = pw.devicePixelRatio()
+
+    def region(item: QtCore.QObject) -> QtGui.QImage:
+        """What the window shows of an item, at the window's pixels."""
+        shot = pw.grabWindow()
+        ratio = shot.devicePixelRatio()
+        top = item.mapToScene(QtCore.QPointF(0, 0))
+        return shot.copy(
+            round(top.x() * ratio), round(top.y() * ratio),
+            round(item.property("width") * ratio),
+            round(item.property("height") * ratio),
+        )
+
+    # The print area moved: the preview follows at once (the page picture
+    # cut to the area), then the sharp picture of the area takes over.
+    content = child("printPreviewArea")
+    crop = child("printPreviewCrop")
+    sharp = child("printPreviewImage")
+    moved = {"fx": 0.1, "fy": 0.15, "fw": 0.3, "fh": 0.6}
+    ev(f"_buttonMap._ed().printArea = {json.dumps(moved)}")
+    QtTest.QTest.qWait(40)
+    out["moved-at-once"] = {
+        "aspect": content.property("width") / content.property("height"),
+        "crop": [crop.property("visible"), sharp.property("visible")],
+        "offset": [-crop.property("x") / crop.property("width"),
+                   -crop.property("y") / crop.property("height")],
+    }
+    cropped = region(content)
+    for _ in range(100):
+        QtTest.QTest.qWait(50)
+        if sharp.property("visible") and (sharp.property("paintedWidth") or 0) > 0:
+            break
+    QtTest.QTest.qWait(150)
+    out["moved-later"] = [crop.property("visible"), sharp.property("visible")]
+    drawn = region(content)
+    if shots:
+        cropped.save(str(folder / "preview-crop.png"))
+        drawn.save(str(folder / "preview-sharp.png"))
+    out["crop-vs-sharp"] = _difference(cropped, drawn)
+
+    # How long the hidden copy takes: the whole page, then the area.
+    import time
+
+    def timed(kind: str) -> float:
+        start = time.perf_counter()
+        ev(f"_buttonMap.renderPreview('{kind}', 1560, 1560, function(r) {{}})")
+        QtTest.QTest.qWait(1)
+        while ev("_renderer.busy") is True or ev("_renderer._queue.length") > 0:
+            QtTest.QTest.qWait(5)
+        return round((time.perf_counter() - start) * 1000)
+
+    out["ms"] = {"page": timed("page"), "area": timed("area")}
     # Custom > Freeform (As Drawn): no paper, and back to the last one.
     freeform = child("printFreeform")
     paper = child("printPaper")
