@@ -38,10 +38,37 @@ The project is using poetry for dependency management. Thus all calls to python 
 
 ### Running Tests
 
-```powershell
-# Run all tests
-poetry run pytest
+Run the tests with `test/run_tests.py`. It runs `test/action_interaction`,
+`test/integration` and `test/unit` (split into 4 parts, balanced by the last
+run's times) **at the same time**, so a full run takes about a minute
+instead of 4.5. The three folders can't share one pytest process (mixed runs
+are refused), so a plain `poetry run pytest` with no folder does not work.
 
+```powershell
+# Every test, in parallel (before every commit; let it run to the end)
+poetry run python test/run_tests.py
+
+# Only what failed in the last run (seconds)
+poetry run python test/run_tests.py --failed
+
+# Only these files or folders, stopping at the first failure (while working)
+poetry run python test/run_tests.py --quick test/unit/test_profile.py
+```
+
+Every line shows the time, the part and how many tests are done; a quiet test
+is named after 15 s; a part is stopped after 10 min; the end lists each
+part's result and the 10 slowest tests. Watch it live from another window:
+
+```powershell
+Get-Content "$env:TEMP\gremlin-test-run.log" -Wait -Tail 20
+```
+
+Rhythm: while changing code, run the affected test files (`--quick`); after
+a fix, `--failed`; before every commit, one full run, to the end.
+
+Plain pytest still works for one folder or file:
+
+```powershell
 # Run a single test file
 poetry run pytest test/unit/test_profile.py
 
@@ -244,7 +271,27 @@ except ValueError:
 ### Qt Threading Rules
 
 - **Never use Qt GUI classes from non-main threads** (Qt is not thread-safe)
-- Background threads (e.g., `threading.Thread`) are acceptable for non-GUI work (device polling, file monitoring)
+- Background threads are acceptable for non-GUI work (device polling, file monitoring), started as below
+
+### Threads, Waits and Timing (keep the program hang-proof)
+
+- **Start every thread through `gremlin.threads`**: `threads.start(name, target, *args, stop=<request>)`
+  and `threads.timer(name, seconds, fn)`, never `threading.Thread(...)` / `threading.Timer(...)`
+  directly. The stop request only asks (set a flag, set an Event, cancel) and returns at once.
+  `threads.shutdown()` stops them all on exit (`main()`) and at the end of a test run;
+  `threads.running()` lists the ones still alive.
+- Set a "running" flag **before** starting its thread, never inside the thread (an early
+  `stop()` gets undone otherwise).
+- No unbounded `join()`, `Event.wait()`, `Condition.wait_for()` or lock acquire on a path that
+  can block: use a timeout, re-check the stop flag, and log once (`gremlin.log_once`) if it runs out.
+- The main thread never waits on a worker that may not end.
+- Timed loops read the time through `gremlin.clock.now()` / `clock.sleep()`, so tests can step it.
+- Errors inside threads are logged with the thread's name (`gremlin/error_report.py`); a hard
+  crash in native code writes every thread's stack to `crash.log` in the logs folder.
+- **Log When Not Responding** (Options › Diagnostics, off by default, `gremlin/watchdog.py`):
+  after 5 s without a main-loop tick it writes every thread's stack to system.log, once per freeze.
+- Keys go out through `win32api.keybd_event`, mouse input through `sendinput._send_input`, and
+  the keyboard/mouse hooks honour `windows_event_hook.enabled` (tests fake or turn off all three).
 
 ### Singleton Pattern
 
@@ -294,6 +341,27 @@ class SpecialActionData(AbstractActionData):
 - Tests in `test/action_interaction` have access to a `jgbot` fixture (`test/action_interaction/conftest.py:JoystickGremlinBot) which is similar to the Qt pytest fixture
 - Use pytest fixtures from `test/conftest.py` and `test/unit/conftest.py`
 - Use `pytest.raises()` for exception testing
+- The test run guards itself (test tool only, under `test/`; the program does not use it):
+  - A test whose main thread makes no progress for 10 s (30 s if its event loop idles) fails
+    with the stuck line and every thread's stack, and the run goes on; one stuck inside C code
+    ends the run with that report (`test/hang_trace/stall_watch.py`, `test/conftest.py`).
+  - A test may not leave threads running. The unit package owns the shared event listener
+    (started before the first test, stopped after the last).
+  - Tests never hook, or send keys or mouse input to, the PC they run on: `test/conftest.py` turns
+    `windows_event_hook.enabled` off and installs `test/fake_input.py`.
+  - A program a test starts is watched the same way (`test/hang_trace/sitecustomize.py`) and ends
+    at once when its main code ends. Such a program ends with `os._exit` (the program's own
+    threads would keep it alive otherwise) and never shows a window on the user's screen
+    (`QT_QPA_PLATFORM=offscreen`).
+  - `test/` has no `__init__.py`: outside pytest's own import, `test` is Python's standard-library
+    package, so load test helpers by file path in programs a test starts.
+- UI at a large scale is checked off-screen in a program of its own (see
+  `test/unit/test_main_window_fits.py`, `test_tool_windows_fit.py`, `test_pages_fit.py`):
+  `gremlin.ui.ui_scale_option.active_scale = lambda: 175`; the screen size from
+  `QT_QPA_PLATFORM=offscreen:configfile=<json>`, whose path must not contain a drive colon
+  (the colon separates platform options; the process silently exits 127); `QT_QPA_FONTDIR` set to the
+  Windows fonts folder, or no text is drawn. Size windows with `Style.fitWidth(w, Screen)` /
+  `Style.fitHeight(h, Screen)` so they fit the screen at any scale.
 
 Example:
 ```python
