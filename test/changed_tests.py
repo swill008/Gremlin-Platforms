@@ -13,9 +13,11 @@ chosen when it:
   steps: further out nearly every test would be chosen; the full run
   catches the rest). joystick_gremlin and conftest.py import nearly
   everything, so the search does not go through them;
-- names a changed QML or JavaScript file, or a QML file that uses one
-  (VkbRigEditor uses rig_menu.js, the Button Map window uses VkbRigEditor).
-  Tests that start the whole program count as naming Main.qml;
+- names a changed QML or JavaScript file ("X.qml", or uses it as "X {"),
+  or a QML file that uses one (VkbRigEditor uses rig_menu.js, the Button
+  Map window uses VkbRigEditor). A bare word is not enough: Button and
+  Switch are plain words too. Tests that start the whole program count as
+  naming Main.qml;
 - runs a helper script (button_map_window_smoke.py) chosen the same way,
   or one that imports a chosen helper (button_map_fixes_smoke.py imports
   rig_editor_harness.py);
@@ -122,6 +124,11 @@ def _word(name: str) -> re.Pattern[str]:
     return re.compile(rf"\b{re.escape(name)}\b")
 
 
+def _names_qml(name: str) -> re.Pattern[str]:
+    """Naming a QML or JS file: X.qml / X.js, or X { (used as a type)."""
+    return re.compile(rf"\b{re.escape(name)}(?:\.qml|\.js|\s*\{{)")
+
+
 def choose(changed: list[str]) -> tuple[list[str], list[str]]:
     """(targets for run_tests, reasons to show)."""
     modules = _python_files()
@@ -189,7 +196,7 @@ def choose(changed: list[str]) -> tuple[list[str], list[str]]:
                     if other not in seen and word.search(text):
                         seen.add(other)
                         todo.append(other)
-            words = [_word(q) for q in seen]
+            words = [_names_qml(q) for q in seen]
             for t, text in test_texts.items():
                 for qml, word in zip(seen, words, strict=True):
                     if word.search(text) or (qml == "Main" and _WHOLE_APP.search(text)):

@@ -74,6 +74,11 @@ the end. `--changed` follows imports two steps out, QML and JavaScript files
 through the QML that uses them, and the helper scripts tests run
 (`test/changed_tests.py` says how); what it misses, the full run catches.
 
+One test run at a time on this PC: a run that finds another going (another
+checkout or session) waits for it and says so, since two at once slow each
+other down several times over and fail timing tests. Each checkout keeps its
+own `--failed` list.
+
 Each file's time is kept for balancing the parts; a run of only some of a
 file's tests (`--failed`, `file::test`) doesn't change it. Unit tests get the
 program's settings object back after each test (`test/unit/conftest.py`), so

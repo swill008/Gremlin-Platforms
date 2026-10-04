@@ -93,6 +93,64 @@ def _save(name: str, value: object) -> None:
     (_STATE / name).write_text(json.dumps(value, indent=1), encoding="utf-8")
 
 
+# One run at a time on this PC: two (from two checkouts or sessions) slow
+# each other down several times over, fail tests on timing and spoil the
+# times the parts are balanced by. A run that finds another going waits.
+_RUNNING = _STATE / "running.json"
+_WAIT_S = 900
+
+
+def _alive(pid: int) -> bool:
+    import ctypes
+
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.OpenProcess(0x1000, False, pid)  # query limited info
+    if not handle:
+        return False
+    try:
+        code = ctypes.c_ulong()
+        kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+        return code.value == 259  # still active
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _wait_for_other_run() -> None:
+    start = time.monotonic()
+    said = 0.0
+    while True:
+        other = _load("running.json", {})
+        pid = int(other.get("pid") or 0)
+        if not pid or pid == os.getpid() or not _alive(pid):
+            break
+        waited = time.monotonic() - start
+        if waited > _WAIT_S:
+            print(f"Still another test run after {_WAIT_S // 60} min: going ahead.")
+            break
+        if waited - said >= 15 or said == 0.0:
+            said = waited or 0.001
+            print(f"Waiting for another test run to finish (pid {pid}, "
+                  f"{other.get('root', '?')}), {int(waited)} s...", flush=True)
+        time.sleep(2)
+    _save("running.json", {"pid": os.getpid(), "root": str(_ROOT)})
+
+
+def _done_running() -> None:
+    if int(_load("running.json", {}).get("pid") or 0) == os.getpid():
+        try:
+            _RUNNING.unlink()
+        except OSError:
+            pass
+
+
+def _failed_file() -> str:
+    """Each checkout keeps its own list of what failed last."""
+    import hashlib
+
+    tag = hashlib.sha1(str(_ROOT).lower().encode()).hexdigest()[:8]
+    return f"last-failed-{tag}.json"
+
+
 def _folder_of(target: str) -> str:
     path = target.replace("\\", "/")
     for folder in FOLDERS:
@@ -289,7 +347,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.failed:
-        targets = list(_load("last-failed.json", []))
+        targets = list(_load(_failed_file(), []))
         if not targets:
             print("Nothing failed in the last run.")
             return 0
@@ -310,13 +368,21 @@ def main() -> int:
             return 0
     else:
         targets = args.targets or FOLDERS
+    _wait_for_other_run()
+    try:
+        return _run_and_report(targets, args)
+    finally:
+        _done_running()
+
+
+def _run_and_report(targets: list[str], args: argparse.Namespace) -> int:
     parts = plan(targets, args.parts)
     with _LOG.open("w", encoding="utf-8") as log:
         print(f"Log: {_LOG}", flush=True)
         slow, took = run(parts, args.quick, log)
         failed = [node for p in parts for node in p.failed]
         if not args.failed or not failed:
-            _save("last-failed.json", failed)
+            _save(_failed_file(), failed)
         times = dict(_load("file-times.json", {}))
         measured: dict[str, float] = {}
         for p in parts:  # a file spread over parts: add its shares up
