@@ -15,6 +15,12 @@ its own process and user folder).
 - The status line (view, photo size, module file) is one slim row at the
   bottom, and the pool docks just above the tool row.
 - What is open, pinned and locked, and the order, are saved.
+- A second row under the menus, always shown (empty at first), 10 px from
+  the map as the bottom row is; a button dragged onto it moves there with
+  its panel's dock; the chip pool docks under it, can be dragged to the
+  other edge on its own (unlocked), and stays when locked; rows and docks
+  are saved; Reset Tool Rows puts everything on the bottom row again.
+- The view zooms out to 50%; Zoom to Fit Page still fills the view.
 """
 
 from __future__ import annotations
@@ -99,3 +105,39 @@ def test_the_row_is_saved(run: dict) -> None:
     assert saved["items"]["chips"]["pinned"] is True
     assert saved["items"]["palette"]["locked"] is True
     assert saved["items"]["props"]["pinned"] is True
+
+
+def test_the_top_row_is_always_there(run: dict) -> None:
+    assert run["top-row"]["visible"] is True
+    assert run["top-row"]["height"] >= 24
+    assert run["top-row"]["tools"] == 0
+    # 10 px between the map and each row.
+    assert all(abs(g - run["dp10"]) <= 1 for g in run["gaps"]), run["gaps"]
+
+
+def test_a_button_moves_to_the_top_row_with_its_panel(run: dict) -> None:
+    side, dock, top, bottom = run["chips-up"]
+    assert (side, dock) == ("top", "top")
+    assert top == ["chips"] and "chips" not in bottom
+    # The pool docks under the top row.
+    assert 0 <= run["pool-at-top"] <= 12
+
+
+def test_the_pool_moves_on_its_own(run: dict) -> None:
+    dock, side, gap = run["pool-dragged"]
+    assert (dock, side) == ("bottom", "top")
+    assert 0 <= gap <= 12
+    assert run["pool-locked"] == "bottom"
+
+
+def test_rows_and_docks_are_kept_and_reset(run: dict) -> None:
+    assert run["kept"] == ["top", "bottom"]
+    items = run["saved-top"]["items"]["chips"]
+    assert (items["side"], items["dock"]) == ("top", "bottom")
+    assert run["reset-rows"] == [0, "bottom"]
+
+
+def test_the_view_zooms_out_to_half(run: dict) -> None:
+    zoom, pct = run["page-zoom"]
+    assert zoom == 1 and abs(pct - 0.75) < 0.001
+    assert run["out-most"] == 50

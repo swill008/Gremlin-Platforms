@@ -195,7 +195,8 @@ ApplicationWindow {
     function movePanelResize(mx, my, item) {
         var p = item.mapToItem(_poolFloat.parent, mx, my)
         var host = _poolFloat.parent
-        var nh = _prsH - (p.y - _prmY)
+        // Docked at the top it grows down (its bottom edge), else up.
+        var nh = _prEdge === "s" ? _prsH + (p.y - _prmY) : _prsH - (p.y - _prmY)
         panelH = Math.max(Style.dp(90), Math.min(nh, host.height - Style.dp(16)))
         panelW = _poolFloat.width
     }
@@ -2555,7 +2556,7 @@ ApplicationWindow {
                     onTriggered: _tools.toggle("printArea")
                 }
                 ThemedMenuItem {
-                    text: "Reset Tool Row"
+                    text: "Reset Tool Rows"
                     onTriggered: _tools.resetPlaces()
                 }
                 ThemedMenuItem {
@@ -2774,9 +2775,22 @@ ApplicationWindow {
             }
         }
 
+        // The top tool row (always shown, empty or not): tools dragged up
+        // from the bottom row, and tools to come.
+        ToolRow {
+            id: _topRow
+            objectName: "toolRowTop"
+            Layout.fillWidth: true
+            dock: _tools
+            side: "top"
+        }
+
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // Room between the map (its rulers) and each tool row.
+            Layout.topMargin: Style.dp(10)
+            Layout.bottomMargin: Style.dp(10)
             spacing: 0
 
             Item {
@@ -2937,17 +2951,23 @@ ApplicationWindow {
                     property var item: null
                 }
 
-                // The chips not on the map: docked along the bottom, above the
-                // tool row (its Chips button); drag its top edge to make it
-                // taller or shorter (unlocked).
+                // The chips not on the map: docked along the top or the
+                // bottom, next to the row with its Chips button (it follows
+                // the button to the other row). Unlocked: drag it to the
+                // other edge on its own (it snaps there), and drag its inner
+                // edge to make it taller or shorter.
                 Item {
                     id: _poolFloat
+                    objectName: "chipPool"
+                    readonly property bool atTop: { _tools.rev; return _tools.dockOf("chips") === "top" }
+                    // While dragged: how far it has moved.
+                    property real dragDy: 0
                     visible: editing && _tools.isOpen("chips")
                     z: 30
                     x: Style.dp(8)
                     width: parent.width - Style.dp(16)
                     height: Math.max(Style.dp(90), Math.min(panelH, parent.height - Style.dp(16)))
-                    y: parent.height - height - Style.dp(8)
+                    y: (atTop ? Style.dp(8) : parent.height - height - Style.dp(8)) + dragDy
 
                     component PoolGrip: MouseArea {
                         required property string edge
@@ -2960,7 +2980,10 @@ ApplicationWindow {
                         }
                     }
 
+                    // Its background: takes the clicks (not the map's), and
+                    // drags the pool to the other edge (unlocked).
                     MouseArea {
+                        id: _poolMove
                         anchors.fill: parent
                         z: 0
                         acceptedButtons: Qt.AllButtons
@@ -2969,7 +2992,39 @@ ApplicationWindow {
                             var e = _buttonMap._ed()
                             return !(e && e.dragKind && e.dragKind.length)
                         }
-                        onPressed: (m) => { m.accepted = true }
+                        readonly property bool canMove: !_tools.isLocked("chips")
+                        cursorShape: !canMove ? Qt.ArrowCursor
+                                     : (pressed && moved ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+                        property real startY: 0
+                        property bool moved: false
+                        onPressed: (m) => {
+                            m.accepted = true
+                            startY = mapToItem(_poolFloat.parent, m.x, m.y).y
+                            moved = false
+                        }
+                        onPositionChanged: (m) => {
+                            if (!pressed || !canMove || m.buttons !== Qt.LeftButton)
+                                return
+                            var dy = mapToItem(_poolFloat.parent, m.x, m.y).y - startY
+                            if (Math.abs(dy) > Style.dp(6))
+                                moved = true
+                            if (moved)
+                                _poolFloat.dragDy = dy
+                        }
+                        onReleased: {
+                            if (!moved)
+                                return
+                            // Snaps to the edge nearer its middle.
+                            var middle = _poolFloat.y + _poolFloat.height / 2
+                            var top = middle < _poolFloat.parent.height / 2
+                            _poolFloat.dragDy = 0
+                            moved = false
+                            _tools.setDock("chips", top ? "top" : "bottom")
+                        }
+                        onCanceled: {
+                            _poolFloat.dragDy = 0
+                            moved = false
+                        }
                         onClicked: (m) => { m.accepted = true }
                         onDoubleClicked: (m) => { m.accepted = true }
                         onWheel: (w) => { w.accepted = true }
@@ -3145,14 +3200,15 @@ ApplicationWindow {
                         }
                     }
 
+                    // The edge facing the map: drag to resize (unlocked).
                     PoolGrip {
-                        edge: "n"
+                        edge: _poolFloat.atTop ? "s" : "n"
                         z: 3
                         enabled: !_tools.isLocked("chips")
                         height: Style.dp(6)
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.top: parent.top
+                        y: _poolFloat.atTop ? parent.height - height : 0
                         cursorShape: enabled ? Qt.SizeVerCursor : Qt.ArrowCursor
                     }
                 }
@@ -3196,12 +3252,14 @@ ApplicationWindow {
                     z: 31
                     width: _buttonMap.layersW
                     x: parent.width - width - Style.dp(12)
-                    y: Style.dp(12)
+                    // Clear of the pool: below it when it is docked at the
+                    // top, above it at the bottom. (Of the parent's height:
+                    // the panel's own would loop.)
+                    y: (_poolFloat.visible && _poolFloat.atTop)
+                       ? _poolFloat.y + _poolFloat.height + Style.dp(8) : Style.dp(12)
                     height: {
                         var bottom = parent.height - Style.dp(12)
-                        // The pool sits in the lower half: stop above it. (Of
-                        // the parent's height: the panel's own would loop.)
-                        if (_poolFloat.visible)
+                        if (_poolFloat.visible && !_poolFloat.atTop)
                             bottom = Math.min(bottom, _poolFloat.y - Style.dp(8))
                         return Math.max(Style.dp(120), bottom - y)
                     }
@@ -3271,9 +3329,10 @@ ApplicationWindow {
         }
 
         // The tool row: Chips, Properties, Layers and Command Palette, centred.
-        ToolRow {
+        // The tools and their state (which row each button is on, open,
+        // pinned, locked, places, panel docks); the rows draw them.
+        ToolDock {
             id: _tools
-            Layout.fillWidth: true
             name: "button-map"
             tools: [
                 { id: "chips", label: "Chips", tip: "Chips not on the map yet: drag one onto the map" },
@@ -3295,6 +3354,14 @@ ApplicationWindow {
                 else if (!isOpen("palette") && _palette.opened)
                     _palette.close()
             }
+        }
+
+        ToolRow {
+            id: _bottomRow
+            objectName: "toolRowBottom"
+            Layout.fillWidth: true
+            dock: _tools
+            side: "bottom"
         }
 
         // The status line: the view's and photo's size, what the tool does,

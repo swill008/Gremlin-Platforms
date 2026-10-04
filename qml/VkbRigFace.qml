@@ -26,9 +26,12 @@ Item {
     property real zoom: 2
     property real panX: 0
     property real panY: 0
-    readonly property real zoomMin: 1.0
-    readonly property real zoomMax: 8.0
+    // Out to 50% of the usual view (zoomFit), for room around the page;
+    // zoomPage: the page filling the view (Zoom to Fit Page).
     readonly property real zoomFit: 4 / 3
+    readonly property real zoomMin: zoomFit / 2
+    readonly property real zoomMax: 8.0
+    readonly property real zoomPage: 1.0
     // Wheel zoom speed in percent (Options → Button Map → View).
     property real zoomSpeed: 100
     readonly property real wheelBase: 1 + 0.0012 * Math.max(0.25, zoomSpeed / 100)
@@ -152,9 +155,9 @@ Item {
         pingEditor()
     }
 
-    // The whole page in view.
+    // The whole page in view, filling it.
     function zoomToPage() {
-        zoom = zoomMin
+        zoom = zoomPage
         panX = 0
         panY = 0
         pingEditor()
@@ -185,6 +188,8 @@ Item {
         }
         if (Math.abs(z1 - zoomFit) < 0.03)
             z1 = zoomFit
+        else if (Math.abs(z1 - zoomPage) < 0.015)
+            z1 = zoomPage
         else if (Math.abs(z1 - zoomMin) < 0.015)
             z1 = zoomMin
         var wx = (vx - panX - W * 0.5) / z0 + W * 0.5

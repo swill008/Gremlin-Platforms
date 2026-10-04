@@ -31,7 +31,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 
 um.UpdateModel.startup = lambda self, *a, **k: None
 
-from PySide6 import QtCore, QtQml, QtTest  # noqa: E402
+from PySide6 import QtCore, QtGui, QtQml, QtTest  # noqa: E402
 
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
@@ -119,11 +119,11 @@ def main() -> None:
     out["chips-onto-palette"] = places()
     out["widths"] = json.loads(ev(
         "(function(){ var o = {}; var ids = _tools.order();"
-        " for (var i = 0; i < ids.length; i++) { var b = _tools._button(ids[i]);"
+        " for (var i = 0; i < ids.length; i++) { var b = _bottomRow._button(ids[i]);"
         " o[ids[i]] = b.width } return JSON.stringify(o) })()"
     ))
-    out["row-width"] = ev("_tools.width")
-    out["gap"] = ev("_tools.gap")
+    out["row-width"] = ev("_bottomRow.width")
+    out["gap"] = ev("_bottomRow.gap")
     ev("_tools.resetPlaces()")
     QtTest.QTest.qWait(200)
     out["reset"] = places()
@@ -137,6 +137,84 @@ def main() -> None:
     from gremlin.ui import window_placement
 
     out["saved"] = window_placement.tool_row_state("button-map")
+
+    # --- the top row ---------------------------------------------------------
+    Button = QtCore.Qt.MouseButton
+    none = QtCore.Qt.KeyboardModifier.NoModifier
+
+    def scene_rect(code: str) -> dict:
+        return json.loads(str(ev(
+            "(function(){ var o = " + code + "; var p = o.mapToItem(null, 0, 0);"
+            " return JSON.stringify({x: p.x, y: p.y, w: o.width, h: o.height}) })()"
+        )))
+
+    def drag(a: QtCore.QPointF, b: QtCore.QPointF) -> None:
+        QtTest.QTest.mousePress(win, Button.LeftButton, none, a.toPoint())
+        QtTest.QTest.qWait(30)
+        for i in range(1, 13):
+            p = a + (b - a) * (i / 12)
+            move = QtGui.QMouseEvent(
+                QtCore.QEvent.Type.MouseMove, p, p, Button.NoButton,
+                Button.LeftButton, none,
+            )
+            QtCore.QCoreApplication.sendEvent(win, move)
+            QtTest.QTest.qWait(15)
+        QtTest.QTest.mouseRelease(win, Button.LeftButton, none, b.toPoint())
+        QtTest.QTest.qWait(300)
+
+    def middle(r: dict) -> QtCore.QPointF:
+        return QtCore.QPointF(r["x"] + r["w"] / 2, r["y"] + r["h"] / 2)
+
+    top = scene_rect("_topRow")
+    host = scene_rect("_mapHost")
+    bottom = scene_rect("_bottomRow")
+    out["top-row"] = {"visible": ev("_topRow.visible"), "height": top["h"],
+                      "tools": ev("_tools.order('top').length")}
+    out["gaps"] = [round(host["y"] - (top["y"] + top["h"])),
+                   round(bottom["y"] - (host["y"] + host["h"]))]
+    out["dp10"] = ev("Style.dp(10)")
+    # A button dragged up onto the top row: it moves there, with its panel.
+    ev("_tools.setLocked('palette', false)")
+    QtTest.QTest.qWait(100)
+    button = scene_rect("_bottomRow._button('chips')")
+    drag(middle(button), QtCore.QPointF(top["x"] + top["w"] * 0.25, middle(top).y()))
+    out["chips-up"] = [ev("_tools.sideOf('chips')"), ev("_tools.dockOf('chips')"),
+                       ev("_tools.order('top')"), ev("_tools.order('bottom')")]
+    pool = scene_rect("_poolFloat")
+    out["pool-at-top"] = round(pool["y"] - host["y"])
+    # The pool dragged down on its own: it snaps to the bottom; the button
+    # stays on the top row.
+    grab = QtCore.QPointF(pool["x"] + pool["w"] - 4, pool["y"] + pool["h"] / 2)
+    drag(grab, grab + QtCore.QPointF(0, host["h"] * 0.6))
+    pool = scene_rect("_poolFloat")
+    out["pool-dragged"] = [ev("_tools.dockOf('chips')"), ev("_tools.sideOf('chips')"),
+                           round(host["y"] + host["h"] - (pool["y"] + pool["h"]))]
+    # Locked: the pool doesn't move.
+    ev("_tools.setLocked('chips', true)")
+    QtTest.QTest.qWait(100)
+    grab = QtCore.QPointF(pool["x"] + pool["w"] - 4, pool["y"] + pool["h"] / 2)
+    drag(grab, grab - QtCore.QPointF(0, host["h"] * 0.6))
+    out["pool-locked"] = ev("_tools.dockOf('chips')")
+    ev("_tools.setLocked('chips', false)")
+    # Kept: loaded again, the rows and docks are as they were.
+    ev("_tools._load()")
+    QtTest.QTest.qWait(200)
+    out["kept"] = [ev("_tools.sideOf('chips')"), ev("_tools.dockOf('chips')")]
+    out["saved-top"] = window_placement.tool_row_state("button-map")
+    # Reset Tool Rows: every button back on the bottom row, docks there too.
+    ev("_tools.resetPlaces()")
+    QtTest.QTest.qWait(200)
+    out["reset-rows"] = [ev("_tools.order('top').length"), ev("_tools.dockOf('chips')")]
+
+    # --- zoom ------------------------------------------------------------------
+    face = "_ed().face"
+    ev(f"{face}.zoomToPage()")
+    QtTest.QTest.qWait(100)
+    out["page-zoom"] = [ev(f"{face}.zoom"), ev(f"{face}.viewPct")]
+    for _ in range(12):
+        ev(f"{face}.zoomAt(NaN, NaN, 0.8)")
+    QtTest.QTest.qWait(100)
+    out["out-most"] = ev(f"Math.round({face}.viewPct * 100)")
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)
 

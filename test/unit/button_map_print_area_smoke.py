@@ -138,7 +138,10 @@ def main() -> None:
     out["pixels"] = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
     out["whole-page-at-100"] = ev(
         "Math.round(_ed().spaceRect().w * _buttonMap.exportFactor())")
-    # The bottom-right handle, dragged out.
+    # The bottom-right handle, dragged out. The chip pool docked at the
+    # bottom covers it in this small window: docked at the top instead.
+    ev("_tools.setDock('chips', 'top')")
+    QtTest.QTest.qWait(200)
     corner = at("(function(){ var r = e.printAreaRect();"
                 " return {x: r.x + r.w, y: r.y + r.h} })()")
     drag(corner, corner + QtCore.QPoint(60, 40), Mods.NoModifier)

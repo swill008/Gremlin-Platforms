@@ -210,9 +210,9 @@ Window {
     function ed() { return _face.editorItem }
     function setNodes(json) { _face.editorNodes = JSON.parse(json) }
     function setEditing(on) { _face.editing = on }
-    // Whole page in view: zoomed fully out, no pan.
+    // Whole page in view, filling it, no pan.
     function resetView() {
-        _face.zoom = _face.zoomMin
+        _face.zoom = _face.zoomPage
         _face.panX = 0
         _face.panY = 0
         _face.pingEditor()

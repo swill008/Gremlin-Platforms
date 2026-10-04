@@ -3,218 +3,53 @@
 
 import QtQuick
 import QtQuick.Controls
-import Gremlin.UI
 import Gremlin.Style
 
-// A window's tool row: one button per tool, centred. Every tool behaves the
-// same way:
-//   - its button opens it, and hides it again;
-//   - pinned (the pin on its button), it stays open when the map is clicked;
-//     unpinned, it hides when the map is clicked or another tool opens;
-//   - locked (the lock on its button), it can't be dragged or resized, nor
-//     its button moved; unlocked, the button can be dragged to any place on
-//     the row: it snaps to the edges, the middle and a small grid, and goes
-//     to the nearest free spot rather than onto another button. Until one
-//     is moved (and after resetPlaces()) the buttons sit together, centred.
-// What is open, pinned and locked, and the order, are kept with the window
-// layout under `name`. Adding a tool is one more entry in `tools`.
+// One of a window's tool rows ("top", under the menus, or "bottom"): the
+// buttons of the tools on it. What each tool does, and where its button
+// sits, is the ToolDock's (`dock`); see there for the rules. A button can be
+// dragged along the row or onto the other row (unlocked); the row it would
+// land on lights up.
 //
-//   ToolRow { name: "button-map"; tools: [{ id: "chips", label: "Chips" }] }
-//   row.isOpen("chips"), row.setOpen("chips", true), row.mapClicked()
+//   ToolRow { dock: _tools; side: "top" }
 Item {
     id: _row
 
-    property string name: ""
-    // [{ id, label, tip }] in their first order.
-    property var tools: []
-    // Starting state for a tool never used: { id: { open, pinned, locked } }.
-    property var defaults: ({})
-    // Tools that can't be used now (e.g. only while editing): id -> false.
-    property var usable: ({})
-
-    // id -> { open, pinned, locked }, and the ids in the row's order. Plain
-    // values, not bindings (_load sets them; a binding replaced would be
-    // reported at start-up).
-    property var _state: null
-    property var _order: null
-    // Where each button sits once one has been moved: id -> its middle as a
-    // share (0..1) of the row's width. Empty: all together, centred.
-    property var _pos: null
+    property var dock: null
+    property string side: "bottom"
     readonly property real gap: Style.dp(6)
     readonly property real grid: Style.dp(8)
-    // Bumped on every change: bindings on the getters follow it.
-    property int rev: 0
-
-    signal toolChanged(string id)
+    // A button is being dragged here from the other row, or along this one.
+    readonly property bool dropTarget: !!dock && dock.dragging.length > 0 && dock.dropSide === side
 
     implicitHeight: Style.dp(30)
+    // A button dragged off this row is drawn over the map.
+    z: (dock && dock.dragging.length && dock.sideOf(dock.dragging) === side) ? 50 : 0
 
-    WindowPlacement { id: _store }
+    Component.onCompleted: _register()
+    onDockChanged: _register()
+    onSideChanged: _register()
 
-    Component.onCompleted: _load()
-    onToolsChanged: _load()
-
-    function _entry(id) {
-        if (!_state)
-            _state = {}
-        var s = _state[id]
-        if (!s) {
-            var d = defaults[id] || {}
-            s = { open: !!d.open, pinned: !!d.pinned, locked: !!d.locked }
-            _state[id] = s
-        }
-        return s
-    }
-
-    function _load() {
-        var saved = {}
-        try {
-            saved = JSON.parse(name.length ? _store.toolRowState(name) : "{}") || {}
-        } catch (e) {
-            saved = {}
-        }
-        var items = saved.items || {}
-        _state = {}
-        for (var i = 0; i < tools.length; i++) {
-            var id = tools[i].id
-            var s = _entry(id)
-            var keep = items[id]
-            if (keep) {
-                s.pinned = !!keep.pinned
-                s.locked = !!keep.locked
-                // Only a pinned tool reopens in a new session.
-                s.open = !!keep.open && s.pinned
-            }
-        }
-        // The saved order, then any tool it doesn't have yet.
-        var order = (saved.order || []).filter(function(t) { return _has(t) })
-        for (i = 0; i < tools.length; i++) {
-            if (order.indexOf(tools[i].id) < 0)
-                order.push(tools[i].id)
-        }
-        _order = order
-        var pos = saved.pos || {}
-        _pos = {}
-        for (var key in pos) {
-            if (_has(key) && pos[key] >= 0 && pos[key] <= 1)
-                _pos[key] = pos[key]
-        }
-        rev++
-        _relayout()
-    }
-
-    function _has(id) {
-        for (var i = 0; i < tools.length; i++) {
-            if (tools[i].id === id)
-                return true
-        }
-        return false
-    }
-
-    function _save() {
-        rev++
-        if (!name.length)
+    function _register() {
+        if (!dock)
             return
-        var items = {}
-        for (var i = 0; i < tools.length; i++) {
-            var s = _entry(tools[i].id)
-            items[tools[i].id] = { open: s.open, pinned: s.pinned, locked: s.locked }
-        }
-        _store.saveToolRowState(name, JSON.stringify({ order: _order, items: items, pos: _pos }))
-    }
-
-    function tool(id) {
-        for (var i = 0; i < tools.length; i++) {
-            if (tools[i].id === id)
-                return tools[i]
-        }
-        return null
-    }
-
-    function isUsable(id) { return usable[id] !== false }
-    function isOpen(id) { rev; return _entry(id).open && isUsable(id) }
-    function isPinned(id) { rev; return _entry(id).pinned }
-    function isLocked(id) { rev; return _entry(id).locked }
-
-    // Opening a tool hides the other unpinned ones.
-    function setOpen(id, on) {
-        var s = _entry(id)
-        if (on) {
-            for (var i = 0; i < tools.length; i++) {
-                var other = tools[i].id
-                var o = _entry(other)
-                if (other !== id && o.open && !o.pinned) {
-                    o.open = false
-                    toolChanged(other)
-                }
-            }
-        }
-        if (s.open === !!on) {
-            _save()
-            return
-        }
-        s.open = !!on
-        _save()
-        toolChanged(id)
-    }
-
-    function toggle(id) { setOpen(id, !_entry(id).open) }
-
-    function setPinned(id, on) {
-        _entry(id).pinned = !!on
-        _save()
-        toolChanged(id)
-    }
-
-    function setLocked(id, on) {
-        _entry(id).locked = !!on
-        _save()
-        toolChanged(id)
-    }
-
-    // A click on the map: unpinned tools hide.
-    function mapClicked() {
-        for (var i = 0; i < tools.length; i++) {
-            var id = tools[i].id
-            var s = _entry(id)
-            if (s.open && !s.pinned) {
-                s.open = false
-                toolChanged(id)
-            }
-        }
-        _save()
-    }
-
-    // The row's ids in order (for tests and the window).
-    function order() { rev; return (_order || []).slice() }
-
-    // Puts a tool at another place in the row's order (the buttons sit
-    // together, centred, in this order until one is moved freely).
-    function moveTo(id, index) {
-        if (isLocked(id))
-            return
-        var order = _order.slice()
-        var at = order.indexOf(id)
-        if (at < 0)
-            return
-        order.splice(at, 1)
-        order.splice(Math.max(0, Math.min(index, order.length)), 0, id)
-        _order = order
-        _save()
-        _relayout()
-    }
-
-    // Back to all together, centred (View > Reset Tool Row).
-    function resetPlaces() {
-        _pos = {}
-        _save()
-        _relayout()
+        var next = {}
+        for (var k in dock.rows)
+            next[k] = dock.rows[k]
+        next[side] = _row
+        dock.rows = next
+        relayout()
     }
 
     // Where a tool's button sits: its left edge, or -1 (for tests).
     function placeOf(id) {
         var b = _button(id)
         return b ? b.x : -1
+    }
+
+    function buttonWidth(id) {
+        var b = _button(id)
+        return b ? b.width : 0
     }
 
     function _button(id) {
@@ -226,17 +61,53 @@ Item {
         return null
     }
 
-    function _relayout() {
+    function relayout() {
         Qt.callLater(_layout)
+    }
+
+    // Each button's middle as a share of the row's width (the dock keeps
+    // these once one button is moved).
+    function shares() {
+        var out = {}
+        var w = _buttons.width
+        if (!(w > 0))
+            return out
+        for (var i = 0; i < _rep.count; i++) {
+            var b = _rep.itemAt(i)
+            if (b)
+                out[b.modelData] = (b.x + b.width / 2) / w
+        }
+        return out
+    }
+
+    // A button let go here with its left edge at x: snapped, then the
+    // nearest free spot among this row's other buttons, as a share.
+    function shareAt(id, x) {
+        var width = buttonWidth(id)
+        if (!(width > 0) && dock) {
+            for (var k in dock.rows) {
+                if (dock.rows[k] && dock.rows[k] !== _row)
+                    width = Math.max(width, dock.rows[k].buttonWidth(id))
+            }
+        }
+        var others = []
+        for (var j = 0; j < _rep.count; j++) {
+            var ob = _rep.itemAt(j)
+            if (ob && ob.modelData !== id)
+                others.push({ x: ob.x, w: ob.width })
+        }
+        var left = _freeSpot(_snap(x, width), width, others)
+        return (left + width / 2) / Math.max(1, _buttons.width)
     }
 
     // Places the buttons: together and centred, or each where it was put.
     function _layout() {
         var w = _buttons.width
-        if (!(w > 0))
+        if (!(w > 0) || !dock)
             return
-        var ids = _order || []
-        if (!Object.keys(_pos || {}).length) {
+        var ids = dock.order(side)
+        var pos = dock._pos || {}
+        if (!Object.keys(pos).length) {
             var total = 0
             var shown = []
             for (var i = 0; i < ids.length; i++) {
@@ -259,7 +130,7 @@ Item {
             var bk = _button(ids[k])
             if (!bk)
                 continue
-            var at = _pos[ids[k]]
+            var at = pos[ids[k]]
             var want = at === undefined ? (w - bk.width) / 2 : at * w - bk.width / 2
             // One not placed yet (new) goes to the free spot nearest the middle.
             bk.x = Math.round(_freeSpot(want, bk.width, placed))
@@ -313,76 +184,50 @@ Item {
         return Math.round(x / _row.grid) * _row.grid
     }
 
-    // A button let go with its left edge at `x`: snapped, moved to the
-    // nearest free spot, and kept (every button gets its place the first
-    // time, so the others stay where they are).
-    function dropAt(id, x) {
-        var b = _button(id)
-        if (!b || isLocked(id))
-            return
-        var w = _buttons.width
-        if (!Object.keys(_pos || {}).length) {
-            var pos = {}
-            for (var i = 0; i < _rep.count; i++) {
-                var o = _rep.itemAt(i)
-                if (o)
-                    pos[o.modelData] = (o.x + o.width / 2) / w
-            }
-            _pos = pos
-        }
-        var others = []
-        for (var j = 0; j < _rep.count; j++) {
-            var ob = _rep.itemAt(j)
-            if (ob && ob !== b)
-                others.push({ x: ob.x, w: ob.width })
-        }
-        var left = _freeSpot(_snap(x, b.width), b.width, others)
-        var next = {}
-        for (var key in _pos)
-            next[key] = _pos[key]
-        next[id] = (left + b.width / 2) / w
-        _pos = next
-        // The order follows the places (keyboard and lists).
-        var order = _order.slice()
-        order.sort(function(a, c) { return (_pos[a] || 0) - (_pos[c] || 0) })
-        _order = order
-        _save()
-        _relayout()
-    }
-
     Rectangle {
         anchors.fill: parent
         color: Style.bgRaised
+        // The line on the side facing the map.
         Rectangle {
             width: parent.width
             height: 1
+            y: _row.side === "top" ? parent.height - 1 : 0
             color: Style.line
+        }
+        // Lit while a button would land here.
+        Rectangle {
+            anchors.fill: parent
+            visible: _row.dropTarget
+            color: Style.clear
+            border.color: Style.accent
+            border.width: Style.dp(2)
         }
     }
 
     Item {
         id: _buttons
         anchors.fill: parent
-        onWidthChanged: _row._relayout()
+        onWidthChanged: _row.relayout()
 
         Repeater {
             id: _rep
-            model: { _row.rev; return _row._order || [] }
+            model: { _row.dock ? _row.dock.rev : 0; return _row.dock ? _row.dock.order(_row.side) : [] }
             delegate: Rectangle {
                 id: _btn
                 required property string modelData
                 required property int index
-                readonly property var tool: _row.tool(modelData)
-                readonly property bool open: { _row.rev; return _row.isOpen(modelData) }
-                readonly property bool pinned: { _row.rev; return _row.isPinned(modelData) }
-                readonly property bool locked: { _row.rev; return _row.isLocked(modelData) }
-                readonly property bool usableNow: { _row.rev; return _row.isUsable(modelData) }
+                readonly property var dock: _row.dock
+                readonly property var tool: dock ? dock.tool(modelData) : null
+                readonly property bool open: { dock.rev; return dock.isOpen(modelData) }
+                readonly property bool pinned: { dock.rev; return dock.isPinned(modelData) }
+                readonly property bool locked: { dock.rev; return dock.isLocked(modelData) }
+                readonly property bool usableNow: { dock.rev; return dock.isUsable(modelData) }
                 objectName: "tool:" + modelData
                 width: _inner.implicitWidth + Style.dp(12)
                 height: _row.height - Style.dp(6)
                 y: (_row.height - height) / 2
-                onWidthChanged: _row._relayout()
-                Component.onCompleted: _row._relayout()
+                onWidthChanged: _row.relayout()
+                Component.onCompleted: _row.relayout()
                 radius: Style.dp(4)
                 opacity: usableNow ? 1 : 0.45
                 color: open ? Style.bgSelected : (_main.containsMouse && usableNow ? Style.bgCard : Style.clear)
@@ -390,7 +235,8 @@ Item {
                 border.width: 1
                 // How far it is being dragged (an unlocked button).
                 property real dragDx: 0
-                transform: Translate { x: _btn.dragDx }
+                property real dragDy: 0
+                transform: Translate { x: _btn.dragDx; y: _btn.dragDy }
                 z: _main.pressed ? 2 : 1
 
                 Row {
@@ -409,7 +255,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         font.family: Style.iconFont
                         font.pixelSize: Style.dp(11)
-                        text: _btn.pinned ? "" : ""
+                        text: _btn.pinned ? "" : ""
                         color: _btn.pinned ? Style.accent : (_pinArea.containsMouse ? Style.fg : Style.fgMuted)
                         MouseArea {
                             id: _pinArea
@@ -417,7 +263,7 @@ Item {
                             anchors.margins: -Style.dp(3)
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: _row.setPinned(_btn.modelData, !_btn.pinned)
+                            onClicked: _btn.dock.setPinned(_btn.modelData, !_btn.pinned)
                         }
                         ToolTip.visible: _pinArea.containsMouse
                         ToolTip.delay: 600
@@ -429,7 +275,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         font.family: Style.iconFont
                         font.pixelSize: Style.dp(11)
-                        text: _btn.locked ? "" : ""
+                        text: _btn.locked ? "" : ""
                         color: _btn.locked ? Style.accent : (_lockArea.containsMouse ? Style.fg : Style.fgMuted)
                         MouseArea {
                             id: _lockArea
@@ -437,7 +283,7 @@ Item {
                             anchors.margins: -Style.dp(3)
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: _row.setLocked(_btn.modelData, !_btn.locked)
+                            onClicked: _btn.dock.setLocked(_btn.modelData, !_btn.locked)
                         }
                         ToolTip.visible: _lockArea.containsMouse
                         ToolTip.delay: 600
@@ -445,7 +291,8 @@ Item {
                     }
                 }
 
-                // Click: open or hide. Drag (unlocked): move along the row.
+                // Click: open or hide. Drag (unlocked): move along the row or
+                // onto the other one.
                 MouseArea {
                     id: _main
                     anchors.fill: parent
@@ -454,32 +301,54 @@ Item {
                     enabled: _btn.usableNow
                     // A hand, as over the pool's chips; closed while dragging it.
                     cursorShape: pressed && _moved ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-                    property real _startX: 0
+                    property point _start: Qt.point(0, 0)
                     property bool _moved: false
                     onPressed: (m) => {
-                        _startX = mapToItem(_buttons, m.x, m.y).x
+                        _start = mapToItem(_buttons, m.x, m.y)
                         _moved = false
                     }
                     onPositionChanged: (m) => {
                         if (!pressed || _btn.locked)
                             return
-                        var dx = mapToItem(_buttons, m.x, m.y).x - _startX
-                        if (Math.abs(dx) > Style.dp(4))
+                        var p = mapToItem(_buttons, m.x, m.y)
+                        var dx = p.x - _start.x
+                        var dy = p.y - _start.y
+                        if (Math.abs(dx) > Style.dp(4) || Math.abs(dy) > Style.dp(4))
                             _moved = true
-                        if (_moved)
-                            _btn.dragDx = dx
+                        if (!_moved)
+                            return
+                        _btn.dragDx = dx
+                        _btn.dragDy = dy
+                        var s = mapToItem(null, m.x, m.y)
+                        _btn.dock.dragging = _btn.modelData
+                        _btn.dock.dropSide = _btn.dock.sideAt(s.x, s.y) || _row.side
                     }
                     onReleased: (m) => {
+                        var dock = _btn.dock
                         if (!_moved) {
-                            _row.toggle(_btn.modelData)
+                            dock.toggle(_btn.modelData)
                             return
                         }
-                        // Where it was let go: snapped, then the nearest free spot.
-                        var left = _btn.x + _btn.dragDx
+                        // Where it was let go: on this row or the other,
+                        // snapped, then the nearest free spot there.
+                        var target = dock.dropSide || _row.side
+                        var row = dock.rows[target] || _row
+                        var left = row.mapFromItem(_buttons, _btn.x + _btn.dragDx, 0).x
                         _btn.dragDx = 0
-                        _row.dropAt(_btn.modelData, left)
+                        _btn.dragDy = 0
+                        dock.dragging = ""
+                        dock.dropSide = ""
+                        // After this handler: a button put on the other row
+                        // leaves this one (its delegate goes).
+                        var id = _btn.modelData
+                        Qt.callLater(function() { dock.dropAt(id, left, target) })
                     }
-                    onCanceled: _btn.dragDx = 0
+                    onCanceled: {
+                        _btn.dragDx = 0
+                        _btn.dragDy = 0
+                        _btn.dock.dragging = ""
+                        _btn.dock.dropSide = ""
+                    }
                 }
                 ToolTip.visible: _main.containsMouse && !!(_btn.tool && _btn.tool.tip)
                 ToolTip.delay: 700
