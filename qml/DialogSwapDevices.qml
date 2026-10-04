@@ -70,6 +70,14 @@ ApplicationWindow {
 
         RunningNote {}
 
+        Label {
+            Layout.fillWidth: true
+            visible: _profileDeviceSelection.count === 0
+            wrapMode: Text.WordWrap
+            color: Style.fgMuted
+            text: "Load a profile first: the open profile has no device bindings to move."
+        }
+
         RowLayout {
             Label {
                 Layout.preferredWidth: Style.dp(200)

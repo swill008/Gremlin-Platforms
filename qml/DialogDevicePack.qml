@@ -60,8 +60,18 @@ ApplicationWindow {
         _deviceModel.clear()
         for (var i = 0; i < rows.length; ++i)
             _deviceModel.append(rows[i])
-        if (_exportDevice.count > 0 && _exportDevice.currentIndex < 0)
-            _exportDevice.currentIndex = 0
+        if (_exportDevice.count > 0 && _exportDevice.currentIndex < 0) {
+            // The first device with a module file: one without has nothing to
+            // pack.
+            var first = 0
+            for (var j = 0; j < rows.length; ++j) {
+                if (rows[j].hasFile) {
+                    first = j
+                    break
+                }
+            }
+            _exportDevice.currentIndex = first
+        }
         refreshExport()
     }
 

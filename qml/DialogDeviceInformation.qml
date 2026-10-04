@@ -39,6 +39,7 @@ ApplicationWindow {
             HeaderText {
                 text: "Name"
                 Layout.fillWidth: true
+                Layout.minimumWidth: Style.dp(220)
             }
             HeaderText {
                 text: "Axes"
@@ -97,6 +98,7 @@ ApplicationWindow {
                             TextEntry {
                                 text: name
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: Style.dp(220)
                                 Layout.leftMargin: Style.dp(10)
                                 horizontalAlignment: Text.AlignLeft
 

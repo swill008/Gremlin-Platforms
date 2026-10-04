@@ -94,6 +94,11 @@ Item {
 
             LayoutHorizontalSpacer {}
 
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+
             Switch {
                 text: "Exclusive"
 
@@ -108,7 +113,6 @@ Item {
                 checked: _root.action.isPreemptive
                 onClicked: () => { _root.action.isPreemptive = checked }
             }
-
         }
 
         // Action recording configuration settings.

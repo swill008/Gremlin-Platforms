@@ -151,12 +151,16 @@ Item {
 
         // Response curve widget
         RowLayout {
-            Layout.preferredWidth: Style.dp(475)
+            Layout.preferredWidth: _vis.size + Style.dp(25)
 
             Item {
                 id: _vis
 
-                property int size: Style.dp(450)
+                // Full size when there is room; smaller in a narrow pane
+                // (large UI scales), never below a usable size.
+                property int size: Math.max(Style.dp(200), Math.min(
+                    Style.dp(450),
+                    (_root.width > 0 ? _root.width : Style.dp(475)) - Style.dp(25)))
                 property int border: Style.dp(2)
 
                 Component.onCompleted: () => { action.setWidgetSize(size) }

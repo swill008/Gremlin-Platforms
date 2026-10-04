@@ -70,6 +70,16 @@ Item {
             SplitView.fillWidth: true
             SplitView.minimumWidth: Style.dp(400)
 
+            Label {
+                Layout.fillWidth: true
+                Layout.topMargin: Style.dp(8)
+                Layout.rightMargin: Style.dp(5)
+                wrapMode: Text.WordWrap
+                color: Style.fgMuted
+                text: "Scripts are Python files that run with the profile. They can react to "
+                    + "inputs and do what actions can't. Add one with Add Script."
+            }
+
             JGListView {
                 id: _view
 

@@ -220,7 +220,8 @@ ApplicationWindow {
         }
 
         Label {
-            text: "Device is a name line. Marks and 5-ways stay on Button Map. Press a control to claim it; uncheck to undo."
+            text: "Press a control on the device to claim it for this module; clear its check box to let it go. "
+                + "Names, marks and 5-way hats are set in the Button Map."
             color: Style.fgMuted
             wrapMode: Text.WordWrap
             Layout.fillWidth: true

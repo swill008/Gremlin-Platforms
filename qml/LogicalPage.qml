@@ -368,6 +368,20 @@ Item {
                         onClicked: (mouse) => _root._openLayoutMenu(false, false, _list, mouse.x, mouse.y)
                     }
 
+                    // Nothing listed: say why, and how to start.
+                    Label {
+                        anchors.centerIn: parent
+                        width: Math.min(parent.width - Style.dp(32), Style.dp(360))
+                        visible: _list.count === 0
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        color: Style.fgMuted
+                        text: _findText.text.length || _findType.currentIndex > 0
+                              || _findUngrouped.checked || _findNoWriter.checked
+                            ? "Nothing matches the Find filters."
+                            : "No buttons, axes or hats yet. Right-click here to add some."
+                    }
+
                     delegate: Rectangle {
                         id: _row
                         required property int index

@@ -49,8 +49,6 @@ Item {
         }
 
         Label {
-            Layout.preferredWidth: Style.dp(50)
-
             text: "Volume"
         }
 
