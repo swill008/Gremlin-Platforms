@@ -2,21 +2,27 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Runs the test folders one after another, so you can watch it.
+"""Runs the tests in parallel, with a clock, so you can watch it.
 
-    python test/run_tests.py [folder ...]      (default: all three)
+    python test/run_tests.py                 every test (before a commit)
+    python test/run_tests.py --failed        only what failed last time
+    python test/run_tests.py --quick PATH... these tests, stop at the first failure
+    python test/run_tests.py PATH...         these test files or folders
 
-Every line shows the time since the start and how many tests of the folder
-are done. When a test prints nothing for a while it says which test is
-still running. A folder that runs longer than LIMIT_S is stopped. The
-same output goes to a log file (its path is shown at the start and end).
-
-The folders run in separate pytest runs: test/unit can't share a process
-with the two that need the Gremlin app (test/conftest.py refuses that).
+The folders run at the same time in separate pytest runs (test/unit can't
+share a process with the two that need the Gremlin app), and test/unit is
+split into parts, balanced by how long each file took last time. Every
+line shows the time since the start, which part it is from and how many
+tests of all are done. A part that prints nothing for a while says which
+test it is in; a part that runs longer than LIMIT_S is stopped. At the end:
+each part's result, the total time and the slowest tests. The same output
+goes to a log file (its path is shown at the start and end).
 """
 
 from __future__ import annotations
 
+import argparse
+import json
 import os
 import pathlib
 import queue
@@ -26,19 +32,159 @@ import sys
 import tempfile
 import threading
 import time
+from dataclasses import dataclass, field
+from typing import Any
 
 FOLDERS = ["test/unit", "test/action_interaction", "test/integration"]
+UNIT_PARTS = 4
 LIMIT_S = 600
-QUIET_S = 15  # say which test is running after this long without output
+QUIET_S = 15  # say which test a part is in after this long without output
 
 _ROOT = pathlib.Path(__file__).parents[1]
+_STATE = pathlib.Path(tempfile.gettempdir()) / "gremlin-test-runs"
+_LOG = pathlib.Path(tempfile.gettempdir()) / "gremlin-test-run.log"
 _COUNT = re.compile(r"\[\s*(\d+)/(\d+)\]\s*$")
+_RESULT = re.compile(r"^(\S+::\S+) (PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS)")
 _SUMMARY = re.compile(r"=+ (.* in [\d.]+s.*) =+$")
+_SLOW = re.compile(r"^(\d+\.\d+)s (call|setup|teardown)\s+(\S+)")
+
+
+@dataclass
+class Part:
+    name: str
+    folder: str
+    targets: list[str]
+    process: subprocess.Popen | None = None
+    began: float = 0.0
+    done: int = 0
+    total: int = 0
+    current: str = ""
+    last_output: float = 0.0
+    last_note: float = 0.0
+    summary: str = "no summary (see the log)"
+    finished: bool = False
+    took: float = 0.0
+    failed: list[str] = field(default_factory=list)
+    file: str = ""
+    file_began: float = 0.0
+    file_times: dict[str, float] = field(default_factory=dict)
 
 
 def _clock(start: float) -> str:
     seconds = int(time.monotonic() - start)
     return f"{seconds // 60:02d}:{seconds % 60:02d}"
+
+
+def _load(name: str, default: Any) -> Any:  # noqa: ANN401
+    try:
+        return json.loads((_STATE / name).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return default
+
+
+def _save(name: str, value: object) -> None:
+    _STATE.mkdir(exist_ok=True)
+    (_STATE / name).write_text(json.dumps(value, indent=1), encoding="utf-8")
+
+
+def _folder_of(target: str) -> str:
+    path = target.replace("\\", "/")
+    for folder in FOLDERS:
+        if path == folder or path.startswith(folder + "/"):
+            return folder
+    raise SystemExit(f"Not in a test folder: {target}")
+
+
+def _split(files: list[str], parts: int, times: dict[str, float]) -> list[list[str]]:
+    """Files in parts of about equal time (longest first, each to the
+    part with the least so far)."""
+    loads = [[0.0, []] for _ in range(parts)]
+    for f in sorted(files, key=lambda f: -times.get(f, 1.0)):
+        least = min(loads, key=lambda load: load[0])
+        least[0] += times.get(f, 1.0)
+        least[1].append(f)
+    return [sorted(files) for _, files in loads if files]
+
+
+def _tests_in(test_file: str) -> list[str]:
+    """The test ids in test_file (pytest --collect-only)."""
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q",
+         "-p", "no:cacheprovider", test_file],
+        cwd=_ROOT, capture_output=True, text=True, timeout=120, check=False,
+    )
+    return [line for line in result.stdout.splitlines() if "::" in line]
+
+
+def _units(files: list[str], parts: int, times: dict[str, float]) -> tuple[
+    list[str], dict[str, float]
+]:
+    """What to spread over the parts: files, except that a file heavier than
+    half a part's share is spread test by test (one file could otherwise
+    keep its part running long after the others are done)."""
+    share = sum(times.get(f, 1.0) for f in files) / parts
+    units: list[str] = []
+    weights: dict[str, float] = {}
+    for f in files:
+        took = times.get(f, 1.0)
+        tests = _tests_in(f) if took > share / 2 else []
+        if len(tests) > 1:
+            for test in tests:
+                units.append(test)
+                weights[test] = took / len(tests)
+        else:
+            units.append(f)
+            weights[f] = took
+    return units, weights
+
+
+def plan(targets: list[str], parts: int) -> list[Part]:
+    by_folder: dict[str, list[str]] = {}
+    for target in targets:
+        by_folder.setdefault(_folder_of(target), []).append(target)
+    jobs = []
+    times = _load("file-times.json", {})
+    for folder, chosen in by_folder.items():
+        short = folder.split("/")[-1]
+        if folder == "test/unit" and chosen == [folder] and parts > 1:
+            files = sorted(
+                p.relative_to(_ROOT).as_posix()
+                for p in (_ROOT / folder).glob("test_*.py")
+            )
+            units, weights = _units(files, parts, times)
+            for i, part_units in enumerate(_split(units, parts, weights), 1):
+                jobs.append(Part(f"unit-{i}", folder, part_units))
+        else:
+            jobs.append(Part(short, folder, chosen))
+    return jobs
+
+
+def _start(part: Part, quick: bool, lines: queue.Queue) -> None:
+    command = [
+        sys.executable, "-m", "pytest", "-v", "-p", "no:cacheprovider",
+        "-o", "console_output_style=count", "--durations=15", *part.targets,
+    ]
+    if quick:
+        command.insert(4, "-x")
+    part.process = subprocess.Popen(
+        command, cwd=_ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding="utf-8", errors="replace",
+        env=dict(os.environ, PYTHONUNBUFFERED="1"),
+    )
+    part.began = part.last_output = part.file_began = time.monotonic()
+
+    def read() -> None:
+        assert part.process is not None and part.process.stdout is not None
+        for line in part.process.stdout:
+            lines.put((part, line.rstrip("\n")))
+        lines.put((part, None))
+
+    threading.Thread(target=read, daemon=True).start()
+
+
+def _add_time(part: Part) -> None:
+    took = time.monotonic() - part.file_began
+    part.file_times[part.file] = part.file_times.get(part.file, 0.0) + took
 
 
 def _end(process: subprocess.Popen) -> None:
@@ -49,84 +195,123 @@ def _end(process: subprocess.Popen) -> None:
     )
 
 
-def run_folder(folder: str, start: float, log) -> tuple[str, str, float]:  # noqa: ANN001
-    def say(text: str) -> None:
-        line = f"[{_clock(start)}] {text}"
+def run(parts: list[Part], quick: bool, log) -> tuple[list[tuple[float, str]], float]:  # noqa: ANN001
+    start = time.monotonic()
+
+    def say(part: Part | None, text: str) -> None:
+        done = sum(p.done for p in parts)
+        total = sum(p.total for p in parts)
+        name = f"{part.name:<11}" if part else " " * 11
+        line = f"[{_clock(start)}] {name} {done}/{total or '?'}  {text}"
         print(line, flush=True)
         log.write(line + "\n")
         log.flush()
 
-    say(f"=== {folder}: starting (stopped after {LIMIT_S // 60} min)")
-    began = time.monotonic()
-    process = subprocess.Popen(
-        [sys.executable, "-m", "pytest", "-v", "-p", "no:cacheprovider",
-         "-o", "console_output_style=count", folder],
-        cwd=_ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, encoding="utf-8", errors="replace",
-        env=dict(os.environ, PYTHONUNBUFFERED="1"),
-    )
-    lines: queue.Queue[str | None] = queue.Queue()
-
-    def read() -> None:
-        assert process.stdout is not None
-        for line in process.stdout:
-            lines.put(line.rstrip("\n"))
-        lines.put(None)
-
-    threading.Thread(target=read, daemon=True).start()
-    done = total = 0
-    current = ""
-    summary = "no summary (see the log)"
-    last_output = time.monotonic()
-    last_note = 0.0
-    while True:
+    lines: queue.Queue = queue.Queue()
+    for part in parts:
+        _start(part, quick, lines)
+        what = " ".join(part.targets)
+        if len(part.targets) > 3:
+            what = f"{len(part.targets)} files"
+        say(part, f"started: {what}")
+    slow: list[tuple[float, str]] = []
+    while not all(p.finished for p in parts):
         try:
-            line = lines.get(timeout=1.0)
+            part, line = lines.get(timeout=1.0)
         except queue.Empty:
             now = time.monotonic()
-            if now - began > LIMIT_S:
-                say(f"!!! {folder}: over {LIMIT_S // 60} min, stopping it")
-                _end(process)
-                summary = f"STOPPED after {LIMIT_S // 60} min"
-                break
-            if now - last_output > QUIET_S and now - last_note > QUIET_S:
-                last_note = now
-                say(f"... {done}/{total or '?'} done; still in "
-                    f"{current or 'start-up'} ({int(now - last_output)} s)")
+            for p in parts:
+                if p.finished:
+                    continue
+                if now - p.began > LIMIT_S:
+                    say(p, f"!!! over {LIMIT_S // 60} min, stopping it")
+                    assert p.process is not None
+                    _end(p.process)
+                    p.summary = f"STOPPED after {LIMIT_S // 60} min"
+                elif now - p.last_output > QUIET_S and now - p.last_note > QUIET_S:
+                    p.last_note = now
+                    say(p, f"... still in {p.current or 'start-up'} "
+                           f"({int(now - p.last_output)} s)")
             continue
         if line is None:
-            break
-        last_output = time.monotonic()
+            assert part.process is not None
+            part.process.wait()
+            part.finished = True
+            part.took = time.monotonic() - part.began
+            if part.file:
+                _add_time(part)
+            say(part, f"=== {part.summary} ({part.took:.0f} s)")
+            continue
+        part.last_output = time.monotonic()
         if m := _COUNT.search(line):
-            done, total = int(m.group(1)), int(m.group(2))
-        if "::" in line and not line.startswith(" "):
-            current = line.split(" ")[0]
+            part.done, part.total = int(m.group(1)), int(m.group(2))
+        if m := _RESULT.match(line):
+            node, outcome = m.group(1), m.group(2)
+            part.current = node
+            test_file = node.split("::")[0]
+            if test_file != part.file:
+                if part.file:
+                    _add_time(part)
+                part.file, part.file_began = test_file, time.monotonic()
+            if outcome in ("FAILED", "ERROR") and node not in part.failed:
+                part.failed.append(node)
         if m := _SUMMARY.search(line):
-            summary = m.group(1)
-        say(f"{done}/{total or '?'}  {line}")
-    process.wait()
-    took = time.monotonic() - began
-    say(f"=== {folder}: {summary} ({took:.0f} s)")
-    return folder, summary, took
+            part.summary = m.group(1)
+        if m := _SLOW.match(line):
+            slow.append((float(m.group(1)), f"{m.group(2):<8} {m.group(3)}"))
+        say(part, line)
+    return slow, time.monotonic() - start
 
 
 def main() -> int:
-    folders = sys.argv[1:] or FOLDERS
-    log_path = pathlib.Path(tempfile.gettempdir()) / "gremlin-test-run.log"
-    start = time.monotonic()
-    results = []
-    with log_path.open("w", encoding="utf-8") as log:
-        print(f"Log: {log_path}", flush=True)
-        for folder in folders:
-            results.append(run_folder(folder, start, log))
-        lines = ["", f"=== All done in {_clock(start)}"]
-        lines += [f"  {f}: {s} ({t:.0f} s)" for f, s, t in results]
-        lines.append(f"Log: {log_path}")
-        for line in lines:
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
+    parser.add_argument("targets", nargs="*", help="test files or folders")
+    parser.add_argument("--failed", action="store_true",
+                        help="only the tests that failed in the last run")
+    parser.add_argument("--quick", action="store_true",
+                        help="stop at the first failure")
+    parser.add_argument("--parts", type=int, default=UNIT_PARTS,
+                        help=f"parts test/unit is split into (default {UNIT_PARTS})")
+    args = parser.parse_args()
+
+    if args.failed:
+        targets = list(_load("last-failed.json", []))
+        if not targets:
+            print("Nothing failed in the last run.")
+            return 0
+    else:
+        targets = args.targets or FOLDERS
+    parts = plan(targets, args.parts)
+    with _LOG.open("w", encoding="utf-8") as log:
+        print(f"Log: {_LOG}", flush=True)
+        slow, took = run(parts, args.quick, log)
+        failed = [node for p in parts for node in p.failed]
+        if not args.failed or not failed:
+            _save("last-failed.json", failed)
+        times = dict(_load("file-times.json", {}))
+        measured: dict[str, float] = {}
+        for p in parts:  # a file spread over parts: add its shares up
+            for test_file, seconds in p.file_times.items():
+                measured[test_file] = measured.get(test_file, 0.0) + seconds
+        times.update(measured)
+        _save("file-times.json", times)
+        out = ["", f"=== All done in {int(took) // 60:02d}:{int(took) % 60:02d}"]
+        out += [f"  {p.name:<11} {p.summary} ({p.took:.0f} s)" for p in parts]
+        if failed:
+            out.append(f"Failed ({len(failed)}), rerun with --failed:")
+            out += [f"  {node}" for node in failed]
+        if slow:
+            out.append("Slowest:")
+            slowest = sorted(slow, reverse=True)[:10]
+            out += [f"  {s:6.2f}s {what}" for s, what in slowest]
+        out.append(f"Log: {_LOG}")
+        for line in out:
             print(line, flush=True)
             log.write(line + "\n")
-    ok = all(" failed" not in s and "STOPPED" not in s and " error" not in s
-             for _, s, _ in results)
+    ok = not failed and all(
+        " failed" not in p.summary and "STOPPED" not in p.summary
+        and " error" not in p.summary for p in parts
+    )
     return 0 if ok else 1
 
 

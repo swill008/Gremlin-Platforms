@@ -64,15 +64,15 @@ def joystick_init() -> None:
 
 
 @pytest.fixture(scope="package", autouse=True)
-def terminate_event_listener(request: pytest.FixtureRequest) -> None:
-    request.addfinalizer(lambda: gremlin.event_handler.EventListener().terminate())
-
-
-@pytest.fixture(scope="package")
-def event_listener() -> gremlin.event_handler.EventListener:
-    """The shared event listener, started for the rest of the package (its
-    threads belong to the package, not to the test that first uses it)."""
-    return gremlin.event_handler.EventListener()
+def event_listener() -> Iterator[gremlin.event_handler.EventListener]:
+    """The shared event listener, started before the first test and stopped
+    after the last: its threads belong to the package, not to whichever
+    test happens to use it first (that depends on the order, which differs
+    when the tests run in parts). Tests turn the Windows hooks off, so
+    starting it touches nothing on the PC."""
+    listener = gremlin.event_handler.EventListener()
+    yield listener
+    listener.terminate()
 
 
 @pytest.fixture(scope="package")
