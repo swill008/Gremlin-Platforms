@@ -12,6 +12,7 @@ from typing import Any
 
 from PySide6 import QtCore
 
+from gremlin import threads
 from gremlin.common import SingletonDecorator, SingletonMetaclass
 from gremlin.error import GremlinError
 from gremlin.modules import ids
@@ -238,12 +239,10 @@ class OscListener:
         dispatcher = Dispatcher()
         dispatcher.set_default_handler(self._on_message)
         self._server = ThreadingOSCUDPServer((self.host, self.port), dispatcher)
-        self._thread = threading.Thread(
-            target=self._server.serve_forever,
-            name="gremlin-osc",
-            daemon=True,
+        # Stopping waits for the server's next poll (0.5 s at most).
+        self._thread = threads.start(
+            "OSC listener", self._server.serve_forever, stop=self._server.shutdown
         )
-        self._thread.start()
         log.info("OSC listening on %s:%s", self.host, self.port)
 
     def stop(self) -> None:

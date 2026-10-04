@@ -5,11 +5,14 @@
 from __future__ import annotations
 
 import ctypes
+import logging
 import threading
+import time
 from ctypes import wintypes
 from dataclasses import dataclass
 from typing import Callable
 
+from gremlin import threads
 from gremlin.common import SingletonMetaclass
 from gremlin.types import MouseButton
 
@@ -241,15 +244,90 @@ class MouseEvent:
     is_injected: bool
 
 
-class KeyboardHook(metaclass=SingletonMetaclass):
+class _Hook:
+    """A low-level Windows hook with its own thread and message loop.
+
+    The hook only works while its thread runs a message loop; WM_QUIT
+    posted to that thread ends the loop.
+    """
+
+    _NAME = ""
+    _HOOK_TYPE = 0
+    _STOP_WAIT_S = 2.0
+
+    def __init__(self) -> None:
+        self._running = False
+        self._listen_thread: threading.Thread | None = None
+
+    def _handler(self) -> Callable[[int, int, int], int]:
+        raise NotImplementedError
+
+    def start(self) -> None:
+        """Starts the hook if it is not yet running."""
+        if self._running:
+            return
+        self._running = True
+        self._listen_thread = threads.start(
+            self._NAME, self._listen, stop=self._ask_to_stop
+        )
+
+    def stop(self) -> None:
+        """Stops the hook and waits (briefly) for its thread to end."""
+        if not self._running:
+            return
+        self._running = False
+        thread = self._listen_thread
+        if thread is None:
+            return
+        # Posted again until the thread ends: one posted before the thread
+        # has its message queue would be lost.
+        deadline = time.monotonic() + self._STOP_WAIT_S
+        while thread.is_alive() and time.monotonic() < deadline:
+            self._post_quit(thread)
+            thread.join(0.05)
+        if thread.is_alive():
+            logging.getLogger("system").warning(f"{thread.name} did not stop")
+
+    def _ask_to_stop(self) -> None:
+        self._running = False
+        if self._listen_thread is not None:
+            self._post_quit(self._listen_thread)
+
+    @staticmethod
+    def _post_quit(thread: threading.Thread) -> None:
+        if thread.ident is not None:
+            user32.PostThreadMessageW(thread.ident, WM_QUIT, 0, 0)
+
+    def _listen(self) -> None:
+        """Installs the hook and runs the message loop until WM_QUIT."""
+        hook_id = user32.SetWindowsHookExW(self._HOOK_TYPE, self._handler(), None, 0)
+        try:
+            msg = wintypes.MSG()
+            while self._running:
+                result = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
+                if not result:
+                    break
+                if result == -1:
+                    raise ctypes.WinError(ctypes.get_last_error())
+                user32.TranslateMessage(ctypes.byref(msg))
+                user32.DispatchMessageW(ctypes.byref(msg))
+        finally:
+            try:
+                user32.UnhookWindowsHookEx(hook_id)
+            except Exception:
+                pass
+
+
+class KeyboardHook(_Hook, metaclass=SingletonMetaclass):
     """Hooks into the event stream and grabs keyboard related events
     and passes them on to registered callback functions.
     """
 
-    def __init__(self) -> None:
-        """Initializes the hook and the listening instance."""
-        self._running = False
-        self._listen_thread = threading.Thread(target=self._listen)
+    _NAME = "keyboard hook"
+    _HOOK_TYPE = WH_KEYBOARD_LL
+
+    def _handler(self) -> Callable[[int, int, int], int]:
+        return process_keyboard_event
 
     def register(self, callback: Callable[[KeyEvent], None]) -> None:
         """Registers a new message callback.
@@ -260,52 +338,17 @@ class KeyboardHook(metaclass=SingletonMetaclass):
         global g_keyboard_callbacks
         g_keyboard_callbacks.append(callback)
 
-    def start(self) -> None:
-        """Starts the hook if it is not yet running."""
-        if self._running:
-            return
-        self._running = True
-        self._listen_thread.start()
 
-    def stop(self) -> None:
-        """Terminates the hook and event listening thread."""
-        if self._running:
-            self._running = False
-            user32.PostThreadMessageW(self._listen_thread.ident, WM_QUIT, 0, 0)
-            # Wait for the thread to terminate and then recreate for next use.
-            self._listen_thread.join()
-            self._listen_thread = threading.Thread(target=self._listen)
-
-    def _listen(self) -> None:
-        """Configures the hook and starts listening."""
-        hook_id = user32.SetWindowsHookExW(
-            WH_KEYBOARD_LL, process_keyboard_event, None, 0
-        )
-
-        msg = wintypes.MSG()
-        while self._running:
-            result = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
-            if not result:
-                break
-            if result == -1:
-                raise ctypes.WinError(ctypes.get_last_error())
-            user32.TranslateMessage(ctypes.byref(msg))
-            user32.DispatchMessageW(ctypes.byref(msg))
-
-        try:
-            user32.UnhookWindowsHookEx(hook_id)
-        except Exception:
-            pass
-
-
-class MouseHook(metaclass=SingletonMetaclass):
+class MouseHook(_Hook, metaclass=SingletonMetaclass):
     """Hooks into the event stream and grabs mouse related events and passes
     them on to registered callback functions.
     """
 
-    def __init__(self) -> None:
-        self._running = False
-        self._listen_thread = threading.Thread(target=self._listen)
+    _NAME = "mouse hook"
+    _HOOK_TYPE = WH_MOUSE_LL
+
+    def _handler(self) -> Callable[[int, int, int], int]:
+        return process_mouse_event
 
     def register(self, callback: Callable[[MouseEvent], None]) -> None:
         """Registers a new message callback.
@@ -314,35 +357,3 @@ class MouseHook(metaclass=SingletonMetaclass):
         """
         global g_mouse_callbacks
         g_mouse_callbacks.append(callback)
-
-    def start(self) -> None:
-        """Starts the hook if it is not yet running."""
-        if self._running:
-            return
-        self._running = True
-        self._listen_thread.start()
-
-    def stop(self) -> None:
-        """Stops the hook from running."""
-        if self._running:
-            self._running = False
-            user32.PostThreadMessageW(self._listen_thread.ident, WM_QUIT, 0, 0)
-            # Wait for the thread to terminate and then recreate for next use.
-            self._listen_thread.join()
-            self._listen_thread = threading.Thread(target=self._listen)
-
-    def _listen(self) -> None:
-        """Configures the hook and starts listening."""
-        hook_id = user32.SetWindowsHookExW(WH_MOUSE_LL, process_mouse_event, None, 0)
-
-        msg = wintypes.MSG()
-        while self._running:
-            result = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
-            if not result:
-                break
-            if result == -1:
-                raise ctypes.WinError(ctypes.get_last_error())
-            user32.TranslateMessage(ctypes.byref(msg))
-            user32.DispatchMessageW(ctypes.byref(msg))
-
-        user32.UnhookWindowsHookEx(hook_id)

@@ -23,6 +23,7 @@ from gremlin import (
     keyboard,
     process_monitor,
     shared_state,
+    threads,
     windows_event_hook,
 )
 from gremlin.common import SingletonMetaclass
@@ -67,7 +68,7 @@ class InputListenerModel(QtCore.QObject):
         # If True more than the first input will be returned.
         self._multiple_inputs = False
         # Timer terminating the listening process in various scenarios.
-        self._abort_timer = threading.Timer(1.0, self._abort_listening)
+        self._abort_timer: threading.Timer | None = None
         # Received inputs while listening.
         self._inputs: list[event_handler.Event] = []
         # Flag indicating whether the listener is active or not.
@@ -113,7 +114,7 @@ class InputListenerModel(QtCore.QObject):
 
     def _listening_done(self) -> None:
         """Stops listening and emits the recorded inputs."""
-        if self._abort_timer.is_alive():
+        if self._abort_timer is not None and self._abort_timer.is_alive():
             self._abort_timer.cancel()
         self._disconnect_listeners()
         self.listeningTerminated.emit(list(set(self._inputs)))
@@ -193,9 +194,12 @@ class InputListenerModel(QtCore.QObject):
             "esc"
         )
         if is_esc:
-            if event.is_pressed and not self._abort_timer.is_alive():
-                self._abort_timer = threading.Timer(1.0, self._abort_listening)
-                self._abort_timer.start()
+            if event.is_pressed and (
+                self._abort_timer is None or not self._abort_timer.is_alive()
+            ):
+                self._abort_timer = threads.timer(
+                    "input listening abort", 1.0, self._abort_listening
+                )
 
             # Avoid processing the ESC key as a regular input if keyboard
             # events are not being listened to.

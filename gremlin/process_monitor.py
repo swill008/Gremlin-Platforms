@@ -7,12 +7,13 @@ from __future__ import annotations
 import ctypes
 import ctypes.wintypes
 import os
-import threading
 import time
 
 import win32gui
 import win32process
 from PySide6 import QtCore
+
+from gremlin import threads
 
 
 class ProcessMonitor(QtCore.QObject):
@@ -46,14 +47,18 @@ class ProcessMonitor(QtCore.QObject):
         """Starts monitoring the current process."""
         if not self.running:
             self.running = True
-            self._update_thread = threading.Thread(target=self._update)
-            self._update_thread.start()
+            self._update_thread = threads.start(
+                "process monitor", self._update, stop=self._ask_to_stop
+            )
+
+    def _ask_to_stop(self) -> None:
+        self.running = False
 
     def stop(self) -> None:
         """Stops monitoring the current process."""
         self.running = False
         if self._update_thread is not None:
-            self._update_thread.join()
+            self._update_thread.join(timeout=2.0)
 
     def _update(self) -> None:
         """Monitors the active process for changes."""

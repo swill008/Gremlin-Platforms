@@ -104,6 +104,7 @@ import gremlin.ui.vjoy_status
 import gremlin.ui.window_placement
 import gremlin.ui.module_model  # noqa: F401
 import gremlin.deferred_write
+import gremlin.threads
 import gremlin.ui.debug_mode
 import gremlin.ui.live_debug  # noqa: F401
 import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
@@ -950,6 +951,7 @@ def main() -> int:
         logging.getLogger("system").error(f"Could not start: {summary}\n{details}")
         tell_could_not_start(summary, details)
         gremlin.deferred_write.flush_all()
+        gremlin.threads.shutdown(timeout=1.0)
         # Threads started before the failure must not keep the process alive.
         os._exit(1)
     app._instance_lock = lock
@@ -959,6 +961,8 @@ def main() -> int:
         shutdown_cleanup()
     except Exception:
         logging.getLogger("system").exception("Shutdown after exec")
+    # Every program thread is asked to stop; any that don't are logged.
+    gremlin.threads.shutdown()
     # Writes still waiting (settings, the activity log): os._exit below skips
     # atexit, and a restart must start from saved settings.
     gremlin.deferred_write.flush_all()
@@ -984,7 +988,8 @@ def main() -> int:
             os.environ["QT_ENABLE_HIGHDPI_SCALING"] = _LAUNCH_HIGHDPI_SCALING
         logging.getLogger("system").info(f"Restarting: {program} {args}")
         QtCore.QProcess.startDetached(program, args, install_path)
-    # Non-daemon listener / hook threads can otherwise keep python.exe alive.
+    # A thread that didn't stop (logged above) must not keep the program
+    # open.
     os._exit(0)
 
 

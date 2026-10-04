@@ -23,7 +23,7 @@ from unittest import mock
 import pytest
 
 import dill
-from gremlin import device_initialization, error
+from gremlin import device_initialization, error, event_handler
 from gremlin.modules import output
 from gremlin.signal import signal
 from test import fake_hardware
@@ -84,9 +84,9 @@ def test_a_vjoy_change_still_resets_vjoy(devices: list) -> None:
     reset.assert_called_once()
 
 
-def test_hot_plug_error_is_shown_not_lost() -> None:
-    from gremlin.event_handler import EventListener
-
+def test_hot_plug_error_is_shown_not_lost(
+    event_listener: event_handler.EventListener,
+) -> None:
     shown: list[tuple[str, str]] = []
 
     def record(message: str, details: str) -> None:
@@ -99,7 +99,7 @@ def test_hot_plug_error_is_shown_not_lost() -> None:
             "joystick_devices_initialization",
             side_effect=error.GremlinError("vJoy id 2: Hats are set to discrete"),
         ):
-            EventListener()._run_device_list_update()
+            event_listener._run_device_list_update()
     finally:
         signal.showError.disconnect(record)
     assert shown and "discrete" in shown[0][1]

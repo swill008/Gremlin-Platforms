@@ -22,6 +22,7 @@ from gremlin import (
     event_handler,
     event_helpers,
     signal,
+    threads,
     util,
 )
 from gremlin.base_classes import (
@@ -89,8 +90,14 @@ class MapToVjoyFunctor(AbstractFunctor):
                     if self.thread_running is False:
                         if isinstance(self.thread, threading.Thread):
                             self.thread.join()
-                        self.thread = threading.Thread(target=self.relative_axis_thread)
-                        self.thread.start()
+                        # Set here, not in the thread: a second event before the
+                        # thread starts would otherwise join it, on the main thread.
+                        self.thread_running = True
+                        self.thread = threads.start(
+                            "vJoy relative axis",
+                            self.relative_axis_thread,
+                            stop=self._ask_to_stop,
+                        )
 
             elif self.data.vjoy_input_type in [
                 InputType.JoystickButton,
@@ -126,8 +133,11 @@ class MapToVjoyFunctor(AbstractFunctor):
                 f"Failed to execute {self.data.name} action due to vJoy error: {e}.",
             )
 
+    def _ask_to_stop(self) -> None:
+        """Ends the relative axis loop after its current step."""
+        self.thread_running = False
+
     def relative_axis_thread(self) -> None:
-        self.thread_running = True
         vjoy_id = self.data.vjoy_device_id
         axis_id = self.data.vjoy_input_id
         self.axis_value = output.vjoy_value(vjoy_id, "axis", axis_id)

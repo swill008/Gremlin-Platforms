@@ -12,6 +12,7 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
+from gremlin import threads
 from gremlin.common import SingletonDecorator
 from gremlin.types import MouseButton
 
@@ -274,7 +275,7 @@ class MouseController:
         self._motion_commands = {}
 
         self._is_running = False
-        self._thread = threading.Thread(target=self._control_loop)
+        self._thread: threading.Thread | None = None
 
     def set_absolute_motion(self, dx: int | None = None, dy: int | None = None) -> None:
         """Configures a motion using absolute velocities.
@@ -341,19 +342,24 @@ class MouseController:
     def start(self) -> None:
         """Starts the thread that will send motions when required."""
         if not self._is_running:
-            self._thread = threading.Thread(target=self._control_loop)
-            self._thread.start()
+            # Set here, not in the thread: a stop() right after start() must
+            # not be undone when the thread starts.
+            self._is_running = True
+            self._thread = threads.start(
+                "mouse controller", self._control_loop, stop=self._ask_to_stop
+            )
+
+    def _ask_to_stop(self) -> None:
+        self._is_running = False
 
     def stop(self) -> None:
         """Stops the thread that sends motion events."""
-        if self._thread.is_alive():
-            self._is_running = False
-            self._thread.join()
+        self._is_running = False
+        if self._thread is not None and self._thread.is_alive():
+            self._thread.join(timeout=2.0)
 
     def _control_loop(self) -> None:
         """Loop responsible for creating and sending mouse motion events."""
-        self._is_running = True
-
         while self._is_running:
             dx, dy = self._delta_generator()
             if dx != 0 or dy != 0:

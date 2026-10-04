@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import threading
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -18,6 +17,7 @@ from PySide6 import QtCore
 from gremlin import (
     event_handler,
     fsm,
+    threads,
     util,
 )
 from gremlin.base_classes import (
@@ -81,8 +81,9 @@ class SmartToggleFunctor(AbstractFunctor):
     def _start_timer(self, *args: Any) -> None:  # noqa: ANN401
         if self.timer:
             self.timer.cancel()
-        self.timer = threading.Timer(self.data.delay, self._timeout)
-        self.timer.start()
+        self.timer = threads.timer(
+            "smart toggle", self.data.delay, self._timeout
+        )
 
     @override
     def __call__(

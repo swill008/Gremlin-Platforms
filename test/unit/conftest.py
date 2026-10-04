@@ -69,6 +69,13 @@ def terminate_event_listener(request: pytest.FixtureRequest) -> None:
 
 
 @pytest.fixture(scope="package")
+def event_listener() -> gremlin.event_handler.EventListener:
+    """The shared event listener, started for the rest of the package (its
+    threads belong to the package, not to the test that first uses it)."""
+    return gremlin.event_handler.EventListener()
+
+
+@pytest.fixture(scope="package")
 def unit_test_dir(test_root_dir: pathlib.Path) -> pathlib.Path:
     """Returns the path for the directory with unit test files."""
     return test_root_dir / "unit"

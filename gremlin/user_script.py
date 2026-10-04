@@ -35,6 +35,7 @@ from gremlin import (
     error,
     event_handler,
     shared_state,
+    threads,
     util,
 )
 from gremlin.logical_device import LogicalDevice
@@ -113,7 +114,7 @@ class PeriodicRegistry:
         self._registry = {}
         self._registry_lock = threading.Lock()
         self._running = False
-        self._thread = threading.Thread(target=self._thread_loop)
+        self._thread: threading.Thread | None = None
         self._queue = []
         self._plugins = []
 
@@ -126,15 +127,19 @@ class PeriodicRegistry:
         # Only create a new thread and start it if the thread is not
         # currently running
         self._running = True
-        if not self._thread.is_alive():
-            self._thread = threading.Thread(target=self._thread_loop)
-            self._thread.start()
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = threads.start(
+                "user script timers", self._thread_loop, stop=self._ask_to_stop
+            )
+
+    def _ask_to_stop(self) -> None:
+        self._running = False
 
     def stop(self) -> None:
         """Stops the event loop."""
         self._running = False
-        if self._thread.is_alive():
-            self._thread.join()
+        if self._thread is not None and self._thread.is_alive():
+            self._thread.join(timeout=2.0)
 
     def add(self, callback: Callable, interval: float) -> None:
         """Adds a function to execute periodically.

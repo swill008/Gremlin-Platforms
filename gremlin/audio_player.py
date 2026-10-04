@@ -12,6 +12,7 @@ from collections.abc import Generator
 
 import miniaudio
 
+from gremlin import threads
 from gremlin.common import SingletonMetaclass
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
@@ -101,7 +102,7 @@ class AudioPlayer(metaclass=SingletonMetaclass):
         )
 
         self._is_ready = False
-        self._playback_thread = threading.Thread(target=self._playback)
+        self._playback_thread: threading.Thread | None = None
 
     def refresh(self) -> None:
         """Refreshes the configuration by reading the playback-mode value."""
@@ -112,16 +113,23 @@ class AudioPlayer(metaclass=SingletonMetaclass):
     def start(self) -> None:
         """Starts the audio playback thread if it is not already running."""
         if not self._is_ready:
-            self._playback_thread = threading.Thread(target=self._playback)
-            self._playback_thread.start()
+            # Set here, not in the thread: a stop() right after start() must
+            # not be undone when the thread starts.
+            self._is_ready = True
+            self._playback_thread = threads.start(
+                "audio player", self._playback, stop=self._ask_to_stop
+            )
 
-    def stop(self) -> None:
-        """Stops the audio playback thread."""
+    def _ask_to_stop(self) -> None:
         self._is_ready = False
         self._play_list = []
         [s.cancel() for s in self._currently_playing]
-        if self._playback_thread.is_alive():
-            self._playback_thread.join()
+
+    def stop(self) -> None:
+        """Stops the audio playback thread."""
+        self._ask_to_stop()
+        if self._playback_thread is not None and self._playback_thread.is_alive():
+            self._playback_thread.join(timeout=2.0)
 
     def enqueue(self, file_name: str, volume: int) -> None:
         """Queues the given sound with the specified volume to be played.
@@ -137,7 +145,6 @@ class AudioPlayer(metaclass=SingletonMetaclass):
 
     def _playback(self) -> None:
         """Background thread which ensures audio is played."""
-        self._is_ready = True
         while self._is_ready:
             match self._playback_mode:
                 case "Sequential":

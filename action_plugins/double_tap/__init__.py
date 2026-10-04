@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import copy
 import logging
-import threading
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -21,6 +20,7 @@ from PySide6 import QtCore
 from gremlin import (
     event_handler,
     fsm,
+    threads,
     util,
 )
 from gremlin.base_classes import (
@@ -188,8 +188,9 @@ class DoubleTapFunctor(AbstractFunctor):
     def _start_timer(self, *args: Any) -> None:  # noqa: ANN401
         if self.timer:
             self.timer.cancel()
-        self.timer = threading.Timer(self.data.threshold, self._timeout)
-        self.timer.start()
+        self.timer = threads.timer(
+            "double tap", self.data.threshold, self._timeout
+        )
 
 
 class DoubleTapModel(ActionModel):

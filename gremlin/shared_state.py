@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
-import threading
 from typing import TYPE_CHECKING
+
+from gremlin import threads
 
 if TYPE_CHECKING:
     from gremlin import profile
@@ -58,8 +59,9 @@ def set_suspend_input_highlighting_delayed() -> None:
     if _suspend_timer is not None:
         _suspend_timer.cancel()
 
-    _suspend_timer = threading.Timer(2, lambda: set_suspend_input_highlighting(False))
-    _suspend_timer.start()
+    _suspend_timer = threads.timer(
+        "input highlighting", 2, set_suspend_input_highlighting, False
+    )
 
 
 def runtime_active() -> bool:

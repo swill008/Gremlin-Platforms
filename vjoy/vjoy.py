@@ -12,6 +12,7 @@ import threading
 import time
 from typing import Any
 
+from gremlin import threads
 from gremlin.common import SingletonMetaclass
 from gremlin.error import (
     VJoyConcurrencyError,
@@ -520,10 +521,11 @@ class VJoy:
 
         # Timestamp of the last time the device was used
         self._last_active = time.time()
-        self._keep_alive_timer = threading.Timer(
-            VJoy.keep_alive_timeout, self._keep_alive
-        )
-        self._keep_alive_timer.start()
+        # Held while the timer is re-armed or cancelled, so a timer that is
+        # firing as the device is released can't arm a new one.
+        self._keep_alive_lock = threading.Lock()
+        self._keep_alive_timer: threading.Timer | None = None
+        self._arm_keep_alive()
 
         # Reset all controls
         self.reset()
@@ -796,8 +798,10 @@ class VJoy:
         if self.vjoy_id:
             self.reset()
             VJoyInterface.RelinquishVJD(self.vjoy_id)
-            self.vjoy_id = None
-            self._keep_alive_timer.cancel()
+            with self._keep_alive_lock:
+                self.vjoy_id = None
+                if self._keep_alive_timer is not None:
+                    self._keep_alive_timer.cancel()
 
     def _keep_alive(self) -> None:
         """Timer callback ensuring the vJoy device stays active.
@@ -805,12 +809,20 @@ class VJoy:
         If the device hasn't been used in the last 60 seconds the device will
         be reset to ensure it doesn't time out.
         """
-        if self._last_active + VJoy.keep_alive_timeout < time.time():
+        if self.vjoy_id and self._last_active + VJoy.keep_alive_timeout < time.time():
             self.reset()
-        self._keep_alive_timer = threading.Timer(
-            VJoy.keep_alive_timeout, self._keep_alive
-        )
-        self._keep_alive_timer.start()
+        self._arm_keep_alive()
+
+    def _arm_keep_alive(self) -> None:
+        """Calls _keep_alive in keep_alive_timeout seconds, while the
+        device is ours."""
+        with self._keep_alive_lock:
+            if self.vjoy_id:
+                self._keep_alive_timer = threads.timer(
+                    f"vJoy {self.vjoy_id} keep-alive",
+                    VJoy.keep_alive_timeout,
+                    self._keep_alive,
+                )
 
     def _init_axes(self) -> dict[int, Axis]:
         """Retrieves all axes present on the vJoy device and creates their

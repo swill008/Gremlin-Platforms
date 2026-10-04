@@ -17,7 +17,6 @@ from threading import (
     Condition,
     Event,
     Lock,
-    Thread,
 )
 from typing import override
 from xml.etree import ElementTree
@@ -28,6 +27,7 @@ from gremlin import (
     event_handler,
     mode_manager,
     sendinput,
+    threads,
     util,
 )
 from gremlin.common import SingletonMetaclass
@@ -82,10 +82,17 @@ class MacroManager(metaclass=SingletonMetaclass):
         self._is_executing_preemptive = False
         self._is_executing_exclusive = False
         self._is_running = True
-        if self._run_scheduler_thread is None:
-            self._run_scheduler_thread = Thread(target=self._run_scheduler)
-        if not self._run_scheduler_thread.is_alive():
-            self._run_scheduler_thread.start()
+        if (
+            self._run_scheduler_thread is None
+            or not self._run_scheduler_thread.is_alive()
+        ):
+            self._run_scheduler_thread = threads.start(
+                "macro scheduler", self._run_scheduler, stop=self._ask_to_stop
+            )
+
+    def _ask_to_stop(self) -> None:
+        self._is_running = False
+        self._schedule_event.set()
 
     def stop(self) -> None:
         """Stops the scheduler."""
@@ -96,7 +103,7 @@ class MacroManager(metaclass=SingletonMetaclass):
         ):
             # Terminate the scheduler.
             self._schedule_event.set()
-            self._run_scheduler_thread.join()
+            self._run_scheduler_thread.join(timeout=2.0)
             self._run_scheduler_thread = None
 
             # Terminate any macro that is still active.
@@ -200,11 +207,22 @@ class MacroManager(metaclass=SingletonMetaclass):
         """
         if macro.id not in self._scheduled_macro:
             self._scheduled_macro[macro.id] = macro
-            Thread(target=functools.partial(self._execute_macro, macro)).start()
+            threads.start(
+                "macro",
+                self._execute_macro,
+                macro,
+                stop=functools.partial(self._ask_macro_to_stop, macro),
+            )
         else:
             logging.getLogger("system").warning(
                 "Attempting to dispatch an already running macro."
             )
+
+    def _ask_macro_to_stop(self, macro: Macro) -> None:
+        """Ends a repeating macro after its current step."""
+        with self._executing_macro_lock:
+            if macro.id in self._executing_macro:
+                self._executing_macro[macro.id] = False
 
     def _wait_while_paused(self, macro: Macro) -> None:
         """Blocks the calling thread while a different macro is executing preemptively

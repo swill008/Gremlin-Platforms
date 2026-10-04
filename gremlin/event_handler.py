@@ -28,6 +28,7 @@ from gremlin import (
     keyboard,
     mode_manager,
     signal,
+    threads,
     tree,
     util,
     windows_event_hook,
@@ -251,7 +252,14 @@ class EventListener(QtCore.QObject):
         self._init_joysticks()
         self.keyboard_hook.start()
 
-        threading.Thread(target=self._run).start()
+        self._start_thread()
+
+    def _start_thread(self) -> None:
+        threads.start("event listener", self._run, stop=self._ask_to_stop)
+
+    def _ask_to_stop(self) -> None:
+        self._running = False
+        self._stop_event.set()
 
     def terminate(self) -> None:
         """Stops the loop from running."""
@@ -280,7 +288,7 @@ class EventListener(QtCore.QObject):
             self._running = True
             self.keyboard_hook.start()
             self._stop_event.clear()
-            threading.Thread(target=self._run).start()
+            self._start_thread()
 
     def reload_calibration(self, device_guid: dill.GUID, axis_index: int) -> None:
         """Reloads the calibration data of the specified axis."""
@@ -378,8 +386,9 @@ class EventListener(QtCore.QObject):
             pass
         if self._device_update_timer is not None:
             self._device_update_timer.cancel()
-        self._device_update_timer = threading.Timer(0.2, self._run_device_list_update)
-        self._device_update_timer.start()
+        self._device_update_timer = threads.timer(
+            "device list update", 0.2, self._run_device_list_update
+        )
 
     def _run_device_list_update(self) -> None:
         """Performs the update of the devices connected."""
