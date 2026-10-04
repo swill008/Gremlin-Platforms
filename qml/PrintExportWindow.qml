@@ -9,8 +9,9 @@ import QtQuick.Controls.Universal as U
 import Gremlin.Style
 
 // Print & Export (Button Map, File > Print & Export): the page as it will
-// come out (a live preview of the print area on the paper, inside its
-// margins), the paper, orientation, margins and scale (kept with the map),
+// come out (a preview of the print area on the paper, inside its margins,
+// drawn by the same hidden copy of the map as every print and export), the
+// paper, orientation, margins, scale and background (kept with the map),
 // and every print and export in one place. A window of its own, so the
 // print area can be moved and resized on the map while it is open.
 Window {
@@ -23,7 +24,7 @@ Window {
     flags: Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
     // Kept inside the screen at any UI scale (as the other tool windows).
     width: Style.fitWidth(Style.dp(760), Screen)
-    height: Style.fitHeight(Style.dp(520), Screen)
+    height: Style.fitHeight(Style.dp(640), Screen)
     minimumWidth: Style.fitWidth(Style.dp(560), Screen)
     minimumHeight: Style.fitHeight(Style.dp(400), Screen)
     color: Style.background
@@ -33,17 +34,20 @@ Window {
         host: _win
         name: "print-export"
         defaultWidth: Style.dp(760)
-        defaultHeight: Style.dp(520)
+        defaultHeight: Style.dp(640)
     }
 
     readonly property var setup: host ? host.printSetup : ({})
     readonly property bool onPaper: !!setup.paper && setup.paper !== "fit"
     readonly property bool metric: /^a[345]$/.test(String(setup.paper || ""))
-    // The preview picture (the print area, as exported) and its size.
-    property url shot: ""
-    property size shotSize: Qt.size(0, 0)
+    // The preview picture (the print area as exported, on its background):
+    // the grab result is kept, its url is only good while it lives.
+    property var shotResult: null
+    readonly property url shot: shotResult ? shotResult.url : ""
     // Bumped when anything the result depends on changes.
     property int rev: 0
+    // The export's size in pixels.
+    readonly property var pixels: { rev; return host ? host.exportPixels() : { w: 0, h: 0 } }
 
     readonly property var papers: [
         { value: "fit", text: "Fit to area" },
@@ -68,25 +72,32 @@ Window {
         return 0
     }
 
-    // The page's size in inches (paper, or the area's own shape for "fit").
+    // The page's size in inches: the paper, or for "fit" the print area at
+    // 96 pixels an inch (the PDF's page).
     function pageInches() {
         if (!host)
             return { w: 8.5, h: 11 }
         var p = host.paperInches[setup.paper]
-        if (!p) {
-            var e = host._ed()
-            var r = e ? e.printAreaRect() : { w: 4, h: 3 }
-            return { w: 8 * r.w / Math.max(1, Math.max(r.w, r.h)), h: 8 * r.h / Math.max(1, Math.max(r.w, r.h)) }
-        }
+        if (!p)
+            return { w: Math.max(1, pixels.w) / 96, h: Math.max(1, pixels.h) / 96 }
         return setup.landscape ? { w: p[1], h: p[0] } : { w: p[0], h: p[1] }
+    }
+
+    // How finely the area prints on the paper: it fills the space inside
+    // the margins.
+    function dpi() {
+        var page = pageInches()
+        var m = 2 * marginInches()
+        var w = Math.max(0.1, page.w - m)
+        var h = Math.max(0.1, page.h - m)
+        return Math.round(Math.min(w > 0 ? pixels.w / w : 0, h > 0 ? pixels.h / h : 0))
     }
 
     function marginInches() {
         return onPaper && host ? (host.marginInches[setup.margin] || 0) : 0
     }
 
-    // A new preview, a moment after the last change (the map is drawn once
-    // without its editing marks for it).
+    // A new preview, a moment after the last change.
     function refreshSoon() {
         rev++
         if (visible)
@@ -94,41 +105,20 @@ Window {
     }
 
     function refresh() {
-        var e = host ? host._ed() : null
-        if (!e || !visible)
+        if (!host || !visible)
             return
-        var r = e.printAreaRect()
-        var q = Math.min(2, Style.dp(420) / Math.max(1, r.w, r.h))
-        e.printLight = _opts().values["light-page"] === true
-        e.exporting = true
-        e.repaint()
-        Qt.callLater(function() {
-            var ok = e.grabToImage(function(result) {
-                e.exporting = false
-                e.printLight = false
-                e.repaint()
-                if (!result)
-                    return
-                _win.shot = result.url
-                _win.shotSize = Qt.size(e.width * q, e.height * q)
-                _win.shotRect = Qt.rect(r.x * q, r.y * q, r.w * q, r.h * q)
-            }, Qt.size(Math.round(e.width * q), Math.round(e.height * q)))
-            if (!ok) {
-                e.exporting = false
-                e.printLight = false
-                e.repaint()
-            }
+        var dpr = Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1
+        host.renderPreview(Style.dp(520) * dpr, Style.dp(520) * dpr, function(result) {
+            if (result)
+                _win.shotResult = result
         })
     }
-    property rect shotRect: Qt.rect(0, 0, 0, 0)
-
-    function _opts() { return host ? host.buttonMapOptions() : { values: {} } }
 
     onVisibleChanged: if (visible) refreshSoon()
 
     Timer {
         id: _refresh
-        interval: 400
+        interval: 250
         onTriggered: _win.refresh()
     }
 
@@ -138,9 +128,17 @@ Window {
         function onPrintSetupChanged() { _win.refreshSoon() }
     }
     Connections {
+        target: _win.host
+        function onPhotoOverrideChanged() { _win.refreshSoon() }
+    }
+    Connections {
         target: _win.host ? _win.host._ed() : null
         function onHistoryChanged() { _win.refreshSoon() }
-        function onWidthChanged() { _win.refreshSoon() }
+        function onActionLabelsChanged() { _win.refreshSoon() }
+        function onChipTextModeChanged() { _win.refreshSoon() }
+        function onUnboundTextChanged() { _win.refreshSoon() }
+        function onPhotoLookUrlChanged() { _win.refreshSoon() }
+        function onSavedStylesChanged() { _win.refreshSoon() }
     }
 
     Shortcut {
@@ -192,149 +190,163 @@ Window {
                     }
 
                     // The print area in its shape, as large as fits inside
-                    // the margins: the picture of the map, cut to the area
-                    // (the export's background behind it: dark, or white
-                    // with Light Page for Exports, as the file will have).
-                    Item {
-                        id: _content
-                        readonly property real aspect: _win.shotRect.width > 0
-                            ? _win.shotRect.width / _win.shotRect.height : 1
+                    // the margins: drawn as the export draws it.
+                    Image {
+                        id: _preview
+                        objectName: "printPreviewImage"
+                        readonly property real aspect: _win.pixels.h > 0 ? _win.pixels.w / _win.pixels.h : 1
                         width: Math.min(parent.width, parent.height * aspect)
                         height: width / aspect
                         anchors.centerIn: parent
-                        clip: true
-
-                        Rectangle {
-                            anchors.fill: parent
-                            color: _win._opts().values["light-page"] === true ? Style.paper : Style.background
-                        }
-
-                        Image {
-                            id: _preview
-                            objectName: "printPreviewImage"
-                            readonly property real k: _content.width / Math.max(1, _win.shotRect.width)
-                            x: -_win.shotRect.x * k
-                            y: -_win.shotRect.y * k
-                            width: _win.shotSize.width * k
-                            height: _win.shotSize.height * k
-                            source: _win.shot
-                            cache: false
-                            smooth: true
-                        }
+                        source: _win.shot
+                        cache: false
+                        smooth: true
+                        mipmap: true
                     }
                 }
             }
         }
 
-        // The settings and the exports.
-        ColumnLayout {
+        // The settings and the exports; they scroll when the window is too
+        // short for them.
+        Flickable {
+            id: _side
             // A set width: with controls that fill it, it would take the
             // whole row from the preview.
             Layout.fillWidth: false
             Layout.preferredWidth: Style.dp(250)
             Layout.maximumWidth: Style.dp(250)
             Layout.fillHeight: true
-            spacing: Style.dp(8)
-
-            Label { text: "Paper"; color: Style.fgMuted }
-            ComboBox {
-                id: _paperBox
-                objectName: "printPaper"
-                Layout.fillWidth: true
-                model: _win.papers
-                textRole: "text"
-                currentIndex: _win.indexOfValue(_win.papers, _win.setup.paper)
-                onActivated: (i) => _win.host.setPrint("paper", _win.papers[i].value)
+            clip: true
+            contentWidth: width
+            contentHeight: _sideCol.height
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar {
+                policy: _side.contentHeight > _side.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
             }
 
-            Label { text: "Orientation"; color: Style.fgMuted }
-            RowLayout {
-                enabled: _win.onPaper
-                RadioButton {
-                    text: "Portrait"
-                    checked: !_win.setup.landscape
-                    onClicked: _win.host.setPrint("landscape", false)
+            ColumnLayout {
+                id: _sideCol
+                width: _side.width
+                height: Math.max(implicitHeight, _side.height)
+                spacing: Style.dp(8)
+
+                Label { text: "Paper"; color: Style.fgMuted }
+                ComboBox {
+                    id: _paperBox
+                    objectName: "printPaper"
+                    Layout.fillWidth: true
+                    model: _win.papers
+                    textRole: "text"
+                    currentIndex: _win.indexOfValue(_win.papers, _win.setup.paper)
+                    onActivated: (i) => _win.host.setPrint("paper", _win.papers[i].value)
                 }
-                RadioButton {
-                    text: "Landscape"
-                    checked: !!_win.setup.landscape
-                    onClicked: _win.host.setPrint("landscape", true)
+
+                Label { text: "Orientation"; color: Style.fgMuted }
+                RowLayout {
+                    enabled: _win.onPaper
+                    RadioButton {
+                        text: "Portrait"
+                        checked: !_win.setup.landscape
+                        onClicked: _win.host.setPrint("landscape", false)
+                    }
+                    RadioButton {
+                        text: "Landscape"
+                        checked: !!_win.setup.landscape
+                        onClicked: _win.host.setPrint("landscape", true)
+                    }
                 }
-            }
 
-            Label { text: "Margins"; color: Style.fgMuted }
-            ComboBox {
-                id: _marginBox
-                Layout.fillWidth: true
-                enabled: _win.onPaper
-                model: _win.margins.map(function(m) { return _win.metric ? m.mm : m.inch })
-                currentIndex: _win.indexOfValue(_win.margins, _win.setup.margin)
-                onActivated: (i) => _win.host.setPrint("margin", _win.margins[i].value)
-            }
-
-            Label { text: "Scale (100% = the photo's own size)"; color: Style.fgMuted }
-            SpinBox {
-                id: _scaleBox
-                objectName: "printScale"
-                Layout.fillWidth: true
-                from: 10
-                to: 800
-                stepSize: 5
-                editable: true
-                value: Number(_win.setup.scale) || 100
-                textFromValue: (v) => v + "%"
-                valueFromText: (t) => parseInt(String(t).replace("%", "")) || 100
-                onValueModified: _win.host.setPrint("scale", value)
-            }
-            Label {
-                objectName: "printPixels"
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                color: Style.fg
-                text: {
-                    _win.rev
-                    if (!_win.host)
-                        return ""
-                    var px = _win.host.exportPixels()
-                    return "Export: " + px.w + " × " + px.h + " pixels"
+                Label { text: "Margins"; color: Style.fgMuted }
+                ComboBox {
+                    id: _marginBox
+                    Layout.fillWidth: true
+                    enabled: _win.onPaper
+                    model: _win.margins.map(function(m) { return _win.metric ? m.mm : m.inch })
+                    currentIndex: _win.indexOfValue(_win.margins, _win.setup.margin)
+                    onActivated: (i) => _win.host.setPrint("margin", _win.margins[i].value)
                 }
-            }
 
-            Item { Layout.fillHeight: true }
+                Label { text: "Background"; color: Style.fgMuted }
+                RowLayout {
+                    RadioButton {
+                        objectName: "printDark"
+                        text: "Dark"
+                        checked: !_win.setup.light
+                        onClicked: _win.host.setPrint("light", false)
+                    }
+                    RadioButton {
+                        objectName: "printLight"
+                        text: "Light"
+                        checked: !!_win.setup.light
+                        onClicked: _win.host.setPrint("light", true)
+                    }
+                }
 
-            Button {
-                Layout.fillWidth: true
-                text: "Print…"
-                onClicked: _win.host.printView()
-            }
-            Button {
-                Layout.fillWidth: true
-                text: "Export PDF…"
-                onClicked: _win.host.openExportFile("pdf")
-            }
-            RowLayout {
-                Layout.fillWidth: true
+                Label { text: "Scale (100% = the photo's own size)"; color: Style.fgMuted }
+                SpinBox {
+                    id: _scaleBox
+                    objectName: "printScale"
+                    Layout.fillWidth: true
+                    from: 10
+                    to: 800
+                    stepSize: 5
+                    editable: true
+                    value: Number(_win.setup.scale) || 100
+                    textFromValue: (v) => v + "%"
+                    valueFromText: (t) => parseInt(String(t).replace("%", "")) || 100
+                    onValueModified: _win.host.setPrint("scale", value)
+                }
+                Label {
+                    objectName: "printPixels"
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Style.fg
+                    text: {
+                        var line = "Export: " + _win.pixels.w + " × " + _win.pixels.h + " pixels"
+                        if (_win.onPaper)
+                            return line + "\nOn the paper: " + _win.dpi() + " dpi"
+                        return line + "\nPDF page: " + _win.pageInches().w.toFixed(1) + " × "
+                               + _win.pageInches().h.toFixed(1) + " in (96 dpi)"
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+
                 Button {
                     Layout.fillWidth: true
-                    text: "Export PNG…"
-                    onClicked: _win.host.openExportFile("png")
+                    text: "Print…"
+                    onClicked: _win.host.printNow()
                 }
                 Button {
                     Layout.fillWidth: true
-                    text: "Export JPG…"
-                    onClicked: _win.host.openExportFile("jpg")
+                    text: "Export PDF…"
+                    onClicked: _win.host.openExportFile("pdf")
                 }
-            }
-            Button {
-                Layout.fillWidth: true
-                text: "Export Modes…"
-                enabled: !!_win.host && _win.host.profileModes.length > 0 && _win.host.targetGuid.length > 0
-                onClicked: _win.host.openExportModes()
-            }
-            Button {
-                Layout.fillWidth: true
-                text: "Close"
-                onClicked: _win.close()
+                RowLayout {
+                    Layout.fillWidth: true
+                    Button {
+                        Layout.fillWidth: true
+                        text: "Export PNG…"
+                        onClicked: _win.host.openExportFile("png")
+                    }
+                    Button {
+                        Layout.fillWidth: true
+                        text: "Export JPG…"
+                        onClicked: _win.host.openExportFile("jpg")
+                    }
+                }
+                Button {
+                    Layout.fillWidth: true
+                    text: "Export Modes…"
+                    enabled: !!_win.host && _win.host.profileModes.length > 0 && _win.host.targetGuid.length > 0
+                    onClicked: _win.host.openExportModes()
+                }
+                Button {
+                    Layout.fillWidth: true
+                    text: "Close"
+                    onClicked: _win.close()
+                }
             }
         }
     }

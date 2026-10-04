@@ -204,9 +204,9 @@ function paintPath(ctx, n, w, h) {
     pts = pts.map(function(p) { return [n.flipH ? w - p[0] : p[0], n.flipV ? h - p[1] : p[1]] })
     if (pts.length < 2)
         return
-    var stroke = n.stroke || 2
+    var stroke = fixPx(n.stroke || 2)
     var colour = ink(n.border || _drawStyle().border)
-    var size = Shapes.headSize(stroke)
+    var size = fixPx(Shapes.headSize(n.stroke || 2))
     var open = !n.closed
     var headA = open && isHead(n.headStart) ? Shapes.arrowHead(pts[0][0], pts[0][1], pts[1][0], pts[1][1], size) : null
     var last = pts.length - 1

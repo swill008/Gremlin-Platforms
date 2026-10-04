@@ -71,7 +71,7 @@ function paintCallout(ctx, n, w, h, ox, oy) {
     if (ba > 0) {
         ctx.globalAlpha = ba
         ctx.lineJoin = "round"
-        ctx.lineWidth = n.stroke || 1
+        ctx.lineWidth = fixPx(n.stroke || 1)
         ctx.strokeStyle = ink(n.theme ? themed.border : (n.border || themed.border))
         ctx.stroke()
     }

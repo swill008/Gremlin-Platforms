@@ -102,7 +102,7 @@ def main() -> None:
         if target.exists():
             target.unlink()
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
-        call(win, "exportViewTo", url, "png")
+        call(win, "exportTo", url, "png")
         QtTest.QTest.qWait(1500)
         image = QtGui.QImage(str(target))
         return [image.width(), image.height()]

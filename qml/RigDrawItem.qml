@@ -104,12 +104,12 @@ Item {
                 border.width: {
                     _drawRoot.rev
                     var sel = ed.isSelected(node.id) && ed.tableRow === row && ed.tableCol === col
-                    return sel ? 2 : 1
+                    return ed.fixPx(sel ? 2 : 1)
                 }
                 Text {
                     renderType: Text.NativeRendering
                     anchors.fill: parent
-                    anchors.margins: Style.dp(3)
+                    anchors.margins: ed.fixPx(Style.dp(3))
                     visible: {
                         _drawRoot.rev
                         return !(ed.renameId === node.id && ed.tableRow === row && ed.tableCol === col)
@@ -202,12 +202,12 @@ Item {
                 }
                 border.width: {
                     _drawRoot.rev
-                    return (ed.isSelected(node.id) && ed.tableExtra === index) ? 2 : 1
+                    return (ed.isSelected(node.id) && ed.tableExtra === index) ? ed.fixPx(2) : ed.fixPx(1)
                 }
                 Text {
                     renderType: Text.NativeRendering
                     anchors.fill: parent
-                    anchors.margins: Style.dp(3)
+                    anchors.margins: ed.fixPx(Style.dp(3))
                     visible: {
                         _drawRoot.rev
                         return !(ed.renameId === node.id && ed.tableExtra === index)
@@ -332,7 +332,7 @@ Item {
                     return ed.ink(ed.textThemeStyle(n).border)
                 return ed.ink(n.border || "#3F3F46")
             }
-            border.width: { _drawRoot.rev; return (node && node.stroke) ? node.stroke : 1 }
+            border.width: { _drawRoot.rev; return (node && node.stroke) ? ed.fixPx(node.stroke) : ed.fixPx(1) }
             opacity: {
                 _drawRoot.rev
                 var n = node
@@ -344,7 +344,7 @@ Item {
         Text {
             renderType: Text.NativeRendering
             anchors.fill: parent
-            anchors.margins: Style.dp(4)
+            anchors.margins: ed.fixPx(Style.dp(4))
             visible: {
                 _drawRoot.rev
                 return !(ed.renameId === node.id)

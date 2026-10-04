@@ -50,7 +50,7 @@ Rectangle {
             return on && hl ? ed.ink(ed.styleVal(node, mem, "hlBorder", "#22C55E")) : "transparent"
         return ed.ink(on && hl ? ed.styleVal(node, mem, "hlBorder", "#22C55E") : ed.styleVal(node, mem, "border", "#3F3F46"))
     }
-    border.width: { _miniRoot.rev; return ed.chipIsHollow(node, mem) ? 2 : 1 }
+    border.width: { _miniRoot.rev; return ed.fixPx(ed.chipIsHollow(node, mem) ? 2 : 1) }
     antialiasing: true
     RigSelRing {
         on: {

@@ -99,7 +99,7 @@ function _outline(ctx, shape, x, y, r, dir) {
 function paintHotspot(ctx, n, x, y, size, colour, selected) {
     var shape = n.hotShape || "round"
     var fill = n.hotFill || "filled"
-    var lineW = LINE_WIDTHS[n.hotLine] || 2
+    var lineW = fixPx(LINE_WIDTHS[n.hotLine] || 2)
     var pressed = hotPressed(n)
     var c = selected ? colour : ink(pressed && n.hotPress ? (n.hotPressColor || styleDefault("hotPressColor")) : colour)
     var r = Math.max(2, size * 0.5)

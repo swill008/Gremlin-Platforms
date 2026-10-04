@@ -98,33 +98,49 @@ def _recent_count() -> int:
         return _RECENT_COLOURS
 
 
-def save_page_image(
+# A PDF without a paper (Print & Export's "Fit to area"): the page is the
+# picture at 96 pixels an inch, as Windows shows things at 100%.
+PDF_PPI = 96
+
+
+def exact_page(image: QtGui.QImage, width: int, height: int) -> QtGui.QImage | None:
+    """The picture of the print area (RigRenderer's grab, already on its
+    background) at exactly width x height pixels, opaque. A grab comes back
+    at the screen's scale, a pixel or so off the size asked for."""
+    if image is None or image.isNull() or width < 1 or height < 1:
+        return None
+    page = image.convertToFormat(QtGui.QImage.Format.Format_RGB32)
+    page.setDevicePixelRatio(1.0)
+    if page.width() != width or page.height() != height:
+        page = page.scaled(
+            int(width),
+            int(height),
+            QtCore.Qt.AspectRatioMode.IgnoreAspectRatio,
+            QtCore.Qt.TransformationMode.SmoothTransformation,
+        )
+    return page
+
+
+def save_area(
     image: QtGui.QImage,
-    x: float,
-    y: float,
-    w: float,
-    h: float,
+    width: int,
+    height: int,
     path: Path,
     fmt: str,
-    background: str,
-    scale: float = 1.0,
     setup: dict | None = None,
 ) -> bool:
-    """Crops image to the print area and writes it as PNG, JPG or a
-    one-page PDF.
-
-    scale is how much larger than on screen the picture was drawn; a PDF
-    without a paper keeps the on-screen size and gets the extra detail.
-    setup is the paper, orientation and margins for a PDF (page_layout).
-    """
-    page = page_of(image, x, y, w, h, background)
+    """Writes the print area as PNG, JPG or a one-page PDF, width x height
+    pixels. A PDF goes on the paper of setup (page_layout), filling the
+    space inside the margins, or with no paper on a page of its own shape
+    at PDF_PPI."""
+    page = exact_page(image, width, height)
     if page is None:
         return False
     kind = str(fmt or "png").lower()
     if kind == "pdf":
         from gremlin.ui.util import page_layout, save_images_as_pdf
 
-        return save_images_as_pdf([page], path, scale, page_layout(setup))
+        return save_images_as_pdf([page], path, PDF_PPI / 72, page_layout(setup))
     return _save_image(page, path, kind)
 
 
@@ -135,27 +151,6 @@ def _setup(setup_json: str) -> dict:
     except (TypeError, ValueError):
         return {}
     return setup if isinstance(setup, dict) else {}
-
-
-def page_of(
-    image: QtGui.QImage, x: float, y: float, w: float, h: float, background: str
-) -> QtGui.QImage | None:
-    """The page cut out of a picture of the editor, on the background colour
-    (as on screen: on a transparent PNG the light leader lines all but vanish
-    in an image viewer)."""
-    if image is None or image.isNull():
-        return None
-    rect = QtCore.QRect(round(x), round(y), round(w), round(h))
-    rect = rect.intersected(image.rect())
-    if rect.isEmpty():
-        return None
-    page = image.copy(rect).convertToFormat(QtGui.QImage.Format.Format_ARGB32)
-    flat = QtGui.QImage(page.size(), QtGui.QImage.Format.Format_RGB32)
-    flat.fill(QtGui.QColor(background or "#202020"))
-    painter = QtGui.QPainter(flat)
-    painter.drawImage(0, 0, page)
-    painter.end()
-    return flat
 
 
 def _save_image(page: QtGui.QImage, path: Path, kind: str) -> bool:
@@ -245,7 +240,6 @@ def save_pages(
     pages: list[tuple[str, QtGui.QImage]],
     path: Path,
     fmt: str,
-    scale: float = 1.0,
     setup: dict | None = None,
 ) -> list[Path]:
     """Writes one page per mode: a PDF with a page each (on the paper of
@@ -259,7 +253,7 @@ def save_pages(
         from gremlin.ui.util import page_layout, save_images_as_pdf
 
         ok = save_images_as_pdf(
-            [image for _name, image in pages], path, scale, page_layout(setup)
+            [image for _name, image in pages], path, PDF_PPI / 72, page_layout(setup)
         )
         return [path] if ok else []
     written: list[Path] = []
@@ -1630,56 +1624,43 @@ class HardwareProfile(QtCore.QObject):
             return ""
         return image.pixelColor(px, py).name().upper()
 
-    @QtCore.Slot(
-        QtGui.QImage, float, float, float, float, str, str, str, float, str, result=bool
-    )
-    def savePageImage(
+    @QtCore.Slot(QtGui.QImage, int, int, str, str, str, result=bool)
+    def saveArea(
         self,
         image: QtGui.QImage,
-        x: float,
-        y: float,
-        w: float,
-        h: float,
+        width: int,
+        height: int,
         url: str,
         fmt: str,
-        background: str,
-        scale: float,
         setup_json: str,
     ) -> bool:
-        """Saves the print area of a picture of the editor (Export).
-
-        x, y, w, h is the area in the picture's pixels. It goes onto the
-        background colour, as it looks on screen. scale is how much larger
-        than on screen it was drawn; setup_json the paper for a PDF.
-        """
-        return save_page_image(
-            image, x, y, w, h, to_local_path(url), fmt, background, scale,
-            _setup(setup_json),
+        """Saves the print area (Print & Export): image is RigRenderer's
+        picture of it, written at width x height pixels; setup_json the
+        paper for a PDF."""
+        return save_area(
+            image, width, height, to_local_path(url), fmt, _setup(setup_json)
         )
 
-    # --- printing (File > Print) ----------------------------------------------
+    # --- printing (Print & Export > Print) ------------------------------------
 
-    @QtCore.Slot(QtGui.QImage, float, float, float, float, str, str, str, result=bool)
-    def printPage(
+    @QtCore.Slot(QtGui.QImage, int, int, str, str, result=bool)
+    def printImage(
         self,
         image: QtGui.QImage,
-        x: float,
-        y: float,
-        w: float,
-        h: float,
-        background: str,
+        width: int,
+        height: int,
         title: str,
         setup_json: str,
     ) -> bool:
-        """Prints the print area of a picture of the editor: the printer
-        dialog first (its paper, orientation and margins from Print &
-        Export), then the area as large as fits inside the margins. With no
-        paper chosen it turns to landscape when wider than tall."""
+        """Prints the print area: the printer dialog first (its paper,
+        orientation and margins from Print & Export), then the area filling
+        the space inside the margins. With no paper chosen it goes on the
+        printer's own paper, turned to landscape when wider than tall."""
         from PySide6 import QtPrintSupport
 
         from gremlin.ui.util import page_layout
 
-        page = page_of(image, x, y, w, h, background)
+        page = exact_page(image, width, height)
         if page is None:
             return False
         printer = QtPrintSupport.QPrinter(
@@ -1701,25 +1682,19 @@ class HardwareProfile(QtCore.QObject):
             return False
         return print_image(printer, page)
 
-    # --- one page per mode (File > Export modes) ------------------------------
+    # --- one page per mode (Print & Export > Export Modes) --------------------
 
     @QtCore.Slot()
     def beginExportPages(self) -> None:
         self._export_pages: list[tuple[str, QtGui.QImage]] = []
 
-    @QtCore.Slot(QtGui.QImage, float, float, float, float, str, str, result=bool)
+    @QtCore.Slot(QtGui.QImage, int, int, str, result=bool)
     def addExportPage(
-        self,
-        image: QtGui.QImage,
-        x: float,
-        y: float,
-        w: float,
-        h: float,
-        name: str,
-        background: str,
+        self, image: QtGui.QImage, width: int, height: int, name: str
     ) -> bool:
-        """Keeps one mode's page until finishExportPages writes them all."""
-        page = page_of(image, x, y, w, h, background)
+        """Keeps one mode's page (width x height pixels) until
+        finishExportPages writes them all."""
+        page = exact_page(image, width, height)
         if page is None:
             return False
         if not hasattr(self, "_export_pages"):
@@ -1727,17 +1702,13 @@ class HardwareProfile(QtCore.QObject):
         self._export_pages.append((name, page))
         return True
 
-    @QtCore.Slot(str, str, float, str, result=int)
-    def finishExportPages(
-        self, url: str, fmt: str, scale: float, setup_json: str
-    ) -> int:
+    @QtCore.Slot(str, str, str, result=int)
+    def finishExportPages(self, url: str, fmt: str, setup_json: str) -> int:
         """Writes the pages kept so far (a PDF on the paper of setup_json);
         returns how many files were written."""
         pages = getattr(self, "_export_pages", [])
         self._export_pages = []
-        return len(
-            save_pages(pages, to_local_path(url), fmt, scale, _setup(setup_json))
-        )
+        return len(save_pages(pages, to_local_path(url), fmt, _setup(setup_json)))
 
     def _clipboard_changed(self) -> None:
         self._clipboard_serial += 1

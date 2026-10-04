@@ -74,8 +74,14 @@ Item {
     readonly property bool showChrome: interactive && !exporting
     // Export on a light page for printing: colours drawn through ink().
     property bool printLight: false
-    // Export modes: the mode's name, drawn at the top of the page while exporting.
+    // Export modes: the mode's name, drawn at the top of the print area while exporting.
     property string exportTitle: ""
+    // How much larger than on screen this editor draws (RigRenderer's copy
+    // for a print or export; 1 on screen). Sizes kept in plain pixels (line
+    // widths, borders) go through fixPx, so the picture keeps the screen's
+    // proportions at any size.
+    property real exportZoom: 1
+    function fixPx(v) { return v * exportZoom }
     // Turning several items together (rig_grouprot.js): where they started,
     // and the angle so far.
     property var turnStart: null
@@ -1473,12 +1479,12 @@ Item {
         }
     }
 
-    // The mode's name on each page of File → Export modes.
+    // The mode's name on each page of Print & Export → Export Modes.
     Text {
         z: 9
         visible: _ed.exporting && _ed.exportTitle.length > 0
-        x: { _ed.anyTick; return _ed.spaceRect().x + _ed.spaceRect().w * 0.02 }
-        y: { _ed.anyTick; return _ed.spaceRect().y + _ed.spaceRect().h * 0.02 }
+        x: { _ed.anyTick; var r = _ed.printAreaRect(); return r.x + _ed.spaceRect().w * 0.02 }
+        y: { _ed.anyTick; var r = _ed.printAreaRect(); return r.y + _ed.spaceRect().h * 0.02 }
         color: _ed.printLight ? "black" : Style.fg
         font.pixelSize: { _ed.anyTick; return _ed.uiPx(28) }
         font.bold: true

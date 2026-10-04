@@ -2066,8 +2066,9 @@ def scenario_hotspots(s: Session) -> None:
 
 def scenario_export(s: Session) -> None:
     """Export: the whole page at twice the size, without the selection, its
-    handles or the grid, and without hidden items. (The window then crops
-    the page out with save_page_image, tested in test_button_map_export.)"""
+    handles or the grid, and without hidden items. (Print & Export draws
+    with a hidden copy of the editor in this mode, RigRenderer, tested in
+    test_print_export_window.)"""
     _load(s, "evo_r")
     chips = [n["id"] for n in s.state()["nodes"] if n["kind"] == "btn"]
     s.call("setLayerFlag", chips[1], "", "hidden", True)

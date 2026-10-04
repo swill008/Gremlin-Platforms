@@ -2,8 +2,9 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Button Map export: the page is cut out of the picture of the editor and
-written as PNG, JPG or PDF on the window's background colour."""
+"""Button Map export: RigRenderer's picture of the print area (already on
+its background) written as PNG, JPG or PDF at exactly the size Print &
+Export gives, whatever size the grab came back at."""
 
 from __future__ import annotations
 
@@ -18,64 +19,71 @@ from PySide6 import (
     QtGui,
 )
 
-from gremlin.ui.hardware_profile import HardwareProfile, save_page_image, save_pages
+from gremlin.ui.hardware_profile import (
+    HardwareProfile,
+    exact_page,
+    save_area,
+    save_pages,
+)
 
 
-def _editor_picture() -> QtGui.QImage:
-    """A 200 x 100 picture: transparent around a red 120 x 60 page at 40, 20."""
-    image = QtGui.QImage(200, 100, QtGui.QImage.Format.Format_ARGB32)
-    image.fill(QtCore.Qt.GlobalColor.transparent)
+def _area_picture(w: int = 120, h: int = 60, dpr: float = 1.0) -> QtGui.QImage:
+    """A grab of the print area: dark, a red block in its right half."""
+    image = QtGui.QImage(w, h, QtGui.QImage.Format.Format_ARGB32)
+    image.fill(QtGui.QColor("#102030"))
     painter = QtGui.QPainter(image)
-    painter.fillRect(40, 20, 120, 60, QtGui.QColor("#FF0000"))
+    painter.fillRect(w // 2, 0, w - w // 2, h, QtGui.QColor("#FF0000"))
     painter.end()
+    image.setDevicePixelRatio(dpr)
     return image
 
 
-def test_png_is_the_page_on_the_background(tmp_path: pathlib.Path) -> None:
-    image = _editor_picture()
-    painter = QtGui.QPainter(image)
-    painter.setCompositionMode(QtGui.QPainter.CompositionMode.CompositionMode_Clear)
-    painter.fillRect(40, 20, 10, 10, QtCore.Qt.GlobalColor.transparent)
-    painter.end()
+def test_png_is_the_area_at_its_size(tmp_path: pathlib.Path) -> None:
     target = tmp_path / "map.png"
 
-    assert save_page_image(image, 40, 20, 120, 60, target, "png", "#102030")
+    assert save_area(_area_picture(), 120, 60, target, "png")
     saved = QtGui.QImage(str(target))
     assert saved.size() == QtCore.QSize(120, 60)
-    assert saved.pixelColor(60, 30).name() == "#ff0000"
-    # A clear spot on the page shows the background, not transparency.
+    assert saved.pixelColor(100, 30).name() == "#ff0000"
     assert saved.pixelColor(2, 2).name() == "#102030"
     assert saved.pixelColor(2, 2).alpha() == 255
+
+
+def test_a_grab_a_pixel_off_comes_out_exact(tmp_path: pathlib.Path) -> None:
+    # A grab on a 150% screen: 181 x 90 pixels for 180 x 90 asked.
+    page = exact_page(_area_picture(181, 90, 1.5), 180, 90)
+    assert page is not None
+    assert page.size() == QtCore.QSize(180, 90)
+    assert page.devicePixelRatio() == 1.0
+    # The whole picture is kept (scaled), not cut: the red half stays half.
+    assert page.pixelColor(85, 45).name() == "#102030"
+    assert page.pixelColor(95, 45).name() == "#ff0000"
 
 
 def test_jpg(tmp_path: pathlib.Path) -> None:
     target = tmp_path / "map.jpg"
 
-    assert save_page_image(_editor_picture(), 40, 20, 120, 60, target, "jpg", "#000000")
+    assert save_area(_area_picture(), 120, 60, target, "jpg")
     saved = QtGui.QImage(str(target))
     assert saved.size() == QtCore.QSize(120, 60)
-    assert saved.pixelColor(60, 30).red() > 200
+    assert saved.pixelColor(100, 30).red() > 200
 
 
-def test_pdf_page_keeps_the_screen_size(tmp_path: pathlib.Path) -> None:
-    one = tmp_path / "one.pdf"
-    two = tmp_path / "two.pdf"
+def test_pdf_without_a_paper_is_96_pixels_an_inch(tmp_path: pathlib.Path) -> None:
+    target = tmp_path / "fit.pdf"
 
-    assert save_page_image(_editor_picture(), 40, 20, 120, 60, one, "pdf", "#000000")
-    big = _editor_picture().scaled(400, 200)
-    assert save_page_image(big, 80, 40, 240, 120, two, "pdf", "#000000", 2)
-    assert one.read_bytes().startswith(b"%PDF")
-    # Same page size (points); the 2x file just carries more pixels.
-    box = b"/MediaBox [0 0 120.000000 60.000000]"
-    assert box in one.read_bytes()
-    assert box in two.read_bytes()
+    assert save_area(_area_picture(192, 96), 192, 96, target, "pdf", {"paper": "fit"})
+    data = target.read_bytes()
+    assert data.startswith(b"%PDF")
+    # 192 x 96 pixels = 2 x 1 inches = 144 x 72 points.
+    assert b"/MediaBox [0 0 144.000000 72.000000]" in data
 
 
-def test_rect_outside_the_picture_writes_nothing(tmp_path: pathlib.Path) -> None:
+def test_nothing_to_write_writes_nothing(tmp_path: pathlib.Path) -> None:
     target = tmp_path / "map.png"
 
-    assert not save_page_image(_editor_picture(), 500, 500, 10, 10, target, "png", "")
-    assert not save_page_image(QtGui.QImage(), 0, 0, 10, 10, target, "png", "")
+    assert not save_area(QtGui.QImage(), 10, 10, target, "png")
+    assert not save_area(_area_picture(), 0, 10, target, "png")
     assert not target.exists()
 
 
@@ -89,10 +97,10 @@ def test_export_modes_pdf_has_a_page_per_mode(tmp_path: pathlib.Path) -> None:
     target = tmp_path / "map.pdf"
     pages = [("Default", _page("#FF0000")), ("Combat", _page("#00FF00"))]
 
-    assert save_pages(pages, target, "pdf", 2) == [target]
+    assert save_pages(pages, target, "pdf") == [target]
     data = target.read_bytes()
     assert data.count(b"/Type /Page\n") + data.count(b"/Type /Page ") >= 2
-    assert b"/MediaBox [0 0 60.000000 30.000000]" in data
+    assert b"/MediaBox [0 0 90.000000 45.000000]" in data
 
 
 def test_export_modes_images_get_one_file_each(tmp_path: pathlib.Path) -> None:
@@ -108,17 +116,25 @@ def test_export_modes_images_get_one_file_each(tmp_path: pathlib.Path) -> None:
 def test_export_pages_through_the_window_slots(tmp_path: pathlib.Path) -> None:
     profile = HardwareProfile()
     profile.beginExportPages()
-    assert profile.addExportPage(_editor_picture(), 40, 20, 120, 60, "A", "#000000")
-    assert not profile.addExportPage(QtGui.QImage(), 0, 0, 10, 10, "B", "#000000")
-    assert profile.addExportPage(_editor_picture(), 40, 20, 120, 60, "C", "#000000")
+    assert profile.addExportPage(_area_picture(), 120, 60, "A")
+    assert not profile.addExportPage(QtGui.QImage(), 10, 10, "B")
+    assert profile.addExportPage(_area_picture(121, 61), 120, 60, "C")
     url = QtCore.QUrl.fromLocalFile(str(tmp_path / "modes.jpg")).toString()
-    assert profile.finishExportPages(url, "jpg", 1, "{}") == 2
+    assert profile.finishExportPages(url, "jpg", "{}") == 2
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "modes - A.jpg",
         "modes - C.jpg",
     ]
+    assert QtGui.QImage(str(tmp_path / "modes - C.jpg")).size() == QtCore.QSize(120, 60)
     # Finished: nothing left over for the next export.
-    assert profile.finishExportPages(url, "jpg", 1, "{}") == 0
+    assert profile.finishExportPages(url, "jpg", "{}") == 0
+
+
+def test_save_area_slot(tmp_path: pathlib.Path) -> None:
+    profile = HardwareProfile()
+    url = QtCore.QUrl.fromLocalFile(str(tmp_path / "slot.png")).toString()
+    assert profile.saveArea(_area_picture(), 120, 60, url, "png", "{}")
+    assert QtGui.QImage(str(tmp_path / "slot.png")).size() == QtCore.QSize(120, 60)
 
 
 # Printing needs the widgets application, so it runs in a process of its own.
@@ -160,7 +176,7 @@ def test_print_draws_the_page(tmp_path: pathlib.Path) -> None:
 
 
 def test_print_slot_is_there_for_the_window() -> None:
-    assert hasattr(HardwareProfile, "printPage")
+    assert hasattr(HardwareProfile, "printImage")
 
 
 def test_pdf_on_a_paper_is_that_page(tmp_path: pathlib.Path) -> None:
@@ -168,9 +184,7 @@ def test_pdf_on_a_paper_is_that_page(tmp_path: pathlib.Path) -> None:
 
     target = tmp_path / "letter.pdf"
     setup = {"paper": "letter", "landscape": False, "margin": "quarter"}
-    assert save_page_image(
-        _editor_picture(), 40, 20, 120, 60, target, "pdf", "#000000", 1, setup
-    )
+    assert save_area(_area_picture(), 120, 60, target, "pdf", setup)
     # US Letter, portrait: 8.5 x 11 in = 612 x 792 points.
     assert b"/MediaBox [0 0 612.000000 792.000000]" in target.read_bytes()
     layout = page_layout(setup)

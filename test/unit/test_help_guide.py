@@ -114,7 +114,7 @@ def test_button_map_help_is_its_own_guide() -> None:
         "Paste picture", "Crop", "Reset Crop", "snap point", "Layers",
         "Unlock all", "Properties", "Align and distribute", "Space Out",
         "Recent", "Pick from Map", "Ctrl+Shift+L", "F1", "Callout", "Freehand",
-        "Rulers", "Saved styles", "Export modes", "Print", "Mirror layout",
+        "Rulers", "Saved styles", "Export Modes", "Print", "Mirror layout",
         "Command palette", "Ctrl+K",
     ):
         assert feature in section, feature

@@ -20,7 +20,7 @@ Item {
     Rectangle {
         visible: { _grp.rev; return ed.fiveWayFormat(_grp.node) === "mini" }
         anchors.fill: parent
-        radius: Style.dp(4)
+        radius: ed.fixPx(Style.dp(4))
         color: {
             _grp.rev
             var n = _grp.node || {}
@@ -31,7 +31,7 @@ Item {
             var n = _grp.node || {}
             return ed.ink(n.border || "#3F3F46")
         }
-        border.width: Style.dp(1)
+        border.width: ed.fixPx(Style.dp(1))
     }
     Text {
         renderType: Text.NativeRendering
@@ -39,7 +39,7 @@ Item {
         text: { _grp.rev; return ed.fiveWayCaption(_grp.node) }
         color: { _grp.rev; return ed.ink("#E4E4E7") }
         font.pixelSize: { _grp.rev; return ed.uiPx((_grp.node && _grp.node.fontSize) ? _grp.node.fontSize : 10) }
-        x: Style.dp(2)
+        x: ed.fixPx(Style.dp(2))
         y: 0
     }
     Repeater {

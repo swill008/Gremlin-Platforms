@@ -433,7 +433,7 @@ function paintDraw(ctx, n, w, h) {
     if (n.shape === "table") {
         ctx.save()
         ctx.strokeStyle = ink(n.border || "#3F3F46")
-        ctx.lineWidth = 1
+        ctx.lineWidth = fixPx(1)
         ctx.fillStyle = ink(n.color || "#18181B")
         ctx.fillRect(0.5, 0.5, Math.max(1, w - 1), Math.max(1, h - 1))
         ctx.strokeRect(0.5, 0.5, Math.max(1, w - 1), Math.max(1, h - 1))
@@ -454,7 +454,7 @@ function paintDraw(ctx, n, w, h) {
         paintPath(ctx, n, w, h)
         return
     }
-    var stroke = n.stroke || 2
+    var stroke = fixPx(n.stroke || 2)
     var inset = stroke * 0.5 + 0.5
     var ww = Math.max(2, w - stroke)
     var hh = Math.max(2, h - stroke)
@@ -515,9 +515,9 @@ function paintDraw(ctx, n, w, h) {
 // A line from its stored ends, with a solid or hollow head at either end.
 // The line stops at a head's back edge so it never shows through a hollow one.
 function paintLine(ctx, n, w, h) {
-    var stroke = n.stroke || 2
+    var stroke = fixPx(n.stroke || 2)
     var e = Shapes.lineEnds(n.ends, w, h)
-    var size = Shapes.headSize(stroke)
+    var size = fixPx(Shapes.headSize(n.stroke || 2))
     var headA = isHead(n.headStart) ? Shapes.arrowHead(e.ax, e.ay, e.bx, e.by, size) : null
     var headB = isHead(n.headEnd) ? Shapes.arrowHead(e.bx, e.by, e.ax, e.ay, size) : null
     var from = headA ? headA.base : [e.ax, e.ay]

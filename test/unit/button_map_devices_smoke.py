@@ -124,7 +124,7 @@ def main() -> None:
     look("unplugged")
     # Export still draws the map of an unplugged stick.
     target = Path(os.environ["USERPROFILE"]) / "unplugged-export.png"
-    call(win, "exportViewTo", QtCore.QUrl.fromLocalFile(str(target)).toString(), "png")
+    call(win, "exportTo", QtCore.QUrl.fromLocalFile(str(target)).toString(), "png")
     QtTest.QTest.qWait(1500)
     out["export-while-unplugged"] = target.is_file() and target.stat().st_size > 0
     fake.devices.insert(0, stick)

@@ -119,21 +119,9 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {"min": 25, "max": 300},
     ),
     (
-        "export", "03-light-page", PropertyType.Bool, False,
-        "Exports on a white page: dark colors turn light and light ones dark, "
-        "keeping their hue. The photo is not changed. Also in File > Light page "
-        "for exports. Printing has its own setting (Print light).",
-        {},
-    ),
-    (
-        "export", "04-print-light", PropertyType.Bool, True,
-        "File > Print prints on a white page with dark ink (see Light page), "
-        "whatever the export setting.",
-        {},
-    ),
-    (
         "export", "02-mode-title", PropertyType.Bool, True,
-        "File > Export modes writes each mode's name at the top of its page.",
+        "Print & Export > Export Modes writes each mode's name at the top of "
+        "its page.",
         {},
     ),
     (

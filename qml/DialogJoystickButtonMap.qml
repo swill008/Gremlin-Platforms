@@ -1347,7 +1347,8 @@ ApplicationWindow {
             paper: (p.paper === "fit" || paperInches[p.paper]) ? p.paper : "fit",
             landscape: p.landscape === true,
             margin: marginInches[p.margin] !== undefined ? p.margin : "quarter",
-            scale: (p.scale >= 10 && p.scale <= 800) ? Math.round(p.scale) : 100
+            scale: (p.scale >= 10 && p.scale <= 800) ? Math.round(p.scale) : 100,
+            light: p.light === true
         }
     }
 
@@ -1356,9 +1357,11 @@ ApplicationWindow {
     // page): every export and print takes it. Saved with the map.
     property var printArea: null
     // Print & Export, saved with the map: the paper ("fit": the print
-    // area's own shape), its orientation, the margins and the scale (100% =
-    // the photo's own pixels; with no photo, the page 1920 px wide).
-    property var printSetup: ({ paper: "fit", landscape: false, margin: "quarter", scale: 100 })
+    // area's own shape), its orientation, the margins, the scale (100% =
+    // the photo's own pixels; with no photo, the page 1920 px wide) and the
+    // background (light: white, every color's lightness turned over), the
+    // same for every print and export.
+    property var printSetup: ({ paper: "fit", landscape: false, margin: "quarter", scale: 100, light: false })
     readonly property var paperInches: ({
         letter: [8.5, 11], legal: [8.5, 14], tabloid: [11, 17],
         a3: [11.69, 16.54], a4: [8.27, 11.69], a5: [5.83, 8.27]
@@ -1388,15 +1391,15 @@ ApplicationWindow {
         var e = _ed()
         if (e) {
             e.printAspect = printAspect()
-            if (key !== "scale")
+            if (key === "paper" || key === "landscape" || key === "margin")
                 e.reshapePrintArea()
         }
         persistUi()
     }
 
-    // How many times larger than on screen an export draws the editor: the
-    // scale over the photo's own pixels (no photo: the page 1920 px wide).
-    // No side of the picture over 16384 px.
+    // Export pixels for each editor pixel on screen: the scale over the
+    // photo's own pixels (no photo: the page 1920 px wide). The same export
+    // at any window size: the page on screen and the photo grow together.
     function exportFactor() {
         var e = _ed()
         if (!e)
@@ -1413,17 +1416,19 @@ ApplicationWindow {
         } else {
             f = scale * 1920 / Math.max(1, s.w)
         }
-        return Math.min(f, 16384 / Math.max(1, e.width, e.height))
+        return f
     }
 
-    // The export's size in pixels (the print area at the scale).
+    // The export's size in pixels: the print area at the scale, no side
+    // over 16384.
     function exportPixels() {
         var e = _ed()
         if (!e)
             return { w: 0, h: 0 }
         var r = e.printAreaRect()
         var f = exportFactor()
-        return { w: Math.round(r.w * f), h: Math.round(r.h * f) }
+        f = Math.min(f, 16384 / Math.max(1, r.w, r.h))
+        return { w: Math.max(1, Math.round(r.w * f)), h: Math.max(1, Math.round(r.h * f)) }
     }
     property var guidesX: []
     property var guidesY: []
@@ -1689,70 +1694,73 @@ ApplicationWindow {
         }
     }
 
-    property var _exportJob: null
+    // --- Print & Export: every picture comes from RigRenderer ---------------
 
-    // Saves the whole page, whatever the zoom, without selection rings,
-    // handles, guides or the grid; hidden items are left out as always.
-    // File → Print: the page as Export draws it, then the printer dialog.
-    function printView() {
-        exportViewTo("", "print")
-    }
+    // A hidden copy of the map draws each print, export and preview at its
+    // own size; the map on screen is never touched.
+    RigRenderer { id: _renderer }
 
-    function exportViewTo(url, format) {
+    // A job for the renderer: the map as it is now, at pixels (the
+    // export's size unless given), on Print & Export's background.
+    function _renderJob(pages, onPage, onDone, pixels) {
         var e = _ed()
         if (!e)
-            return
-        _exportJob = { url: url, format: format }
-        e.printLight = format === "print" ? _opts.values["print-light"] !== false
-                                          : _opts.values["light-page"] === true
-        e.exporting = true
-        e.repaint()
-        // Let the editor redraw without its editing marks first.
-        _exportTimer.restart()
+            return null
+        return {
+            snap: _renderer.snapshot(e),
+            pixels: pixels || exportPixels(),
+            light: printSetup.light === true,
+            pages: pages,
+            onPage: onPage,
+            onDone: onDone
+        }
     }
 
-    function _grabExport() {
+    function _say(text) {
         var e = _ed()
-        var job = _exportJob
-        _exportJob = null
-        if (!e || !job) {
-            if (e) {
-                e.exporting = false
-                e.printLight = false
-                e.repaint()
-            }
-            return
-        }
-        var f = exportFactor()
-        // The print area (the whole page when none is set).
-        var r = e.printAreaRect()
-        var bg = e.printLight ? "white" : String(Style.background)
-        var ok = e.grabToImage(function(result) {
-            e.exporting = false
-            e.printLight = false
-            e.repaint()
-            if (!result)
-                return
-            if (job.format === "print") {
-                _hw.printPage(result.image, r.x * f, r.y * f, r.w * f, r.h * f, bg,
-                              targetName.length ? targetName : "Button Map", JSON.stringify(printSetup))
-                return
-            }
-            if (!_hw.savePageImage(result.image, r.x * f, r.y * f, r.w * f, r.h * f,
-                                   String(job.url), job.format, bg, f, JSON.stringify(printSetup)))
-                console.warn("Button Map export failed: " + job.url)
-        }, Qt.size(Math.round(e.width * f), Math.round(e.height * f)))
-        if (!ok) {
-            e.exporting = false
-            e.printLight = false
-            e.repaint()
-        }
+        if (e && e.showFindMessage)
+            e.showFindMessage(text)
     }
 
-    Timer {
-        id: _exportTimer
-        interval: 50
-        onTriggered: _buttonMap._grabExport()
+    // A PNG, JPG or PDF of the print area.
+    function exportTo(url, format) {
+        var px = exportPixels()
+        var setup = JSON.stringify(printSetup)
+        var target = String(url)
+        var job = _renderJob([{}], function(i, result) {
+            if (!result || !_hw.saveArea(result.image, px.w, px.h, target, format, setup)) {
+                console.warn("Button Map export failed: " + target)
+                _buttonMap._say("Export failed.")
+            }
+        }, null, px)
+        if (job)
+            _renderer.enqueue(job)
+    }
+
+    // Print: the print area, then Windows' printer dialog.
+    function printNow() {
+        var px = exportPixels()
+        var setup = JSON.stringify(printSetup)
+        var title = targetName.length ? targetName : "Button Map"
+        var job = _renderJob([{}], function(i, result) {
+            if (result)
+                _hw.printImage(result.image, px.w, px.h, title, setup)
+        }, null, px)
+        if (job)
+            _renderer.enqueue(job)
+    }
+
+    // Print & Export's preview: the print area as the export draws it, at
+    // most maxW x maxH pixels; done(grab result) once drawn.
+    function renderPreview(maxW, maxH, done) {
+        var px = exportPixels()
+        var k = Math.min(1, maxW / Math.max(1, px.w), maxH / Math.max(1, px.h))
+        var size = { w: Math.max(1, Math.round(px.w * k)), h: Math.max(1, Math.round(px.h * k)) }
+        var job = _renderJob([{}], function(i, result) { done(result) }, null, size)
+        if (!job)
+            return
+        job.preview = true
+        _renderer.enqueue(job)
     }
 
     FileDialog {
@@ -1761,7 +1769,7 @@ ApplicationWindow {
         fileMode: FileDialog.SaveFile
         defaultSuffix: "png"
         nameFilters: ["PNG image (*.png)"]
-        onAccepted: exportViewTo(selectedFile, "png")
+        onAccepted: exportTo(selectedFile, "png")
     }
     FileDialog {
         id: _exportJpgDialog
@@ -1769,7 +1777,7 @@ ApplicationWindow {
         fileMode: FileDialog.SaveFile
         defaultSuffix: "jpg"
         nameFilters: ["JPEG image (*.jpg *.jpeg)"]
-        onAccepted: exportViewTo(selectedFile, "jpg")
+        onAccepted: exportTo(selectedFile, "jpg")
     }
     // --- mirror, and copy another device's layout ------------------------------
 
@@ -2166,9 +2174,9 @@ ApplicationWindow {
         }
     }
 
-    // --- File → Export modes: one page per mode -----------------------------
+    // --- Print & Export → Export Modes: one page per mode --------------------
 
-    property var _modesJob: null
+    property bool _modesBusy: false
     property var _modesPicked: []
     property string _modesFormat: "pdf"
 
@@ -2216,70 +2224,29 @@ ApplicationWindow {
 
     function exportModesTo(url, format, modes) {
         var e = _ed()
-        if (!e || !modes.length || _modesJob)
+        if (!e || !modes.length || _modesBusy)
             return
-        _modesJob = {
-            url: String(url), format: format, modes: modes.slice(), i: 0,
-            keepText: e.chipTextMode, f: exportFactor()
-        }
-        _hw.beginExportPages()
         // Pages that all read the same would be no use: show the actions.
-        if (e.chipTextMode === "Name")
-            e.chipTextMode = "Action"
-        e.printLight = _opts.values["light-page"] === true
-        e.exporting = true
-        e.repaint()
-        _nextModePage()
-    }
-
-    function _nextModePage() {
-        var e = _ed()
-        var job = _modesJob
-        if (!e || !job)
-            return
-        if (job.i >= job.modes.length) {
-            var written = _hw.finishExportPages(job.url, job.format, job.f, JSON.stringify(printSetup))
-            _modesJob = null
-            e.exporting = false
-            e.printLight = false
-            e.repaint()
-            e.exportTitle = ""
-            e.chipTextMode = job.keepText
-            refreshActionLabels()
-            if (e.showFindMessage)
-                e.showFindMessage(written ? "Exported " + job.modes.length + " modes." : "Export failed.")
-            return
-        }
-        var mode = job.modes[job.i]
-        e.actionLabels = labelsFor(mode)
-        e.exportTitle = _opts.values["mode-title"] !== false ? mode : ""
-        e.bump()
-        _modesTimer.restart()
-    }
-
-    Timer {
-        id: _modesTimer
-        interval: 80
-        onTriggered: {
-            var e = _buttonMap._ed()
-            var job = _buttonMap._modesJob
-            if (!e || !job)
-                return
-            var r = e.printAreaRect()
-            var f = job.f
-            var bg = e.printLight ? "white" : String(Style.background)
-            var mode = job.modes[job.i]
-            var ok = e.grabToImage(function(result) {
-                if (result)
-                    _hw.addExportPage(result.image, r.x * f, r.y * f, r.w * f, r.h * f, mode, bg)
-                job.i++
-                _buttonMap._nextModePage()
-            }, Qt.size(Math.round(e.width * f), Math.round(e.height * f)))
-            if (!ok) {
-                job.i++
-                _buttonMap._nextModePage()
-            }
-        }
+        var textMode = e.chipTextMode === "Name" ? "Action" : e.chipTextMode
+        var titled = _opts.values["mode-title"] !== false
+        var list = modes.slice()
+        var pages = list.map(function(m) {
+            return { labels: labelsFor(m), textMode: textMode, title: titled ? m : "" }
+        })
+        var px = exportPixels()
+        var setup = JSON.stringify(printSetup)
+        var target = String(url)
+        var job = _renderJob(pages, function(i, result) {
+            if (result)
+                _hw.addExportPage(result.image, px.w, px.h, list[i])
+        }, function() {
+            var written = _hw.finishExportPages(target, format, setup)
+            _buttonMap._modesBusy = false
+            _buttonMap._say(written ? "Exported " + list.length + " modes." : "Export failed.")
+        }, px)
+        _hw.beginExportPages()
+        _modesBusy = true
+        _renderer.enqueue(job)
     }
 
     Dialog {
@@ -2356,7 +2323,7 @@ ApplicationWindow {
         fileMode: FileDialog.SaveFile
         defaultSuffix: "pdf"
         nameFilters: ["PDF (*.pdf)"]
-        onAccepted: exportViewTo(selectedFile, "pdf")
+        onAccepted: exportTo(selectedFile, "pdf")
     }
 
     Popup {
@@ -2505,23 +2472,9 @@ ApplicationWindow {
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
                     text: "Print & Export…"
+                    hint: "Ctrl+P"
                     enabled: _buttonMap.targetName.length > 0
                     onTriggered: _buttonMap.openPrintExport()
-                }
-                ThemedMenuItem {
-                    text: "Export PDF…"
-                    enabled: _buttonMap.targetName.length > 0
-                    onTriggered: _exportPdfDialog.open()
-                }
-                ThemedMenuItem {
-                    text: "Export PNG…"
-                    enabled: _buttonMap.targetName.length > 0
-                    onTriggered: _exportPngDialog.open()
-                }
-                ThemedMenuItem {
-                    text: "Export JPG…"
-                    enabled: _buttonMap.targetName.length > 0
-                    onTriggered: _exportJpgDialog.open()
                 }
                 ThemedMenu {
                     id: _templateMenu
@@ -2552,24 +2505,6 @@ ApplicationWindow {
                         text: "Manage Templates…"
                         onTriggered: _templatesDlg.open()
                     }
-                }
-                ThemedMenuItem {
-                    text: "Print…"
-                    hint: "Ctrl+P"
-                    enabled: _buttonMap.targetName.length > 0
-                    onTriggered: _buttonMap.printView()
-                }
-                ThemedMenuItem {
-                    text: "Export Modes…"
-                    enabled: _buttonMap.profileModes.length > 0 && _buttonMap.targetGuid.length > 0
-                    onTriggered: _buttonMap.openExportModes()
-                }
-                ThemedMenuItem {
-                    text: "Light Page for Exports"
-                    enabled: _buttonMap.targetName.length > 0
-                    checkable: true
-                    checked: _opts.values["light-page"] === true
-                    onTriggered: _opts.set("light-page", checked)
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
@@ -3608,7 +3543,8 @@ ApplicationWindow {
                 }
                 Shortcut {
                     sequence: "Ctrl+P"
-                    onActivated: _buttonMap.printView()
+                    enabled: _buttonMap.targetName.length > 0
+                    onActivated: _buttonMap.openPrintExport()
                 }
                 Shortcut {
                     sequence: "Ctrl+1"

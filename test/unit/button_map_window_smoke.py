@@ -151,14 +151,17 @@ def main() -> None:
         target = out / "light-export.png"
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
         code = (
-            "_opts.set('light-page', true);"
-            f" _buttonMap.exportViewTo('{url}', 'png')"
+            "_buttonMap.setPrint('light', true);"
+            f" _buttonMap.exportTo('{url}', 'png')"
         )
         expr = QtQml.QQmlExpression(QtQml.qmlContext(win), win, code)
         expr.evaluate()
         if expr.hasError():
             print(f"ERROR light-export: {expr.error().toString()}", flush=True)
-        QtTest.QTest.qWait(800)
+        for _ in range(100):
+            QtTest.QTest.qWait(50)
+            if target.exists():
+                break
         image = QtGui.QImage(str(target))
         if image.isNull():
             print("ERROR light-export: nothing written", flush=True)
@@ -168,7 +171,7 @@ def main() -> None:
             if corner != "#ffffff":
                 print(f"ERROR light-export: page corner is {corner}", flush=True)
         reset = QtQml.QQmlExpression(
-            QtQml.qmlContext(win), win, "_opts.set('light-page', false)"
+            QtQml.qmlContext(win), win, "_buttonMap.setPrint('light', false)"
         )
         reset.evaluate()
         menu = QtQml.QQmlExpression(

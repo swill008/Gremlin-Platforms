@@ -36,7 +36,7 @@ Rectangle {
         _chipRoot.rev
         return ed.ink(on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46"))
     }
-    border.width: { _chipRoot.rev; return ed.chipIsHollow(node) ? 2 : 1 }
+    border.width: { _chipRoot.rev; return ed.fixPx(ed.chipIsHollow(node) ? 2 : 1) }
     antialiasing: true
     RigSelRing {
         on: { _chipRoot.rev; return ed.isSelected(node.id) && !ed.exporting }

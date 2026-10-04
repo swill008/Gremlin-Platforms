@@ -4,11 +4,12 @@
 
 """Starts the program off-screen (stand-in hardware), opens the Button Map
 for a stick and its Print & Export window, changes the paper and scale,
-and prints what the window shows as JSON (and a screenshot when a folder
-is given). test_print_export_window.py runs it in its own process with a
-fresh user folder.
+exports the whole page and a print area as PNG and a PDF on Letter into
+the folder given, and prints what the window shows as JSON.
+test_print_export_window.py runs it in its own process with a fresh user
+folder, at screen scales 1 and 1.5.
 
-    python test/unit/print_export_window_smoke.py [screenshot folder]
+    python test/unit/print_export_window_smoke.py <folder> [screenshots]
 """
 
 from __future__ import annotations
@@ -62,7 +63,9 @@ def call(obj: QtCore.QObject, name: str, *args: object) -> object:
 
 
 def main() -> None:
-    shots = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    folder = Path(sys.argv[1])
+    folder.mkdir(parents=True, exist_ok=True)
+    shots = len(sys.argv) > 2
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
     QtTest.QTest.qWait(800)
     root = app.engine.rootObjects()[0]
@@ -108,10 +111,44 @@ def main() -> None:
     out["pixels-text"] = child("printPixels").property("text")
     px = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
     out["pixels"] = [px["w"], px["h"]]
-    if shots is not None:
-        shots.mkdir(parents=True, exist_ok=True)
-        pw.grabWindow().save(str(shots / "print-export.png"))
-        win.grabWindow().save(str(shots / "map-with-print-area.png"))
+    out["dpr"] = pw.devicePixelRatio()
+    if shots:
+        pw.grabWindow().save(str(folder / "print-export.png"))
+        win.grabWindow().save(str(folder / "map-with-print-area.png"))
+
+    def export(name: str, fmt: str) -> list:
+        """Exports through Print & Export's pipeline and waits for it."""
+        target = folder / name
+        url = QtCore.QUrl.fromLocalFile(str(target)).toString()
+        size = json.loads(str(ev("JSON.stringify(_buttonMap.exportPixels())")))
+        ev(f"_buttonMap.exportTo({json.dumps(url)}, {json.dumps(fmt)})")
+        for _ in range(200):
+            QtTest.QTest.qWait(50)
+            if ev("_renderer.busy") is False and target.exists():
+                break
+        return [size["w"], size["h"], target.exists()]
+
+    # The whole page, then a print area: the same scale, no paper.
+    ev("_buttonMap.setPrint('paper', 'fit')")
+    ev("_buttonMap.setPrint('scale', 50)")
+    ev("_buttonMap._ed().clearPrintArea()")
+    QtTest.QTest.qWait(300)
+    out["full"] = export("full.png", "png")
+    ev("_buttonMap.setPrint('scale', 200)")
+    out["full-200"] = export("full-200.png", "png")
+    ev("_buttonMap.setPrint('scale', 50)")
+    area = {"fx": 0.25, "fy": 0.2, "fw": 0.5, "fh": 0.5}
+    ev(f"_buttonMap._ed().printArea = {json.dumps(area)}; _buttonMap.printArea = _buttonMap._ed().printArea")
+    QtTest.QTest.qWait(300)
+    out["area"] = export("area.png", "png")
+    out["light"] = None
+    ev("_buttonMap.setPrint('light', true)")
+    out["light"] = export("light.png", "png")
+    ev("_buttonMap.setPrint('light', false)")
+    ev("_buttonMap.setPrint('paper', 'letter')")
+    out["pdf"] = export("letter.pdf", "pdf")
+    # The map on screen was never put into export mode.
+    out["live-exporting"] = ev("_buttonMap._ed().exporting")
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)
 
