@@ -6,7 +6,9 @@ import QtQuick.Controls
 import Gremlin.Style
 
 // One of a window's tool rows ("top", under the menus, or "bottom"): the
-// buttons of the tools on it. What each tool does, and where its button
+// tabs of the tools on it. An open tool's tab takes its panel's color and
+// has no line on the side facing the map, where its panel (ToolPane) joins
+// it; a closed one is an outline. What each tool does, and where its button
 // sits, is the ToolDock's (`dock`); see there for the rules. A button can be
 // dragged along the row or onto the other row (unlocked); the row it would
 // land on lights up.
@@ -123,6 +125,7 @@ Item {
                 shown[j].x = x
                 x += shown[j].width + _row.gap
             }
+            dock.layoutRev++
             return
         }
         var placed = []
@@ -136,6 +139,7 @@ Item {
             bk.x = Math.round(_freeSpot(want, bk.width, placed))
             placed.push({ x: bk.x, w: bk.width })
         }
+        dock.layoutRev++
     }
 
     // The left edge nearest `want` where a button this wide fits on the row
@@ -223,16 +227,38 @@ Item {
                 readonly property bool locked: { dock.rev; return dock.isLocked(modelData) }
                 readonly property bool usableNow: { dock.rev; return dock.isUsable(modelData) }
                 objectName: "tool:" + modelData
-                width: _inner.implicitWidth + Style.dp(12)
-                height: _row.height - Style.dp(6)
-                y: (_row.height - height) / 2
+                // A tab: from near the row's outer edge to its inner edge
+                // (the side facing the map, where an open tool's panel joins).
+                readonly property bool atTop: _row.side === "top"
+                // Joined to its panel (showing); open without one: lit.
+                readonly property bool joined: open && !!_row.dock.paneShown[modelData]
+                readonly property color edge: open ? Style.lineStrong : Style.line
+                width: _inner.implicitWidth + Style.dp(14)
+                height: _row.height - Style.dp(4)
+                y: atTop ? Style.dp(4) : 0
                 onWidthChanged: _row.relayout()
+                onXChanged: if (_row.dock) _row.dock.layoutRev++
                 Component.onCompleted: _row.relayout()
-                radius: Style.dp(4)
                 opacity: usableNow ? 1 : 0.45
-                color: open ? Style.bgSelected : (_main.containsMouse && usableNow ? Style.bgCard : Style.clear)
-                border.color: open ? Style.accent : Style.line
-                border.width: 1
+                color: joined ? _row.dock.paneColor(modelData)
+                       : open ? Style.bgSelected
+                       : (_main.containsMouse && usableNow ? Style.bgCard : Style.clear)
+                // Its sides and outer edge; its inner edge only while closed.
+                Rectangle { width: 1; height: parent.height; color: _btn.edge }
+                Rectangle { x: parent.width - 1; width: 1; height: parent.height; color: _btn.edge }
+                Rectangle {
+                    width: parent.width
+                    height: 1
+                    y: _btn.atTop ? 0 : parent.height - 1
+                    color: _btn.open ? Style.accent : _btn.edge
+                }
+                Rectangle {
+                    visible: !_btn.joined
+                    width: parent.width
+                    height: 1
+                    y: _btn.atTop ? parent.height - 1 : 0
+                    color: _btn.edge
+                }
                 // How far it is being dragged (an unlocked button).
                 property real dragDx: 0
                 property real dragDy: 0

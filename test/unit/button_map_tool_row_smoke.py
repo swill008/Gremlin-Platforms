@@ -182,31 +182,38 @@ def main() -> None:
     drag(grab, QtCore.QPointF(top["x"] + top["w"] * 0.25, middle(top).y()))
     out["chips-up"] = [ev("_tools.sideOf('chips')"), ev("_tools.dockOf('chips')"),
                        ev("_tools.order('top')"), ev("_tools.order('bottom')")]
+    # The pool joins its tab: it reaches up to the top row, under the tab.
     pool = scene_rect("_poolFloat")
-    out["pool-at-top"] = round(pool["y"] - host["y"])
-    # The pool dragged down on its own: it snaps to the bottom; the button
-    # stays on the top row.
-    grab = QtCore.QPointF(pool["x"] + pool["w"] - 4, pool["y"] + pool["h"] / 2)
-    drag(grab, grab + QtCore.QPointF(0, host["h"] * 0.6))
-    pool = scene_rect("_poolFloat")
-    out["pool-dragged"] = [ev("_tools.dockOf('chips')"), ev("_tools.sideOf('chips')"),
-                           round(host["y"] + host["h"] - (pool["y"] + pool["h"]))]
-    # Locked: the pool doesn't move.
+    tab = scene_rect("_topRow._button('chips')")
+    out["pool-at-top"] = round(pool["y"] - (top["y"] + top["h"]))
+    out["tab-over-pool"] = (pool["x"] <= tab["x"]
+                            and tab["x"] + tab["w"] <= pool["x"] + pool["w"])
+    # Its edge facing the map makes it taller (unlocked); it can't be dragged
+    # away from its tab.
+    edge = QtCore.QPointF(pool["x"] + pool["w"] / 2, pool["y"] + pool["h"] - 2)
+    drag(edge, edge + QtCore.QPointF(0, 60))
+    grown = scene_rect("_poolFloat")
+    out["pool-resized"] = round(grown["h"] - pool["h"])
+    out["pool-stays"] = [ev("_tools.sideOf('chips')"), round(grown["y"] - pool["y"])]
+    # Locked: no resizing.
     ev("_tools.setLocked('chips', true)")
     QtTest.QTest.qWait(100)
-    grab = QtCore.QPointF(pool["x"] + pool["w"] - 4, pool["y"] + pool["h"] / 2)
-    drag(grab, grab - QtCore.QPointF(0, host["h"] * 0.6))
-    out["pool-locked"] = ev("_tools.dockOf('chips')")
+    edge = QtCore.QPointF(grown["x"] + grown["w"] / 2, grown["y"] + grown["h"] - 2)
+    drag(edge, edge + QtCore.QPointF(0, 60))
+    out["pool-locked"] = round(scene_rect("_poolFloat")["h"] - grown["h"])
     ev("_tools.setLocked('chips', false)")
-    # Kept: loaded again, the rows and docks are as they were.
+    # Kept: loaded again, the row and the size are as they were.
     ev("_tools._load()")
     QtTest.QTest.qWait(200)
-    out["kept"] = [ev("_tools.sideOf('chips')"), ev("_tools.dockOf('chips')")]
+    kept_h = scene_rect("_poolFloat")["h"]
+    out["kept"] = [ev("_tools.sideOf('chips')"), round(kept_h - grown["h"])]
     out["saved-top"] = window_placement.tool_row_state("button-map")
-    # Reset Tool Rows: every button back on the bottom row, docks there too.
+    # Reset Tool Rows: every button back on its own row, panels at their
+    # first size.
     ev("_tools.resetPlaces()")
     QtTest.QTest.qWait(200)
-    out["reset-rows"] = [ev("_tools.order('top').length"), ev("_tools.dockOf('chips')")]
+    out["reset-rows"] = [ev("_tools.order('top').length"),
+                         ev("_tools.sizeOf('chips') === null")]
 
     # --- zoom ------------------------------------------------------------------
     face = "_ed().face"

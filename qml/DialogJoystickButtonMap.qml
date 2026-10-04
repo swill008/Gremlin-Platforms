@@ -161,45 +161,7 @@ ApplicationWindow {
     property bool snapOn: true
     property bool snapEntOn: true
     property int gridSize: 8
-    property real panelW: 0
-    property real panelH: 0
-    property real _prsX: 0
-    property real _prsY: 0
-    property real _prsW: 0
-    property real _prsH: 0
-    property real _prmX: 0
-    property real _prmY: 0
-    property string _prEdge: ""
     property bool saveOk: true
-
-    // The pool's height stays inside the map (it is docked: its place and
-    // width follow the window).
-    function clampPool() {
-        var box = _poolFloat
-        if (!box || !box.parent)
-            return
-        panelH = Math.max(Style.dp(90), Math.min(panelH, box.parent.height - Style.dp(16)))
-    }
-
-    function startPanelResize(edge, mx, my, item) {
-        _prEdge = edge
-        _prsX = _poolFloat.x
-        _prsY = _poolFloat.y
-        _prsW = _poolFloat.width
-        _prsH = _poolFloat.height
-        var p = item.mapToItem(_poolFloat.parent, mx, my)
-        _prmX = p.x
-        _prmY = p.y
-    }
-
-    function movePanelResize(mx, my, item) {
-        var p = item.mapToItem(_poolFloat.parent, mx, my)
-        var host = _poolFloat.parent
-        // Docked at the top it grows down (its bottom edge), else up.
-        var nh = _prEdge === "s" ? _prsH + (p.y - _prmY) : _prsH - (p.y - _prmY)
-        panelH = Math.max(Style.dp(90), Math.min(nh, host.height - Style.dp(16)))
-        panelW = _poolFloat.width
-    }
 
     ViewerDeviceModel { id: _devices }
     HardwareProfile { id: _hw }
@@ -445,7 +407,6 @@ ApplicationWindow {
         selectedNode = null
         Qt.callLater(function() {
             refreshReservoir()
-            clampPool()
             applyGridToEditor()
             hydrateOverlays((_ed() && _ed().nodes) ? _ed().nodes : workNodes)
         })
@@ -832,7 +793,6 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        panelH = Style.dp(160)
         liveNodes = []
         workNodes = []
         resItems = []
@@ -1644,15 +1604,33 @@ ApplicationWindow {
     CommandPalette {
         id: _palette
         owners: ["buttonmap"]
+        // Joined to its tab on the tool row (not dimming the window, so the
+        // two read as one piece).
+        readonly property var tab: {
+            _tools.rev
+            _tools.layoutRev
+            return opened ? _tools.tabRect("palette", _buttonMap.contentItem) : null
+        }
+        readonly property bool atTop: { _tools.rev; return _tools.sideOf("palette") === "top" }
+        modal: false
+        x: tab ? Math.max(Style.dp(8), Math.min(tab.x, (parent ? parent.width : 0) - width - Style.dp(8)))
+               : (parent ? Math.round((parent.width - width) / 2) : 0)
+        y: tab ? (atTop ? tab.y + tab.h : tab.y - height)
+               : (parent ? Math.round(parent.height * 0.12) : 0)
+        Component.onCompleted: _tools.setPaneColor("palette", Style.menuBg)
         beforeOpen: function() {
             Commands.removeOwner("buttonmap")
             Commands.defineFromMenuBar(_menuBar, "buttonmap")
         }
         // Its tool in the tool row: pinned, it stays open after a command.
         keepOpen: _tools.isPinned("palette")
-        onOpened: _tools.setOpen("palette", true)
+        onOpened: {
+            _tools.setOpen("palette", true)
+            _tools.setPaneShown("palette", true)
+        }
         onClosed: {
             Commands.removeOwner("buttonmap")
+            _tools.setPaneShown("palette", false)
             _tools.setOpen("palette", false)
         }
     }
@@ -2948,67 +2926,30 @@ ApplicationWindow {
                 }
 
                 // Button Map Options as a pane (the Options tool, or Edit >
-                // Button Map Options...): docked along the top or the bottom,
-                // next to the row with its button (it follows the button to
-                // the other row), nearest the edge when the pool is there too.
-                // Unlocked: drag it by its border to the other edge (it snaps
-                // there). As tall as its group needs.
-                Item {
+                // Button Map Options...), joined to its tab (ToolPane): as
+                // large as its group needs until resized.
+                ToolPane {
                     id: _optionsFloat
                     objectName: "optionsPane"
-                    readonly property bool atTop: { _tools.rev; return _tools.dockOf("options") === "top" }
-                    property real dragDy: 0
-                    visible: _tools.isOpen("options")
-                    z: 32
-                    x: Style.dp(8)
-                    width: parent.width - Style.dp(16)
-                    height: Math.min(_optionsPanel.wanted + Style.dp(10), parent.height * 0.6)
-                    y: (atTop ? Style.dp(8) : parent.height - height - Style.dp(8)) + dragDy
+                    dock: _tools
+                    toolId: "options"
+                    defaultW: _optionsPanel.wantedW + Style.dp(10)
+                    defaultH: _optionsPanel.wanted + Style.dp(10)
+                    minW: Style.dp(320)
+                    minH: Style.dp(120)
 
                     Rectangle {
                         anchors.fill: parent
-                        radius: Style.dp(10)
-                        color: Qt.rgba(Style.bgRaised.r, Style.bgRaised.g, Style.bgRaised.b, 0.96)
+                        radius: Style.dp(8)
+                        color: Style.bgCard
                         border.color: Style.lineStrong
                         border.width: 1
                     }
-                    // Its border: takes the clicks (not the map's), and drags
-                    // the pane to the other edge (unlocked).
+                    // Its clicks are its own, not the map's.
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.AllButtons
-                        hoverEnabled: true
-                        readonly property bool canMove: !_tools.isLocked("options")
-                        cursorShape: !canMove ? Qt.ArrowCursor
-                                     : (pressed && moved ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
-                        property real startY: 0
-                        property bool moved: false
-                        onPressed: (m) => {
-                            m.accepted = true
-                            startY = mapToItem(_optionsFloat.parent, m.x, m.y).y
-                            moved = false
-                        }
-                        onPositionChanged: (m) => {
-                            if (!pressed || !canMove || m.buttons !== Qt.LeftButton)
-                                return
-                            var dy = mapToItem(_optionsFloat.parent, m.x, m.y).y - startY
-                            if (Math.abs(dy) > Style.dp(6))
-                                moved = true
-                            if (moved)
-                                _optionsFloat.dragDy = dy
-                        }
-                        onReleased: {
-                            if (!moved)
-                                return
-                            var middle = _optionsFloat.y + _optionsFloat.height / 2
-                            _optionsFloat.dragDy = 0
-                            moved = false
-                            _tools.setDock("options", middle < _optionsFloat.parent.height / 2 ? "top" : "bottom")
-                        }
-                        onCanceled: {
-                            _optionsFloat.dragDy = 0
-                            moved = false
-                        }
+                        onPressed: (m) => { m.accepted = true }
                         onWheel: (w) => { w.accepted = true }
                     }
                     RigOptionsPanel {
@@ -3020,42 +2961,21 @@ ApplicationWindow {
                     }
                 }
 
-                // The chips not on the map: docked along the top or the
-                // bottom, next to the row with its Chips button (it follows
-                // the button to the other row). Unlocked: drag it to the
-                // other edge on its own (it snaps there), and drag its inner
-                // edge to make it taller or shorter.
-                Item {
+                // The chips not on the map, as wide as the map, joined to the
+                // Chips tab (ToolPane) wherever it sits on its row. Unlocked:
+                // its edge facing the map makes it taller or shorter.
+                ToolPane {
                     id: _poolFloat
                     objectName: "chipPool"
-                    readonly property bool atTop: { _tools.rev; return _tools.dockOf("chips") === "top" }
-                    // While dragged: how far it has moved.
-                    property real dragDy: 0
-                    visible: editing && _tools.isOpen("chips")
-                    z: 30
-                    x: Style.dp(8)
-                    width: parent.width - Style.dp(16)
-                    // The Options pane on the same edge comes first.
-                    readonly property real paneRoom: (_optionsFloat.visible && _optionsFloat.atTop === atTop)
-                                                     ? _optionsFloat.height + Style.dp(8) : 0
-                    height: Math.max(Style.dp(90), Math.min(panelH, parent.height - Style.dp(16) - paneRoom))
-                    y: (atTop ? Style.dp(8) + paneRoom : parent.height - height - Style.dp(8) - paneRoom) + dragDy
+                    dock: _tools
+                    toolId: "chips"
+                    shown: editing
+                    fullWidth: true
+                    defaultH: Style.dp(160)
+                    minH: Style.dp(90)
 
-                    component PoolGrip: MouseArea {
-                        required property string edge
-                        preventStealing: true
-                        hoverEnabled: true
-                        onPressed: (m) => startPanelResize(edge, m.x, m.y, this)
-                        onPositionChanged: (m) => {
-                            if (pressed)
-                                movePanelResize(m.x, m.y, this)
-                        }
-                    }
-
-                    // Its background: takes the clicks (not the map's), and
-                    // drags the pool to the other edge (unlocked).
+                    // Its background: takes the clicks (not the map's).
                     MouseArea {
-                        id: _poolMove
                         anchors.fill: parent
                         z: 0
                         acceptedButtons: Qt.AllButtons
@@ -3064,39 +2984,7 @@ ApplicationWindow {
                             var e = _buttonMap._ed()
                             return !(e && e.dragKind && e.dragKind.length)
                         }
-                        readonly property bool canMove: !_tools.isLocked("chips")
-                        cursorShape: !canMove ? Qt.ArrowCursor
-                                     : (pressed && moved ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
-                        property real startY: 0
-                        property bool moved: false
-                        onPressed: (m) => {
-                            m.accepted = true
-                            startY = mapToItem(_poolFloat.parent, m.x, m.y).y
-                            moved = false
-                        }
-                        onPositionChanged: (m) => {
-                            if (!pressed || !canMove || m.buttons !== Qt.LeftButton)
-                                return
-                            var dy = mapToItem(_poolFloat.parent, m.x, m.y).y - startY
-                            if (Math.abs(dy) > Style.dp(6))
-                                moved = true
-                            if (moved)
-                                _poolFloat.dragDy = dy
-                        }
-                        onReleased: {
-                            if (!moved)
-                                return
-                            // Snaps to the edge nearer its middle.
-                            var middle = _poolFloat.y + _poolFloat.height / 2
-                            var top = middle < _poolFloat.parent.height / 2
-                            _poolFloat.dragDy = 0
-                            moved = false
-                            _tools.setDock("chips", top ? "top" : "bottom")
-                        }
-                        onCanceled: {
-                            _poolFloat.dragDy = 0
-                            moved = false
-                        }
+                        onPressed: (m) => { m.accepted = true }
                         onClicked: (m) => { m.accepted = true }
                         onDoubleClicked: (m) => { m.accepted = true }
                         onWheel: (w) => { w.accepted = true }
@@ -3111,8 +2999,8 @@ ApplicationWindow {
                     Rectangle {
                         anchors.fill: parent
                         z: 1
-                        radius: Style.dp(12)
-                        color: Qt.rgba(Style.bgRaised.r, Style.bgRaised.g, Style.bgRaised.b, 0.92)
+                        radius: Style.dp(8)
+                        color: Style.bgCard
                         border.color: _poolFloat.dropHot ? Style.accent : Style.lineStrong
                         border.width: _poolFloat.dropHot ? Style.dp(3) : 1
                     }
@@ -3271,18 +3159,6 @@ ApplicationWindow {
                             }
                         }
                     }
-
-                    // The edge facing the map: drag to resize (unlocked).
-                    PoolGrip {
-                        edge: _poolFloat.atTop ? "s" : "n"
-                        z: 3
-                        enabled: !_tools.isLocked("chips")
-                        height: Style.dp(6)
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        y: _poolFloat.atTop ? parent.height - height : 0
-                        cursorShape: enabled ? Qt.SizeVerCursor : Qt.ArrowCursor
-                    }
                 }
 
                 // Layers: every item with an eye and a lock, top of the stack first.
@@ -3317,78 +3193,49 @@ ApplicationWindow {
                     restoreMode: Binding.RestoreNone
                 }
 
-                RigLayersPanel {
-                    id: _layersPanel
-                    ed: _buttonMap._ed()
-                    visible: editing && _tools.isOpen("layers") && !!ed
-                    z: 31
-                    width: _buttonMap.layersW
-                    x: parent.width - width - Style.dp(12)
-                    // Clear of the pool and the Options pane: below those
-                    // docked at the top, above those at the bottom. (Of the
-                    // parent's height: the panel's own would loop.)
-                    y: {
-                        var top = Style.dp(12)
-                        var docked = [_poolFloat, _optionsFloat]
-                        for (var i = 0; i < docked.length; i++) {
-                            if (docked[i].visible && docked[i].atTop)
-                                top = Math.max(top, docked[i].y + docked[i].height + Style.dp(8))
-                        }
-                        return top
-                    }
-                    height: {
-                        var bottom = parent.height - Style.dp(12)
-                        var docked = [_poolFloat, _optionsFloat]
-                        for (var i = 0; i < docked.length; i++) {
-                            if (docked[i].visible && !docked[i].atTop)
-                                bottom = Math.min(bottom, docked[i].y - Style.dp(8))
-                        }
-                        return Math.max(Style.dp(120), bottom - y)
-                    }
-                    onCloseRequested: _tools.setOpen("layers", false)
-                    // Its left edge: drag to make it wider or narrower (unlocked).
-                    MouseArea {
-                        z: 5
-                        enabled: !_tools.isLocked("layers")
-                        width: Style.dp(6)
-                        anchors.top: parent.top
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        cursorShape: enabled ? Qt.SizeHorCursor : Qt.ArrowCursor
-                        preventStealing: true
-                        property real _startX: 0
-                        property real _startW: 0
-                        onPressed: (m) => {
-                            _startX = mapToItem(null, m.x, m.y).x
-                            _startW = _buttonMap.layersW
-                        }
-                        onPositionChanged: (m) => {
-                            if (!pressed)
-                                return
-                            var dx = mapToItem(null, m.x, m.y).x - _startX
-                            var most = Math.max(Style.dp(200), _layersPanel.parent.width - Style.dp(40))
-                            _buttonMap.layersW = Math.max(Style.dp(200), Math.min(most, _startW - dx))
-                        }
+                // Layers, joined to its tab (ToolPane).
+                ToolPane {
+                    id: _layersPane
+                    objectName: "layersPane"
+                    dock: _tools
+                    toolId: "layers"
+                    shown: editing && !!_buttonMap._ed()
+                    defaultW: _buttonMap.layersW
+                    defaultH: parent.height
+                    minW: Style.dp(200)
+                    minH: Style.dp(120)
+
+                    RigLayersPanel {
+                        id: _layersPanel
+                        anchors.fill: parent
+                        ed: _buttonMap._ed()
+                        onCloseRequested: _tools.setOpen("layers", false)
                     }
                 }
 
                 // Properties: the selected item's place, size, angle and style.
-                RigPropsPanel {
-                    id: _propsPanel
-                    ed: _buttonMap._ed()
-                    visible: editing && _tools.isOpen("props") && !!ed && ((ed.selectedIds || []).length > 0 || ed.selectedId !== "")
-                    z: 31
-                    width: Style.dp(300)
-                    x: Style.dp(12)
-                    y: Style.dp(12)
-                    height: Math.min(implicitHeight, parent.height - Style.dp(24))
-                    onCloseRequested: _tools.setOpen("props", false)
-                }
+                // Properties, joined to its tab (ToolPane), while something is
+                // selected.
+                ToolPane {
+                    id: _propsPane
+                    objectName: "propsPane"
+                    dock: _tools
+                    toolId: "props"
+                    shown: {
+                        var ed = _buttonMap._ed()
+                        return editing && !!ed && ((ed.selectedIds || []).length > 0 || ed.selectedId !== "")
+                    }
+                    defaultW: Style.dp(300)
+                    defaultH: _propsPanel.implicitHeight
+                    minW: Style.dp(240)
+                    minH: Style.dp(120)
 
-                Connections {
-                    target: _mapHost
-                    function onWidthChanged() { if (editing) clampPool() }
-                    function onHeightChanged() { if (editing) clampPool() }
+                    RigPropsPanel {
+                        id: _propsPanel
+                        anchors.fill: parent
+                        ed: _buttonMap._ed()
+                        onCloseRequested: _tools.setOpen("props", false)
+                    }
                 }
 
                 MouseArea {

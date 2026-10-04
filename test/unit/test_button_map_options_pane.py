@@ -10,7 +10,8 @@
 - The groups down the left, the chosen group's settings on the right.
 - A setting changed in the pane is kept at once; the group shown is kept.
 - Library shows the saved styles and templates.
-- With the chip pool on the same edge, the pool sits after the pane.
+- Joined to its tab, as wide as its settings need; its right edge makes it
+  wider (kept).
 """
 
 from __future__ import annotations
@@ -50,7 +51,9 @@ def test_the_menu_opens_the_pane_under_the_top_row(run: dict) -> None:
     assert run["tool"] == ["top", False]
     assert run["menu"] is True
     assert run["open"] == [True, True]
-    assert 0 <= run["under-top-row"] <= 24
+    assert abs(run["under-top-row"]) <= 1
+    assert run["at-tab"] is True
+    assert run["narrower"] is True
 
 
 def test_groups_and_their_settings(run: dict) -> None:
@@ -68,5 +71,6 @@ def test_a_change_is_kept_and_so_is_the_group(run: dict) -> None:
     assert run["kept-group"] == "editing"
 
 
-def test_the_pool_sits_after_the_pane(run: dict) -> None:
-    assert 0 <= run["stacked"] <= 12
+def test_its_right_edge_resizes_it(run: dict) -> None:
+    assert abs(run["wider"] - 40) <= 3
+    assert '"w":' in run["size-kept"]

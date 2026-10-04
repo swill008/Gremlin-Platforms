@@ -32,7 +32,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 
 um.UpdateModel.startup = lambda self, *a, **k: None
 
-from PySide6 import QtCore, QtQml, QtQuick, QtTest  # noqa: E402
+from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
 
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
@@ -91,10 +91,18 @@ def main() -> None:
     pane = child("optionsPane")
     top_row = child("toolRowTop")
     out["open"] = [ev("_tools.isOpen('options')"), pane.isVisible()]
+    # Joined to its tab: reaching the row, starting where the tab does, and
+    # only as wide as its settings need.
+    tab = child("tool:options")
+    pane_at = pane.mapToScene(QtCore.QPointF(0, 0))
+    tab_at = tab.mapToScene(QtCore.QPointF(0, 0))
     out["under-top-row"] = round(
-        pane.mapToScene(QtCore.QPointF(0, 0)).y()
-        - top_row.mapToScene(QtCore.QPointF(0, top_row.height())).y()
-    )
+        pane_at.y() - top_row.mapToScene(QtCore.QPointF(0, top_row.height())).y())
+    # Under its tab (shifted left to stay in the window when the tab is near
+    # the right side).
+    out["at-tab"] = (pane_at.x() <= tab_at.x() + 0.5
+                     and tab_at.x() + tab.width() <= pane_at.x() + pane.width() + 0.5)
+    out["narrower"] = pane.width() < win.width() - 40
     out["groups"] = [
         g for g in ("labels", "editing", "autosave", "view", "colours", "library")
         if child("optionsGroup:" + g) is not None
@@ -136,14 +144,25 @@ def main() -> None:
                if c.metaObject().className().startswith("OptionButtonMapLibrary")]
     out["library"] = bool(library) and library[0].isVisible()
 
-    # Editing: the pool on the same edge (top) sits after the pane.
-    call(win, "enterEdit")
-    QtTest.QTest.qWait(800)
+    # Its right edge makes it wider (unlocked), kept for next time.
     ev("_opts.paneGroup = 'labels'")
-    ev("_tools.setDock('chips', 'top')")
     QtTest.QTest.qWait(300)
-    pane_end = ev("_optionsFloat.y") + ev("_optionsFloat.height")
-    out["stacked"] = round(ev("_poolFloat.y") - pane_end)
+    before = pane.width()
+    at = pane.mapToScene(QtCore.QPointF(pane.width() - 2, pane.height() / 2))
+    Button = QtCore.Qt.MouseButton
+    none = QtCore.Qt.KeyboardModifier.NoModifier
+    QtTest.QTest.mousePress(win, Button.LeftButton, none, at.toPoint())
+    for i in range(1, 9):
+        p = at + QtCore.QPointF(5 * i, 0)
+        move = QtGui.QMouseEvent(QtCore.QEvent.Type.MouseMove, p, p, Button.NoButton,
+                                 Button.LeftButton, none)
+        QtCore.QCoreApplication.sendEvent(win, move)
+        QtTest.QTest.qWait(15)
+    QtTest.QTest.mouseRelease(win, Button.LeftButton, none,
+                              (at + QtCore.QPointF(40, 0)).toPoint())
+    QtTest.QTest.qWait(300)
+    out["wider"] = round(pane.width() - before)
+    out["size-kept"] = ev("JSON.stringify(_tools.sizeOf('options'))")
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)
 

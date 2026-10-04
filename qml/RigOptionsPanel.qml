@@ -29,6 +29,10 @@ Item {
         return opts.entries.filter(function(e) { return e.group === g })
     }
     readonly property int columns: _settings.width >= Style.dp(560) ? 2 : 1
+    // As wide as two columns of settings need (Library: its lists).
+    readonly property real wantedW: group === "library"
+        ? Style.dp(560)
+        : Style.dp(120) + 1 + 2 * Style.dp(14) + 2 * Style.dp(320) + Style.dp(24)
     // As tall as the group needs (Library: room for its lists).
     readonly property real wanted: group === "library"
         ? Style.dp(300)

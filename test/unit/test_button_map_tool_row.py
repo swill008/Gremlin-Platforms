@@ -122,23 +122,24 @@ def test_a_button_moves_to_the_top_row_with_its_panel(run: dict) -> None:
     side, dock, top, bottom = run["chips-up"]
     assert (side, dock) == ("top", "top")
     assert sorted(top) == ["chips", "options"] and "chips" not in bottom
-    # The pool docks under the top row.
-    assert 0 <= run["pool-at-top"] <= 12
+    # The pool reaches the top row, its tab over it.
+    assert abs(run["pool-at-top"]) <= 1
+    assert run["tab-over-pool"] is True
 
 
-def test_the_pool_moves_on_its_own(run: dict) -> None:
-    dock, side, gap = run["pool-dragged"]
-    assert (dock, side) == ("bottom", "top")
-    assert 0 <= gap <= 12
-    assert run["pool-locked"] == "bottom"
+def test_the_pool_resizes_and_stays_with_its_tab(run: dict) -> None:
+    assert abs(run["pool-resized"] - 60) <= 2
+    assert run["pool-stays"] == ["top", 0]
+    assert run["pool-locked"] == 0
 
 
 def test_rows_and_docks_are_kept_and_reset(run: dict) -> None:
-    assert run["kept"] == ["top", "bottom"]
+    assert run["kept"] == ["top", 0]
     items = run["saved-top"]["items"]["chips"]
-    assert (items["side"], items["dock"]) == ("top", "bottom")
-    # Each back on the row it starts on: Options on the top one.
-    assert run["reset-rows"] == [1, "bottom"]
+    assert items["side"] == "top" and items["h"] > 0
+    # Each back on the row it starts on (Options on the top one), sizes
+    # forgotten.
+    assert run["reset-rows"] == [1, True]
 
 
 def test_the_view_zooms_out_to_half(run: dict) -> None:

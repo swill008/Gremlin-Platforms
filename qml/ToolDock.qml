@@ -17,9 +17,9 @@ import Gremlin.Style
 //     small grid, and goes to the nearest free spot rather than onto another
 //     button. Until one is moved (and after resetPlaces()) each row's buttons
 //     sit together, centred.
-// A tool with a panel also has a dock, the edge its panel sits against
-// ("top" or "bottom"): it follows the button to another row, and the panel
-// can be dragged to the other edge on its own (dockOf / setDock).
+// A tool's panel (ToolPane) is joined to its tab: it opens from the tab's
+// place and follows it to another row; its size is kept here (sizeOf /
+// setSize), and the panel opened or clicked last is in front (raise).
 // What is open, pinned and locked, the rows, places and docks are kept with
 // the window layout under `name`. Adding a tool is one more entry in `tools`.
 //
@@ -53,6 +53,15 @@ Item {
     // A button being dragged (its id), and the row it would land on.
     property string dragging: ""
     property string dropSide: ""
+    // Bumped when a row has placed its buttons: panels follow their tabs.
+    property int layoutRev: 0
+    // Panel colors by tool (ToolPane gives its own): an open tab takes it.
+    property var paneColors: ({})
+    // Tools whose panel is showing (id -> true): their tab joins it.
+    property var paneShown: ({})
+    // The order panels came to the front in (id -> count), and the count.
+    property var _front: null
+    property int _frontCount: 0
     // Bumped on every change: bindings on the getters follow it.
     property int rev: 0
 
@@ -71,8 +80,7 @@ Item {
         var s = _state[id]
         if (!s) {
             var d = defaults[id] || {}
-            var home = _side(d.side)
-            s = { open: !!d.open, pinned: !!d.pinned, locked: !!d.locked, side: home, dock: home }
+            s = { open: !!d.open, pinned: !!d.pinned, locked: !!d.locked, side: _side(d.side), w: 0, h: 0 }
             _state[id] = s
         }
         return s
@@ -98,10 +106,10 @@ Item {
                 s.locked = !!keep.locked
                 // Only a pinned tool reopens in a new session.
                 s.open = !!keep.open && s.pinned
-                if (keep.side !== undefined) {
+                if (keep.side !== undefined)
                     s.side = _side(keep.side)
-                    s.dock = _side(keep.dock || keep.side)
-                }
+                s.w = Math.max(0, Number(keep.w) || 0)
+                s.h = Math.max(0, Number(keep.h) || 0)
             }
         }
         // The saved order, then any tool it doesn't have yet.
@@ -136,7 +144,8 @@ Item {
         var items = {}
         for (var i = 0; i < tools.length; i++) {
             var s = _entry(tools[i].id)
-            items[tools[i].id] = { open: s.open, pinned: s.pinned, locked: s.locked, side: s.side, dock: s.dock }
+            items[tools[i].id] = { open: s.open, pinned: s.pinned, locked: s.locked, side: s.side,
+                                   w: s.w || 0, h: s.h || 0 }
         }
         _store.saveToolRowState(name, JSON.stringify({ order: _order, items: items, pos: _pos }))
     }
@@ -153,9 +162,76 @@ Item {
     function isOpen(id) { rev; return _entry(id).open && isUsable(id) }
     function isPinned(id) { rev; return _entry(id).pinned }
     function isLocked(id) { rev; return _entry(id).locked }
-    // The row a tool's button is on, and the edge its panel docks to.
+    // The row a tool's button is on (its panel is there too).
     function sideOf(id) { rev; return _entry(id).side }
-    function dockOf(id) { rev; return _entry(id).dock }
+    function dockOf(id) { return sideOf(id) }
+
+    // A panel's kept size ({w, h}; w 0: as wide as the map), or null.
+    function sizeOf(id) {
+        rev
+        var s = _entry(id)
+        return (s.w > 0 || s.h > 0) ? { w: s.w || 0, h: s.h || 0 } : null
+    }
+
+    function setSize(id, w, h) {
+        var s = _entry(id)
+        s.w = Math.round(Math.max(0, w))
+        s.h = Math.round(Math.max(0, h))
+        _save()
+    }
+
+    // Brings a panel to the front (opened, clicked or resized).
+    function raise(id) {
+        var next = {}
+        for (var k in (_front || {}))
+            next[k] = _front[k]
+        next[id] = ++_frontCount
+        _front = next
+    }
+
+    // The panel's place in the front order (0: behind the others).
+    function frontOf(id) {
+        if (!_front || !_front[id])
+            return 0
+        var behind = 0
+        for (var k in _front) {
+            if (_front[k] < _front[id])
+                behind++
+        }
+        return behind + 1
+    }
+
+    function setPaneColor(id, color) {
+        var next = {}
+        for (var k in paneColors)
+            next[k] = paneColors[k]
+        next[id] = color
+        paneColors = next
+    }
+
+    function setPaneShown(id, on) {
+        if (!!paneShown[id] === !!on)
+            return
+        var next = {}
+        for (var k in paneShown)
+            next[k] = paneShown[k]
+        next[id] = !!on
+        paneShown = next
+    }
+
+    function paneColor(id) {
+        return paneColors[id] !== undefined ? paneColors[id] : Style.bgCard
+    }
+
+    // A tool's tab on its row, in item's coordinates ({x, y, w, h}), or null.
+    function tabRect(id, item) {
+        var row = rows ? rows[sideOf(id)] : null
+        var b = row ? row._button(id) : null
+        if (!b || !item)
+            return null
+        var p = b.mapToItem(item, 0, 0)
+        return { x: p.x, y: p.y, w: b.width, h: b.height }
+    }
 
     // Opening a tool hides the other unpinned ones.
     function setOpen(id, on) {
@@ -189,15 +265,6 @@ Item {
 
     function setLocked(id, on) {
         _entry(id).locked = !!on
-        _save()
-        toolChanged(id)
-    }
-
-    // A tool's panel to the other edge on its own (its button stays).
-    function setDock(id, side) {
-        if (isLocked(id))
-            return
-        _entry(id).dock = _side(side)
         _save()
         toolChanged(id)
     }
@@ -241,15 +308,15 @@ Item {
     }
 
     // Back to every button on the row it starts on (the bottom unless its
-    // defaults say), together and centred, its panel docked there (View >
-    // Reset Tool Rows).
+    // defaults say), together and centred, its panel at its first size (View
+    // > Reset Tool Rows).
     function resetPlaces() {
         _pos = {}
         for (var i = 0; i < tools.length; i++) {
             var s = _entry(tools[i].id)
-            var home = _side((defaults[tools[i].id] || {}).side)
-            s.side = home
-            s.dock = home
+            s.side = _side((defaults[tools[i].id] || {}).side)
+            s.w = 0
+            s.h = 0
         }
         _save()
         relayout()
@@ -290,11 +357,7 @@ Item {
             }
             _pos = all
         }
-        var entry = _entry(id)
-        if (entry.side !== side) {
-            entry.side = side
-            entry.dock = side
-        }
+        _entry(id).side = side
         var next = {}
         for (var key in _pos)
             next[key] = _pos[key]
