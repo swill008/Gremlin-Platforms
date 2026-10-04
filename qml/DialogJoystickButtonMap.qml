@@ -2635,6 +2635,10 @@ ApplicationWindow {
                     onTriggered: _tools.toggle("exportArea")
                 }
                 ThemedMenuItem {
+                    text: "Reset Tool Row"
+                    onTriggered: _tools.resetPlaces()
+                }
+                ThemedMenuItem {
                     text: "Export Area Color…"
                     onTriggered: {
                         var e = _ed()

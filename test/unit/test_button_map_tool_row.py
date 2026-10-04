@@ -10,6 +10,8 @@ its own process and user folder).
   pool) and Properties start open and pinned, the others hidden.
 - Unpinned tools hide when the map is clicked; pinned ones stay.
 - An unlocked button moves along the row; a locked one stays.
+- A button let go anywhere on the row snaps to the edges, middle or a small
+  grid and goes to the nearest free spot; Reset Tool Row centres them again.
 - The status line (view, photo size, module file) is one slim row at the
   bottom, and the pool docks just above the tool row.
 - What is open, pinned and locked, and the order, are saved.
@@ -71,6 +73,19 @@ def test_unlocked_buttons_move_locked_ones_stay(run: dict) -> None:
     moved = ["palette", "chips", "props", "layers", "exportArea"]
     assert run["6-moved"]["order"] == moved
     assert run["7-locked-move"]["order"] == moved
+
+
+def test_buttons_go_anywhere_on_the_row(run: dict) -> None:
+    gap = run["gap"]
+    # Let go near the left edge: snapped to it.
+    assert abs(run["palette-left"]["palette"] - gap) < 1
+    # Let go onto another button: beside it, not on it.
+    places, widths = run["chips-onto-palette"], run["widths"]
+    spans = sorted((places[t], places[t] + widths[t]) for t in places)
+    assert all(a[1] + gap - 1 <= b[0] for a, b in zip(spans, spans[1:]))
+    assert all(0 <= x and x + widths[t] <= run["row-width"] for t, x in places.items())
+    # Reset: together and centred again.
+    assert run["reset"] == run["centred"]
 
 
 def test_status_line_and_docked_pool(run: dict) -> None:

@@ -99,6 +99,36 @@ def main() -> None:
     step("_tools.setOpen('palette', true)", "8-palette")
     step("_palette.close()", "9-palette-closed")
 
+    # Any place on the row: let go at the left edge (snaps to it), then a
+    # button onto it (goes to the nearest free spot), then back to centred.
+    ev("_tools.setLocked('palette', false)")
+
+    def places() -> dict:
+        return json.loads(ev(
+            "(function(){ var o = {}; var ids = _tools.order();"
+            " for (var i = 0; i < ids.length; i++) o[ids[i]] = _tools.placeOf(ids[i]);"
+            " return JSON.stringify(o) })()"
+        ))
+
+    out["centred"] = places()
+    ev("_tools.dropAt('palette', 3)")
+    QtTest.QTest.qWait(200)
+    out["palette-left"] = places()
+    ev("_tools.dropAt('chips', _tools.placeOf('palette') + 4)")
+    QtTest.QTest.qWait(200)
+    out["chips-onto-palette"] = places()
+    out["widths"] = json.loads(ev(
+        "(function(){ var o = {}; var ids = _tools.order();"
+        " for (var i = 0; i < ids.length; i++) { var b = _tools._button(ids[i]);"
+        " o[ids[i]] = b.width } return JSON.stringify(o) })()"
+    ))
+    out["row-width"] = ev("_tools.width")
+    out["gap"] = ev("_tools.gap")
+    ev("_tools.resetPlaces()")
+    QtTest.QTest.qWait(200)
+    out["reset"] = places()
+    ev("_tools.setLocked('palette', true)")
+
     # The bars: the status line one row of small text, the tool row below
     # the map; the pool docked just above the tool row.
     out["status-height"] = ev("_statusLine.height")
