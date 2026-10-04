@@ -338,12 +338,6 @@ Window {
                 }
                 Button {
                     Layout.fillWidth: true
-                    text: "Export Modes…"
-                    enabled: !!_win.host && _win.host.profileModes.length > 0 && _win.host.targetGuid.length > 0
-                    onClicked: _win.host.openExportModes()
-                }
-                Button {
-                    Layout.fillWidth: true
                     text: "Close"
                     onClicked: _win.close()
                 }

@@ -23,7 +23,6 @@ from gremlin.ui.hardware_profile import (
     HardwareProfile,
     exact_page,
     save_area,
-    save_pages,
 )
 
 
@@ -85,49 +84,6 @@ def test_nothing_to_write_writes_nothing(tmp_path: pathlib.Path) -> None:
     assert not save_area(QtGui.QImage(), 10, 10, target, "png")
     assert not save_area(_area_picture(), 0, 10, target, "png")
     assert not target.exists()
-
-
-def _page(colour: str) -> QtGui.QImage:
-    image = QtGui.QImage(120, 60, QtGui.QImage.Format.Format_RGB32)
-    image.fill(QtGui.QColor(colour))
-    return image
-
-
-def test_export_modes_pdf_has_a_page_per_mode(tmp_path: pathlib.Path) -> None:
-    target = tmp_path / "map.pdf"
-    pages = [("Default", _page("#FF0000")), ("Combat", _page("#00FF00"))]
-
-    assert save_pages(pages, target, "pdf") == [target]
-    data = target.read_bytes()
-    assert data.count(b"/Type /Page\n") + data.count(b"/Type /Page ") >= 2
-    assert b"/MediaBox [0 0 90.000000 45.000000]" in data
-
-
-def test_export_modes_images_get_one_file_each(tmp_path: pathlib.Path) -> None:
-    target = tmp_path / "map.png"
-    pages = [("Default", _page("#FF0000")), ("Nav/Land", _page("#00FF00"))]
-
-    written = save_pages(pages, target, "png")
-    assert [p.name for p in written] == ["map - Default.png", "map - Nav_Land.png"]
-    assert QtGui.QImage(str(written[1])).pixelColor(5, 5).name() == "#00ff00"
-    assert not target.exists()
-
-
-def test_export_pages_through_the_window_slots(tmp_path: pathlib.Path) -> None:
-    profile = HardwareProfile()
-    profile.beginExportPages()
-    assert profile.addExportPage(_area_picture(), 120, 60, "A")
-    assert not profile.addExportPage(QtGui.QImage(), 10, 10, "B")
-    assert profile.addExportPage(_area_picture(121, 61), 120, 60, "C")
-    url = QtCore.QUrl.fromLocalFile(str(tmp_path / "modes.jpg")).toString()
-    assert profile.finishExportPages(url, "jpg", "{}") == 2
-    assert sorted(p.name for p in tmp_path.iterdir()) == [
-        "modes - A.jpg",
-        "modes - C.jpg",
-    ]
-    assert QtGui.QImage(str(tmp_path / "modes - C.jpg")).size() == QtCore.QSize(120, 60)
-    # Finished: nothing left over for the next export.
-    assert profile.finishExportPages(url, "jpg", "{}") == 0
 
 
 def test_save_area_slot(tmp_path: pathlib.Path) -> None:

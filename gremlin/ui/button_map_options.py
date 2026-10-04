@@ -32,7 +32,7 @@ SECTION = "button-map"
 OptionValue = bool | int | float | str | list
 
 # Groups in the order Options shows them.
-GROUPS = ("labels", "editing", "autosave", "view", "export", "colours", "library")
+GROUPS = ("labels", "editing", "autosave", "view", "colours", "library")
 
 # (group, name, type, default, description, properties). A name's number only
 # orders the entries inside their group.
@@ -117,12 +117,6 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         "view", "01-zoom-speed", PropertyType.Int, 100,
         "How fast the mouse wheel zooms the map, in percent of the usual speed.",
         {"min": 25, "max": 300},
-    ),
-    (
-        "export", "02-mode-title", PropertyType.Bool, True,
-        "Print & Export > Export Modes writes each mode's name at the top of "
-        "its page.",
-        {},
     ),
     (
         "colours", "01-recent-colours", PropertyType.Int, 10,

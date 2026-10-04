@@ -15,8 +15,7 @@ import Gremlin.Style
 //
 // Jobs wait their turn: a preview waits behind an export. A job is
 //   { snap: snapshot(editor), pixels: { w, h }, light: bool,
-//     pages: [{ labels, textMode, title }],
-//     onPage: function(index, grabResult or null), onDone: function() }
+//     onPicture: function(grabResult or null) }
 Item {
     id: _r
 
@@ -81,7 +80,6 @@ Item {
         var k = j.L.w / Math.max(1, s.area.w)
         var cap = maxSide / dpr / Math.max(1, s.w, s.h)
         j.k = Math.max(0.05, Math.min(k, cap))
-        j.i = 0
         j.state = "load"
         j.ticks = 0
         _job = j
@@ -144,15 +142,10 @@ Item {
         return false
     }
 
-    function _showPage() {
+    // Drawn: a few frames for its canvases, then the picture.
+    function _settle() {
         var j = _job
         var e = _editor()
-        var p = j.pages[j.i] || {}
-        if (p.labels !== undefined && p.labels !== null)
-            e.actionLabels = p.labels
-        if (p.textMode)
-            e.chipTextMode = p.textMode
-        e.exportTitle = p.title || ""
         e.bump()
         e.repaint()
         j.state = "settle"
@@ -163,34 +156,22 @@ Item {
         var j = _job
         j.state = "grab"
         var ok = _r.grabToImage(function(result) {
-            _r._pageDone(result)
+            _r._finish(result)
         }, Qt.size(Math.max(1, Math.round(j.L.w)), Math.max(1, Math.round(j.L.h))))
         if (!ok)
-            _pageDone(null)
+            _finish(null)
     }
 
-    function _pageDone(result) {
+    function _finish(result) {
         var j = _job
         if (!j)
             return
-        if (j.onPage)
-            j.onPage(j.i, result)
-        j.i++
-        if (j.i < j.pages.length) {
-            _showPage()
-            return
-        }
-        _finish()
-    }
-
-    function _finish() {
-        var j = _job
         _faceLoader.active = false
         width = 1
         height = 1
         _job = null
-        if (j && j.onDone)
-            j.onDone()
+        if (j.onPicture)
+            j.onPicture(result)
         Qt.callLater(_next)
     }
 
@@ -235,7 +216,7 @@ Item {
                 }
                 // Ready, or given up waiting (a photo that never loads).
                 if ((e.seeded && !_r._loading(_faceLoader.item)) || j.ticks > 200)
-                    _r._showPage()
+                    _r._settle()
             } else if (j.state === "settle") {
                 if (j.ticks >= 3 && !_r._loading(_faceLoader.item))
                     _r._grab()

@@ -46,7 +46,8 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
     # ...and with a device, its exports, never two separators in a row.
     with_device = results["file-menu-device"].split("|")
     assert "Edit Mapping" in with_device and "Save" not in with_device
-    # Every print and export is in Print & Export, the File menu's one entry.
+    # Every print and export is in Print & Export, the File menu's one
+    # entry (Export Modes is gone altogether).
     assert "Print & Export…" in with_device
     for gone in ("Export PDF…", "Export PNG…", "Export JPG…", "Print…",
                  "Export Modes…", "Light Page for Exports"):

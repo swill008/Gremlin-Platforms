@@ -230,40 +230,6 @@ def _read_template(path: Path) -> dict | None:
     return doc
 
 
-def _file_part(name: str) -> str:
-    """A mode name made safe for a file name."""
-    safe = "".join(c if c.isalnum() or c in " -_" else "_" for c in name).strip()
-    return safe or "mode"
-
-
-def save_pages(
-    pages: list[tuple[str, QtGui.QImage]],
-    path: Path,
-    fmt: str,
-    setup: dict | None = None,
-) -> list[Path]:
-    """Writes one page per mode: a PDF with a page each (on the paper of
-    setup, page_layout), or one PNG or JPG each named after the file chosen
-    plus the mode ("map - Combat.png"). Returns the files written."""
-    if not pages:
-        return []
-    kind = str(fmt or "png").lower()
-    path = Path(path)
-    if kind == "pdf":
-        from gremlin.ui.util import page_layout, save_images_as_pdf
-
-        ok = save_images_as_pdf(
-            [image for _name, image in pages], path, PDF_PPI / 72, page_layout(setup)
-        )
-        return [path] if ok else []
-    written: list[Path] = []
-    for name, image in pages:
-        target = path.with_name(f"{path.stem} - {_file_part(name)}{path.suffix}")
-        if _save_image(image, target, kind):
-            written.append(target)
-    return written
-
-
 def _is_hex_colour(value: object) -> bool:
     text = str(value or "")
     return (
@@ -1681,34 +1647,6 @@ class HardwareProfile(QtCore.QObject):
         if dialog.exec() != QtPrintSupport.QPrintDialog.DialogCode.Accepted:
             return False
         return print_image(printer, page)
-
-    # --- one page per mode (Print & Export > Export Modes) --------------------
-
-    @QtCore.Slot()
-    def beginExportPages(self) -> None:
-        self._export_pages: list[tuple[str, QtGui.QImage]] = []
-
-    @QtCore.Slot(QtGui.QImage, int, int, str, result=bool)
-    def addExportPage(
-        self, image: QtGui.QImage, width: int, height: int, name: str
-    ) -> bool:
-        """Keeps one mode's page (width x height pixels) until
-        finishExportPages writes them all."""
-        page = exact_page(image, width, height)
-        if page is None:
-            return False
-        if not hasattr(self, "_export_pages"):
-            self.beginExportPages()
-        self._export_pages.append((name, page))
-        return True
-
-    @QtCore.Slot(str, str, str, result=int)
-    def finishExportPages(self, url: str, fmt: str, setup_json: str) -> int:
-        """Writes the pages kept so far (a PDF on the paper of setup_json);
-        returns how many files were written."""
-        pages = getattr(self, "_export_pages", [])
-        self._export_pages = []
-        return len(save_pages(pages, to_local_path(url), fmt, _setup(setup_json)))
 
     def _clipboard_changed(self) -> None:
         self._clipboard_serial += 1

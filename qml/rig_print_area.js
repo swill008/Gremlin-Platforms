@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // The print area: the part of the page that every export and print takes
-// (PNG, JPG, PDF, Export Modes, Print). printArea is { fx, fy, fw, fh },
+// (PNG, JPG, PDF, Print). printArea is { fx, fy, fw, fh },
 // fractions of the page (spaceRect), or null for the whole page. Alt+drag
 // on an empty part of the map (or Edit > Set Print Area, then a drag)
 // draws it; its frame's handles resize it and its border moves it. With a

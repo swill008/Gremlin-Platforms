@@ -39,9 +39,8 @@ from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
 STEPS = [
     ("template-name", "_templateNameDlg.open()"),
     ("templates", "_templateNameDlg.close(); _templatesDlg.open()"),
-    ("export-modes", "_templatesDlg.close(); _buttonMap.openExportModes()"),
     ("copy",
-     "_modesDlg.close(); _buttonMap.openCopyLayout({name: 'Stick R', slug: 'x'})"),
+     "_templatesDlg.close(); _buttonMap.openCopyLayout({name: 'Stick R', slug: 'x'})"),
     ("apply-template",
      "_copyDlg.close(); _buttonMap.openCopyLayout({name: 'Mine', template: true})"),
     ("style-name", "_copyDlg.close(); _buttonMap.askStyleName('shape', '{}')"),

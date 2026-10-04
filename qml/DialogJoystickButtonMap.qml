@@ -1701,8 +1701,9 @@ ApplicationWindow {
     RigRenderer { id: _renderer }
 
     // A job for the renderer: the map as it is now, at pixels (the
-    // export's size unless given), on Print & Export's background.
-    function _renderJob(pages, onPage, onDone, pixels) {
+    // export's size unless given), on Print & Export's background;
+    // onPicture(grab result, or null) once drawn.
+    function _renderJob(onPicture, pixels) {
         var e = _ed()
         if (!e)
             return null
@@ -1710,9 +1711,7 @@ ApplicationWindow {
             snap: _renderer.snapshot(e),
             pixels: pixels || exportPixels(),
             light: printSetup.light === true,
-            pages: pages,
-            onPage: onPage,
-            onDone: onDone
+            onPicture: onPicture
         }
     }
 
@@ -1727,12 +1726,12 @@ ApplicationWindow {
         var px = exportPixels()
         var setup = JSON.stringify(printSetup)
         var target = String(url)
-        var job = _renderJob([{}], function(i, result) {
+        var job = _renderJob(function(result) {
             if (!result || !_hw.saveArea(result.image, px.w, px.h, target, format, setup)) {
                 console.warn("Button Map export failed: " + target)
                 _buttonMap._say("Export failed.")
             }
-        }, null, px)
+        }, px)
         if (job)
             _renderer.enqueue(job)
     }
@@ -1742,10 +1741,10 @@ ApplicationWindow {
         var px = exportPixels()
         var setup = JSON.stringify(printSetup)
         var title = targetName.length ? targetName : "Button Map"
-        var job = _renderJob([{}], function(i, result) {
+        var job = _renderJob(function(result) {
             if (result)
                 _hw.printImage(result.image, px.w, px.h, title, setup)
-        }, null, px)
+        }, px)
         if (job)
             _renderer.enqueue(job)
     }
@@ -1756,7 +1755,7 @@ ApplicationWindow {
         var px = exportPixels()
         var k = Math.min(1, maxW / Math.max(1, px.w), maxH / Math.max(1, px.h))
         var size = { w: Math.max(1, Math.round(px.w * k)), h: Math.max(1, Math.round(px.h * k)) }
-        var job = _renderJob([{}], function(i, result) { done(result) }, null, size)
+        var job = _renderJob(done, size)
         if (!job)
             return
         job.preview = true
@@ -2174,12 +2173,6 @@ ApplicationWindow {
         }
     }
 
-    // --- Print & Export → Export Modes: one page per mode --------------------
-
-    property bool _modesBusy: false
-    property var _modesPicked: []
-    property string _modesFormat: "pdf"
-
     // File > Print & Export: its window, and the print area shown on the
     // map to move and resize while it is open.
     function openPrintExport() {
@@ -2199,123 +2192,11 @@ ApplicationWindow {
             _exportPngDialog.open()
     }
 
-    function buttonMapOptions() { return _opts }
-
     PrintExportWindow {
         id: _printWin
         host: _buttonMap
         transientParent: _buttonMap
     }
-
-    function openExportModes() {
-        _modesPicked = profileModes.slice()
-        _modesDlg.open()
-    }
-
-    function toggleExportMode(mode, on) {
-        var next = []
-        for (var i = 0; i < profileModes.length; i++) {
-            var m = profileModes[i]
-            if (m === mode ? on : _modesPicked.indexOf(m) >= 0)
-                next.push(m)
-        }
-        _modesPicked = next
-    }
-
-    function exportModesTo(url, format, modes) {
-        var e = _ed()
-        if (!e || !modes.length || _modesBusy)
-            return
-        // Pages that all read the same would be no use: show the actions.
-        var textMode = e.chipTextMode === "Name" ? "Action" : e.chipTextMode
-        var titled = _opts.values["mode-title"] !== false
-        var list = modes.slice()
-        var pages = list.map(function(m) {
-            return { labels: labelsFor(m), textMode: textMode, title: titled ? m : "" }
-        })
-        var px = exportPixels()
-        var setup = JSON.stringify(printSetup)
-        var target = String(url)
-        var job = _renderJob(pages, function(i, result) {
-            if (result)
-                _hw.addExportPage(result.image, px.w, px.h, list[i])
-        }, function() {
-            var written = _hw.finishExportPages(target, format, setup)
-            _buttonMap._modesBusy = false
-            _buttonMap._say(written ? "Exported " + list.length + " modes." : "Export failed.")
-        }, px)
-        _hw.beginExportPages()
-        _modesBusy = true
-        _renderer.enqueue(job)
-    }
-
-    Dialog {
-        id: _modesDlg
-        title: "Export Modes"
-        modal: true
-        anchors.centerIn: parent
-        width: Style.dp(420)
-        standardButtons: Dialog.NoButton
-        closePolicy: Popup.CloseOnEscape
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: Style.dp(8)
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                color: Style.fgMuted
-                text: "One page per mode, each chip showing what its control does in that mode. "
-                      + "A PDF gets a page per mode; PNG and JPG get a file per mode."
-            }
-            Repeater {
-                model: _buttonMap.profileModes
-                CheckBox {
-                    required property string modelData
-                    text: modelData
-                    checked: _buttonMap._modesPicked.indexOf(modelData) >= 0
-                    onToggled: _buttonMap.toggleExportMode(modelData, checked)
-                }
-            }
-            CheckBox {
-                text: "Mode name at the top of each page"
-                checked: _opts.values["mode-title"] !== false
-                onToggled: _opts.set("mode-title", checked)
-            }
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                spacing: Style.dp(8)
-                Button {
-                    text: "Cancel"
-                    onClicked: _modesDlg.close()
-                }
-                Repeater {
-                    model: ["PDF", "PNG", "JPG"]
-                    Button {
-                        required property string modelData
-                        text: modelData + "…"
-                        enabled: _buttonMap._modesPicked.length > 0
-                        highlighted: modelData === "PDF"
-                        onClicked: {
-                            _buttonMap._modesFormat = modelData.toLowerCase()
-                            _modesDlg.close()
-                            _exportModesFile.open()
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    FileDialog {
-        id: _exportModesFile
-        title: "Export Modes"
-        fileMode: FileDialog.SaveFile
-        defaultSuffix: _buttonMap._modesFormat
-        nameFilters: _buttonMap._modesFormat === "pdf" ? ["PDF (*.pdf)"]
-                     : (_buttonMap._modesFormat === "jpg" ? ["JPEG image (*.jpg *.jpeg)"] : ["PNG image (*.png)"])
-        onAccepted: _buttonMap.exportModesTo(selectedFile, _buttonMap._modesFormat, _buttonMap._modesPicked)
-    }
-
 
     FileDialog {
         id: _exportPdfDialog
