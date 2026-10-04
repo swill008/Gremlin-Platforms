@@ -58,11 +58,43 @@ def _is_pressed(current: object) -> bool:
     return bool(current)
 
 
-def _trigger_value(current: float, trigger_range: str) -> float:
-    """Axis value for a trigger. Upper half: rest at 0 is 0% and +1 is 100%."""
+def _trigger_value(current: object, trigger_range: str) -> float:
+    """Axis value for a trigger. Upper half: rest at 0 is 0% and +1 is 100%.
+    A button, key or hat: pressed is a full pull, released none (it used to
+    rest at 50%, its False read as the axis middle)."""
+    if isinstance(current, (bool, HatDirection, tuple)):
+        return 1.0 if _is_pressed(current) else -1.0
     if trigger_range == TRIGGER_UPPER:
         return util.clamp(float(current), 0.0, 1.0) * 2.0 - 1.0
     return float(current)
+
+
+def _stick_value(current: object, target: XboxTarget) -> float:
+    """Stick position. A hat moves it in the hat's direction: on an X target
+    left -1 / right +1, on a Y target up +1 / down -1 (it used to fail)."""
+    hat = current.value if isinstance(current, HatDirection) else current
+    if isinstance(hat, tuple) and len(hat) == 2:
+        x, y = hat
+        is_y = target in (XboxTarget.LEFT_STICK_Y, XboxTarget.RIGHT_STICK_Y)
+        return float(y if is_y else x)
+    return float(current)  # type: ignore[arg-type]
+
+
+# The Xbox controls an input can drive: an axis moves sticks and triggers; a
+# button or key presses buttons and pulls triggers; a hat drives the D-pad,
+# its directions and sticks.
+_KINDS_FOR_INPUT = {
+    InputType.JoystickAxis: {"stick", "trigger"},
+    InputType.JoystickButton: {"button", "trigger"},
+    InputType.Keyboard: {"button", "trigger"},
+    InputType.JoystickHat: {"hat", "button", "stick"},
+}
+
+
+def targets_for(behavior: InputType) -> list[XboxTarget]:
+    """The Xbox controls that make sense for this input."""
+    kinds = _KINDS_FOR_INPUT.get(behavior)
+    return [t for t in XboxTarget if kinds is None or t.kind in kinds]
 
 
 def _read_xml_property(node: ElementTree.Element, name: str, ptype: PropertyType, default):
@@ -98,6 +130,8 @@ class MapToXboxFunctor(AbstractFunctor):
             elif target.kind == "trigger":
                 raw = _trigger_value(value.current, self.data.trigger_range)
                 output.write_xbox(pad_id, target, raw)
+            elif target.kind == "stick":
+                output.write_xbox(pad_id, target, _stick_value(value.current, target))
             else:
                 output.write_xbox(pad_id, target, value.current)
         except Exception as exc:
@@ -191,8 +225,12 @@ class MapToXboxModel(ActionModel):
         self._notify_item()
 
     def _get_target_choices(self) -> list:
-        """Every Xbox control: the Xbox output module passes them all."""
-        return [{"value": item.value, "label": item.label} for item in XboxTarget]
+        """The Xbox controls this input can drive (targets_for); a saved
+        target outside them stays listed so the action keeps working."""
+        items = targets_for(self._data.behavior_type)
+        if self._data.xbox_target not in items:
+            items = [*items, self._data.xbox_target]
+        return [{"value": item.value, "label": item.label} for item in items]
 
     def _get_pad_choices(self) -> list:
         """The Xbox output module(s) by name. Pad 1 is always there; a saved

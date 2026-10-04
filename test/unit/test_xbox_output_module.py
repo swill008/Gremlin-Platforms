@@ -91,16 +91,26 @@ def test_pad_number_comes_from_the_name() -> None:
 
 
 def _map_to_xbox(pad: int, target: XboxTarget) -> SimpleNamespace:
+    from gremlin.types import InputType
+
     return SimpleNamespace(
-        _data=SimpleNamespace(xbox_device_id=pad, xbox_target=target)
+        _data=SimpleNamespace(
+            xbox_device_id=pad,
+            xbox_target=target,
+            behavior_type=InputType.JoystickButton,
+        )
     )
 
 
-def test_map_to_xbox_offers_every_control(folder: Path) -> None:
-    from action_plugins.map_to_xbox import MapToXboxModel
+def test_map_to_xbox_offers_the_controls_for_the_input(folder: Path) -> None:
+    # No claims (no "claimed" labels); the targets that make sense for the
+    # input (a button: buttons and triggers), not every control.
+    from action_plugins.map_to_xbox import MapToXboxModel, targets_for
+    from gremlin.types import InputType
 
     choices = MapToXboxModel._get_target_choices(_map_to_xbox(1, XboxTarget.B))
-    assert [c["value"] for c in choices] == [t.value for t in XboxTarget]
+    expected = [t.value for t in targets_for(InputType.JoystickButton)]
+    assert [c["value"] for c in choices] == expected
     assert all("claimed" not in c["label"] for c in choices)
 
 
