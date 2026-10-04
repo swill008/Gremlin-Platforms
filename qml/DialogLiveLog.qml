@@ -201,6 +201,15 @@ ApplicationWindow {
         border.color: Style.line
         radius: Style.dp(3)
 
+        Timer {
+            id: _redraw
+            interval: 60
+            onTriggered: {
+                if (_area.source)
+                    _area.show(_area.source())
+            }
+        }
+
         Flickable {
             id: _flick
             anchors.fill: parent
@@ -213,6 +222,22 @@ ApplicationWindow {
 
             function scrollToEnd() {
                 contentY = Math.max(0, contentHeight - height)
+            }
+
+            // New text of another height: to the end when following, else
+            // back inside it. When the text got shorter (a long log left for
+            // a short one), the text edit doesn't draw the lines now in view
+            // (Qt: they stayed blank until a click): it is set once more,
+            // once the view has been drawn where it is now.
+            property real _lastHeight: 0
+            onContentHeightChanged: {
+                if (_area.follow)
+                    scrollToEnd()
+                else
+                    contentY = Math.max(0, Math.min(contentY, contentHeight - height))
+                if (contentHeight < _lastHeight - 1 && _area.source)
+                    _redraw.restart()
+                _lastHeight = contentHeight
             }
 
             onMovementEnded: {
@@ -234,8 +259,8 @@ ApplicationWindow {
                 selectByMouse: true
                 wrapMode: TextEdit.NoWrap
                 color: Style.fg
-                selectionColor: Style.line
-                selectedTextColor: Style.fg
+                selectionColor: U.Universal.accent
+                selectedTextColor: U.Universal.chromeWhiteColor
                 font.family: Style.monoFont
                 font.pixelSize: Style.dp(13)
                 textFormat: _area.textFormat
