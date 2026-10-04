@@ -18,6 +18,9 @@ Item {
     readonly property url baseUrl: (ed.face && ed.face.photoOverride && ed.face.photoOverride.length)
                                    ? ed.face.photoOverride
                                    : ""
+    // The photo's own size in pixels (0 without one): what 100% export means.
+    readonly property real naturalW: _pagePhoto.status === Image.Ready ? _pagePhoto.implicitWidth : 0
+    readonly property real naturalH: _pagePhoto.status === Image.Ready ? _pagePhoto.implicitHeight : 0
     z: 0
     visible: !ed.photoHidden
     x: ed.innerPageRect().x

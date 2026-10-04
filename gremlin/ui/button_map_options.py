@@ -119,12 +119,6 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {"min": 25, "max": 300},
     ),
     (
-        "export", "01-export-size", PropertyType.Selection, "2x",
-        "How much larger than on screen Export draws the page. Larger is sharper "
-        "and makes bigger files.",
-        {"valid_options": ["1x", "2x", "3x"]},
-    ),
-    (
         "export", "03-light-page", PropertyType.Bool, False,
         "Exports on a white page: dark colors turn light and light ones dark, "
         "keeping their hue. The photo is not changed. Also in File > Light page "
@@ -148,8 +142,8 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {"min": 4, "max": 30},
     ),
     (
-        "colours", "02-export-area-color", PropertyType.String, "#EF4444",
-        "The export area's frame, label and rubber band (View > Export Area "
+        "colours", "02-print-area-color", PropertyType.String, "#EF4444",
+        "The print area's frame, label and rubber band (View > Print Area "
         "Color...), as #RRGGBB.",
         {},
     ),
@@ -280,12 +274,6 @@ def set_value(key: str, new_value: object) -> None:
     if not cfg.exists(SECTION, *found):
         register()
     cfg.set(SECTION, *found, new_value)
-
-
-def scale_of(text: object) -> int:
-    """"2x" -> 2, for the export size."""
-    match = re.match(r"\s*([123])", str(text or ""))
-    return int(match.group(1)) if match else 2
 
 
 @ta.QmlElement

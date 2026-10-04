@@ -112,13 +112,13 @@ def test_export_pages_through_the_window_slots(tmp_path: pathlib.Path) -> None:
     assert not profile.addExportPage(QtGui.QImage(), 0, 0, 10, 10, "B", "#000000")
     assert profile.addExportPage(_editor_picture(), 40, 20, 120, 60, "C", "#000000")
     url = QtCore.QUrl.fromLocalFile(str(tmp_path / "modes.jpg")).toString()
-    assert profile.finishExportPages(url, "jpg", 1) == 2
+    assert profile.finishExportPages(url, "jpg", 1, "{}") == 2
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "modes - A.jpg",
         "modes - C.jpg",
     ]
     # Finished: nothing left over for the next export.
-    assert profile.finishExportPages(url, "jpg", 1) == 0
+    assert profile.finishExportPages(url, "jpg", 1, "{}") == 0
 
 
 # Printing needs the widgets application, so it runs in a process of its own.
@@ -161,3 +161,25 @@ def test_print_draws_the_page(tmp_path: pathlib.Path) -> None:
 
 def test_print_slot_is_there_for_the_window() -> None:
     assert hasattr(HardwareProfile, "printPage")
+
+
+def test_pdf_on_a_paper_is_that_page(tmp_path: pathlib.Path) -> None:
+    from gremlin.ui.util import page_layout
+
+    target = tmp_path / "letter.pdf"
+    setup = {"paper": "letter", "landscape": False, "margin": "quarter"}
+    assert save_page_image(
+        _editor_picture(), 40, 20, 120, 60, target, "pdf", "#000000", 1, setup
+    )
+    # US Letter, portrait: 8.5 x 11 in = 612 x 792 points.
+    assert b"/MediaBox [0 0 612.000000 792.000000]" in target.read_bytes()
+    layout = page_layout(setup)
+    assert layout is not None
+    margins = layout.margins(QtGui.QPageLayout.Unit.Inch)
+    assert abs(margins.left() - 0.25) < 1e-6 and abs(margins.top() - 0.25) < 1e-6
+    wide = page_layout({"paper": "a4", "landscape": True, "margin": "none"})
+    assert wide is not None
+    assert wide.orientation() == QtGui.QPageLayout.Orientation.Landscape
+    assert wide.margins().left() == 0
+    # "Fit to area": no paper, the page takes the picture's shape.
+    assert page_layout({"paper": "fit"}) is None

@@ -24,9 +24,9 @@ MouseArea {
     focus: true
     Keys.onDeletePressed: ed.deleteSelected()
     Keys.onPressed: (e) => {
-        // Set Export Area waiting for its drag: Esc cancels it.
-        if (e.key === Qt.Key_Escape && ed.exportAreaArm) {
-            ed.exportAreaArm = false
+        // Set Print Area waiting for its drag: Esc cancels it.
+        if (e.key === Qt.Key_Escape && ed.printAreaArm) {
+            ed.printAreaArm = false
             e.accepted = true
             return
         }
@@ -92,13 +92,13 @@ MouseArea {
         forceActiveFocus()
         ed.altHeld = !!(m.modifiers & Qt.AltModifier)
         ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
-        // The export area: Alt+drag from an empty part of the map (on an
+        // The print area: Alt+drag from an empty part of the map (on an
         // item Alt still moves it without snapping), or any drag after Set
-        // Export Area. Not while it is locked.
-        if (ed.interactive && m.button === Qt.LeftButton && !ed.exportAreaLocked
-                && (ed.exportAreaArm || (ed.altHeld && !ed.hitTest(m.x, m.y).id))) {
-            ed.beginExportArea(m.x, m.y)
-            ed.dragKind = "exportarea"
+        // Print Area. Not while it is locked.
+        if (ed.interactive && m.button === Qt.LeftButton && !ed.printAreaLocked
+                && (ed.printAreaArm || (ed.altHeld && !ed.hitTest(m.x, m.y).id))) {
+            ed.beginPrintArea(m.x, m.y)
+            ed.dragKind = "printarea"
             return
         }
         if (ed.interactive && ed.drawTool === "path") {
@@ -395,8 +395,8 @@ MouseArea {
             ed.penMove(m.x, m.y)
             return
         }
-        if (ed.dragKind === "exportarea") {
-            ed.moveExportArea(m.x, m.y)
+        if (ed.dragKind === "printarea") {
+            ed.movePrintArea(m.x, m.y)
             return
         }
         if (ed.dragKind === "chip" || ed.dragKind === "member")
@@ -459,10 +459,10 @@ MouseArea {
             ed.penEnd()
             return
         }
-        if (ed.dragKind === "exportarea") {
-            ed.moveExportArea(m.x, m.y)
+        if (ed.dragKind === "printarea") {
+            ed.movePrintArea(m.x, m.y)
             ed.dragKind = ""
-            ed.endExportArea()
+            ed.endPrintArea()
             return
         }
         if (ed.dragKind === "rulerguide") {

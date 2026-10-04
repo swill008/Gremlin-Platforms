@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware), opens the Button Map
-for a stick, sets its export area with Alt+drag, exports, resizes the area
+for a stick, sets its print area with Alt+drag, exports, resizes the area
 by its handle and clears it; prints what happened as JSON.
-test_button_map_export_area.py runs it in its own process with a fresh
+test_button_map_print_area.py runs it in its own process with a fresh
 user folder.
 
-    python test/unit/button_map_export_area_smoke.py
+    python test/unit/button_map_print_area_smoke.py
 """
 
 from __future__ import annotations
@@ -117,39 +117,63 @@ def main() -> None:
     start = page_at(0.3, 0.3)
     end = page_at(0.6, 0.7)
     drag(start, end, Mods.AltModifier)
-    out["area"] = json.loads(ev("JSON.stringify(_buttonMap.exportArea)"))
-    out["shown"] = [ev("_ed().exportAreaShown"), ev("_tools.isOpen('exportArea')")]
+    out["area"] = json.loads(ev("JSON.stringify(_buttonMap.printArea)"))
+    out["shown"] = [ev("_ed().printAreaShown"), ev("_tools.isOpen('printArea')")]
     # Like every tool: pinned it stays when the map is clicked, unpinned
     # it hides.
-    ev("_tools.setPinned('exportArea', true)")
+    ev("_tools.setPinned('printArea', true)")
     ev("_ed().mapPressed()")
     QtTest.QTest.qWait(200)
-    out["pinned-after-map-click"] = ev("_tools.isOpen('exportArea')")
-    ev("_tools.setPinned('exportArea', false)")
+    out["pinned-after-map-click"] = ev("_tools.isOpen('printArea')")
+    ev("_tools.setPinned('printArea', false)")
     ev("_ed().mapPressed()")
     QtTest.QTest.qWait(200)
-    out["unpinned-after-map-click"] = ev("_tools.isOpen('exportArea')")
-    ev("_tools.setOpen('exportArea', true)")
+    out["unpinned-after-map-click"] = ev("_tools.isOpen('printArea')")
+    ev("_tools.setOpen('printArea', true)")
     doc = json.loads(hp.module_json_path("pJoy Pro", GUID).read_text(encoding="utf-8"))
-    out["saved"] = (doc.get("ui") or {}).get("exportArea")
+    out["saved"] = (doc.get("ui") or {}).get("printArea")
     out["export"] = export()
-    page = json.loads(ev("JSON.stringify(_ed().spaceRect())"))
-    out["page"] = [page["w"], page["h"], ev("_buttonMap.exportScale")]
+    # What the export should be: the area at 100% (1:1 with the photo, or
+    # the page 1920 px wide without one; the stand-in stick has none).
+    out["pixels"] = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
+    out["whole-page-at-100"] = ev(
+        "Math.round(_ed().spaceRect().w * _buttonMap.exportFactor())")
     # The bottom-right handle, dragged out.
-    corner = at("(function(){ var r = e.exportAreaRect();"
+    corner = at("(function(){ var r = e.printAreaRect();"
                 " return {x: r.x + r.w, y: r.y + r.h} })()")
     drag(corner, corner + QtCore.QPoint(60, 40), Mods.NoModifier)
-    out["resized"] = json.loads(ev("JSON.stringify(_buttonMap.exportArea)"))
+    out["resized"] = json.loads(ev("JSON.stringify(_buttonMap.printArea)"))
     # Locked: Alt+drag no longer changes it.
-    ev("_tools.setLocked('exportArea', true)")
+    ev("_tools.setLocked('printArea', true)")
     QtTest.QTest.qWait(200)
     drag(start, end + QtCore.QPoint(100, 0), Mods.AltModifier)
-    out["locked"] = json.loads(ev("JSON.stringify(_buttonMap.exportArea)"))
-    ev("_tools.setLocked('exportArea', false)")
+    out["locked"] = json.loads(ev("JSON.stringify(_buttonMap.printArea)"))
+    ev("_tools.setLocked('printArea', false)")
     # Cleared: the whole page again.
-    ev("_ed().clearExportArea()")
+    ev("_ed().clearPrintArea()")
     QtTest.QTest.qWait(300)
-    out["cleared"] = [ev("JSON.stringify(_buttonMap.exportArea)")] + export()
+    out["cleared"] = [ev("JSON.stringify(_buttonMap.printArea)")] + export()
+
+    def aspect() -> float:
+        return float(ev(
+            "(function(){ var r = _ed().printAreaRect(); return r.w / r.h })()"))
+
+    # A paper: with no area yet, the largest of its shape, centred; then
+    # the area keeps the paper's shape (Letter inside 1/4" margins: 8 x 10.5).
+    ev("_buttonMap.setPrint('paper', 'letter')")
+    QtTest.QTest.qWait(200)
+    out["letter-aspect"] = [aspect(), ev("_ed().printAspect")]
+    drag(start, end, Mods.AltModifier)
+    out["letter-drawn-aspect"] = aspect()
+    ev("_buttonMap.setPrint('landscape', true)")
+    QtTest.QTest.qWait(200)
+    out["landscape-aspect"] = [aspect(), ev("_ed().printAspect")]
+    ev("_buttonMap.setPrint('scale', 50)")
+    out["scale-50"] = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
+    ev("_buttonMap.setPrint('scale', 100)")
+    out["scale-100"] = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
+    doc = json.loads(hp.module_json_path("pJoy Pro", GUID).read_text(encoding="utf-8"))
+    out["saved-print"] = (doc.get("ui") or {}).get("print")
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)
 

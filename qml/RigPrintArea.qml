@@ -4,9 +4,9 @@
 import QtQuick
 import Gremlin.Style
 
-// The export area on the Button Map (rig_export_area.js): while shown
-// (View > Export Area, or its tool), a dashed frame in the export area's
-// color with a small "Export Area" label, and everything outside dimmed.
+// The print area on the Button Map (rig_print_area.js): while shown
+// (View > Print Area, or its tool), a dashed frame in the print area's
+// color with a small "Print Area" label, and everything outside dimmed.
 // While editing and not locked, its handles resize it and its border moves
 // it. Also the rubber band while a new area is drawn (Alt+drag).
 Item {
@@ -15,18 +15,18 @@ Item {
     anchors.fill: parent
     z: 9
 
-    readonly property color ink: ed ? Qt.color(ed.exportAreaColor) : Style.danger
+    readonly property color ink: ed ? Qt.color(ed.printAreaColor) : Style.danger
     readonly property var r: {
         if (!ed)
             return { x: 0, y: 0, w: 0, h: 0 }
-        ed.exportArea
+        ed.printArea
         ed.width
         ed.height
         ed.anyTick
-        return ed.exportAreaRect()
+        return ed.printAreaRect()
     }
-    readonly property bool shown: !!ed && ed.exportAreaShown && !ed.exporting
-    readonly property bool canEdit: shown && !!ed && ed.interactive && !ed.exportAreaLocked
+    readonly property bool shown: !!ed && ed.printAreaShown && !ed.exporting
+    readonly property bool canEdit: shown && !!ed && ed.interactive && !ed.printAreaLocked
 
     // Outside the area: dimmed.
     Item {
@@ -50,7 +50,7 @@ Item {
         }
     }
 
-    // The frame: dashed, in the export area's color.
+    // The frame: dashed, in the print area's color.
     Canvas {
         id: _frame
         visible: _area.shown
@@ -88,19 +88,27 @@ Item {
         Text {
             id: _label
             anchors.centerIn: parent
-            text: "Export Area"
+            text: "Print Area"
             color: _area.ink
             font.pixelSize: Style.dp(10)
         }
     }
 
-    // A new area being drawn (Alt+drag, or after Set Export Area).
+    // A new area being drawn (Alt+drag, or after Set Print Area).
     Rectangle {
-        visible: !!_area.ed && _area.ed.dragKind === "exportarea"
-        x: _area.ed ? Math.min(_area.ed.eaX0, _area.ed.eaX1) : 0
-        y: _area.ed ? Math.min(_area.ed.eaY0, _area.ed.eaY1) : 0
-        width: _area.ed ? Math.abs(_area.ed.eaX1 - _area.ed.eaX0) : 0
-        height: _area.ed ? Math.abs(_area.ed.eaY1 - _area.ed.eaY0) : 0
+        visible: !!_area.ed && _area.ed.dragKind === "printarea"
+        // In the paper's shape when one is chosen.
+        readonly property var drawn: {
+            if (!_area.ed)
+                return { x: 0, y: 0, w: 0, h: 0 }
+            _area.ed.eaX1
+            _area.ed.eaY1
+            return _area.ed.drawnPrintRect()
+        }
+        x: drawn.x
+        y: drawn.y
+        width: drawn.w
+        height: drawn.h
         color: Qt.rgba(_area.ink.r, _area.ink.g, _area.ink.b, 0.15)
         border.color: _area.ink
         border.width: Style.dp(1)
@@ -119,7 +127,7 @@ Item {
         hoverEnabled: true
         preventStealing: true
         onPressed: (m) => {
-            start = _area.ed.exportAreaRect()
+            start = _area.ed.printAreaRect()
             from = mapToItem(_area, m.x, m.y)
         }
         onPositionChanged: (m) => {
@@ -142,11 +150,11 @@ Item {
                 if (edges.indexOf("n") >= 0) { y += dy; h -= dy }
                 if (edges.indexOf("s") >= 0) h += dy
             }
-            _area.ed.setExportAreaRect(x, y, w, h)
+            _area.ed.setPrintAreaRect(x, y, w, h, edges)
         }
         onReleased: {
             start = null
-            _area.ed.exportAreaEdited(false)
+            _area.ed.printAreaEdited(false)
         }
     }
 

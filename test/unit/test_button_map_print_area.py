@@ -2,11 +2,11 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's export area, checked in the running program off-screen
-(button_map_export_area_smoke.py, its own process and user folder).
+"""The Button Map's print area, checked in the running program off-screen
+(button_map_print_area_smoke.py, its own process and user folder).
 
 - Alt+drag on an empty part of the map sets the area and shows its frame
-  (its Export Area tool opens); it is saved with the map.
+  (its Print Area tool opens); it is saved with the map.
 - An export takes only the area (its size follows the area), and the whole
   page again once the area is cleared.
 - The frame's handle resizes it; locked, Alt+drag leaves it as it is.
@@ -36,7 +36,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     env.setdefault("QT_QPA_FONTDIR", fonts)
     done = subprocess.run(
         [sys.executable,
-         str(_ROOT / "test" / "unit" / "button_map_export_area_smoke.py")],
+         str(_ROOT / "test" / "unit" / "button_map_print_area_smoke.py")],
         cwd=_ROOT, env=env, capture_output=True, text=True, timeout=150,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
@@ -65,10 +65,10 @@ def test_the_area_is_saved_with_the_map(run: dict) -> None:
 
 
 def test_an_export_takes_only_the_area(run: dict) -> None:
-    page_w, page_h, scale = run["page"]
-    area = run["area"]
-    want = [area["fw"] * page_w * scale, area["fh"] * page_h * scale]
-    assert all(abs(got - w) <= 2 for got, w in zip(run["export"], want))
+    want = [run["pixels"]["w"], run["pixels"]["h"]]
+    assert all(abs(got - w) <= 1 for got, w in zip(run["export"], want))
+    # No photo: 100% is the page 1920 px wide, so the area its share of that.
+    assert abs(run["export"][0] - run["area"]["fw"] * 1920) <= 2
 
 
 def test_the_handle_resizes_and_lock_keeps_it(run: dict) -> None:
@@ -78,7 +78,22 @@ def test_the_handle_resizes_and_lock_keeps_it(run: dict) -> None:
 
 
 def test_cleared_the_whole_page_again(run: dict) -> None:
-    page_w, page_h, scale = run["page"]
     assert run["cleared"][0] == "null"
-    assert abs(run["cleared"][1] - page_w * scale) <= 2
-    assert abs(run["cleared"][2] - page_h * scale) <= 2
+    assert abs(run["cleared"][1] - 1920) <= 2
+    assert abs(run["cleared"][2] - 1080) <= 2
+
+
+def test_the_area_keeps_the_papers_shape(run: dict) -> None:
+    letter = 8.0 / 10.5
+    got, want = run["letter-aspect"]
+    assert abs(want - letter) < 0.001 and abs(got - letter) < 0.01
+    assert abs(run["letter-drawn-aspect"] - letter) < 0.01
+    got, want = run["landscape-aspect"]
+    assert abs(want - 10.5 / 8.0) < 0.001 and abs(got - want) < 0.01
+
+
+def test_scale_and_saving(run: dict) -> None:
+    half, full = run["scale-50"], run["scale-100"]
+    assert abs(half["w"] * 2 - full["w"]) <= 2 and abs(half["h"] * 2 - full["h"]) <= 2
+    assert run["saved-print"] == {
+        "paper": "letter", "landscape": True, "margin": "quarter", "scale": 100}

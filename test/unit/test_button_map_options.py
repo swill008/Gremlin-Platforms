@@ -55,12 +55,11 @@ def test_values_by_name_and_set() -> None:
     assert bmo.value("undo-steps") == 120
     qml = bmo.ButtonMapOptions()
     assert qml.values["undo-steps"] == 120
-    qml.set("export-size", "3x")
-    assert qml.values["export-size"] == "3x"
-    assert bmo.scale_of(qml.values["export-size"]) == 3
+    qml.set("chip-text", "Action")
+    assert qml.values["chip-text"] == "Action"
     qml.set("no-such-option", 1)
     bmo.set_value("undo-steps", 80)
-    bmo.set_value("export-size", "2x")
+    bmo.set_value("chip-text", "Name")
 
 
 def test_recent_colours_follow_the_option() -> None:

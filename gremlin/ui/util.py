@@ -539,6 +539,53 @@ def updated_recent_profiles(recent: list[str], path: Path, limit: int) -> list[s
     return [str(new_path), *remaining][:limit]
 
 
+# The papers the Button Map prints and exports on (Print & Export), and
+# their margins in inches. "fit": the page is the print area's own shape.
+PAPERS = {
+    "letter": QtGui.QPageSize.PageSizeId.Letter,
+    "legal": QtGui.QPageSize.PageSizeId.Legal,
+    "tabloid": QtGui.QPageSize.PageSizeId.Tabloid,
+    "a3": QtGui.QPageSize.PageSizeId.A3,
+    "a4": QtGui.QPageSize.PageSizeId.A4,
+    "a5": QtGui.QPageSize.PageSizeId.A5,
+}
+MARGINS = {"none": 0.0, "quarter": 0.25, "half": 0.5}
+
+
+def page_layout(setup: dict | None) -> QtGui.QPageLayout | None:
+    """The page for a print or PDF: the paper, its orientation and margins
+    ({"paper", "landscape", "margin"}), or None for "fit" (the page takes
+    the picture's own shape)."""
+    setup = setup if isinstance(setup, dict) else {}
+    paper = PAPERS.get(str(setup.get("paper") or "fit"))
+    if paper is None:
+        return None
+    margin = MARGINS.get(str(setup.get("margin") or "quarter"), 0.25)
+    orientation = (
+        QtGui.QPageLayout.Orientation.Landscape
+        if setup.get("landscape")
+        else QtGui.QPageLayout.Orientation.Portrait
+    )
+    return QtGui.QPageLayout(
+        QtGui.QPageSize(paper),
+        orientation,
+        QtCore.QMarginsF(margin, margin, margin, margin),
+        QtGui.QPageLayout.Unit.Inch,
+    )
+
+
+def paint_fitted(painter: QtGui.QPainter, image: QtGui.QImage) -> None:
+    """Draws image as large as fits in the painter's page (inside its
+    margins), keeping its shape, centred."""
+    area = painter.viewport()
+    size = image.size().scaled(area.size(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+    x = area.x() + (area.width() - size.width()) // 2
+    y = area.y() + (area.height() - size.height()) // 2
+    painter.setWindow(area)
+    painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
+    painter.drawImage(QtCore.QRect(x, y, size.width(), size.height()), image)
+
+
 def save_image_as_pdf(image: QtGui.QImage, path: Path, scale: float = 1.0) -> bool:
     """Writes image to path as a one-page PDF sized to the image.
 
@@ -555,10 +602,15 @@ def save_image_as_pdf(image: QtGui.QImage, path: Path, scale: float = 1.0) -> bo
 
 
 def save_images_as_pdf(
-    images: list[QtGui.QImage], path: Path, scale: float = 1.0
+    images: list[QtGui.QImage],
+    path: Path,
+    scale: float = 1.0,
+    layout: QtGui.QPageLayout | None = None,
 ) -> bool:
     """Writes images to path as a PDF with one page per image, each page
-    sized to its image (see save_image_as_pdf for scale).
+    sized to its image (see save_image_as_pdf for scale), or, with a page
+    layout (page_layout), each on that paper inside its margins, as large
+    as fits and centred.
 
     Returns:
         True when the file was written
@@ -576,14 +628,21 @@ def save_images_as_pdf(
 
     writer = QtGui.QPdfWriter(str(path))
     writer.setResolution(96)
-    writer.setPageMargins(QtCore.QMarginsF(0, 0, 0, 0))
-    writer.setPageSize(page_size(images[0]))
+    if layout is not None:
+        writer.setPageLayout(layout)
+    else:
+        writer.setPageMargins(QtCore.QMarginsF(0, 0, 0, 0))
+        writer.setPageSize(page_size(images[0]))
     painter = QtGui.QPainter()
     if not painter.begin(writer):
         return False
     for index, image in enumerate(images):
         if index:
-            writer.setPageSize(page_size(image))
+            if layout is None:
+                writer.setPageSize(page_size(image))
             writer.newPage()
-        painter.drawImage(QtCore.QRectF(painter.viewport()), image)
+        if layout is not None:
+            paint_fitted(painter, image)
+        else:
+            painter.drawImage(QtCore.QRectF(painter.viewport()), image)
     return painter.end()

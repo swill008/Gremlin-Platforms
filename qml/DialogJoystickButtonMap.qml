@@ -1314,7 +1314,8 @@ ApplicationWindow {
             guidesX: guidesX,
             guidesY: guidesY,
             guidesOn: guidesOn,
-            exportArea: exportArea
+            printArea: printArea,
+            print: printSetup
         }
     }
 
@@ -1339,14 +1340,91 @@ ApplicationWindow {
         guidesY = Array.isArray(ui.guidesY) ? ui.guidesY : []
         if (ui.guidesOn === true || ui.guidesOn === false)
             guidesOn = ui.guidesOn
-        var a = ui.exportArea
-        exportArea = (a && a.fw > 0 && a.fh > 0) ? { fx: +a.fx, fy: +a.fy, fw: +a.fw, fh: +a.fh } : null
+        var a = ui.printArea
+        printArea = (a && a.fw > 0 && a.fh > 0) ? { fx: +a.fx, fy: +a.fy, fw: +a.fw, fh: +a.fh } : null
+        var p = ui.print || {}
+        printSetup = {
+            paper: (p.paper === "fit" || paperInches[p.paper]) ? p.paper : "fit",
+            landscape: p.landscape === true,
+            margin: marginInches[p.margin] !== undefined ? p.margin : "quarter",
+            scale: (p.scale >= 10 && p.scale <= 800) ? Math.round(p.scale) : 100
+        }
     }
 
     // The device's ruler guides (saved with the view) and whether they show.
-    // The export area ({fx, fy, fw, fh} of the page, or null: the whole
+    // The print area ({fx, fy, fw, fh} of the page, or null: the whole
     // page): every export and print takes it. Saved with the map.
-    property var exportArea: null
+    property var printArea: null
+    // Print & Export, saved with the map: the paper ("fit": the print
+    // area's own shape), its orientation, the margins and the scale (100% =
+    // the photo's own pixels; with no photo, the page 1920 px wide).
+    property var printSetup: ({ paper: "fit", landscape: false, margin: "quarter", scale: 100 })
+    readonly property var paperInches: ({
+        letter: [8.5, 11], legal: [8.5, 14], tabloid: [11, 17],
+        a3: [11.69, 16.54], a4: [8.27, 11.69], a5: [5.83, 8.27]
+    })
+    readonly property var marginInches: ({ none: 0, quarter: 0.25, half: 0.5 })
+
+    // The print area's shape on the chosen paper (width / height inside the
+    // margins), or 0 for "fit" (any shape).
+    function printAspect() {
+        var p = paperInches[printSetup.paper]
+        if (!p)
+            return 0
+        var m = 2 * (marginInches[printSetup.margin] || 0)
+        var w = (printSetup.landscape ? p[1] : p[0]) - m
+        var h = (printSetup.landscape ? p[0] : p[1]) - m
+        return h > 0 ? w / h : 0
+    }
+
+    // A Print & Export setting changed: kept with the map; a new paper or
+    // orientation reshapes the print area round its middle.
+    function setPrint(key, value) {
+        var next = {}
+        for (var k in printSetup)
+            next[k] = printSetup[k]
+        next[key] = value
+        printSetup = next
+        var e = _ed()
+        if (e) {
+            e.printAspect = printAspect()
+            if (key !== "scale")
+                e.reshapePrintArea()
+        }
+        persistUi()
+    }
+
+    // How many times larger than on screen an export draws the editor: the
+    // scale over the photo's own pixels (no photo: the page 1920 px wide).
+    // No side of the picture over 16384 px.
+    function exportFactor() {
+        var e = _ed()
+        if (!e)
+            return 1
+        var scale = Math.max(10, Math.min(800, Number(printSetup.scale) || 100)) / 100
+        var s = e.spaceRect()
+        var nat = e.photoNatural()
+        var f
+        if (nat.w > 0 && nat.h > 0) {
+            var inner = e.innerPageRect()
+            var byHeight = nat.w / nat.h <= inner.w / inner.h
+            var shownH = (byHeight ? inner.h : inner.w * nat.h / nat.w) * e.photoScale
+            f = scale * nat.h / Math.max(1, shownH)
+        } else {
+            f = scale * 1920 / Math.max(1, s.w)
+        }
+        return Math.min(f, 16384 / Math.max(1, e.width, e.height))
+    }
+
+    // The export's size in pixels (the print area at the scale).
+    function exportPixels() {
+        var e = _ed()
+        if (!e)
+            return { w: 0, h: 0 }
+        var r = e.printAreaRect()
+        var f = exportFactor()
+        return { w: Math.round(r.w * f), h: Math.round(r.h * f) }
+    }
     property var guidesX: []
     property var guidesY: []
     property bool guidesOn: true
@@ -1368,8 +1446,8 @@ ApplicationWindow {
         var o = _opts.values
         if (o["undo-steps"] > 0)
             e.histCap = o["undo-steps"]
-        var ink = String(o["export-area-color"] || "")
-        e.exportAreaColor = /^#[0-9A-Fa-f]{6}$/.test(ink) ? ink : String(Style.dangerBright)
+        var ink = String(o["print-area-color"] || "")
+        e.printAreaColor = /^#[0-9A-Fa-f]{6}$/.test(ink) ? ink : String(Style.dangerBright)
         if (o["rotate-snap"] > 0)
             e.rotateSnap = o["rotate-snap"]
         e.savedStyles = _opts.styles
@@ -1467,7 +1545,8 @@ ApplicationWindow {
         e.rulerGuidesX = guidesX.slice()
         e.rulerGuidesY = guidesY.slice()
         e.guidesOn = guidesOn
-        e.exportArea = exportArea
+        e.printArea = printArea
+        e.printAspect = printAspect()
         applyOptionsToEditor()
         if (e.repaint)
             e.repaint()
@@ -1610,11 +1689,6 @@ ApplicationWindow {
         }
     }
 
-    // Export size: the page is drawn this many times larger than on screen.
-    readonly property int exportScale: {
-        var t = String(_opts.values["export-size"] || "2x")
-        return t.charAt(0) === "1" ? 1 : (t.charAt(0) === "3" ? 3 : 2)
-    }
     property var _exportJob: null
 
     // Saves the whole page, whatever the zoom, without selection rings,
@@ -1649,9 +1723,9 @@ ApplicationWindow {
             }
             return
         }
-        var f = Math.max(1, exportScale)
-        // The export area (the whole page when none is set).
-        var r = e.exportAreaRect()
+        var f = exportFactor()
+        // The print area (the whole page when none is set).
+        var r = e.printAreaRect()
         var bg = e.printLight ? "white" : String(Style.background)
         var ok = e.grabToImage(function(result) {
             e.exporting = false
@@ -1661,11 +1735,11 @@ ApplicationWindow {
                 return
             if (job.format === "print") {
                 _hw.printPage(result.image, r.x * f, r.y * f, r.w * f, r.h * f, bg,
-                              targetName.length ? targetName : "Button Map")
+                              targetName.length ? targetName : "Button Map", JSON.stringify(printSetup))
                 return
             }
             if (!_hw.savePageImage(result.image, r.x * f, r.y * f, r.w * f, r.h * f,
-                                   String(job.url), job.format, bg, f))
+                                   String(job.url), job.format, bg, f, JSON.stringify(printSetup)))
                 console.warn("Button Map export failed: " + job.url)
         }, Qt.size(Math.round(e.width * f), Math.round(e.height * f)))
         if (!ok) {
@@ -2119,7 +2193,7 @@ ApplicationWindow {
             return
         _modesJob = {
             url: String(url), format: format, modes: modes.slice(), i: 0,
-            keepText: e.chipTextMode, f: Math.max(1, exportScale)
+            keepText: e.chipTextMode, f: exportFactor()
         }
         _hw.beginExportPages()
         // Pages that all read the same would be no use: show the actions.
@@ -2137,7 +2211,7 @@ ApplicationWindow {
         if (!e || !job)
             return
         if (job.i >= job.modes.length) {
-            var written = _hw.finishExportPages(job.url, job.format, job.f)
+            var written = _hw.finishExportPages(job.url, job.format, job.f, JSON.stringify(printSetup))
             _modesJob = null
             e.exporting = false
             e.printLight = false
@@ -2164,7 +2238,7 @@ ApplicationWindow {
             var job = _buttonMap._modesJob
             if (!e || !job)
                 return
-            var r = e.exportAreaRect()
+            var r = e.printAreaRect()
             var f = job.f
             var bg = e.printLight ? "white" : String(Style.background)
             var mode = job.modes[job.i]
@@ -2465,20 +2539,6 @@ ApplicationWindow {
                     checked: _opts.values["light-page"] === true
                     onTriggered: _opts.set("light-page", checked)
                 }
-                ThemedMenu {
-                    title: "Export Size"
-                    enabled: _buttonMap.targetName.length > 0
-                    Repeater {
-                        model: [1, 2, 3]
-                        ThemedMenuItem {
-                            required property int modelData
-                            text: modelData + "×"
-                            checkable: true
-                            checked: _buttonMap.exportScale === modelData
-                            onTriggered: _opts.set("export-size", modelData + "x")
-                        }
-                    }
-                }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
                     text: "Close"
@@ -2537,22 +2597,22 @@ ApplicationWindow {
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
-                    text: "Set Export Area"
+                    text: "Set Print Area"
                     hint: "Alt+drag"
-                    enabled: editing && !_tools.isLocked("exportArea")
+                    enabled: editing && !_tools.isLocked("printArea")
                     onTriggered: {
                         var e = _ed()
                         if (!e)
                             return
-                        e.exportAreaArm = true
+                        e.printAreaArm = true
                         if (e.showFindMessage)
-                            e.showFindMessage("Drag on the map to set the export area. Esc cancels.")
+                            e.showFindMessage("Drag on the map to set the print area. Esc cancels.")
                     }
                 }
                 ThemedMenuItem {
-                    text: "Clear Export Area"
-                    enabled: editing && !!_buttonMap.exportArea && !_tools.isLocked("exportArea")
-                    onTriggered: { var e = _ed(); if (e) e.clearExportArea() }
+                    text: "Clear Print Area"
+                    enabled: editing && !!_buttonMap.printArea && !_tools.isLocked("printArea")
+                    onTriggered: { var e = _ed(); if (e) e.clearPrintArea() }
                 }
                 // Another device's Button Map onto this one (its photo stays).
                 ThemedMenu {
@@ -2629,20 +2689,20 @@ ApplicationWindow {
                     onTriggered: _tools.toggle("props")
                 }
                 ThemedMenuItem {
-                    text: "Export Area"
+                    text: "Print Area"
                     checkable: true
-                    checked: _tools.isOpen("exportArea")
-                    onTriggered: _tools.toggle("exportArea")
+                    checked: _tools.isOpen("printArea")
+                    onTriggered: _tools.toggle("printArea")
                 }
                 ThemedMenuItem {
                     text: "Reset Tool Row"
                     onTriggered: _tools.resetPlaces()
                 }
                 ThemedMenuItem {
-                    text: "Export Area Color…"
+                    text: "Print Area Color…"
                     onTriggered: {
                         var e = _ed()
-                        _buttonMap.openColorField("exportAreaColor", e ? e.exportAreaColor : String(Style.dangerBright), null)
+                        _buttonMap.openColorField("printAreaColor", e ? e.printAreaColor : String(Style.dangerBright), null)
                     }
                 }
                 ThemedMenuItem {
@@ -2907,10 +2967,10 @@ ApplicationWindow {
                             }
                             function onNodesChanged() { _buttonMap.deferHistory() }
                             function onMapPressed() { _tools.mapClicked() }
-                            function onExportAreaEdited(drawn) {
-                                _buttonMap.exportArea = _card.editorItem.exportArea
+                            function onPrintAreaEdited(drawn) {
+                                _buttonMap.printArea = _card.editorItem.printArea
                                 if (drawn)
-                                    _tools.setOpen("exportArea", true)
+                                    _tools.setOpen("printArea", true)
                                 _buttonMap.persistUi()
                             }
                             function onSeededChanged() { _buttonMap.noteSeeded() }
@@ -3239,18 +3299,18 @@ ApplicationWindow {
 
                 // Layers: every item with an eye and a lock, top of the stack first.
                 // On the right, above the pool when it is docked at the bottom.
-                // The export area's frame follows its tool (shown, locked).
+                // The print area's frame follows its tool (shown, locked).
                 Binding {
                     target: _buttonMap._ed()
-                    property: "exportAreaShown"
-                    value: _tools.isOpen("exportArea")
+                    property: "printAreaShown"
+                    value: _tools.isOpen("printArea")
                     when: !!_buttonMap._ed()
                     restoreMode: Binding.RestoreNone
                 }
                 Binding {
                     target: _buttonMap._ed()
-                    property: "exportAreaLocked"
-                    value: _tools.isLocked("exportArea")
+                    property: "printAreaLocked"
+                    value: _tools.isLocked("printArea")
                     when: !!_buttonMap._ed()
                     restoreMode: Binding.RestoreNone
                 }
@@ -3360,7 +3420,7 @@ ApplicationWindow {
                 { id: "props", label: "Properties", tip: "The selected item's place, size, angle and style" },
                 { id: "layers", label: "Layers", tip: "Every item, with an eye and a lock, top of the stack first" },
                 { id: "palette", label: "Command Palette", tip: "Every command, by name (Ctrl+K)" },
-                { id: "exportArea", label: "Export Area",
+                { id: "printArea", label: "Print Area",
                   tip: "The part of the page every export and print takes: Alt+drag on the map to set it" }
             ]
             // Chips (so a new user sees the pool) and Properties (as before)
@@ -3674,8 +3734,8 @@ ApplicationWindow {
                 // From hh, ss, vv themselves: the 'live' binding may not have
                 // caught up yet inside these change handlers.
                 var hex = _buttonMap._toHex(Qt.hsva(hh, ss, vv, 1))
-                if (field === "exportAreaColor")
-                    e.exportAreaColor = hex
+                if (field === "printAreaColor")
+                    e.printAreaColor = hex
                 else
                     e.applyFieldLive(field, hex)
                 changed = true
@@ -3688,8 +3748,8 @@ ApplicationWindow {
         }
 
         onClosed: {
-            if (changed && field === "exportAreaColor")
-                _opts.set("export-area-color", _buttonMap._toHex(live))
+            if (changed && field === "printAreaColor")
+                _opts.set("print-area-color", _buttonMap._toHex(live))
             if (changed)
                 _hw.noteColour(_buttonMap._toHex(live))
             changed = false

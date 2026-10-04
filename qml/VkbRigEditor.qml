@@ -32,7 +32,7 @@ import "rig_callout.js" as RigCallout
 import "rig_path.js" as RigPath
 import "rig_styles.js" as RigStyles
 import "rig_rulers.js" as RigRulers
-import "rig_export_area.js" as RigExportJs
+import "rig_print_area.js" as RigPrintJs
 import "rig_transform.js" as RigTransform
 import "rig_hotspot.js" as RigHotspot
 
@@ -108,15 +108,18 @@ Item {
     property real bandX0: 0
     property real bandY0: 0
     property real bandX1: 0
-    // The export area (rig_export_area.js): the page's part every export
+    // The print area (rig_print_area.js): the page's part every export
     // takes ({fx, fy, fw, fh}, or null: the whole page), whether its frame
-    // shows, whether it can be changed, its color, Set Export Area waiting
+    // shows, whether it can be changed, its color, Set Print Area waiting
     // for a drag, and the area being drawn.
-    property var exportArea: null
-    property bool exportAreaShown: false
-    property bool exportAreaLocked: false
-    property string exportAreaColor: String(Style.dangerBright)
-    property bool exportAreaArm: false
+    property var printArea: null
+    property bool printAreaShown: false
+    property bool printAreaLocked: false
+    property string printAreaColor: String(Style.dangerBright)
+    property bool printAreaArm: false
+    // The print area's shape (width / height) on the chosen paper, or 0:
+    // any shape (Print & Export's "Fit to area").
+    property real printAspect: 0
     property real eaX0: 0
     property real eaY0: 0
     property real eaX1: 0
@@ -226,8 +229,8 @@ Item {
     signal selectedChanged()
     // Any press on the map (the window hides its unpinned tools).
     signal mapPressed()
-    // The export area was drawn (drawn: a new one, show it) or changed.
-    signal exportAreaEdited(bool drawn)
+    // The print area was drawn (drawn: a new one, show it) or changed.
+    signal printAreaEdited(bool drawn)
     signal chipMenuRequested(real x, real y)
     signal overlayImportRequested()
     signal historyChanged()
@@ -673,12 +676,16 @@ Item {
     function dragRulerGuide(axis, index, mx, my) { return RigRulers.dragRulerGuide(axis, index, mx, my) }
     function dropRulerGuide(axis, index, mx, my) { return RigRulers.dropRulerGuide(axis, index, mx, my) }
     function rulerGuideLines() { return RigRulers.rulerGuideLines() }
-    function exportAreaRect() { return RigExportJs.exportAreaRect() }
-    function beginExportArea(x, y) { return RigExportJs.beginExportArea(x, y) }
-    function moveExportArea(x, y) { return RigExportJs.moveExportArea(x, y) }
-    function endExportArea() { return RigExportJs.endExportArea() }
-    function setExportAreaRect(x, y, w, h) { return RigExportJs.setExportAreaRect(x, y, w, h) }
-    function clearExportArea() { return RigExportJs.clearExportArea() }
+    function printAreaRect() { return RigPrintJs.printAreaRect() }
+    function beginPrintArea(x, y) { return RigPrintJs.beginPrintArea(x, y) }
+    function movePrintArea(x, y) { return RigPrintJs.movePrintArea(x, y) }
+    function endPrintArea() { return RigPrintJs.endPrintArea() }
+    function setPrintAreaRect(x, y, w, h, edges) { return RigPrintJs.setPrintAreaRect(x, y, w, h, edges) }
+    function clearPrintArea() { return RigPrintJs.clearPrintArea() }
+    function reshapePrintArea() { return RigPrintJs.reshapePrintArea() }
+    function drawnPrintRect() { return RigPrintJs.drawnPrintRect() }
+    // The photo's own size in pixels ({0, 0} without one).
+    function photoNatural() { return { w: _photoWell.naturalW, h: _photoWell.naturalH } }
 
     // Transform handles (rig_transform.js)
     function transformModesFor(n) { return RigTransform.transformModesFor(n) }
@@ -1407,7 +1414,7 @@ Item {
         }
     }
 
-    RigExportArea { ed: _ed }
+    RigPrintArea { ed: _ed }
 
     Rectangle {
         visible: _ed.banding
