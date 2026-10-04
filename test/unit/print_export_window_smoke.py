@@ -118,6 +118,15 @@ def main() -> None:
         value = value[0] if isinstance(value, tuple) else value
         return value.toVariant() if hasattr(value, "toVariant") else value
 
+    def print_export_shown() -> bool:
+        return any(
+            isinstance(w, QtQuick.QQuickWindow) and w.title() == "Print & Export"
+            and w.isVisible()
+            for w in QtGui.QGuiApplication.topLevelWindows()
+        )
+
+    # Made with the Button Map, hidden until asked for.
+    out["shown-with-the-map"] = print_export_shown()
     call(win, "enterEdit")
     QtTest.QTest.qWait(800)
     ev("_buttonMap.openPrintExport()")
@@ -313,6 +322,15 @@ def main() -> None:
     out["pdf"] = export("letter.pdf", "pdf")
     # The map on screen was never put into export mode.
     out["live-exporting"] = ev("_buttonMap._ed().exporting")
+    # Closed (its place kept), then the Button Map opened again: it stays
+    # closed (restoring its place used to show it).
+    pw.close()
+    QtTest.QTest.qWait(300)
+    win.close()
+    QtTest.QTest.qWait(500)
+    call(root, "openButtonMapForCard", card)
+    QtTest.QTest.qWait(1200)
+    out["shown-after-reopening"] = print_export_shown()
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)
 

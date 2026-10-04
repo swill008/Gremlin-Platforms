@@ -34,9 +34,11 @@ QtTest.QTest.qWait(500)
 warnings = []
 app.engine.warnings.connect(lambda ws: warnings.extend(w.toString() for w in ws))
 for compact in (False, True):
-    component = QtQml.QQmlComponent(
-        app.engine, QtCore.QUrl.fromLocalFile(os.path.join(ROOT, "qml", "VJoySelector.qml")))
-    obj = component.createWithInitialProperties({"useCompact": compact}) if component.isReady() else None
+    url = QtCore.QUrl.fromLocalFile(os.path.join(ROOT, "qml", "VJoySelector.qml"))
+    component = QtQml.QQmlComponent(app.engine, url)
+    obj = None
+    if component.isReady():
+        obj = component.createWithInitialProperties({"useCompact": compact})
     if obj is None:
         warnings.append("not created: " + component.errorString())
     QtTest.QTest.qWait(300)

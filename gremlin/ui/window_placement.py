@@ -297,6 +297,23 @@ def _clamp_on_screen(rect: QtCore.QRect, screen: QtGui.QScreen) -> QtCore.QRect:
     return QtCore.QRect(x, y, width, height)
 
 
+def _set_maximized(window: QtGui.QWindow, maximized: bool) -> None:
+    """Windowed or maximized, without showing a hidden window: setting the
+    visibility shows it (Print & Export, made hidden with the Button Map,
+    opened every time the Button Map did). A hidden window keeps the state
+    for when it is shown."""
+    if window.isVisible():
+        window.setVisibility(
+            QtGui.QWindow.Visibility.Maximized if maximized
+            else QtGui.QWindow.Visibility.Windowed
+        )
+    else:
+        window.setWindowStates(
+            QtCore.Qt.WindowState.WindowMaximized if maximized
+            else QtCore.Qt.WindowState.WindowNoState
+        )
+
+
 def restore_tool(window: QtGui.QWindow, name: str, default_w: int, default_h: int) -> None:
     entry = _tool_map(_ensure()).get(str(name)) or {}
     if not isinstance(entry, dict):
@@ -318,10 +335,10 @@ def restore_tool(window: QtGui.QWindow, name: str, default_w: int, default_h: in
         saved = None
     screen = _target_screen(saved) if saved is not None else None
     if saved is not None and screen is not None and _intersects_enough(saved, screen):
-        window.setVisibility(QtGui.QWindow.Visibility.Windowed)
+        _set_maximized(window, False)
         window.setGeometry(_clamp_on_screen(saved, screen))
         if entry.get("max"):
-            window.setVisibility(QtGui.QWindow.Visibility.Maximized)
+            _set_maximized(window, True)
         return
     if screen is None and app is not None:
         screen = app.screenAt(QtGui.QCursor.pos()) or app.primaryScreen()
@@ -334,7 +351,7 @@ def restore_tool(window: QtGui.QWindow, name: str, default_w: int, default_h: in
     height = min(height, avail.height())
     x = avail.x() + max(0, (avail.width() - width) // 2)
     y = avail.y() + max(0, (avail.height() - height) // 2)
-    window.setVisibility(QtGui.QWindow.Visibility.Windowed)
+    _set_maximized(window, False)
     window.setGeometry(QtCore.QRect(x, y, width, height))
 
 

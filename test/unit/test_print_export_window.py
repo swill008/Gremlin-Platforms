@@ -100,6 +100,13 @@ def _busy(image: QtGui.QImage) -> float:
     return differ / max(1, count)
 
 
+def test_it_stays_closed_until_asked_for(run: dict) -> None:
+    # Made with the Button Map; restoring its saved place used to show it
+    # each time the Button Map opened.
+    assert run["shown-with-the-map"] is False
+    assert run["shown-after-reopening"] is False
+
+
 def test_it_opens_with_the_print_area_shown(run: dict) -> None:
     assert run["open"] == [True, True]
 
