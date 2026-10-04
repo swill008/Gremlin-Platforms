@@ -686,6 +686,7 @@ Item {
     function endPrintArea() { return RigPrintJs.endPrintArea() }
     function setPrintAreaRect(x, y, w, h, edges) { return RigPrintJs.setPrintAreaRect(x, y, w, h, edges) }
     function clearPrintArea() { return RigPrintJs.clearPrintArea() }
+    function shiftPrintArea(dfx, dfy, k, ax, ay) { return RigPrintJs.shiftPrintArea(dfx, dfy, k, ax, ay) }
     function reshapePrintArea() { return RigPrintJs.reshapePrintArea() }
     function drawnPrintRect() { return RigPrintJs.drawnPrintRect() }
     // The photo's own size in pixels ({0, 0} without one).

@@ -195,6 +195,72 @@ def main() -> None:
         return round((time.perf_counter() - start) * 1000)
 
     out["ms"] = {"page": timed("page"), "area": timed("area")}
+
+    # Drag and zoom in the preview: the print area follows.
+    def area_now() -> dict:
+        return json.loads(str(ev("JSON.stringify(_buttonMap._ed().printArea)")))
+
+    def middle() -> QtCore.QPointF:
+        return content.mapToScene(QtCore.QPointF(
+            content.property("width") / 2, content.property("height") / 2))
+
+    def drag_preview(dx: float, dy: float) -> None:
+        a = middle()
+        b = a + QtCore.QPointF(dx, dy)
+        Button = QtCore.Qt.MouseButton
+        none = QtCore.Qt.KeyboardModifier.NoModifier
+        QtTest.QTest.mousePress(pw, Button.LeftButton, none, a.toPoint())
+        QtTest.QTest.qWait(30)
+        for i in range(1, 11):
+            p = a + (b - a) * (i / 10)
+            move = QtGui.QMouseEvent(
+                QtCore.QEvent.Type.MouseMove, p, p, Button.NoButton,
+                Button.LeftButton, none,
+            )
+            QtCore.QCoreApplication.sendEvent(pw, move)
+            QtTest.QTest.qWait(15)
+        QtTest.QTest.mouseRelease(pw, Button.LeftButton, none, b.toPoint())
+        QtTest.QTest.qWait(200)
+
+    def wheel(at: QtCore.QPointF, clicks: int) -> None:
+        event = QtGui.QWheelEvent(
+            at, pw.mapToGlobal(at), QtCore.QPoint(), QtCore.QPoint(0, 120 * clicks),
+            QtCore.Qt.MouseButton.NoButton, QtCore.Qt.KeyboardModifier.NoModifier,
+            QtCore.Qt.ScrollPhase.NoScrollPhase, False,
+        )
+        QtCore.QCoreApplication.sendEvent(pw, event)
+        QtTest.QTest.qWait(50)
+
+    ev("_buttonMap.setPrint('paper', 'fit')")
+    start = {"fx": 0.3, "fy": 0.3, "fw": 0.4, "fh": 0.4}
+    ev(f"_buttonMap._ed().printArea = {json.dumps(start)}")
+    QtTest.QTest.qWait(300)
+    width = content.property("width")
+    drag_preview(width / 4, 0)
+    out["dragged"] = area_now()
+    # Far to the right: the area stops at the page's left edge.
+    drag_preview(width * 3, 0)
+    out["dragged-to-edge"] = area_now()
+    QtTest.QTest.qWait(200)
+    doc = json.loads(_map.read_text(encoding="utf-8"))
+    out["kept"] = (doc.get("ui") or {}).get("printArea")
+    # The wheel: in (smaller) about the pointer, out (larger).
+    ev(f"_buttonMap._ed().printArea = {json.dumps(start)}")
+    QtTest.QTest.qWait(300)
+    wheel(middle(), 1)
+    out["zoomed-in"] = area_now()
+    wheel(middle(), -2)
+    out["zoomed-out"] = area_now()
+    # Locked: neither moves it.
+    ev("_buttonMap._ed().printAreaLocked = true")
+    QtTest.QTest.qWait(100)
+    before = area_now()
+    drag_preview(width / 4, 0)
+    wheel(middle(), 1)
+    out["locked-unchanged"] = area_now() == before
+    ev("_buttonMap._ed().printAreaLocked = false")
+    ev("_buttonMap.setPrint('paper', 'letter')")
+    QtTest.QTest.qWait(200)
     # Custom > Freeform (As Drawn): no paper, and back to the last one.
     freeform = child("printFreeform")
     paper = child("printPaper")

@@ -157,6 +157,27 @@ function reshapePrintArea() {
     printAreaEdited(false)
 }
 
+// Print & Export's preview: the area moved by (dfx, dfy), fractions of the
+// page (a drag: the picture follows the hand, so the area goes the other
+// way), and made k times as large about (ax, ay), fractions of the area
+// (the wheel, about the pointer). Its shape stays; kept on the page; no
+// smaller than the smallest area.
+function shiftPrintArea(dfx, dfy, k, ax, ay) {
+    if (printAreaLocked)
+        return false
+    var s = spaceRect()
+    var r = printAreaRect()
+    var w = r.w * k
+    var h = r.h * k
+    var px = r.x + ax * r.w
+    var py = r.y + ay * r.h
+    var moved = _onPage({ x: px - ax * w - dfx * s.w, y: py - ay * h - dfy * s.h, w: w, h: h })
+    if (!moved)
+        return false
+    printArea = _toArea(moved)
+    return true
+}
+
 function clearPrintArea() {
     if (!printArea)
         return

@@ -173,6 +173,19 @@ Window {
         refreshSoon()
     }
 
+    // The print area as moved or zoomed in the preview, kept with the map.
+    function keepArea() {
+        var e = host ? host._ed() : null
+        if (e)
+            e.printAreaEdited(false)
+    }
+
+    Timer {
+        id: _wheelRest
+        interval: 400
+        onTriggered: _win.keepArea()
+    }
+
     Timer {
         id: _pageTimer
         interval: 150
@@ -289,6 +302,44 @@ Window {
                             cache: false
                             smooth: true
                             mipmap: true
+                        }
+
+                        // Drag the picture (it follows the hand: the print
+                        // area moves the other way) and the wheel zooms about
+                        // the pointer (in: a smaller area). The map's print
+                        // area follows at once; saved with the map when the
+                        // drag ends or the wheel rests. Not while it is locked.
+                        MouseArea {
+                            id: _pan
+                            objectName: "printPreviewPan"
+                            readonly property var ed: _win.host ? _win.host._ed() : null
+                            readonly property bool canMove: !!ed && !ed.printAreaLocked
+                            property point last: Qt.point(0, 0)
+                            anchors.fill: parent
+                            enabled: canMove
+                            hoverEnabled: true
+                            cursorShape: !canMove ? Qt.ArrowCursor
+                                         : (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+                            onPressed: (m) => { last = Qt.point(m.x, m.y) }
+                            onPositionChanged: (m) => {
+                                if (!pressed)
+                                    return
+                                var a = _content.a
+                                ed.shiftPrintArea((m.x - last.x) / Math.max(1, width) * a.fw,
+                                                  (m.y - last.y) / Math.max(1, height) * a.fh,
+                                                  1, 0.5, 0.5)
+                                last = Qt.point(m.x, m.y)
+                            }
+                            onReleased: _win.keepArea()
+                            onWheel: (w) => {
+                                var steps = w.angleDelta.y / 120
+                                if (!steps)
+                                    return
+                                ed.shiftPrintArea(0, 0, Math.pow(0.85, steps),
+                                                  Math.max(0, Math.min(1, w.x / Math.max(1, width))),
+                                                  Math.max(0, Math.min(1, w.y / Math.max(1, height))))
+                                _wheelRest.restart()
+                            }
                         }
                     }
                 }

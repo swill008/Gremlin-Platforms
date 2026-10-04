@@ -125,6 +125,29 @@ def test_the_preview_follows_the_area_at_once(runs: dict, scale: str) -> None:
     assert result["crop-vs-sharp"] < 8
 
 
+@pytest.mark.parametrize("scale", _SCALES)
+def test_dragging_and_zooming_the_preview_moves_the_area(
+    runs: dict, scale: str
+) -> None:
+    result = runs[scale][0]
+    # A quarter of the preview to the right: the picture follows the hand,
+    # so the area goes a quarter of its width to the left.
+    dragged = result["dragged"]
+    assert abs(dragged["fx"] - (0.3 - 0.1)) < 0.01
+    assert abs(dragged["fy"] - 0.3) < 0.001 and abs(dragged["fw"] - 0.4) < 0.001
+    edge = result["dragged-to-edge"]
+    assert edge["fx"] == 0 and abs(edge["fw"] - 0.4) < 0.001
+    assert result["kept"] == edge
+    # The wheel about the middle: smaller then larger, same middle and shape.
+    zin = result["zoomed-in"]
+    assert abs(zin["fw"] - 0.4 * 0.85) < 0.002 and abs(zin["fh"] - 0.4 * 0.85) < 0.002
+    assert abs(zin["fx"] + zin["fw"] / 2 - 0.5) < 0.005
+    zout = result["zoomed-out"]
+    assert abs(zout["fw"] - 0.4 / 0.85) < 0.003
+    assert abs(zout["fw"] / zout["fh"] - 1) < 0.001
+    assert result["locked-unchanged"] is True
+
+
 def test_freeform_is_no_paper(run: dict) -> None:
     # The Paper list has only papers; Freeform (As Drawn) is the tick box.
     assert run["paper-count"] == 6
