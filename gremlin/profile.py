@@ -26,7 +26,6 @@ from gremlin import (
     device_initialization,
     error,
     plugin_manager,
-    signal,
 )
 from gremlin.logical_device import LogicalDevice
 from gremlin.osc import OscDevice
@@ -645,11 +644,13 @@ class Profile:
 
         version = int(root.get("version", "0"))
         if version != Profile.current_version:
-            signal.display_error(
-                f"Attempting to load an unsupported profile. Profile is of "
-                f"version {version} but only version 14 and up is supported."
+            # Raised, not just shown: the caller then puts back the profile
+            # that was open (an empty one used to replace it and go into
+            # Recent).
+            raise error.ProfileError(
+                f"This profile is of version {version}; only version "
+                f"{Profile.current_version} can be read."
             )
-            return
 
         # Create library entries and modes.
         self.fpath = fpath

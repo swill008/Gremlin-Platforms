@@ -303,6 +303,8 @@ class MacroManager(metaclass=SingletonMetaclass):
         Args:
             macro: the macro instance to modify
         """
+        if not macro.sequence:  # an empty macro: nothing to space out
+            return
         new_sequence = [macro.sequence[0]]
         for a1, a2 in zip(macro.sequence[:-1], macro.sequence[1:]):
             if isinstance(a1, PauseAction) or isinstance(a2, PauseAction):

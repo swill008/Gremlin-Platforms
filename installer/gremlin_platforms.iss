@@ -144,9 +144,27 @@ begin
   end;
 end;
 
+{ True when the chosen folder holds Gremlin-Platforms (its program, the copy
+  an update set aside, or an update that did not finish). }
+function OursIsHere: Boolean;
+begin
+  Result := ExistsAt(AppFile('{#MyAppExeName}')) or
+    ExistsAt(AppFile('{#MyAppExeName}.old')) or FileExists(MarkerFile);
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
+  if not OursIsHere then
+  begin
+    { A new install. Another program's _internal folder must not be moved
+      aside and deleted (it used to be), nor have ours copied into it. }
+    if ExistsAt(AppFile('_internal')) then
+      Result := 'The folder you chose already holds another program''s ' +
+        '_internal folder. Choose an empty folder for Gremlin-Platforms. ' +
+        'Nothing was changed.';
+    Exit;
+  end;
   if FileExists(MarkerFile) then
   begin
     { An earlier install stopped half-way: keep its .old copies (the last

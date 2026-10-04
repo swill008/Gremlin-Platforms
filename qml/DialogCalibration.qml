@@ -170,10 +170,11 @@ ApplicationWindow {
                 text: "Save All"
                 enabled: _calibrationDialog.anyUnsaved
                 onClicked: {
-                    var ok = _calib.saveAll()
+                    var why = _calib.saveAllRefusedReason()
+                    var ok = !why && _calib.saveAll()
                     var where = ok && _calib.moduleFilePath ? _calib.moduleFilePath() : ""
                     _saveGate.announce(ok, ok ? "Saved every axis to the module file."
-                                              : "Not written. It is still only on this screen.")
+                                              : (why || "Not written. It is still only on this screen."))
                     if (backend)
                         backend.noteSave(ok ? ("Saved the calibration to " + where)
                                             : "The calibration was not written.")
@@ -384,11 +385,12 @@ ApplicationWindow {
                         font.bold: true
 
                         onClicked: {
-                            var ok = _axisView.model.save(index)
+                            var why = _axisView.model.saveRefusedReason(index)
+                            var ok = !why && _axisView.model.save(index)
                             var where = ok && _axisView.model.moduleFilePath ? _axisView.model.moduleFilePath() : ""
                             _saveGate.announce(ok,
                                 ok ? "Saved to the module file."
-                                   : "Not written. It is still only on this screen.")
+                                   : (why || "Not written. It is still only on this screen."))
                             if (backend)
                                 backend.noteSave(ok
                                     ? ("Saved the calibration to " + where)
@@ -468,8 +470,9 @@ ApplicationWindow {
     DismissibleDialog {
         id: _saveGate
         onSaveChosen: {
-            if (!_calib.saveAll()) {
-                _saveGate.announce(false, "Not written. It is still only on this screen.")
+            var why = _calib.saveAllRefusedReason()
+            if (why || !_calib.saveAll()) {
+                _saveGate.announce(false, why || "Not written. It is still only on this screen.")
                 if (backend)
                     backend.noteSave("The calibration was not written.")
                 return

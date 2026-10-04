@@ -743,6 +743,8 @@ def no_center_calibration(value: int, minimum: int, maximum: int) -> float:
         the calibrated value in [-1, 1] corresponding to the provided raw value
     """
     value = clamp(value, minimum, maximum)
+    if maximum <= minimum:  # no range: the axis can't move
+        return -1.0
     return (value - minimum) / float(maximum - minimum) * 2.0 - 1.0
 
 
@@ -762,6 +764,10 @@ def linear_axis_value_interpolation(
         The linearly interpolated value between min and max
     """
     value = clamp(value, min_value, max_value)
+    # A range of no width (Split Axis split at 1.0 or -1.0): the value is at
+    # its start.
+    if max_value <= min_value:
+        return -1.0
     return (value - min_value) / float(max_value - min_value) * 2.0 - 1.0
 
 

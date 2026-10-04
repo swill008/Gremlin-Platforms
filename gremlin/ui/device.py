@@ -1111,9 +1111,9 @@ class AxisCalibration(QtCore.QAbstractListModel):
         self._state[index]["unsavedChanges"] = not self._matches_saved(index)
 
         # Reset calibration tracking data to continue calibration after a
-        # reset.
-        self._active_calibrations[index]["cvalues"] = [0, 0]
-        self._active_calibrations[index]["evalues"] = [0, 0]
+        # reset (from the next value read).
+        self._active_calibrations[index]["cvalues"] = None
+        self._active_calibrations[index]["evalues"] = None
 
         # Update models
         self._update_calibration(index)
@@ -1123,7 +1123,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
     def calibrateCenter(self, index: int, is_active: bool) -> None:
         self._active_calibrations[index]["center"] = is_active
         self._active_calibrations[index]["extrema"] = False
-        self._active_calibrations[index]["cvalues"] = [0, 0]
+        self._active_calibrations[index]["cvalues"] = None
         if is_active:
             self._state[index]["centerLow"] = 0
             self._state[index]["centerHigh"] = 0
@@ -1133,7 +1133,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
     def calibrateExtrema(self, index: int, is_active: bool) -> None:
         self._active_calibrations[index]["extrema"] = is_active
         self._active_calibrations[index]["center"] = False
-        self._active_calibrations[index]["evalues"] = [0, 0]
+        self._active_calibrations[index]["evalues"] = None
         if is_active:
             self._state[index]["low"] = 0
             self._state[index]["high"] = 0
@@ -1152,6 +1152,9 @@ class AxisCalibration(QtCore.QAbstractListModel):
         if not (0 <= index < len(self._state)):
             persist_log(f"Persist calibration skipped index={index} reason='bad index'")
             return False
+        if self._refused(index):
+            persist_log(f"Persist calibration refused index={index} reason='no range'")
+            return False
 
         axis_id = self._device.axis_map[index].axis_index
         saved = write_axis(self._module_slug, axis_id, self._axis_data(index))
@@ -1162,6 +1165,30 @@ class AxisCalibration(QtCore.QAbstractListModel):
             return False
         self._saved(index)
         return True
+
+    def _refused(self, index: int) -> str:
+        """Why axis index can't be saved, or "" when it can."""
+        row = self._state[index]
+        if row["low"] >= row["high"]:
+            # Saved without moving the axis: it would never move again.
+            return (
+                "Not saved: the axis's lowest and highest values are the same. "
+                "Move it through its full range, then save."
+            )
+        return ""
+
+    @QtCore.Slot(int, result=str)
+    def saveRefusedReason(self, index: int) -> str:
+        if not (0 <= index < len(self._state)):
+            return ""
+        return self._refused(index)
+
+    @QtCore.Slot(result=str)
+    def saveAllRefusedReason(self) -> str:
+        for i, row in enumerate(self._state):
+            if row.get("unsavedChanges") and self._refused(i):
+                return self._refused(i)
+        return ""
 
     def _axis_data(self, index: int) -> tuple[int, int, int, int, bool]:
         row = self._state[index]
@@ -1205,6 +1232,9 @@ class AxisCalibration(QtCore.QAbstractListModel):
         ]
         if not indexes:
             return True
+        if any(self._refused(i) for i in indexes):
+            persist_log("Persist calibration refused (save all) reason='no range'")
+            return False
         if (
             self._device_uuid is None or self._device is None
             or not self._module_slug
@@ -1320,6 +1350,20 @@ class AxisCalibration(QtCore.QAbstractListModel):
             # Check if we're calibrating the axis and if so record possible
             # new calibration values
             calibration_changed = False
+            # A capture starts from the first value read (not from 0: an
+            # off-centre stick got a lopsided centre).
+            for key, low, high in (
+                ("cvalues", "centerLow", "centerHigh"), ("evalues", "low", "high")
+            ):
+                active = self._active_calibrations[index][
+                    "center" if key == "cvalues" else "extrema"
+                ]
+                if active and self._active_calibrations[index].get(key) is None:
+                    self._active_calibrations[index][key] = [
+                        event.raw_value, event.raw_value
+                    ]
+                    state[low] = state[high] = event.raw_value
+                    calibration_changed = True
             if self._active_calibrations[index]["center"]:
                 data = self._active_calibrations[index]["cvalues"]
                 if data[0] > event.raw_value:

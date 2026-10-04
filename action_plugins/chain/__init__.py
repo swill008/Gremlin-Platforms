@@ -55,12 +55,16 @@ class ChainFunctor(AbstractFunctor["ChainData"]):
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
+        # Every sequence removed: nothing to run (it used to raise KeyError).
+        if not self.data.chain_sequences:
+            return
         if self.data.timeout > 0.0:
             if self.last_execution + self.data.timeout < time.time():
                 self.current_index = 0
             self.last_execution = time.time()
 
-        for functor in self.functors[str(self.current_index)]:
+        self.current_index %= len(self.data.chain_sequences)
+        for functor in self.functors.get(str(self.current_index), []):
             functor(event, value, properties)
 
         if not value.current:

@@ -91,6 +91,15 @@ class ChangeModeFunctor(AbstractFunctor):
         ):
             return
 
+        # Switch, Cycle and Temporary with no mode to go to: nothing to do
+        # (they used to divide by zero or raise IndexError).
+        if (
+            self.data.change_type
+            in (ChangeType.Switch, ChangeType.Cycle, ChangeType.Temporary)
+            and not self.data.target_modes
+        ):
+            return
+
         mm = mode_manager.ModeManager()
         if self.data.change_type == ChangeType.Switch:
             mm.switch_to(mode_manager.Mode(self.data.target_modes[0], mm.current.name))
@@ -125,6 +134,8 @@ class ChangeModeFunctor(AbstractFunctor):
         )
 
     def _release_temporary_mode(self) -> None:
+        if not self.data.target_modes:
+            return
         mm = mode_manager.ModeManager()
         if mm.current.name == self.data._target_modes[0] and mm.current.is_temporary:
             mm.unwind()

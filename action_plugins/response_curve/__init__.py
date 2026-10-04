@@ -215,6 +215,39 @@ class ControlPoint(QtCore.QObject):
         return self._handle_right is not None
 
 
+
+def _curve_points(curve: spline.AbstractCurve) -> list[tuple[float, float]]:
+    """The curve's points, without Bezier handles."""
+    points = []
+    for cp in curve.control_points():
+        center = getattr(cp, "center", cp)
+        points.append((center.x, center.y))
+    return sorted(points)
+
+
+def converted_curve(
+    curve: spline.AbstractCurve, curve_type: type[spline.AbstractCurve]
+) -> spline.AbstractCurve:
+    """A curve of curve_type through the same points (Symmetric kept).
+
+    Changing the curve type used to replace the curve with the default one,
+    losing every point. A Bezier curve gets short level handles on each point,
+    as a point added in the editor does.
+    """
+    points = _curve_points(curve)
+    if len(points) < 2:
+        new = curve_type()
+    elif curve_type is spline.CubicBezierSpline:
+        flat = [points[0], (points[0][0] + 0.05, points[0][1])]
+        for x, y in points[1:-1]:
+            flat += [(x - 0.05, y), (x, y), (x + 0.05, y)]
+        flat += [(points[-1][0] - 0.05, points[-1][1]), points[-1]]
+        new = curve_type(flat)
+    else:
+        new = curve_type(points)
+    new.is_symmetric = curve.is_symmetric
+    return new
+
 class ResponseCurveModel(ActionModel):
     changed = QtCore.Signal()
     deadzoneChanged = QtCore.Signal()
@@ -447,7 +480,7 @@ class ResponseCurveModel(ActionModel):
         }
         curve_type = lookup[value]
         if curve_type is not type(self._data.curve):
-            self._data.curve = curve_type()
+            self._data.curve = converted_curve(self._data.curve, curve_type)
             self._set_selected_point(0)
             self.curveChanged.emit()
             self.controlPointChanged.emit()
@@ -532,6 +565,9 @@ class ResponseCurveData(AbstractActionData):
         self.curve = lookup[
             util.read_property(node, "curve-type", PropertyType.String)
         ]([[p.x, p.y] for p in points])
+        self.curve.is_symmetric = util.read_property(
+            node, "symmetric", PropertyType.Bool, False
+        )
 
     @override
     def _to_xml(self) -> ElementTree.Element:
@@ -586,6 +622,11 @@ class ResponseCurveData(AbstractActionData):
         node.append(
             util.create_property_node(
                 "curve-type", lookup[type(self.curve)], PropertyType.String
+            )
+        )
+        node.append(
+            util.create_property_node(
+                "symmetric", bool(self.curve.is_symmetric), PropertyType.Bool
             )
         )
 

@@ -232,6 +232,8 @@ class ModeManager(QtCore.QObject):
         EventHandler().drop_mode(name)
 
     def cycle(self, sequence: ModeSequence) -> None:
+        if not sequence.modes:  # nothing to cycle through
+            return
         self.switch_to(Mode(sequence.next(), self.current.name))
 
     def previous(self) -> None:
