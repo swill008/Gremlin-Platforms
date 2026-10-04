@@ -618,181 +618,204 @@ Item {
         anchors.margins: Style.dp(12)
         spacing: Style.dp(16)
 
-        ColumnLayout {
-            visible: _root.padAOn || _root.padBOn || (_root.showHats && hatModel.count > 0)
-            Layout.preferredWidth: Style.dp(228)
-            Layout.maximumWidth: Style.dp(228)
-            Layout.fillWidth: false
-            Layout.fillHeight: true
-            Layout.alignment: Qt.AlignTop
-            spacing: Style.dp(12)
-
-            CrossPad {
-                Layout.preferredWidth: Style.dp(220)
-                Layout.preferredHeight: Style.dp(220)
-                visible: _root.padAOn
-                label: "X / Y"
-                xVal: { var row = findAxis(padAX); return row ? liveVal(row.idx) : 0 }
-                yVal: { var row = findAxis(padAY); return row ? liveVal(row.idx) : 0 }
-            }
-            CrossPad {
-                Layout.preferredWidth: Style.dp(220)
-                Layout.preferredHeight: Style.dp(220)
-                visible: _root.padBOn
-                label: "Rx / Ry"
-                xVal: { var row = findAxis(padBX); return row ? liveVal(row.idx) : 0 }
-                yVal: { var row = findAxis(padBY); return row ? liveVal(row.idx) : 0 }
-            }
-            Repeater {
-                model: hatModel
-                delegate: HatView {
-                    required property int idx
-                    required property int hw
-                    required property string name
-                    visible: _root.showHats
-                    Layout.preferredWidth: Style.dp(160)
-                    Layout.preferredHeight: Style.dp(160)
-                    Layout.alignment: Qt.AlignHCenter
-                    text: name.length ? name : ("Hat " + hw)
-                    currentValue: {
-                        liveStamp
-                        if (!_root.showLive)
-                            return Qt.point(0, 0)
-                        return Qt.point(_live.hatXAt(idx), _live.hatYAt(idx))
-                    }
-                }
-            }
-            Item { Layout.fillHeight: true }
-        }
-
-        Row {
-            visible: _root.metersOn
-            Layout.fillWidth: false
-            Layout.fillHeight: true
-            Layout.alignment: Qt.AlignTop
-            spacing: Style.dp(10)
-
-            Repeater {
-                model: axisModel
-                delegate: Column {
-                    required property int idx
-                    required property int hw
-                    required property string name
-                    visible: meterOn(hw)
-                    width: Style.dp(Math.max(48, _root.meterWidth + 26))
-                    height: parent.height
-                    spacing: Style.dp(6)
-
-                    BetterProgressBar {
-                        width: Style.dp(_root.meterWidth)
-                        height: parent.height - Style.dp(44)
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        orientation: _root.meterStyle === "horizontal" ? BetterProgressBar.Orientation.Horizontal : BetterProgressBar.Orientation.Vertical
-                        barSize: Style.dp(_root.meterWidth)
-                        fillColor: _root.colorMeter
-                        from: -1
-                        to: 1
-                        value: liveVal(idx)
-                    }
-                    Label {
-                        width: parent.width
-                        horizontalAlignment: Text.AlignHCenter
-                        text: axisShort(hw, name)
-                        color: Style.fg
-                        font.pixelSize: Style.dp(12)
-                    }
-                    Label {
-                        width: parent.width
-                        horizontalAlignment: Text.AlignHCenter
-                        text: (liveVal(idx) >= 0 ? "+" : "") + liveVal(idx).toFixed(2)
-                        color: Style.fgMuted
-                        font.pixelSize: Style.dp(10)
-                    }
-                }
-            }
-        }
-
-        Item {
+        // Scrolls sideways when the page is too narrow (a large UI scale), so
+        // the Appearance panel beside it always stays in view.
+        Flickable {
+            id: _viewScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumWidth: Style.dp(200)
             clip: true
+            flickableDirection: Flickable.HorizontalFlick
+            boundsBehavior: Flickable.StopAtBounds
+            interactive: contentWidth > width
+            contentWidth: Math.max(width, _viewRow.implicitWidth)
+            contentHeight: height
+            ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
 
-            Flickable {
-                id: _buttons
-                anchors.fill: parent
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                // Columns wrap to fit, so nothing sits off to the side.
-                flickableDirection: Flickable.VerticalFlick
-                contentWidth: Math.max(width, _btnGrid.implicitWidth)
-                contentHeight: Math.max(height, _btnGrid.implicitHeight)
-                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+            RowLayout {
+                id: _viewRow
+                width: _viewScroll.contentWidth
+                height: _viewScroll.height
+                spacing: Style.dp(16)
 
-                GridLayout {
-                    id: _btnGrid
-                    // The Columns setting is a maximum: use fewer when the view is narrower.
-                    readonly property real cellW: Style.dp(Math.max(40, _root.buttonWidth))
-                    columns: Math.max(1, Math.min(_root.buttonColumns,
-                        Math.floor((_buttons.width + columnSpacing) / (cellW + columnSpacing))))
-                    columnSpacing: Style.dp(6)
-                    rowSpacing: Style.dp(6)
+                ColumnLayout {
+                    visible: _root.padAOn || _root.padBOn || (_root.showHats && hatModel.count > 0)
+                    Layout.preferredWidth: Style.dp(228)
+                    Layout.maximumWidth: Style.dp(228)
+                    Layout.fillWidth: false
+                    Layout.fillHeight: true
+                    Layout.alignment: Qt.AlignTop
+                    spacing: Style.dp(12)
+
+                    CrossPad {
+                        Layout.preferredWidth: Style.dp(220)
+                        Layout.preferredHeight: Style.dp(220)
+                        visible: _root.padAOn
+                        label: "X / Y"
+                        xVal: { var row = findAxis(padAX); return row ? liveVal(row.idx) : 0 }
+                        yVal: { var row = findAxis(padAY); return row ? liveVal(row.idx) : 0 }
+                    }
+                    CrossPad {
+                        Layout.preferredWidth: Style.dp(220)
+                        Layout.preferredHeight: Style.dp(220)
+                        visible: _root.padBOn
+                        label: "Rx / Ry"
+                        xVal: { var row = findAxis(padBX); return row ? liveVal(row.idx) : 0 }
+                        yVal: { var row = findAxis(padBY); return row ? liveVal(row.idx) : 0 }
+                    }
+                    Repeater {
+                        model: hatModel
+                        delegate: HatView {
+                            required property int idx
+                            required property int hw
+                            required property string name
+                            visible: _root.showHats
+                            Layout.preferredWidth: Style.dp(160)
+                            Layout.preferredHeight: Style.dp(160)
+                            Layout.alignment: Qt.AlignHCenter
+                            text: name.length ? name : ("Hat " + hw)
+                            currentValue: {
+                                liveStamp
+                                if (!_root.showLive)
+                                    return Qt.point(0, 0)
+                                return Qt.point(_live.hatXAt(idx), _live.hatYAt(idx))
+                            }
+                        }
+                    }
+                    Item { Layout.fillHeight: true }
+                }
+
+                Row {
+                    visible: _root.metersOn
+                    Layout.fillWidth: false
+                    Layout.fillHeight: true
+                    Layout.alignment: Qt.AlignTop
+                    spacing: Style.dp(10)
 
                     Repeater {
-                        model: buttonModel
-                        delegate: Rectangle {
-                    required property int idx
-                    required property int hw
-                    required property string name
-                    Layout.preferredWidth: Style.dp(Math.max(40, _root.buttonWidth))
-                    Layout.preferredHeight: _root.btnCellH
-                    Layout.minimumWidth: Style.dp(Math.max(40, _root.buttonWidth))
-                    Layout.maximumWidth: Style.dp(Math.max(40, _root.buttonWidth))
-                    Layout.minimumHeight: _root.btnCellH
-                    Layout.maximumHeight: _root.btnCellH
-                    Layout.fillWidth: false
-                    property bool on: liveVal(idx) > 0.5 && _root.showLive
-                    color: {
-                        if (!on)
-                            return Style.background
-                        if (_root.buttonStyle === "compact")
-                            return _root.colorPress
-                        return Qt.rgba(0.133, 0.773, 0.369, 0.45)
-                    }
-                    border.color: on ? _root.colorPress : Style.lowColor
-                    border.width: Style.dp(1)
-                    radius: Style.dp(3)
+                        model: axisModel
+                        delegate: Column {
+                            required property int idx
+                            required property int hw
+                            required property string name
+                            visible: meterOn(hw)
+                            width: Style.dp(Math.max(48, _root.meterWidth + 26))
+                            height: parent.height
+                            spacing: Style.dp(6)
 
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: Style.dp(6)
-                        Rectangle {
-                            visible: _root.buttonStyle === "led"
-                            width: Style.dp(10)
-                            height: Style.dp(10)
-                            radius: Style.dp(5)
-                            color: on ? _root.colorPress : Style.lowColor
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        Column {
-                            spacing: 0
-                            Label {
-                                text: "Button"
-                                color: on ? Style.fgStrong : Style.fgMuted
-                                font.pixelSize: _root.buttonSize === "small" ? Style.dp(9) : Style.dp(11)
-                                horizontalAlignment: Text.AlignHCenter
+                            BetterProgressBar {
+                                width: Style.dp(_root.meterWidth)
+                                height: parent.height - Style.dp(44)
                                 anchors.horizontalCenter: parent.horizontalCenter
+                                orientation: _root.meterStyle === "horizontal" ? BetterProgressBar.Orientation.Horizontal : BetterProgressBar.Orientation.Vertical
+                                barSize: Style.dp(_root.meterWidth)
+                                fillColor: _root.colorMeter
+                                from: -1
+                                to: 1
+                                value: liveVal(idx)
                             }
                             Label {
-                                text: "" + hw
-                                color: on ? Style.fgStrong : Style.fg
-                                font.pixelSize: _root.buttonSize === "small" ? Style.dp(12) : Style.dp(14)
-                                font.bold: true
+                                width: parent.width
                                 horizontalAlignment: Text.AlignHCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: axisShort(hw, name)
+                                color: Style.fg
+                                font.pixelSize: Style.dp(12)
+                            }
+                            Label {
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                text: (liveVal(idx) >= 0 ? "+" : "") + liveVal(idx).toFixed(2)
+                                color: Style.fgMuted
+                                font.pixelSize: Style.dp(10)
                             }
                         }
                     }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumWidth: Style.dp(200)
+                    Layout.preferredWidth: Style.dp(200)
+                    clip: true
+
+                    Flickable {
+                        id: _buttons
+                        anchors.fill: parent
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        // Columns wrap to fit, so nothing sits off to the side.
+                        flickableDirection: Flickable.VerticalFlick
+                        contentWidth: Math.max(width, _btnGrid.implicitWidth)
+                        contentHeight: Math.max(height, _btnGrid.implicitHeight)
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                        GridLayout {
+                            id: _btnGrid
+                            // The Columns setting is a maximum: use fewer when the view is narrower.
+                            readonly property real cellW: Style.dp(Math.max(40, _root.buttonWidth))
+                            columns: Math.max(1, Math.min(_root.buttonColumns,
+                                Math.floor((_buttons.width + columnSpacing) / (cellW + columnSpacing))))
+                            columnSpacing: Style.dp(6)
+                            rowSpacing: Style.dp(6)
+
+                            Repeater {
+                                model: buttonModel
+                                delegate: Rectangle {
+                            required property int idx
+                            required property int hw
+                            required property string name
+                            Layout.preferredWidth: Style.dp(Math.max(40, _root.buttonWidth))
+                            Layout.preferredHeight: _root.btnCellH
+                            Layout.minimumWidth: Style.dp(Math.max(40, _root.buttonWidth))
+                            Layout.maximumWidth: Style.dp(Math.max(40, _root.buttonWidth))
+                            Layout.minimumHeight: _root.btnCellH
+                            Layout.maximumHeight: _root.btnCellH
+                            Layout.fillWidth: false
+                            property bool on: liveVal(idx) > 0.5 && _root.showLive
+                            color: {
+                                if (!on)
+                                    return Style.background
+                                if (_root.buttonStyle === "compact")
+                                    return _root.colorPress
+                                return Qt.rgba(0.133, 0.773, 0.369, 0.45)
+                            }
+                            border.color: on ? _root.colorPress : Style.lowColor
+                            border.width: Style.dp(1)
+                            radius: Style.dp(3)
+
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: Style.dp(6)
+                                Rectangle {
+                                    visible: _root.buttonStyle === "led"
+                                    width: Style.dp(10)
+                                    height: Style.dp(10)
+                                    radius: Style.dp(5)
+                                    color: on ? _root.colorPress : Style.lowColor
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Column {
+                                    spacing: 0
+                                    Label {
+                                        text: "Button"
+                                        color: on ? Style.fgStrong : Style.fgMuted
+                                        font.pixelSize: _root.buttonSize === "small" ? Style.dp(9) : Style.dp(11)
+                                        horizontalAlignment: Text.AlignHCenter
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                    }
+                                    Label {
+                                        text: "" + hw
+                                        color: on ? Style.fgStrong : Style.fg
+                                        font.pixelSize: _root.buttonSize === "small" ? Style.dp(12) : Style.dp(14)
+                                        font.bold: true
+                                        horizontalAlignment: Text.AlignHCenter
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                    }
+                                }
+                            }
+                                }
+                            }
                         }
                     }
                 }

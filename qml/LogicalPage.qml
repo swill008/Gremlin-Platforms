@@ -293,6 +293,7 @@ Item {
                 TextField {
                     id: _findText
                     Layout.fillWidth: true
+                    Layout.minimumWidth: Style.dp(160)
                     placeholderText: "System name, your name, or group"
                     color: Style.fg
                     onTextChanged: _root._applyFind()
@@ -302,9 +303,6 @@ Item {
                     model: ["All types", "Buttons", "Axes", "Hats"]
                     onActivated: _root._applyFind()
                 }
-                CheckBox { id: _findUngrouped; text: "Ungrouped"; onClicked: _root._applyFind() }
-                CheckBox { id: _findNoWriter; text: "No hardware writer"; onClicked: _root._applyFind() }
-                CheckBox { id: _findNoAction; text: "No actions in this mode"; onClicked: _root._applyFind() }
                 Button {
                     text: "Clear"
                     onClicked: {
@@ -331,6 +329,17 @@ Item {
                     text: _root.editorLocked ? "Profile running: stop it to edit" : ""
                     color: Style.fgMuted
                 }
+            }
+            // The filters, on a line of their own: they wrap when the page is
+            // narrow instead of running under the Appearance panel.
+            Flow {
+                Layout.fillWidth: true
+                Layout.leftMargin: Style.dp(8)
+                Layout.rightMargin: Style.dp(8)
+                spacing: Style.dp(8)
+                CheckBox { id: _findUngrouped; text: "Ungrouped"; onClicked: _root._applyFind() }
+                CheckBox { id: _findNoWriter; text: "No hardware writer"; onClicked: _root._applyFind() }
+                CheckBox { id: _findNoAction; text: "No actions in this mode"; onClicked: _root._applyFind() }
             }
 
             RowLayout {
