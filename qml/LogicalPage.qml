@@ -11,6 +11,7 @@ import QtQuick.Dialogs
 import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
+import "helpers.js" as Helpers
 import Gremlin.UI
 
 Item {
@@ -1786,7 +1787,7 @@ Item {
         groupPadBottom = numVal(v.groupPadBottom, 0)
         groupPadLeft = numVal(v.groupPadLeft, 8)
         groupRadius = numVal(v.groupRadius, 3)
-        colorGroupSet = userColour(v.colorGroup, "#27272A")
+        colorGroupSet = Helpers.userColour(v.colorGroup, "#27272A")
         parentHeight = numVal(v.parentHeight, 44)
         parentPadShape = v.parentPadShape || "sides"
         parentPad = numVal(v.parentPad, 0)
@@ -1795,7 +1796,7 @@ Item {
         parentPadBottom = numVal(v.parentPadBottom, 0)
         parentPadLeft = numVal(v.parentPadLeft, 24)
         parentRadius = numVal(v.parentRadius, 3)
-        colorParentSet = userColour(v.colorParent, "#18181B")
+        colorParentSet = Helpers.userColour(v.colorParent, "#18181B")
         parentIndent = numVal(v.parentIndent, 16)
         childHeight = numVal(v.childHeight, 32)
         childIndent = numVal(v.childIndent, 32)
@@ -1806,7 +1807,7 @@ Item {
         childPadBottom = numVal(v.childPadBottom, 0)
         childPadLeft = numVal(v.childPadLeft, 0)
         childRadius = numVal(v.childRadius, 3)
-        colorChildSet = userColour(v.colorChild, "#18181B")
+        colorChildSet = Helpers.userColour(v.colorChild, "#18181B")
         showChildren = v.showChildren !== false
         showSummary = v.showSummary !== false
         summaryFont = numVal(v.summaryFont, 11)
@@ -1814,26 +1815,19 @@ Item {
         groupFont = numVal(v.groupFont, 15)
         childFont = numVal(v.childFont, 13)
         targetFont = numVal(v.targetFont, 11)
-        colorActionTargetSet = userColour(v.colorActionTarget, "#A1A1AA")
+        colorActionTargetSet = Helpers.userColour(v.colorActionTarget, "#A1A1AA")
         parentBold = v.parentBold !== false
-        colorTextSet = userColour(v.colorText, "#E4E4E7")
-        colorMutedSet = userColour(v.colorMuted, "#A1A1AA")
-        colorSelectedSet = userColour(v.colorSelected, "#1E3A5F")
-        colorSelectBorderSet = userColour(v.colorSelectBorder, "#3F3F46")
-        colorBorderSet = userColour(v.colorBorder, "#3F3F46")
+        colorTextSet = Helpers.userColour(v.colorText, "#E4E4E7")
+        colorMutedSet = Helpers.userColour(v.colorMuted, "#A1A1AA")
+        colorSelectedSet = Helpers.userColour(v.colorSelected, "#1E3A5F")
+        colorSelectBorderSet = Helpers.userColour(v.colorSelectBorder, "#3F3F46")
+        colorBorderSet = Helpers.userColour(v.colorBorder, "#3F3F46")
         caretSize = numVal(v.caretSize, 18)
-        colorCaretSet = userColour(v.colorCaret, "#E4E4E7")
+        colorCaretSet = Helpers.userColour(v.colorCaret, "#E4E4E7")
         gripWidth = numVal(v.gripWidth, 8)
         gripHeight = numVal(v.gripHeight, 18)
         gripRadius = numVal(v.gripRadius, 2)
-        colorGripSet = userColour(v.colorGrip, "#52525B")
-    }
-
-    // A saved colour equal to the old fixed (dark) default was never changed by
-    // the user, so it follows Dark mode like a colour that was never set.
-    function userColour(saved, oldDefault) {
-        var text = String(saved || "")
-        return text.toLowerCase() === oldDefault.toLowerCase() ? "" : text
+        colorGripSet = Helpers.userColour(v.colorGrip, "#52525B")
     }
 
     function userColourOf(target) {

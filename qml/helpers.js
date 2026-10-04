@@ -157,3 +157,11 @@ function determineHintColor(userFeedback) {
     }
     return hintColor(highestSeverity)
 }
+
+// A saved colour equal to a page's old fixed (dark) default was never
+// changed by the user, so it follows Dark mode like a colour never set.
+// Each page passes its own old default: they differed per page.
+function userColour(saved, oldDefault) {
+    var text = String(saved || "")
+    return text.toLowerCase() === String(oldDefault).toLowerCase() ? "" : text
+}

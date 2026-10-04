@@ -180,7 +180,7 @@ ApplicationWindow {
         _panelReady = false
         configTitleName = "Logical Device"
         configDirection = "logical"
-        uiState.setCurrentDevice("f0af472f-8e17-493b-a1eb-7333ee8543f2")
+        uiState.setCurrentDevice(uiState.logicalDeviceGuid)
         uiState.setCurrentTab("logical")
         uiState.setCurrentRoom("configuration")
     }

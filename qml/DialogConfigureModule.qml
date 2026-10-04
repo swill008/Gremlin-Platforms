@@ -16,6 +16,14 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
 
+    // Opens at the size it was left at (capped to the screen).
+    ToolWindowMemory {
+        host: _win
+        name: "moduleSetup"
+        defaultWidth: Style.fitWidth(Style.dp(980), Screen)
+        defaultHeight: Style.fitHeight(Style.dp(640), Screen)
+    }
+
     property string direction: "source"
     property string deviceName: ""
     property string deviceGuid: ""

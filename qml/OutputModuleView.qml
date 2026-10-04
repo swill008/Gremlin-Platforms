@@ -11,6 +11,7 @@ import QtQuick.Dialogs
 import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
+import "helpers.js" as Helpers
 
 Item {
     id: _root
@@ -365,13 +366,6 @@ Item {
         openColors = open
     }
 
-    // A saved colour equal to the old fixed (dark) default was never changed by
-    // the user, so it follows Dark mode like a colour that was never set.
-    function userColour(saved, oldDefault) {
-        var text = String(saved || "")
-        return text.toLowerCase() === oldDefault.toLowerCase() ? "" : text
-    }
-
     function applyViewValues(v) {
         layout = v.layout || "pads_meters_grid"
         padAX = (v.padAX === undefined || v.padAX === null) ? 1 : v.padAX
@@ -394,9 +388,9 @@ Item {
         buttonSize = v.buttonSize || "medium"
         buttonColumns = v.buttonColumns || 12
         buttonWidth = v.buttonWidth || 64
-        colorLiveSet = userColour(v.colorLive, "#22C55E")
-        colorMeterSet = userColour(v.colorMeter, "#3B82F6")
-        colorPressSet = userColour(v.colorPress, "#22C55E")
+        colorLiveSet = Helpers.userColour(v.colorLive, "#22C55E")
+        colorMeterSet = Helpers.userColour(v.colorMeter, "#3B82F6")
+        colorPressSet = Helpers.userColour(v.colorPress, "#22C55E")
         colorScreen = v.colorScreen || "#00000000"
         screenImage = v.screenImage || ""
         applySections(v.sections)

@@ -12,6 +12,14 @@ import Gremlin.Style
 
 ApplicationWindow {
     id: _info
+
+    // Opens at the size it was left at (capped to the screen).
+    ToolWindowMemory {
+        host: _info
+        name: "deviceInformation"
+        defaultWidth: _info.minimumWidth
+        defaultHeight: _info.minimumHeight
+    }
     font.pixelSize: Style.fontSize
     minimumWidth: Style.fitWidth(Style.dp(1000), Screen)
 

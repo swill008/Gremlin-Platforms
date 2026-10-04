@@ -144,3 +144,26 @@ def test_editors_fit_large_ui_scales() -> None:
     start = macro.index("// Macro repeat configuration")
     repeat_row = macro[start:macro.index('text: "Exclusive"')]
     assert repeat_row.count("RowLayout {") == 2  # the switches have their own row
+
+
+# Batch D: drifting copies (N25).
+
+
+def test_one_user_colour_one_logical_id_one_window_memory() -> None:
+    import re
+
+    for page in ("BindingCatalog", "LogicalPage", "OutputModuleView"):
+        qml = _text(f"qml/{page}.qml")
+        assert "function userColour(" not in qml and "Helpers.userColour(" in qml
+    assert "function userColour(" in _text("qml/helpers.js")
+    guid = re.compile(r"f0af472f-8e17-493b-a1eb-7333ee8543f2", re.I)
+    for page in ("Main", "DeviceList"):
+        assert not guid.search(_text(f"qml/{page}.qml"))
+    from gremlin.ui.backend import UIState
+
+    assert guid.fullmatch(UIState.logicalDeviceGuid.fget(None))
+    windows = ("DialogAutoMapper", "DialogConfigureModule", "DialogDeviceInformation",
+               "DialogDevicePack", "DialogHardwareHide", "DialogManageModes")
+    for window in windows:
+        assert "ToolWindowMemory {" in _text(f"qml/{window}.qml"), window
+    assert "saveWindowSize" not in _text("qml/DialogHardwareHide.qml")

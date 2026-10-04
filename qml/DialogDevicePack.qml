@@ -15,6 +15,14 @@ import "helpers.js" as Helpers
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
+
+    // Opens at the size it was left at (capped to the screen).
+    ToolWindowMemory {
+        host: _win
+        name: "devicePack"
+        defaultWidth: Style.fitWidth(Style.dp(860), Screen)
+        defaultHeight: Style.fitHeight(Style.dp(780), Screen)
+    }
     width: 860
     height: 780
     minimumWidth: Style.fitWidth(Style.dp(720), Screen)
@@ -241,11 +249,7 @@ ApplicationWindow {
         _warn.open()
     }
 
-    Component.onCompleted: {
-        width = Style.fitWidth(Style.dp(860), Screen)
-        height = Style.fitHeight(Style.dp(780), Screen)
-        reloadDevices()
-    }
+    Component.onCompleted: reloadDevices()
 
     FileDialog {
         id: _save

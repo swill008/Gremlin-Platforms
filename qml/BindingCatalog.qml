@@ -14,6 +14,7 @@ import Gremlin.Device
 import Gremlin.Profile
 import Gremlin.Menus
 import Gremlin.Style
+import "helpers.js" as Helpers
 import Gremlin.UI
 
 Item {
@@ -654,28 +655,21 @@ Item {
         editorBorderW = numVal(v.editorBorderW, 1)
         editorAccentW = numVal(v.editorAccentW, 3)
         showEditorAccent = v.showEditorAccent !== false
-        colorParentSet = userColour(v.colorParent, "#111113")
-        colorChildSet = userColour(v.colorChild, "#111113")
-        colorSelectedSet = userColour(v.colorSelected, "#27272A")
-        colorTextSet = userColour(v.colorText, "#E4E4E7")
-        colorMutedSet = userColour(v.colorMuted, "#A1A1AA")
-        colorLiveSet = userColour(v.colorLive, "#22C55E")
-        colorBorderSet = userColour(v.colorBorder, "#3F3F46")
-        colorSelectBorderSet = userColour(v.colorSelectBorder, "#E4E4E7")
-        colorEditorSet = userColour(v.colorEditor, "#0F2744")
-        colorEditorBorderSet = userColour(v.colorEditorBorder, "#3B82F6")
-        colorEditorAccentSet = userColour(v.colorEditorAccent, "#3B82F6")
+        colorParentSet = Helpers.userColour(v.colorParent, "#111113")
+        colorChildSet = Helpers.userColour(v.colorChild, "#111113")
+        colorSelectedSet = Helpers.userColour(v.colorSelected, "#27272A")
+        colorTextSet = Helpers.userColour(v.colorText, "#E4E4E7")
+        colorMutedSet = Helpers.userColour(v.colorMuted, "#A1A1AA")
+        colorLiveSet = Helpers.userColour(v.colorLive, "#22C55E")
+        colorBorderSet = Helpers.userColour(v.colorBorder, "#3F3F46")
+        colorSelectBorderSet = Helpers.userColour(v.colorSelectBorder, "#E4E4E7")
+        colorEditorSet = Helpers.userColour(v.colorEditor, "#0F2744")
+        colorEditorBorderSet = Helpers.userColour(v.colorEditorBorder, "#3B82F6")
+        colorEditorAccentSet = Helpers.userColour(v.colorEditorAccent, "#3B82F6")
         colorScreen = v.colorScreen || "#00000000"
         screenImage = v.screenImage || ""
         parkEmptyInUnmapped = v.parkEmptyInUnmapped === true
         applySections(v.sections)
-    }
-
-    // A saved colour equal to the old fixed (dark) default was never changed by
-    // the user, so it follows Dark mode like a colour that was never set.
-    function userColour(saved, oldDefault) {
-        var text = String(saved || "")
-        return text.toLowerCase() === oldDefault.toLowerCase() ? "" : text
     }
 
     function userColourOf(target) {

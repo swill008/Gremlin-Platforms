@@ -15,6 +15,14 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _root
 
+    // Opens at the size it was left at (capped to the screen).
+    ToolWindowMemory {
+        host: _root
+        name: "manageModes"
+        defaultWidth: _root.minimumWidth
+        defaultHeight: _root.minimumHeight
+    }
+
     EscapeCloses { host: _root }
 
     minimumWidth: Style.fitWidth(Style.dp(900), Screen)

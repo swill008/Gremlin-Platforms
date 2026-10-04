@@ -95,6 +95,11 @@ class UIState(QtCore.QObject):
                 self.setCurrentDevice(str(dill.UUID_Invalid))
                 self.setCurrentTab("logical")
 
+    @QtCore.Property(str, constant=True)
+    def logicalDeviceGuid(self) -> str:
+        """The Logical Device's id, for QML (it was typed out in two files)."""
+        return str(LogicalDevice.device_guid)
+
     @QtCore.Slot(str)
     def setCurrentDevice(self, device_name: str) -> None:
         raw = str(device_name or "").replace("{", "").replace("}", "").strip()

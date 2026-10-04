@@ -14,6 +14,14 @@ import Gremlin.Style
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
+
+    // Opens at the size it was left at (capped to the screen).
+    ToolWindowMemory {
+        host: _win
+        name: "hardwareHide"
+        defaultWidth: Math.max(_hh.windowWidth, _win.minimumWidth)
+        defaultHeight: Math.max(_hh.windowHeight, _win.minimumHeight)
+    }
     width: 720
     height: 640
     minimumWidth: Style.fitWidth(Style.dp(640), Screen)
@@ -26,23 +34,7 @@ ApplicationWindow {
         id: _hh
     }
 
-    Timer {
-        id: _sizeSave
-        interval: 400
-        repeat: false
-        onTriggered: _hh.saveWindowSize(_win.width, _win.height)
-    }
-
-    Component.onCompleted: {
-        // The saved size, never below this window's own minimum (the one
-        // limit that counts; the stored value only guards against nonsense).
-        width = Math.max(_hh.windowWidth, minimumWidth)
-        height = Math.max(_hh.windowHeight, minimumHeight)
-    }
-    onWidthChanged: if (visible) _sizeSave.restart()
-    onHeightChanged: if (visible) _sizeSave.restart()
     onClosing: {
-        _hh.saveWindowSize(width, height)
         _split.saveRatio()
     }
 

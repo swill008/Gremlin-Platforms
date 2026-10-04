@@ -16,6 +16,14 @@ import Gremlin.Config
 
 ApplicationWindow {
     id: _mapper
+
+    // Opens at the size it was left at (capped to the screen).
+    ToolWindowMemory {
+        host: _mapper
+        name: "autoMapper"
+        defaultWidth: _mapper.minimumWidth
+        defaultHeight: _mapper.minimumHeight
+    }
     font.pixelSize: Style.fontSize
     minimumWidth: Style.fitWidth(Style.dp(900), Screen)
     minimumHeight: Style.fitHeight(Style.dp(400), Screen)
