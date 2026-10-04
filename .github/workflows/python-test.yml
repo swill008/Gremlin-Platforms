@@ -1,12 +1,10 @@
 name: CI Tests
 
 on:
+  # Run by hand only (Actions > this workflow > Run workflow): pushes and
+  # pull requests no longer start it (and no longer send failure emails).
+  # The tests are run on the PC before every commit (test/run_tests.py).
   workflow_dispatch:
-  # Gremlin-Platforms is the main line: every release is built from it.
-  push:
-    branches: [ Gremlin-Platforms, develop, main ]
-  pull_request_target:
-    branches: [ Gremlin-Platforms, develop, main ]
 
 jobs:
   test:
