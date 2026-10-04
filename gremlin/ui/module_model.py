@@ -1555,6 +1555,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
         extra("keyboard", "Keyboard", KEYBOARD_GUID, "keyboard", "HID", "source")
         extra("osc", "OSC", OSC_GUID, "osc", "OSC", "source")
 
+        from gremlin.modules.output import vjoy_in_use_elsewhere
+
         for vdev in device_initialization.vjoy_devices():
             name = f"vJoy {vdev.vjoy_id}"
             slug = _slug(name)
@@ -1570,6 +1572,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.tab = "physical"
             row.bus = "DirectInput"
             row.status = "Virtual"
+            if vjoy_in_use_elsewhere(vdev.vjoy_id):
+                row.status = "In use by another program"
             row.is_stub = not module_exists(name)
             row.is_module = not row.is_stub
             row.photo = self._hw.profilePhotoUrl(name)

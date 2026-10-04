@@ -59,6 +59,18 @@ class VJoyError(GremlinError):
         super().__init__(value)
 
 
+class VJoyBusyError(VJoyError):
+    """Exception raised when another program holds the vJoy device.
+
+    Expected while that program runs and retried every few seconds, so it is
+    not logged here: the output module logs it once and tells the user.
+    """
+
+    def __init__(self, value: str) -> None:
+        Exception.__init__(self, value)
+        self.value = value
+
+
 class VJoyConcurrencyError(VJoyError):
     """Exception raised when vJoy is accessed from multiple threads."""
 

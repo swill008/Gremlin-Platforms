@@ -15,6 +15,7 @@ from typing import Any
 from gremlin import threads
 from gremlin.common import SingletonMetaclass
 from gremlin.error import (
+    VJoyBusyError,
     VJoyConcurrencyError,
     VJoyError,
 )
@@ -78,6 +79,14 @@ def device_available(vjoy_id: int) -> bool:
     VJoyInterface.RelinquishVJD(vjoy_id)
 
     return dev_free & dev_acquire
+
+
+def held_by_another_program(vjoy_id: int) -> bool:
+    """Whether another program holds the vJoy device (Gremlin can't use it)."""
+    return (
+        VJoyInterface.GetVJDStatus(vjoy_id) == VJoyState.Bust.value
+        and VJoyInterface.GetOwnerPid(vjoy_id) != os.getpid()
+    )
 
 
 def device_exists(vjoy_id: int) -> bool:
@@ -502,6 +511,13 @@ class VJoy:
                     f"vJoy device {vjoy_id} is already acquired by this process"
                 )
             msg = "Requested vJoy device is not available - vid: {}".format(vjoy_id)
+            if VJoyInterface.GetVJDStatus(vjoy_id) == VJoyState.Bust.value:
+                # Held by another program: the output module retries and
+                # tells the user once, so this isn't logged on every try.
+                logging.getLogger("system").debug(msg)
+                raise VJoyBusyError(
+                    f"vJoy {vjoy_id} is in use by another program"
+                )
             logging.getLogger("system").error(msg)
             raise VJoyError(msg)
         elif not VJoyInterface.AcquireVJD(vjoy_id):
@@ -921,6 +937,8 @@ class VJoyProxy:
                 )
                 time.sleep(0.05)
                 continue
+            except VJoyBusyError:
+                raise
             except VJoyError as e:
                 logging.getLogger("system").error(
                     f"Failed accessing vJoy id={index}, error is: {e}"

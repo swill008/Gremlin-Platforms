@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import uuid
 from pathlib import Path
+from typing import Any
 
 from gremlin.config import Configuration
 from gremlin.device_initialization import physical_devices
@@ -37,20 +38,44 @@ def _load(path: Path) -> dict:
 
 
 def _source_modules() -> list[dict]:
+    """The input modules of connected sticks, by the device each is bound
+    to, else (the stick has a new id: another USB port, a reinstalled
+    driver) by its name, the way claims find their module. A stick found by
+    name is marked "rebind": saving its calibration records its new id."""
     physical = {guid_key(dev.device_guid): dev for dev in physical_devices()}
+    modules = [m for m in registry.inputs() if m.slug not in _SKIP_SLUGS]
+    found: dict[str, tuple[Any, bool]] = {}
+    used: set[str] = set()
+    for module in modules:
+        key = guid_key(module.bound_guid)
+        if key in physical:
+            found[module.slug] = (physical[key], False)
+            used.add(key)
+    for key, device in physical.items():
+        if key in used:
+            continue
+        try:
+            module = registry.for_device(device.name, str(device.device_guid))
+        except Exception:
+            continue
+        if (
+            module is not None and not module.is_output
+            and module.slug not in found and module.slug not in _SKIP_SLUGS
+        ):
+            found[module.slug] = (device, True)
+            used.add(key)
     rows = []
-    for module in registry.inputs():
-        if module.slug in _SKIP_SLUGS:
+    for module in modules:
+        if module.slug not in found:
             continue
-        device = physical.get(guid_key(module.bound_guid))
-        if device is None:
-            continue
+        device, rebind = found[module.slug]
         rows.append(
             {
                 "name": module.name or device.name,
                 "slug": module.slug,
                 "guid": str(device.device_guid),
                 "path": module.path,
+                "rebind": rebind,
             }
         )
     rows.sort(key=lambda row: row["name"].lower())
@@ -132,6 +157,10 @@ def write_axes(slug: str, axes: dict[int, AxisData]) -> bool:
             bool(data[4]),
         ]
     doc["calibration"] = calibration
+    if row.get("rebind"):
+        # Found by name: the stick's id changed. Record it, as Module Setup
+        # does on save, so the next session finds it directly.
+        doc["boundGuidLocal"] = row["guid"]
     try:
         module_file.write_json(row["path"], doc)
     except OSError:

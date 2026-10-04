@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import enum
 import logging
+import threading
 from typing import Any
 
 from gremlin.common import SingletonMetaclass
@@ -256,6 +257,9 @@ class XboxProxy(metaclass=SingletonMetaclass):
     def __init__(self) -> None:
         self._busp = 0
         self._pads: dict[int, XboxPad] = {}
+        # Held while a pad is looked up or plugged in, and while all are
+        # unplugged: two threads could each plug in pad N (a ghost pad).
+        self._lock = threading.RLock()
         self._available: bool | None = None
 
     def available(self) -> bool:
@@ -304,11 +308,12 @@ class XboxProxy(metaclass=SingletonMetaclass):
         ident = int(pad_id)
         if ident < 1 or ident > MAX_PADS:
             raise XboxError(f"Xbox pad id must be 1-{MAX_PADS}, got {ident}")
-        pad = self._pads.get(ident)
-        if pad is None:
-            pad = XboxPad(ident, self._ensure_bus())
-            self._pads[ident] = pad
-        return pad
+        with self._lock:
+            pad = self._pads.get(ident)
+            if pad is None:
+                pad = XboxPad(ident, self._ensure_bus())
+                self._pads[ident] = pad
+            return pad
 
     def snapshot(self, pad_id: int) -> dict[str, float] | None:
         """Last report for an existing pad. Does not plug a new pad."""
@@ -350,17 +355,18 @@ class XboxProxy(metaclass=SingletonMetaclass):
         }
 
     def reset(self) -> None:
-        lib = vigem_client.client()
-        for pad in list(self._pads.values()):
-            pad.close()
-        self._pads.clear()
-        if lib is not None and self._busp:
-            try:
-                lib.vigem_disconnect(self._busp)
-            except Exception:
-                pass
-            try:
-                lib.vigem_free(self._busp)
-            except Exception:
-                pass
-        self._busp = 0
+        with self._lock:
+            lib = vigem_client.client()
+            for pad in list(self._pads.values()):
+                pad.close()
+            self._pads.clear()
+            if lib is not None and self._busp:
+                try:
+                    lib.vigem_disconnect(self._busp)
+                except Exception:
+                    pass
+                try:
+                    lib.vigem_free(self._busp)
+                except Exception:
+                    pass
+            self._busp = 0

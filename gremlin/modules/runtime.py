@@ -62,6 +62,9 @@ class InputModuleRuntime(QtCore.QObject):
         try:
             signal.configChanged.connect(self.reload)
             signal.profileChanged.connect(self.reload)
+            # A stick plugged in while a profile runs (with device changes
+            # set to Ignore nothing else reloads) gets its module's claims.
+            EventListener().device_change_event.connect(self.reload)
         except Exception:
             pass
         self.reload()

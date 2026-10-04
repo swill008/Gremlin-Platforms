@@ -34,6 +34,11 @@ _xbox_modules: dict[int, registry.Module] = {}
 _vjoy_modules: dict[int, registry.Module] = {}
 _blocked: set[tuple] = set()
 
+# A vJoy that failed to open is tried again at most this often (seconds).
+_VJOY_RETRY = 3.0
+_vjoy_failed_at: dict[int, float] = {}
+_told_busy: set[int] = set()
+
 
 # --- claims -----------------------------------------------------------------
 
@@ -122,6 +127,8 @@ def _log_once(key: tuple, message: str) -> None:
 def clear_blocked_log() -> None:
     """Allow each blocked output to be logged again (new run)."""
     _blocked.clear()
+    _vjoy_failed_at.clear()
+    _told_busy.clear()
 
 
 # --- vJoy -------------------------------------------------------------------
@@ -134,12 +141,51 @@ def _vjoy_proxy() -> Any:  # noqa: ANN401
 
 
 def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
-    """The vJoy device, opened for Gremlin if it is not yet. None if it fails."""
-    try:
-        return _vjoy_proxy()()[int(vjoy_id)]
-    except Exception as exc:
-        _log_once(("vjoy-open", int(vjoy_id)), f"vJoy {vjoy_id} unavailable: {exc}")
+    """The vJoy device, opened for Gremlin if it is not yet. None if it fails.
+
+    After a failure the open is tried again every few seconds, not on every
+    write, so Gremlin carries on by itself once the device is free.
+    """
+    vid = int(vjoy_id)
+    failed_at = _vjoy_failed_at.get(vid)
+    if failed_at is not None and time.monotonic() - failed_at < _VJOY_RETRY:
         return None
+    try:
+        dev = _vjoy_proxy()()[vid]
+    except Exception as exc:
+        from gremlin.error import VJoyBusyError
+
+        _vjoy_failed_at[vid] = time.monotonic()
+        if isinstance(exc, VJoyBusyError):
+            _log_once(
+                ("vjoy-open", vid),
+                f"vJoy {vid} is in use by another program. Its outputs won't "
+                "move until that program lets it go.",
+            )
+            if vid not in _told_busy:
+                _told_busy.add(vid)
+                from gremlin.signal import display_error
+
+                display_error(
+                    f"vJoy {vid} is in use by another program.",
+                    "Its outputs won't move until that program lets it go.",
+                )
+        else:
+            _log_once(("vjoy-open", vid), f"vJoy {vid} unavailable: {exc}")
+        return None
+    if _vjoy_failed_at.pop(vid, None) is not None:
+        syslog.info(f"vJoy {vid} opened")
+    return dev
+
+
+def vjoy_in_use_elsewhere(vjoy_id: int) -> bool:
+    """Whether another program holds the vJoy device, so Gremlin can't use it."""
+    try:
+        from vjoy.vjoy import held_by_another_program
+
+        return bool(held_by_another_program(int(vjoy_id)))
+    except Exception:
+        return False
 
 
 def _opened_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
