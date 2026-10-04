@@ -3347,9 +3347,9 @@ ApplicationWindow {
                 { id: "exportArea", label: "Export Area",
                   tip: "The part of the page every export and print takes: Alt+drag on the map to set it" }
             ]
-            // Properties shows the selection as before (pinned); the others
-            // start hidden.
-            defaults: ({ props: { open: true, pinned: true } })
+            // Chips (so a new user sees the pool) and Properties (as before)
+            // start open and pinned; the others start hidden.
+            defaults: ({ chips: { open: true, pinned: true }, props: { open: true, pinned: true } })
             usable: ({ chips: _buttonMap.editing, props: _buttonMap.editing, layers: _buttonMap.editing })
             onToolChanged: (id) => {
                 if (id !== "palette")

@@ -81,6 +81,9 @@ def main() -> None:
 
     call(win, "enterEdit")
     QtTest.QTest.qWait(800)
+    look("0-first-edit")
+    # From here as an unpinned, hidden pool (the steps below need one).
+    ev("_tools.setPinned('chips', false); _tools.setOpen('chips', false)")
     look("1-edit")
     step("_tools.toggle('chips')", "2-chips-open")
     # A click on the map: the unpinned pool hides.

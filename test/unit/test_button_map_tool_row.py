@@ -6,8 +6,8 @@
 checked in the running program off-screen (button_map_tool_row_smoke.py,
 its own process and user folder).
 
-- Each button opens and hides its tool; Properties starts open and pinned,
-  the others hidden.
+- Each button opens and hides its tool; Chips (so a new user sees the
+  pool) and Properties start open and pinned, the others hidden.
 - Unpinned tools hide when the map is clicked; pinned ones stay.
 - An unlocked button moves along the row; a locked one stays.
 - The status line (view, photo size, module file) is one slim row at the
@@ -48,6 +48,10 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
 def _shown(chips: bool, props: bool, layers: bool, palette: bool, order: list) -> dict:
     return {"chips": chips, "props": props, "layers": layers, "palette": palette,
             "order": order}
+
+
+def test_chips_and_properties_start_open(run: dict) -> None:
+    assert run["0-first-edit"] == _shown(True, True, False, False, _ORDER)
 
 
 def test_buttons_open_and_hide_their_tools(run: dict) -> None:
