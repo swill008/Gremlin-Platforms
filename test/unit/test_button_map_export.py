@@ -151,5 +151,5 @@ def test_pdf_on_a_paper_is_that_page(tmp_path: pathlib.Path) -> None:
     assert wide is not None
     assert wide.orientation() == QtGui.QPageLayout.Orientation.Landscape
     assert wide.margins().left() == 0
-    # "Fit to area": no paper, the page takes the picture's shape.
+    # "Freeform (As Drawn)": no paper, the page takes the picture's shape.
     assert page_layout({"paper": "fit"}) is None

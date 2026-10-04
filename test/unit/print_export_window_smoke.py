@@ -112,6 +112,21 @@ def main() -> None:
     px = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
     out["pixels"] = [px["w"], px["h"]]
     out["dpr"] = pw.devicePixelRatio()
+    # Custom > Freeform (As Drawn): no paper, and back to the last one.
+    freeform = child("printFreeform")
+    paper = child("printPaper")
+    out["paper-count"] = paper.property("count")
+
+    def freeform_state() -> list:
+        return [freeform.property("checked"), paper.property("enabled"),
+                ev("_buttonMap.printSetup.paper"), paper.property("currentText")]
+
+    QtCore.QMetaObject.invokeMethod(freeform, "click")
+    QtTest.QTest.qWait(200)
+    out["freeform-on"] = freeform_state()
+    QtCore.QMetaObject.invokeMethod(freeform, "click")
+    QtTest.QTest.qWait(200)
+    out["freeform-off"] = freeform_state()
     if shots:
         pw.grabWindow().save(str(folder / "print-export.png"))
         win.grabWindow().save(str(folder / "map-with-print-area.png"))

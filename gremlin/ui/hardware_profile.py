@@ -98,7 +98,7 @@ def _recent_count() -> int:
         return _RECENT_COLOURS
 
 
-# A PDF without a paper (Print & Export's "Fit to area"): the page is the
+# A PDF without a paper (Print & Export's Freeform (As Drawn)): the page is the
 # picture at 96 pixels an inch, as Windows shows things at 100%.
 PDF_PPI = 96
 

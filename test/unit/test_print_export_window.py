@@ -9,7 +9,9 @@ the print area).
 
 - File > Print & Export opens it and shows the print area on the map.
 - Its paper and scale follow the map's settings; the page in the preview has
-  the paper's shape and shows the print area's picture.
+  the paper's shape and shows the print area's picture. Freeform (As Drawn)
+  under Custom sets no paper (the Paper list greys out) and unticked goes
+  back to the last paper.
 - It gives the export's size in pixels, the same as the export makes.
 - An export is exactly that size; a print area's export is the same picture
   as that part of the whole page's; both screen scales give the same
@@ -107,6 +109,15 @@ def test_the_page_and_its_preview(run: dict) -> None:
     assert run["preview-ready"] is True
     assert run["paper-box"].startswith("Letter")
     assert run["scale-box"] == 50
+
+
+def test_freeform_is_no_paper(run: dict) -> None:
+    # The Paper list has only papers; Freeform (As Drawn) is the tick box.
+    assert run["paper-count"] == 6
+    on = run["freeform-on"]
+    assert on[:3] == [True, False, "fit"]
+    assert on[3].startswith("Letter")
+    assert run["freeform-off"][:3] == [False, True, "letter"]
 
 
 def test_it_tells_the_export_size(run: dict) -> None:

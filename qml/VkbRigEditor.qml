@@ -122,7 +122,7 @@ Item {
     property string printAreaColor: String(Style.dangerBright)
     property bool printAreaArm: false
     // The print area's shape (width / height) on the chosen paper, or 0:
-    // any shape (Print & Export's "Fit to area").
+    // any shape (Print & Export's "Freeform (As Drawn)").
     property real printAspect: 0
     property real eaX0: 0
     property real eaY0: 0

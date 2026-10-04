@@ -24,7 +24,7 @@ Window {
     flags: Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
     // Kept inside the screen at any UI scale (as the other tool windows).
     width: Style.fitWidth(Style.dp(760), Screen)
-    height: Style.fitHeight(Style.dp(640), Screen)
+    height: Style.fitHeight(Style.dp(720), Screen)
     minimumWidth: Style.fitWidth(Style.dp(560), Screen)
     minimumHeight: Style.fitHeight(Style.dp(400), Screen)
     color: Style.background
@@ -34,12 +34,19 @@ Window {
         host: _win
         name: "print-export"
         defaultWidth: Style.dp(760)
-        defaultHeight: Style.dp(640)
+        defaultHeight: Style.dp(720)
     }
 
     readonly property var setup: host ? host.printSetup : ({})
     readonly property bool onPaper: !!setup.paper && setup.paper !== "fit"
     readonly property bool metric: /^a[345]$/.test(String(setup.paper || ""))
+    // The paper Freeform (As Drawn) goes back to when it is unticked.
+    property string lastPaper: "letter"
+    onSetupChanged: {
+        var paper = String(setup.paper || "")
+        if (paper.length && paper !== "fit")
+            lastPaper = paper
+    }
     // The preview picture (the print area as exported, on its background):
     // the grab result is kept, its url is only good while it lives.
     property var shotResult: null
@@ -50,7 +57,6 @@ Window {
     readonly property var pixels: { rev; return host ? host.exportPixels() : { w: 0, h: 0 } }
 
     readonly property var papers: [
-        { value: "fit", text: "Fit to area" },
         { value: "letter", text: "Letter (8.5 × 11 in)" },
         { value: "legal", text: "Legal (8.5 × 14 in)" },
         { value: "tabloid", text: "Tabloid (11 × 17 in)" },
@@ -238,7 +244,10 @@ Window {
                     Layout.fillWidth: true
                     model: _win.papers
                     textRole: "text"
-                    currentIndex: _win.indexOfValue(_win.papers, _win.setup.paper)
+                    // Freeform (As Drawn) has no paper: the one it goes back
+                    // to shows, greyed out.
+                    enabled: _win.onPaper
+                    currentIndex: _win.indexOfValue(_win.papers, _win.onPaper ? _win.setup.paper : _win.lastPaper)
                     onActivated: (i) => _win.host.setPrint("paper", _win.papers[i].value)
                 }
 
@@ -283,19 +292,55 @@ Window {
                     }
                 }
 
-                Label { text: "Scale (100% = the photo's own size)"; color: Style.fgMuted }
-                SpinBox {
-                    id: _scaleBox
-                    objectName: "printScale"
+                // Custom: the scale, and Freeform (As Drawn): no paper, the
+                // page takes the print area's own shape (stored as paper
+                // "fit").
+                Rectangle {
                     Layout.fillWidth: true
-                    from: 10
-                    to: 800
-                    stepSize: 5
-                    editable: true
-                    value: Number(_win.setup.scale) || 100
-                    textFromValue: (v) => v + "%"
-                    valueFromText: (t) => parseInt(String(t).replace("%", "")) || 100
-                    onValueModified: _win.host.setPrint("scale", value)
+                    Layout.topMargin: Style.dp(4)
+                    implicitHeight: _custom.implicitHeight + 2 * Style.dp(10)
+                    color: Style.clear
+                    radius: Style.dp(4)
+                    border.color: Style.lineStrong
+                    border.width: 1
+
+                    ColumnLayout {
+                        id: _custom
+                        anchors.fill: parent
+                        anchors.margins: Style.dp(10)
+                        spacing: Style.dp(8)
+
+                        Label { text: "Custom"; font.bold: true }
+                        Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: "Scale (100% = the photo's own size)"
+                            color: Style.fgMuted
+                        }
+                        SpinBox {
+                            id: _scaleBox
+                            objectName: "printScale"
+                            Layout.fillWidth: true
+                            from: 10
+                            to: 800
+                            stepSize: 5
+                            editable: true
+                            value: Number(_win.setup.scale) || 100
+                            textFromValue: (v) => v + "%"
+                            valueFromText: (t) => parseInt(String(t).replace("%", "")) || 100
+                            onValueModified: _win.host.setPrint("scale", value)
+                        }
+                        CheckBox {
+                            objectName: "printFreeform"
+                            text: "Freeform (As Drawn)"
+                            checked: !_win.onPaper
+                            onToggled: {
+                                _win.host.setPrint("paper", checked ? "fit" : _win.lastPaper)
+                                // A click replaces the binding: follow the setting again.
+                                checked = Qt.binding(function() { return !_win.onPaper })
+                            }
+                        }
+                    }
                 }
                 Label {
                     objectName: "printPixels"
