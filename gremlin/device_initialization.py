@@ -20,6 +20,85 @@ _joystick_devices: dict[uuid.UUID, dill.DeviceSummary] = collections.OrderedDict
 _joystick_init_lock = threading.Lock()
 
 
+# Two connected devices with the same name (a pair of identical sticks) used
+# to share one module file: claims, card, Button Map and calibration. The
+# second one is now "<name> (2)" (a third "(3)"...), so it has its own of
+# each. The device the existing <name> file is bound to keeps the plain name,
+# and which device is which is kept in the settings (by device id), so the
+# names stay the same from session to session and port to port.
+TWIN_SETTING = ("global", "internal", "twin-device-names")
+
+
+def _guid_key(dev: dill.DeviceSummary) -> str:
+    return str(dev.device_guid.uuid).upper()
+
+
+def _file_bound_guid(device_name: str) -> str:
+    """The device id the module file named after device_name is bound to."""
+    import json
+
+    from gremlin.modules.registry import plain_slug
+    from gremlin.util import modules_dir
+
+    try:
+        path = modules_dir() / f"{plain_slug(device_name)}.json"
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        return str(doc.get("boundGuidLocal") or "").strip("{}").upper()
+    except Exception:
+        return ""
+
+
+def _name_twins(devices: list[dill.DeviceSummary]) -> None:
+    from gremlin.config import Configuration
+
+    physical = [dev for dev in devices if not dev.is_virtual]
+    try:
+        stored = dict(Configuration().value(*TWIN_SETTING) or {})
+    except Exception:
+        stored = {}
+    for dev in physical:
+        if _guid_key(dev) in stored:
+            dev.name = stored[_guid_key(dev)]
+    groups: dict[str, list[dill.DeviceSummary]] = {}
+    for dev in physical:
+        groups.setdefault(dev.name, []).append(dev)
+    taken = {dev.name for dev in physical} | set(stored.values())
+    changed = False
+    for name, group in groups.items():
+        if len(group) < 2:
+            continue
+        bound = _file_bound_guid(name)
+        # The device the existing file is bound to first, then by id.
+        group.sort(key=lambda d: (_guid_key(d) != bound, _guid_key(d)))
+        for dev in group[1:]:
+            number = 2
+            while f"{name} ({number})" in taken:
+                number += 1
+            dev.name = f"{name} ({number})"
+            taken.add(dev.name)
+            stored[_guid_key(dev)] = dev.name
+            changed = True
+    if changed:
+        try:
+            Configuration().set(*TWIN_SETTING, stored)
+        except Exception:
+            pass
+
+
+def device_name(device_guid: object) -> str:
+    """A device's name as Gremlin shows it (an identical second stick is
+    "<name> (2)"); the driver's name for a device not in the list."""
+    uid = getattr(device_guid, "uuid", device_guid)
+    dev = _joystick_devices.get(uid)
+    if dev is not None:
+        return dev.name
+    try:
+        return dill.DILL.get_device_name(dill.GUID.from_uuid(uid))
+    except Exception:
+        return ""
+
+
+
 def joystick_devices_initialization() -> None:
     """Initializes joystick device information.
 
@@ -57,6 +136,7 @@ def _initialize_devices() -> None:
         except Exception:
             pass
         devices.append(info)
+    _name_twins(devices)
 
     # Process all devices again to detect those that have been added and those
     # that have been removed since the last time this function ran.

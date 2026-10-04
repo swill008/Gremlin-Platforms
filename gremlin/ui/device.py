@@ -121,9 +121,7 @@ class InputIdentifier(QtCore.QObject):
             elif self.device_guid == dill.UUID_Keyboard:
                 dev_name = "Keyboard"
             else:
-                dev_name = dill.DILL.get_device_name(
-                    dill.GUID.from_uuid(self.device_guid)
-                )
+                dev_name = device_initialization.device_name(self.device_guid)
             return (
                 f"{dev_name} - "
                 + f"{InputType.to_string(self.input_type).capitalize()} "

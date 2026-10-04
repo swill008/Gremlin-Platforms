@@ -111,7 +111,7 @@ def _device_name(guid: str) -> str:
     hardware = str(guid)
     try:
         if uid is not None:
-            hardware = dill.DILL.get_device_name(dill.GUID.from_uuid(uid)) or hardware
+            hardware = device_initialization.device_name(uid) or hardware
     except Exception:
         pass
     return hardware
