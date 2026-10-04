@@ -1810,6 +1810,26 @@ def scenario_rulers(s: Session) -> None:
     s.steps[-1]["state"]["guides"] = [
         s.call_prop("rulerGuidesX"), s.call_prop("rulerGuidesY")]
 
+    # Zoomed in, the rulers stay on the view's edges (they were scaled off
+    # them), their marks closer in steps (0.5 at 800%).
+    def qml(code: str) -> object:
+        expr = QtQml.QQmlExpression(QtQml.qmlContext(s.win), s.win, code)
+        value = expr.evaluate()
+        return value[0] if isinstance(value, tuple) else value
+
+    card = QtGui.QColor(str(qml("String(Style.bgCard)"))).name()
+    shown = {}
+    for zoom in (4, 8):
+        qml(f"_face.zoomAt(_face.width / 2, _face.height / 2, {zoom} / _face.zoom)")
+        s.wait(300)
+        shot = s.win.grabWindow()
+        # Most of each ruler's strip is its background (marks are thin).
+        top = [shot.pixelColor(x, 2).name() == card for x in range(30, shot.width(), 9)]
+        left = [shot.pixelColor(2, y).name() == card for y in range(30, shot.height(), 9)]
+        shown[str(zoom)] = sum(top) > len(top) / 2 and sum(left) > len(left) / 2
+    s.record("zoomed", image=True)
+    s.steps[-1]["state"]["rulersShownZoomed"] = shown
+
 
 def scenario_to_pool(s: Session) -> None:
     """Dragging chips onto the pool takes them off the map: one chip, several

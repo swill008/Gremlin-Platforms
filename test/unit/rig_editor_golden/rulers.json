@@ -1425,6 +1425,32 @@
     "selected": []
    },
    "step": "guide-removed"
+  },
+  {
+   "state": {
+    "changed": {},
+    "cropId": "",
+    "drawTool": "",
+    "histAt": 3,
+    "histLen": 4,
+    "layers": [],
+    "menu": [],
+    "nodeCount": 20,
+    "pasteRequests": 0,
+    "photo": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "props": [],
+    "rulersShownZoomed": {
+     "4": true,
+     "8": true
+    },
+    "selected": []
+   },
+   "step": "zoomed"
   }
  ],
  "warnings": []

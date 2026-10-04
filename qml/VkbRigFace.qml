@@ -637,11 +637,36 @@ Item {
             ctx.fillStyle = String(Style.fgMuted)
             ctx.font = Math.round(Style.dp(9)) + "px sans-serif"
             ctx.lineWidth = 1
-            for (var k = 0; k <= 40; k++) {
-                var f = k / 40
-                var v = across ? face.viewX(s.x + f * s.w) : face.viewY(s.y + f * s.h)
-                var big = k % 4 === 0
-                var len = big ? (across ? height : width) * 0.6 : (across ? height : width) * 0.3
+            // The page from 0 to 100 along this edge, at any zoom: numbered
+            // marks about 60 px apart (steps of 1, 2 or 5 times a power of
+            // ten), five small marks between them; only what this ruler
+            // shows is drawn (the whole page at a high zoom is far wider).
+            var along = across ? width : height
+            var at0 = across ? x : y
+            var p0 = across ? face.viewX(s.x) : face.viewY(s.y)
+            var p100 = across ? face.viewX(s.x + s.w) : face.viewY(s.y + s.h)
+            var perPct = (p100 - p0) / 100
+            if (!(perPct > 0))
+                return
+            var step = 0.1
+            var bases = [1, 2, 5]
+            for (var e = -1; e <= 3 && step * perPct < Style.dp(60); e++) {
+                for (var bi = 0; bi < bases.length; bi++) {
+                    step = bases[bi] * Math.pow(10, e)
+                    if (step * perPct >= Style.dp(60))
+                        break
+                }
+            }
+            var minor = step / 5
+            var first = Math.floor(((at0 - p0) / perPct) / minor)
+            var last = Math.ceil(((at0 + along - p0) / perPct) / minor)
+            var decimals = step < 1 ? 1 : 0
+            var depth = across ? height : width
+            for (var k = first; k <= last; k++) {
+                var pct = k * minor
+                var v = p0 + pct * perPct - at0
+                var big = k % 5 === 0
+                var len = depth * (big ? 0.6 : 0.3)
                 ctx.beginPath()
                 if (across) {
                     ctx.moveTo(Math.round(v) + 0.5, height)
@@ -651,16 +676,19 @@ Item {
                     ctx.lineTo(width - len, Math.round(v) + 0.5)
                 }
                 ctx.stroke()
-                if (big && across)
-                    ctx.fillText(String(Math.round(f * 100)), v + 2, Style.dp(9))
-                else if (big)
-                    ctx.fillText(String(Math.round(f * 100)), 1, v - 2)
+                if (!big)
+                    continue
+                var label = pct.toFixed(decimals)
+                if (across)
+                    ctx.fillText(label, v + 2, Style.dp(9))
+                else
+                    ctx.fillText(label, 1, v - 2)
             }
             // The guides' places.
             ctx.fillStyle = String(Style.accent)
             var gl = across ? ed.rulerGuidesX : ed.rulerGuidesY
             for (var g = 0; g < gl.length; g++) {
-                var gv = across ? face.viewX(s.x + gl[g] * s.w) : face.viewY(s.y + gl[g] * s.h)
+                var gv = (across ? face.viewX(s.x + gl[g] * s.w) : face.viewY(s.y + gl[g] * s.h)) - at0
                 if (across)
                     ctx.fillRect(gv - 1, 0, 3, height)
                 else
@@ -719,29 +747,6 @@ Item {
         }
     }
 
-    Ruler {
-        face: _face
-        across: true
-        x: _face.rulerSize
-        y: 0
-        width: _face.width - _face.rulerSize
-        height: _face.rulerSize
-    }
-    Ruler {
-        face: _face
-        across: false
-        x: 0
-        y: _face.rulerSize
-        width: _face.rulerSize
-        height: _face.height - _face.rulerSize
-    }
-    Rectangle {
-        z: 7
-        visible: _face.rulersOn && !!_editorLoader.item && _editorLoader.item.interactive
-        width: _face.rulerSize
-        height: _face.rulerSize
-        color: Style.bgCard
-    }
 
     Binding { target: _editorLoader.item; property: "nodes"; value: _face.editorNodes; when: _editorLoader.status === Loader.Ready; restoreMode: Binding.RestoreNone }
     Binding { target: _editorLoader.item; property: "interactive"; value: _face.editing; when: _editorLoader.status === Loader.Ready; restoreMode: Binding.RestoreNone }
@@ -871,5 +876,33 @@ Item {
             _lines.requestPaint()
             _face.pingEditor()
         }
+    }
+
+    // The rulers on the view's top and left edges, outside the zoomed map
+    // (inside it they were scaled and pushed off the edges at any zoom
+    // above 1): they stay on the edges at every zoom and show the page's
+    // place there.
+    Ruler {
+        face: _face
+        across: true
+        x: _face.rulerSize
+        y: 0
+        width: _face.width - _face.rulerSize
+        height: _face.rulerSize
+    }
+    Ruler {
+        face: _face
+        across: false
+        x: 0
+        y: _face.rulerSize
+        width: _face.rulerSize
+        height: _face.height - _face.rulerSize
+    }
+    Rectangle {
+        z: 7
+        visible: _face.rulersOn && !!_editorLoader.item && _editorLoader.item.interactive
+        width: _face.rulerSize
+        height: _face.rulerSize
+        color: Style.bgCard
     }
 }
