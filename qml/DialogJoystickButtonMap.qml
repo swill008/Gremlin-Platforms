@@ -61,6 +61,49 @@ ApplicationWindow {
     property bool startBlank: false
     property bool faceLive: false
 
+    // Device list changes (plugged in, unplugged): bindings that ask the list
+    // follow this.
+    property int devTick: 0
+    // The device can show: outputs, Keyboard, Logical Device and OSC always,
+    // a stick only while connected.
+    readonly property bool targetConnected: {
+        devTick
+        return targetName.length > 0 && _devices.available(targetGuid, targetName)
+    }
+    // The map shows while the device is there, and an edit stays on screen
+    // (so it can be saved or cancelled) when its stick is unplugged. Hidden,
+    // it is still there under a cover: Export still works without the stick.
+    readonly property bool mapShown: targetName.length > 0 && (targetConnected || editing)
+    // One card per device: devices coming and going leave it (and its undo
+    // history) alone.
+    readonly property string cardKey: targetName.length ? (targetGuid + "|" + targetName) : ""
+    // The device's row in the list, for its id and what it is wired to.
+    readonly property var targetRow: {
+        devTick
+        var rows = _devices.listRows() || []
+        for (var i = 0; i < rows.length; i++) {
+            if (isTarget(rows[i].guid, rows[i].name))
+                return rows[i]
+        }
+        return null
+    }
+
+    Connections {
+        target: _devices
+        function onModelReset() {
+            var was = _buttonMap.targetConnected
+            _buttonMap.devTick++
+            // The stick came back: its map loads again (an edit keeps its work).
+            if (!was && _buttonMap.targetConnected && !_buttonMap.editing) {
+                try {
+                    _buttonMap.loadLive()
+                } catch (e) {
+                    console.warn("Button Map reload failed", e)
+                }
+            }
+        }
+    }
+
     property string stockImage: {
         if (/evo l|ot l/i.test(targetName))
             return "qml/images/vkb_gladiator_evo_l.jpg"
@@ -216,10 +259,14 @@ ApplicationWindow {
             required property string name
             required property string guid
             text: name
-            enabled: !_buttonMap.editing
+            // Listed during an edit too: switching asks to save first.
             checkable: true
             checked: name === _buttonMap.targetName
-            onTriggered: _buttonMap.openForDevice(name, "", guid)
+            onTriggered: {
+                // A click flips 'checked': the tick follows the device shown.
+                checked = Qt.binding(() => name === _buttonMap.targetName)
+                _buttonMap.openForDevice(name, "", guid)
+            }
         }
         // File → Device: the devices to switch to, under their own heading.
         onObjectAdded: function(index, object) {
@@ -257,21 +304,6 @@ ApplicationWindow {
         var shown = String(displayName(guid, raw) || "")
         var t = targetName.toLowerCase()
         return raw.toLowerCase() === t || shown.toLowerCase() === t
-    }
-
-    function targetListed() {
-        var rows = []
-        try {
-            rows = _devices.listRows() || []
-        } catch (err) {
-            return false
-        }
-        var i
-        for (i = 0; i < rows.length; i++) {
-            if (isTarget(rows[i].guid, rows[i].name))
-                return true
-        }
-        return false
     }
 
     function parseDoc(text) {
@@ -796,7 +828,7 @@ ApplicationWindow {
         pendingGuid = String(guid || "")
         if (!next.length)
             return
-        if (next === loadedDevice && sameGuid(pendingGuid, targetGuid) && _hasTarget.hit) {
+        if (next === loadedDevice && sameGuid(pendingGuid, targetGuid) && faceLive) {
             show()
             raise()
             requestActivate()
@@ -2940,17 +2972,6 @@ ApplicationWindow {
                     opacity: 0.65
                 }
 
-                JGText {
-                    anchors.centerIn: parent
-                    visible: targetName.length > 0 && !_hasTarget.hit
-                    text: "Connect " + targetName
-                    opacity: 0.65
-                }
-
-                QtObject {
-                    id: _hasTarget
-                    property bool hit: false
-                }
 
                 Component {
                     id: _cardComp
@@ -2988,42 +3009,73 @@ ApplicationWindow {
                             function onNodesChanged() { _buttonMap.deferHistory() }
                         }
                         Component.onCompleted: _cardLoader.item = _card
-                    }
-                }
-
-                Repeater {
-                    model: _devices
-                    Loader {
-                        id: _slot
-                        required property string guid
-                        required property string name
-                        required property string pairLabel
-                        required property bool mapped
-                        anchors.fill: parent
-                        active: _buttonMap.isTarget(guid, name)
-                        visible: active
-                        property string dGuid: guid
-                        property string dName: name
-                        property string dPair: pairLabel
-                        sourceComponent: _cardComp
-                        onActiveChanged: {
-                            if (active) {
-                                _hasTarget.hit = true
-                                return
-                            }
-                            // Only the panel in use turns the face off: the other
-                            // devices' panels report inactive as the list fills in.
-                            if (_cardLoader.item === item) {
+                        // A newer card may already be in use: only this one's own.
+                        Component.onDestruction: {
+                            if (_cardLoader.item === _card) {
                                 _cardLoader.item = null
                                 _buttonMap.faceLive = false
                             }
                         }
+                    }
+                }
+
+                // The device's map: made again only when another device is
+                // chosen (cardKey), not when devices come and go.
+                Repeater {
+                    model: _buttonMap.cardKey.length ? [_buttonMap.cardKey] : []
+                    Loader {
+                        id: _slot
+                        anchors.fill: parent
+                        property string dGuid: _buttonMap.targetRow ? _buttonMap.targetRow.guid : _buttonMap.targetGuid
+                        property string dName: _buttonMap.targetRow ? _buttonMap.targetRow.name : _buttonMap.targetName
+                        property string dPair: _buttonMap.targetRow ? _buttonMap.targetRow.pairLabel : ""
+                        sourceComponent: _cardComp
                         onLoaded: {
-                            _hasTarget.hit = true
                             _cardLoader.item = item
                             _buttonMap.faceLive = true
                             _buttonMap.deferFace()
                         }
+                    }
+                }
+
+                // The stick is unplugged: its map is covered (Export still
+                // draws it), and comes back by itself when the stick does.
+                Rectangle {
+                    anchors.fill: parent
+                    visible: _buttonMap.targetName.length > 0 && !_buttonMap.mapShown
+                    z: 44
+                    color: Style.background
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.AllButtons
+                        hoverEnabled: true
+                        onWheel: (w) => { w.accepted = true }
+                    }
+                    JGText {
+                        anchors.centerIn: parent
+                        text: "Connect " + _buttonMap.targetName + " to see its Button Map."
+                        opacity: 0.65
+                    }
+                }
+
+                // The stick was unplugged during an edit: the work stays.
+                Rectangle {
+                    visible: _buttonMap.editing && !_buttonMap.targetConnected
+                    z: 45
+                    anchors.top: parent.top
+                    anchors.topMargin: Style.dp(8)
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: Math.min(parent.width - Style.dp(32), _offNote.implicitWidth + Style.dp(24))
+                    height: _offNote.implicitHeight + Style.dp(12)
+                    radius: Style.dp(4)
+                    color: Style.bgRaised
+                    border.color: Style.warn
+                    JGText {
+                        id: _offNote
+                        anchors.centerIn: parent
+                        width: Math.min(implicitWidth, parent.parent.width - Style.dp(56))
+                        wrapMode: Text.WordWrap
+                        text: _buttonMap.targetName + " is disconnected. You can still save or cancel this edit."
                     }
                 }
 
@@ -3050,35 +3102,6 @@ ApplicationWindow {
                         border.width: 3
                         border.color: Style.info
                         radius: 6
-                    }
-                }
-
-                Loader {
-                    id: _directCard
-                    anchors.fill: parent
-                    active: {
-                        var named = _buttonMap.targetName.length > 0
-                        var guid = _buttonMap.targetGuid
-                        return named && !_buttonMap.targetListed()
-                    }
-                    visible: active
-                    property string dGuid: _buttonMap.targetGuid
-                    property string dName: _buttonMap.targetName
-                    property string dPair: ""
-                    sourceComponent: _cardComp
-                    onActiveChanged: {
-                        if (active)
-                            return
-                        if (_cardLoader.item === item) {
-                            _cardLoader.item = null
-                            _buttonMap.faceLive = false
-                        }
-                    }
-                    onLoaded: {
-                        _hasTarget.hit = true
-                        _cardLoader.item = item
-                        _buttonMap.faceLive = true
-                        _buttonMap.deferFace()
                     }
                 }
 
