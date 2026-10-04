@@ -51,6 +51,64 @@ function tableMinH(n) {
     return 8
 }
 
+// A row's share of the table's height: rows are equal (1) unless a cell
+// with two lines made its row taller (rows[r].hw).
+function _rowWeight(n, r) {
+    var w = (n.rows && n.rows[r]) ? Number(n.rows[r].hw) : 0
+    return w > 0 ? w : 1
+}
+
+function _rowWeights(n) {
+    var sum = 0
+    for (var i = 0; i < n.rows.length; i++)
+        sum += _rowWeight(n, i)
+    return Math.max(1e-6, sum)
+}
+
+// Where a row is in the table: its top and height.
+function _rowSpan(n, row, g) {
+    var unit = g.h / _rowWeights(n)
+    var before = 0
+    for (var i = 0; i < row; i++)
+        before += _rowWeight(n, i)
+    return { y: g.y + before * unit, h: _rowWeight(n, row) * unit }
+}
+
+// After a cell is edited: a row whose text has two lines grows to fit them
+// (the table grows with it, the other rows keep their size); back to one
+// line, it shrinks back to its share and the table with it. A table drawn
+// around chips keeps its height: the row takes room from the others.
+function fitTableRow(n, row) {
+    if (!isTable(n) || !_textFit || row < 0 || !n.rows || row >= n.rows.length)
+        return
+    var g = drawGeom(n)
+    var unit = g.h / _rowWeights(n)
+    var need = 0
+    var cells = n.rows[row].cells || []
+    _textFit.wrapMode = Text.NoWrap
+    _textFit.width = 4000
+    _textFit.font.pixelSize = uiPx(n.fontSize > 0 ? n.fontSize : 10)
+    _textFit.font.bold = false
+    for (var c = 0; c < cells.length; c++) {
+        var t = String((cells[c] && cells[c].text) || "")
+        if (t.indexOf("\n") < 0)
+            continue
+        _textFit.text = t
+        var h = _textFit.contentHeight > 0 ? _textFit.contentHeight : _textFit.implicitHeight
+        need = Math.max(need, Math.ceil(h) + 8)
+    }
+    var old = _rowWeight(n, row)
+    var w = need > unit ? need / unit : 1
+    if (Math.abs(w - old) < 1e-6)
+        return
+    if (w === 1)
+        delete n.rows[row].hw
+    else
+        n.rows[row].hw = w
+    if (!(n.around && n.around.length))
+        n.fh = Math.max(8, g.h + (w - old) * unit) / Math.max(1, spaceRect().h)
+}
+
 function tableHomeRect(n, row, col) {
     var g = drawGeom(n)
     ensureTable(n)
@@ -61,7 +119,7 @@ function tableHomeRect(n, row, col) {
     var rest = Math.max(1, g.w - idW)
     var other = Math.max(1, idCol ? cols - 1 : cols)
     var colW = rest / other
-    var rowH = g.h / Math.max(1, rows)
+    var span = _rowSpan(n, Math.max(0, Math.min(row, rows - 1)), g)
     var x = g.x
     var w = colW
     if (idCol) {
@@ -76,7 +134,7 @@ function tableHomeRect(n, row, col) {
         w = g.w / Math.max(1, cols)
         x = g.x + col * w
     }
-    return { x: x, y: g.y + row * rowH, w: Math.max(8, w), h: Math.max(8, rowH) }
+    return { x: x, y: span.y, w: Math.max(8, w), h: Math.max(8, span.h) }
 }
 
 function tableGetCell(n, row, col) {
@@ -246,7 +304,14 @@ function tableCellAt(n, mx, my) {
     var g = drawGeom(n)
     if (mx < g.x || my < g.y || mx > g.x + g.w || my > g.y + g.h)
         return { row: -1, col: -1, extra: -1 }
-    var row = Math.floor((my - g.y) / Math.max(1, g.h / Math.max(1, rows)))
+    var row = rows - 1
+    for (var ri = 0; ri < rows; ri++) {
+        var sp = _rowSpan(n, ri, g)
+        if (my < sp.y + sp.h) {
+            row = ri
+            break
+        }
+    }
     var idCol = !!n.idCol && cols > 1
     var idW = idCol ? Math.min(g.w * 0.32, Math.max(22, g.w * 0.22)) : 0
     var lx = mx - g.x

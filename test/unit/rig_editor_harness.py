@@ -1405,6 +1405,45 @@ def scenario_two_rows(s: Session) -> None:
     s.call("setSelection", [])
     s.record("rows-apart", image=True)
 
+    # A table cell on two lines makes only its row taller (the table grows
+    # by as much); back on one line, the row and the table shrink back.
+    s.call("setDrawTool", "table")
+    s.drag(s.point(0.74, 0.55), s.point(0.95, 0.62))
+    table = s.state()["selected"][0]
+    s.call("setDrawTool", "")
+    for _ in range(3):
+        s.call("addTableRow", True)
+
+    def heights() -> dict:
+        n = s.node(table)
+        rows = [
+            round(json.loads(s.js("callOnNode", "tableCellRect", table,
+                                  json.dumps([r, 0])))["h"], 1)
+            for r in range(len(n["rows"]))
+        ]
+        return {"rows": rows, "table": round(s._box(table)["h"], 1)}
+
+    def edit_cell(row: int, parts: list[str]) -> None:
+        s.call("beginTableRename", table, row, 0)
+        s.wait(150)
+        for i, part in enumerate(parts):
+            if i:
+                QtTest.QTest.keyClick(s.win, Key.Key_Return, shift)
+            s.type_text(part)
+        QtTest.QTest.keyClick(s.win, Key.Key_Return)
+        s.wait(150)
+
+    start = heights()
+    edit_cell(1, ["Top", "Low"])
+    s.call("setSelection", [])
+    s.record("table-two-lines", image=True)
+    s.steps[-1]["state"]["tableBefore"] = start
+    s.steps[-1]["state"]["tableAfter"] = heights()
+    edit_cell(1, ["One"])
+    s.call("setSelection", [])
+    s.record("table-one-line")
+    s.steps[-1]["state"]["tableAfter"] = heights()
+
 
 def scenario_mirror(s: Session) -> None:
     """Mirror layout: chips, hotspots and leaders to the other side, a block

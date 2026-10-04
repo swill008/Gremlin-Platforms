@@ -461,6 +461,7 @@ Item {
     function tableMinW(n) { return RigTables.tableMinW(n) }
     function tableMinH(n) { return RigTables.tableMinH(n) }
     function tableHomeRect(n, row, col) { return RigTables.tableHomeRect(n, row, col) }
+    function fitTableRow(n, row) { return RigTables.fitTableRow(n, row) }
     function tableGetCell(n, row, col) { return RigTables.tableGetCell(n, row, col) }
     function tableCellIsFree(n, row, col) { return RigTables.tableCellIsFree(n, row, col) }
     function tableExtraAt(n, i) { return RigTables.tableExtraAt(n, i) }

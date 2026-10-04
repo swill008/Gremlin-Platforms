@@ -563,6 +563,7 @@ function commitRename() {
                 ex.text = t
         } else if (n.rows[tableRow] && n.rows[tableRow].cells && n.rows[tableRow].cells[tableCol]) {
             n.rows[tableRow].cells[tableCol].text = t
+            fitTableRow(n, tableRow)
         }
     } else if (isGroup(n) && renameMember >= 0 && n.members && renameMember < n.members.length) {
         n.members[renameMember].friendly = t
