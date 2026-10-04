@@ -212,7 +212,10 @@ function nudge(dx, dy) {
     var seenPack = {}
     for (var i = 0; i < ids.length; i++)
         moveNodeBy(nodeAt(ids[i]), dx, dy, seenPack)
-    bump()
+    // A run of nudges (a held arrow key) makes one undo step when it pauses.
+    repaint()
+    selectedChanged()
+    noteLiveEdit()
 }
 
 // Moves one item by a page fraction: a table pack once (seenPack), a shape

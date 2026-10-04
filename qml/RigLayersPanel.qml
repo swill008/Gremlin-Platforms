@@ -85,6 +85,10 @@ Rectangle {
         else
             ed.setSelection([row.id])
         ed.bump()
+        // Arrow keys nudge what was picked here (not while a row is being
+        // renamed: a double-click's second release would end the rename).
+        if (renameId === "")
+            ed.focusMap()
     }
 
     function flag(row, which) {

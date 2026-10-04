@@ -311,8 +311,9 @@ function ensureFriendly(n) {
         if (n.friendly === undefined || n.friendly === null)
             n.friendly = n.label && n.label.length ? n.label : n.id
     } else if (isDraw(n)) {
-        if (n.friendly === undefined || n.friendly === null)
-            n.friendly = "Draw"
+        // A drawing without a name shows as "Draw" (friendlyOf); writing
+        // it in made every map with drawings look changed in Edit.
+        return
     } else if (n.friendly === undefined || n.friendly === null) {
         n.friendly = (n.label && n.label.length) ? n.label : defaultFriendly(n.kind, n.hwId)
     }

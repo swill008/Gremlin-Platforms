@@ -58,3 +58,10 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
     # picture is centred on the drop point with its own 4:1 shape.
     assert results["paste-picture"] == "1 image"
     assert results["drop-picture"] == "true 0.30 0.60 4.0"
+    # Entering Edit leaves nothing to undo or save (BM11).
+    assert results["edit-is-clean"] == "false false"
+    # Copy Button Map from Device outside Edit: Undo brings the old map
+    # back (BM9).
+    assert results["copy-undo"] == "c1 p1"
+    # Ctrl+S while typing keeps the typed text (BM15).
+    assert results["save-while-typing"] == "['typed']"

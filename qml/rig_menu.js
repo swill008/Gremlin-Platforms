@@ -174,10 +174,7 @@ function _hideLock(kind) {
     }
     function flip(flag) {
         var on = !all(flag)
-        return function() {
-            for (var i = 0; i < targets.length; i++)
-                setLayerFlag(targets[i].id, targets[i].part, flag, on)
-        }
+        return function() { setLayerFlags(targets, flag, on) }
     }
     return [_tog("Hide " + word, all("hidden"), flip("hidden")),
             _tog("Lock " + word, all("locked"), flip("locked"))]
@@ -270,8 +267,7 @@ function _hideHotspot() {
     var ids = (selectedIds && selectedIds.length) ? selectedIds.slice() : (selectedId ? [selectedId] : [])
     var allHidden = ids.length > 0 && ids.every(function(id) { return layerFlag(id, "hot", "hidden") })
     return _tog("Hide Hotspot", allHidden, function() {
-        for (var i = 0; i < ids.length; i++)
-            setLayerFlag(ids[i], "hot", "hidden", !allHidden)
+        setLayerFlags(ids.map(function(id) { return { id: id, part: "hot" } }), "hidden", !allHidden)
     }, ids.length > 0)
 }
 
@@ -442,9 +438,25 @@ function _transform() {
 }
 
 // Locked items ignore clicks on the map; the Layers panel unlocks them.
+// What Arrange's Lock and Hide act on: the whole selection when several
+// items are selected, else the item.
+function _arrangeIds() {
+    var ids = selectedIds || []
+    return ids.length > 1 && isSelected(selectedId) ? ids.slice() : [selectedId]
+}
+
 function _lockItem() {
     var n = nodeAt(selectedId)
+    var ids = _arrangeIds()
+    if (ids.length > 1) {
+        var all = ids.every(function(s) { return isLocked(nodeAt(s)) })
+        return _tog("Lock", all, toggleLockSelection, !!n)
+    }
     return _tog("Lock", isLocked(n), function() { toggleLock(selectedId) }, !!n)
+}
+
+function _hideItems() {
+    setLayerFlags(_arrangeIds().map(function(s) { return { id: s, part: "" } }), "hidden", true)
 }
 
 function _detachFromChips() {
@@ -468,7 +480,7 @@ function _arrange(extra) {
         _act("Send Back", sendBack),
         _act("Send to Back", sendToBack),
         _lockItem(),
-        _act("Hide", function() { setLayerFlag(selectedId, "", "hidden", true) })
+        _act("Hide", _hideItems)
     ]
     if (n && n.around && n.around.length)
         items.push(_act("Detach from Chips", _detachFromChips))

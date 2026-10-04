@@ -222,12 +222,26 @@ function layerFlagInherited(id, part, flag) {
 }
 
 function setLayerFlag(id, part, flag, on) {
+    if (_setLayerFlag(id, part, flag, on))
+        bump()
+}
+
+// Several at once ({ id, part } each, Hide Selected): one undo step.
+function setLayerFlags(targets, flag, on) {
+    var any = false
+    for (var i = 0; i < targets.length; i++)
+        any = _setLayerFlag(targets[i].id, targets[i].part, flag, on) || any
+    if (any)
+        bump()
+}
+
+function _setLayerFlag(id, part, flag, on) {
     var n = nodeAt(id)
     if (!n)
-        return
+        return false
     var t = _partTarget(n, part)
     if (!t.obj)
-        return
+        return false
     var key = _flagKey(t.key, flag)
     if (on)
         t.obj[key] = true
@@ -238,7 +252,7 @@ function setLayerFlag(id, part, flag, on) {
     // A hidden item cannot stay selected; a locked one can, from this panel.
     if (on && !part && flag === "hidden")
         setSelection((selectedIds || []).filter(function(s) { return s !== id }))
-    bump()
+    return true
 }
 
 function toggleLayerFlag(id, part, flag) {
@@ -279,6 +293,12 @@ function deleteLayer(id, part) {
         return true
     }
     if (isGroup(n)) {
+        // Open for editing, returnToPool() would remove only its selected
+        // member: the row stands for the whole group.
+        if (groupEditId === id) {
+            groupEditId = ""
+            selectedMember = -1
+        }
         setSelection([id])
         selectedId = id
         returnToPool()

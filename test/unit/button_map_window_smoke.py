@@ -271,6 +271,53 @@ def main() -> None:
         QtQml.QQmlExpression(
             QtQml.qmlContext(win), win, "_buttonMap.discardEdit(); 1"
         ).evaluate()
+        QtTest.QTest.qWait(300)
+
+        def js(code: str) -> str:
+            expr = QtQml.QQmlExpression(QtQml.qmlContext(win), win, code)
+            value = expr.evaluate()[0]
+            if expr.hasError():
+                return "ERROR " + expr.error().toString()
+            return str(value)
+
+        # Entering Edit changes nothing: no undo step, no unsaved changes
+        # (BM11; the map has a drawing without a name).
+        js("_buttonMap.loadLive(); _buttonMap.enterEdit(); 1")
+        QtTest.QTest.qWait(600)
+        print(
+            "RESULT edit-is-clean "
+            + js("String(_buttonMap.isDirty()) + ' ' + String(_ed().canUndo)"),
+            flush=True,
+        )
+        js("_buttonMap.discardEdit(); 1")
+        QtTest.QTest.qWait(300)
+        # Copy Button Map from Device outside Edit: Undo brings the map that
+        # was there back (BM9).
+        Path(where).with_name("copysrc.json").write_text(json.dumps({
+            "device": "Copy Src",
+            "nodes": [{"id": "c1", "kind": "draw", "shape": "rect",
+                       "fx": 0.5, "fy": 0.5, "fw": 0.1, "fh": 0.1}],
+        }), encoding="utf-8")
+        js("_buttonMap.copyLayoutFrom({name: 'Copy Src', slug: 'copysrc'}, false); 1")
+        QtTest.QTest.qWait(600)
+        ids = "function ids() { return _ed().nodes.map(function(n) { return n.id })"
+        copied = js(f"{ids}.join(',') }}; ids()")
+        undone = js(f"{ids}.join(',') }}; _ed().undo(); ids()")
+        print(f"RESULT copy-undo {copied} {undone}", flush=True)
+        js("_buttonMap.discardEdit(); 1")
+        QtTest.QTest.qWait(300)
+        # Ctrl+S while a text box's text is being typed saves the typed text
+        # (BM15).
+        js("_buttonMap.enterEdit(); var e = _ed();"
+           " e.nodes.push({id: 't1', kind: 'draw', shape: 'text', text: 'old',"
+           " fx: 0.2, fy: 0.2, fw: 0.2, fh: 0.05}); e.bump();"
+           " e.beginTextRename('t1'); e.renameDraft = 'typed'; 1")
+        QtTest.QTest.qWait(300)
+        js("_buttonMap.saveEdit(false); 1")
+        QtTest.QTest.qWait(300)
+        saved = json.loads(Path(where).read_text(encoding="utf-8"))
+        texts = [n.get("text") for n in saved.get("nodes", []) if n.get("id") == "t1"]
+        print(f"RESULT save-while-typing {texts}", flush=True)
     for warning in warnings:
         print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)
     print("done", flush=True)

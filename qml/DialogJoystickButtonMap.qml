@@ -463,6 +463,9 @@ ApplicationWindow {
         if (report === undefined)
             report = true
         var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
+        // A name or text still being typed (Ctrl+S) is saved with the rest.
+        if (ed && ed.renameId)
+            ed.commitRename()
         var nodes = []
         if (ed && ed.nodes)
             nodes = ed.nodes
@@ -1486,6 +1489,8 @@ ApplicationWindow {
         if (editing && e && e.bump) {
             e.bump()
             fitHistAt = e.histAt
+            if (e.showFindMessage)
+                e.showFindMessage("Fitted to the photo frame. Undo puts it back.")
         } else if (e && e.repaint) {
             e.repaint()
         }
@@ -1688,8 +1693,20 @@ ApplicationWindow {
             return
         var nodes = []
         try { nodes = JSON.parse(text) } catch (e) { return }
-        if (!editing)
+        if (!editing) {
+            // Edit starts from the current map first, so its undo history
+            // holds it before the copy replaces it.
             enterEdit()
+            Qt.callLater(function() { _replaceLayout(nodes, mirror) })
+            return
+        }
+        _replaceLayout(nodes, mirror)
+    }
+
+    function _replaceLayout(nodes, mirror) {
+        var before = _ed()
+        if (before && before.flushPendingStep)
+            before.flushPendingStep()
         hydrateOverlays(nodes)
         workNodes = nodes
         Qt.callLater(function() {

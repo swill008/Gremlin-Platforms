@@ -53,6 +53,14 @@ function applyFieldLive(key, val) {
     noteLiveEdit()
 }
 
+// The shapes Shape can switch between. A picture, text box, table, line or
+// path selected with them keeps what it is (a picture would lose its image).
+var _PLAIN_SHAPES = ["rect", "roundrect", "ellipse", "triangle", "diamond", "arrow", "arrow2"]
+
+function _takesShape(n) {
+    return isDraw(n) && (!n.shape || _PLAIN_SHAPES.indexOf(n.shape) >= 0)
+}
+
 function _setField(key, val) {
     var mem = targetMember()
     if (mem && isStyleKey(key)) {
@@ -62,6 +70,8 @@ function _setField(key, val) {
     var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
     for (var i = 0; i < ids.length; i++) {
         var n = nodeAt(ids[i])
+        if (n && key === "shape" && !_takesShape(n))
+            continue
         if (n) {
             n[key] = val
             if (isText(n) && (key === "color" || key === "border" || key === "textColor"))

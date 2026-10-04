@@ -530,6 +530,7 @@ Item {
     function layerFlag(id, part, flag) { return RigLayers.layerFlag(id, part, flag) }
     function layerFlagInherited(id, part, flag) { return RigLayers.layerFlagInherited(id, part, flag) }
     function setLayerFlag(id, part, flag, on) { return RigLayers.setLayerFlag(id, part, flag, on) }
+    function setLayerFlags(targets, flag, on) { return RigLayers.setLayerFlags(targets, flag, on) }
     function toggleLayerFlag(id, part, flag) { return RigLayers.toggleLayerFlag(id, part, flag) }
     function canDeleteLayer(id, part) { return RigLayers.canDeleteLayer(id, part) }
     function deleteLayer(id, part) { return RigLayers.deleteLayer(id, part) }
@@ -737,6 +738,20 @@ Item {
         historyChanged()
     }
 
+    function replaceHistTop() {
+        if (_restoring || !interactive)
+            return
+        var cur = hist || []
+        if (histAt < 0 || histAt >= cur.length) {
+            seedHist()
+            return
+        }
+        var next = cur.slice()
+        next[histAt] = snapJson()
+        hist = next
+        historyChanged()
+    }
+
     function pushHist() {
         if (_restoring || !interactive)
             return
@@ -788,7 +803,23 @@ Item {
         _photoHist.restart()
     }
 
+    // A step still waiting for a pause (nudges, live edits) goes into the
+    // history first, so Undo takes back exactly it.
+    function flushPendingStep() {
+        if (_photoHist.running) {
+            _photoHist.stop()
+            pushHist()
+        }
+    }
+
+    // The map takes the keys again (arrow nudges) after a click elsewhere,
+    // such as a Layers row.
+    function focusMap() {
+        _pointer.forceActiveFocus()
+    }
+
     function undo() {
+        flushPendingStep()
         if (!canUndo)
             return
         histAt = histAt - 1
@@ -803,6 +834,7 @@ Item {
     }
 
     function redo() {
+        flushPendingStep()
         if (!canRedo)
             return
         histAt = histAt + 1
@@ -1122,7 +1154,12 @@ Item {
                 _ed.ensureMidSpine(list[i])
             }
             _ed.seeded = true
-            _ed.bump()
+            _ed.repaint()
+            _ed.selectedChanged()
+            // Tidying a map as it loads is not an edit: the step it would
+            // add replaces the latest one instead (entering Edit left an
+            // undo step and "unsaved changes" with nothing changed).
+            _ed.replaceHistTop()
         }
     }
 
@@ -1133,6 +1170,7 @@ Item {
     RigGrid { id: _grid; ed: _ed }
 
     RigPointerArea {
+        id: _pointer
         ed: _ed
         menuTarget: _ctx
         menu: _menu
