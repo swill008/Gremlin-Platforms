@@ -1313,7 +1313,8 @@ ApplicationWindow {
             panY: viewPanY,
             guidesX: guidesX,
             guidesY: guidesY,
-            guidesOn: guidesOn
+            guidesOn: guidesOn,
+            exportArea: exportArea
         }
     }
 
@@ -1338,9 +1339,14 @@ ApplicationWindow {
         guidesY = Array.isArray(ui.guidesY) ? ui.guidesY : []
         if (ui.guidesOn === true || ui.guidesOn === false)
             guidesOn = ui.guidesOn
+        var a = ui.exportArea
+        exportArea = (a && a.fw > 0 && a.fh > 0) ? { fx: +a.fx, fy: +a.fy, fw: +a.fw, fh: +a.fh } : null
     }
 
     // The device's ruler guides (saved with the view) and whether they show.
+    // The export area ({fx, fy, fw, fh} of the page, or null: the whole
+    // page): every export and print takes it. Saved with the map.
+    property var exportArea: null
     property var guidesX: []
     property var guidesY: []
     property bool guidesOn: true
@@ -1362,6 +1368,8 @@ ApplicationWindow {
         var o = _opts.values
         if (o["undo-steps"] > 0)
             e.histCap = o["undo-steps"]
+        var ink = String(o["export-area-color"] || "")
+        e.exportAreaColor = /^#[0-9A-Fa-f]{6}$/.test(ink) ? ink : String(Style.dangerBright)
         if (o["rotate-snap"] > 0)
             e.rotateSnap = o["rotate-snap"]
         e.savedStyles = _opts.styles
@@ -1459,6 +1467,7 @@ ApplicationWindow {
         e.rulerGuidesX = guidesX.slice()
         e.rulerGuidesY = guidesY.slice()
         e.guidesOn = guidesOn
+        e.exportArea = exportArea
         applyOptionsToEditor()
         if (e.repaint)
             e.repaint()
@@ -1641,7 +1650,8 @@ ApplicationWindow {
             return
         }
         var f = Math.max(1, exportScale)
-        var r = e.spaceRect()
+        // The export area (the whole page when none is set).
+        var r = e.exportAreaRect()
         var bg = e.printLight ? "white" : String(Style.background)
         var ok = e.grabToImage(function(result) {
             e.exporting = false
@@ -2154,7 +2164,7 @@ ApplicationWindow {
             var job = _buttonMap._modesJob
             if (!e || !job)
                 return
-            var r = e.spaceRect()
+            var r = e.exportAreaRect()
             var f = job.f
             var bg = e.printLight ? "white" : String(Style.background)
             var mode = job.modes[job.i]
@@ -2525,6 +2535,25 @@ ApplicationWindow {
                     enabled: editing
                     onTriggered: _buttonMap.mirrorNow()
                 }
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
+                    text: "Set Export Area"
+                    hint: "Alt+drag"
+                    enabled: editing && !_tools.isLocked("exportArea")
+                    onTriggered: {
+                        var e = _ed()
+                        if (!e)
+                            return
+                        e.exportAreaArm = true
+                        if (e.showFindMessage)
+                            e.showFindMessage("Drag on the map to set the export area. Esc cancels.")
+                    }
+                }
+                ThemedMenuItem {
+                    text: "Clear Export Area"
+                    enabled: editing && !!_buttonMap.exportArea && !_tools.isLocked("exportArea")
+                    onTriggered: { var e = _ed(); if (e) e.clearExportArea() }
+                }
                 // Another device's Button Map onto this one (its photo stays).
                 ThemedMenu {
                     id: _copyMenu
@@ -2598,6 +2627,19 @@ ApplicationWindow {
                     checkable: true
                     checked: _tools.isOpen("props")
                     onTriggered: _tools.toggle("props")
+                }
+                ThemedMenuItem {
+                    text: "Export Area"
+                    checkable: true
+                    checked: _tools.isOpen("exportArea")
+                    onTriggered: _tools.toggle("exportArea")
+                }
+                ThemedMenuItem {
+                    text: "Export Area Color…"
+                    onTriggered: {
+                        var e = _ed()
+                        _buttonMap.openColorField("exportAreaColor", e ? e.exportAreaColor : String(Style.dangerBright), null)
+                    }
                 }
                 ThemedMenuItem {
                     text: "Command Palette…"
@@ -2849,6 +2891,12 @@ ApplicationWindow {
                             }
                             function onNodesChanged() { _buttonMap.deferHistory() }
                             function onMapPressed() { _tools.mapClicked() }
+                            function onExportAreaEdited(drawn) {
+                                _buttonMap.exportArea = _card.editorItem.exportArea
+                                if (drawn)
+                                    _tools.setOpen("exportArea", true)
+                                _buttonMap.persistUi()
+                            }
                             function onSeededChanged() { _buttonMap.noteSeeded() }
                         }
                         Component.onCompleted: _cardLoader.item = _card
@@ -3175,6 +3223,21 @@ ApplicationWindow {
 
                 // Layers: every item with an eye and a lock, top of the stack first.
                 // On the right, above the pool when it is docked at the bottom.
+                // The export area's frame follows its tool (shown, locked).
+                Binding {
+                    target: _buttonMap._ed()
+                    property: "exportAreaShown"
+                    value: _tools.isOpen("exportArea")
+                    when: !!_buttonMap._ed()
+                    restoreMode: Binding.RestoreNone
+                }
+                Binding {
+                    target: _buttonMap._ed()
+                    property: "exportAreaLocked"
+                    value: _tools.isLocked("exportArea")
+                    when: !!_buttonMap._ed()
+                    restoreMode: Binding.RestoreNone
+                }
                 Binding {
                     target: _buttonMap._ed()
                     property: "canPastePicture"
@@ -3280,7 +3343,10 @@ ApplicationWindow {
                 { id: "chips", label: "Chips", tip: "Chips not on the map yet: drag one onto the map" },
                 { id: "props", label: "Properties", tip: "The selected item's place, size, angle and style" },
                 { id: "layers", label: "Layers", tip: "Every item, with an eye and a lock, top of the stack first" },
-                { id: "palette", label: "Command Palette", tip: "Every command, by name (Ctrl+K)" }
+                { id: "palette", label: "Command Palette", tip: "Every command, by name (Ctrl+K)" },
+                // Stays on screen until its button is clicked again.
+                { id: "exportArea", label: "Export Area", sticky: true,
+                  tip: "The part of the page every export and print takes: Alt+drag on the map to set it" }
             ]
             // Properties shows the selection as before (pinned); the others
             // start hidden.
@@ -3592,7 +3658,11 @@ ApplicationWindow {
             if (e) {
                 // From hh, ss, vv themselves: the 'live' binding may not have
                 // caught up yet inside these change handlers.
-                e.applyFieldLive(field, _buttonMap._toHex(Qt.hsva(hh, ss, vv, 1)))
+                var hex = _buttonMap._toHex(Qt.hsva(hh, ss, vv, 1))
+                if (field === "exportAreaColor")
+                    e.exportAreaColor = hex
+                else
+                    e.applyFieldLive(field, hex)
                 changed = true
             }
         }
@@ -3603,6 +3673,8 @@ ApplicationWindow {
         }
 
         onClosed: {
+            if (changed && field === "exportAreaColor")
+                _opts.set("export-area-color", _buttonMap._toHex(live))
             if (changed)
                 _hw.noteColour(_buttonMap._toHex(live))
             changed = false

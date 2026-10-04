@@ -11,6 +11,8 @@ import Gremlin.Style
 //   - its button opens it, and hides it again;
 //   - pinned (the pin on its button), it stays open when the map is clicked;
 //     unpinned, it hides when the map is clicked or another tool opens;
+//     a tool marked sticky stays open until its button is clicked again
+//     (it has no pin);
 //   - locked (the lock on its button), it can't be dragged or resized, nor
 //     its button moved; unlocked, the button can be dragged along the row.
 // What is open, pinned and locked, and the order, are kept with the window
@@ -22,7 +24,7 @@ Item {
     id: _row
 
     property string name: ""
-    // [{ id, label, tip }] in their first order.
+    // [{ id, label, tip, sticky }] in their first order.
     property var tools: []
     // Starting state for a tool never used: { id: { open, pinned, locked } }.
     property var defaults: ({})
@@ -70,8 +72,8 @@ Item {
             if (keep) {
                 s.pinned = !!keep.pinned
                 s.locked = !!keep.locked
-                // Only a pinned tool reopens in a new session.
-                s.open = !!keep.open && s.pinned
+                // Only a pinned (or sticky) tool reopens in a new session.
+                s.open = !!keep.open && (s.pinned || isSticky(id))
             }
         }
         // The saved order, then any tool it doesn't have yet.
@@ -113,8 +115,10 @@ Item {
     }
 
     function isUsable(id) { return usable[id] !== false }
+    function isSticky(id) { var t = tool(id); return !!(t && t.sticky) }
     function isOpen(id) { rev; return _entry(id).open && isUsable(id) }
-    function isPinned(id) { rev; return _entry(id).pinned }
+    // A sticky tool counts as pinned: nothing but its button hides it.
+    function isPinned(id) { rev; return _entry(id).pinned || isSticky(id) }
     function isLocked(id) { rev; return _entry(id).locked }
 
     // Opening a tool hides the other unpinned ones.
@@ -124,7 +128,7 @@ Item {
             for (var i = 0; i < tools.length; i++) {
                 var other = tools[i].id
                 var o = _entry(other)
-                if (other !== id && o.open && !o.pinned) {
+                if (other !== id && o.open && !o.pinned && !isSticky(other)) {
                     o.open = false
                     toolChanged(other)
                 }
@@ -158,7 +162,7 @@ Item {
         for (var i = 0; i < tools.length; i++) {
             var id = tools[i].id
             var s = _entry(id)
-            if (s.open && !s.pinned) {
+            if (s.open && !s.pinned && !isSticky(id)) {
                 s.open = false
                 toolChanged(id)
             }
@@ -236,6 +240,7 @@ Item {
                     // Pin: stays open when the map is clicked.
                     Label {
                         id: _pin
+                        visible: !_row.isSticky(_btn.modelData)
                         anchors.verticalCenter: parent.verticalCenter
                         font.family: Style.iconFont
                         font.pixelSize: Style.dp(11)

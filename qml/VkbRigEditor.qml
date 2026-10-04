@@ -32,6 +32,7 @@ import "rig_callout.js" as RigCallout
 import "rig_path.js" as RigPath
 import "rig_styles.js" as RigStyles
 import "rig_rulers.js" as RigRulers
+import "rig_export_area.js" as RigExportJs
 import "rig_transform.js" as RigTransform
 import "rig_hotspot.js" as RigHotspot
 
@@ -107,6 +108,19 @@ Item {
     property real bandX0: 0
     property real bandY0: 0
     property real bandX1: 0
+    // The export area (rig_export_area.js): the page's part every export
+    // takes ({fx, fy, fw, fh}, or null: the whole page), whether its frame
+    // shows, whether it can be changed, its color, Set Export Area waiting
+    // for a drag, and the area being drawn.
+    property var exportArea: null
+    property bool exportAreaShown: false
+    property bool exportAreaLocked: false
+    property string exportAreaColor: String(Style.dangerBright)
+    property bool exportAreaArm: false
+    property real eaX0: 0
+    property real eaY0: 0
+    property real eaX1: 0
+    property real eaY1: 0
     property real bandY1: 0
     property bool gridOn: true
     property bool snapOn: true
@@ -212,6 +226,8 @@ Item {
     signal selectedChanged()
     // Any press on the map (the window hides its unpinned tools).
     signal mapPressed()
+    // The export area was drawn (drawn: a new one, show it) or changed.
+    signal exportAreaEdited(bool drawn)
     signal chipMenuRequested(real x, real y)
     signal overlayImportRequested()
     signal historyChanged()
@@ -657,6 +673,12 @@ Item {
     function dragRulerGuide(axis, index, mx, my) { return RigRulers.dragRulerGuide(axis, index, mx, my) }
     function dropRulerGuide(axis, index, mx, my) { return RigRulers.dropRulerGuide(axis, index, mx, my) }
     function rulerGuideLines() { return RigRulers.rulerGuideLines() }
+    function exportAreaRect() { return RigExportJs.exportAreaRect() }
+    function beginExportArea(x, y) { return RigExportJs.beginExportArea(x, y) }
+    function moveExportArea(x, y) { return RigExportJs.moveExportArea(x, y) }
+    function endExportArea() { return RigExportJs.endExportArea() }
+    function setExportAreaRect(x, y, w, h) { return RigExportJs.setExportAreaRect(x, y, w, h) }
+    function clearExportArea() { return RigExportJs.clearExportArea() }
 
     // Transform handles (rig_transform.js)
     function transformModesFor(n) { return RigTransform.transformModesFor(n) }
@@ -1384,6 +1406,8 @@ Item {
             border.width: Style.dp(2)
         }
     }
+
+    RigExportArea { ed: _ed }
 
     Rectangle {
         visible: _ed.banding

@@ -108,7 +108,9 @@ def test_a_leader_end_skips_drawings_hotspots() -> None:
 
 def test_colour_picker_follows_the_theme_and_takes_a_hex() -> None:
     qml = _text("qml/DialogJoystickButtonMap.qml")
-    picker = qml[qml.index("id: _colorPop"):][:12000]
+    start = qml.index("id: _colorPop")
+    # The picker, to its closing brace (four spaces in).
+    picker = qml[start:qml.index("\n    }\n", start)]
     assert '"#18181B"\n            border.color' not in picker.replace("\r", "")
     assert "color: Style.bgRaised" in picker
     assert "id: _hexField" in picker and "_colorPop.takeHex(t.toUpperCase())" in picker

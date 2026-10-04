@@ -24,6 +24,12 @@ MouseArea {
     focus: true
     Keys.onDeletePressed: ed.deleteSelected()
     Keys.onPressed: (e) => {
+        // Set Export Area waiting for its drag: Esc cancels it.
+        if (e.key === Qt.Key_Escape && ed.exportAreaArm) {
+            ed.exportAreaArm = false
+            e.accepted = true
+            return
+        }
         if (e.key === Qt.Key_Backspace) {
             ed.deleteSelected()
             e.accepted = true
@@ -86,6 +92,15 @@ MouseArea {
         forceActiveFocus()
         ed.altHeld = !!(m.modifiers & Qt.AltModifier)
         ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
+        // The export area: Alt+drag from an empty part of the map (on an
+        // item Alt still moves it without snapping), or any drag after Set
+        // Export Area. Not while it is locked.
+        if (ed.interactive && m.button === Qt.LeftButton && !ed.exportAreaLocked
+                && (ed.exportAreaArm || (ed.altHeld && !ed.hitTest(m.x, m.y).id))) {
+            ed.beginExportArea(m.x, m.y)
+            ed.dragKind = "exportarea"
+            return
+        }
         if (ed.interactive && ed.drawTool === "path") {
             if (m.button === Qt.RightButton)
                 ed.finishPath(false)
@@ -380,6 +395,10 @@ MouseArea {
             ed.penMove(m.x, m.y)
             return
         }
+        if (ed.dragKind === "exportarea") {
+            ed.moveExportArea(m.x, m.y)
+            return
+        }
         if (ed.dragKind === "chip" || ed.dragKind === "member")
             ed.poolHover = ed.overPool(m.x, m.y)
         if (ed.dragKind === "rulerguide" && ed.guideDrag) {
@@ -438,6 +457,12 @@ MouseArea {
         if (ed.dragKind === "pen") {
             ed.dragKind = ""
             ed.penEnd()
+            return
+        }
+        if (ed.dragKind === "exportarea") {
+            ed.moveExportArea(m.x, m.y)
+            ed.dragKind = ""
+            ed.endExportArea()
             return
         }
         if (ed.dragKind === "rulerguide") {

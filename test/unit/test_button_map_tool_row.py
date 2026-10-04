@@ -26,7 +26,7 @@ import sys
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
-_ORDER = ["chips", "props", "layers", "palette"]
+_ORDER = ["chips", "props", "layers", "palette", "exportArea"]
 
 
 @pytest.fixture(scope="module")
@@ -64,7 +64,7 @@ def test_a_map_click_hides_unpinned_tools(run: dict) -> None:
 
 
 def test_unlocked_buttons_move_locked_ones_stay(run: dict) -> None:
-    moved = ["palette", "chips", "props", "layers"]
+    moved = ["palette", "chips", "props", "layers", "exportArea"]
     assert run["6-moved"]["order"] == moved
     assert run["7-locked-move"]["order"] == moved
 
@@ -76,7 +76,7 @@ def test_status_line_and_docked_pool(run: dict) -> None:
 
 def test_the_row_is_saved(run: dict) -> None:
     saved = run["saved"]
-    assert saved["order"] == ["palette", "chips", "props", "layers"]
+    assert saved["order"] == ["palette", "chips", "props", "layers", "exportArea"]
     assert saved["items"]["chips"]["pinned"] is True
     assert saved["items"]["palette"]["locked"] is True
     assert saved["items"]["props"]["pinned"] is True

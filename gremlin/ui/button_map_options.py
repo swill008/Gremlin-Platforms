@@ -147,6 +147,12 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         "How many recent colors the color picker keeps.",
         {"min": 4, "max": 30},
     ),
+    (
+        "colours", "02-export-area-color", PropertyType.String, "#EF4444",
+        "The export area's frame, label and rubber band (View > Export Area "
+        "Color...), as #RRGGBB.",
+        {},
+    ),
 ]
 
 
