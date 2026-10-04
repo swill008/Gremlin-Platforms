@@ -75,5 +75,11 @@ def test_arrow_keys_work_after_a_layers_click(results: dict) -> None:
     assert results["layers-then-arrow"] is True
 
 
+def test_a_drag_redraws_the_dragged_chip_and_keeps_the_rest(results: dict) -> None:
+    mid = results["mid-drag"]
+    assert mid["dragged-follows"] and mid["still-in-place"] and mid["live-leaders"]
+    assert results["after-drag"] is True
+
+
 def test_no_qml_warnings(results: dict) -> None:
     assert results["warnings"] == []

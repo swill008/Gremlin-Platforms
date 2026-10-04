@@ -99,6 +99,44 @@ def main() -> None:
     s.wait(100)
     out["layers-then-arrow"] = s.node(rect)["fx"] > start
 
+    # BM13: mid-drag, only the dragged chip follows the drag tick; it is
+    # drawn where its data says, and so is a chip that stays.
+    from PySide6 import QtQml
+
+    def ev(code: str) -> object:
+        expr = QtQml.QQmlExpression(QtQml.qmlContext(s.win), s.win, code)
+        value = expr.evaluate()
+        assert not expr.hasError(), expr.error().toString()
+        return value[0] if isinstance(value, tuple) else value
+
+    plain = [n["id"] for n in s.state()["nodes"]
+             if n["kind"] == "btn" and not n.get("members") and not n.get("hidden")]
+    dragged, still = plain[0], plain[-1]
+    drawn = ("(function(id) { var e = ed(); var i = e.nodeIndex(id);"
+             " var it = e._chipsItem(i); var n = e.nodeAt(id);"
+             " return Math.abs(it.x - e.fxToX(n.chipFx)) < 0.5"
+             " && Math.abs(it.y - e.fyToY(n.chipFy)) < 0.5 })")
+    s.call("setSelection", [])
+    start = s.center(dragged)
+    QtTest.QTest.mousePress(s.win, QtCore.Qt.MouseButton.LeftButton,
+                            QtCore.Qt.KeyboardModifier.NoModifier, start)
+    for i in range(1, 6):
+        step = QtCore.QPoint(start.x() + i * 8, start.y() + i * 3)
+        QtTest.QTest.mouseMove(s.win, step)
+        s.wait(20)
+    out["mid-drag"] = {
+        "dragged-follows": bool(ev(f"{drawn}('{dragged}')")),
+        "still-in-place": bool(ev(f"{drawn}('{still}')")),
+        "moved": bool(ev(f"ed().nodeAt('{dragged}').chipFx")
+                      != s.node(still)["chipFx"]),
+        "live-leaders": bool(ev(f"!!ed().liveLeaderIds['{dragged}']")),
+    }
+    QtTest.QTest.mouseRelease(s.win, QtCore.Qt.MouseButton.LeftButton,
+                              QtCore.Qt.KeyboardModifier.NoModifier,
+                              QtCore.QPoint(start.x() + 40, start.y() + 15))
+    s.wait(100)
+    out["after-drag"] = bool(ev(f"{drawn}('{dragged}')"))
+
     out["warnings"] = s.warnings
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)

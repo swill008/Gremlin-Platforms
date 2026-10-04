@@ -47,6 +47,24 @@ Item {
     property real dragOffX: 0
     property real dragOffY: 0
     property int tick: 0
+    // While items are dragged only they follow: liveTick moves them, the
+    // global tick stays (each pointer move used to redraw every item: about
+    // 165 ms a move with 330 items). liveIds: the dragged items' ids.
+    property var liveIds: ({})
+    property int liveTick: 0
+    // For what is drawn over the items (selection, handles, guides): both.
+    readonly property int anyTick: tick + liveTick
+    // The dragged items' leaders, and leaders ending on their hotspots: drawn
+    // on their own canvas while dragging (redrawing every leader on each
+    // pointer move cost about 120 ms on a big map).
+    property var liveLeaderIds: ({})
+
+    function paintLeaders() {
+        if (_lines)
+            _lines.requestPaint()
+        if (_liveLines)
+            _liveLines.requestPaint()
+    }
     property bool seeded: false
     property bool interactive: false
     // A picture of the page is being taken: no selection, handles, grid or
@@ -712,8 +730,71 @@ Item {
 
     function repaint() {
         tick++
-        if (_lines)
-            _lines.requestPaint()
+        paintLeaders()
+    }
+
+    // A drag step: only the dragged items (the selection, and drawings drawn
+    // around them) are drawn again. Tables and their packs move other items
+    // too: those still redraw everything. Letting go makes an undo step,
+    // which redraws everything anyway.
+    function repaintForDrag() {
+        if (dragKind === "tablecell")
+            return repaint()
+        var ids = (selectedIds || []).slice()
+        if (selectedId && ids.indexOf(selectedId) < 0)
+            ids.push(selectedId)
+        var set = {}
+        for (var i = 0; i < ids.length; i++) {
+            var n = nodeAt(ids[i])
+            if (!n || isTable(n) || tablePackOf(n))
+                return repaint()
+            set[n.id] = true
+        }
+        var list = nodes || []
+        for (var j = 0; j < list.length; j++) {
+            var around = list[j].around || []
+            for (var k = 0; k < around.length; k++) {
+                if (set[around[k]]) {
+                    set[list[j].id] = true
+                    break
+                }
+            }
+        }
+        var same = Object.keys(set).length === Object.keys(liveIds || {}).length
+        for (var key in set) {
+            if (!(liveIds || {})[key])
+                same = false
+        }
+        liveTick++
+        if (!same) {
+            liveIds = set
+            liveLeaderIds = _leadersOn(set)
+            paintLeaders()  // once: the still canvas leaves them out now
+        } else if (_liveLines) {
+            _liveLines.requestPaint()
+        }
+    }
+
+    // The dragged items and those with a leader ending on one of them.
+    function _leadersOn(set) {
+        var out = {}
+        for (var key in set)
+            out[key] = true
+        var list = nodes || []
+        for (var i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (out[n.id] || isDraw(n))
+                continue
+            var ls = leaderList(n)
+            for (var j = 0; j < ls.length; j++) {
+                var ends = [ls[j].from, ls[j].to]
+                for (var e = 0; e < ends.length; e++) {
+                    if (ends[e] && ends[e].id && set[ends[e].id])
+                        out[n.id] = true
+                }
+            }
+        }
+        return out
     }
 
     function bump() {
@@ -875,8 +956,7 @@ Item {
         } else {
             Qt.callLater(seedHist)
         }
-        if (_lines)
-            _lines.requestPaint()
+        paintLeaders()
     }
 
     // Physical names from the EVO R lock inventory. Shown as default friendly names.
@@ -1008,8 +1088,8 @@ Item {
         target: face
         function onLiveStampChanged() { _ed.tick++ }
         function onDestTickChanged() { _ed.tick++ }
-        function onWidthChanged() { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
-        function onHeightChanged() { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
+        function onWidthChanged() { paintLeaders(); if (_grid) _grid.requestPaint() }
+        function onHeightChanged() { paintLeaders(); if (_grid) _grid.requestPaint() }
     }
 
     // Every node in list order (the last on top) and the leader canvas, which
@@ -1030,10 +1110,12 @@ Item {
                 var list = _ed.nodes || []
                 return (index >= 0 && index < list.length) ? list[index] : null
             }
+            readonly property bool live: !!(node && _ed.liveIds && _ed.liveIds[node.id])
+            readonly property int rev: _ed.tick + (live ? _ed.liveTick : 0)
             // tick: hiding changes the node in place, not the node object.
-            visible: { _ed.tick; return node !== null && !node.hidden }
+            visible: { _wrap.rev; return node !== null && !node.hidden }
             x: {
-                _ed.tick
+                _wrap.rev
                 if (!node)
                     return 0
                 if (_ed.isDraw(node))
@@ -1044,7 +1126,7 @@ Item {
                 return x
             }
             y: {
-                _ed.tick
+                _wrap.rev
                 if (!node)
                     return 0
                 if (_ed.isDraw(node))
@@ -1055,12 +1137,12 @@ Item {
                 return y
             }
             z: index
-            rotation: { _ed.tick; return (_ed.isDraw(node) && node.rot) ? node.rot : 0 }
-            opacity: { _ed.tick; return (_ed.isDraw(node) && node.opacity !== undefined && node.opacity !== null) ? node.opacity : 1 }
+            rotation: { _wrap.rev; return (_ed.isDraw(node) && node.rot) ? node.rot : 0 }
+            opacity: { _wrap.rev; return (_ed.isDraw(node) && node.opacity !== undefined && node.opacity !== null) ? node.opacity : 1 }
             transformOrigin: Item.Center
             clip: false
             width: {
-                _ed.tick
+                _wrap.rev
                 if (!node)
                     return 40
                 if (_ed.isDraw(node))
@@ -1070,7 +1152,7 @@ Item {
                 return (_body.item && _body.item.implicitWidth > 1) ? _body.item.implicitWidth : _ed.chipWGuess(node, null)
             }
             height: {
-                _ed.tick
+                _wrap.rev
                 if (!node)
                     return 20
                 if (_ed.isDraw(node))
@@ -1084,13 +1166,13 @@ Item {
                 id: _body
                 clip: false
                 width: {
-                    _ed.tick
+                    _wrap.rev
                     if (_wrap.node && (_ed.isGroup(_wrap.node) || _ed.isDraw(_wrap.node)))
                         return _wrap.width
                     return item ? item.implicitWidth : 0
                 }
                 height: {
-                    _ed.tick
+                    _wrap.rev
                     if (_wrap.node && (_ed.isGroup(_wrap.node) || _ed.isDraw(_wrap.node)))
                         return _wrap.height
                     return item ? item.implicitHeight : 0
@@ -1103,6 +1185,7 @@ Item {
                 }
                 onLoaded: {
                     item.node = Qt.binding(function() { return _wrap.node })
+                    item.rev = Qt.binding(function() { return _wrap.rev })
                     if (_wrap.node && _ed.isGroup(_wrap.node))
                         _ed.ensureMemberOffsets(_wrap.node)
                     if (_wrap.node && _ed.isTable(_wrap.node))
@@ -1112,7 +1195,8 @@ Item {
         }
     }
 
-    RigLeaderLayer { id: _lines; ed: _ed; z: _ed.leaderLayerZ() }
+    RigLeaderLayer { id: _lines; ed: _ed; part: "still"; z: _ed.leaderLayerZ() }
+    RigLeaderLayer { id: _liveLines; ed: _ed; part: "live"; z: _ed.leaderLayerZ() }
     }
 
     Component {
@@ -1130,14 +1214,14 @@ Item {
         RigChipItem { ed: _ed }
     }
 
-    onWidthChanged: { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
-    onHeightChanged: { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
-    onTickChanged: _lines.requestPaint()
+    onWidthChanged: { paintLeaders(); if (_grid) _grid.requestPaint() }
+    onHeightChanged: { paintLeaders(); if (_grid) _grid.requestPaint() }
+    onTickChanged: paintLeaders()
     onGridOnChanged: if (_grid) _grid.requestPaint()
     onGridSizeChanged: if (_grid) _grid.requestPaint()
     onNodesChanged: {
         seeded = false
-        _lines.requestPaint()
+        paintLeaders()
         _seedTimer.restart()
     }
 
@@ -1217,32 +1301,32 @@ Item {
         z: 12
         visible: _ed.showChrome && _ed.renameId.length > 0
         x: {
-            _ed.tick
+            _ed.anyTick
             var n = _ed.nodeAt(_ed.renameId)
             var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
             return _ed.chipScreenRect(n, mem).x
         }
         y: {
-            _ed.tick
+            _ed.anyTick
             var n = _ed.nodeAt(_ed.renameId)
             var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
             return _ed.chipScreenRect(n, mem).y
         }
         width: {
-            _ed.tick
+            _ed.anyTick
             var n = _ed.nodeAt(_ed.renameId)
             var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
             return Math.max(Style.dp(48), _ed.chipScreenRect(n, mem).width)
         }
         height: {
-            _ed.tick
+            _ed.anyTick
             var n = _ed.nodeAt(_ed.renameId)
             var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
             return Math.max(18, _ed.chipScreenRect(n, mem).height)
         }
         transformOrigin: Item.Center
         rotation: {
-            _ed.tick
+            _ed.anyTick
             var n = _ed.nodeAt(_ed.renameId)
             return (n && _ed.isText(n) && n.rot) ? n.rot : 0
         }
@@ -1292,8 +1376,8 @@ Item {
     Item {
         id: _turnFrame
         z: 8
-        visible: { _ed.tick; return _ed.showChrome && _ed.canTurnTogether() && _ed.dragKind !== "band" }
-        readonly property var box: { _ed.tick; return _ed.selectionBounds() }
+        visible: { _ed.anyTick; return _ed.showChrome && _ed.canTurnTogether() && _ed.dragKind !== "band" }
+        readonly property var box: { _ed.anyTick; return _ed.selectionBounds() }
         x: box.x
         y: box.y
         width: box.w
@@ -1336,10 +1420,10 @@ Item {
     Text {
         z: 9
         visible: _ed.exporting && _ed.exportTitle.length > 0
-        x: { _ed.tick; return _ed.spaceRect().x + _ed.spaceRect().w * 0.02 }
-        y: { _ed.tick; return _ed.spaceRect().y + _ed.spaceRect().h * 0.02 }
+        x: { _ed.anyTick; return _ed.spaceRect().x + _ed.spaceRect().w * 0.02 }
+        y: { _ed.anyTick; return _ed.spaceRect().y + _ed.spaceRect().h * 0.02 }
         color: _ed.printLight ? "black" : Style.fg
-        font.pixelSize: { _ed.tick; return _ed.uiPx(28) }
+        font.pixelSize: { _ed.anyTick; return _ed.uiPx(28) }
         font.bold: true
         text: _ed.exportTitle
     }
@@ -1469,8 +1553,7 @@ Item {
         interval: 30
         repeat: true
         onTriggered: {
-            if (_lines)
-                _lines.requestPaint()
+            paintLeaders()
             if (!_ed.hotPulsing())
                 stop()
         }

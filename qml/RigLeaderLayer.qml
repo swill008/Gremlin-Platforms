@@ -11,6 +11,9 @@ import Gremlin.Style
 Canvas {
     id: _lines
     property var ed: null
+    // "still": every leader but the dragged items'; "live": only those (see
+    // VkbRigEditor.liveLeaderIds). Outside a drag "live" draws nothing.
+    property string part: "still"
     anchors.fill: parent
     z: 2
     onPaint: {
@@ -20,6 +23,8 @@ Canvas {
         for (var i = 0; i < list.length; i++) {
             var n = list[i]
             if (ed.isDraw(n) || ed.isHidden(n))
+                continue
+            if ((part === "live") !== !!(ed.liveLeaderIds && ed.liveLeaderIds[n.id]))
                 continue
             var sel = ed.showChrome && ed.isSelected(n.id)
             var ls = ed.leaderList(n)

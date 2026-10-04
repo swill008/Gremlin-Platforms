@@ -11,19 +11,22 @@ import Gremlin.Style
 Item {
     id: _drawRoot
     property var ed: null
+    // Redrawn on the editor's tick, and while this item is being dragged on
+    // the drag tick only (big maps: other items stay as they are).
+    property int rev: ed ? ed.tick : 0
     property var node: ({ kind: "draw" })
     anchors.fill: parent
     // Skew (Transform → Skew) about the middle, before the item is turned.
     transform: Matrix4x4 {
-        matrix: { ed.tick; return ed.skewMatrix(_drawRoot.node, _drawRoot.width, _drawRoot.height) }
+        matrix: { _drawRoot.rev; return ed.skewMatrix(_drawRoot.node, _drawRoot.width, _drawRoot.height) }
     }
     Canvas {
         id: _dc
         transform: Scale {
             origin.x: _dc.width / 2
             origin.y: _dc.height / 2
-            xScale: { ed.tick; return _drawRoot.node && _drawRoot.node.flipH ? -1 : 1 }
-            yScale: { ed.tick; return _drawRoot.node && _drawRoot.node.flipV ? -1 : 1 }
+            xScale: { _drawRoot.rev; return _drawRoot.node && _drawRoot.node.flipH ? -1 : 1 }
+            yScale: { _drawRoot.rev; return _drawRoot.node && _drawRoot.node.flipV ? -1 : 1 }
         }
         visible: {
             var n = node
@@ -42,10 +45,10 @@ Item {
         id: _tableFace
         anchors.fill: parent
         clip: false
-        visible: { ed.tick; return !!(node && node.shape === "table") }
+        visible: { _drawRoot.rev; return !!(node && node.shape === "table") }
         Repeater {
             model: {
-                ed.tick
+                _drawRoot.rev
                 var n = node
                 if (!n || n.shape !== "table")
                     return 0
@@ -66,7 +69,7 @@ Item {
                     return index % cols
                 }
                 x: {
-                    ed.tick
+                    _drawRoot.rev
                     var n = node
                     if (!n)
                         return 0
@@ -74,7 +77,7 @@ Item {
                     return ed.tableCellRect(n, row, col).x - g.x
                 }
                 y: {
-                    ed.tick
+                    _drawRoot.rev
                     var n = node
                     if (!n)
                         return 0
@@ -82,24 +85,24 @@ Item {
                     return ed.tableCellRect(n, row, col).y - g.y
                 }
                 width: {
-                    ed.tick
+                    _drawRoot.rev
                     return node ? ed.tableCellRect(node, row, col).w : 8
                 }
                 height: {
-                    ed.tick
+                    _drawRoot.rev
                     return node ? ed.tableCellRect(node, row, col).h : 8
                 }
                 color: {
-                    ed.tick
+                    _drawRoot.rev
                     return ed.ink(ed.tableCellStyle(node, col).fill)
                 }
                 border.color: {
-                    ed.tick
+                    _drawRoot.rev
                     var sel = ed.isSelected(node.id) && ed.tableRow === row && ed.tableCol === col
                     return sel ? ed.handleFill : ed.ink(ed.tableCellStyle(node, col).border)
                 }
                 border.width: {
-                    ed.tick
+                    _drawRoot.rev
                     var sel = ed.isSelected(node.id) && ed.tableRow === row && ed.tableCol === col
                     return sel ? 2 : 1
                 }
@@ -108,18 +111,18 @@ Item {
                     anchors.fill: parent
                     anchors.margins: Style.dp(3)
                     visible: {
-                        ed.tick
+                        _drawRoot.rev
                         return !(ed.renameId === node.id && ed.tableRow === row && ed.tableCol === col)
                     }
                     text: {
-                        ed.tick
+                        _drawRoot.rev
                         return ed.tableCellText(node, row, col)
                     }
                     color: {
-                        ed.tick
+                        _drawRoot.rev
                         return ed.ink(ed.tableCellStyle(node, col).text)
                     }
-                    font.pixelSize: { ed.tick; return ed.uiPx((node && node.fontSize) ? node.fontSize : 10) }
+                    font.pixelSize: { _drawRoot.rev; return ed.uiPx((node && node.fontSize) ? node.fontSize : 10) }
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
                     horizontalAlignment: Text.AlignHCenter
@@ -127,7 +130,7 @@ Item {
                 }
                 Repeater {
                     model: {
-                        ed.tick
+                        _drawRoot.rev
                         var n = node
                         var on = ed.showChrome && n && ed.isSelected(n.id) && !ed.isLocked(n)
                         on = on && ed.tableExtra < 0 && ed.tableRow === row && ed.tableCol === col
@@ -156,7 +159,7 @@ Item {
         }
         Repeater {
             model: {
-                ed.tick
+                _drawRoot.rev
                 var n = node
                 if (!n || n.shape !== "table" || !n.extras)
                     return 0
@@ -165,7 +168,7 @@ Item {
             Rectangle {
                 required property int index
                 x: {
-                    ed.tick
+                    _drawRoot.rev
                     var n = node
                     if (!n)
                         return 0
@@ -173,7 +176,7 @@ Item {
                     return ed.tableExtraRect(n, index).x - g.x
                 }
                 y: {
-                    ed.tick
+                    _drawRoot.rev
                     var n = node
                     if (!n)
                         return 0
@@ -181,24 +184,24 @@ Item {
                     return ed.tableExtraRect(n, index).y - g.y
                 }
                 width: {
-                    ed.tick
+                    _drawRoot.rev
                     return node ? ed.tableExtraRect(node, index).w : 8
                 }
                 height: {
-                    ed.tick
+                    _drawRoot.rev
                     return node ? ed.tableExtraRect(node, index).h : 8
                 }
                 color: {
-                    ed.tick
+                    _drawRoot.rev
                     return ed.ink(ed.tableCellStyle(node, -1).fill)
                 }
                 border.color: {
-                    ed.tick
+                    _drawRoot.rev
                     var sel = ed.isSelected(node.id) && ed.tableExtra === index
                     return sel ? ed.handleFill : ed.ink(ed.tableCellStyle(node, -1).border)
                 }
                 border.width: {
-                    ed.tick
+                    _drawRoot.rev
                     return (ed.isSelected(node.id) && ed.tableExtra === index) ? 2 : 1
                 }
                 Text {
@@ -206,19 +209,19 @@ Item {
                     anchors.fill: parent
                     anchors.margins: Style.dp(3)
                     visible: {
-                        ed.tick
+                        _drawRoot.rev
                         return !(ed.renameId === node.id && ed.tableExtra === index)
                     }
                     text: {
-                        ed.tick
+                        _drawRoot.rev
                         var e = node && node.extras ? node.extras[index] : null
                         return e && e.text ? e.text : ""
                     }
                     color: {
-                        ed.tick
+                        _drawRoot.rev
                         return ed.ink(ed.tableCellStyle(node, -1).text)
                     }
-                    font.pixelSize: { ed.tick; return ed.uiPx((node && node.fontSize) ? node.fontSize : 10) }
+                    font.pixelSize: { _drawRoot.rev; return ed.uiPx((node && node.fontSize) ? node.fontSize : 10) }
                     elide: Text.ElideRight
                     wrapMode: Text.NoWrap
                     horizontalAlignment: Text.AlignHCenter
@@ -226,7 +229,7 @@ Item {
                 }
                 Repeater {
                     model: {
-                        ed.tick
+                        _drawRoot.rev
                         return (ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.tableExtra === index) ? 8 : 0
                     }
                     Rectangle {
@@ -252,16 +255,16 @@ Item {
     }
     Item {
         visible: {
-            ed.tick
+            _drawRoot.rev
             return !!(node && node.shape === "text")
         }
         anchors.fill: parent
         // A callout: box and pointer drawn as one shape, reaching past the box.
         Canvas {
             id: _calloutFace
-            readonly property bool on: { ed.tick; return ed.isCallout(node) }
+            readonly property bool on: { _drawRoot.rev; return ed.isCallout(node) }
             readonly property var tip: {
-                ed.tick
+                _drawRoot.rev
                 return on ? ed.calloutTipLocal(node, _drawRoot.width, _drawRoot.height) : ({ x: 0, y: 0 })
             }
             visible: on
@@ -286,21 +289,21 @@ Item {
         // The pointer's tip: drag it; drop it on a chip to follow that chip.
         Rectangle {
             z: 5
-            visible: { ed.tick; return !!(_calloutFace.on && ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node)) }
+            visible: { _drawRoot.rev; return !!(_calloutFace.on && ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node)) }
             x: _calloutFace.tip.x - 5
             y: _calloutFace.tip.y - 5
             width: 10
             height: 10
             radius: 5
-            color: { ed.tick; return (node && node.tail && node.tail.to) ? ed.handleFill : ed.handleInk }
+            color: { _drawRoot.rev; return (node && node.tail && node.tail.to) ? ed.handleFill : ed.handleInk }
             border.color: ed.handleFill
             border.width: 2
         }
         Rectangle {
-            visible: { ed.tick; return !ed.isCallout(node) }
+            visible: { _drawRoot.rev; return !ed.isCallout(node) }
             anchors.fill: parent
             color: {
-                ed.tick
+                _drawRoot.rev
                 var n = node
                 if (!n)
                     return "#18181B"
@@ -309,7 +312,7 @@ Item {
                 return ed.ink(n.color || "#18181B")
             }
             opacity: {
-                ed.tick
+                _drawRoot.rev
                 var n = node
                 if (n && n.fillOpacity !== undefined && n.fillOpacity !== null)
                     return n.fillOpacity
@@ -317,11 +320,11 @@ Item {
             }
         }
         Rectangle {
-            visible: { ed.tick; return !ed.isCallout(node) }
+            visible: { _drawRoot.rev; return !ed.isCallout(node) }
             anchors.fill: parent
             color: "transparent"
             border.color: {
-                ed.tick
+                _drawRoot.rev
                 var n = node
                 if (!n)
                     return "#3F3F46"
@@ -329,9 +332,9 @@ Item {
                     return ed.ink(ed.textThemeStyle(n).border)
                 return ed.ink(n.border || "#3F3F46")
             }
-            border.width: { ed.tick; return (node && node.stroke) ? node.stroke : 1 }
+            border.width: { _drawRoot.rev; return (node && node.stroke) ? node.stroke : 1 }
             opacity: {
-                ed.tick
+                _drawRoot.rev
                 var n = node
                 if (n && n.borderOpacity !== undefined && n.borderOpacity !== null)
                     return n.borderOpacity
@@ -343,15 +346,15 @@ Item {
             anchors.fill: parent
             anchors.margins: Style.dp(4)
             visible: {
-                ed.tick
+                _drawRoot.rev
                 return !(ed.renameId === node.id)
             }
             text: {
-                ed.tick
+                _drawRoot.rev
                 return (node && node.text) ? node.text : "Text"
             }
             color: {
-                ed.tick
+                _drawRoot.rev
                 var n = node
                 if (!n)
                     return "#E4E4E7"
@@ -359,22 +362,22 @@ Item {
                     return ed.ink(ed.textThemeStyle(n).text)
                 return ed.ink(n.textColor || "#E4E4E7")
             }
-            font.pixelSize: { ed.tick; return ed.uiPx((node && node.fontSize) ? node.fontSize : 12) }
-            font.bold: { ed.tick; return !!(node && node.bold) }
+            font.pixelSize: { _drawRoot.rev; return ed.uiPx((node && node.fontSize) ? node.fontSize : 12) }
+            font.bold: { _drawRoot.rev; return !!(node && node.bold) }
             wrapMode: {
-                ed.tick
+                _drawRoot.rev
                 return (node && node.wrap === false) ? Text.NoWrap : Text.WordWrap
             }
             elide: Text.ElideRight
             horizontalAlignment: {
-                ed.tick
+                _drawRoot.rev
                 var a = node && node.align ? node.align : "center"
                 if (a === "left") return Text.AlignLeft
                 if (a === "right") return Text.AlignRight
                 return Text.AlignHCenter
             }
             verticalAlignment: {
-                ed.tick
+                _drawRoot.rev
                 var a = node && node.valign ? node.valign : "middle"
                 if (a === "top") return Text.AlignTop
                 if (a === "bottom") return Text.AlignBottom
@@ -390,15 +393,15 @@ Item {
     // shifted by the crop, inside a box that clips the cut-off sides.
     Item {
         id: _picClip
-        readonly property var crop: { ed.tick; return (_drawRoot.node && _drawRoot.node.crop) || null }
+        readonly property var crop: { _drawRoot.rev; return (_drawRoot.node && _drawRoot.node.crop) || null }
         visible: { var n = node; return !!(n && n.shape === "image") }
         anchors.fill: parent
         clip: !!crop
         transform: Scale {
             origin.x: _picClip.width / 2
             origin.y: _picClip.height / 2
-            xScale: { ed.tick; return _drawRoot.node && _drawRoot.node.flipH ? -1 : 1 }
-            yScale: { ed.tick; return _drawRoot.node && _drawRoot.node.flipV ? -1 : 1 }
+            xScale: { _drawRoot.rev; return _drawRoot.node && _drawRoot.node.flipH ? -1 : 1 }
+            yScale: { _drawRoot.rev; return _drawRoot.node && _drawRoot.node.flipV ? -1 : 1 }
         }
 
         Image {
@@ -412,7 +415,7 @@ Item {
             fillMode: Image.PreserveAspectFit
             asynchronous: true
             source: {
-                ed.tick
+                _drawRoot.rev
                 var n = node || {}
                 return n.srcUrl || ""
             }
@@ -420,7 +423,7 @@ Item {
     }
     Repeater {
         model: {
-            ed.tick
+            _drawRoot.rev
             var n = node
             return (n && n.sockets) ? n.sockets.length : 0
         }
@@ -450,7 +453,7 @@ Item {
     // The rotate handle: a stem up from the top edge to a round grip.
     Item {
         // With several selected, one handle above them all turns them together.
-        visible: { ed.tick; return !!(ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node) && ed.cropId !== node.id && !ed.canTurnTogether() && ed.transformMode === "resize") }
+        visible: { _drawRoot.rev; return !!(ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && ed.isRotatable(node) && ed.cropId !== node.id && !ed.canTurnTogether() && ed.transformMode === "resize") }
         x: _drawRoot.width / 2
         y: -ed.rotateHandleOffset
         z: 4
@@ -474,7 +477,7 @@ Item {
     // A path's points, to drag one by one.
     Repeater {
         model: {
-            ed.tick
+            _drawRoot.rev
             var n = node
             return (ed.showChrome && n && ed.isPath(n) && ed.isSelected(n.id) && !ed.isLocked(n) && !ed.canTurnTogether())
                 ? ed.pathLocal(n, _drawRoot.width, _drawRoot.height) : []
@@ -495,7 +498,7 @@ Item {
     // Transform handles (shape, tips, skew, bend): accent diamonds.
     Repeater {
         model: {
-            ed.tick
+            _drawRoot.rev
             var n = node
             return (ed.showChrome && n && ed.transformMode !== "resize" && ed.isSelected(n.id)
                     && !ed.isLocked(n) && !ed.canTurnTogether())
@@ -522,7 +525,7 @@ Item {
         Rectangle {
             required property int index
             readonly property var lineEnds: {
-                ed.tick
+                _drawRoot.rev
                 return ed.isLine(_drawRoot.node) ? (_drawRoot.node.ends || [0, 0.5, 1, 0.5]).slice() : null
             }
             width: Style.dp(8)

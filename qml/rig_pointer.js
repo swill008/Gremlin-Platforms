@@ -15,17 +15,17 @@ function applyPointer(mx, my, altOff) {
     }
     if (dragKind.indexOf("draw-xf-") === 0) {
         dragTransform(nodeAt(selectedId), dragKind.slice(8), mx, my)
-        tick++
+        repaintForDrag()
         return
     }
     if (dragKind.indexOf("draw-pt") === 0) {
         dragPathPoint(parseInt(dragKind.slice(7), 10), mx, my)
-        tick++
+        repaintForDrag()
         return
     }
     if (dragKind === "draw-tail") {
         dragCalloutTip(nodeAt(selectedId), mx, my)
-        tick++
+        repaintForDrag()
         return
     }
     var n = nodeAt(selectedId)
@@ -166,7 +166,7 @@ function applyPointer(mx, my, altOff) {
         updateMoveGuides(n)
     else
         clearMoveGuides()
-    repaint()
+    repaintForDrag()
 }
 
 // Moves the selected items by a page fraction while one of them is dragged
