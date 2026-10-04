@@ -15,6 +15,29 @@ tracker) so the details stay in one place.
   the "Not on Home" troubleshooting line) and keep the glossary words (Hide
   Card / Hidden Cards).
 
+## Button Map (planned 2026-10-04)
+
+- [ ] **BM41 – A bigger page for the Button Map.** The page (32000 x 18000
+  page units, `worldPageW/H` in `qml/VkbRigEditor.qml`; `pageW/pageH` saved
+  by `gremlin/ui/hardware_profile.py`) grows so there is more room around
+  the photo; the photo frame (inner page 24000 x 13500, `innerPad*`) keeps
+  its size, centred. Every position is a fraction of the page (`fx`, `fy`,
+  `rig_coords.js`), so all of them change meaning. Backward compatibility
+  is not a concern (not released). To do:
+  - New page size (16:9 kept) and paddings; `photoWell` follows.
+  - Zoom-in limit from 8x to about 10x (the page and photo look ~23%
+    smaller at the same zoom).
+  - Rulers 0-100 over the new page; grid sizes keep their page units.
+  - Convert the built-in maps and templates in the repo (`qml/maps`), redo
+    the golden images and layout tests.
+  - Exports: the print area and Scale unaffected; a whole-page export just
+    has more margin.
+  - Open questions: (1) 30% per side (about 70% more area, recommended) or
+    30% more area (about 14% per side)? (2) The user's own maps: the
+    program converts maps with the old page size as they load
+    (recommended), the user re-places them, or a one-time conversion of
+    their files (only with their go-ahead, on a backup).
+
 ## OSC (parked 2026-10-02: leave OSC alone for now)
 
 - [ ] **B15 – Default ports clash and disagree.** The program listens on 8000
