@@ -23,19 +23,11 @@ def vigem_client_error() -> str:
 
 
 def is_vigem_xbox_summary(dev: Any) -> bool:
-    try:
-        vid = int(getattr(dev, "vendor_id", 0) or 0)
-        pid = int(getattr(dev, "product_id", 0) or 0)
-    except (TypeError, ValueError):
-        vid = 0
-        pid = 0
-    name = getattr(dev, "name", "") or ""
-    if isinstance(name, bytes):
-        name = name.decode("latin-1", errors="ignore")
-    lowered = str(name).lower()
-    if vid == XBOX_HID_VID and pid == XBOX_HID_PID:
-        return True
-    return "xbox 360" in lowered and "windows" in lowered
+    """True for one of Gremlin's own virtual Xbox pads (vigem.own_pads), not
+    for a real Xbox pad, though both have the Xbox 360 hardware ID."""
+    from vigem import own_pads
+
+    return own_pads.is_own_pad(dev)
 
 
 def is_vigem_xbox_guid(device_guid: Any) -> bool:

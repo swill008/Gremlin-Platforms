@@ -94,7 +94,10 @@ def vjoy_allows(vjoy_id: int, kind: str, input_id: int) -> bool:
 
 
 def is_xbox_module(name: str) -> bool:
-    return "xbox" in str(name or "").lower()
+    """Gremlin's own Xbox output module (not a real Xbox pad's module)."""
+    from gremlin.modules.registry import is_gremlin_xbox_name
+
+    return is_gremlin_xbox_name(name)
 
 
 def xbox_pad_of(name: str) -> int:

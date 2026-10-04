@@ -512,6 +512,10 @@ def register_config_options() -> None:
         "Last active mode for each profile path", {},
     )
     cfg.register(
+        "global", "internal", "own-xbox-pads", PropertyType.List, [],
+        "The devices that are virtual Xbox pads made by Gremlin-Platforms", {},
+    )
+    cfg.register(
         "global", "internal", "last-profile", PropertyType.String, "",
         "Most recently used profile", {},
     )

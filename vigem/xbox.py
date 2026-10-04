@@ -191,6 +191,10 @@ class XboxPad:
         self._devicep = self._lib.vigem_target_x360_alloc()
         if not self._devicep:
             raise XboxError(f"Xbox pad {pad_id}: target alloc failed")
+        # The device this pad becomes is the next one with the Xbox ID.
+        from vigem import own_pads
+
+        own_pads.before_plug()
         err = self._lib.vigem_target_add(self._busp, self._devicep)
         if err != VIGEM_OK:
             self._lib.vigem_target_free(self._devicep)

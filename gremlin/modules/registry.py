@@ -56,11 +56,22 @@ def plain_slug(device_name: str) -> str:
     return "".join(out).strip("_")
 
 
+# The names Gremlin gives its own Xbox output modules: "Xbox 360 Controller",
+# "Xbox 360 2", "Xbox pad 2", and the tab's "xbox". A real Xbox pad is named
+# differently by Windows ("Controller (XBOX 360 For Windows)", "Xbox Wireless
+# Controller") and is an input.
+_GREMLIN_XBOX = re.compile(r"^xbox(?:_360_controller|_360_[1-4]|_pad_[1-4])?$")
+
+
+def is_gremlin_xbox_name(name: str) -> bool:
+    """True for the name (or file name) of Gremlin's own Xbox output module."""
+    return bool(_GREMLIN_XBOX.match(plain_slug(name)))
+
+
 def is_output_name(name: str) -> bool:
-    """vJoy and Xbox modules are outputs, whatever their file says."""
+    """vJoy and Gremlin's Xbox modules are outputs, whatever their file says."""
     slug = plain_slug(name)
-    lower = " ".join(str(name or "").split()).lower()
-    return slug.startswith("vjoy") or slug.startswith("xbox") or "xbox" in lower
+    return slug.startswith("vjoy") or is_gremlin_xbox_name(name)
 
 
 def module_direction(doc: dict | None, slug: str = "", name: str = "") -> str:
