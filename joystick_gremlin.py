@@ -79,6 +79,7 @@ import gremlin.audio_player
 import gremlin.config
 import gremlin.device_initialization
 import gremlin.error
+import gremlin.error_report
 import gremlin.event_handler
 import gremlin.mode_manager
 import gremlin.plugin_manager
@@ -149,6 +150,7 @@ def exception_hook(
         gremlin.signal.display_error("An unhandled exception occurred.", msg)
     except RuntimeError:
         pass
+    gremlin.error_report.pass_on(exception_type, value, trace)
 
 
 def _message_box(text: str, title: str, flags: int) -> int:
@@ -798,6 +800,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         except Exception:
             self.syslog.exception("HidHide start")
         sys.excepthook = exception_hook
+        gremlin.error_report.install(gremlin.util.logs_dir())
 
         dill.DILL.init()
         device_initialization_error = None
