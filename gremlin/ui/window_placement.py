@@ -7,9 +7,9 @@ import json
 
 from PySide6 import QtCore, QtGui
 
+import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
-import gremlin.ui.type_aliases as ta
 
 QML_IMPORT_NAME = "Gremlin.UI"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -27,6 +27,8 @@ KEY_DISPLAY_PANELS = "display-panels"
 KEY_CLOSE_PANE = "close-pane-after-ok"
 KEY_PANE_W = "action-pane-width"
 KEY_TOOLS = "tool-windows"
+# Where each window's pane dividers sit, by pane name: a share 0..1.
+KEY_SPLITS = "pane-splits"
 KEY_LOGICAL = "logical-layout"
 
 DEFAULT_W = 1400
@@ -49,6 +51,7 @@ def _ensure() -> Configuration:
         (KEY_CLOSE_PANE, PropertyType.Bool, False),
         (KEY_PANE_W, PropertyType.Int, 560),
         (KEY_TOOLS, PropertyType.String, "{}"),
+        (KEY_SPLITS, PropertyType.String, "{}"),
         (KEY_LOGICAL, PropertyType.String, "{}"),
     )
     for name, data_type, initial in specs:
@@ -224,6 +227,29 @@ def save_window(window: QtGui.QWindow) -> None:
     cfg.set(SECTION, GROUP, KEY_Y, int(window.y()))
     cfg.set(SECTION, GROUP, KEY_W, int(window.width()))
     cfg.set(SECTION, GROUP, KEY_H, int(window.height()))
+
+
+def _split_map(cfg: Configuration) -> dict:
+    try:
+        data = json.loads(str(cfg.value(SECTION, GROUP, KEY_SPLITS) or "{}"))
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def split_ratio(name: str, default: float) -> float:
+    """A pane divider's saved share (0..1), or default when none is saved."""
+    try:
+        return float(_split_map(_ensure()).get(str(name), default))
+    except (TypeError, ValueError):
+        return default
+
+
+def save_split(name: str, ratio: float) -> None:
+    cfg = _ensure()
+    saved = _split_map(cfg)
+    saved[str(name)] = round(float(ratio), 4)
+    cfg.set(SECTION, GROUP, KEY_SPLITS, json.dumps(saved, sort_keys=True))
 
 
 def _tool_map(cfg: Configuration) -> dict:

@@ -1571,18 +1571,25 @@ class HidHideModel(QtCore.QObject):
 
     @QtCore.Property(int, constant=True)
     def splitRatio(self) -> int:
+        """The device list's share of the divider, in thousandths. Kept with
+        the other window layout (window_placement); a value saved the old way
+        here is the starting point."""
+        from gremlin.ui import window_placement
+
+        old = 600
         _ensure_options()
         try:
-            return max(150, min(850, int(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT))))
+            old = int(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT))
         except (TypeError, ValueError):
-            return 600
+            pass
+        share = window_placement.split_ratio("hardwareHide", old / 1000)
+        return max(150, min(850, int(round(share * 1000))))
 
     @QtCore.Slot(int)
     def saveSplitRatio(self, ratio: int) -> None:
-        _ensure_options()
-        config.Configuration().set(
-            _CFG_SECTION, _CFG_GROUP, _CFG_SPLIT, max(150, min(850, int(ratio)))
-        )
+        from gremlin.ui import window_placement
+
+        window_placement.save_split("hardwareHide", max(150, min(850, int(ratio))) / 1000)
 
     @QtCore.Property(str, constant=True)
     def downloadUrl(self) -> str:

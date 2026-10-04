@@ -167,3 +167,31 @@ def test_one_user_colour_one_logical_id_one_window_memory() -> None:
     for window in windows:
         assert "ToolWindowMemory {" in _text(f"qml/{window}.qml"), window
     assert "saveWindowSize" not in _text("qml/DialogHardwareHide.qml")
+
+
+def test_pane_dividers_live_with_the_window_layout() -> None:
+    from types import SimpleNamespace
+
+    from gremlin.config import Configuration
+    from gremlin.ui import window_placement
+    from gremlin.ui.hidhide import HidHideModel
+    from gremlin.ui.module_model import ModuleListModel
+
+    cfg = Configuration()
+    wp = window_placement
+    key = (wp.SECTION, wp.GROUP, wp.KEY_SPLITS)
+    window_placement._ensure()
+    before = cfg.value(*key)
+    try:
+        cfg.set(*key, "{}")
+        # Nothing saved the new way yet: the old setting is the start.
+        assert HidHideModel.splitRatio.fget(None) == 600
+        HidHideModel.saveSplitRatio(None, 700)
+        assert HidHideModel.splitRatio.fget(None) == 700
+        changed = SimpleNamespace(emit=lambda: None)
+        home = SimpleNamespace(splitRatio=0.5, panesChanged=changed)
+        ModuleListModel.setSplitRatio(home, 0.3)
+        assert ModuleListModel.splitRatio.fget(None) == 0.3
+        assert window_placement._split_map(cfg) == {"hardwareHide": 0.7, "home": 0.3}
+    finally:
+        cfg.set(*key, before)

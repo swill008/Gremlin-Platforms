@@ -992,23 +992,30 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Property(float, notify=panesChanged)
     def splitRatio(self) -> float:
+        """The Home page's divider. Kept with the other window layout
+        (window_placement); a value saved the old way here is the starting
+        point."""
+        from gremlin.ui import window_placement
+
+        old = 0.5
         try:
             _ensure_display_options()
-            raw = float(
+            old = float(
                 config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT_RATIO) or 0.5
             )
         except Exception:
-            return 0.5
-        return min(0.8, max(0.2, raw))
+            pass
+        return min(0.8, max(0.2, window_placement.split_ratio("home", old)))
 
     @QtCore.Slot(float)
     def setSplitRatio(self, ratio: float) -> None:
+        from gremlin.ui import window_placement
+
         value = min(0.8, max(0.2, float(ratio)))
         if abs(value - self.splitRatio) < 0.001:
             return
         try:
-            _ensure_display_options()
-            _write_status(_CFG_SPLIT_RATIO, value)
+            window_placement.save_split("home", value)
         except Exception:
             return
         self.panesChanged.emit()
