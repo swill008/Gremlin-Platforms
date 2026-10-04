@@ -47,6 +47,7 @@ _ENTRY_TITLES = {
     "show-stubs": "Show devices without a module",
     "last-keep-after-release": "Keep last value after release",
     "debug": "Diagnostic logs",
+    "log-when-not-responding": "Log When Not Responding",
     "hidhide-on-start": "Turn HidHide on at start",
     "autorelease-no-arg": "Auto-release address-only messages",
     "pad-args": "Treat address-only messages as 1.0",
@@ -83,6 +84,7 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ]),
         ("Diagnostics", [
             ("global", "general", "debug"),
+            ("global", "general", "log-when-not-responding"),
         ]),
     ]),
     ("Interface", [

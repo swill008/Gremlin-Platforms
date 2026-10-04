@@ -106,6 +106,7 @@ import gremlin.ui.window_placement
 import gremlin.ui.module_model  # noqa: F401
 import gremlin.deferred_write
 import gremlin.threads
+import gremlin.watchdog
 import gremlin.ui.debug_mode
 import gremlin.ui.live_debug  # noqa: F401
 import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
@@ -655,6 +656,12 @@ def register_config_options() -> None:
         {}, True,
     )
     cfg.register(
+        "global", "general", "log-when-not-responding", PropertyType.Bool, False,
+        "When the program stops responding for 5 seconds, write where it is "
+        "stuck to the log.",
+        {}, True,
+    )
+    cfg.register(
         "ui", "general", "input-highlighting", PropertyType.Bool, True,
         "Select the input in the UI by using an input on the physical device. "
         "Selects only inputs if the active tab matches the device.", {}, True,
@@ -801,6 +808,9 @@ class JoystickGremlinApp(QtWidgets.QApplication):
             self.syslog.exception("HidHide start")
         sys.excepthook = exception_hook
         gremlin.error_report.install(gremlin.util.logs_dir())
+        # Log When Not Responding (Options), and when the option changes.
+        gremlin.watchdog.apply()
+        gremlin.signal.signal.configChanged.connect(gremlin.watchdog.apply)
 
         dill.DILL.init()
         device_initialization_error = None

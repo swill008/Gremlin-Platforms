@@ -16,6 +16,7 @@ Tracker refs in brackets.
 | Watching every log line as it happens | **Live** (red button on the Debug tab); **All logs** in the Log list; **Start empty**, **Clear View**, **Save Feed…**, **Show Log File** | Live capture, Tail, Stream |
 | Watching inputs and the actions they ran | **Input Monitor** (tab), **Monitor** (its red button); an input with none shows **no actions** | Live capture, Event viewer, nothing bound, Unbound |
 | How much the program writes to its log files | **Diagnostic logs** (Off / ALL / Info / Warning / Error) | Debug level, Log level |
+| Writing where the program is stuck when it stops responding | **Log When Not Responding** (Options › Diagnostics; off by default) | Watchdog, Hang detection, Freeze logging |
 | The red frame while debugging | **red debug mode**; badge **DEBUG** (shows while Diagnostic logs is ALL or Live runs) | Debug overlay, Vignette |
 | The editor for how a page looks (Home, Configuration, Logical) [D9] | **Appearance** ("Appearance…") | Show Editor, Display, Display Editor, View Settings, Display options |
 | The current mode [D10] | one label, **Mode**, on the toolbar; the footer's duplicate goes | "Configuring mode" + "Executing mode" (always the same) |
