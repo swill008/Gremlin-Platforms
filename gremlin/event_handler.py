@@ -387,7 +387,15 @@ class EventListener(QtCore.QObject):
             dev.device_guid.uuid
             for dev in device_initialization.joystick_devices()
         }
-        device_initialization.joystick_devices_initialization()
+        try:
+            device_initialization.joystick_devices_initialization()
+        except error.GremlinError as e:
+            # Runs on a timer thread: say so instead of losing it.
+            logging.getLogger("system").error(f"Device update failed: {e}")
+            from gremlin import signal as gremlin_signal
+
+            gremlin_signal.display_error("The device list could not be updated.", str(e))
+            return
         self._init_joysticks()
         after = {
             dev.device_guid.uuid

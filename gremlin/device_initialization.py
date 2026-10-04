@@ -29,9 +29,14 @@ def joystick_devices_initialization() -> None:
     Amongst other things this also ensures that each vJoy device has a correct
     windows id assigned to it.
     """
-    global _joystick_devices, _joystick_init_lock
+    # Always released, also when a vJoy check below raises: a lock left held
+    # blocked every later device update (hot-plug) for good.
+    with _joystick_init_lock:
+        _initialize_devices()
 
-    _joystick_init_lock.acquire()
+
+def _initialize_devices() -> None:
+    global _joystick_devices
 
     syslog = logging.getLogger("system")
     syslog.info("Initializing joystick devices")
@@ -58,6 +63,9 @@ def joystick_devices_initialization() -> None:
 
     # Compare existing versus observed devices and only proceed if there
     # is a change to avoid unnecessary work.
+    # By device id: DeviceSummary objects are new on every scan, so comparing
+    # them found every device "removed" and every event was a change.
+    seen = {dev.device_guid.uuid for dev in devices}
     device_added = False
     device_removed = False
     for new_dev in devices:
@@ -65,14 +73,16 @@ def joystick_devices_initialization() -> None:
             device_added = True
             syslog.debug(f"Added: name={new_dev.name} guid={new_dev.device_guid}")
     for old_dev in _joystick_devices.values():
-        if old_dev not in devices:
+        if old_dev.device_guid.uuid not in seen:
             device_removed = True
             syslog.debug(f"Removed: name={old_dev.name} guid={old_dev.device_guid}")
 
     # Terminate if no change occurred.
     if not device_added and not device_removed:
-        _joystick_init_lock.release()
         return
+    vjoy_before = {
+        uid for uid, dev in _joystick_devices.items() if dev.is_virtual
+    }
 
     # In order to associate vJoy devices and their ids correctly with DILL
     # device ids a hash is constructed from the number of axes, buttons, and
@@ -125,10 +135,14 @@ def joystick_devices_initialization() -> None:
                 "DILL does not see it."
             )
 
-    # Reset all devices so we don't hog the ones we aren't actually using.
-    from gremlin.modules import output
+    # Reset the vJoy devices so we don't hog the ones we aren't using: only
+    # when the vJoy devices themselves changed (and at start). A stick being
+    # plugged in no longer releases every vJoy device in the middle of play.
+    vjoy_after = {dev.device_guid.uuid for dev in devices if dev.is_virtual}
+    if vjoy_after != vjoy_before:
+        from gremlin.modules import output
 
-    output.reset_vjoy()
+        output.reset_vjoy()
 
     # Update device list which will be used when queries for joystick devices
     # are made. Order the devices such that vJoy devices are last and the
@@ -144,7 +158,6 @@ def joystick_devices_initialization() -> None:
     _joystick_devices.clear()
     for dev in sorted_devices:
         _joystick_devices[dev.device_guid.uuid] = dev
-    _joystick_init_lock.release()
 
 
 def joystick_devices() -> list[dill.DeviceSummary]:
