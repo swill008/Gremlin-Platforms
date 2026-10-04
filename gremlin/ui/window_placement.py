@@ -30,6 +30,9 @@ KEY_TOOLS = "tool-windows"
 # Where each window's pane dividers sit, by pane name: a share 0..1.
 KEY_SPLITS = "pane-splits"
 KEY_LOGICAL = "logical-layout"
+# Each window's tool row: its tools' order, and which are open, pinned and
+# locked (by row name).
+KEY_TOOL_ROWS = "tool-rows"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
@@ -53,6 +56,7 @@ def _ensure() -> Configuration:
         (KEY_TOOLS, PropertyType.String, "{}"),
         (KEY_SPLITS, PropertyType.String, "{}"),
         (KEY_LOGICAL, PropertyType.String, "{}"),
+        (KEY_TOOL_ROWS, PropertyType.String, "{}"),
     )
     for name, data_type, initial in specs:
         props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
@@ -252,6 +256,27 @@ def save_split(name: str, ratio: float) -> None:
     cfg.set(SECTION, GROUP, KEY_SPLITS, json.dumps(saved, sort_keys=True))
 
 
+def _tool_rows(cfg: Configuration) -> dict:
+    try:
+        data = json.loads(str(cfg.value(SECTION, GROUP, KEY_TOOL_ROWS) or "{}"))
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def tool_row_state(name: str) -> dict:
+    """A tool row's saved state ({} when none is saved)."""
+    state = _tool_rows(_ensure()).get(str(name))
+    return state if isinstance(state, dict) else {}
+
+
+def save_tool_row_state(name: str, state: dict) -> None:
+    cfg = _ensure()
+    saved = _tool_rows(cfg)
+    saved[str(name)] = state
+    cfg.set(SECTION, GROUP, KEY_TOOL_ROWS, json.dumps(saved, sort_keys=True))
+
+
 def _tool_map(cfg: Configuration) -> dict:
     raw = cfg.value(SECTION, GROUP, KEY_TOOLS) or "{}"
     try:
@@ -374,6 +399,20 @@ class WindowPlacement(QtCore.QObject):
         cfg = _ensure()
         cfg.set(SECTION, GROUP, KEY_MENU_W, max(180, min(900, int(width))))
         cfg.set(SECTION, GROUP, KEY_MENU_H, max(160, min(1000, int(height))))
+
+    @QtCore.Slot(str, result=str)
+    def toolRowState(self, name: str) -> str:
+        """A tool row's saved state as JSON ("{}" when none)."""
+        return json.dumps(tool_row_state(name))
+
+    @QtCore.Slot(str, str)
+    def saveToolRowState(self, name: str, state_json: str) -> None:
+        try:
+            state = json.loads(state_json)
+        except json.JSONDecodeError:
+            return
+        if isinstance(state, dict):
+            save_tool_row_state(name, state)
 
     @QtCore.Slot(result=bool)
     def closePaneAfterOk(self) -> bool:

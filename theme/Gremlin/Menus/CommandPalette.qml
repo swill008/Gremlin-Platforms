@@ -19,11 +19,14 @@ T.Popup {
     property var owners: []
     // Called as it opens, before listing: a window defines its commands.
     property var beforeOpen: null
+    // Pinned (a tool row's pin): stays open after a command and when the
+    // window is clicked; Esc closes it.
+    property bool keepOpen: false
 
     parent: T.Overlay.overlay
-    modal: true
+    modal: !keepOpen
     focus: true
-    closePolicy: T.Popup.CloseOnEscape | T.Popup.CloseOnPressOutside
+    closePolicy: keepOpen ? T.Popup.CloseOnEscape : (T.Popup.CloseOnEscape | T.Popup.CloseOnPressOutside)
     width: Math.min(Style.dp(520), parent ? parent.width - Style.dp(32) : Style.dp(520))
     height: contentItem.implicitHeight + topPadding + bottomPadding
     x: parent ? Math.round((parent.width - width) / 2) : 0
@@ -43,6 +46,10 @@ T.Popup {
         var c = results[i]
         if (!c)
             return
+        if (keepOpen) {
+            Commands.trigger(c.id)
+            return
+        }
         close()
         // After the palette has closed, so a dialog it opens gets the focus.
         Qt.callLater(function() { Commands.trigger(c.id) })

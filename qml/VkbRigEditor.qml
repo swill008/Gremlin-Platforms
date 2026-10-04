@@ -210,6 +210,8 @@ Item {
     property real photoDragX0: 0
     property real photoDragY0: 0
     signal selectedChanged()
+    // Any press on the map (the window hides its unpinned tools).
+    signal mapPressed()
     signal chipMenuRequested(real x, real y)
     signal overlayImportRequested()
     signal historyChanged()

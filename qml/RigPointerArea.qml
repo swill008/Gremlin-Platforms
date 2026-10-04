@@ -75,6 +75,7 @@ MouseArea {
     }
 
     onPressed: (m) => {
+        ed.mapPressed()
         if (ed.renameId) {
             var nr = ed.nodeAt(ed.renameId)
             var mr = (ed.renameMember >= 0 && nr && nr.members) ? nr.members[ed.renameMember] : null

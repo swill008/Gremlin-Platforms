@@ -114,10 +114,11 @@ ApplicationWindow {
     }
     property int _nameTick: 0
     property bool editing: false
-    // The Layers panel shows while editing; View > Layers turns it off and on.
-    property bool layersOn: true
-    // The Properties panel shows the selection's exact values; View > Properties.
-    property bool propsOn: true
+    // Chips, Properties, Layers and Command Palette open from the tool row at
+    // the bottom (_tools): pinned they stay open when the map is clicked,
+    // locked they can't be moved or resized.
+    // The Layers panel's width (drag its left edge while unlocked).
+    property real layersW: Style.dp(260)
     onEditingChanged: {
         poolDrag = false
         if (editing)
@@ -162,8 +163,6 @@ ApplicationWindow {
     property int gridSize: 8
     property real panelW: 0
     property real panelH: 0
-    property bool panelFillW: true
-    property bool panelDockB: true
     property real _prsX: 0
     property real _prsY: 0
     property real _prsW: 0
@@ -173,23 +172,13 @@ ApplicationWindow {
     property string _prEdge: ""
     property bool saveOk: true
 
+    // The pool's height stays inside the map (it is docked: its place and
+    // width follow the window).
     function clampPool() {
         var box = _poolFloat
         if (!box || !box.parent)
             return
-        var pw = box.parent.width
-        var ph = box.parent.height
-        if (panelFillW || box.width < Style.dp(40)) {
-            box.x = Style.dp(12)
-            box.width = Math.max(Style.dp(280), pw - Style.dp(24))
-        }
-        box.width = Math.max(Style.dp(280), Math.min(box.width, pw - Style.dp(16)))
-        box.height = Math.max(Style.dp(90), Math.min(panelH, ph - Style.dp(16)))
-        panelH = box.height
-        if (panelDockB)
-            box.y = ph - box.height - Style.dp(12)
-        box.x = Math.max(Style.dp(8), Math.min(box.x, pw - box.width - Style.dp(8)))
-        box.y = Math.max(Style.dp(8), Math.min(box.y, ph - box.height - Style.dp(8)))
+        panelH = Math.max(Style.dp(90), Math.min(panelH, box.parent.height - Style.dp(16)))
     }
 
     function startPanelResize(edge, mx, my, item) {
@@ -205,44 +194,10 @@ ApplicationWindow {
 
     function movePanelResize(mx, my, item) {
         var p = item.mapToItem(_poolFloat.parent, mx, my)
-        var dx = p.x - _prmX
-        var dy = p.y - _prmY
-        var nx = _prsX
-        var ny = _prsY
-        var nw = _prsW
-        var nh = _prsH
-        var e = _prEdge
         var host = _poolFloat.parent
-        if (e.indexOf("e") >= 0) {
-            nw = _prsW + dx
-            panelFillW = false
-        }
-        if (e.indexOf("w") >= 0) {
-            nw = _prsW - dx
-            panelFillW = false
-        }
-        if (e.indexOf("s") >= 0) {
-            nh = _prsH + dy
-            panelDockB = false
-        }
-        if (e.indexOf("n") >= 0)
-            nh = _prsH - dy
-        var maxW = Math.max(Style.dp(280), host.width - Style.dp(16))
-        var maxH = Math.max(Style.dp(90), host.height - Style.dp(16))
-        nw = Math.max(Style.dp(280), Math.min(nw, maxW))
-        nh = Math.max(Style.dp(90), Math.min(nh, maxH))
-        if (e.indexOf("w") >= 0)
-            nx = _prsX + _prsW - nw
-        if (e.indexOf("n") >= 0)
-            ny = _prsY + _prsH - nh
-        nx = Math.max(Style.dp(8), Math.min(nx, host.width - nw - Style.dp(8)))
-        ny = Math.max(Style.dp(8), Math.min(ny, host.height - nh - Style.dp(8)))
-        _poolFloat.x = nx
-        _poolFloat.y = ny
-        _poolFloat.width = nw
-        _poolFloat.height = nh
-        panelH = nh
-        panelW = nw
+        var nh = _prsH - (p.y - _prmY)
+        panelH = Math.max(Style.dp(90), Math.min(nh, host.height - Style.dp(16)))
+        panelW = _poolFloat.width
     }
 
     ViewerDeviceModel { id: _devices }
@@ -1604,7 +1559,13 @@ ApplicationWindow {
             Commands.removeOwner("buttonmap")
             Commands.defineFromMenuBar(_menuBar, "buttonmap")
         }
-        onClosed: Commands.removeOwner("buttonmap")
+        // Its tool in the tool row: pinned, it stays open after a command.
+        keepOpen: _tools.isPinned("palette")
+        onOpened: _tools.setOpen("palette", true)
+        onClosed: {
+            Commands.removeOwner("buttonmap")
+            _tools.setOpen("palette", false)
+        }
     }
     Component.onDestruction: Commands.removeOwner("buttonmap")
 
@@ -2398,7 +2359,6 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.bottomMargin: Style.dp(78)
         spacing: 0
 
         ThemedMenuBar {
@@ -2630,14 +2590,14 @@ ApplicationWindow {
                 ThemedMenuItem {
                     text: "Layers"
                     checkable: true
-                    checked: layersOn
-                    onTriggered: layersOn = !layersOn
+                    checked: _tools.isOpen("layers")
+                    onTriggered: _tools.toggle("layers")
                 }
                 ThemedMenuItem {
                     text: "Properties"
                     checkable: true
-                    checked: propsOn
-                    onTriggered: propsOn = !propsOn
+                    checked: _tools.isOpen("props")
+                    onTriggered: _tools.toggle("props")
                 }
                 ThemedMenuItem {
                     text: "Command Palette…"
@@ -2836,154 +2796,6 @@ ApplicationWindow {
             }
         }
 
-        ToolBar {
-            Layout.fillWidth: true
-            RowLayout {
-                anchors.fill: parent
-                spacing: Style.dp(8)
-                Label {
-                    visible: true
-                    text: {
-                        var f = _cardLoader.item
-                        var raw = f ? Number(f.viewPct) : 1
-                        var pct = (raw === raw) ? Math.round(raw * 100) : 100
-                        return "View " + pct + "%"
-                    }
-                    color: Style.fg
-                    font.pixelSize: Style.dp(12)
-                }
-                Label {
-                    visible: editing
-                    text: "Photo size " + Math.round(photoScale * 100) + "%"
-                    color: Style.fgMuted
-                    font.pixelSize: Style.dp(12)
-                }
-                Label {
-                    visible: {
-                        resTick
-                        var e = _ed()
-                        return editing && e && e.drawTool && e.drawTool.length
-                    }
-                    text: "Drawing — drag empty. Shift locks aspect. Esc cancels."
-                    color: Style.warn
-                    font.pixelSize: Style.dp(12)
-                }
-                Label {
-                    visible: editing && movePhoto
-                    text: "Move photo — drag to park. Esc leaves the tool."
-                    color: Style.warn
-                    font.pixelSize: Style.dp(12)
-                }
-                Label {
-                    visible: editing
-                    text: "Module file  " + _hw.path
-                    color: Style.fgMuted
-                    font.pixelSize: Style.dp(11)
-                    elide: Text.ElideMiddle
-                    Layout.fillWidth: true
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Delete"
-                    onActivated: deleteOrBreak()
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Backspace"
-                    onActivated: deleteOrBreak()
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+Z"
-                    onActivated: { var e = _ed(); if (e) e.undo() }
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+Shift+Z"
-                    onActivated: { var e = _ed(); if (e) e.redo() }
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+Y"
-                    onActivated: { var e = _ed(); if (e) e.redo() }
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+Shift+V"
-                    onActivated: pastePicture()
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+L"
-                    onActivated: { var e = _ed(); if (e) e.toggleLockSelection() }
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+Shift+L"
-                    onActivated: { var e = _ed(); if (e) e.unlockAll() }
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+G"
-                    onActivated: { var e = _ed(); if (e) e.groupSelection() }
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+Shift+G"
-                    onActivated: { var e = _ed(); if (e) e.ungroupSelection() }
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+D"
-                    onActivated: { var e = _ed(); if (e) e.duplicateSelection() }
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+C"
-                    onActivated: { var e = _ed(); if (e) e.copySelection() }
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+V"
-                    onActivated: { var e = _ed(); if (e) e.pasteClipboard() }
-                }
-                Shortcut {
-                    sequence: "Ctrl+K"
-                    onActivated: _palette.open()
-                }
-                Shortcut {
-                    sequence: "F1"
-                    onActivated: _buttonMap.openGuide()
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+S"
-                    onActivated: saveEdit()
-                }
-                Shortcut {
-                    sequence: "Ctrl+P"
-                    onActivated: _buttonMap.printView()
-                }
-                Shortcut {
-                    sequence: "Ctrl+1"
-                    onActivated: _buttonMap.zoomToPage()
-                }
-                Shortcut {
-                    sequence: "Ctrl+2"
-                    onActivated: _buttonMap.zoomToSelection()
-                }
-                Shortcut {
-                    enabled: editing
-                    sequence: "Ctrl+0"
-                    onActivated: {
-                        if (_cardLoader.item)
-                            _cardLoader.item.resetView()
-                    }
-                }
-                Item { Layout.fillWidth: true; visible: !editing }
-            }
-        }
-
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -3036,6 +2848,7 @@ ApplicationWindow {
                                 _buttonMap.deferHistory()
                             }
                             function onNodesChanged() { _buttonMap.deferHistory() }
+                            function onMapPressed() { _tools.mapClicked() }
                             function onSeededChanged() { _buttonMap.noteSeeded() }
                         }
                         Component.onCompleted: _cardLoader.item = _card
@@ -3140,15 +2953,17 @@ ApplicationWindow {
                     property var item: null
                 }
 
+                // The chips not on the map: docked along the bottom, above the
+                // tool row (its Chips button); drag its top edge to make it
+                // taller or shorter (unlocked).
                 Item {
                     id: _poolFloat
-                    visible: editing
+                    visible: editing && _tools.isOpen("chips")
                     z: 30
-                    // clampPool() sets the position and size each time the panel shows.
-                    x: 12
-                    width: 280
-                    height: 160
-                    onVisibleChanged: if (visible) Qt.callLater(clampPool)
+                    x: Style.dp(8)
+                    width: parent.width - Style.dp(16)
+                    height: Math.max(Style.dp(90), Math.min(panelH, parent.height - Style.dp(16)))
+                    y: parent.height - height - Style.dp(8)
 
                     component PoolGrip: MouseArea {
                         required property string edge
@@ -3346,24 +3161,15 @@ ApplicationWindow {
                         }
                     }
 
-                    PoolGrip { edge: "n"; z: 3; height: Style.dp(6); anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
-                    PoolGrip { edge: "s"; z: 3; height: Style.dp(6); anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeVerCursor }
-                    PoolGrip { edge: "w"; z: 3; width: Style.dp(6); anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left; cursorShape: Qt.SizeHorCursor }
-                    PoolGrip { edge: "e"; z: 3; width: Style.dp(6); anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.right: parent.right; cursorShape: Qt.SizeHorCursor }
-                    PoolGrip { edge: "nw"; z: 3; width: Style.dp(12); height: Style.dp(12); anchors.left: parent.left; anchors.top: parent.top; cursorShape: Qt.SizeFDiagCursor }
-                    PoolGrip { edge: "ne"; z: 3; width: Style.dp(12); height: Style.dp(12); anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeBDiagCursor }
-                    PoolGrip { edge: "sw"; z: 3; width: Style.dp(12); height: Style.dp(12); anchors.left: parent.left; anchors.bottom: parent.bottom; cursorShape: Qt.SizeBDiagCursor }
-                    PoolGrip { edge: "se"; z: 4; width: Style.dp(14); height: Style.dp(14); anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeFDiagCursor }
-
-                    Item {
+                    PoolGrip {
+                        edge: "n"
+                        z: 3
+                        enabled: !_tools.isLocked("chips")
+                        height: Style.dp(6)
+                        anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.margins: Style.dp(3)
-                        width: Style.dp(10)
-                        height: Style.dp(10)
-                        opacity: 0.55
-                        Rectangle { width: Style.dp(8); height: Style.dp(1); color: Style.fgMuted; rotation: -45; x: Style.dp(2); y: Style.dp(7) }
-                        Rectangle { width: Style.dp(5); height: Style.dp(1); color: Style.fgMuted; rotation: -45; x: Style.dp(5); y: Style.dp(8) }
+                        anchors.top: parent.top
+                        cursorShape: enabled ? Qt.SizeVerCursor : Qt.ArrowCursor
                     }
                 }
 
@@ -3387,33 +3193,57 @@ ApplicationWindow {
                 RigLayersPanel {
                     id: _layersPanel
                     ed: _buttonMap._ed()
-                    visible: editing && layersOn && !!ed
+                    visible: editing && _tools.isOpen("layers") && !!ed
                     z: 31
-                    width: Style.dp(260)
+                    width: _buttonMap.layersW
                     x: parent.width - width - Style.dp(12)
                     y: Style.dp(12)
                     height: {
                         var bottom = parent.height - Style.dp(12)
                         // The pool sits in the lower half: stop above it. (Of
                         // the parent's height: the panel's own would loop.)
-                        if (_poolFloat.visible && _poolFloat.y > parent.height * 0.5)
+                        if (_poolFloat.visible)
                             bottom = Math.min(bottom, _poolFloat.y - Style.dp(8))
                         return Math.max(Style.dp(120), bottom - y)
                     }
-                    onCloseRequested: layersOn = false
+                    onCloseRequested: _tools.setOpen("layers", false)
+                    // Its left edge: drag to make it wider or narrower (unlocked).
+                    MouseArea {
+                        z: 5
+                        enabled: !_tools.isLocked("layers")
+                        width: Style.dp(6)
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        anchors.left: parent.left
+                        cursorShape: enabled ? Qt.SizeHorCursor : Qt.ArrowCursor
+                        preventStealing: true
+                        property real _startX: 0
+                        property real _startW: 0
+                        onPressed: (m) => {
+                            _startX = mapToItem(null, m.x, m.y).x
+                            _startW = _buttonMap.layersW
+                        }
+                        onPositionChanged: (m) => {
+                            if (!pressed)
+                                return
+                            var dx = mapToItem(null, m.x, m.y).x - _startX
+                            var most = Math.max(Style.dp(200), _layersPanel.parent.width - Style.dp(40))
+                            _buttonMap.layersW = Math.max(Style.dp(200), Math.min(most, _startW - dx))
+                        }
+                    }
                 }
 
                 // Properties: the selected item's place, size, angle and style.
                 RigPropsPanel {
                     id: _propsPanel
                     ed: _buttonMap._ed()
-                    visible: editing && propsOn && !!ed && ((ed.selectedIds || []).length > 0 || ed.selectedId !== "")
+                    visible: editing && _tools.isOpen("props") && !!ed && ((ed.selectedIds || []).length > 0 || ed.selectedId !== "")
                     z: 31
                     width: Style.dp(300)
                     x: Style.dp(12)
                     y: Style.dp(12)
                     height: Math.min(implicitHeight, parent.height - Style.dp(24))
-                    onCloseRequested: propsOn = false
+                    onCloseRequested: _tools.setOpen("props", false)
                 }
 
                 Connections {
@@ -3439,6 +3269,192 @@ ApplicationWindow {
                 }
             }
 
+        }
+
+        // The tool row: Chips, Properties, Layers and Command Palette, centred.
+        ToolRow {
+            id: _tools
+            Layout.fillWidth: true
+            name: "button-map"
+            tools: [
+                { id: "chips", label: "Chips", tip: "Chips not on the map yet: drag one onto the map" },
+                { id: "props", label: "Properties", tip: "The selected item's place, size, angle and style" },
+                { id: "layers", label: "Layers", tip: "Every item, with an eye and a lock, top of the stack first" },
+                { id: "palette", label: "Command Palette", tip: "Every command, by name (Ctrl+K)" }
+            ]
+            // Properties shows the selection as before (pinned); the others
+            // start hidden.
+            defaults: ({ props: { open: true, pinned: true } })
+            usable: ({ chips: _buttonMap.editing, props: _buttonMap.editing, layers: _buttonMap.editing })
+            onToolChanged: (id) => {
+                if (id !== "palette")
+                    return
+                if (isOpen("palette") && !_palette.opened)
+                    _palette.open()
+                else if (!isOpen("palette") && _palette.opened)
+                    _palette.close()
+            }
+        }
+
+        // The status line: the view's and photo's size, what the tool does,
+        // and the module file (its full path on hover).
+        ToolBar {
+            id: _statusLine
+            Layout.fillWidth: true
+            implicitHeight: Style.dp(20)
+            topPadding: 0
+            bottomPadding: 0
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: Style.dp(6)
+                anchors.rightMargin: Style.dp(6)
+                spacing: Style.dp(10)
+                Label {
+                    visible: true
+                    text: {
+                        var f = _cardLoader.item
+                        var raw = f ? Number(f.viewPct) : 1
+                        var pct = (raw === raw) ? Math.round(raw * 100) : 100
+                        return "View " + pct + "%"
+                    }
+                    color: Style.fg
+                    font.pixelSize: Style.dp(11)
+                }
+                Label {
+                    visible: editing
+                    text: "Photo size " + Math.round(photoScale * 100) + "%"
+                    color: Style.fgMuted
+                    font.pixelSize: Style.dp(11)
+                }
+                Label {
+                    visible: {
+                        resTick
+                        var e = _ed()
+                        return editing && e && e.drawTool && e.drawTool.length
+                    }
+                    text: "Drawing — drag empty. Shift locks aspect. Esc cancels."
+                    color: Style.warn
+                    font.pixelSize: Style.dp(11)
+                }
+                Label {
+                    visible: editing && movePhoto
+                    text: "Move photo — drag to park. Esc leaves the tool."
+                    color: Style.warn
+                    font.pixelSize: Style.dp(11)
+                }
+                Label {
+                    id: _fileLabel
+                    visible: editing
+                    text: "Module file  " + _hw.path
+                    color: Style.fgMuted
+                    font.pixelSize: Style.dp(11)
+                    elide: Text.ElideMiddle
+                    Layout.fillWidth: true
+                    HoverHandler { id: _fileHover }
+                    ToolTip.visible: _fileHover.hovered && _fileLabel.truncated
+                    ToolTip.delay: 500
+                    ToolTip.text: _hw.path
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Delete"
+                    onActivated: deleteOrBreak()
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Backspace"
+                    onActivated: deleteOrBreak()
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+Z"
+                    onActivated: { var e = _ed(); if (e) e.undo() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+Shift+Z"
+                    onActivated: { var e = _ed(); if (e) e.redo() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+Y"
+                    onActivated: { var e = _ed(); if (e) e.redo() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+Shift+V"
+                    onActivated: pastePicture()
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+L"
+                    onActivated: { var e = _ed(); if (e) e.toggleLockSelection() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+Shift+L"
+                    onActivated: { var e = _ed(); if (e) e.unlockAll() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+G"
+                    onActivated: { var e = _ed(); if (e) e.groupSelection() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+Shift+G"
+                    onActivated: { var e = _ed(); if (e) e.ungroupSelection() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+D"
+                    onActivated: { var e = _ed(); if (e) e.duplicateSelection() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+C"
+                    onActivated: { var e = _ed(); if (e) e.copySelection() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+V"
+                    onActivated: { var e = _ed(); if (e) e.pasteClipboard() }
+                }
+                Shortcut {
+                    sequence: "Ctrl+K"
+                    onActivated: _palette.open()
+                }
+                Shortcut {
+                    sequence: "F1"
+                    onActivated: _buttonMap.openGuide()
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+S"
+                    onActivated: saveEdit()
+                }
+                Shortcut {
+                    sequence: "Ctrl+P"
+                    onActivated: _buttonMap.printView()
+                }
+                Shortcut {
+                    sequence: "Ctrl+1"
+                    onActivated: _buttonMap.zoomToPage()
+                }
+                Shortcut {
+                    sequence: "Ctrl+2"
+                    onActivated: _buttonMap.zoomToSelection()
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+0"
+                    onActivated: {
+                        if (_cardLoader.item)
+                            _cardLoader.item.resetView()
+                    }
+                }
+                Item { Layout.fillWidth: true; visible: !editing }
+            }
         }
     }
 
