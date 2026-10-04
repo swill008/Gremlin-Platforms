@@ -17,6 +17,13 @@ from gremlin import (
 from vjoy import vjoy
 
 _joystick_devices: dict[uuid.UUID, dill.DeviceSummary] = collections.OrderedDict()
+# vJoy devices left out because of a set-up problem (their DirectInput ids),
+# and what is wrong with them; told once the main window is up, and again
+# only when it changes.
+_left_out: set[uuid.UUID] = set()
+_vjoy_problems: list[tuple[int, str]] = []
+_told: tuple = ()
+_window_up = False
 _joystick_init_lock = threading.Lock()
 SCAN_WAIT_S = 10.0
 
@@ -178,50 +185,67 @@ def _initialize_devices() -> None:
     # between vJoy and Direct Input devices. If this is not possible Gremlin
     # will terminate as this is a non-recoverable error.
 
-    vjoy_lookup = {}
-    for dev in [dev for dev in devices if dev.is_virtual]:
+    # A vJoy device with a problem is left out (the rest work); it used to
+    # stop the whole program.
+    virtual = [dev for dev in devices if dev.is_virtual]
+    vjoy_lookup: dict[tuple, dill.DeviceSummary] = {}
+    same: set[tuple] = set()
+    for dev in virtual:
         hash_value = (dev.axis_count, dev.button_count, dev.hat_count)
         syslog.debug(f"vJoy guid={dev.device_guid}: {hash_value}")
-
-        # Only unique combinations of axes, buttons, and hats are allowed
-        # for vJoy devices.
-        if hash_value in vjoy_lookup:
-            raise error.GremlinError(
-                "Indistinguishable vJoy devices present. vJoy devices have "
-                "to differ in the number of (at least one of) axes, buttons, "
-                "or hats in order to work properly with Gremlin-Platforms."
-            )
-
+        # Only unique combinations of axes, buttons, and hats can be told
+        # apart.
+        if hash_value in vjoy_lookup or hash_value in same:
+            same.add(hash_value)
+            vjoy_lookup.pop(hash_value, None)
+            continue
         vjoy_lookup[hash_value] = dev
 
-    # Query all vJoy devices in sequence until all have been processed and
-    # their matching Direct Input counterparts have been found.
+    problems: list[tuple[int, str]] = []
+    alike: dict[tuple, list[int]] = {}
+    linked: dict[tuple, int] = {}
     for i in range(1, 17):
-        # Only process devices that actually exist.
         if not vjoy.device_exists(i):
             continue
-
-        # Compute a hash for the vJoy device and match it against the DILL
-        # device hashes.
         hash_value = (vjoy.axis_count(i), vjoy.button_count(i), vjoy.hat_count(i))
-
+        if hash_value in same:
+            alike.setdefault(hash_value, []).append(i)
+            continue
+        if hash_value in linked:
+            # Set up alike, but only one of them listed: which one it is
+            # can't be told (it used to go to the last one silently).
+            first = linked.pop(hash_value)
+            vjoy_lookup.pop(hash_value).set_vjoy_id(-1)
+            same.add(hash_value)
+            alike.setdefault(hash_value, []).extend([first, i])
+            continue
         if not vjoy.hat_configuration_valid(i):
-            raise error.GremlinError(
-                f"vJoy id {i}: Hats are set to discrete but have to be set "
-                f"to continuous."
-            )
-
-        # As we are ensured that no duplicate vJoy devices exist from
-        # the previous step we can directly link the Direct Input and
-        # vJoy device.
+            problems.append((i, (
+                f"vJoy {i}: its hats are set to discrete; Gremlin-Platforms "
+                "needs continuous hats. Change them in Configure vJoy."
+            )))
+            continue
         if hash_value in vjoy_lookup:
             vjoy_lookup[hash_value].set_vjoy_id(i)
+            linked[hash_value] = i
             syslog.debug(f"vjoy id {i}: {hash_value} - MATCH")
         else:
-            raise error.GremlinError(
-                f"vJoy id {i}: {hash_value} - vJoy device exists but "
-                "DILL does not see it."
-            )
+            problems.append((i, (
+                f"vJoy {i} is set up, but Windows doesn't list it as a game "
+                "controller. Turn it off and on in Configure vJoy, or restart "
+                "the PC."
+            )))
+    for ids in alike.values():
+        names = " and ".join(f"vJoy {i}" for i in ids)
+        for i in ids:
+            problems.append((i, (
+                f"{names} have the same number of axes, buttons and hats, so "
+                "they can't be told apart. Give one of them a different "
+                "number in Configure vJoy."
+            )))
+    _note_vjoy_problems(
+        problems, {dev.device_guid.uuid for dev in virtual if dev.vjoy_id < 1}
+    )
 
     # Reset the vJoy devices so we don't hog the ones we aren't using: only
     # when the vJoy devices themselves changed (and at start). A stick being
@@ -248,13 +272,53 @@ def _initialize_devices() -> None:
         _joystick_devices[dev.device_guid.uuid] = dev
 
 
+def _note_vjoy_problems(
+    problems: list[tuple[int, str]], left_out: set[uuid.UUID]
+) -> None:
+    global _vjoy_problems, _left_out
+    for _vid, text in problems:
+        logging.getLogger("system").error(f"vJoy left out: {text}")
+    _vjoy_problems, _left_out = problems, left_out
+    if _window_up:
+        _tell_vjoy_problems()
+
+
+def announce_vjoy_problems() -> None:
+    """Once the main window is up: say which vJoy devices were left out
+    and why (and from now on whenever that changes)."""
+    global _window_up
+    _window_up = True
+    _tell_vjoy_problems()
+
+
+def _tell_vjoy_problems() -> None:
+    global _told
+    key = tuple(_vjoy_problems)
+    if key == _told:
+        return
+    _told = key
+    if not key:
+        return
+    from gremlin.signal import display_error
+
+    ids = sorted({vid for vid, _text in key})
+    names = ", ".join(f"vJoy {i}" for i in ids)
+    texts = list(dict.fromkeys(text for _vid, text in key))
+    display_error(
+        f"Gremlin-Platforms is running without {names}.",
+        "\n\n".join(texts) + "\n\nThen restart Gremlin-Platforms.",
+    )
+
+
 def joystick_devices() -> list[dill.DeviceSummary]:
     """Returns the list of joystick like devices.
 
     Returns:
         List containing information about all joystick devices
     """
-    return list(_joystick_devices.values())
+    return [
+        d for d in _joystick_devices.values() if d.device_guid.uuid not in _left_out
+    ]
 
 
 def vjoy_devices() -> list[dill.DeviceSummary]:
@@ -263,7 +327,10 @@ def vjoy_devices() -> list[dill.DeviceSummary]:
     Returns:
         List of vJoy devices
     """
-    return [dev for dev in _joystick_devices.values() if dev.is_virtual]
+    return [
+        dev for dev in _joystick_devices.values()
+        if dev.is_virtual and dev.device_guid.uuid not in _left_out
+    ]
 
 
 def physical_devices() -> list[dill.DeviceSummary]:

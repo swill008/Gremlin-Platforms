@@ -33,6 +33,9 @@ Item {
                 Layout.minimumWidth: Style.dp(64)
 
                 text: modelData
+                ToolTip.visible: hovered && modelData === "Off"
+                ToolTip.delay: 500
+                ToolTip.text: "Nothing is written, except errors in system.log."
                 checked: _model && _model.level === modelData
                 checkable: true
                 onClicked: () => {

@@ -71,9 +71,9 @@ Item {
         id: _badge
         anchors.horizontalCenter: parent.horizontalCenter
         y: 0
-        width: _label.implicitWidth + 24
-        height: _label.implicitHeight + 6
-        radius: 3
+        width: _label.implicitWidth + Style.dp(24)
+        height: _label.implicitHeight + Style.dp(6)
+        radius: Style.dp(3)
         color: _badgeMouse.containsMouse ? Qt.darker(_frame.red, 1.15) : _frame.red
 
         Text {
@@ -82,8 +82,8 @@ Item {
             text: "DEBUG"
             color: "white"
             font.bold: true
-            font.pixelSize: 12
-            font.letterSpacing: 1.5
+            font.pixelSize: Style.dp(12)
+            font.letterSpacing: Style.dp(1.5)
         }
 
         MouseArea {

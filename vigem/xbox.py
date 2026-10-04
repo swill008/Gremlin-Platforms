@@ -298,7 +298,10 @@ class XboxProxy(metaclass=SingletonMetaclass):
         if err != VIGEM_OK:
             lib.vigem_free(busp)
             raise XboxError(
-                f"ViGEmBus connect failed ({err:#x}). Install ViGEmBus 1.22.0."
+                f"ViGEmBus isn't installed or isn't running (error {err:#x}), so "
+                "Xbox outputs can't work. Install ViGEmBus 1.22 "
+                "(github.com/nefarius/ViGEmBus/releases), then restart "
+                "Gremlin-Platforms."
             )
         self._busp = busp
         self._available = True

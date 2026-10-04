@@ -50,7 +50,10 @@ def client() -> ctypes.CDLL | None:
     _load_attempted = True
     path = dll_path()
     if path is None:
-        _load_error = "ViGEmClient.dll not found next to vigem/ or the app"
+        _load_error = (
+            "ViGEmClient.dll is missing from the program folder, so Xbox "
+            "outputs can't work. Reinstall Gremlin-Platforms."
+        )
         _LOG.warning(_load_error)
         return None
     try:

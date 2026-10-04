@@ -51,11 +51,14 @@ def apply_log_level(value: object | None = None) -> str:
         else:
             value = DEFAULT_LEVEL
     level_name = normalize_level(value)
-    py_level = _LEVEL_MAP[level_name]
-    disabled = level_name == "Off"
+    off = level_name == "Off"
     for name in LOGGER_NAMES:
+        # Off still keeps errors (and crashes) in system.log: otherwise a
+        # problem leaves no trace. The other logs stay silent.
+        keep_errors = off and name == "system"
+        py_level = logging.ERROR if keep_errors else _LEVEL_MAP[level_name]
         logger = logging.getLogger(name)
-        logger.disabled = disabled
+        logger.disabled = off and not keep_errors
         logger.setLevel(py_level)
         for handler in logger.handlers:
             # The Live feed's own catcher keeps catching everything.

@@ -493,7 +493,8 @@ def _confirm_second_instance(
         f"Process IDs: {pid_text}"
         f"{extra}{hung_hint}\n\n"
         "Only one copy can own vJoy.\n\n"
-        "Yes = Close the other process(es) and start this copy.\n"
+        "Yes = Close the other process(es) and start this copy. Changes not "
+        "saved in the other copy are lost.\n"
         "No = Start this copy anyway. vJoy mapping may not respond.\n"
         "Cancel = Do not start this copy."
     )
@@ -867,6 +868,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.process_cmd_args(cmd_args)
         self.updater.startup()
         gremlin.config.announce_damaged_settings()
+        gremlin.device_initialization.announce_vjoy_problems()
 
         self.main_window = self.engine.rootObjects()[0]
         # Red debug mode: a frame on every window while debugging.
@@ -913,11 +915,10 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         if profile is not None:
             self.backend.loadProfile(profile)
         else:
-            last_profile = Path(
-                Configuration().value("global", "internal", "last-profile")
-            )
-            if last_profile.is_file():
-                self.backend.loadProfile(str(last_profile))
+            last = Configuration().value("global", "internal", "last-profile")
+            last = str(last or "")
+            if last:
+                self.backend.openLastProfile(last)
 
         if args.enable:
             self.backend.activate_gremlin(True)

@@ -53,7 +53,11 @@ def _stick(n: int) -> dill._DeviceSummary:
 def test_a_scan_error_does_not_leave_the_lock_held(devices: list) -> None:
     devices.append(_stick(1))  # a change, so the vJoy checks run
     with (
-        mock.patch.object(vjoy, "hat_configuration_valid", return_value=False),
+        # A vJoy set-up problem no longer raises (that vJoy is left out):
+        # make the vJoy query itself fail.
+        mock.patch.object(
+            vjoy, "device_exists", side_effect=error.GremlinError("vJoy failed")
+        ),
         pytest.raises(error.GremlinError),
     ):
         device_initialization.joystick_devices_initialization()

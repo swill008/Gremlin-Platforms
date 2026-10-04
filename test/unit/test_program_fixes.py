@@ -271,7 +271,9 @@ def _start_with_profile(
         jg.gremlin.signal, "display_error", lambda *a: told.append(a)
     )
     app = SimpleNamespace(
-        backend=SimpleNamespace(loadProfile=loaded.append),
+        backend=SimpleNamespace(
+            loadProfile=loaded.append, openLastProfile=loaded.append
+        ),
         syslog=mock.Mock(),
     )
     args = argparse.Namespace(profile=profile, enable=False, start_minimized=False)

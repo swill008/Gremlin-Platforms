@@ -192,6 +192,8 @@ class Backend(QtCore.QObject):
     uiChanged = QtCore.Signal()
     quitRequested = QtCore.Signal()
     saveNoted = QtCore.Signal(str)
+    # The profile used last didn't open at start: (its path, why).
+    lastProfileFailed = QtCore.Signal(str, str)
     uiScaleChanged = QtCore.Signal()
     restartRequested = QtCore.Signal()
 
@@ -205,6 +207,8 @@ class Backend(QtCore.QObject):
         self.profile.mark_clean()
         shared_state.current_profile = self.profile
         self._last_error = ""
+        # Why the last _load_profile(report=False) failed.
+        self._load_problem = ""
         # Read by main() after the event loop ends; set only by the quit path.
         self.restart_on_exit = False
         self._action_state = {}
@@ -513,6 +517,33 @@ class Backend(QtCore.QObject):
         self.profileChanged.emit()
         signal.reloadCurrentInputItem.emit()
 
+    def openLastProfile(self, fpath: str) -> None:
+        """At start: open the profile used last. If it won't open, say why
+        once and offer to forget it (lastProfileFailed), instead of the same
+        error at every start."""
+        local_path = to_local_path(fpath)
+        if self._load_profile(str(local_path), report=False):
+            self._record_profile_use(local_path)
+        else:
+            self.lastProfileFailed.emit(str(local_path), self._load_problem)
+        self.profileChanged.emit()
+        signal.reloadCurrentInputItem.emit()
+
+    @QtCore.Slot(str)
+    def forgetProfile(self, fpath: str) -> None:
+        """Takes a profile off the start-up and Recent lists (the file stays
+        where it is)."""
+        gone = Path(fpath).resolve()
+        if str(self.config.value("global", "internal", "last-profile") or ""):
+            last = Path(str(self.config.value("global", "internal", "last-profile")))
+            if last.resolve() == gone:
+                self.config.set("global", "internal", "last-profile", "")
+        recent = list(self.config.value("global", "internal", "recent-profiles") or [])
+        kept = [entry for entry in recent if Path(entry).resolve() != gone]
+        if kept != recent:
+            self.config.set("global", "internal", "recent-profiles", kept)
+            self.recentProfilesChanged.emit()
+
     @QtCore.Property(bool, notify=propertyChanged)
     def profileContainsUnsavedChanges(self) -> bool:
         return self.profile.has_unsaved_changes()
@@ -568,11 +599,16 @@ class Backend(QtCore.QObject):
         if profile_was_converted:
             self.profile.to_xml(Path(fpath))
 
-    def _load_profile(self, fpath: str) -> bool:
+    def _load_profile(self, fpath: str, report: bool = True) -> bool:
+        """Opens a profile; False if it couldn't. report=False: the reason is
+        kept in _load_problem for the caller to show, not shown here."""
+        self._load_problem = ""
         if not os.path.isfile(fpath):
-            display_error(
-                f"Could not load the profile {fpath}: the file does not exist."
-            )
+            self._load_problem = "The file isn't there any more."
+            if report:
+                display_error(
+                    f"Could not load the profile {fpath}: the file does not exist."
+                )
             return False
         self.activate_gremlin(False)
         open_now = self.profile.fpath if self.profile else None
@@ -597,13 +633,15 @@ class Backend(QtCore.QObject):
                     )
             if not reopened:
                 self.newProfile()
-            display_error(
-                f"Could not load the profile {fpath}.",
-                reason + "\n\n" + (
-                    f"The profile you had open ({previous}) is open again."
-                    if reopened
-                    else "A new, empty profile is open instead."
-                ),
-            )
+            self._load_problem = reason
+            if report:
+                display_error(
+                    f"Could not load the profile {fpath}.",
+                    reason + "\n\n" + (
+                        f"The profile you had open ({previous}) is open again."
+                        if reopened
+                        else "A new, empty profile is open instead."
+                    ),
+                )
             return False
         return True

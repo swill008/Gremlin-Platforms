@@ -811,6 +811,12 @@ ApplicationWindow {
         id: _unfinishedGate
     }
 
+    // The profile used last didn't open at start: forget it, or keep it
+    // (to fix the file, or plug in the drive it is on).
+    DismissibleDialog {
+        id: _lastProfileGate
+    }
+
     DismissibleDialog {
         id: _saveResultDialog
 
@@ -1299,6 +1305,17 @@ ApplicationWindow {
     }
     Connections {
         target: backend
+
+        function onLastProfileFailed(path, why) {
+            _lastProfileGate.confirmThen(
+                "Last Profile Didn't Open",
+                "The profile used last didn't open:\n" + path + "\n\n" + why
+                + "\n\nA new, empty profile is open instead. Forget this profile, so it "
+                + "isn't opened at start or listed under Recent? The file itself stays.",
+                "Forget It",
+                function() { backend.forgetProfile(path) })
+            _lastProfileGate.cancelText = "Keep"
+        }
 
         // Open action panes belong to the old profile; nothing unsaved is left by now.
         function onProfileChanged() {

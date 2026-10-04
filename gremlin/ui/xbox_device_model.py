@@ -133,7 +133,11 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
         err = output.xbox_error()
         if err:
             return err
-        return "ViGEmBus / ViGEmClient.dll not available."
+        return (
+            "Xbox outputs aren't available. Install ViGEmBus 1.22 "
+            "(github.com/nefarius/ViGEmBus/releases), then restart "
+            "Gremlin-Platforms."
+        )
 
     guid = QtCore.Property(str, fget=_get_guid, constant=True)
     padId = QtCore.Property(int, fget=_get_pad_id, fset=_set_pad_id, notify=padIdChanged)
