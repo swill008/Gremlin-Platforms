@@ -176,8 +176,10 @@ def main() -> None:
     # A button dragged up onto the top row: it moves there, with its panel.
     ev("_tools.setLocked('palette', false)")
     QtTest.QTest.qWait(100)
+    # Grabbed by its name (its pin and lock are buttons of their own).
     button = scene_rect("_bottomRow._button('chips')")
-    drag(middle(button), QtCore.QPointF(top["x"] + top["w"] * 0.25, middle(top).y()))
+    grab = QtCore.QPointF(button["x"] + 10, middle(button).y())
+    drag(grab, QtCore.QPointF(top["x"] + top["w"] * 0.25, middle(top).y()))
     out["chips-up"] = [ev("_tools.sideOf('chips')"), ev("_tools.dockOf('chips')"),
                        ev("_tools.order('top')"), ev("_tools.order('bottom')")]
     pool = scene_rect("_poolFloat")

@@ -255,7 +255,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         font.family: Style.iconFont
                         font.pixelSize: Style.dp(11)
-                        text: _btn.pinned ? "" : ""
+                        text: _btn.pinned ? "\uF4EC" : "\uF4EB"
                         color: _btn.pinned ? Style.accent : (_pinArea.containsMouse ? Style.fg : Style.fgMuted)
                         MouseArea {
                             id: _pinArea
@@ -275,7 +275,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         font.family: Style.iconFont
                         font.pixelSize: Style.dp(11)
-                        text: _btn.locked ? "" : ""
+                        text: _btn.locked ? "\uF47A" : "\uF600"
                         color: _btn.locked ? Style.accent : (_lockArea.containsMouse ? Style.fg : Style.fgMuted)
                         MouseArea {
                             id: _lockArea
@@ -332,7 +332,7 @@ Item {
                         // Where it was let go: on this row or the other,
                         // snapped, then the nearest free spot there.
                         var target = dock.dropSide || _row.side
-                        var row = dock.rows[target] || _row
+                        var row = (dock.rows || {})[target] || _row
                         var left = row.mapFromItem(_buttons, _btn.x + _btn.dragDx, 0).x
                         _btn.dragDx = 0
                         _btn.dragDy = 0

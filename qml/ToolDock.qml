@@ -45,8 +45,9 @@ Item {
     // Where each button sits once one has been moved: id -> its middle as a
     // share (0..1) of its row's width. Empty: each row together, centred.
     property var _pos: null
-    // The rows drawing the buttons (ToolRow registers itself).
-    property var rows: ({})
+    // The rows drawing the buttons, side -> row (ToolRow registers itself;
+    // a plain value, not a binding, as the rows set it).
+    property var rows: null
     // A button being dragged (its id), and the row it would land on.
     property string dragging: ""
     property string dropSide: ""
@@ -251,7 +252,7 @@ Item {
 
     // Where a tool's button sits on its row: its left edge, or -1 (tests).
     function placeOf(id) {
-        var row = rows[sideOf(id)]
+        var row = rows ? rows[sideOf(id)] : null
         return row ? row.placeOf(id) : -1
     }
 
@@ -270,7 +271,7 @@ Item {
         if (isLocked(id))
             return
         side = side === undefined ? sideOf(id) : _side(side)
-        var row = rows[side]
+        var row = rows ? rows[side] : null
         if (!row)
             return
         if (!Object.keys(_pos || {}).length) {

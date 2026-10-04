@@ -141,3 +141,16 @@ def test_the_view_zooms_out_to_half(run: dict) -> None:
     zoom, pct = run["page-zoom"]
     assert zoom == 1 and abs(pct - 0.75) < 0.001
     assert run["out-most"] == 50
+
+
+def test_pin_and_lock_have_their_icons() -> None:
+    # The icons are font characters, kept as \u escapes: written out, they
+    # were lost once in an edit and the buttons showed no pin or lock.
+    import re
+
+    row = (_ROOT / "qml" / "ToolRow.qml").read_text(encoding="utf-8")
+    for flag in ("pinned", "locked"):
+        found = re.search(rf'text: _btn\.{flag} \? "([^"]*)" : "([^"]*)"', row)
+        assert found, flag
+        icons = found.groups()
+        assert all(re.fullmatch(r"\\u[0-9A-F]{4}", icon) for icon in icons), flag
