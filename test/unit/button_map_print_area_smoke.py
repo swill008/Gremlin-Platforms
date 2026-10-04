@@ -177,6 +177,18 @@ def main() -> None:
     out["scale-100"] = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
     doc = json.loads(hp.module_json_path("pJoy Pro", GUID).read_text(encoding="utf-8"))
     out["saved-print"] = (doc.get("ui") or {}).get("print")
+    # Only while editing: its tool open and pinned, the frame shows in Edit,
+    # not on the live map, and again in the next Edit.
+    ev("_tools.setPinned('printArea', true); _tools.setOpen('printArea', true)")
+    QtTest.QTest.qWait(200)
+    out["frame-editing"] = ev("_ed().printAreaShown")
+    ev("_buttonMap.discardEdit()")
+    QtTest.QTest.qWait(800)
+    out["frame-live"] = [ev("_buttonMap.editing"), ev("_ed().printAreaShown"),
+                         ev("_tools.isOpen('printArea')")]
+    call(win, "enterEdit")
+    QtTest.QTest.qWait(800)
+    out["frame-edit-again"] = ev("_ed().printAreaShown")
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)
 

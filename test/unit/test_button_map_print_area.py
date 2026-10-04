@@ -77,6 +77,12 @@ def test_the_handle_resizes_and_lock_keeps_it(run: dict) -> None:
     assert run["locked"] == run["resized"]
 
 
+def test_the_frame_shows_only_while_editing(run: dict) -> None:
+    assert run["frame-editing"] is True
+    assert run["frame-live"] == [False, False, False]
+    assert run["frame-edit-again"] is True
+
+
 def test_cleared_the_whole_page_again(run: dict) -> None:
     assert run["cleared"][0] == "null"
     assert abs(run["cleared"][1] - 1920) <= 2

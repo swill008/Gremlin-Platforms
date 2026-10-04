@@ -2551,6 +2551,7 @@ ApplicationWindow {
                 }
                 ThemedMenuItem {
                     text: "Print Area"
+                    enabled: editing
                     checkable: true
                     checked: _tools.isOpen("printArea")
                     onTriggered: _tools.toggle("printArea")
@@ -3345,7 +3346,10 @@ ApplicationWindow {
             // Chips (so a new user sees the pool) and Properties (as before)
             // start open and pinned; the others start hidden.
             defaults: ({ chips: { open: true, pinned: true }, props: { open: true, pinned: true } })
-            usable: ({ chips: _buttonMap.editing, props: _buttonMap.editing, layers: _buttonMap.editing })
+            // Only while editing: the pool, Properties, Layers, and the print
+            // area's frame on the map.
+            usable: ({ chips: _buttonMap.editing, props: _buttonMap.editing, layers: _buttonMap.editing,
+                       printArea: _buttonMap.editing })
             onToolChanged: (id) => {
                 if (id !== "palette")
                     return
