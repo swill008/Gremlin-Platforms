@@ -15,7 +15,7 @@ Item {
     anchors.fill: parent
     z: 9
 
-    readonly property color ink: ed ? Qt.color(ed.printAreaColor) : Style.danger
+    readonly property color ink: (ed && ed.printAreaColor.length) ? Qt.color(ed.printAreaColor) : Style.dangerBright
     readonly property var r: {
         if (!ed)
             return { x: 0, y: 0, w: 0, h: 0 }

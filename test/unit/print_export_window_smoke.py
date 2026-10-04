@@ -252,13 +252,13 @@ def main() -> None:
     wheel(middle(), -2)
     out["zoomed-out"] = area_now()
     # Locked: neither moves it.
-    ev("_buttonMap._ed().printAreaLocked = true")
+    ev("_tools.setLocked('printArea', true)")
     QtTest.QTest.qWait(100)
     before = area_now()
     drag_preview(width / 4, 0)
     wheel(middle(), 1)
     out["locked-unchanged"] = area_now() == before
-    ev("_buttonMap._ed().printAreaLocked = false")
+    ev("_tools.setLocked('printArea', false)")
     ev("_buttonMap.setPrint('paper', 'letter')")
     QtTest.QTest.qWait(200)
     # Custom > Freeform (As Drawn): no paper, and back to the last one.

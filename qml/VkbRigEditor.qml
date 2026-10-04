@@ -119,7 +119,9 @@ Item {
     property var printArea: null
     property bool printAreaShown: false
     property bool printAreaLocked: false
-    property string printAreaColor: String(Style.dangerBright)
+    // "" until the window sets it (Options' color, or the default red); a
+    // plain value, not a binding, as the window replaces it.
+    property string printAreaColor: ""
     property bool printAreaArm: false
     // The print area's shape (width / height) on the chosen paper, or 0:
     // any shape (Print & Export's "Freeform (As Drawn)").

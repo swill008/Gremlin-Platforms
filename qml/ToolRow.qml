@@ -32,12 +32,14 @@ Item {
     // Tools that can't be used now (e.g. only while editing): id -> false.
     property var usable: ({})
 
-    // id -> { open, pinned, locked }, and the ids in the row's order.
-    property var _state: ({})
-    property var _order: []
+    // id -> { open, pinned, locked }, and the ids in the row's order. Plain
+    // values, not bindings (_load sets them; a binding replaced would be
+    // reported at start-up).
+    property var _state: null
+    property var _order: null
     // Where each button sits once one has been moved: id -> its middle as a
     // share (0..1) of the row's width. Empty: all together, centred.
-    property var _pos: ({})
+    property var _pos: null
     readonly property real gap: Style.dp(6)
     readonly property real grid: Style.dp(8)
     // Bumped on every change: bindings on the getters follow it.
@@ -53,6 +55,8 @@ Item {
     onToolsChanged: _load()
 
     function _entry(id) {
+        if (!_state)
+            _state = {}
         var s = _state[id]
         if (!s) {
             var d = defaults[id] || {}
@@ -182,7 +186,7 @@ Item {
     }
 
     // The row's ids in order (for tests and the window).
-    function order() { rev; return _order.slice() }
+    function order() { rev; return (_order || []).slice() }
 
     // Puts a tool at another place in the row's order (the buttons sit
     // together, centred, in this order until one is moved freely).
@@ -231,8 +235,8 @@ Item {
         var w = _buttons.width
         if (!(w > 0))
             return
-        var ids = _order
-        if (!Object.keys(_pos).length) {
+        var ids = _order || []
+        if (!Object.keys(_pos || {}).length) {
             var total = 0
             var shown = []
             for (var i = 0; i < ids.length; i++) {
@@ -317,7 +321,7 @@ Item {
         if (!b || isLocked(id))
             return
         var w = _buttons.width
-        if (!Object.keys(_pos).length) {
+        if (!Object.keys(_pos || {}).length) {
             var pos = {}
             for (var i = 0; i < _rep.count; i++) {
                 var o = _rep.itemAt(i)
@@ -363,7 +367,7 @@ Item {
 
         Repeater {
             id: _rep
-            model: { _row.rev; return _row._order }
+            model: { _row.rev; return _row._order || [] }
             delegate: Rectangle {
                 id: _btn
                 required property string modelData

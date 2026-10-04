@@ -2562,7 +2562,7 @@ ApplicationWindow {
                     text: "Print Area Color…"
                     onTriggered: {
                         var e = _ed()
-                        _buttonMap.openColorField("printAreaColor", e ? e.printAreaColor : String(Style.dangerBright), null)
+                        _buttonMap.openColorField("printAreaColor", (e && e.printAreaColor.length) ? e.printAreaColor : String(Style.dangerBright), null)
                     }
                 }
                 ThemedMenuItem {
