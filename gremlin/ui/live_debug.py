@@ -195,6 +195,37 @@ def filter_entries(
     ]
 
 
+# The Live Log Reader's last choices (tab, Log, Show), kept between
+# sessions; Find starts empty, Live off.
+_CHOICES = {"tab": "live-log-tab", "file": "live-log-file", "level": "live-log-level"}
+
+
+def _choice_key(name: str) -> tuple[str, str, str]:
+    from gremlin.config import Configuration
+    from gremlin.types import PropertyType
+
+    key = _CHOICES[name]
+    # Registered when first used; registering again changes nothing.
+    Configuration().register(
+        "global", "internal", key, PropertyType.String, "",
+        "Live Log Reader: the last " + name + " chosen.", {}, False,
+    )
+    return ("global", "internal", key)
+
+
+def _load_choice(name: str, default: str) -> str:
+    from gremlin.config import Configuration
+
+    value = Configuration().value(*_choice_key(name))
+    return str(value) if value else default
+
+
+def _save_choice(name: str, value: str) -> None:
+    from gremlin.config import Configuration
+
+    Configuration().set(*_choice_key(name), str(value))
+
+
 def _profile_running() -> bool:
     from gremlin.event_handler import EventListener
 
@@ -400,6 +431,8 @@ class DebugLog(QtCore.QObject):
         if value == self._file:
             return
         self._file = value
+        if not self._live:
+            _save_choice("file", value)
         if self._session is not None:
             if self._live:
                 self._apply()  # a session is only filtered by its source
@@ -442,10 +475,37 @@ class DebugLog(QtCore.QObject):
     file = QtCore.Property(
         str, lambda self: self._file, _set_file, notify=changed,
     )
-    level = QtCore.Property(
-        str, lambda self: self._level, lambda self, v: self._set("_level", v),
-        notify=changed,
-    )
+    def _set_level(self, value: str) -> None:
+        if value in DEBUG_LEVELS:
+            _save_choice("level", value)
+        self._set("_level", value)
+
+    level = QtCore.Property(str, lambda self: self._level, _set_level, notify=changed)
+
+    @QtCore.Slot(result="QVariant")
+    def restoreChoices(self) -> dict:
+        """The window's last tab, Log and Show choices (the window asks when
+        it opens; a choice not known any more is left as it is). Returns
+        {"tab": index}."""
+        file = _load_choice("file", "")
+        if (file in DEBUG_FILES or file == "all") and self._session is None:
+            self._file = file
+            self._whole = False
+            self._reload()
+        level = _load_choice("level", "")
+        if level in DEBUG_LEVELS:
+            self._level = level
+        self._apply()
+        try:
+            tab = int(_load_choice("tab", "0"))
+        except ValueError:
+            tab = 0
+        return {"tab": tab if 0 <= tab <= 2 else 0}
+
+    @QtCore.Slot(int)
+    def saveTab(self, index: int) -> None:
+        if 0 <= index <= 2:
+            _save_choice("tab", str(index))
     find = QtCore.Property(
         str, lambda self: self._find, lambda self, v: self._set("_find", v),
         notify=changed,

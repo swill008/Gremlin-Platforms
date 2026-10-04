@@ -48,5 +48,13 @@ def test_a_short_log_after_a_long_one_is_drawn(run: dict) -> None:
     assert short["lit"] > 0
 
 
+def test_the_window_opens_on_the_last_choices(run: dict) -> None:
+    again = run["reopened"]
+    assert (again["tab"], again["file"], again["fileBox"]) == (2, "qt", "Qt")
+    assert (again["level"], again["levelBox"]) == ("Warning", "Warning")
+    # Find starts empty and Live off.
+    assert again["find"] == "" and again["live"] is False
+
+
 def test_lines_set_while_the_tab_was_hidden_are_drawn(run: dict) -> None:
     assert run["shown-later"]["lit"] > 0

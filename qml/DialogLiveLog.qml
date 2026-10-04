@@ -59,6 +59,7 @@ ApplicationWindow {
         _monitor.monitoring = false
     }
     onClosing: _stopAll()
+    property bool _choicesBack: false
     Component.onDestruction: _stopAll()
 
     Timer {
@@ -97,6 +98,12 @@ ApplicationWindow {
 
     Component.onCompleted: {
         _debug.attachView(_debugView.document)
+        // The last tab, Log and Show chosen (Find starts empty, Live off).
+        var last = _debug.restoreChoices()
+        _tabs.currentIndex = last.tab
+        _level.currentIndex = Math.max(0, _level.find(_debug.level))
+        _file.currentIndex = _file.indexOfValue(_debug.file)
+        _choicesBack = true
         _log.refresh()
         _debug.refresh()
         _debugView.show(_debug.html)
@@ -307,6 +314,8 @@ ApplicationWindow {
         TabBar {
             id: _tabs
             Layout.fillWidth: true
+            // Kept once the last choices are back (not while the bar is made).
+            onCurrentIndexChanged: if (_win._choicesBack) _debug.saveTab(currentIndex)
             TabButton { text: "Config"; width: implicitWidth }
             // A red dot while Live or the monitor runs, seen from any tab.
             TabButton { text: _debug.live ? "Debug ●" : "Debug"; width: implicitWidth }

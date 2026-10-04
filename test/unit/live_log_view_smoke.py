@@ -117,6 +117,34 @@ def main() -> None:
     ev("_debug.file = 'qt'")
     QtTest.QTest.qWait(1000)
     out["short"] = where()
+    # The last tab, Log and Show come back when the window opens again;
+    # Find starts empty.
+    ev("_tabs.currentIndex = 2")
+    ev("_debug.file = 'qt'")
+    ev("_debug.level = 'Warning'")
+    ev("_debug.find = 'line'")
+    QtTest.QTest.qWait(200)
+    win.close()
+    QtTest.QTest.qWait(600)
+    QtQml.QQmlExpression(
+        QtQml.qmlContext(main_win), main_win,
+        'Helpers.createComponent("DialogLiveLog.qml")',
+    ).evaluate()
+    QtTest.QTest.qWait(800)
+    win = next(
+        w for w in QtGui.QGuiApplication.topLevelWindows()
+        if isinstance(w, QtQuick.QQuickWindow) and w.isVisible()
+        and w.title().startswith("Live Log Reader")
+    )
+    out["reopened"] = {
+        "tab": ev("_tabs.currentIndex"),
+        "file": ev("_debug.file"),
+        "fileBox": ev("_file.currentText"),
+        "level": ev("_debug.level"),
+        "levelBox": ev("_level.currentText"),
+        "find": ev("_debug.find"),
+        "live": ev("_debug.live"),
+    }
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)
 
