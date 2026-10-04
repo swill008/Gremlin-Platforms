@@ -82,7 +82,7 @@ Item {
 
             Switch {
                 visible: _root.action.xboxTargetKind === "button"
-                text: "Invert"
+                text: "Invert activation"
                 checked: _root.action.buttonInverted
                 onToggled: _root.action.buttonInverted = checked
             }

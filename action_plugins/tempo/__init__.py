@@ -276,7 +276,7 @@ class TempoData(AbstractActionData):
         self.threshold = util.read_property(node, "threshold", PropertyType.Float)
         self.activate_on = util.read_property(node, "activate-on", PropertyType.String)
         if self.activate_on not in ["press", "release"]:
-            raise ProfileError(f"Invalid activat-on value present: {self.activate_on}")
+            raise ProfileError(f"Invalid activate-on value present: {self.activate_on}")
 
     @override
     def _to_xml(self) -> ElementTree.Element:

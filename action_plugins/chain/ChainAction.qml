@@ -28,14 +28,14 @@ Item {
             Label {
                 id: _label
 
-                text: "Timeout (sec)"
+                text: "Timeout (sec, 0 = never)"
             }
 
             FloatSpinBox {
                 minValue: 0
                 maxValue: 3600
                 value: _root.action.timeout
-                stepSize: 5
+                stepSize: 0.1
 
                 onValueModified: (newValue) => {
                     _root.action.timeout = newValue
@@ -67,7 +67,7 @@ Item {
             Layout.fillWidth: true
 
             Label {
-                text: "Sequence " + index
+                text: "Sequence " + (index + 1)
             }
 
             LayoutHorizontalSpacer {}

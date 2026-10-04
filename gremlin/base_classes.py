@@ -159,9 +159,12 @@ class AbstractActionData(ABC):
             return obj
         else:
             obj = cls._do_create(mode, behavior_type)
-            obj.action_label = cls.name
             if obj is None:
                 raise GremlinError("Unable to create an object")
+            # Reuse hands back an existing action: it keeps the name the
+            # user gave it; only a new one gets the default.
+            if not obj.action_label:
+                obj.action_label = cls.name
             return obj
 
     @classmethod

@@ -66,7 +66,7 @@ Item {
                 }
 
                 Label {
-                    text: "Scaling"
+                    text: "Speed"
                     anchors.verticalCenter: parent.verticalCenter
                     visible: _relativeMode.checked
                 }

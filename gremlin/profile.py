@@ -802,31 +802,6 @@ class Profile:
         else:
             return None
 
-    def remove_action(
-        self, action: AbstractActionData, binding: InputItemBinding
-    ) -> None:
-        """Removes an action from the specified InputBinding instance.
-
-        Args:
-            action: the action instance to remove
-            binding: the InputBinding instance from which to remove the action
-        """
-        # Remove action from its parent
-        all_actions = [
-            (binding.root_action, child) for child in binding.root_action.get_actions()
-        ]
-        while len(all_actions) > 0:
-            entry = all_actions.pop(0)
-            all_actions.extend([(entry[1], child) for child in entry[1].get_actions()])
-
-            if entry[1] == action:
-                entry[0].remove_action(action)
-                break
-
-        # Remove the action and its children from the library if they are
-        # unused
-        self.library.remove_unused(action, recursive=True)
-
     def has_unsaved_changes(self) -> bool:
         """Checks if the profile has unsaved changes.
 

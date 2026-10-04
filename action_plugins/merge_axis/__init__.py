@@ -70,7 +70,7 @@ class MergeOperation(Enum):
 
         res = lookup.get(value, None)
         if res is None:
-            raise GremlinError("MergeOperation: invalid value in lookup '{value}'")
+            raise GremlinError(f"MergeOperation: invalid value in lookup '{value}'")
         return res
 
     @classmethod
@@ -86,7 +86,7 @@ class MergeOperation(Enum):
         res = lookup.get(value.lower(), None)
         if res is None:
             raise GremlinError(
-                "MergeOperation: invalid value in lookup '{value.lower()}'"
+                f"MergeOperation: invalid value in lookup '{value.lower()}'"
             )
         return res
 
@@ -194,7 +194,9 @@ class MergeAxisModel(ActionModel):
                 if not e.name.startswith("_MergeOperation")
             ]
         )
-        return LabelValueSelectionModel(operations, operations, parent=self)
+        # Shown as words; the value stays what profiles store.
+        labels = ["Prefer Center" if o == "Prefercenter" else o for o in operations]
+        return LabelValueSelectionModel(labels, operations, parent=self)
 
     @QtCore.Property(LabelValueSelectionModel, notify=modelChanged)
     def mergeActionList(self) -> LabelValueSelectionModel:
@@ -279,7 +281,13 @@ class MergeAxisModel(ActionModel):
         action = MergeAxisData.create(
             DataCreationMode.Create, self._binding_model.behavior_type
         )
-        action.label = "New Merge Axis 123"
+        taken = {
+            getattr(a, "label", "") for a in self.library.actions_by_type(MergeAxisData)
+        }
+        number = 1
+        while f"Merge Axis {number}" in taken:
+            number += 1
+        action.label = f"Merge Axis {number}"
 
         self.library.add_action(action)
         self.modelChanged.emit()

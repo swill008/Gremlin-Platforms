@@ -66,16 +66,18 @@ Item {
             Label {
                 Layout.rightMargin: Style.dp(5)
 
-                text: "Volume"
+                text: "Volume (%)"
             }
 
+            // Shown 0-100 like Play Sound's; the profile keeps 0-1.
             FloatSpinBox {
-                value: _root.action !== null ? _root.action.playbackVolume : 1.0
-                minValue: 0.0
-                maxValue: 1.0
-                stepSize: 0.05
+                value: _root.action !== null ? _root.action.playbackVolume * 100 : 100
+                minValue: 0
+                maxValue: 100
+                stepSize: 5
+                decimals: 0
 
-                onValueModified: (val) => { _root.action.playbackVolume = val }
+                onValueModified: (val) => { _root.action.playbackVolume = val / 100 }
             }
 
             LayoutHorizontalSpacer {}
@@ -84,6 +86,9 @@ Item {
                 Layout.rightMargin: Style.dp(5)
 
                 text: "Rate"
+                ToolTip.visible: _rateHover.hovered
+                ToolTip.text: "-1 slowest, 0 normal, 1 fastest"
+                HoverHandler { id: _rateHover }
             }
 
             FloatSpinBox {
@@ -101,6 +106,9 @@ Item {
                 Layout.rightMargin: Style.dp(5)
 
                 text: "Pitch"
+                ToolTip.visible: _pitchHover.hovered
+                ToolTip.text: "-1 lowest, 0 normal, 1 highest"
+                HoverHandler { id: _pitchHover }
             }
 
             FloatSpinBox {

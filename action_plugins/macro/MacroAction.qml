@@ -60,6 +60,11 @@ Item {
                 ]
             }
 
+            Label {
+                visible: ["count", "toggle", "hold"].includes(_repeatMode.currentValue)
+                text: "Delay (sec)"
+            }
+
             FloatSpinBox {
                 visible: ["count", "toggle", "hold"].includes(_repeatMode.currentValue)
 
@@ -70,6 +75,11 @@ Item {
                 onValueModified: (newValue) => {
                     _root.action.repeatDelay = newValue
                 }
+            }
+
+            Label {
+                visible: _repeatMode.currentValue === "count"
+                text: "Times"
             }
 
             JGSpinBox {

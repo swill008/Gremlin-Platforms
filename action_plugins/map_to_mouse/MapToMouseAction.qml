@@ -101,7 +101,7 @@ Item {
             Label {
                 Layout.fillWidth: true
 
-                text: "Minimum speed"
+                text: "Minimum speed (px/s)"
             }
 
             Loader {
@@ -127,7 +127,7 @@ Item {
             Label {
                 Layout.fillWidth: true
 
-                text: "Maximum speed"
+                text: "Maximum speed (px/s)"
             }
 
             Loader {
@@ -146,7 +146,7 @@ Item {
             }
 
             Label {
-                text: "Time to maximum speed"
+                text: "Time to maximum speed (sec)"
             }
 
             Loader {
@@ -165,7 +165,7 @@ Item {
             Rectangle {}
 
             Label {
-                text: "Direction"
+                text: "Direction (degrees)"
             }
 
             Loader {
@@ -214,7 +214,7 @@ Item {
                 Label {
                     Layout.rightMargin: Style.dp(10)
 
-                    text: "Minimum speed"
+                    text: "Minimum speed (px/s)"
                 }
 
                 Loader {
@@ -236,7 +236,7 @@ Item {
                     Layout.leftMargin: Style.dp(50)
                     Layout.rightMargin: Style.dp(10)
 
-                    text: "Maximum speed"
+                    text: "Maximum speed (px/s)"
                 }
 
                 Loader {
@@ -265,7 +265,7 @@ Item {
             Label {
                 Layout.fillWidth: true
 
-                text: "Minimum speed"
+                text: "Minimum speed (px/s)"
             }
 
             Loader {
@@ -286,7 +286,7 @@ Item {
             Label {
                 Layout.fillWidth: true
 
-                text: "Maximum speed"
+                text: "Maximum speed (px/s)"
             }
 
             Loader {
@@ -305,7 +305,7 @@ Item {
             }
 
             Label {
-                text: "Time to maximum speed"
+                text: "Time to maximum speed (sec)"
             }
 
             Loader {

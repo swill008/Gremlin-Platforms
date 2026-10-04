@@ -30,11 +30,11 @@ Item {
 
         RowLayout {
             Label {
-                text: "Toggle delay"
+                text: "Hold time (sec)"
             }
             FloatSpinBox {
                 minValue: 0
-                maxValue: 100
+                maxValue: 10
                 value: _root.action.delay
                 stepSize: 0.05
 

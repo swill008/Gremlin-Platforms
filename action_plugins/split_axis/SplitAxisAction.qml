@@ -51,7 +51,8 @@ Item {
             id: _lowerHeader
 
             Label {
-                text: "Actions for the <b>lower / left</b> part of the split."
+                text: "Actions for the <b>lower / left</b> part of the split. "
+                    + "Reversed: full at the lower end, at rest at the split point."
             }
 
             Rectangle {

@@ -295,6 +295,7 @@ Item {
 
         RowLayout {
             // Lower half axis.
+            ColumnLayout {
             NumericalRangeSlider {
                 id: _lowerDeadzone
 
@@ -308,8 +309,14 @@ Item {
                 onFirstEdited: (value) => { deadzone.low = value }
                 onSecondEdited: (value) => { deadzone.centerLow = value }
             }
+            Label {
+                text: "Lower half: outer end · center"
+                color: Style.fgMuted
+            }
+            }
 
             // Upper half axis.
+            ColumnLayout {
             NumericalRangeSlider {
                 id: _upperDeadzone
 
@@ -322,6 +329,11 @@ Item {
 
                 onFirstEdited: (value) => { deadzone.centerHigh = value }
                 onSecondEdited: (value) => { deadzone.high = value }
+            }
+            Label {
+                text: "Upper half: center · outer end"
+                color: Style.fgMuted
+            }
             }
         }
     }

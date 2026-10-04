@@ -429,7 +429,7 @@ class InputItemBindingModel(QtCore.QObject):
         )
 
         if container is not None:
-            self.remove_action(s_model.sequence_index, False)
+            self.remove_action(s_model.sequence_index, False, drop_unused=False)
             self.append_action(s_model.action_data, t_model.sequence_index, container)
         else:
             # If source and target are in the same container special care has to
@@ -445,21 +445,24 @@ class InputItemBindingModel(QtCore.QObject):
                 if s_lid < t_lid:
                     move_performed = True
                     self.append_action(s_model.action_data, t_model.sequence_index)
-                    self.remove_action(s_model.sequence_index, False)
+                    self.remove_action(s_model.sequence_index, False, drop_unused=False)
 
             # This is the default case if the source and target actions are part
             # of different parent actions or containers. Also, if the source
             # action is after the target action, performing the removal first
             # is safe.
             if not move_performed:
-                self.remove_action(s_model.sequence_index, False)
+                self.remove_action(s_model.sequence_index, False, drop_unused=False)
                 self.append_action(s_model.action_data, t_model.sequence_index)
 
         self._create_action_models()
         self.rootActionChanged.emit()
 
     def remove_action(
-        self, action_index: int | SequenceIndex, perform_sync: bool = True
+        self,
+        action_index: int | SequenceIndex,
+        perform_sync: bool = True,
+        drop_unused: bool = True,
     ) -> None:
         """Removes the specified action from its parent.
 
@@ -470,16 +473,22 @@ class InputItemBindingModel(QtCore.QObject):
             action_index: index identifying the action to remove
             perform_sync: if True data will be resynchronized and a change
                 event emitted
+            drop_unused: the action and its children leave the profile's
+                library unless used elsewhere (False when it is being moved);
+                else Merge Axis 'Reuse' offered deleted ones
         """
         if isinstance(action_index, int):
             action_index = self._index_lookup[action_index]
 
+        removed = self.get_action_model_by_sidx(action_index.index).action_data
         parent_data = self.get_action_model_by_sidx(
             action_index.parent_index
         ).action_data
         parent_data.remove_action(
             self.get_action_container_index(action_index), action_index.container_name
         )
+        if drop_unused:
+            self._input_item_binding.library.remove_unused(removed, recursive=True)
 
         if perform_sync:
             self._create_action_models()
