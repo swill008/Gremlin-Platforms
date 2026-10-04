@@ -261,6 +261,17 @@ def _save_games(rows: list[dict]) -> None:
 
 
 
+def _card_photo(stored: str) -> str | None:
+    """The picture for a device card: the picked file (a URL); "" when one
+    was picked but is no longer there (no picture until another is picked);
+    None when none was picked (the module's photo is shown)."""
+    if not stored:
+        return None
+    text = str(stored)
+    path = Path(QtCore.QUrl(text).toLocalFile() if text.startswith("file:") else text)
+    return _file_url(path) if path.is_file() else ""
+
+
 def _load_photos() -> dict[str, str]:
     _ensure_options()
     raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_PHOTOS) or "{}")
@@ -514,25 +525,6 @@ def _dill_matches() -> list:
         return list(joystick_devices())
     except Exception:
         return []
-
-
-def _drop_unused_photos(photos: dict[str, str]) -> None:
-    """Deletes pictures in the photo folder that no device uses (left by
-    earlier sessions or a replaced photo)."""
-    used = {Path(p).resolve() for p in photos.values()}
-    for path in _photo_dir().iterdir():
-        if path.is_file() and path.resolve() not in used:
-            try:
-                path.unlink()
-            except OSError:
-                pass
-
-
-def _photo_dir() -> Path:
-    root = Path(sys.argv[0]).resolve().parent
-    folder = root / "qml" / "maps" / "hidhide_photos"
-    folder.mkdir(parents=True, exist_ok=True)
-    return folder
 
 
 def _file_url(path: Path) -> str:
@@ -1446,16 +1438,12 @@ def _enrich_devices(rows: list[dict]) -> list[dict]:
         elif instance not in links:
             links[instance] = module
             changed = True
-        photo = photos.get(instance) or photos.get(instance.upper(), "")
-        override = Path(photo) if photo and not str(photo).startswith("file:") else None
-        if override is not None and override.is_file():
-            row["photo"] = _file_url(override)
-            row["photoSource"] = "override"
-        elif photo and str(photo).startswith("file:"):
-            row["photo"] = photo
-            row["photoSource"] = "override"
-        else:
+        shown = _card_photo(photos.get(instance) or photos.get(instance.upper(), ""))
+        if shown is None:
             row["photo"] = _module_photo(hw, module)
+        else:
+            row["photo"] = shown
+            row["photoSource"] = "override" if shown else "missing"
             row["photoSource"] = "module" if row["photo"] else ""
     if changed:
         _save_links(links)
@@ -1767,21 +1755,12 @@ class HidHideModel(QtCore.QObject):
             src = Path(text)
         if not src.is_file():
             return False
-        # Named from the device id the same way every run (Python's hash()
-        # changes per run, so each session wrote a new file).
-        import hashlib
-
-        stem = hashlib.sha1(instance_id.encode("utf-8")).hexdigest()[:16]
-        dest = _photo_dir() / f"{stem}{src.suffix.lower() or '.jpg'}"
-        try:
-            from gremlin.ui.hardware_profile import limit_image_file
-            limit_image_file(src, dest)
-        except OSError:
-            return False
+        # The picture is used where it is (the folder it was picked from):
+        # nothing is copied or deleted. If it is moved or deleted later, the
+        # card shows no picture until another is picked.
         photos = _load_photos()
-        photos[instance_id] = str(dest)
+        photos[instance_id] = str(src.resolve())
         _save_photos(photos)
-        _drop_unused_photos(photos)
         self.reload()
         return True
 

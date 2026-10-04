@@ -38,38 +38,7 @@ QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
 _IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
-_MAX_PHOTO_SIDE = 1600
 
-
-def limit_image_file(src: Path, dest: Path, max_side: int = _MAX_PHOTO_SIDE) -> None:
-    """Copy an image, scaling it down when the long side is larger than max_side.
-
-    Used for small device photos (HidHide); raises OSError when nothing could
-    be written.
-    """
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    image = QtGui.QImage(str(src))
-    if image.isNull() or max(image.width(), image.height()) <= max_side:
-        if dest.resolve() != src.resolve():
-            shutil.copy2(src, dest)
-        return
-    scaled = image.scaled(
-        max_side,
-        max_side,
-        QtCore.Qt.AspectRatioMode.KeepAspectRatio,
-        QtCore.Qt.TransformationMode.SmoothTransformation,
-    )
-    formats = {
-        ".jpg": "JPEG",
-        ".jpeg": "JPEG",
-        ".png": "PNG",
-        ".webp": "WEBP",
-        ".bmp": "BMP",
-    }
-    fmt = formats.get(dest.suffix.lower(), "JPEG")
-    quality = 85 if fmt == "JPEG" else -1
-    if not scaled.save(str(dest), fmt, quality) and dest.resolve() != src.resolve():
-        shutil.copy2(src, dest)
 
 # Off unless someone is tracing a save. Same idea as the HidHide log switch.
 _persist_log = False

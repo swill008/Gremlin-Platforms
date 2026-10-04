@@ -5,8 +5,9 @@
 """Cleanup, first batch (3 Oct review: E1, E7, E8, UI10, UI11, UI12, B19,
 BM16, N26).
 
-- HidHide device photos were named with Python's per-run hash, so each
-  session wrote a new file and none were removed (B19).
+- HidHide device photos were copies named with Python's per-run hash, piling
+  up in the program folder (B19); now the picked picture is used where it
+  is, nothing is copied, and a card whose picture is gone shows none.
 - Unused pieces removed: VJoyStatusPopup, LogicalDevice.qml (it could never
   load), hints.py and its CSV, ColorSwatch, two Main.qml functions and
   private helpers nothing called (E7, N26).
@@ -22,7 +23,6 @@ import sys
 sys.path.append(".")
 
 import pathlib
-import shutil
 from types import SimpleNamespace
 
 import pytest
@@ -34,29 +34,37 @@ def _text(rel: str) -> str:
     return (_ROOT / rel).read_text(encoding="utf-8")
 
 
-def test_a_device_photo_keeps_one_file(
+def test_a_picked_photo_is_used_where_it_is(
     monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> None:
-    from gremlin.ui import hardware_profile, hidhide
+    # The picker keeps the picked file's path: nothing is copied or deleted.
+    from gremlin.ui import hidhide
 
-    folder = tmp_path / "photos"
-    folder.mkdir()
-    (folder / "0badc0de.png").write_bytes(b"left by an old session")
     stored: dict = {}
-    monkeypatch.setattr(hidhide, "_photo_dir", lambda: folder)
     monkeypatch.setattr(hidhide, "_load_photos", lambda: dict(stored))
     monkeypatch.setattr(hidhide, "_save_photos", lambda rows: stored.update(rows))
-    monkeypatch.setattr(
-        hardware_profile, "limit_image_file", lambda src, dest: shutil.copy(src, dest)
-    )
-    picture = tmp_path / "stick.png"
+    pictures = tmp_path / "My Pictures"
+    pictures.mkdir()
+    (pictures / "old.png").write_bytes(b"older pick")
+    picture = pictures / "stick.png"
     picture.write_bytes(b"png")
     model = SimpleNamespace(reload=lambda: None)
-    for _session in range(3):  # each one used to add a file
-        assert hidhide.HidHideModel.setDevicePhoto(model, "HID\\VID_1234", str(picture))
-    files = [p.name for p in folder.iterdir()]
-    assert len(files) == 1  # the old session's file is gone too
-    assert stored["HID\\VID_1234"].endswith(files[0])
+    url = "file:///" + picture.as_posix()
+    assert hidhide.HidHideModel.setDevicePhoto(model, "HID\VID_1234", url)
+    assert stored == {"HID\VID_1234": str(picture.resolve())}
+    assert sorted(p.name for p in pictures.iterdir()) == ["old.png", "stick.png"]
+
+
+def test_a_card_shows_the_pick_blank_when_gone_else_the_module(
+    tmp_path: pathlib.Path,
+) -> None:
+    from gremlin.ui import hidhide
+
+    picture = tmp_path / "stick.png"
+    picture.write_bytes(b"png")
+    assert hidhide._card_photo(str(picture)).startswith("file:")
+    assert hidhide._card_photo(str(tmp_path / "moved.png")) == ""  # no picture
+    assert hidhide._card_photo("") is None  # never picked: the module's photo
 
 
 def test_unused_pieces_are_gone() -> None:
