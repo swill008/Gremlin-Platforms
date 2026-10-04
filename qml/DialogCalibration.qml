@@ -51,13 +51,19 @@ ApplicationWindow {
         defaultHeight: Style.dp(600)
     }
 
+    // A card's device that wasn't connected yet: shown when it connects.
+    property string waitingSlug: ""
+
     function chooseModule(slug) {
         var next = slug ? String(slug) : ""
         if (!next.length || next === shownSlug)
             return
-        // A device that has no calibration entry (list already loaded) is ignored.
-        if (_moduleSelection.count > 0 && _moduleSelection.indexOfValue(next) < 0)
+        // A device that isn't in the list (not connected) waits for it.
+        if (_moduleSelection.count > 0 && _moduleSelection.indexOfValue(next) < 0) {
+            waitingSlug = next
             return
+        }
+        waitingSlug = ""
         if (_calib.hasUnsaved()) {
             pendingSlug = next
             var back = _moduleSelection.indexOfValue(shownSlug)
@@ -126,6 +132,24 @@ ApplicationWindow {
 
     CalibrationModuleModel {
         id: _modules
+        // Sticks came or went: the drop-down keeps naming the device shown
+        // (blank while its stick is unplugged; its axes and unsaved work stay).
+        onModelReset: Qt.callLater(function() {
+            if (_calibrationDialog.waitingSlug.length
+                    && _moduleSelection.indexOfValue(_calibrationDialog.waitingSlug) >= 0
+                    && _moduleSelection.indexOfValue(_calibrationDialog.shownSlug) < 0) {
+                var slug = _calibrationDialog.waitingSlug
+                _calibrationDialog.waitingSlug = ""
+                _calibrationDialog.shownSlug = ""
+                _calibrationDialog.chooseModule(slug)
+                return
+            }
+            var index = _moduleSelection.indexOfValue(_calibrationDialog.shownSlug)
+            if (index >= 0)
+                _moduleSelection.currentIndex = index
+            else if (_calibrationDialog.shownSlug.length)
+                _moduleSelection.currentIndex = -1
+        })
     }
 
     ColumnLayout {

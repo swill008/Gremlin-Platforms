@@ -427,6 +427,22 @@ class JoystickWrapper:
             axes[aid] = JoystickWrapper.Axis(self._device_guid, aid)
         return axes
 
+    def let_go(self) -> tuple[list[int], list[int]]:
+        """The stick is gone: its pressed buttons are let go and its hats
+        centred. Returns the ids of the buttons and hats this changed."""
+        buttons = []
+        for button in self._buttons[1:]:
+            if button is not None and button.is_pressed:
+                button.update(False)
+                buttons.append(button._index)
+        hats = []
+        for hat in self._hats[1:]:
+            centre = (None, types.HatDirection.Center)
+            if hat is not None and hat.direction not in centre:
+                hat.update(types.HatDirection.Center)
+                hats.append(hat._index)
+        return buttons, hats
+
     def _init_buttons(self) -> list[JoystickWrapper.Button]:
         """Initializes the buttons of the joystick.
 

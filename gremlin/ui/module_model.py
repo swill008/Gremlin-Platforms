@@ -1651,6 +1651,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self._not_connected = ""
         self._device_name = ""
         self._rows: list[dict] = []
+        # The device's controls were read (it was plugged in at load).
+        self._read_from_device = False
         self._lit_index = -1
         self._last_saved_path = ""
         try:
@@ -1658,6 +1660,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             listener.joystick_event.connect(
                 self._on_joy, QtCore.Qt.ConnectionType.QueuedConnection
             )
+            listener.device_change_event.connect(self._device_list_changed)
             listener.keyboard_event.connect(
                 self._on_key, QtCore.Qt.ConnectionType.QueuedConnection
             )
@@ -1676,11 +1679,33 @@ class DriverInputModel(QtCore.QAbstractListModel):
         row = self._rows[index.row()]
         return row.get(bytes(self.roles[role]).decode())
 
+    def _device_list_changed(self) -> None:
+        """The stick came or went while its setup is open: Save is refused
+        while it is unplugged (and allowed again, with the work on screen,
+        when it is back); opened while unplugged, its controls load now."""
+        if not self._guid or self._is_keyboard() or self._is_osc():
+            return
+        if guid_key(self._guid) == guid_key(XBOX_GUID):
+            return
+        if _device_connected(self._guid):
+            if not self._not_connected:
+                return
+            if self._read_from_device:
+                self._not_connected = ""
+            else:
+                self.loadDevice(self._guid, self._device_name)
+        elif not self._not_connected:
+            self._not_connected = (
+                f"Plug in {self._device_name or 'the device'} to save its setup. "
+                "Nothing was saved."
+            )
+
     @QtCore.Slot(str, str)
     def loadDevice(self, guid: str, device_name: str) -> None:
         self._guid = guid or ""
         self._device_name = device_name or ""
         self._not_connected = ""
+        self._read_from_device = False
         rows: list[dict] = []
         claim = read_claim(_load_module_doc(device_name, guid)) if device_name else {
             "buttons": [],
@@ -1723,6 +1748,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 "Nothing was saved."
             )
         if info is not None:
+            self._read_from_device = True
             for i in range(info.axis_count):
                 hid = info.axis_map[i].axis_index
                 rows.append(

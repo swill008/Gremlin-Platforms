@@ -88,7 +88,11 @@ ApplicationWindow {
                         width: ListView.view.width - Style.dp(10)
 
                         text: model.name
-                        checked: model.slug === _mapper.initialSlug
+                        // A tick stays when the list is rebuilt (a stick
+                        // plugged in or out); else the card's own module.
+                        checked: (model.slug in selectedInputModules)
+                                 ? selectedInputModules[model.slug]
+                                 : model.slug === _mapper.initialSlug
 
                         onCheckedChanged: () => {
                             selectedInputModules[model.slug] = checked
@@ -124,7 +128,11 @@ ApplicationWindow {
                         width: ListView.view.width - Style.dp(10)
 
                         text: model.name
-                        checked: model.slug === _mapper.initialSlug
+                        // A tick stays when the list is rebuilt (a stick
+                        // plugged in or out); else the card's own module.
+                        checked: (model.slug in selectedOutputModules)
+                                 ? selectedOutputModules[model.slug]
+                                 : model.slug === _mapper.initialSlug
 
                         onCheckedChanged: () => {
                             selectedOutputModules[model.slug] = checked

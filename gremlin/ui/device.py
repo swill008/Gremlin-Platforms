@@ -320,9 +320,19 @@ class Device(QtCore.QAbstractListModel):
         self._device: dill.DeviceSummary | None = None
         self._device_mapping: dict[str, str] | None = None
         self._mode: str = "Default"
+        # The device asked for, kept while it isn't connected.
+        self._wanted = ""
 
         signal.profileChanged.connect(self._profile_changed_cb)
         signal.inputItemChanged.connect(self.refreshInput)
+        event_handler.EventListener().device_change_event.connect(
+            self._device_list_changed
+        )
+
+    def _device_list_changed(self) -> None:
+        # Set while its stick was unplugged: read it now it is back.
+        if self._device is None and self._wanted:
+            self._set_guid(self._wanted)
 
     @QtCore.Slot(int)
     def refreshInput(self, index: int) -> None:
@@ -350,6 +360,7 @@ class Device(QtCore.QAbstractListModel):
         if self._device is not None and guid == str(self._device.device_guid):
             return
 
+        self._wanted = guid
         self.beginResetModel()
         # QML binds "" while no device is selected or during teardown.
         try:
@@ -878,12 +889,20 @@ class DeviceAxisSeries(QtCore.QObject):
 
         el = event_handler.EventListener()
         el.joystick_event.connect(self._event_callback)
+        el.device_change_event.connect(self._device_list_changed)
 
         self._device = None
         self._device_uuid = None
         self._state = []
         self._identifier_map = {}
         self._window_size = 20
+        # The device asked for, kept while it isn't connected.
+        self._wanted = ""
+
+    def _device_list_changed(self) -> None:
+        # Set while its stick was unplugged: read it now it is back.
+        if self._device is None and self._wanted:
+            self._set_guid(self._wanted)
 
     def _get_guid(self) -> str:
         return str(self._device.device_guid) if self._device is not None else ""
@@ -892,6 +911,7 @@ class DeviceAxisSeries(QtCore.QObject):
         if self._device is not None and guid == str(self._device.device_guid):
             return
 
+        self._wanted = guid
         self._state = []
         self._identifier_map = {}
         try:
@@ -924,7 +944,9 @@ class DeviceAxisSeries(QtCore.QObject):
             return
 
         if event.event_type == InputType.JoystickAxis:
-            index = self._identifier_map[event.identifier]
+            index = self._identifier_map.get(event.identifier)
+            if index is None:
+                return
             self._state[index]["timeSeries"].append((time.time(), event.value))
 
     @QtCore.Property(int, notify=axisCountChanged)
@@ -993,10 +1015,13 @@ class AxisCalibration(QtCore.QAbstractListModel):
 
         self._event_listener = event_handler.EventListener()
         self._event_listener.joystick_event.connect(self._event_callback)
+        self._event_listener.device_change_event.connect(self._device_list_changed)
 
         self._device = None
         self._device_uuid = None
         self._module_slug = ""
+        # The module asked for, kept while its stick isn't connected.
+        self._wanted_slug = ""
         self._state = []
         self._calibration_fn = []
         self._active_calibrations = []
@@ -1395,10 +1420,16 @@ class AxisCalibration(QtCore.QAbstractListModel):
     def _get_module_slug(self) -> str:
         return self._module_slug
 
+    def _device_list_changed(self) -> None:
+        # Asked for while its stick was unplugged: read it now it is back.
+        if self._wanted_slug and self._wanted_slug != self._module_slug:
+            self._set_module_slug(self._wanted_slug)
+
     def _set_module_slug(self, slug: str) -> None:
         slug = str(slug or "").strip().lower()
         if not slug or slug == self._module_slug:
             return
+        self._wanted_slug = slug
         from gremlin.modules.calibration import module_for_slug
 
         row = module_for_slug(slug)

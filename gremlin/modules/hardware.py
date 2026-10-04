@@ -23,9 +23,16 @@ def _guid(device_id: str | uuid.UUID) -> dill.GUID:
 
 
 def device_info(device_id: str | uuid.UUID) -> dill.DeviceSummary:
-    """The device's description (name, axes, buttons, hats...). Raises as
-    the device library does for an id it can't read."""
-    return dill.DILL.get_device_information_by_guid(_guid(device_id))
+    """The device's description (name, axes, buttons, hats...).
+
+    Raises ValueError for an id the device library can't read, and for a
+    device that isn't connected (the library describes one as empty: no
+    name, no inputs), so callers don't keep an empty device as if it were
+    the real one."""
+    guid = _guid(device_id)
+    if not dill.DILL.device_exists(guid):
+        raise ValueError(f"Device {device_id} is not connected")
+    return dill.DILL.get_device_information_by_guid(guid)
 
 
 def device_connected(device_id: str | uuid.UUID) -> bool:

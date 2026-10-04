@@ -68,6 +68,8 @@ class DeviceLiveState(QtCore.QObject):
         self._device = None
         self._device_uuid = None
         self._guid = ""
+        # The device asked for, kept while it isn't connected.
+        self._wanted = ""
         self._locked = False
         self._live_while_active = False
         self._vjoy_id = 0
@@ -89,6 +91,9 @@ class DeviceLiveState(QtCore.QObject):
         self._poll.timeout.connect(self._poll_output)
         # Claimed inputs only: the input module feed, not raw hardware.
         InputModuleRuntime().event.connect(self._on_event)
+        event_handler.EventListener().device_change_event.connect(
+            self._device_list_changed
+        )
 
     def _get_guid(self) -> str:
         return self._guid
@@ -154,13 +159,21 @@ class DeviceLiveState(QtCore.QObject):
         self.guidChanged.emit()
         self._bump()
 
+    def _device_list_changed(self) -> None:
+        # Set while its stick was unplugged: read it now it is back.
+        if self._device is None and self._wanted:
+            self._set_guid(self._wanted)
+
     def _set_guid(self, guid: str) -> None:
         incoming = _extract_uuid(guid)
         if not incoming or incoming in ("unknown", str(dill.UUID_Invalid).lower()):
+            self._wanted = ""
             self._clear()
             return
         if self._guid == incoming and self._device is not None:
             return
+        # Kept while the device isn't connected (_clear leaves it).
+        self._wanted = guid
         try:
             self._device = hardware.device_info(guid)
             self._device_uuid = uuid.UUID(incoming)

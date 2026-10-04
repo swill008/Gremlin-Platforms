@@ -410,10 +410,48 @@ class EventListener(QtCore.QObject):
             dev.device_guid.uuid
             for dev in device_initialization.joystick_devices()
         }
+        # A stick unplugged with a button held (or a hat pushed) would keep
+        # it held on the outputs until it came back: it is let go now.
+        for device_guid in before - after:
+            self._let_go(device_guid)
         # HID already ignores ViGEm pads; do not fire Reload if the
         # filtered list did not change.
         if before != after:
             self.device_change_event.emit()
+
+    def _let_go(self, device_guid: uuid.UUID) -> None:
+        """Releases what an unplugged stick was holding, as its own input
+        events would (buttons up, hats centred; axes stay where they were:
+        a throttle has no rest position)."""
+        wrapper = self._joystick.devices.get(device_guid)
+        if wrapper is None or not hasattr(wrapper, "let_go"):
+            return
+        buttons, hats = wrapper.let_go()
+        mode = self._modes.current.name
+        for index in buttons:
+            self.joystick_event.emit(
+                Event(
+                    event_type=InputType.JoystickButton,
+                    device_guid=device_guid,
+                    identifier=index,
+                    mode=mode,
+                    is_pressed=False,
+                )
+            )
+        for index in hats:
+            self.joystick_event.emit(
+                Event(
+                    event_type=InputType.JoystickHat,
+                    device_guid=device_guid,
+                    identifier=index,
+                    mode=mode,
+                    value=HatDirection.Center,
+                )
+            )
+        if buttons or hats:
+            logging.getLogger("system").info(
+                f"Unplugged {device_guid}: let go of buttons {buttons}, hats {hats}"
+            )
 
     def _keyboard_handler(self, event: Event) -> bool:
         """Callback for keyboard events.

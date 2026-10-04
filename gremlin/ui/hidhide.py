@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PySide6 import QtCore, QtGui
 
-from gremlin import config
+from gremlin import config, event_handler
 from gremlin.types import PropertyType
 import gremlin.ui.type_aliases as ta
 
@@ -1490,6 +1490,8 @@ class HidHideModel(QtCore.QObject):
         self._version = ""
         _ensure_options()
         self.reload()
+        # A stick plugged in or out shows (or leaves) the list while open.
+        event_handler.EventListener().device_change_event.connect(self.reload)
 
     def reload(self) -> None:
         self._present = driver_present()

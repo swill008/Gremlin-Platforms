@@ -9,6 +9,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
+from gremlin import event_handler
 from gremlin.modules.calibration import _source_modules
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -27,6 +28,19 @@ class CalibrationModuleModel(QtCore.QAbstractListModel):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._rows = _source_modules()
+        event_handler.EventListener().device_change_event.connect(self.reload)
+
+    @QtCore.Slot()
+    def reload(self) -> None:
+        """The connected sticks changed: list them again (only on a change,
+        so an open drop-down is left alone otherwise)."""
+        rows = _source_modules()
+        if rows == self._rows:
+            return
+        self.beginResetModel()
+        self._rows = rows
+        self.endResetModel()
+        self.countChanged.emit()
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._rows)

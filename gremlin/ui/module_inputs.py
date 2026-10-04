@@ -6,7 +6,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import common, shared_state
+from gremlin import common, event_handler, shared_state
 from gremlin.config import Configuration
 from gremlin.input_cache import DeviceDatabase
 from gremlin.signal import signal
@@ -51,6 +51,9 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
         self._mapping = None
         self._rows: list[dict] = []
         signal.profileChanged.connect(self.reload)
+        event_handler.EventListener().device_change_event.connect(
+            self._device_list_changed
+        )
         signal.inputItemChanged.connect(self._refresh_one)
         signal.configChanged.connect(self.reload)
 
@@ -62,6 +65,12 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
         if text == self._guid:
             return
         self._guid = text
+        self._read_device()
+        self.reload()
+        self.guidChanged.emit()
+
+    def _read_device(self) -> None:
+        text = self._guid
         self._device = None
         self._mapping = None
         if text and text.lower() not in ("unknown", ""):
@@ -71,8 +80,13 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
             except Exception:
                 self._device = None
                 self._mapping = None
-        self.reload()
-        self.guidChanged.emit()
+
+    def _device_list_changed(self) -> None:
+        # Set while its stick was unplugged: read it now it is back.
+        if self._device is None and self._guid:
+            self._read_device()
+            if self._device is not None:
+                self.reload()
 
     def _get_device_name(self) -> str:
         return self._device_name
