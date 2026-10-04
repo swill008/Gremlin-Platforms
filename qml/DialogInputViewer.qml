@@ -17,8 +17,8 @@ ApplicationWindow {
     // ToolWindowMemory sets the saved or default size when the window opens.
     width: 1200
     height: 800
-    minimumWidth: Style.dp(800)
-    minimumHeight: Style.dp(500)
+    minimumWidth: Style.fitWidth(Style.dp(800), Screen)
+    minimumHeight: Style.fitHeight(Style.dp(500), Screen)
 
     color: Style.background
     U.Universal.theme: Style.theme

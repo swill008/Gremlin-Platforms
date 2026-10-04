@@ -13,7 +13,7 @@ import Gremlin.Style
 ApplicationWindow {
     id: _info
     font.pixelSize: Style.fontSize
-    minimumWidth: Style.dp(1000)
+    minimumWidth: Style.fitWidth(Style.dp(1000), Screen)
 
     // The card it was opened from: its row is marked.
     property string initialGuid: ""
@@ -23,7 +23,7 @@ ApplicationWindow {
         return clean(a).length > 0 && clean(a) === clean(b)
     }
 
-    minimumHeight: Style.dp(300)
+    minimumHeight: Style.fitHeight(Style.dp(300), Screen)
 
     color: Style.background
     U.Universal.theme: Style.theme

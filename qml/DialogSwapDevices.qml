@@ -16,7 +16,7 @@ import Gremlin.Tools
 ApplicationWindow {
     id: _swap
     font.pixelSize: Style.fontSize
-    width: Style.dp(800)
+    width: Style.fitWidth(Style.dp(800), Screen)
     height: _content.implicitHeight + Style.dp(30)
 
     color: Style.background

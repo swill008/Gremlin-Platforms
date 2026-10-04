@@ -17,10 +17,10 @@ ApplicationWindow {
     id: _bmOptions
 
     font.pixelSize: Style.fontSize
-    width: Style.dp(560)
-    height: Style.dp(700)
-    minimumWidth: Style.dp(440)
-    minimumHeight: Style.dp(400)
+    width: Style.fitWidth(Style.dp(560), Screen)
+    height: Style.fitHeight(Style.dp(700), Screen)
+    minimumWidth: Style.fitWidth(Style.dp(440), Screen)
+    minimumHeight: Style.fitHeight(Style.dp(400), Screen)
 
     U.Universal.theme: Style.theme
     color: Style.background

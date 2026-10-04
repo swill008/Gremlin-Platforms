@@ -16,8 +16,8 @@ ApplicationWindow {
     id: _win
     width: 720
     height: 640
-    minimumWidth: Style.dp(640)
-    minimumHeight: Style.dp(480)
+    minimumWidth: Style.fitWidth(Style.dp(640), Screen)
+    minimumHeight: Style.fitHeight(Style.dp(480), Screen)
     title: "HidHide"
     color: Style.background
     U.Universal.theme: Style.theme

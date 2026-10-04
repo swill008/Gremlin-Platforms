@@ -17,8 +17,8 @@ import Gremlin.Config
 ApplicationWindow {
     id: _mapper
     font.pixelSize: Style.fontSize
-    minimumWidth: Style.dp(900)
-    minimumHeight: Style.dp(400)
+    minimumWidth: Style.fitWidth(Style.dp(900), Screen)
+    minimumHeight: Style.fitHeight(Style.dp(400), Screen)
 
     color: Style.background
     U.Universal.theme: Style.theme

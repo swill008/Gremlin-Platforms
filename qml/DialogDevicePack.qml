@@ -17,8 +17,8 @@ ApplicationWindow {
     id: _win
     width: 860
     height: 780
-    minimumWidth: Style.dp(720)
-    minimumHeight: Style.dp(640)
+    minimumWidth: Style.fitWidth(Style.dp(720), Screen)
+    minimumHeight: Style.fitHeight(Style.dp(640), Screen)
     title: "Device Pack"
 
     Shortcut { sequence: "Esc"; onActivated: {} }
@@ -232,8 +232,8 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        width = Style.dp(860)
-        height = Style.dp(780)
+        width = Style.fitWidth(Style.dp(860), Screen)
+        height = Style.fitHeight(Style.dp(780), Screen)
         reloadDevices()
     }
 

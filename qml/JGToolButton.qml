@@ -12,6 +12,14 @@ ToolButton {
     property alias color: _icon.color
     property alias tooltip: _tooltip.text
     property string caption: ""
+    // Icon only (the caption is hidden): the main window sets it when the
+    // toolbar would not fit with captions. The tooltip still names it.
+    property bool compact: false
+    // The width with its caption, whether or not the caption is shown.
+    readonly property real fullWidth: Math.max(_icon.implicitWidth, _caption.implicitWidth)
+                                      + leftPadding + rightPadding
+    // The width with the icon only.
+    readonly property real compactWidth: _icon.implicitWidth + leftPadding + rightPadding
     readonly property real sideSlack: Math.max(0, (_face.implicitWidth - _icon.implicitWidth) / 2)
 
     leftPadding: Style.dp(10)
@@ -46,7 +54,7 @@ ToolButton {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: _icon.bottom
             anchors.topMargin: Style.dp(2)
-            visible: _button.caption.length > 0
+            visible: _button.caption.length > 0 && !_button.compact
             text: _button.caption
             font.pixelSize: Style.dp(18)
             horizontalAlignment: Text.AlignHCenter

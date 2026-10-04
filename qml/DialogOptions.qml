@@ -18,10 +18,8 @@ ApplicationWindow {
     width: 1200
     height: 700
     // Never wider or taller than the screen, even at a high UI scale.
-    readonly property int _fitW: Math.max(640, Screen.desktopAvailableWidth - 40)
-    readonly property int _fitH: Math.max(480, Screen.desktopAvailableHeight - 60)
-    minimumWidth: Math.min(Style.dp(900), _fitW)
-    minimumHeight: Math.min(Style.dp(600), _fitH)
+    minimumWidth: Style.fitWidth(Style.dp(900), Screen)
+    minimumHeight: Style.fitHeight(Style.dp(600), Screen)
 
     U.Universal.theme: Style.theme
     color: Style.background
@@ -31,8 +29,8 @@ ApplicationWindow {
     ToolWindowMemory {
         host: _options
         name: "options"
-        defaultWidth: Math.min(Style.dp(1000), _options._fitW)
-        defaultHeight: Math.min(Style.dp(700), _options._fitH)
+        defaultWidth: Style.fitWidth(Style.dp(1000), Screen)
+        defaultHeight: Style.fitHeight(Style.dp(700), Screen)
     }
 
     onClosing: () => {

@@ -13,8 +13,8 @@ import Gremlin.Style
 ApplicationWindow {
     id: mainWindow
     font.pixelSize: Style.fontSize
-    width: Style.dp(600)
-    height: Style.dp(300)
+    width: Style.fitWidth(Style.dp(600), Screen)
+    height: Style.fitHeight(Style.dp(300), Screen)
     visible: true
     title: qsTr("Gremlin-Platforms R1")
 

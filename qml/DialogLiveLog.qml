@@ -24,8 +24,8 @@ ApplicationWindow {
     // ToolWindowMemory sets the saved or default size when the window opens.
     width: 1000
     height: 640
-    minimumWidth: Style.dp(720)
-    minimumHeight: Style.dp(480)
+    minimumWidth: Style.fitWidth(Style.dp(720), Screen)
+    minimumHeight: Style.fitHeight(Style.dp(480), Screen)
     title: qsTr("Live Log Reader")
     color: Style.background
     U.Universal.theme: Style.theme

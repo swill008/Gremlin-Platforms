@@ -11,8 +11,8 @@ import Gremlin.Style
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
-    minimumWidth: Style.dp(500)
-    minimumHeight: Style.dp(300)
+    minimumWidth: Style.fitWidth(Style.dp(500), Screen)
+    minimumHeight: Style.fitHeight(Style.dp(300), Screen)
 
     color: Style.background
     U.Universal.theme: Style.theme

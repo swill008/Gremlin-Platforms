@@ -14,10 +14,10 @@ ApplicationWindow {
     id: _root
 
     font.pixelSize: Style.fontSize
-    minimumWidth: Style.dp(520)
-    minimumHeight: Style.dp(230)
-    width: Style.dp(560)
-    height: Style.dp(250)
+    minimumWidth: Style.fitWidth(Style.dp(520), Screen)
+    minimumHeight: Style.fitHeight(Style.dp(230), Screen)
+    width: Style.fitWidth(Style.dp(560), Screen)
+    height: Style.fitHeight(Style.dp(250), Screen)
 
     color: Style.background
     U.Universal.theme: Style.theme

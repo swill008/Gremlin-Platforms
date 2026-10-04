@@ -76,10 +76,10 @@ ApplicationWindow {
         photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
     }
 
-    width: Style.dp(980)
-    height: Style.dp(640)
-    minimumWidth: Style.dp(800)
-    minimumHeight: Style.dp(480)
+    width: Style.fitWidth(Style.dp(980), Screen)
+    height: Style.fitHeight(Style.dp(640), Screen)
+    minimumWidth: Style.fitWidth(Style.dp(800), Screen)
+    minimumHeight: Style.fitHeight(Style.dp(480), Screen)
     title: direction === "dest" ? "Output Module Setup" : "Input Module Setup"
     color: Style.background
     U.Universal.theme: Style.theme

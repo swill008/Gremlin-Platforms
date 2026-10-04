@@ -147,6 +147,22 @@ Item {
         return Math.round(x * uiScale / 100)
     }
 
+    // A window size (already scaled) limited to the screen the window is on,
+    // so a large UI scale never makes a window, or its smallest size, bigger
+    // than the screen. Pass the window's Screen attached object.
+    function fitWidth(w, screen) {
+        if (!screen || !(screen.desktopAvailableWidth > 0))
+            return w
+        var room = Math.min(screen.width > 0 ? screen.width : Infinity, screen.desktopAvailableWidth)
+        return Math.min(w, Math.max(640, room - 40))
+    }
+    function fitHeight(h, screen) {
+        if (!screen || !(screen.desktopAvailableHeight > 0))
+            return h
+        var room = Math.min(screen.height > 0 ? screen.height : Infinity, screen.desktopAvailableHeight)
+        return Math.min(h, Math.max(480, room - 60))
+    }
+
     // Program text size in pixels.
     readonly property int fontSize: dp(15)
 
