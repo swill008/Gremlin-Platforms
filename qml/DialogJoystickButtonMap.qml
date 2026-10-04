@@ -479,6 +479,10 @@ ApplicationWindow {
         applyPhoto(workPhoto)
         applyImage(liveImage.length ? liveImage : stockImage)
         editing = true
+        // The map as the editor tidies it on loading is where this edit
+        // starts (taken when the editor is done: noteSeeded).
+        editBase = null
+        _baseWanted = true
         fittedThisEdit = false
         fitHistAt = -1
         selectedId = ""
@@ -563,13 +567,32 @@ ApplicationWindow {
         return workNodes
     }
 
+    // The map at the start of this edit as the editor tidied it (default
+    // leaders, names, stacking filled in): tidying is not a change. null:
+    // compared with the saved map (a restored or copied map, or before the
+    // editor is done).
+    property var editBase: null
+    property bool _baseWanted: false
+
+    function noteSeeded() {
+        var e = _ed()
+        if (!editing || !_baseWanted || !e || !e.seeded)
+            return
+        _baseWanted = false
+        editBase = JSON.stringify(e.nodes || [])
+    }
+
     function isDirty() {
         if (!editing)
             return false
         var image = storedImage.length ? storedImage : stockImage
         var live = liveImage.length ? liveImage : stockImage
         try {
-            return JSON.stringify({ image: image, photo: photoBag(), nodes: editorNodesNow() }) !== JSON.stringify({ image: live, photo: livePhoto || photoFromDoc(null), nodes: liveNodes })
+            var now = JSON.stringify(editorNodesNow())
+            var base = editBase !== null ? editBase : JSON.stringify(liveNodes)
+            if (now !== base)
+                return true
+            return JSON.stringify({ image: image, photo: photoBag() }) !== JSON.stringify({ image: live, photo: livePhoto || photoFromDoc(null) })
         } catch (e) {
             return true
         }
@@ -649,6 +672,8 @@ ApplicationWindow {
         if (!doc)
             return
         enterEdit()
+        // The restored work is unsaved: compared with the saved map.
+        _baseWanted = false
         var nodes = JSON.parse(JSON.stringify(doc.nodes || []))
         hydrateOverlays(nodes)
         workNodes = nodes
@@ -675,6 +700,8 @@ ApplicationWindow {
 
     function discardEdit() {
         clearRecovery()
+        editBase = null
+        _baseWanted = false
         // Photo files changed in this session go back to how they were.
         if (_hw.restorePhoto(targetName))
             _photoStamp = Date.now()
@@ -1729,6 +1756,8 @@ ApplicationWindow {
             // Edit starts from the current map first, so its undo history
             // holds it before the copy replaces it.
             enterEdit()
+            // The copy is a change: compared with the saved map.
+            _baseWanted = false
             Qt.callLater(function() { _replaceLayout(nodes, mirror) })
             return
         }
@@ -3007,6 +3036,7 @@ ApplicationWindow {
                                 _buttonMap.deferHistory()
                             }
                             function onNodesChanged() { _buttonMap.deferHistory() }
+                            function onSeededChanged() { _buttonMap.noteSeeded() }
                         }
                         Component.onCompleted: _cardLoader.item = _card
                         // A newer card may already be in use: only this one's own.

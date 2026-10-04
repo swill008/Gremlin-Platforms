@@ -12,6 +12,8 @@ process and user folder).
 - Unplugged during Edit Mapping, the edit stays on screen to save or
   cancel; other devices coming and going leave the editor alone.
 - File -> Device stays in the menu during an edit (it used to vanish).
+- Entering Edit Mapping is not a change: Cancel used to ask to save when
+  the editor had only filled in what the file left out.
 """
 
 from __future__ import annotations
@@ -77,6 +79,11 @@ def test_an_edit_survives_device_changes(run: dict) -> None:
     assert run["same-editor-after-unplug"] is True
     assert run["edit-ended-unplugged"] == _shown(5, False, False, False)
     assert run["back-after-edit"] == _shown(5, True, True, False)
+
+
+def test_entering_edit_is_not_a_change(run: dict) -> None:
+    assert run["unsaved-after-entering-edit"] is False
+    assert run["unsaved-after-a-move"] is True
 
 
 def test_device_menu_stays_during_an_edit(run: dict) -> None:

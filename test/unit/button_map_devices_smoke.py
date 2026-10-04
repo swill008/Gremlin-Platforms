@@ -32,7 +32,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 import shiboken6  # noqa: E402
-from PySide6 import QtCore, QtTest  # noqa: E402
+from PySide6 import QtCore, QtQml, QtTest  # noqa: E402
 
 import dill  # noqa: E402
 from gremlin import event_handler  # noqa: E402
@@ -152,6 +152,9 @@ def main() -> None:
     call(win, "enterEdit")
     QtTest.QTest.qWait(800)
     editor = call(win, "_ed")
+    # The editor fills in what the file leaves out (a chip's name, its
+    # leader): that is not a change to save.
+    out["unsaved-after-entering-edit"] = call(win, "isDirty")
     fake.devices.append(other)
     device_change()
     out["same-editor-after-other-stick"] = same(call(win, "_ed"), editor)
@@ -174,6 +177,19 @@ def main() -> None:
     fake.devices.insert(0, stick)
     device_change()
     look("back-after-edit")
+
+    # A real change is still one.
+    call(win, "enterEdit")
+    QtTest.QTest.qWait(800)
+    move = QtQml.QQmlExpression(
+        QtQml.qmlContext(win),
+        win,
+        "(function() { var e = _ed(); e.nodes[0].chipFx += 0.05; e.bump()"
+        "; return isDirty() })()",
+    )
+    moved = move.evaluate()
+    out["unsaved-after-a-move"] = moved[0] if isinstance(moved, tuple) else moved
+    call(win, "discardEdit")
 
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)
