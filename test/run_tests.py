@@ -8,6 +8,8 @@
     python test/run_tests.py --failed        only what failed last time
     python test/run_tests.py --quick PATH... these tests, stop at the first failure
     python test/run_tests.py PATH...         these test files or folders
+    python test/run_tests.py --changed       the tests that touch what changed
+                                             since the last commit (while working)
 
 The folders run at the same time in separate pytest runs (test/unit can't
 share a process with the two that need the Gremlin app), and test/unit is
@@ -37,7 +39,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 FOLDERS = ["test/unit", "test/action_interaction", "test/integration"]
-UNIT_PARTS = 4
+# 8 cores: 6 unit parts and the two other folders. Measured full runs:
+# 4 parts 1:10, 5 parts 0:59, 6 parts 0:54 (then action_interaction is the
+# longest part).
+UNIT_PARTS = 6
 LIMIT_S = 600
 QUIET_S = 15  # say which test a part is in after this long without output
 
@@ -66,8 +71,8 @@ class Part:
     finished: bool = False
     took: float = 0.0
     failed: list[str] = field(default_factory=list)
-    file: str = ""
-    file_began: float = 0.0
+    # When the last test result came: the time since then is the next one's.
+    last_result: float = 0.0
     file_times: dict[str, float] = field(default_factory=dict)
 
 
@@ -181,7 +186,7 @@ def _start(part: Part, quick: bool, lines: queue.Queue) -> None:
         text=True, encoding="utf-8", errors="replace",
         env=dict(os.environ, PYTHONUNBUFFERED="1"),
     )
-    part.began = part.last_output = part.file_began = time.monotonic()
+    part.began = part.last_output = part.last_result = time.monotonic()
 
     def read() -> None:
         assert part.process is not None and part.process.stdout is not None
@@ -192,9 +197,12 @@ def _start(part: Part, quick: bool, lines: queue.Queue) -> None:
     threading.Thread(target=read, daemon=True).start()
 
 
-def _add_time(part: Part) -> None:
-    took = time.monotonic() - part.file_began
-    part.file_times[part.file] = part.file_times.get(part.file, 0.0) + took
+def _add_time(part: Part, test_file: str) -> None:
+    """A result came: the time since the last one (its setup included, a
+    module fixture's too) was this test's, so its file's."""
+    now = time.monotonic()
+    took, part.last_result = now - part.last_result, now
+    part.file_times[test_file] = part.file_times.get(test_file, 0.0) + took
 
 
 def _end(process: subprocess.Popen) -> None:
@@ -248,8 +256,6 @@ def run(parts: list[Part], quick: bool, log) -> tuple[list[tuple[float, str]], f
             part.process.wait()
             part.finished = True
             part.took = time.monotonic() - part.began
-            if part.file:
-                _add_time(part)
             say(part, f"=== {part.summary} ({part.took:.0f} s)")
             continue
         part.last_output = time.monotonic()
@@ -258,11 +264,7 @@ def run(parts: list[Part], quick: bool, log) -> tuple[list[tuple[float, str]], f
         if m := _RESULT.match(line):
             node, outcome = m.group(1), m.group(2)
             part.current = node
-            test_file = node.split("::")[0]
-            if test_file != part.file:
-                if part.file:
-                    _add_time(part)
-                part.file, part.file_began = test_file, time.monotonic()
+            _add_time(part, node.split("::")[0])
             if outcome in ("FAILED", "ERROR") and node not in part.failed:
                 part.failed.append(node)
         if m := _SUMMARY.search(line):
@@ -278,6 +280,8 @@ def main() -> int:
     parser.add_argument("targets", nargs="*", help="test files or folders")
     parser.add_argument("--failed", action="store_true",
                         help="only the tests that failed in the last run")
+    parser.add_argument("--changed", action="store_true",
+                        help="tests touching what changed since the last commit")
     parser.add_argument("--quick", action="store_true",
                         help="stop at the first failure")
     parser.add_argument("--parts", type=int, default=UNIT_PARTS,
@@ -288,6 +292,21 @@ def main() -> int:
         targets = list(_load("last-failed.json", []))
         if not targets:
             print("Nothing failed in the last run.")
+            return 0
+    elif args.changed:
+        sys.path.insert(0, str(_ROOT / "test"))
+        import changed_tests
+
+        changed = changed_tests.changed_files()
+        if not changed:
+            print("Nothing changed since the last commit.")
+            return 0
+        targets, reasons = changed_tests.choose(changed)
+        print(f"Changed: {len(changed)} files. Tests that touch them: {len(targets)}")
+        for reason in reasons:
+            print("  " + reason)
+        if not targets:
+            print("No test touches these changes.")
             return 0
     else:
         targets = args.targets or FOLDERS

@@ -39,9 +39,10 @@ The project is using poetry for dependency management. Thus all calls to python 
 ### Running Tests
 
 Run the tests with `test/run_tests.py`. It runs `test/action_interaction`,
-`test/integration` and `test/unit` (split into 4 parts, balanced by the last
-run's times) **at the same time**, so a full run takes about a minute
-instead of 4.5. The three folders can't share one pytest process (mixed runs
+`test/integration` and `test/unit` (split into 6 parts, balanced by the last
+run's times; a heavy file is split test by test) **at the same time**, so a
+full run takes under a minute instead of 4.5. Chosen unit files and
+`--failed` tests are spread over the parts the same way. The three folders can't share one pytest process (mixed runs
 are refused), so a plain `poetry run pytest` with no folder does not work.
 
 ```powershell
@@ -50,6 +51,10 @@ poetry run python test/run_tests.py
 
 # Only what failed in the last run (seconds)
 poetry run python test/run_tests.py --failed
+
+# Only the tests that touch what changed since the last commit (while
+# working; it prints which tests and why)
+poetry run python test/run_tests.py --changed
 
 # Only these files or folders, stopping at the first failure (while working)
 poetry run python test/run_tests.py --quick test/unit/test_profile.py
@@ -63,8 +68,16 @@ part's result and the 10 slowest tests. Watch it live from another window:
 Get-Content "$env:TEMP\gremlin-test-run.log" -Wait -Tail 20
 ```
 
-Rhythm: while changing code, run the affected test files (`--quick`); after
-a fix, `--failed`; before every commit, one full run, to the end.
+Rhythm: while changing code, `--changed` (or the affected files with
+`--quick`); after a fix, `--failed`; before every commit, one full run, to
+the end. `--changed` follows imports two steps out, QML and JavaScript files
+through the QML that uses them, and the helper scripts tests run
+(`test/changed_tests.py` says how); what it misses, the full run catches.
+
+Each file's time is kept for balancing the parts; a run of only some of a
+file's tests (`--failed`, `file::test`) doesn't change it. Unit tests get the
+program's settings object back after each test (`test/unit/conftest.py`), so
+a test may make a fresh `Configuration` without breaking later ones.
 
 Plain pytest still works for one folder or file:
 
