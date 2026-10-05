@@ -65,6 +65,14 @@ def model() -> Iterator[object]:
         leftover.unlink()
 
 
+def test_undo_that_stops_a_capture_says_so(model: object) -> None:
+    told: list[int] = []
+    model.captureStopped.connect(told.append)
+    model.calibrateExtrema(0, True)
+    model.undo()
+    assert told == [0]
+
+
 def _set(model: object, row: int, name: str, value: object) -> None:
     role = next(r for r, n in model.roles.items() if bytes(n).decode() == name)
     model.setData(model.index(row, 0), value, role)

@@ -208,14 +208,15 @@ ApplicationWindow {
                 objectName: "calibrationUndo"
                 text: "Undo"
                 focusPolicy: Qt.NoFocus
-                enabled: _calib.canUndo
+                // _calib is made with the list below, after these buttons.
+                enabled: _calib ? _calib.canUndo : false
                 onClicked: _calibrationDialog.undoEdit()
             }
             Button {
                 objectName: "calibrationRedo"
                 text: "Redo"
                 focusPolicy: Qt.NoFocus
-                enabled: _calib.canRedo
+                enabled: _calib ? _calib.canRedo : false
                 onClicked: _calibrationDialog.redoEdit()
             }
 
@@ -503,6 +504,16 @@ ApplicationWindow {
                             _axisView.model.calibrateCenter(index, false)
                         }
                         _axisView.model.calibrateExtrema(index, checked)
+                    }
+                }
+                // Undo or Redo stopped this axis's capture: the buttons follow.
+                Connections {
+                    target: _axisView.model
+                    function onCaptureStopped(axis) {
+                        if (axis !== index)
+                            return
+                        _btnCenterCalibration.checked = false
+                        _btnExtremaCalibration.checked = false
                     }
                 }
             }

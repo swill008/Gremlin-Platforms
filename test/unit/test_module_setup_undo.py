@@ -45,7 +45,8 @@ def model() -> object:
 
 
 def _marks(model: object) -> list[tuple[bool, str]]:
-    return model._marks()
+    # In row order (the model keeps its steps by control).
+    return [(bool(r["claimed"]), str(r.get("friendly") or "")) for r in model._rows]
 
 
 def test_undo_and_redo_checks_and_names(model: object) -> None:

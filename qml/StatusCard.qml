@@ -449,10 +449,13 @@ Rectangle {
             MenuModel.action("Hide Card", function() { _card.ignoreDevice() })
         ], [
             MenuModel.section("module", "Module", [
-                MenuModel.action("Module Setup…",
+                // The Xbox output claims nothing; the Keyboard and OSC have
+                // no axes to calibrate.
+                xbox ? null : MenuModel.action("Module Setup…",
                                  function() { _card.configureModule() }),
                 MenuModel.action("Auto Mapper", function() { _card.autoMap() }),
-                dest ? null : MenuModel.action("Calibration", function() { _card.openCalibration() })
+                (dest || slug === "keyboard" || slug === "osc") ? null
+                    : MenuModel.action("Calibration", function() { _card.openCalibration() })
             ]),
             MenuModel.section("view", "View", [
                 MenuModel.action(xbox ? "Xbox Viewer" : "vJoy Viewer", function() { _card.openPairing() }),

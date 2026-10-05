@@ -998,6 +998,8 @@ class DeviceAxisSeries(QtCore.QObject):
 class AxisCalibration(QtCore.QAbstractListModel):
     deviceChanged = QtCore.Signal()
     undoChanged = QtCore.Signal()
+    # Undo / Redo stopped the capture on this axis (its buttons go up).
+    captureStopped = QtCore.Signal(int)
 
     # Undo steps kept; changes to the same value of an axis this close
     # together (a spin box held down) are one step.
@@ -1181,8 +1183,14 @@ class AxisCalibration(QtCore.QAbstractListModel):
         if not (0 <= index < len(self._state)):
             return
         # A capture running on that axis stops: the values are put back.
+        capturing = (
+            self._active_calibrations[index]["center"]
+            or self._active_calibrations[index]["extrema"]
+        )
         self._active_calibrations[index]["center"] = False
         self._active_calibrations[index]["extrema"] = False
+        if capturing:
+            self.captureStopped.emit(index)
         for name, value in zip(self._LIMITS, limits, strict=True):
             self._state[index][name] = value
         self._state[index]["unsavedChanges"] = not self._matches_saved(index)

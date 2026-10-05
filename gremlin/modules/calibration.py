@@ -24,9 +24,17 @@ def _as_tuple(raw: object) -> tuple[int, int, int, int, bool] | None:
     if not isinstance(raw, (list, tuple)) or len(raw) < 5:
         return None
     try:
-        return (int(raw[0]), int(raw[1]), int(raw[2]), int(raw[3]), bool(raw[4]))
+        values = (int(raw[0]), int(raw[1]), int(raw[2]), int(raw[3]), bool(raw[4]))
     except (TypeError, ValueError):
         return None
+    # Low below high, and with a center the center inside them, or an axis
+    # can divide by zero (a file edited by hand): the default is used instead.
+    low, center_low, center_high, high, with_center = values
+    if low >= high:
+        return None
+    if with_center and not low <= center_low <= center_high <= high:
+        return None
+    return values
 
 
 def _load(path: Path) -> dict:
@@ -45,25 +53,19 @@ def _source_modules() -> list[dict]:
     physical = {guid_key(dev.device_guid): dev for dev in physical_devices()}
     modules = [m for m in registry.inputs() if m.slug not in _SKIP_SLUGS]
     found: dict[str, tuple[Any, bool]] = {}
-    used: set[str] = set()
-    for module in modules:
-        key = guid_key(module.bound_guid)
-        if key in physical:
-            found[module.slug] = (physical[key], False)
-            used.add(key)
+    by_guid = {guid_key(m.bound_guid): m for m in modules if m.bound_guid}
+    # Each stick's module as Module Setup finds it (registry.for_device),
+    # else one bound to the stick's id.
     for key, device in physical.items():
-        if key in used:
-            continue
         try:
             module = registry.for_device(device.name, str(device.device_guid))
         except Exception:
+            module = None
+        if module is None or module.is_output or module.slug in _SKIP_SLUGS:
+            module = by_guid.get(key)
+        if module is None or module.slug in found:
             continue
-        if (
-            module is not None and not module.is_output
-            and module.slug not in found and module.slug not in _SKIP_SLUGS
-        ):
-            found[module.slug] = (device, True)
-            used.add(key)
+        found[module.slug] = (device, guid_key(module.bound_guid) != key)
     rows = []
     for module in modules:
         if module.slug not in found:

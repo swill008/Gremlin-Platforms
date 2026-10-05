@@ -1238,6 +1238,19 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 return "Driven by: [" + (target if target else "nothing") + "]"
         return "Driven by: [nothing]"
 
+    @QtCore.Slot(str, result="QVariantMap")
+    def firstCardMap(self, direction: str) -> dict:
+        """The first card of that direction ("source" or "dest"), not the
+        Xbox output (it has no Module Setup); {} when there is none."""
+        for row in self._rows:
+            found = self._row_map(row)
+            if found.get("direction") != direction:
+                continue
+            if found.get("bus") == "XInput" or found.get("tab") == "xbox":
+                continue
+            return found
+        return {}
+
     @QtCore.Slot(result="QVariantMap")
     def focusedCardMap(self) -> dict:
         if self._focus:
@@ -1679,8 +1692,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
-        self._undo: list[list[tuple[bool, str]]] = []
-        self._redo: list[list[tuple[bool, str]]] = []
+        self._undo: list[dict[tuple, tuple[bool, str]]] = []
+        self._redo: list[dict[tuple, tuple[bool, str]]] = []
         self._guid = ""
         # Why Save is refused for the loaded device ("" when it isn't).
         self._not_connected = ""
@@ -1769,9 +1782,11 @@ class DriverInputModel(QtCore.QAbstractListModel):
         if self._is_osc():
             self._load_osc(claim)
             return
+        # The Xbox output (no Windows game controller behind it). A real Xbox
+        # pad that is unplugged has its own id and is refused below instead.
         if info is None and (
-            "xbox" in (device_name or "").lower()
-            or guid_key(guid) == guid_key(XBOX_GUID)
+            guid_key(guid) == guid_key(XBOX_GUID)
+            or (not guid and "xbox" in (device_name or "").lower())
         ):
             self._load_xbox_dest(claim)
             return
@@ -1867,6 +1882,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
 
     def _load_keyboard(self, claim: dict) -> None:
         saved = {int(k) for k in (claim.get("keys") or [])}
+        # Never saved: every key ticked (they all pass). Saved with none: none.
+        chosen = bool(saved) or bool(claim.get("keysChosen"))
         friendly = claim.get("friendly") or {}
         skip = {"noname", "eraseeof", "zoom"}
         seen: set[int] = set()
@@ -1882,7 +1899,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                     "kind": "key",
                     "hwId": hid,
                     "label": key.name,
-                    "claimed": True if not saved else hid in saved,
+                    "claimed": hid in saved if chosen else True,
                     "friendly": friendly.get(f"key:{hid}", ""),
                     "lit": False,
                 }
@@ -1942,6 +1959,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 found = i
                 break
         if found is None:
+            # A key that wasn't listed: added ticked, an Undo step like a press.
+            self._step()
             self.beginInsertRows(QtCore.QModelIndex(), len(self._rows), len(self._rows))
             self._rows.append(
                 {
@@ -2051,8 +2070,14 @@ class DriverInputModel(QtCore.QAbstractListModel):
 
     # --- Undo / Redo: the checks and names, as they were before each edit ---
 
-    def _marks(self) -> list[tuple[bool, str]]:
-        return [(bool(r["claimed"]), str(r.get("friendly") or "")) for r in self._rows]
+    def _marks(self) -> dict[tuple, tuple[bool, str]]:
+        # By control: a pressed key that wasn't listed adds a row.
+        return {
+            (r["kind"], int(r["hwId"])): (
+                bool(r["claimed"]), str(r.get("friendly") or "")
+            )
+            for r in self._rows
+        }
 
     def _step(self) -> None:
         """Before an edit: keep how it was, for Undo."""
@@ -2067,10 +2092,10 @@ class DriverInputModel(QtCore.QAbstractListModel):
             self._redo.clear()
             self.undoChanged.emit()
 
-    def _put_marks(self, marks: list[tuple[bool, str]]) -> None:
-        if len(marks) != len(self._rows):
-            return
-        for row, (claimed, friendly) in zip(self._rows, marks, strict=True):
+    def _put_marks(self, marks: dict[tuple, tuple[bool, str]]) -> None:
+        for row in self._rows:
+            # A row added since (a key pressed): it wasn't claimed then.
+            claimed, friendly = marks.get((row["kind"], int(row["hwId"])), (False, ""))
             row["claimed"] = claimed
             row["friendly"] = friendly
         if self._rows:
@@ -2165,7 +2190,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
             _plog("save claim refused", name=device_name, reason=self._not_connected)
             return False
         name = device_name or self._device_name
-        slug = _slug(name)
+        # The file Module Setup opened (the device's bound file), not one
+        # named after the device: a device whose name changed kept its file.
+        slug = resolve_module_slug(name, self._guid)
         path = _maps_dir() / f"{slug}.json"
         try:
             doc = module_file.load_for_update(path)
@@ -2184,7 +2211,10 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 friendly[f"{r['kind']}:{int(r['hwId'])}"] = str(r["friendly"])
         doc["kind"] = "control.hardware"
         doc["device"] = name
-        doc["direction"] = "dest" if is_output_name(name) else (direction or "source")
+        if is_output_name(name):
+            doc["direction"] = "dest"
+        elif doc.get("direction") not in ("source", "dest"):
+            doc["direction"] = direction or "source"
         if self._guid:
             doc["boundName"] = name
             # GUID stays local-only; stored for this machine bind, not exported.
@@ -2196,6 +2226,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
             "keys": keys,
             "friendly": friendly,
         }
+        if self._is_keyboard() and not keys:
+            doc["claim"]["keysChosen"] = True
         doc.setdefault("space", "world")
         doc.setdefault("pageW", 32000)
         doc.setdefault("pageH", 18000)

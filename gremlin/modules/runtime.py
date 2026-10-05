@@ -79,6 +79,7 @@ class InputModuleRuntime(QtCore.QObject):
             if not guid:
                 continue
             if not module.is_output:
+                # A connected stick is looked up again below.
                 claims[guid] = module.claim
             elif registry.vjoy_id_from_name(module.name) in as_input:
                 # a vJoy read back as an input: its events pass unfiltered
@@ -101,7 +102,9 @@ class InputModuleRuntime(QtCore.QObject):
             return
         for dev in devices:
             guid = guid_key(getattr(dev, "device_guid", ""))
-            if not guid or guid in claims or guid in dest or guid in passthrough:
+            # A connected stick uses the module Module Setup finds for it (its
+            # bound file first), even when another file also names it.
+            if not guid or guid in dest or guid in passthrough:
                 continue
             name = str(getattr(dev, "name", "") or "")
             if not name:

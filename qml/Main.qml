@@ -387,6 +387,16 @@ ApplicationWindow {
     function openConfigureModule(direction, card) {
         if (!card || !card.slug)
             card = _moduleModel.focusedCardMap()
+        // Tools > Output (Input) Module Setup on a card of the other kind
+        // opens the first device of the asked kind: an input stick's
+        // module must not be saved as an output module.
+        if (direction && card && card.slug && (card.direction || "source") !== direction)
+            card = _moduleModel.firstCardMap(direction)
+        // The Xbox output has no Module Setup (it claims nothing).
+        if (card && (card.bus === "XInput" || card.tab === "xbox"))
+            return
+        if (direction && (!card || !card.slug))
+            return
         var want = direction
         if (!want && card && card.direction === "dest")
             want = "dest"

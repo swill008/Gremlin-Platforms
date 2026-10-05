@@ -70,6 +70,8 @@ def read_claim(doc: dict | None) -> dict:
         "hats": sorted(set(_ints(raw.get("hats")))),
         "keys": _ints(raw.get("keys")),
         "friendly": dict(raw.get("friendly") or {}),
+        # A Keyboard module saved with no keys ticked (none pass).
+        **({"keysChosen": True} if raw.get("keysChosen") else {}),
     }
 
 
@@ -144,11 +146,12 @@ def claim_allows_key(claim: dict | None, identifier: object) -> bool:
 
     A Keyboard module with no saved keys passes every key: that is what its
     Configure dialog shows (all keys ticked) until the user saves a choice.
+    Saved with every key unticked (keysChosen), it passes none.
     Older files stored the bare scan code; that still counts.
     """
     keys = set(claim_ids(claim, "key"))
     if not keys:
-        return True
+        return not (claim or {}).get("keysChosen")
     ident = key_id_of(identifier)
     if ident is None:
         return False
