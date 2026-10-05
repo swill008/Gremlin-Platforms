@@ -851,6 +851,7 @@ def describe_zip(path: Path) -> dict | str:
         "photoUrl": photo_url,
         "direction": _doc_direction(doc, exported),
         "sections": [row for row in sections if row.get("items")],
+        "drivers": _pack_drivers(loaded),
         "notes": {
             "author": str(label.get("author") or ""),
             "note": str(label.get("note") or ""),
@@ -1297,6 +1298,70 @@ def _missing_logical(action_xml: list[str]) -> list[tuple[str, int]]:
     return missing
 
 
+def _needs(action_xml: list[str]) -> tuple[set[int], bool]:
+    """The vJoy devices these actions send to, and whether one sends to Xbox."""
+    vjoys: set[int] = set()
+    xbox = False
+    for block in action_xml:
+        node = ElementTree.fromstring(block)
+        kind = node.get("type")
+        if kind == "map-to-xbox":
+            xbox = True
+        elif kind == "map-to-vjoy":
+            for prop in node.findall("property"):
+                if prop.findtext("name") == "vjoy-device-id":
+                    try:
+                        vjoys.add(int(str(prop.findtext("value") or "").strip()))
+                    except ValueError:
+                        pass
+    return vjoys, xbox
+
+
+def driver_notes(vjoys: set[int], xbox: bool) -> list[str]:
+    """What is missing for these outputs to work: the vJoy driver, a vJoy
+    device it doesn't have, the Xbox driver (ViGEmBus)."""
+    from gremlin.modules import output
+
+    notes: list[str] = []
+    if vjoys:
+        if not output.vjoy_driver_found():
+            notes.append(
+                "The vJoy driver isn't installed or isn't running, so wires to vJoy "
+                "won't do anything. Install vJoy, then restart Gremlin-Platforms."
+            )
+        else:
+            absent = [n for n in sorted(vjoys) if not output.vjoy_exists(n)]
+            if absent:
+                names = ", ".join(f"vJoy {n}" for n in absent)
+                verb = "isn't" if len(absent) == 1 else "aren't"
+                notes.append(
+                    f"{names} {verb} set up in the vJoy driver, so wires to it "
+                    "won't do anything. Add it in Configure vJoy."
+                )
+    if xbox and not output.xbox_available():
+        notes.append(
+            "The Xbox driver (ViGEmBus) isn't installed or isn't running, so wires "
+            "to Xbox won't do anything. Install ViGEmBus 1.22, then restart "
+            "Gremlin-Platforms."
+        )
+    return notes
+
+
+def _pack_drivers(loaded: dict, moves: dict[int, int] | None = None) -> list[str]:
+    """The drivers the whole pack needs (its wires and output modules)."""
+    actions = [str(block) for block in (loaded["wires"].get("actions") or [])]
+    vjoys, xbox = _needs(_retarget_vjoy(actions, moves or {}))
+    for output in loaded["outputs"]:
+        label = output.get("pack") if isinstance(output.get("pack"), dict) else {}
+        name = str(label.get("exportedName") or output.get("device") or "")
+        number = _vjoy_number(name)
+        if number:
+            vjoys.add((moves or {}).get(number, number))
+        elif "xbox" in name.lower():
+            xbox = True
+    return driver_notes(vjoys, xbox)
+
+
 def _plan_wires(
     wires: dict, chosen: set[str], limits: dict[str, set[int]] | None
 ) -> dict:
@@ -1674,8 +1739,21 @@ def preview_import(path: Path, target_name: str, selection: dict | None) -> dict
                 if label not in left_out:
                     left_out.append(label)
     targets = selection.get("outputs") if isinstance(selection, dict) else {}
-    moves = _vjoy_moves(loaded["outputs"], targets if isinstance(targets, dict) else {})
+    targets = targets if isinstance(targets, dict) else {}
+    moves = _vjoy_moves(loaded["outputs"], targets)
+    vjoys, xbox = _needs(_retarget_vjoy(plan["actions"], moves))
+    for output in loaded["outputs"]:
+        label = output.get("pack") if isinstance(output.get("pack"), dict) else {}
+        slug = str(label.get("slug") or _slug(str(output.get("device") or "")))
+        if not any(item.startswith(f"out:{slug}.") for item in chosen):
+            continue
+        name = str(targets.get(slug) or label.get("exportedName") or "")
+        if _vjoy_number(name):
+            vjoys.add(_vjoy_number(name))
+        elif "xbox" in name.lower():
+            xbox = True
     return {
+        "drivers": driver_notes(vjoys, xbox),
         "ok": True,
         "device": target,
         "pieces": _titles(path, chosen),

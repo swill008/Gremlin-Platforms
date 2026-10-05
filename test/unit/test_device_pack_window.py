@@ -95,3 +95,9 @@ def test_replace_then_undo(run: dict) -> None:
     assert run["default-undone"] == [1, 3, 5]
     assert run["status-undone"].startswith("Undid the import.")
     assert run["undo-hidden"] is True
+
+
+def test_a_missing_driver_is_told_before_import(run: dict) -> None:
+    assert run["drivers-shown"] is True
+    assert run["drivers"].startswith("The vJoy driver isn't installed or isn't running")
+    assert "The vJoy driver isn't installed or isn't running" in run["warning"]

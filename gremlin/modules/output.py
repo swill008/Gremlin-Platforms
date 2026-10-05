@@ -363,6 +363,18 @@ def vjoy_state(
     return state
 
 
+def vjoy_driver_found() -> bool:
+    """True when the vJoy driver is installed and running."""
+    try:
+        from vjoy.vjoy_interface import VJoyInterface
+
+        # The interface's functions are made when its DLL loads.
+        enabled = getattr(VJoyInterface, "vJoyEnabled", None)
+        return bool(enabled and enabled())
+    except Exception:
+        return False
+
+
 def vjoy_exists(vjoy_id: int) -> bool:
     """True when the vJoy driver has this device enabled."""
     try:

@@ -351,3 +351,64 @@ def test_adding_actions_keeps_the_ones_already_there() -> None:
         assert before < set(profile.library._actions)
     finally:
         shared_state.current_profile = None
+
+
+def _drivers(
+    monkeypatch: pytest.MonkeyPatch, vjoy: bool, devices: set[int], xbox: bool
+) -> None:
+    from gremlin.modules import output
+
+    monkeypatch.setattr(output, "vjoy_driver_found", lambda: vjoy)
+    monkeypatch.setattr(output, "vjoy_exists", lambda number: number in devices)
+    monkeypatch.setattr(output, "xbox_available", lambda: xbox)
+
+
+def test_opening_a_pack_says_the_vjoy_driver_is_missing(
+    pack: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _drivers(monkeypatch, vjoy=False, devices=set(), xbox=True)
+    drivers = device_pack.describe_zip(pack["zip"])["drivers"]
+    assert drivers == [
+        "The vJoy driver isn't installed or isn't running, so wires to vJoy "
+        "won't do anything. Install vJoy, then restart Gremlin-Platforms."
+    ]
+
+
+def test_the_warning_names_a_vjoy_device_that_is_not_set_up(
+    pack: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _drivers(monkeypatch, vjoy=True, devices={1}, xbox=True)
+    # Put on vJoy 1 (set up): nothing to say.
+    selection = {"items": ["wire:Default"], "outputs": {"vjoy_2": "vJoy 1"}}
+    assert (
+        device_pack.preview_import(pack["zip"], pack["name"], selection)["drivers"]
+        == []
+    )
+    # Left on vJoy 2 (not set up): said.
+    selection["outputs"] = {"vjoy_2": "vJoy 2"}
+    drivers = device_pack.preview_import(pack["zip"], pack["name"], selection)[
+        "drivers"
+    ]
+    assert drivers == [
+        "vJoy 2 isn't set up in the vJoy driver, so wires to it won't do anything. "
+        "Add it in Configure vJoy."
+    ]
+
+
+def test_the_xbox_driver_is_checked_when_wires_send_to_xbox(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _drivers(monkeypatch, vjoy=True, devices={1}, xbox=False)
+    xbox = '<action id="a" type="map-to-xbox"></action>'
+    vjoy = (
+        '<action id="b" type="map-to-vjoy"><property type="int">'
+        "<name>vjoy-device-id</name><value>1</value></property></action>"
+    )
+    assert device_pack._needs([xbox, vjoy]) == ({1}, True)
+    notes = device_pack.driver_notes({1}, True)
+    assert notes == [
+        "The Xbox driver (ViGEmBus) isn't installed or isn't running, so wires to "
+        "Xbox won't do anything. Install ViGEmBus 1.22, then restart "
+        "Gremlin-Platforms."
+    ]
+    assert device_pack.driver_notes(set(), False) == []

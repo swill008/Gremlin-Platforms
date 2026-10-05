@@ -185,12 +185,19 @@ add_map(profile, uid, 3, "Default", 1, 3)
 
 # --- Import -------------------------------------------------------------------
 url = QtCore.QUrl.fromLocalFile(zip_path).toString()
+# The vJoy driver missing: the import screen and the warning say so.
+from gremlin.modules import output  # noqa: E402
+
+output.vjoy_driver_found = lambda: False
 pv("_pages.currentIndex = 1")
 pv(f'zipUrl = "{url}"')
 pv("loadPack(JSON.parse(_hw.peekPackZip(zipUrl)))")
 pv(f'_saveAs.text = "{name}"')
 QtTest.QTest.qWait(200)
 out["notes"] = child(pack_win, "packNotes").property("text")
+drivers = child(pack_win, "packDrivers")
+out["drivers-shown"] = bool(drivers and drivers.isVisible())
+out["drivers"] = drivers.property("text") if drivers else ""
 out["sections"] = json.loads(
     pv("JSON.stringify(sections.map(function(s){return s.title}))")
 )

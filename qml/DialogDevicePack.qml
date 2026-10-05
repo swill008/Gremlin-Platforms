@@ -58,6 +58,8 @@ ApplicationWindow {
     property string exportFolder: ""
     // Import: the pack's notes, and whether Undo Import is offered.
     property var packNotes: ({})
+    // Drivers the pack needs that aren't found (vJoy, a vJoy device, Xbox).
+    property var packDrivers: []
     property bool canUndo: false
     // What the warning before Import showed (preview from the program).
     property var preview: ({})
@@ -143,6 +145,7 @@ ApplicationWindow {
         importName = info.exportedName || ""
         importPhoto = info.photoUrl || ""
         packNotes = info.notes || {}
+        packDrivers = info.drivers || []
         var rows = info.sections || []
         var next = {}
         var names = {}
@@ -304,6 +307,9 @@ ApplicationWindow {
         if (p.missingLogical && p.missingLogical.length)
             lines.push("Some wires send to Logical Device inputs that don't exist here: "
                        + p.missingLogical.join(", ") + ".")
+        var drivers = p.drivers || []
+        for (var d = 0; d < drivers.length; ++d)
+            lines.push(drivers[d])
         var missing = missingPictures()
         if (missing.length)
             lines.push("The map uses a picture that is not ticked (" + missing.join(", ")
@@ -692,6 +698,15 @@ ApplicationWindow {
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                             color: Style.fg
+                        }
+                        // A driver the pack needs isn't found: say so at once.
+                        Label {
+                            objectName: "packDrivers"
+                            visible: _win.packDrivers.length > 0
+                            text: _win.packDrivers.join("\n")
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                            color: Style.warn
                         }
                     }
                 }
