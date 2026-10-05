@@ -528,6 +528,40 @@ def xbox_error() -> str:
     return vigem_client_error()
 
 
+_VIGEM_INSTALL = (
+    "Install ViGEmBus 1.22 from the Nefarius releases page, then restart "
+    "Gremlin-Platforms. This program does not download or bundle that installer."
+)
+
+
+def xbox_driver_problem() -> tuple[str, str]:
+    """What is wrong with the Xbox driver, and what to do; ("", "") when it
+    works. Every check of the Xbox driver uses this wording."""
+    if xbox_available():
+        return "", ""
+    error = xbox_error()
+    if error:
+        return error, _VIGEM_INSTALL
+    if xbox_driver_installed():
+        return (
+            "ViGEmBus is installed but not running",
+            "Restart Windows, or reinstall ViGEmBus 1.22, then restart "
+            "Gremlin-Platforms.",
+        )
+    return "ViGEmBus is not installed", _VIGEM_INSTALL
+
+
+def vjoy_driver_problem() -> tuple[str, str]:
+    """What is wrong with the vJoy driver, and what to do; ("", "") when it
+    works. Every check of the vJoy driver uses this wording."""
+    if vjoy_driver_found():
+        return "", ""
+    return (
+        "vJoy is not installed or not running",
+        "Install vJoy, then restart Gremlin-Platforms.",
+    )
+
+
 # --- lifecycle --------------------------------------------------------------
 
 

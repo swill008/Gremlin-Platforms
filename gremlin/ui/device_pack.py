@@ -1319,16 +1319,15 @@ def _needs(action_xml: list[str]) -> tuple[set[int], bool]:
 
 def driver_notes(vjoys: set[int], xbox: bool) -> list[str]:
     """What is missing for these outputs to work: the vJoy driver, a vJoy
-    device it doesn't have, the Xbox driver (ViGEmBus)."""
+    device it doesn't have, the Xbox driver (ViGEmBus). The driver wording is
+    the output module's, as on the Xbox Viewer."""
     from gremlin.modules import output
 
     notes: list[str] = []
     if vjoys:
-        if not output.vjoy_driver_found():
-            notes.append(
-                "The vJoy driver isn't installed or isn't running, so wires to vJoy "
-                "won't do anything. Install vJoy, then restart Gremlin-Platforms."
-            )
+        problem, hint = output.vjoy_driver_problem()
+        if problem:
+            notes.append(f"{problem}: wires to vJoy won't do anything. {hint}")
         else:
             absent = [n for n in sorted(vjoys) if not output.vjoy_exists(n)]
             if absent:
@@ -1338,12 +1337,9 @@ def driver_notes(vjoys: set[int], xbox: bool) -> list[str]:
                     f"{names} {verb} set up in the vJoy driver, so wires to it "
                     "won't do anything. Add it in Configure vJoy."
                 )
-    if xbox and not output.xbox_available():
-        notes.append(
-            "The Xbox driver (ViGEmBus) isn't installed or isn't running, so wires "
-            "to Xbox won't do anything. Install ViGEmBus 1.22, then restart "
-            "Gremlin-Platforms."
-        )
+    problem, hint = output.xbox_driver_problem() if xbox else ("", "")
+    if problem:
+        notes.append(f"{problem}: wires to Xbox won't do anything. {hint}")
     return notes
 
 

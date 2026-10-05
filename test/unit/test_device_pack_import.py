@@ -361,6 +361,8 @@ def _drivers(
     monkeypatch.setattr(output, "vjoy_driver_found", lambda: vjoy)
     monkeypatch.setattr(output, "vjoy_exists", lambda number: number in devices)
     monkeypatch.setattr(output, "xbox_available", lambda: xbox)
+    monkeypatch.setattr(output, "xbox_driver_installed", lambda: False)
+    monkeypatch.setattr(output, "xbox_error", lambda: "")
 
 
 def test_opening_a_pack_says_the_vjoy_driver_is_missing(
@@ -369,8 +371,8 @@ def test_opening_a_pack_says_the_vjoy_driver_is_missing(
     _drivers(monkeypatch, vjoy=False, devices=set(), xbox=True)
     drivers = device_pack.describe_zip(pack["zip"])["drivers"]
     assert drivers == [
-        "The vJoy driver isn't installed or isn't running, so wires to vJoy "
-        "won't do anything. Install vJoy, then restart Gremlin-Platforms."
+        "vJoy is not installed or not running: wires to vJoy won't do anything. "
+        "Install vJoy, then restart Gremlin-Platforms."
     ]
 
 
@@ -407,8 +409,22 @@ def test_the_xbox_driver_is_checked_when_wires_send_to_xbox(
     assert device_pack._needs([xbox, vjoy]) == ({1}, True)
     notes = device_pack.driver_notes({1}, True)
     assert notes == [
-        "The Xbox driver (ViGEmBus) isn't installed or isn't running, so wires to "
-        "Xbox won't do anything. Install ViGEmBus 1.22, then restart "
-        "Gremlin-Platforms."
+        "ViGEmBus is not installed: wires to Xbox won't do anything. Install "
+        "ViGEmBus 1.22 from the Nefarius releases page, then restart "
+        "Gremlin-Platforms. This program does not download or bundle that "
+        "installer."
     ]
     assert device_pack.driver_notes(set(), False) == []
+
+
+def test_the_pack_and_the_xbox_viewer_say_the_same(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One wording (the output module's) for every check of a driver."""
+    from gremlin.ui.xbox_device_model import XboxDriverStatus
+
+    _drivers(monkeypatch, vjoy=True, devices={1}, xbox=False)
+    viewer = XboxDriverStatus()
+    note = device_pack.driver_notes(set(), True)[0]
+    assert note.startswith(str(viewer.statusText) + ":")
+    assert note.endswith(str(viewer.hint))

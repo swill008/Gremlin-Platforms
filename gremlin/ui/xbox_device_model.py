@@ -77,15 +77,16 @@ class XboxDriverStatus(QtCore.QObject):
         self._installed = False
         self._ready = False
         self._version = ""
-        self._error = ""
+        self._problem = ("", "")
         self.reload()
 
     @QtCore.Slot()
     def reload(self) -> None:
         self._installed = output.xbox_driver_installed()
-        self._ready = output.xbox_available()
         self._version = output.xbox_driver_version() if self._installed else ""
-        self._error = "" if self._ready else output.xbox_error()
+        # The output module's wording, the same everywhere the driver is checked.
+        self._problem = output.xbox_driver_problem()
+        self._ready = not self._problem[0]
         self.changed.emit()
 
     def _get_installed(self) -> bool:
@@ -98,23 +99,10 @@ class XboxDriverStatus(QtCore.QObject):
         return self._version
 
     def _get_status(self) -> str:
-        if self._ready:
-            return "ViGEmBus driver found"
-        if self._error:
-            return self._error
-        if self._installed:
-            return "ViGEmBus is installed but not running"
-        return "ViGEmBus is not installed"
+        return "ViGEmBus driver found" if self._ready else self._problem[0]
 
     def _get_hint(self) -> str:
-        if self._ready:
-            return ""
-        if self._installed and not self._error:
-            return "Restart Windows, or reinstall ViGEmBus 1.22, then restart Gremlin-Platforms."
-        return (
-            "Install ViGEmBus 1.22 from the Nefarius releases page, then restart "
-            "Gremlin-Platforms. This program does not download or bundle that installer."
-        )
+        return self._problem[1]
 
     @QtCore.Slot()
     def openDownload(self) -> None:
