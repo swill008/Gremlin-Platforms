@@ -278,7 +278,8 @@ def apply_bound_targets(rows: list) -> None:
         else:
             digits = "".join(ch for ch in name if ch.isdigit())
             names = dest_bound.get(f"vjoy:{int(digits)}", []) if digits else []
-        row.target = ", ".join(names)
+        # Spaces kept in a module file's name ("EVO OT L  ") don't show.
+        row.target = ", ".join(" ".join(str(n).split()) for n in names)
 
 
 def _order_slugs() -> list[str]:

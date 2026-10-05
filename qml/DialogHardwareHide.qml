@@ -421,7 +421,7 @@ ApplicationWindow {
                     spacing: Style.dp(6)
 
                     Label {
-                        text: "Programs that have been added to the Mask"
+                        text: "Programs"
                         color: Style.fg
                         font.pixelSize: Style.dp(16)
                         font.bold: true

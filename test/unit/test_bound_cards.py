@@ -68,3 +68,23 @@ def test_bound_line_format_in_qml_and_model() -> None:
     assert "Driven by: [nothing]" in main
     assert "def boundLine" in model
     assert "refreshDestBound" in main
+
+
+def test_driven_by_drops_spaces_from_a_module_files_name(
+    monkeypatch: "pytest.MonkeyPatch",  # noqa: F821
+) -> None:
+    from types import SimpleNamespace
+
+    from gremlin.ui import module_model
+
+    monkeypatch.setattr(module_model, "_profile_wire_maps", lambda: [])
+    monkeypatch.setattr(
+        module_model,
+        "collect_bound_names",
+        lambda *_a: ({}, {"vjoy:1": ["  VKBsim Gladiator EVO OT L  "]}),
+    )
+    card = SimpleNamespace(
+        direction="dest", name="vJoy 1", tab="", guid="", target=""
+    )
+    module_model.apply_bound_targets([card])
+    assert card.target == "VKBsim Gladiator EVO OT L"
