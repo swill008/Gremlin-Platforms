@@ -969,6 +969,7 @@ ApplicationWindow {
                 ThemedMenuItem { command: "tools.manageModes" }
             }
             ThemedMenuSeparator {}
+            ThemedMenuItem { command: "tools.history" }
             ThemedMenuItem { command: "tools.options" }
         }
 

@@ -55,6 +55,15 @@ def _blocks(text: str, opener: re.Pattern) -> list[str]:
     return out
 
 
+def test_every_main_command_is_in_the_menu_bar() -> None:
+    # Tools > History was only in the command palette (1.0.23 to 1.0.24).
+    commands = (_ROOT / "qml" / "main_commands.js").read_text(encoding="utf-8")
+    main = (_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+    ids = re.findall(r'\{ id: "([^"]+)", text:', commands)
+    in_menus = set(re.findall(r'command: "([^"]+)"', main))
+    assert ids and [i for i in ids if i not in in_menus] == []
+
+
 def test_dropdown_rows_use_the_menu_look() -> None:
     # A ComboBox with its own rows draws them with the shared row look.
     opener = re.compile(r"(?<![\w.])\w*ComboBox\s*\{")
