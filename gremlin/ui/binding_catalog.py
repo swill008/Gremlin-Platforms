@@ -346,6 +346,10 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     filtersChanged = QtCore.Signal()
     paneModelChanged = QtCore.Signal()
     parkEmptyChanged = QtCore.Signal()
+    undoChanged = QtCore.Signal()
+
+    # Undo steps kept: each OK or Delete, with the input before and after.
+    UNDO_STEPS = 50
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -355,7 +359,13 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._rows: list[dict] = []
         self._dest_choices: list[str] = ["All devices"]
         self._park_empty = False
+        self._undo: list[dict] = []
+        self._redo: list[dict] = []
         signal.profileChanged.connect(self.reload)
+        # Another profile (or one changed under the page): no steps.
+        signal.profileChanged.connect(self._forget_steps)
+        # Undo waits while an action is open in the pane.
+        self.paneModelChanged.connect(self.undoChanged)
         self._claimed.countChanged.connect(self.reload)
         self._pane_model = None
         self._pane_shadow: InputItem | None = None
@@ -370,6 +380,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
 
     def _set_guid(self, guid: str) -> None:
         self._claimed.guid = guid
+        self._forget_steps()
         self.guidChanged.emit()
 
     def _get_device_name(self) -> str:
@@ -903,14 +914,83 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             sequences = getattr(item, "action_sequences", None) or []
             if seq >= len(sequences):
                 return False
+            before = self._snapshot(want)
             binding = sequences[seq]
             item.remove_item_binding(binding)
             if binding.root_action is not None:
                 profile.drop_unused_actions([binding.root_action])
+            self._step(want, before)
             signal.inputItemChanged.emit(want)
             signal.reloadCurrentInputItem.emit()
             return True
         return False
+
+    # --- Undo / Redo: an input as it was before and after each OK or Delete
+
+    def _snapshot(self, device_index: int) -> dict | None:
+        spec = self._control_spec(device_index)
+        if spec is None:
+            return None
+        profile, _guid, _kind, _hw, _mode, item = spec
+        return profile.input_snapshot(item)
+
+    def _step(self, device_index: int, before: dict | None) -> None:
+        spec = self._control_spec(device_index)
+        if spec is None:
+            return
+        profile, guid, kind, hw, mode, item = spec
+        after = profile.input_snapshot(item)
+        if before == after:
+            return
+        self._undo.append({
+            "hid": device_index, "key": (guid, kind, hw, mode),
+            "before": before, "after": after,
+        })
+        del self._undo[: -self.UNDO_STEPS]
+        self._redo.clear()
+        self.undoChanged.emit()
+
+    @QtCore.Slot()
+    def _forget_steps(self) -> None:
+        if self._undo or self._redo:
+            self._undo.clear()
+            self._redo.clear()
+            self.undoChanged.emit()
+
+    def _play(self, step: dict, side: str) -> None:
+        profile = shared_state.current_profile
+        if profile is None:
+            return
+        guid, kind, hw, mode = step["key"]
+        profile.put_input(guid, kind, hw, mode, step[side])
+        signal.inputItemChanged.emit(step["hid"])
+        signal.reloadCurrentInputItem.emit()
+        self.reload()
+        self.undoChanged.emit()
+
+    @QtCore.Slot()
+    def undo(self) -> None:
+        # Not while an action is open in the pane: it is edited there.
+        if self._undo and self._pane_shadow is None:
+            step = self._undo.pop()
+            self._redo.append(step)
+            self._play(step, "before")
+
+    @QtCore.Slot()
+    def redo(self) -> None:
+        if self._redo and self._pane_shadow is None:
+            step = self._redo.pop()
+            self._undo.append(step)
+            self._play(step, "after")
+
+    def _can_undo(self) -> bool:
+        return bool(self._undo) and self._pane_shadow is None
+
+    def _can_redo(self) -> bool:
+        return bool(self._redo) and self._pane_shadow is None
+
+    canUndo = QtCore.Property(bool, fget=_can_undo, notify=undoChanged)
+    canRedo = QtCore.Property(bool, fget=_can_redo, notify=undoChanged)
 
     def _control_spec(self, device_index: int):
         want = int(device_index)
@@ -1028,6 +1108,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         shadow = self._pane_shadow
         if shadow is None or not shadow.action_sequences or not self.paneDirty():
             return self._pane_seq
+        before = self._snapshot(self._pane_hid)
         real = self._pane_real
         if real is None:
             spec = self._control_spec(self._pane_hid)
@@ -1049,6 +1130,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             self._pane_seq = index
             self._pane_whole = False
             self._retarget_draft(real, index)
+        self._step(self._pane_hid, before)
         signal.inputItemChanged.emit(self._pane_hid)
         return index
 

@@ -101,6 +101,7 @@ function topics() {
             + "<ul>"
             + "<li><b>Add Action</b> on an input opens the action editor beside it. Build the action and press <b>OK</b>. <b>Close pane after OK</b> closes the editor when OK succeeds.</li>"
             + "<li><b>Delete</b> removes an action. Leaving an input with unsaved editor changes asks first.</li>"
+            + "<li><b>Undo</b> and <b>Redo</b> (beside Output, or Ctrl+Z and Ctrl+Y) step back through what OK and Delete changed, until you open another device or profile. They wait while an action is open in the editor.</li>"
             + "<li>Actions belong to the mode shown in <b>Mode</b> on the toolbar.</li>"
             + "<li><b>Move inputs with no actions to the end</b> lists them together under a <b>No actions</b> heading.</li>"
             + "<li>OK keeps the action in the profile; File → <b>Save Profile</b> writes it to disk.</li>"

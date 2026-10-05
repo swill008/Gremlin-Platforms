@@ -40,7 +40,7 @@ tracker) so the details stay in one place.
 
 ## Program-wide history (planned 2026-10-05)
 
-- [x] **G-HISTORY – History across the whole program.** (built 2026-10-05: 4597e486, 20155486, 780f16b8; Undo where it's missing is still to do) A shared history
+- [x] **G-HISTORY – History across the whole program.** (built 2026-10-05: 4597e486, 20155486, 780f16b8; Undo added where it was missing: Module Setup, Calibration, Configuration page) A shared history
   in its own files (per area: input modules, output modules, action
   editor, Button Map) that the program reads and writes, so earlier
   versions can be seen and restored, also after a restart. To be fleshed

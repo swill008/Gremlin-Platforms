@@ -47,6 +47,17 @@ Item {
     signal closePanel()
     signal advancedRequested(int hid)
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
+    // A focused text field keeps these keys.
+    Shortcut {
+        enabled: _root.visible && !_root.isOutput && !_root.editorLocked && _catalog.canUndo
+        sequences: [StandardKey.Undo]
+        onActivated: _catalog.undo()
+    }
+    Shortcut {
+        enabled: _root.visible && !_root.isOutput && !_root.editorLocked && _catalog.canRedo
+        sequences: [StandardKey.Redo, "Ctrl+Shift+Z"]
+        onActivated: _catalog.redo()
+    }
     readonly property bool runtimeActive: !!(backend && backend.gremlinActive)
 
     property int listPadding: 8
@@ -1262,6 +1273,24 @@ Item {
                     Layout.fillWidth: true
                     text: "No output module claimed"
                     color: colorMuted
+                }
+                // Undo and Redo for what OK and Delete changed on this page
+                // (not while an action is open in the pane).
+                Button {
+                    objectName: "catalogUndo"
+                    visible: !isOutput
+                    text: "Undo"
+                    focusPolicy: Qt.NoFocus
+                    enabled: _catalog.canUndo && !editorLocked
+                    onClicked: _catalog.undo()
+                }
+                Button {
+                    objectName: "catalogRedo"
+                    visible: !isOutput
+                    text: "Redo"
+                    focusPolicy: Qt.NoFocus
+                    enabled: _catalog.canRedo && !editorLocked
+                    onClicked: _catalog.redo()
                 }
             }
 

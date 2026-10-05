@@ -204,9 +204,7 @@ def _changed_everywhere() -> None:
 
 
 def _restore_input(entry: dict, side: dict | None) -> tuple[bool, str]:
-    from gremlin.profile import InputItem
     from gremlin.types import InputType
-    from gremlin.ui.device_pack import _remap_actions
     from gremlin.ui.input_pairing import _guid
 
     profile = shared_state.current_profile
@@ -221,28 +219,7 @@ def _restore_input(entry: dict, side: dict | None) -> tuple[bool, str]:
     kind = InputType.to_enum(str(subject.get("inputType")))
     number = int(str(subject.get("inputId")))
     mode = str(subject.get("mode") or "Default")
-    current = [
-        item
-        for item in profile.inputs.get(uid, [])
-        if item.input_type == kind and item.input_id == number and item.mode == mode
-    ]
-    profile.drop_inputs(uid, current)
-    if side:
-        actions, inputs = _remap_actions(
-            list(side.get("actions") or []), [side["input"]], profile.library
-        )
-        if actions:
-            root = ElementTree.Element("profile")
-            library = ElementTree.SubElement(root, "library")
-            for block in actions:
-                library.append(ElementTree.fromstring(block))
-            profile.library.from_xml(root)
-        item = InputItem(profile.library)
-        item.from_xml(ElementTree.fromstring(inputs[0]))
-        item.device_id = uid
-        for seq in item.action_sequences:
-            seq.input_item = item
-        profile.inputs.setdefault(uid, []).append(item)
+    profile.put_input(uid, kind, number, mode, side)
     _changed_everywhere()
     return True, "Put back into the open profile. Save the profile to keep it."
 

@@ -1115,31 +1115,6 @@ def _selected(selection: dict | None) -> set[str]:
     return {str(item) for item in (selection.get("items") or [])}
 
 
-def _remap_actions(action_xml: list[str], input_xml: list[str], library) -> tuple[list[str], list[str]]:
-    ids: set[str] = set()
-    for block in action_xml:
-        for found in _UUID_RE.findall(block):
-            ids.add(found)
-    mapping: dict[str, str] = {}
-    for found in ids:
-        try:
-            key = uuid.UUID(found)
-        except ValueError:
-            continue
-        if library.has_action(key):
-            mapping[found.lower()] = str(uuid.uuid4())
-    if not mapping:
-        return action_xml, input_xml
-
-    def swap(text: str) -> str:
-        out = text
-        for old, new in mapping.items():
-            out = re.sub(old, new, out, flags=re.IGNORECASE)
-        return out
-
-    return [swap(block) for block in action_xml], [swap(block) for block in input_xml]
-
-
 def _write_pictures(
     slug: str,
     files: dict[str, bytes],
@@ -1467,7 +1442,7 @@ def _apply_wires(
         return ["The wires were not written. This name has no device id."], None
     try:
         from gremlin.logical_device import LogicalDevice
-        from gremlin.profile import DeviceInfo, InputItem
+        from gremlin.profile import DeviceInfo
         from gremlin.shared_state import current_profile
         from gremlin.types import InputType
         from gremlin.ui.input_pairing import _guid
@@ -1481,10 +1456,7 @@ def _apply_wires(
         return ["The wires were not written. This name has no device id."], None
     notes: list[str] = []
     try:
-        action_xml, input_xml = _remap_actions(
-            plan["actions"], plan["inputs"], profile.library
-        )
-        action_xml = _retarget_vjoy(action_xml, moves)
+        action_xml = _retarget_vjoy(plan["actions"], moves)
         created_logical = []
         missing = plan["missingLogical"]
         if missing and create_logical:
@@ -1512,23 +1484,7 @@ def _apply_wires(
             (removed if replaced else kept).append(item)
         if uid in profile.inputs:
             profile.inputs[uid] = kept
-        if action_xml:
-            library_node = ElementTree.Element("library")
-            for block in action_xml:
-                library_node.append(ElementTree.fromstring(block))
-            root = ElementTree.Element("profile")
-            root.append(library_node)
-            profile.library.from_xml(root)
-        added = []
-        for block in input_xml:
-            item = InputItem(profile.library)
-            item.from_xml(ElementTree.fromstring(block))
-            item.device_id = uid
-            item.mode = str(item.mode or "Default")
-            for seq in item.action_sequences:
-                seq.input_item = item
-            profile.inputs.setdefault(uid, []).append(item)
-            added.append(item)
+        added = profile.add_inputs(uid, plan["inputs"], action_xml)
         if uid not in profile.device_database.devices:
             profile.device_database.devices[uid] = DeviceInfo(uid, target_name)
     except Exception as exc:

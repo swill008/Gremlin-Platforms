@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import re
 import uuid
 from abc import (
     ABCMeta,
@@ -300,6 +301,36 @@ class Settings:
         if vid not in self.vjoy_initial_values:
             self.vjoy_initial_values[vid] = {}
         self.vjoy_initial_values[vid][aid] = value
+
+
+_ACTION_ID = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+
+
+def remap_action_ids(
+    action_xml: list[str], input_xml: list[str], library: Library
+) -> tuple[list[str], list[str]]:
+    """Gives the actions in this XML new ids where the library already has
+    those ids (the same actions added twice must not clash)."""
+    mapping: dict[str, str] = {}
+    for block in action_xml:
+        for found in _ACTION_ID.findall(block):
+            try:
+                key = uuid.UUID(found)
+            except ValueError:
+                continue
+            if library.has_action(key):
+                mapping[found.lower()] = str(uuid.uuid4())
+    if not mapping:
+        return action_xml, input_xml
+
+    def swap(text: str) -> str:
+        for old, new in mapping.items():
+            text = re.sub(old, new, text, flags=re.IGNORECASE)
+        return text
+
+    return [swap(block) for block in action_xml], [swap(block) for block in input_xml]
 
 
 class Library:
@@ -845,6 +876,72 @@ class Profile:
             for binding in item.action_sequences
             if binding.root_action is not None
         ]
+
+    def add_inputs(
+        self, device_id: uuid.UUID, input_xml: list[str], action_xml: list[str]
+    ) -> list[InputItem]:
+        """Adds inputs, and the actions they use, given as XML (a Device
+        Pack, a History entry, an Undo step)."""
+        action_xml, input_xml = remap_action_ids(action_xml, input_xml, self.library)
+        if action_xml:
+            root = ElementTree.Element("profile")
+            library = ElementTree.SubElement(root, "library")
+            for block in action_xml:
+                library.append(ElementTree.fromstring(block))
+            self.library.from_xml(root)
+        added = []
+        for block in input_xml:
+            item = InputItem(self.library)
+            item.from_xml(ElementTree.fromstring(block))
+            item.device_id = device_id
+            item.mode = str(item.mode or "Default")
+            for binding in item.action_sequences:
+                binding.input_item = item
+            self.inputs.setdefault(device_id, []).append(item)
+            added.append(item)
+        return added
+
+    def input_snapshot(self, item: InputItem | None) -> dict | None:
+        """An input and its actions as XML ({"input", "actions"}); None
+        when it has no actions. put_input() puts it back."""
+        if item is None or not item.action_sequences:
+            return None
+        seen: dict[uuid.UUID, AbstractActionData] = {}
+        pending = list(self.roots_of([item]))
+        while pending:
+            action = pending.pop()
+            if action.id in seen:
+                continue
+            seen[action.id] = action
+            pending.extend(action.get_actions()[0])
+        return {
+            "input": ElementTree.tostring(item.to_xml(), encoding="unicode"),
+            "actions": [
+                ElementTree.tostring(node, encoding="unicode")
+                for node in (action.to_xml() for action in seen.values())
+                if node is not None
+            ],
+        }
+
+    def put_input(
+        self,
+        device_id: uuid.UUID,
+        input_type: InputType,
+        input_id: int | tuple,
+        mode: str,
+        snapshot: dict | None,
+    ) -> None:
+        """Replaces an input's actions with a snapshot (None: no actions)."""
+        current = [
+            item
+            for item in self.inputs.get(device_id, [])
+            if item.input_type == input_type
+            and item.input_id == input_id
+            and item.mode == mode
+        ]
+        self.drop_inputs(device_id, current)
+        if snapshot:
+            self.add_inputs(device_id, [snapshot["input"]], list(snapshot["actions"]))
 
     def drop_inputs(self, device_id: uuid.UUID, doomed: Iterable[InputItem]) -> None:
         """Removes these inputs of a device and the actions only they used."""
