@@ -1247,6 +1247,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         shadow.action_sequences.clear()
         self._show_saved(real, only)
         self._rebuild()
+        signal.actionsChanged.emit()
         return index
 
     def _show_saved(self, real: InputItem, only_index: int | None = None) -> None:

@@ -36,6 +36,11 @@ class Signal(QtCore.QObject):
 
     logicalDeviceModified = QtCore.Signal()
 
+    # An input's actions changed where inputItemChanged isn't sent (the
+    # Logical Device's action editor): summaries of the profile's actions,
+    # such as a card's Driven by, check again.
+    actionsChanged = QtCore.Signal()
+
     oscDeviceModified = QtCore.Signal()
 
     configChanged = QtCore.Signal()

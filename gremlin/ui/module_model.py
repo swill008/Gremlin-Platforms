@@ -563,6 +563,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
     hiddenChanged = QtCore.Signal()
     panesChanged = QtCore.Signal()
     claimsChanged = QtCore.Signal()
+    # A card's "Driven by" changed (an action added, removed or retargeted).
+    targetsChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -581,6 +583,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._refresh_timer.setSingleShot(True)
         self._refresh_timer.setInterval(50)
         self._refresh_timer.timeout.connect(self._refresh_inplace)
+        # "Driven by" follows action edits; a burst of edits is one check.
+        self._targets_timer = QtCore.QTimer(self)
+        self._targets_timer.setSingleShot(True)
+        self._targets_timer.setInterval(200)
+        self._targets_timer.timeout.connect(self._refresh_targets)
         self._dest_snap: dict[str, dict] = {}
         # vJoy id and claim per output card, read once per reload.
         self._dest_targets: dict[str, tuple[int, dict]] = {}
@@ -599,6 +606,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._dest_timer.start()
         signal.profileChanged.connect(self._schedule_reload)
         signal.configChanged.connect(self._schedule_refresh)
+        signal.inputItemChanged.connect(lambda _index: self._targets_timer.start())
+        signal.logicalDeviceModified.connect(self._targets_timer.start)
+        signal.actionsChanged.connect(self._targets_timer.start)
         # Options > Reset all card sizes changes the saved sizes elsewhere;
         # re-read them here so Home cards follow at once.
         self._sizes_snap = _sizes()
@@ -1200,8 +1210,27 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 return self._row_map(row)
         return {}
 
+    @QtCore.Slot()
+    def _refresh_targets(self) -> None:
+        """Works out every card's "Driven by" again from the profile's actions
+        and updates the cards whose list changed."""
+        before = [row.target for row in self._rows]
+        apply_bound_targets(self._rows)
+        role = QtCore.Qt.ItemDataRole.UserRole + 15
+        changed = False
+        for idx, row in enumerate(self._rows):
+            if row.target != before[idx]:
+                changed = True
+                at = self.index(idx, 0)
+                self.dataChanged.emit(at, at, [role])
+        if changed:
+            self.targetsChanged.emit()
+
     @QtCore.Slot(str, result=str)
     def boundLine(self, device_name: str) -> str:
+        # Fresh, not as of the last check: the header asks when a page opens.
+        self._targets_timer.stop()
+        self._refresh_targets()
         name = str(device_name or "")
         for row in self._rows:
             if str(getattr(row, "name", "") or "") == name:

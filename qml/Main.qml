@@ -1386,6 +1386,7 @@ ApplicationWindow {
         Connections {
             target: _moduleModel
             function onClaimsChanged() { refreshDestBound() }
+            function onTargetsChanged() { refreshDestBound() }
             function onPanesChanged() { _root.refreshSourceModuleCount() }
             function onModelReset() { _root.refreshSourceModuleCount() }
         }
@@ -1513,6 +1514,7 @@ ApplicationWindow {
                     }
                     Label {
                         id: _destBound
+                        objectName: "destBound"
                         visible: configDirection === "dest"
                         text: "Driven by: [nothing]"
                         color: Style.fgMuted

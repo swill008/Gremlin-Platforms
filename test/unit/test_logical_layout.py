@@ -316,7 +316,20 @@ def test_new_action_is_appended_on_ok_and_undoable(qapp) -> None:
         # The new action edits one blank sequence, not the existing one.
         assert len(model._pane_shadow.action_sequences) == 1
         model._pane_shadow.add_item_binding()
-        index = model.commitPane()
+        # OK tells the cards' Driven by to check again.
+        from gremlin.signal import signal
+
+        told = []
+
+        def tell() -> None:
+            told.append(1)
+
+        signal.actionsChanged.connect(tell)
+        try:
+            index = model.commitPane()
+        finally:
+            signal.actionsChanged.disconnect(tell)
+        assert told == [1]
         assert index == 1
         assert len(real().action_sequences) == 2
         assert real().action_sequences[0] is existing
