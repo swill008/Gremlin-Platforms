@@ -115,6 +115,10 @@ class InputModuleRuntime(QtCore.QObject):
                 continue
             if module is None:
                 continue
+            # Found only by its name while a file is bound to this exact
+            # stick: the bound file stays (twin sticks share a name).
+            if guid in claims and guid_key(module.bound_guid) != guid:
+                continue
             if module.is_output:
                 dest.add(guid)
                 continue

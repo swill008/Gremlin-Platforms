@@ -354,6 +354,11 @@ ApplicationWindow {
     function loadLive() {
         if (_hw.setDeviceGuid)
             _hw.setDeviceGuid(targetGuid)
+        // A photo kept by an editing session that never finished (the
+        // program closed mid-edit): the photo change was never saved, so the
+        // saved photo goes back before the map is read.
+        if (!editing && targetName.length && _hw.restorePhoto(targetName))
+            _photoStamp = Date.now()
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
         if (!doc || !doc.nodes) {
@@ -376,9 +381,8 @@ ApplicationWindow {
     function enterEdit() {
         if (editing)
             return
-        // A photo kept by an editing session that never finished (a crash)
-        // is stale; this session keeps its own on its first photo change.
-        _hw.dropPhotoStash(targetName)
+        // (A photo left by a session that never finished was put back by
+        // loadLive; this session keeps its own on its first photo change.)
         try {
             loadLive()
         } catch (e) {
@@ -463,6 +467,9 @@ ApplicationWindow {
         liveNodes = JSON.parse(JSON.stringify(nodes))
         liveImage = image
         livePhoto = photoBag()
+        // Saved: later changes are compared with what was just saved.
+        editBase = JSON.stringify(nodes)
+        _baseWanted = false
         clearRecovery()
         // Saved: the photo this session started with is no longer needed.
         _hw.dropPhotoStash(targetName)
@@ -672,6 +679,9 @@ ApplicationWindow {
             finishSwitch(pendingDevice)
         } else if (leaveKind === "blank") {
             clearToBlank()
+        } else if (leaveKind === "cancel") {
+            // Saved: leave Edit (the saved map is what shows).
+            discardEdit()
         } else if (leaveKind === "appquit") {
             _allowClose = true
             close()
@@ -1568,6 +1578,10 @@ ApplicationWindow {
     }
 
     function persistUi() {
+        // No device: nothing to keep them in (they used to go to a built-in
+        // default device's file).
+        if (!targetName.length)
+            return
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
         if (!doc) {

@@ -54,15 +54,20 @@ def _source_modules() -> list[dict]:
     modules = [m for m in registry.inputs() if m.slug not in _SKIP_SLUGS]
     found: dict[str, tuple[Any, bool]] = {}
     by_guid = {guid_key(m.bound_guid): m for m in modules if m.bound_guid}
-    # Each stick's module as Module Setup finds it (registry.for_device),
-    # else one bound to the stick's id.
+    # Each stick's module as Module Setup finds it (registry.for_device). A
+    # file bound to this exact stick wins over one found only by its name
+    # (twin sticks share a name).
     for key, device in physical.items():
         try:
             module = registry.for_device(device.name, str(device.device_guid))
         except Exception:
             module = None
-        if module is None or module.is_output or module.slug in _SKIP_SLUGS:
-            module = by_guid.get(key)
+        bound = by_guid.get(key)
+        if (
+            module is None or module.is_output or module.slug in _SKIP_SLUGS
+            or (bound is not None and guid_key(module.bound_guid) != key)
+        ):
+            module = bound
         if module is None or module.slug in found:
             continue
         found[module.slug] = (device, guid_key(module.bound_guid) != key)

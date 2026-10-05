@@ -320,6 +320,21 @@ def main() -> None:
         saved = json.loads(Path(where).read_text(encoding="utf-8"))
         texts = [n.get("text") for n in saved.get("nodes", []) if n.get("id") == "t1"]
         print(f"RESULT save-while-typing {texts}", flush=True)
+        # Saved: nothing is unsaved any more (AU-07).
+        clean = js("String(_buttonMap.isDirty())")
+        print(f"RESULT clean-after-save {clean}", flush=True)
+        # Cancel with changes, then Save: saved and out of Edit (AU-26).
+        js("var e = _ed(); e.nodes.push({id: 't2', kind: 'draw', shape: 'rect',"
+           " fx: 0.6, fy: 0.6, fw: 0.1, fh: 0.1}); e.bump(); 1")
+        QtTest.QTest.qWait(300)
+        js("_buttonMap.cancelEdit(); 1")
+        QtTest.QTest.qWait(200)
+        js("_buttonMap.confirmLeaveSave(); 1")
+        QtTest.QTest.qWait(300)
+        saved = json.loads(Path(where).read_text(encoding="utf-8"))
+        has = any(n.get("id") == "t2" for n in saved.get("nodes", []))
+        editing = js("String(_buttonMap.editing)")
+        print(f"RESULT cancel-save {editing} {has}", flush=True)
         # The colour picker takes a typed hex (#RGB too), and follows the
         # theme (BM17, E5).
         typed = js("_colorPop.openField('color', '#112233', null);"
