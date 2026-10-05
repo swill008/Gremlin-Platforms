@@ -2318,16 +2318,11 @@ class HardwareProfile(QtCore.QObject):
             return False
         if existing:
             if isinstance(existing, dict):
-                for key in (
-                    "claim",
-                    "direction",
-                    "boundGuidLocal",
-                    "boundName",
-                    "view",
-                    "catalog",
-                ):
-                    if key in existing and key not in payload:
-                        payload[key] = existing[key]
+                # The Button Map writes its own keys; everything else in the
+                # file (claims, names, calibration, Appearance...) stays.
+                for key, value in existing.items():
+                    if key not in payload:
+                        payload[key] = value
         if is_output_name(name):
             payload["direction"] = "dest"
         module_file.write_json(path, payload)
@@ -2549,14 +2544,19 @@ class HardwareProfile(QtCore.QObject):
                 shutil.copy2(stash / entry["kept"], dest)
             doc_path = _maps_dir() / f"{slug}.json"
             if doc_path.is_file():
-                loaded = json.loads(doc_path.read_text(encoding="utf-8"))
-                if isinstance(loaded, dict):
+                # As copyImage: a damaged file is left alone (and said), and
+                # the write replaces the file whole.
+                try:
+                    loaded = module_file.load_for_update(doc_path)
+                except module_file.ModuleFileDamaged as damaged:
+                    module_file.report_refused(damaged)
+                    loaded = None
+                if loaded is not None:
                     if kept.get("image") is None:
                         loaded.pop("image", None)
                     else:
                         loaded["image"] = kept["image"]
-                    text = json.dumps(loaded, indent=2) + "\n"
-                    doc_path.write_text(text, encoding="utf-8")
+                    module_file.write_json(doc_path, loaded)
         except (OSError, json.JSONDecodeError, KeyError):
             persist_log(f"Persist photo restore failed slug={slug!r}")
             return False
