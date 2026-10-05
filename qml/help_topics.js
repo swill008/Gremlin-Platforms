@@ -221,7 +221,7 @@ function topics() {
             + "</ul>"),
         topic("Tools", "Calibration",
             "<p>Sets the center and the ends of each axis so its full travel is used. It is stored in the device's input module and applied before any action sees the axis.</p>"
-            + "<p>Tools → Device Setup → <b>Calibration</b>, or a card's menu. Choose the input module. For each axis, move the stick and use <b>Calibrate Center</b> and <b>Calibrate Extrema</b>, or type the values. An axis shows <b>Not saved</b> until you press its save button. Leaving with unsaved axes asks first.</p>"),
+            + "<p>Tools → Device Setup → <b>Calibration</b>, or a card's menu. Choose the input module. For each axis, move the stick and use <b>Calibrate Center</b> and <b>Calibrate Extrema</b>, or type the values. <b>Undo</b> and <b>Redo</b> (Ctrl+Z, Ctrl+Y) step back through each axis's changes (a value typed, Reset, a calibration started) until you choose another module. An axis shows <b>Not saved</b> until you press its save button. Leaving with unsaved axes asks first.</p>"),
         topic("Tools", "Device Information",
             "<p>Tools → Device Setup → <b>Device Information</b> lists every device Windows reports: Name, Axes, Buttons, Hats, VID, PID, Joystick ID, and Device GUID. Use it to tell identical devices apart.</p>"),
         topic("Tools", "History",

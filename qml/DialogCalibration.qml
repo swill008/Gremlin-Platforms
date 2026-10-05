@@ -34,6 +34,20 @@ ApplicationWindow {
     // Whether any axis has unsaved changes (for Save all).
     property bool anyUnsaved: false
     function refreshUnsaved() { anyUnsaved = _calib.hasUnsaved() }
+
+    function undoEdit() {
+        _calib.undo()
+        refreshUnsaved()
+    }
+
+    function redoEdit() {
+        _calib.redo()
+        refreshUnsaved()
+    }
+
+    // A value being typed keeps its own Ctrl+Z.
+    Shortcut { sequences: [StandardKey.Undo]; onActivated: _calibrationDialog.undoEdit() }
+    Shortcut { sequences: [StandardKey.Redo, "Ctrl+Y"]; onActivated: _calibrationDialog.redoEdit() }
     Connections {
         target: _calib
         function onDataChanged() { _calibrationDialog.refreshUnsaved() }
@@ -188,6 +202,22 @@ ApplicationWindow {
             }
 
             Item { Layout.fillWidth: true }
+
+            // Undo and Redo for the axes' changes (until the device changes).
+            Button {
+                objectName: "calibrationUndo"
+                text: "Undo"
+                focusPolicy: Qt.NoFocus
+                enabled: _calib.canUndo
+                onClicked: _calibrationDialog.undoEdit()
+            }
+            Button {
+                objectName: "calibrationRedo"
+                text: "Redo"
+                focusPolicy: Qt.NoFocus
+                enabled: _calib.canRedo
+                onClicked: _calibrationDialog.redoEdit()
+            }
 
             // Every axis with unsaved changes at once (each axis also has its own).
             Button {

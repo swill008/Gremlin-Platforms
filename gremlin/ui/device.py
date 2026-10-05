@@ -997,6 +997,13 @@ class DeviceAxisSeries(QtCore.QObject):
 @ta.QmlElement
 class AxisCalibration(QtCore.QAbstractListModel):
     deviceChanged = QtCore.Signal()
+    undoChanged = QtCore.Signal()
+
+    # Undo steps kept; changes to the same value of an axis this close
+    # together (a spin box held down) are one step.
+    UNDO_STEPS = 100
+    _MERGE_SECONDS = 1.0
+    _LIMITS = ("low", "centerLow", "centerHigh", "high", "withCenter")
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"identifier"),
@@ -1012,7 +1019,10 @@ class AxisCalibration(QtCore.QAbstractListModel):
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
-
+        # (axis, its limits before the change) per step.
+        self._undo: list[tuple[int, tuple]] = []
+        self._redo: list[tuple[int, tuple]] = []
+        self._last_step: tuple[int, str, float] | None = None
         self._event_listener = event_handler.EventListener()
         self._event_listener.joystick_event.connect(self._event_callback)
         self._event_listener.device_change_event.connect(self._device_list_changed)
@@ -1070,7 +1080,10 @@ class AxisCalibration(QtCore.QAbstractListModel):
 
         # Update internal representation
         state = self._state[index.row()]
-        match cast(str, self.roles.get(role, "")):
+        name = cast(str, self.roles.get(role, ""))
+        if name in self._LIMITS and state.get(name) != value:
+            self._step(index.row(), name)
+        match name:
             case "identifier":
                 state["identifier"] = value
             case "calibratedValue":
@@ -1122,6 +1135,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
         """
         if not (0 <= index < len(self._state)):
             return
+        self._step(index)
 
         # Reset values to defaults
         self._state[index]["low"] = -32768
@@ -1139,8 +1153,71 @@ class AxisCalibration(QtCore.QAbstractListModel):
         self._update_calibration(index)
         self.emit_update(index)
 
+    # --- Undo / Redo: an axis's limits as they were before each change ------
+
+    def _limits(self, index: int) -> tuple:
+        return tuple(self._state[index][name] for name in self._LIMITS)
+
+    def _step(self, index: int, value: str = "") -> None:
+        now = time.monotonic()
+        last = self._last_step
+        self._last_step = (index, value, now)
+        same = bool(value and last and last[:2] == (index, value))
+        if same and last is not None and now - last[2] < self._MERGE_SECONDS:
+            return
+        self._undo.append((index, self._limits(index)))
+        del self._undo[: -self.UNDO_STEPS]
+        self._redo.clear()
+        self.undoChanged.emit()
+
+    def _forget_steps(self) -> None:
+        self._last_step = None
+        if self._undo or self._redo:
+            self._undo.clear()
+            self._redo.clear()
+            self.undoChanged.emit()
+
+    def _put_limits(self, index: int, limits: tuple) -> None:
+        if not (0 <= index < len(self._state)):
+            return
+        # A capture running on that axis stops: the values are put back.
+        self._active_calibrations[index]["center"] = False
+        self._active_calibrations[index]["extrema"] = False
+        for name, value in zip(self._LIMITS, limits, strict=True):
+            self._state[index][name] = value
+        self._state[index]["unsavedChanges"] = not self._matches_saved(index)
+        self._update_calibration(index)
+        self.emit_update(index)
+        self._last_step = None
+        self.undoChanged.emit()
+
+    @QtCore.Slot()
+    def undo(self) -> None:
+        if self._undo:
+            index, limits = self._undo.pop()
+            self._redo.append((index, self._limits(index)))
+            self._put_limits(index, limits)
+
+    @QtCore.Slot()
+    def redo(self) -> None:
+        if self._redo:
+            index, limits = self._redo.pop()
+            self._undo.append((index, self._limits(index)))
+            self._put_limits(index, limits)
+
+    def _can_undo(self) -> bool:
+        return bool(self._undo)
+
+    def _can_redo(self) -> bool:
+        return bool(self._redo)
+
+    canUndo = QtCore.Property(bool, fget=_can_undo, notify=undoChanged)
+    canRedo = QtCore.Property(bool, fget=_can_redo, notify=undoChanged)
+
     @QtCore.Slot(int, bool)
     def calibrateCenter(self, index: int, is_active: bool) -> None:
+        if is_active:
+            self._step(index)
         self._active_calibrations[index]["center"] = is_active
         self._active_calibrations[index]["extrema"] = False
         self._active_calibrations[index]["cvalues"] = None
@@ -1151,6 +1228,8 @@ class AxisCalibration(QtCore.QAbstractListModel):
 
     @QtCore.Slot(int, bool)
     def calibrateExtrema(self, index: int, is_active: bool) -> None:
+        if is_active:
+            self._step(index)
         self._active_calibrations[index]["extrema"] = is_active
         self._active_calibrations[index]["center"] = False
         self._active_calibrations[index]["evalues"] = None
@@ -1318,6 +1397,8 @@ class AxisCalibration(QtCore.QAbstractListModel):
         return
 
     def _initialize_state(self) -> None:
+        # Another device, or the saved values again: no steps to go back to.
+        self._forget_steps()
         if self._device_uuid is None or self._device is None:
             return
 
