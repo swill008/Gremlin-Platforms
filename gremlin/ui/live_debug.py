@@ -213,6 +213,12 @@ def _choice_key(name: str) -> tuple[str, str, str]:
     return ("global", "internal", key)
 
 
+def register_options() -> None:
+    """At start, before unused settings are purged: the choices kept."""
+    for name in _CHOICES:
+        _choice_key(name)
+
+
 def _load_choice(name: str, default: str) -> str:
     from gremlin.config import Configuration
 

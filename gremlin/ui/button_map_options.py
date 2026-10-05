@@ -154,6 +154,7 @@ def register() -> None:
         SECTION, "internal", "styles", PropertyType.List, [],
         "Saved Button Map styles: [{name, kind, fields}].", {},
     )
+    _register_pane_group(cfg)
 
 
 # --- saved styles ----------------------------------------------------------------

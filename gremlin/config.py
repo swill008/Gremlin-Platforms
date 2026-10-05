@@ -166,7 +166,9 @@ class Configuration(metaclass=common.SingletonMetaclass):
     # Settings the user chooses (Options, HidHide, OSC, folders) go in the
     # history; window places, sizes and other things the program remembers
     # for itself don't.
-    _HIDHIDE_PLACES = {"window-width", "window-height", "split-ratio"}
+    # (module-links: which module's picture each hidden device shows, worked
+    # out by the HidHide window itself.)
+    _HIDHIDE_PLACES = {"window-width", "window-height", "split-ratio", "module-links"}
 
     def _settings_view(self) -> dict[str, str]:
         view = {}

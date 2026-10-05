@@ -104,6 +104,7 @@ import gremlin.osc
 import gremlin.ui.osc_device_model  # noqa: F401
 import gremlin.ui.device_names  # noqa: F401
 import gremlin.ui.hidhide  # noqa: F401
+import gremlin.ui.live_debug  # noqa: F401
 import gremlin.ui.vjoy_status
 import gremlin.ui.window_placement
 import gremlin.ui.module_model  # noqa: F401
@@ -129,10 +130,11 @@ def configure_logger(config: dict[str, Any]) -> None:
     logger.setLevel(config["level"])
     if config["mode"] == "rotate":
         handler = logging.handlers.RotatingFileHandler(
-            config["logfile"], maxBytes=1 * 1024 * 1024, backupCount=1
+            config["logfile"], maxBytes=1 * 1024 * 1024, backupCount=1,
+            encoding="utf-8",
         )
     elif config["mode"] == "session":
-        handler = logging.FileHandler(config["logfile"], mode="w")
+        handler = logging.FileHandler(config["logfile"], mode="w", encoding="utf-8")
     else:
         raise gremlin.error.GremlinError(f"Invalid logging mode: {config['mode']}")
     handler.setLevel(config["level"])
@@ -766,6 +768,7 @@ def register_config_options() -> None:
     gremlin.ui.window_placement._ensure()
     gremlin.ui.vjoy_status.register_options()
     gremlin.ui.button_map_options.register()
+    gremlin.ui.live_debug.register_options()
 
 
 def configure_loggers() -> None:
@@ -1042,7 +1045,11 @@ def main() -> int:
     # Writes still waiting (settings, the activity log): os._exit below skips
     # atexit, and a restart must start from saved settings.
     gremlin.deferred_write.flush_all()
-    gremlin.history.flush()
+    # History: what the settings write recorded is written now,
+    # and no writer is left mid-line when the program ends.
+    gremlin.history.close()
+    # The activity lines History just added.
+    gremlin.deferred_write.flush_all()
     if lock is not None:
         try:
             lock.unlock()

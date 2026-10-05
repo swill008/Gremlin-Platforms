@@ -5,15 +5,17 @@
 
 One file per area in the history folder (profile.jsonl, modules.jsonl,
 button-map.jsonl, settings.jsonl): one JSON line per entry, only ever
-appended, so two copies of the program running at once can't break it.
+appended. Only one copy of the program runs at a time (its lock file), so
+only this one writes them. A damaged line (a crash mid-write) is skipped.
 Pictures an entry needs are kept once each in history/files, named by
 their content. An entry holds what changed before and after, so it can be
 looked at and put back (Restore).
 
 record() only queues the entry. A writer thread (gremlin.threads) appends
-what is queued and ends by itself when nothing more comes; flush() writes
-what is left (at quit). Entries older than the Options limit, or past a
-file's size limit, go when the first entry of a session is written.
+what is queued and ends by itself when nothing more comes. close() (at
+quit) writes what is left and anything recorded after it at once. Entries
+older than the Options limit, or past a file's size limit, go when the
+first entry of a session is written.
 """
 
 from __future__ import annotations
@@ -51,6 +53,8 @@ _start_lock = threading.Lock()
 _writer: threading.Thread | None = None
 _stop = threading.Event()
 _pruned = False
+# At quit (close()): entries are written at once, no writer is started.
+_closing = False
 
 syslog = logging.getLogger("system")
 
@@ -92,6 +96,9 @@ def record(
     happened, as the History window shows it. subject: what it was about
     (profile, device, input, mode, file...). before/after: the content."""
     entry = _make(area, title, subject, before, after, kind)
+    if _closing:
+        _handle(entry)
+        return entry["id"]
     _queue.put(entry)
     _wake_writer()
     return entry["id"]
@@ -134,6 +141,9 @@ def write_now(
 def later(work: Callable[[], None]) -> None:
     """Runs work on the writer thread (comparing a save, keeping pictures),
     so the save itself stays quick. It writes with write_now()."""
+    if _closing:
+        _handle(work)
+        return
     _queue.put(work)
     _wake_writer()
 
@@ -174,6 +184,21 @@ def flush() -> None:
         _handle(entry)
 
 
+def close(timeout: float = 2.0) -> None:
+    """At quit: writes what is queued, here, and anything recorded from now
+    on at once; waits (bounded) for a writer still writing, so the program
+    doesn't end in the middle of a line."""
+    global _closing
+    _closing = True
+    flush()
+    with _start_lock:
+        writer = _writer
+    if writer is not None and writer is not threading.current_thread():
+        _stop.set()
+        writer.join(timeout)
+    flush()
+
+
 def _handle(item: dict | Callable[[], None]) -> None:
     if callable(item):
         try:
@@ -196,8 +221,10 @@ def _append(entry: dict) -> None:
     with _write_lock:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            # One write per entry: a second copy of the program appending at
-            # the same time can't split a line.
+            # A line cut short by a crash: this entry starts on a line of its
+            # own, or it would be lost with it.
+            if _ends_cut(path):
+                line = "\n" + line
             with open(path, "a", encoding="utf-8", newline="") as out:
                 out.write(line)
         except OSError as exc:
@@ -207,10 +234,29 @@ def _append(entry: dict) -> None:
     trace("SAVE", "History", "record", path, "ok")
 
 
+def _ends_cut(path: Path) -> bool:
+    """True when the file doesn't end with a line end (a crash mid-write)."""
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, 2)
+            if f.tell() == 0:
+                return False
+            f.seek(-1, 2)
+            return f.read(1) != b"\n"
+    except OSError:
+        return False
+
+
+def _text(path: Path) -> str:
+    """The file's text; a character cut by a crash doesn't stop the rest
+    being read (that line is skipped as damaged)."""
+    return path.read_bytes().decode("utf-8", errors="replace")
+
+
 def _lines(area: str) -> list[dict]:
     path = _file(area)
     try:
-        text = path.read_text(encoding="utf-8")
+        text = _text(path)
     except OSError:
         return []
     entries = []
@@ -306,10 +352,16 @@ def prune() -> None:
             kept = [e for e in _lines(area) if float(e.get("at") or 0) >= oldest]
             _trim_snapshots(kept)
             lines = [json.dumps(e, ensure_ascii=False) + "\n" for e in kept]
-            while lines and sum(len(line.encode("utf-8")) for line in lines) > limit:
-                lines.pop(0)
+            # The oldest go first until the file fits (sizes added once: the
+            # old way re-added every line for each one dropped).
+            total = sum(len(line.encode("utf-8")) for line in lines)
+            first = 0
+            while first < len(lines) and total > limit:
+                total -= len(lines[first].encode("utf-8"))
+                first += 1
+            lines = lines[first:]
             text = "".join(lines)
-            if text != path.read_text(encoding="utf-8"):
+            if text != _text(path):
                 module_file.write_text(path, text, newline="")
             for line in lines:
                 needed.update(_file_refs(json.loads(line)))

@@ -13,6 +13,7 @@ sys.path.append(".")
 
 import types
 from collections.abc import Callable, Iterator
+from pathlib import Path
 
 import pytest
 
@@ -74,9 +75,11 @@ def _fake(unsaved: bool) -> types.SimpleNamespace:
 
 
 def test_auto_load_waits_for_unsaved_edits(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(config, "get_profile_with_regex", lambda path: "game.xml")
+    game = tmp_path / "game.xml"
+    game.write_text("<profile/>")
+    monkeypatch.setattr(config, "get_profile_with_regex", lambda path: str(game))
     notes: list = []
     def note(*args: str) -> None:
         notes.append(args)
@@ -93,7 +96,7 @@ def test_auto_load_waits_for_unsaved_edits(
 
     saved = _fake(unsaved=False)
     _AUTOLOAD(saved, "C:/x/game.exe")
-    assert ("load", "game.xml") in saved.calls
+    assert ("load", str(game)) in saved.calls
 
 
 class _Item:

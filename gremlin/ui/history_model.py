@@ -224,7 +224,7 @@ def _restore_input(entry: dict, side: dict | None) -> tuple[bool, str]:
     return True, "Put back into the open profile. Save the profile to keep it."
 
 
-def _restore_profile(entry: dict, side: dict | None) -> tuple[bool, str]:
+def _restore_profile(entry: dict, side: dict | None, which: str) -> tuple[bool, str]:
     from gremlin.modules import module_file
 
     text = history_profile.unpack_text((side or {}).get("packed"))
@@ -232,9 +232,16 @@ def _restore_profile(entry: dict, side: dict | None) -> tuple[bool, str]:
         return False, "That version of the profile isn't kept any more."
     original = Path(str((entry.get("subject") or {}).get("profile") or "profile.xml"))
     stamp = datetime.fromtimestamp(float(entry.get("at") or 0)).strftime(
-        "%Y-%m-%d %H.%M"
+        "%Y-%m-%d %H.%M.%S"
     )
-    copy = original.with_name(f"{original.stem} (history {stamp}){original.suffix}")
+    # Its own name: Before and After (and two saves in one second) never
+    # overwrite each other or another file.
+    base = f"{original.stem} (history {stamp} {which})"
+    copy = original.with_name(base + original.suffix)
+    number = 2
+    while copy.exists():
+        copy = original.with_name(f"{base} {number}{original.suffix}")
+        number += 1
     module_file.write_text(copy, text, encoding="utf-8-sig", newline="")
     return True, f"Written as {copy}. Open it with File > Load Profile."
 
@@ -259,16 +266,24 @@ def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
 def _restore_settings(side: dict | None) -> tuple[bool, str]:
     from gremlin.config import Configuration
     from gremlin.signal import signal
-    from gremlin.util import property_from_string
+    from gremlin.util import _property_from_string, property_from_string
 
     cfg = Configuration()
+    # Every value is worked out first: one that can't be read puts back
+    # nothing (it used to apply the ones before it).
+    values = []
     for key, value in (side or {}).items():
         section, group, name = key.split("/", 2)
         if not cfg.exists(section, group, name):
             continue
         kind = cfg._data[(section, group, name)]["data_type"]
-        text = json.dumps(value) if not isinstance(value, str) else value
-        cfg.set(section, group, name, property_from_string(kind, text))
+        if kind in _property_from_string:
+            text = json.dumps(value) if not isinstance(value, str) else value
+            value = property_from_string(kind, text)
+        # A list or a dict (action priorities) is kept as itself.
+        values.append((section, group, name, value))
+    for section, group, name, value in values:
+        cfg.set(section, group, name, value)
     signal.configChanged.emit()
     return True, "Settings put back."
 
@@ -288,7 +303,7 @@ def restore(entry_id: str, which: str) -> dict:
         if area == "profile" and kind == "input":
             ok, message = _restore_input(entry, side)
         elif area == "profile":
-            ok, message = _restore_profile(entry, side)
+            ok, message = _restore_profile(entry, side, which)
         elif area == "settings":
             ok, message = _restore_settings(side)
         else:

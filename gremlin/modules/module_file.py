@@ -76,15 +76,25 @@ def write_text(
     temporary = path.with_name(path.name + ".tmp")
     try:
         temporary.write_text(text, encoding=encoding, newline=newline)
-        os.replace(temporary, path)
     except OSError:
-        # Windows refuses the swap while another program (antivirus, an
-        # indexer) has the file open: write it directly instead.
+        # The new text couldn't be written (a full disk): the file stays as
+        # it was. Writing it directly would only cut it short.
         try:
             temporary.unlink()
         except OSError:
             pass
+        raise
+    try:
+        os.replace(temporary, path)
+    except OSError:
+        # Windows refuses the swap while another program (antivirus, an
+        # indexer) has the file open: write it directly instead. The
+        # temporary copy stays if that fails too.
         path.write_text(text, encoding=encoding, newline=newline)
+        try:
+            temporary.unlink()
+        except OSError:
+            pass
 
 
 def write_json(path: Path, doc: dict, indent: int = 2) -> None:

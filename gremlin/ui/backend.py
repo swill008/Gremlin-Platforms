@@ -191,6 +191,17 @@ def _open_folder(folder: str) -> None:
     QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(folder))
 
 
+def _same_file(a: str | Path | None, b: str | Path | None) -> bool:
+    """The same file, however the paths are written (a Path and a str were
+    never equal, so auto-load reloaded the open profile at every focus)."""
+    if not a or not b:
+        return False
+    try:
+        return Path(a).resolve() == Path(b).resolve()
+    except OSError:
+        return False
+
+
 @common.SingletonDecorator
 class Backend(QtCore.QObject):
     windowTitleChanged = QtCore.Signal()
@@ -337,8 +348,18 @@ class Backend(QtCore.QObject):
         if not self.config.value("profile", "automation", "enable-auto-loading"):
             return
         profile_path = config.get_profile_with_regex(path)
+        if profile_path and not os.path.isfile(profile_path):
+            # Its profile is gone: say so once, and don't run the open one
+            # in its place.
+            if self._autoload_held != profile_path:
+                self._autoload_held = profile_path
+                signal.showNotification.emit(
+                    "Auto-load",
+                    f"{Path(profile_path).name} was not loaded: the file is missing.",
+                )
+            return
         if profile_path:
-            if self.profile.fpath != profile_path:
+            if not _same_file(self.profile.fpath, profile_path):
                 if self.profile.has_unsaved_changes():
                     # Never switch over unsaved edits; say so once per profile.
                     if self._autoload_held != profile_path:
@@ -485,10 +506,11 @@ class Backend(QtCore.QObject):
     def saveProfile(self, qml_url: str) -> bool:
         try:
             path = to_local_path(qml_url)
-            if not path:
+            if str(path) in ("", "."):
                 return False
+            # Written first: a save that fails leaves the profile on its file.
+            self.profile.to_xml(path)
             self.profile.fpath = path
-            self.profile.to_xml(self.profile.fpath)
             if not os.path.isfile(str(self.profile.fpath)):
                 persist_log(f"Persist profile save failed path={path!r} reason='file missing after write'")
                 return False

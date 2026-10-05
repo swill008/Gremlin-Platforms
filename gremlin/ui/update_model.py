@@ -374,6 +374,9 @@ class UpdateModel(QtCore.QObject):
         )
         self._config.set(*_PENDING, self._release.version if self._release else "")
         self._config.set(*_PENDING_SETUP, str(self._ready_path))
+        # Saved now: the program ends right after this (a scheduled save
+        # never ran, so a failed update was never noticed).
+        self._config.save_now()
         started = bool(
             QtCore.QProcess.startDetached(
                 str(self._ready_path),
@@ -384,6 +387,7 @@ class UpdateModel(QtCore.QObject):
         if not started:
             self._config.set(*_PENDING, "")
             self._config.set(*_PENDING_SETUP, "")
+            self._config.save_now()
         return started
 
     def _note_failed_update(self) -> bool:
