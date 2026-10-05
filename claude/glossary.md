@@ -7,7 +7,7 @@ Tracker refs in brackets.
 | Idea | Use | Instead of (today) |
 |---|---|---|
 | Starting / stopping the profile [D1] | **Run** / **Stop**; status **Running** / **Stopped**; toolbar button "Run" (shows "Stop" while running); tray "Run Profile" / "Stop Profile" | Toggle, Toggle Active, Active, Not Running, Activate, Deactivate, "Activate Gremlin" |
-| What an input does [D2, D11] | **action** (an input's actions); an input with none: **No actions** | mapping, wired, Unmapped, Not bound, Unbound, Empty ("wire" stays for Button Map lines) |
+| What an input does [D2, D11] | **action** (an input's actions); an input with none: **No actions** | mapping, Unmapped, Not bound, Unbound, Empty |
 | The input device that feeds an output card | **Driven by: [device]**, or **Driven by: [nothing]** | Bound to: [Not bound] |
 | The page where you edit a device's actions [D6] | **Configuration** (unchanged) | |
 | The window for a device's module (claims, file, picture) [D6] | **Module Setup** ("Module Setup…" on the card and in Tools) | Configure input module / Configure output module |
@@ -55,4 +55,4 @@ meanings; define a new idea here before it appears on screen.
 | **Output View** | The read-only page of an output device: what its output module sends. |
 | **Appearance** | How a page looks (Configuration, Output View, Logical Device); never what it does. |
 | **Button Map** | A picture of a device with a **chip** per control, a **hotspot** on the photo for each and a **leader** line between them; unplaced chips wait in the **pool**. Layout only: it never changes actions. |
-| **Wire** | Only the Button Map's lines showing where a pressed control goes while running. |
+| **Wire** | The link from a device's control, through its input module, to an output module (the wiring layer: hardware > input module > wiring > output module > driver). A wire carries the control's actions. Button Map lines are never wires: they are **leaders**. |

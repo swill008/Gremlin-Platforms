@@ -307,7 +307,7 @@ function topics() {
 function buttonMapTopics() {
     return [
         topic("Getting started", "Overview",
-            "<p>Button Map is a picture of one device with a chip on each control. While the profile runs, a press lights its chip, and wires show where the control goes (shown as <b>(not claimed)</b> when the output is not claimed). Chips are layout only: moving, renaming or deleting one never changes the actions in the profile.</p>"
+            "<p>Button Map is a picture of one device with a chip on each control. While the profile runs, a press lights its chip, and the chip shows where the control's wire goes (shown as <b>(not claimed)</b> when the output is not claimed). The line from a chip to its control on the photo is its <b>leader</b>. Chips are layout only: moving, renaming or deleting one never changes the actions in the profile.</p>"
             + "<p>Pick the device from the <b>File</b> menu. Before you edit, the map is live: hover a chip to see which control it is, and drag with the left or middle button to pan.</p>"
             + "<p><b>File → Edit Mapping</b> starts editing. The pool beside the map lists the device's controls; drag a chip from it onto the photo, and filter it by name. <b>File → Save</b> (Ctrl+S) writes the layout to the device's module file; <b>File → Cancel</b> leaves without saving. Closing with unsaved edits asks first.</p>"
             + "<p>The menus show only what you can use right now, with shortcuts beside their commands. <b>View → Command Palette</b> (Ctrl+K) lists every menu command you can use now: type part of a name and press Enter.</p>"
