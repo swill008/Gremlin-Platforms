@@ -50,8 +50,8 @@ def test_a_picked_photo_is_used_where_it_is(
     picture.write_bytes(b"png")
     model = SimpleNamespace(reload=lambda: None)
     url = "file:///" + picture.as_posix()
-    assert hidhide.HidHideModel.setDevicePhoto(model, "HID\VID_1234", url)
-    assert stored == {"HID\VID_1234": str(picture.resolve())}
+    assert hidhide.HidHideModel.setDevicePhoto(model, r"HID\VID_1234", url)
+    assert stored == {r"HID\VID_1234": str(picture.resolve())}
     assert sorted(p.name for p in pictures.iterdir()) == ["old.png", "stick.png"]
 
 

@@ -78,7 +78,7 @@ ApplicationWindow {
             Layout.rightMargin: Style.dp(12)
             wrapMode: Text.WordWrap
             color: Style.fg
-            text: "The mode list is the map you edit and the map that runs. Modes are stored in the profile."
+            text: "The modes you edit here are the ones that run. Modes are stored in the profile."
         }
 
         Label {

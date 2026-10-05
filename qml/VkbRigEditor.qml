@@ -187,7 +187,8 @@ Item {
     property real rzY0: 0
     property real rzX1: 0
     property real rzY1: 0
-    property var clip: []
+    // The items Ctrl+C copied (it was named clip, which hid Item.clip).
+    property var copiedNodes: []
     property bool lineArm: false
     property real lineArmX: 0
     property real lineArmY: 0

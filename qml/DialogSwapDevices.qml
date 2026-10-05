@@ -18,6 +18,8 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     width: Style.fitWidth(Style.dp(800), Screen)
     height: _content.implicitHeight + Style.dp(30)
+    minimumWidth: Style.fitWidth(Style.dp(560), Screen)
+    minimumHeight: Style.fitHeight(_content.implicitHeight + Style.dp(30), Screen)
 
     color: Style.background
     U.Universal.theme: Style.theme

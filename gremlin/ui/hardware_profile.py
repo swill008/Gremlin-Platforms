@@ -684,6 +684,9 @@ def undo_last_import() -> str:
     try:
         if previous is None:
             if dest.is_file():
+                from gremlin import history_modules
+
+                history_modules.note_delete(dest)
                 dest.unlink()
             note = "The new module file was removed."
         else:
@@ -692,6 +695,9 @@ def undo_last_import() -> str:
             trace("SAVE", "Configure Module", "undo_last_import", dest, "ok")
     except OSError:
         return "Undo failed. The previous module file could not be put back."
+    # The devices the import unbound from that file are bound again.
+    if record.get("bindings") is not None:
+        _write_bindings(record["bindings"])
     _import_undo = None
     return "Undone. " + note
 
@@ -796,11 +802,13 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
             lines.append(backup.name.replace("-", "\u2011"))
         except OSError:
             lines.append("The previous file could not be saved to imported.")
+    bindings = _binding_store()
     _clear_bindings_to(src.stem)
     _clear_device_binding(name, str(guid or ""))
     _import_undo = {
         "dest": str(dest),
         "previous": previous_bytes,
+        "bindings": bindings,
     }
     persist_log(f"Persist import file name={name!r} guid={guid!r} src={src} dest={dest}")
     return "\n".join(lines)

@@ -106,7 +106,7 @@ Item {
                 }
 
                 CheckBox {
-                    text: "Use the Options default (Options → Action → Macro)"
+                    text: "Use the Options default (Options → Actions → Macro)"
                     property bool shown: settingsModel ? settingsModel.macroDelayFromOptions : true
                     onShownChanged: checked = shown
                     Component.onCompleted: checked = shown

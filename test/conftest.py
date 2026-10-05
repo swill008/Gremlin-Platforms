@@ -16,6 +16,9 @@ from typing import IO
 # Tests never put a window on the user's screen: the Gremlin app some tests
 # build (pytest-qt's qapp) and every window it opens stay off-screen.
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
+# Nor reach the network (the programs tests start inherit it): the update
+# check is off. HTTPS_PROXY doesn't stop Qt's network calls.
+os.environ["GREMLIN_OFFLINE"] = "1"
 os.environ.setdefault(
     "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
 )

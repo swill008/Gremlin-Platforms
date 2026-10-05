@@ -57,6 +57,33 @@ def test_add_key_goes_into_the_given_mode() -> None:
         shared_state.current_profile = previous
 
 
+def test_a_key_in_two_modes_is_listed_once_with_the_shown_modes_actions() -> None:
+    previous = shared_state.current_profile
+    profile = Profile()
+    profile.modes.add_mode("Combat")
+    shared_state.current_profile = profile
+    try:
+        model = KeyboardManagerModel()
+        key = (30, False)
+        for mode in ("Default", "Combat"):
+            model.addKey([Event(InputType.Keyboard, key, dill.UUID_Keyboard, mode)], mode)
+        profile.get_input_item(
+            dill.UUID_Keyboard, InputType.Keyboard, key, "Combat"
+        ).add_item_binding()
+        assert model.rowCount() == 1
+        role = next(r for r, n in model.roles.items() if bytes(n) == b"actionSequenceCount")
+        count = model.data(model.index(0, 0), role)
+        assert count == 0  # Default shown: no actions there
+        model.setMode("Combat")
+        assert model.data(model.index(0, 0), role) == 1
+        # Delete takes the key out of the mode shown only.
+        model.deleteInput(0)
+        modes = [i.mode for i in profile.inputs[dill.UUID_Keyboard]]
+        assert modes == ["Default"] and model.rowCount() == 1
+    finally:
+        shared_state.current_profile = previous
+
+
 @pytest.fixture
 def refresh() -> Iterator[mock.Mock]:
     cfg = Configuration()

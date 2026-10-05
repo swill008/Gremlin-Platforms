@@ -185,7 +185,7 @@ ApplicationWindow {
             Switch {
                 id: _repeatDevices
 
-                text: "Combine onto Selected Outputs"
+                text: "Combine onto selected outputs"
             }
         }
 

@@ -1573,7 +1573,10 @@ ApplicationWindow {
                     }
                 }
                 Button {
+                    // The Keyboard and OSC pages have no Appearance panel.
                     visible: configDirection !== "dest" && configDirection !== "logical"
+                             && !(uiState && (uiState.currentTab === "keyboard"
+                                              || uiState.currentTab === "osc"))
                     text: catalogPanel ? "Hide Appearance" : "Appearance…"
                     onClicked: {
                         var catalog = catalogPane()

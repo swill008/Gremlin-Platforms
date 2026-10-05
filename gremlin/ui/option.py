@@ -43,6 +43,7 @@ SECTION_DISPLAY_NAMES = {
 # entry shows its key with spaces ("zoom-speed" -> "Zoom speed").
 _ENTRY_TITLES = {
     "ui-scale": "UI scale",
+    "refresh-axis-on-activation": "Refresh axes when Run starts",
     "disable-windows-scaling": "Ignore Windows display scaling",
     "show-stubs": "Show devices without a module",
     "last-keep-after-release": "Keep last value after release",

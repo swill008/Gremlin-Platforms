@@ -38,126 +38,145 @@ ApplicationWindow {
 
     title: "Device Information"
 
-    ColumnLayout {
+    // The columns need about 1060 wide: on a narrow screen or a large UI
+    // scale the list scrolls sideways (Device GUID was cut off).
+    readonly property real columnsWidth: Style.dp(1060)
+
+    Flickable {
+        id: _hscroll
         anchors.fill: parent
-
-        RowLayout {
-            Layout.preferredHeight: Style.dp(50)
-
-            HeaderText {
-                text: "Name"
-                Layout.fillWidth: true
-                Layout.minimumWidth: Style.dp(220)
-            }
-            HeaderText {
-                text: "Axes"
-                Layout.preferredWidth: Style.dp(50)
-            }
-            HeaderText {
-                text: "Buttons"
-                Layout.preferredWidth: Style.dp(75)
-            }
-            HeaderText {
-                text: "Hats"
-                Layout.preferredWidth: Style.dp(50)
-            }
-            HeaderText {
-                text: "VID"
-                Layout.preferredWidth: Style.dp(100)
-            }
-            HeaderText {
-                text: "PID"
-                Layout.preferredWidth: Style.dp(100)
-            }
-            HeaderText {
-                text: "Joystick ID"
-                Layout.preferredWidth: Style.dp(100)
-            }
-            HeaderText {
-                text: "Device GUID"
-                Layout.preferredWidth: Style.dp(320)
-            }
+        clip: true
+        flickableDirection: Flickable.HorizontalFlick
+        boundsBehavior: Flickable.StopAtBounds
+        interactive: contentWidth > width
+        contentWidth: Math.max(width, _info.columnsWidth)
+        contentHeight: height
+        ScrollBar.horizontal: ScrollBar {
+            policy: _hscroll.contentWidth > _hscroll.width ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
         }
 
-        ScrollView {
-            id: _view
+        ColumnLayout {
+            width: _hscroll.contentWidth
+            height: _hscroll.height
 
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            RowLayout {
+                Layout.preferredHeight: Style.dp(50)
 
-            ColumnLayout {
-                spacing: 0
+                HeaderText {
+                    text: "Name"
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: Style.dp(220)
+                }
+                HeaderText {
+                    text: "Axes"
+                    Layout.preferredWidth: Style.dp(50)
+                }
+                HeaderText {
+                    text: "Buttons"
+                    Layout.preferredWidth: Style.dp(75)
+                }
+                HeaderText {
+                    text: "Hats"
+                    Layout.preferredWidth: Style.dp(50)
+                }
+                HeaderText {
+                    text: "VID"
+                    Layout.preferredWidth: Style.dp(100)
+                }
+                HeaderText {
+                    text: "PID"
+                    Layout.preferredWidth: Style.dp(100)
+                }
+                HeaderText {
+                    text: "Joystick ID"
+                    Layout.preferredWidth: Style.dp(100)
+                }
+                HeaderText {
+                    text: "Device GUID"
+                    Layout.preferredWidth: Style.dp(320)
+                }
+            }
 
-                Repeater {
-                    model: DeviceListModel {}
+            ScrollView {
+                id: _view
 
-                    delegate: Rectangle {
-                        id: _outer
+                Layout.fillWidth: true
+                Layout.fillHeight: true
 
-                        height: Style.dp(40)
-                        width: _view.width
+                ColumnLayout {
+                    spacing: 0
 
-                        color: _info._sameGuid(guid, _info.initialGuid) ? Style.bgSelected
-                             : (index % 2 === 0 ? Style.backgroundShade : Style.background)
+                    Repeater {
+                        model: DeviceListModel {}
 
-                        RowLayout {
-                            width: parent.width
+                        delegate: Rectangle {
+                            id: _outer
 
-                            TextEntry {
-                                text: name
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: Style.dp(220)
-                                Layout.leftMargin: Style.dp(10)
-                                horizontalAlignment: Text.AlignLeft
+                            height: Style.dp(40)
+                            width: _view.width
 
-                                ToolTip {
-                                    text: parent.text
-                                    width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
-                                    visible: _hoverHandler.hovered
-                                    delay: 500
-                                    x: _hoverHandler.point.position.x - width / 2
-                                    y: _hoverHandler.point.position.y - height - Style.dp(8)
+                            color: _info._sameGuid(guid, _info.initialGuid) ? Style.bgSelected
+                                 : (index % 2 === 0 ? Style.backgroundShade : Style.background)
+
+                            RowLayout {
+                                width: parent.width
+
+                                TextEntry {
+                                    text: name
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: Style.dp(220)
+                                    Layout.leftMargin: Style.dp(10)
+                                    horizontalAlignment: Text.AlignLeft
+
+                                    ToolTip {
+                                        text: parent.text
+                                        width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
+                                        visible: _hoverHandler.hovered
+                                        delay: 500
+                                        x: _hoverHandler.point.position.x - width / 2
+                                        y: _hoverHandler.point.position.y - height - Style.dp(8)
+                                    }
+
+                                    HoverHandler {
+                                        id: _hoverHandler
+                                        acceptedDevices: PointerDevice.Mouse |
+                                            PointerDevice.TouchPad
+                                    }
+
                                 }
-
-                                HoverHandler {
-                                    id: _hoverHandler
-                                    acceptedDevices: PointerDevice.Mouse |
-                                        PointerDevice.TouchPad
+                                TextEntry {
+                                    text: axes
+                                    Layout.preferredWidth: Style.dp(50)
                                 }
+                                TextEntry {
+                                    text: buttons
+                                    Layout.preferredWidth: Style.dp(75)
+                                }
+                                TextEntry {
+                                    text: hats
+                                    Layout.preferredWidth: Style.dp(50)
+                                }
+                                TextEntry {
+                                    text: vid
+                                    Layout.preferredWidth: Style.dp(100)
+                                }
+                                TextEntry {
+                                    text: pid
+                                    Layout.preferredWidth: Style.dp(100)
+                                }
+                                TextEntry {
+                                    text: joy_id
+                                    Layout.preferredWidth: Style.dp(100)
+                                }
+                                JGTextField {
+                                    Layout.preferredWidth: Style.dp(320)
+                                    Layout.rightMargin: Style.dp(10)
 
-                            }
-                            TextEntry {
-                                text: axes
-                                Layout.preferredWidth: Style.dp(50)
-                            }
-                            TextEntry {
-                                text: buttons
-                                Layout.preferredWidth: Style.dp(75)
-                            }
-                            TextEntry {
-                                text: hats
-                                Layout.preferredWidth: Style.dp(50)
-                            }
-                            TextEntry {
-                                text: vid
-                                Layout.preferredWidth: Style.dp(100)
-                            }
-                            TextEntry {
-                                text: pid
-                                Layout.preferredWidth: Style.dp(100)
-                            }
-                            TextEntry {
-                                text: joy_id
-                                Layout.preferredWidth: Style.dp(100)
-                            }
-                            JGTextField {
-                                Layout.preferredWidth: Style.dp(320)
-                                Layout.rightMargin: Style.dp(10)
+                                    text: guid
 
-                                text: guid
-
-                                horizontalAlignment: Text.AlignHCenter
-                                readOnly: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                    readOnly: true
+                                }
                             }
                         }
                     }

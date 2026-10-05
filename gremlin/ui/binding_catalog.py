@@ -132,6 +132,11 @@ def _fingerprint(binding: InputItemBinding) -> str:
     return "\n".join(chunks)
 
 
+def _or(value: int | str | None, default: int) -> int | str:
+    """value, or default when it is None (0 is a real index)."""
+    return default if value is None else value
+
+
 def _attach_binding(
     real: InputItem, shadow: InputItem, sequence_index: int, drop_old: bool = True
 ) -> int:
@@ -805,7 +810,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             for offset, (seq_index, lab, dest) in enumerate(shown):
                 leaf = self._rows[row + 1 + offset]
                 if (
-                    int(leaf.get("sequenceIndex") or -1) != int(seq_index)
+                    int(_or(leaf.get("sequenceIndex"), -1)) != int(seq_index)
                     or leaf.get("typeLabel") != lab
                     or leaf.get("destLabel") != dest
                 ):

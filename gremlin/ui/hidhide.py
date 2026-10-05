@@ -1396,10 +1396,10 @@ def _enrich_devices(rows: list[dict]) -> list[dict]:
         shown = _card_photo(photos.get(instance) or photos.get(instance.upper(), ""))
         if shown is None:
             row["photo"] = _module_photo(hw, module)
+            row["photoSource"] = "module" if row["photo"] else ""
         else:
             row["photo"] = shown
             row["photoSource"] = "override" if shown else "missing"
-            row["photoSource"] = "module" if row["photo"] else ""
     if changed:
         _save_links(links)
     return rows

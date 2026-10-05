@@ -20,7 +20,6 @@ from PySide6 import QtCore
 import dill
 from gremlin import (
     common,
-    config,
     device_initialization,
     error,
     event_helpers,

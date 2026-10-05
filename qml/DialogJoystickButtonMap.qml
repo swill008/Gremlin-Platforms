@@ -2467,7 +2467,7 @@ ApplicationWindow {
                 ThemedMenuItem {
                     text: "Paste"
                     hint: "Ctrl+V"
-                    enabled: { var e = _ed(); return e && e.clip && e.clip.length }
+                    enabled: { var e = _ed(); return e && e.copiedNodes && e.copiedNodes.length }
                     onTriggered: { var e = _ed(); if (e) e.pasteClipboard() }
                 }
                 ThemedMenuItem {

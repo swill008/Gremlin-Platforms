@@ -28,7 +28,7 @@ function _copyPaste(withCopy) {
     var out = []
     if (withCopy)
         out.push(_act("Copy", copySelection, true, "Ctrl+C"))
-    out.push(_act("Paste", pasteClipboard, !!((clip && clip.length) || canPastePicture), "Ctrl+V"))
+    out.push(_act("Paste", pasteClipboard, !!((copiedNodes && copiedNodes.length) || canPastePicture), "Ctrl+V"))
     return out
 }
 

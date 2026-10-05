@@ -528,11 +528,14 @@ Item {
             fillAxisPick()
             return
         }
+        // Numbered within each kind (Button 1, Hat 1), not across all.
+        var counts = { "axis": 0, "button": 0, "hat": 0 }
         for (var j = 0; j < 128; ++j) {
             var k = _live.kindAt(j)
             if (!k)
                 break
-            var hw = j + 1
+            counts[k] = (counts[k] || 0) + 1
+            var hw = counts[k]
             if (k === "axis")
                 axisModel.append({ "idx": j, "hw": hw, "name": axisShort(hw, "") })
             else if (k === "button")
@@ -632,51 +635,65 @@ Item {
                 height: _viewScroll.height
                 spacing: Style.dp(16)
 
-                ColumnLayout {
+                // The pads and hats scroll in their own column when they
+                // are taller than the page (they ran over the status bar).
+                Flickable {
+                    id: _padScroll
                     visible: _root.padAOn || _root.padBOn || (_root.showHats && hatModel.count > 0)
                     Layout.preferredWidth: Style.dp(228)
                     Layout.maximumWidth: Style.dp(228)
                     Layout.fillWidth: false
                     Layout.fillHeight: true
                     Layout.alignment: Qt.AlignTop
-                    spacing: Style.dp(12)
+                    clip: true
+                    flickableDirection: Flickable.VerticalFlick
+                    boundsBehavior: Flickable.StopAtBounds
+                    interactive: contentHeight > height
+                    contentWidth: width
+                    contentHeight: _padColumn.implicitHeight
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-                    CrossPad {
-                        Layout.preferredWidth: Style.dp(220)
-                        Layout.preferredHeight: Style.dp(220)
-                        visible: _root.padAOn
-                        label: "X / Y"
-                        xVal: { var row = findAxis(padAX); return row ? liveVal(row.idx) : 0 }
-                        yVal: { var row = findAxis(padAY); return row ? liveVal(row.idx) : 0 }
-                    }
-                    CrossPad {
-                        Layout.preferredWidth: Style.dp(220)
-                        Layout.preferredHeight: Style.dp(220)
-                        visible: _root.padBOn
-                        label: "Rx / Ry"
-                        xVal: { var row = findAxis(padBX); return row ? liveVal(row.idx) : 0 }
-                        yVal: { var row = findAxis(padBY); return row ? liveVal(row.idx) : 0 }
-                    }
-                    Repeater {
-                        model: hatModel
-                        delegate: HatView {
-                            required property int idx
-                            required property int hw
-                            required property string name
-                            visible: _root.showHats
-                            Layout.preferredWidth: Style.dp(160)
-                            Layout.preferredHeight: Style.dp(160)
-                            Layout.alignment: Qt.AlignHCenter
-                            text: name.length ? name : ("Hat " + hw)
-                            currentValue: {
-                                liveStamp
-                                if (!_root.showLive)
-                                    return Qt.point(0, 0)
-                                return Qt.point(_live.hatXAt(idx), _live.hatYAt(idx))
+                    ColumnLayout {
+                        id: _padColumn
+                        width: _padScroll.width
+                        spacing: Style.dp(12)
+
+                        CrossPad {
+                            Layout.preferredWidth: Style.dp(220)
+                            Layout.preferredHeight: Style.dp(220)
+                            visible: _root.padAOn
+                            label: "X / Y"
+                            xVal: { var row = findAxis(padAX); return row ? liveVal(row.idx) : 0 }
+                            yVal: { var row = findAxis(padAY); return row ? liveVal(row.idx) : 0 }
+                        }
+                        CrossPad {
+                            Layout.preferredWidth: Style.dp(220)
+                            Layout.preferredHeight: Style.dp(220)
+                            visible: _root.padBOn
+                            label: "Rx / Ry"
+                            xVal: { var row = findAxis(padBX); return row ? liveVal(row.idx) : 0 }
+                            yVal: { var row = findAxis(padBY); return row ? liveVal(row.idx) : 0 }
+                        }
+                        Repeater {
+                            model: hatModel
+                            delegate: HatView {
+                                required property int idx
+                                required property int hw
+                                required property string name
+                                visible: _root.showHats
+                                Layout.preferredWidth: Style.dp(160)
+                                Layout.preferredHeight: Style.dp(160)
+                                Layout.alignment: Qt.AlignHCenter
+                                text: name.length ? name : ("Hat " + hw)
+                                currentValue: {
+                                    liveStamp
+                                    if (!_root.showLive)
+                                        return Qt.point(0, 0)
+                                    return Qt.point(_live.hatXAt(idx), _live.hatYAt(idx))
+                                }
                             }
                         }
                     }
-                    Item { Layout.fillHeight: true }
                 }
 
                 Row {

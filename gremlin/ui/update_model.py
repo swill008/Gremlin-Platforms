@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -171,6 +172,10 @@ class UpdateModel(QtCore.QObject):
         if self._state in ("checking", "downloading"):
             return
         self._manual = bool(manual)
+        # Tests and off-screen checks set this: nothing goes out.
+        if os.environ.get("GREMLIN_OFFLINE"):
+            self._fail("Offline: the update check is turned off here.")
+            return
         self._set_state("checking")
         url = updater.feed_url(
             self._config.value("global", "internal", "update-feed-url")

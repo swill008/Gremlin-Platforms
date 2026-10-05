@@ -141,7 +141,8 @@ def _record(
     changed = _changed_keys(old, new)
     if kind == "save" and changed <= {"ui"}:
         return  # the Button Map's view only
-    device = str((new or old or {}).get("device") or path.stem)
+    # Spaces as typed in the file ("EVO OT L  ") don't reach the title.
+    device = " ".join(str((new or old or {}).get("device") or path.stem).split())
     if kind == "delete":
         title = f"Deleted the module file of {device}"
         area = "modules"

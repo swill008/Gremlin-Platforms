@@ -251,6 +251,23 @@ def test_undo_import_puts_everything_back(pack: dict) -> None:
     assert not device_pack.can_undo_import()
 
 
+def test_a_failed_import_leaves_the_last_one_undoable(
+    pack: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _import(pack, ["in.catalog"])
+    last = device_pack._last_import
+    assert last is not None
+
+    def refuse(*_args: object) -> str:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(device_pack, "_write_module", refuse)
+    result = _import(pack, ["in.catalog"])
+    assert not result["ok"]
+    assert device_pack._last_import is last
+    assert device_pack.undo_import()["ok"]
+
+
 def test_map_settings_rows_import_separately(pack: dict) -> None:
     name = pack["name"]
     path = util.modules_dir() / f"{hardware_profile._slug(name)}.json"

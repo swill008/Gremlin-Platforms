@@ -160,7 +160,7 @@ class AutoMapper:
             [
                 "No output module left for "
                 + ", ".join(unpaired)
-                + ": select more outputs, or turn on Combine onto Selected Outputs."
+                + ": select more outputs, or turn on Combine onto selected outputs."
             ]
             if unpaired
             else []

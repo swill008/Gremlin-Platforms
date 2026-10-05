@@ -17,8 +17,8 @@ function topics() {
         topic("Getting Started", "First setup",
             "<ol>"
             + "<li>Install <b>vJoy</b> and configure its devices. For an Xbox controller, install <b>ViGEmBus</b>. Neither driver ships with this program.</li>"
-            + "<li>On <b>Home</b>, right-click each physical device and choose <b>Module</b> → <b>Module Setup…</b>. Press the controls you will use, or tick them, then <b>Save module</b>.</li>"
-            + "<li>Right-click each vJoy device and choose <b>Module</b> → <b>Module Setup…</b>. Tick the outputs you will use, then <b>Save module</b>. The Xbox controller needs no setup.</li>"
+            + "<li>On <b>Home</b>, right-click each physical device and choose <b>Module</b> → <b>Module Setup…</b>. Press the controls you will use, or tick them, then <b>Save Module</b>.</li>"
+            + "<li>Right-click each vJoy device and choose <b>Module</b> → <b>Module Setup…</b>. Tick the outputs you will use, then <b>Save Module</b>. The Xbox controller needs no setup.</li>"
             + "<li>Double-click a physical device to open <b>Configuration</b>. Use <b>Add Action</b> on an input, for example Map to vJoy, then <b>OK</b>.</li>"
             + "<li><b>File → Save Profile</b> (Ctrl+S).</li>"
             + "<li>Press <b>Toggle</b> to run the profile. Use the <b>vJoy Viewer</b> or <b>Xbox Viewer</b> to watch the result.</li>"
@@ -67,19 +67,19 @@ function topics() {
             "<p>Home shows one card per device: your physical devices, each vJoy device, and the Xbox controller.</p>"
             + "<ul>"
             + "<li><b>Double-click</b> a card to open its Configuration page (or <b>Output View</b> for an output).</li>"
-            + "<li><b>Right-click</b> a card for its menu; the card shows as picked first, as a click does (a card in a Shift selection keeps the selection, for menu items that act on all of it). It has: Open Configuration, Button Map, Module Setup…, Auto Mapper, the viewer, Calibration, Device Information, Swap device…, stacking, Reset size, Hide card, Reset card layout (its size and stacking), and Delete Device.</li>"
+            + "<li><b>Right-click</b> a card for its menu; the card shows as picked first, as a click does (a card in a Shift selection keeps the selection, for menu items that act on all of it). It has: Open Configuration, Button Map, Module Setup…, Auto Mapper, the viewer, Calibration, Device Information, Swap Device…, stacking, Reset Size, Hide Card, Reset card layout (its size and stacking), and Delete Device.</li>"
             + "<li><b>Shift-click</b> cards, then <b>Stack Selected Cards</b>, to group them.</li>"
             + "<li>Each card's <b>last:</b> line shows the latest input it passed or output it sent.</li>"
             + "<li><b>Compact view</b> and <b>Layout</b> (Single list, Side by side, or Stacked; also View → <b>Home Layout</b>) change how the cards are laid out. Right-click empty space for <b>Unhide All Cards</b>, <b>Reset All Card Sizes</b>, <b>Hidden Cards</b> (each hidden card; click one to unhide it) and <b>Layout</b>.</li>"
             + "</ul>"),
         topic("Devices and Modules", "Input modules",
             "<p>An input module decides which controls of a physical device exist for Gremlin-Platforms. Only <b>claimed</b> controls reach your actions, the viewers, and the Auto Mapper.</p>"
-            + "<p>Open it from the card menu or Tools → Device Setup → <b>Input Module Setup</b>. Press a control on the device to claim it, or tick it; untick to release it. Give a control a <b>Friendly name</b> if you like. <b>Undo</b> and <b>Redo</b> (Ctrl+Z, Ctrl+Y) step back through the ticks and names until you open another device. <b>Save module</b> writes the module file; <b>Cancel</b> discards.</p>"
+            + "<p>Open it from the card menu or Tools → Device Setup → <b>Input Module Setup</b>. Press a control on the device to claim it, or tick it; untick to release it. Give a control a <b>Friendly name</b> if you like. <b>Undo</b> and <b>Redo</b> (Ctrl+Z, Ctrl+Y) step back through the ticks and names until you open another device. <b>Save Module</b> writes the module file; <b>Cancel</b> discards.</p>"
             + "<p><b>Keyboard</b> is an input module too. Key bindings only fire for keys it claims. Until you save a choice, every key is claimed. Typing in Windows and games is never affected.</p>"
             + "<p>Calibration for a stick is stored in its input module (see Calibration).</p>"),
         topic("Devices and Modules", "vJoy output modules",
             "<p>Each vJoy device has an output module. It is the firewall in front of the vJoy driver: only outputs it <b>claims</b> are sent.</p>"
-            + "<p>Open it from the card menu or Tools → Device Setup → <b>Output Module Setup</b>. Tick the axes, buttons, and hats you will use, then <b>Save module</b>. The vJoy driver sets the maximum; the output module sets what Gremlin-Platforms may use.</p>"
+            + "<p>Open it from the card menu or Tools → Device Setup → <b>Output Module Setup</b>. Tick the axes, buttons, and hats you will use, then <b>Save Module</b>. The vJoy driver sets the maximum; the output module sets what Gremlin-Platforms may use.</p>"
             + "<p>A wire to an output that is not claimed sends nothing. It is kept, and shown as <b>(not claimed)</b> on the Configuration page, Button Map chips, the viewers, and in Map to vJoy, and the log notes it once. Claim the output to make it work.</p>"),
         topic("Devices and Modules", "Xbox output module",
             "<p>The Xbox controller (<b>Xbox 360 Controller</b>, pad 1) is a virtual Xbox 360 pad provided by the <b>ViGEmBus</b> driver. Its output module passes every control straight to the driver; there is nothing to claim.</p>"

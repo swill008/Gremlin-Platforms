@@ -17,6 +17,35 @@ Item {
 
     ActionNames { id: _actionNames }
 
+    DismissibleDialog { id: _deleteGate }
+
+    // Each key is listed once, with the actions of the mode shown.
+    Connections {
+        target: uiState
+        function onModeChanged() {
+            if (uiState)
+                _inputList.model.setMode(uiState.currentMode)
+        }
+    }
+    Component.onCompleted: {
+        if (uiState)
+            _inputList.model.setMode(uiState.currentMode)
+    }
+
+    // After a delete the editor moves to the row now in that place (it
+    // stayed on the deleted key when the row number didn't change).
+    function deleteKey(row, label) {
+        _deleteGate.confirmThen("Delete Key?",
+            "Delete " + label + " and its actions in this mode?",
+            "Delete", function() {
+                _inputList.model.deleteInput(row)
+                var count = _inputList.count
+                _inputList.currentIndex = -1
+                if (count > 0)
+                    _inputList.currentIndex = Math.min(row, count - 1)
+            }, null, true)
+    }
+
     TextInputDialog {
         id: _renameDialog
 
@@ -79,7 +108,7 @@ Item {
 
                     onClicked: () => {
                         if (!editorLocked) {
-                            _inputList.model.deleteInput(model.index)
+                            deleteKey(model.index, model.name)
                         }
                     }
                 }

@@ -183,12 +183,16 @@ Rectangle {
 
         Label {
             visible: isModule
-            text: buttons + " buttons  " + axes + " axes  " + hats + " hats"
+            text: buttons + (buttons === 1 ? " button  " : " buttons  ")
+                  + axes + (axes === 1 ? " axis  " : " axes  ")
+                  + hats + (hats === 1 ? " hat" : " hats")
             color: Style.fg
             font.pixelSize: Style.dp(11)
         }
 
         Label {
+            // Output cards only: what feeds them (the glossary's Driven by).
+            visible: direction === "dest"
             text: "Driven by: [" + (target.length ? target : "nothing") + "]"
             color: Style.fgMuted
             font.pixelSize: Style.dp(11)

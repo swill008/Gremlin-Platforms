@@ -23,18 +23,16 @@ from xml.etree import ElementTree
 
 from typing import TYPE_CHECKING
 
+from gremlin import history_modules
 from gremlin.ui.live_debug import trace
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.registry import is_output_name
 from gremlin.ui.hardware_profile import (
     _IMAGE_EXT,
     _asset_ref,
-    _claim_summary,
-    _collapsed_name,
     _doc_direction,
     _maps_dir,
     _match_pack_device,
-    _outside_maps,
     _read_json_dict,
     _replace_file,
     _safe_name,
@@ -1544,6 +1542,18 @@ def drop_import_undo() -> None:
         profile.drop_unused_actions(profile.roots_of(wires["removed"]))
 
 
+def _put_back(files: list[tuple[Path, bytes | None]]) -> None:
+    """Puts files back as they were before an import wrote them."""
+    for path, previous in reversed(files):
+        try:
+            if previous is None:
+                path.unlink(missing_ok=True)
+            else:
+                _replace_file(path, previous)
+        except OSError:
+            pass
+
+
 def undo_import() -> dict:
     """Puts back what the last import replaced."""
     global _last_import
@@ -1555,6 +1565,8 @@ def undo_import() -> dict:
         try:
             if previous is None:
                 if path.is_file():
+                    # Tools > History shows the removal (and keeps the file).
+                    history_modules.note_delete(path)
                     path.unlink()
             else:
                 _replace_file(path, previous)
@@ -1744,8 +1756,6 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
     chosen = _selected(selection)
     if not chosen:
         return {"ok": False, "error": "Choose at least one piece to import."}
-    # A new import keeps the one before it for good.
-    drop_import_undo()
     match = _match_pack_device(target)
     guid = str(match["guid"]) if match and match.get("guid") else ""
     limits = _device_limits(guid)
@@ -1765,6 +1775,9 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         try:
             backup_name = _write_module(dest, merged, files)
         except OSError:
+            # The pictures written for it go back too; the import before
+            # this one can still be undone.
+            _put_back(files)
             return {
                 "ok": False,
                 "error": "The module file could not be written, so nothing was replaced.",
@@ -1776,6 +1789,9 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
             else "A new file was created."
         )
         notes.extend(merged_notes)
+    # A new import keeps the one before it for good (once its own module
+    # file is written: a failed import leaves the last one undoable).
+    drop_import_undo()
     targets = selection.get("outputs") if isinstance(selection, dict) else {}
     if not isinstance(targets, dict):
         targets = {}

@@ -360,7 +360,7 @@ function copySelection() {
         if (n)
             arr.push(JSON.parse(JSON.stringify(n)))
     }
-    clip = arr
+    copiedNodes = arr
     clipSerial = clipboardSerial
 }
 
@@ -368,12 +368,12 @@ function copySelection() {
 // here) is pasted as a picture layer; otherwise the copied items.
 function pasteClipboard() {
     var pictureNewer = canPastePicture
-        && (!(clip && clip.length) || clipboardSerial !== clipSerial)
+        && (!(copiedNodes && copiedNodes.length) || clipboardSerial !== clipSerial)
     if (pictureNewer) {
         pastePictureRequested()
         return
     }
-    pasteNodes(clip || [], 16 / Math.max(1, spaceRect().w), 16 / Math.max(1, spaceRect().h))
+    pasteNodes(copiedNodes || [], 16 / Math.max(1, spaceRect().w), 16 / Math.max(1, spaceRect().h))
 }
 
 function isSelected(id) {
