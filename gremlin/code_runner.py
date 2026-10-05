@@ -25,6 +25,7 @@ from gremlin import (
     mode_manager,
     profile,
     sendinput,
+    shared_state,
     signal,
     tts,
     user_script,
@@ -112,7 +113,7 @@ class VirtualAxisButton(VirtualButton):
 
             if self._last_value < value:
                 direction = AxisButtonDirection.Below
-            elif self._last_value > event.value:
+            elif self._last_value > value:
                 direction = AxisButtonDirection.Above
 
         self._last_value = event.value
@@ -365,6 +366,7 @@ class CodeRunner:
             )
             self.event_handler.resume()
             self._running = True
+            shared_state.set_runtime_active(True)
 
             sendinput.MouseController().start()
             OscRuntime().start()
@@ -395,6 +397,7 @@ class CodeRunner:
 
             mode_manager.flush_last_modes()
         self._running = False
+        shared_state.set_runtime_active(False)
 
         user_script.callback_registry.clear()
         self.event_handler.clear()
@@ -463,7 +466,7 @@ class CodeRunner:
             if not script.is_configured:
                 continue
 
-            script_folder = str(script.path.parent)
+            script_folder = os.path.normcase(os.path.abspath(script.path.parent))
             if script_folder not in system_paths:
                 system_paths.append(script_folder)
 

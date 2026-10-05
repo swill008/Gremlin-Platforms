@@ -260,6 +260,16 @@ class MacroManager(metaclass=SingletonMetaclass):
         Args:
             macro: the macro object to be executed
         """
+        try:
+            self._run_steps(macro)
+        except Exception:
+            # A failing step ends this macro only; the clean-up below lets
+            # every other macro (and this one again) run.
+            logging.getLogger("system").exception("A macro step failed")
+        finally:
+            self._finish_macro(macro)
+
+    def _run_steps(self, macro: Macro) -> None:
         # Handle macros with a repeat mode
         if macro.repeat is not None:
             delay = macro.repeat.delay
@@ -293,6 +303,7 @@ class MacroManager(metaclass=SingletonMetaclass):
                 self._wait_while_paused(macro)
                 action()
 
+    def _finish_macro(self, macro: Macro) -> None:
         # Remove macro from active set, notify manager, and remove any potential
         # callbacks.
         self._scheduled_macro.pop(macro.id, None)

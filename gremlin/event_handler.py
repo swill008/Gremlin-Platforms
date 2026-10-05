@@ -689,6 +689,12 @@ class EventHandler(QtCore.QObject):
                 signal.display_error("Error encountered with vJoy.", str(e))
                 logging.getLogger("system").exception(f"VJoy error: '{e}'")
                 self.pause()
+            except Exception:
+                # One failing action doesn't stop the others, or the release
+                # handling below.
+                logging.getLogger("system").exception(
+                    f"An action for {event} failed"
+                )
 
         # Call button release callbacks after basic event processing completes.
         try:
@@ -697,6 +703,10 @@ class EventHandler(QtCore.QObject):
             signal.display_error("Error encountered with vJoy.", str(e))
             logging.getLogger("system").exception(f"VJoy error: '{e}'")
             self.pause()
+        except Exception:
+            logging.getLogger("system").exception(
+                f"A release action for {event} failed"
+            )
 
     def _matching_callbacks(self, event: Event) -> list[Callable[[Event], None]]:
         """Returns the list of callbacks to execute in response to

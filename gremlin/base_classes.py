@@ -21,6 +21,8 @@ from typing import (
 )
 from xml.etree import ElementTree
 
+from PySide6 import QtCore
+
 from gremlin import (
     event_handler,
     util,
@@ -592,12 +594,22 @@ class AbstractFunctor(Generic[T], ABC):
                 functors
         """
         self._process_event(functors, event_press, value_press, properties)
-        time.sleep(0.05)
         value_release = Value(False)
         event_release = event_press.clone()
         event_release.is_pressed = False
         event_release.raw_value = None
-        self._process_event(functors, event_release, value_release, properties)
+
+        def release() -> None:
+            self._process_event(functors, event_release, value_release, properties)
+
+        # On the main thread (events are handled there) the release comes
+        # 50 ms later from a timer, so the window doesn't stop for it.
+        app = QtCore.QCoreApplication.instance()
+        if app is not None and QtCore.QThread.currentThread() is app.thread():
+            QtCore.QTimer.singleShot(50, release)
+            return
+        time.sleep(0.05)
+        release()
 
     def _should_execute(self, value: Value) -> bool:
         """Checks if the action should execute based on the value and

@@ -259,7 +259,7 @@ class DirectionComparator(AbstractComparator):
 
     model = DirectionComparatorModel
 
-    def __init__(self, directions: List[HatDirection] = []) -> None:
+    def __init__(self, directions: List[HatDirection] | None = None) -> None:
         """Creates a new comparator instance.
 
         Args:
@@ -267,7 +267,8 @@ class DirectionComparator(AbstractComparator):
         """
         super().__init__()
 
-        self.directions = directions
+        # Its own list: a shared default was changed by every hat condition.
+        self.directions = list(directions or [])
 
     def __call__(self, value: Value, states: List[Any]) -> bool:
         return states[0] in self.directions

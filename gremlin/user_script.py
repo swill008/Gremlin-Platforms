@@ -106,6 +106,10 @@ class CallbackRegistry:
         self._registry = {}
 
 
+# The shortest interval a periodic callback runs at (seconds).
+_SHORTEST_INTERVAL = 0.01
+
+
 class PeriodicRegistry:
     """Registry for periodically executed functions."""
 
@@ -117,6 +121,9 @@ class PeriodicRegistry:
         self._thread: threading.Thread | None = None
         self._queue = []
         self._plugins = []
+        # Each Run has its own loop: one still finishing a slow callback
+        # after Stop ends by itself and never runs the new Run's callbacks.
+        self._generation = 0
 
     def start(self) -> None:
         """Starts the event loop."""
@@ -124,13 +131,14 @@ class PeriodicRegistry:
         if len(self._registry) == 0:
             return
 
-        # Only create a new thread and start it if the thread is not
-        # currently running
         self._running = True
-        if self._thread is None or not self._thread.is_alive():
-            self._thread = threads.start(
-                "user script timers", self._thread_loop, stop=self._ask_to_stop
-            )
+        self._generation += 1
+        self._thread = threads.start(
+            "user script timers",
+            self._thread_loop,
+            self._generation,
+            stop=self._ask_to_stop,
+        )
 
     def _ask_to_stop(self) -> None:
         self._running = False
@@ -150,6 +158,13 @@ class PeriodicRegistry:
         """
         script_id = _current_script_id()
         key = (script_id, callback.__name__) if script_id is not None else callback
+        if not interval or interval < _SHORTEST_INTERVAL:
+            # 0 or less ran the callback without end, and Stop couldn't end it.
+            logging.getLogger("system").warning(
+                f"Periodic callback {callback.__name__}: interval {interval} is "
+                f"too short; {_SHORTEST_INTERVAL} s is used."
+            )
+            interval = _SHORTEST_INTERVAL
         with self._registry_lock:
             self._registry[key] = (interval, callback)
 
@@ -176,7 +191,7 @@ class PeriodicRegistry:
                 callback = plugin.install(callback, partial_fn)
         return callback
 
-    def _thread_loop(self) -> None:
+    def _thread_loop(self, generation: int) -> None:
         """Main execution loop run in a separate thread."""
         # Setup plugins to use
         self._plugins = [JoystickPlugin(), VJoyPlugin(), KeyboardPlugin()]
@@ -193,25 +208,33 @@ class PeriodicRegistry:
                     self._queue, (time.monotonic() + item[0], index, plugin_cb)
                 )
 
-        while self._running:
+        queue = self._queue
+
+        def current() -> bool:
+            return self._running and self._generation == generation
+
+        while current():
             # Capture the current timestamp for reuse in the sleep down below.
-            while self._queue[0][0] < (now := time.monotonic()):
-                deadline, index, callback = heapq.heappop(self._queue)
+            while current() and queue[0][0] < (now := time.monotonic()):
+                deadline, index, callback = heapq.heappop(queue)
                 try:
                     callback()
                 except Exception as e:
                     logging.getLogger("system").exception(
                         f"Periodic callback raised an exception: {e}"
                     )
-
-                heapq.heappush(
-                    self._queue,
-                    (deadline + callback_interval[callback], index, callback),
+                # One slower than its interval runs again from now, instead
+                # of catching up without end.
+                next_at = max(
+                    deadline + callback_interval[callback], time.monotonic()
                 )
+                heapq.heappush(queue, (next_at, index, callback))
+            if not current():
+                break
 
             # Sleep until either the next function needs to be run or
             # our timeout expires
-            time.sleep(min(self._queue[0][0] - now, 1.0))
+            time.sleep(max(0.0, min(queue[0][0] - now, 1.0)))
 
 
 callback_registry = CallbackRegistry()

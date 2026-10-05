@@ -88,3 +88,17 @@ def test_claim_option_claims_first(mapper: tuple[AutoMapper, list, list]) -> Non
 def test_ranges() -> None:
     assert _ranges([57, 58, 59, 1, 3, 126]) == "1, 3, 57-59, 126"
     assert _ranges([]) == ""
+
+
+def test_input_modules_left_without_an_output_are_named(
+    mapper: tuple[AutoMapper, list, list],
+) -> None:
+    m, _created, _merged = mapper
+    second = {"slug": "evo", "name": "EVO", "claim": {"buttons": [1]}}
+    with mock.patch.object(
+        auto_mapper.auto_map, "input_modules", return_value=[_NXT, second]
+    ):
+        report = m.generate_module_mappings(
+            ["nxt", "evo"], ["vjoy_3"], AutoMapperOptions()
+        )
+    assert "No output module left for EVO" in report

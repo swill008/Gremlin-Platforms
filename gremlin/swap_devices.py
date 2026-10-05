@@ -70,13 +70,15 @@ def _swap_device_inputs(
     source_device_inputs = profile.inputs.get(source_device_uuid, [])
     target_device_inputs = profile.inputs.get(target_device_uuid, [])
 
-    for input_item in [e for e in source_device_inputs if e.action_sequences]:
+    # Every input moves with its list (one with no actions too: it kept
+    # the old device's id); only those with actions are counted.
+    for input_item in source_device_inputs:
         input_item.device_id = target_device_uuid
-        swap_count += 1
+        swap_count += 1 if input_item.action_sequences else 0
     profile.inputs[target_device_uuid] = source_device_inputs
-    for input_item in [e for e in target_device_inputs if e.action_sequences]:
+    for input_item in target_device_inputs:
         input_item.device_id = source_device_uuid
-        swap_count += 1
+        swap_count += 1 if input_item.action_sequences else 0
     profile.inputs[source_device_uuid] = target_device_inputs
     return swap_count
 
@@ -86,10 +88,17 @@ def _swap_device_actions(
     source_device_uuid: uuid.UUID,
     target_device_uuid: uuid.UUID,
 ) -> int:
-    return [
-        a.swap_uuid(source_device_uuid, target_device_uuid)
-        for a in profile.library.actions_by_predicate(lambda _: True)
+    # Both ways, as the inputs are: through a third id, so a reference
+    # already moved isn't moved back.
+    middle = uuid.uuid4()
+    actions = profile.library.actions_by_predicate(lambda _: True)
+    count = [a.swap_uuid(source_device_uuid, middle) for a in actions].count(True)
+    count += [
+        a.swap_uuid(target_device_uuid, source_device_uuid) for a in actions
     ].count(True)
+    for a in actions:
+        a.swap_uuid(middle, target_device_uuid)
+    return count
 
 
 def _swap_device_user_script_vars(
@@ -97,10 +106,15 @@ def _swap_device_user_script_vars(
     source_device_uuid: uuid.UUID,
     target_device_uuid: uuid.UUID,
 ) -> int:
-    return [
-        script.swap_uuid(source_device_uuid, target_device_uuid)
-        for script in profile.scripts.scripts
+    middle = uuid.uuid4()
+    scripts = profile.scripts.scripts
+    count = [s.swap_uuid(source_device_uuid, middle) for s in scripts].count(True)
+    count += [
+        s.swap_uuid(target_device_uuid, source_device_uuid) for s in scripts
     ].count(True)
+    for s in scripts:
+        s.swap_uuid(middle, target_device_uuid)
+    return count
 
 
 def swap_devices(

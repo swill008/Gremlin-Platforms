@@ -7,7 +7,7 @@ from __future__ import annotations
 import ctypes
 import ctypes.wintypes
 import os
-import time
+import threading
 
 import win32gui
 import win32process
@@ -36,8 +36,11 @@ class ProcessMonitor(QtCore.QObject):
     def __init__(self) -> None:
         """Creates a new instance."""
         QtCore.QObject.__init__(self)
-        self._buffer = ctypes.create_string_buffer(1024)
+        # The wide (Unicode) path: a program in a folder with non-ASCII
+        # characters is matched by auto-load too.
+        self._buffer = ctypes.create_unicode_buffer(1024)
         self._buffer_size = ctypes.wintypes.DWORD(1024)
+        self._stop = threading.Event()
         self._current_path = ""
         self._current_pid = -1
         self.running = False
@@ -47,16 +50,19 @@ class ProcessMonitor(QtCore.QObject):
         """Starts monitoring the current process."""
         if not self.running:
             self.running = True
+            self._stop.clear()
             self._update_thread = threads.start(
                 "process monitor", self._update, stop=self._ask_to_stop
             )
 
     def _ask_to_stop(self) -> None:
         self.running = False
+        self._stop.set()
 
     def stop(self) -> None:
         """Stops monitoring the current process."""
         self.running = False
+        self._stop.set()
         if self._update_thread is not None:
             self._update_thread.join(timeout=2.0)
 
@@ -69,22 +75,33 @@ class ProcessMonitor(QtCore.QObject):
 
             if pid != self._current_pid:
                 self._current_pid = pid
-                handle = ProcessMonitor.kernel32.OpenProcess(
-                    ProcessMonitor.PROCESS_QUERY_LIMITED_INFORMATION, False, pid
-                )
+                path = self._image_path(pid)
+                # A program that can't be read (one run as administrator)
+                # isn't announced: the previous program's path used to be
+                # sent again as if it were this one.
+                if path:
+                    self._current_path = path
+                    self.process_changed.emit(self.current_path)
 
-                self._buffer_size = ctypes.wintypes.DWORD(1024)
-                ProcessMonitor.kernel32.QueryFullProcessImageNameA(
-                    handle, 0, self._buffer, ctypes.byref(self._buffer_size)
-                )
-                ProcessMonitor.kernel32.CloseHandle(handle)
+            self._stop.wait(1.0)
 
-                self._current_path = os.path.normpath(
-                    str(self._buffer.value)[2:-1]
-                ).replace("\\", "/")
-                self.process_changed.emit(self.current_path)
-
-            time.sleep(1.0)
+    def _image_path(self, pid: int) -> str:
+        """The program's path, "" when it can't be read."""
+        handle = ProcessMonitor.kernel32.OpenProcess(
+            ProcessMonitor.PROCESS_QUERY_LIMITED_INFORMATION, False, pid
+        )
+        if not handle:
+            return ""
+        try:
+            self._buffer_size = ctypes.wintypes.DWORD(1024)
+            ok = ProcessMonitor.kernel32.QueryFullProcessImageNameW(
+                handle, 0, self._buffer, ctypes.byref(self._buffer_size)
+            )
+        finally:
+            ProcessMonitor.kernel32.CloseHandle(handle)
+        if not ok or not self._buffer.value:
+            return ""
+        return os.path.normpath(self._buffer.value).replace("\\", "/")
 
     @property
     def current_path(self) -> str:

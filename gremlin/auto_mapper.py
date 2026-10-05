@@ -101,6 +101,12 @@ class AutoMapper:
             pairs = [(source, next(dest_cycle)) for source in sources]
         else:
             pairs = list(zip(sources, dests))
+        # More input modules than outputs: the rest get nothing (said, not
+        # silently dropped).
+        unpaired = [
+            str(source.get("name") or source.get("slug") or "")
+            for source in sources[len(pairs):]
+        ]
         used = set(self._get_used_vjoy_inputs(options.mode))
         for source, dest in pairs:
             guid = self._source_uuid(source)
@@ -150,15 +156,27 @@ class AutoMapper:
                         continue
                     self._create_new_mapping(item, target)
                     used.add(target)
+        left_out = (
+            [
+                "No output module left for "
+                + ", ".join(unpaired)
+                + ": select more outputs, or turn on Combine onto Selected Outputs."
+            ]
+            if unpaired
+            else []
+        )
         if not self._created_mappings and not self._num_retained_bindings:
             return " ".join(
                 [
                     "Input module has no selected buttons or axes that this "
                     "output module can take.",
                     *self._skipped_report(),
+                    *left_out,
                 ]
             )
-        return " ".join([self._create_mappings_report(), *self._skipped_report()])
+        return " ".join(
+            [self._create_mappings_report(), *self._skipped_report(), *left_out]
+        )
 
     def _skip(self, dest: dict, kind: str, reason: str, hid: int) -> None:
         key = (str(dest.get("name") or f"vJoy {dest.get('vjoyId')}"), kind, reason)

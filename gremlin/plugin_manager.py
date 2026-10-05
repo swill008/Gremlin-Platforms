@@ -202,8 +202,10 @@ class PluginManager(metaclass=SingletonMetaclass):
                     del plugin
             except Exception as e:
                 # Log an error and ignore the action_plugins if anything
-                # is wrong with it.
+                # is wrong with it. A user plugin that can't load is skipped
+                # (it stopped the program starting); a core one is a bug.
                 logging.getLogger("system").error(
                     f"Loading action_plugins '{fpath.parent}' failed due to: {e}."
                 )
-                raise (e)
+                if is_core:
+                    raise
