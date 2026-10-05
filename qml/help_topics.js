@@ -61,7 +61,7 @@ function topics() {
             + "<li><b>Module File</b>, one per device: claims, friendly names, the device picture, the Button Map layout, the Appearance of its Configuration page or Output View, and its calibration. Input/Output Module Setup, Button Map, Calibration, and the display editors write it. Saving an output module also saves the profile when the profile already has a file.</li>"
             + "<li><b>Program settings</b>: Options, Home layout and card sizes, window sizes, HidHide choices, and the Logical Device's Appearance.</li>"
             + "</ul>"
-            + "<p>After every save the bottom bar names the file that was written.</p>"),
+            + "<p>After every save the bottom bar names the file that was written. Every save is also kept in the <b>History</b> (Tools → History).</p>"),
 
         topic("Devices and Modules", "Home",
             "<p>Home shows one card per device: your physical devices, each vJoy device, and the Xbox controller.</p>"
@@ -224,6 +224,11 @@ function topics() {
             + "<p>Tools → Device Setup → <b>Calibration</b>, or a card's menu. Choose the input module. For each axis, move the stick and use <b>Calibrate Center</b> and <b>Calibrate Extrema</b>, or type the values. An axis shows <b>Not saved</b> until you press its save button. Leaving with unsaved axes asks first.</p>"),
         topic("Tools", "Device Information",
             "<p>Tools → Device Setup → <b>Device Information</b> lists every device Windows reports: Name, Axes, Buttons, Hats, VID, PID, Joystick ID, and Device GUID. Use it to tell identical devices apart.</p>"),
+        topic("Tools", "History",
+            "<p><b>Tools → History</b> lists every saved change, newest first: profile saves (each input whose actions changed, and other parts such as modes and the Logical Device), module files (checked controls and names, calibration, Appearance, the Button Map), and the settings you choose in Options, HidHide and OSC. Window sizes and places, and the Button Map's zoom, guides and print area, aren't kept.</p>"
+            + "<p>Pick a change to see it <b>Before</b> and <b>After</b>. <b>Show</b> narrows the list to one kind; <b>Search</b> finds a device, input or file. <b>History</b> in an editor opens it for just what that editor shows: on the Configuration page (the selected input), on a Logical Device control's menu, in Module Setup, in the Button Map's File menu, and in Options.</p>"
+            + "<p><b>Restore Before</b> or <b>Restore After</b> puts that version back, and is itself a new change in the History. An input's actions go back into the open profile, unsaved (save the profile to keep them); open that profile first. A module file, with its pictures, and settings are saved at once. A whole profile (on its save's entry) is written as a copy next to the profile, to open with File → Load Profile….</p>"
+            + "<p>The history is kept in the <b>history</b> folder of the data folder. Options → History sets how many days it keeps changes (90) and how big each of its files may grow (20 MB); the oldest go first. The whole profile is kept for the newest 20 saves of each profile.</p>"),
         topic("Tools", "Auto Mapper",
             "<p>Creates Map to vJoy actions in one step: each claimed input of an input module gets an action to the same number on a vJoy output module.</p>"
             + "<ol>"

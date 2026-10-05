@@ -2355,6 +2355,14 @@ ApplicationWindow {
                 }
                 ThemedMenuItem { text: "Save"; hint: "Ctrl+S"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
                 ThemedMenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
+                // This map's saved versions (Tools > History).
+                ThemedMenuItem {
+                    text: "History"
+                    enabled: _buttonMap.targetName.length > 0
+                    onTriggered: Helpers.createComponent("DialogHistory.qml", {
+                        filter: JSON.stringify({ area: "button-map", device: _buttonMap.targetName })
+                    })
+                }
                 ThemedMenuSeparator {}
                 ThemedMenu {
                     id: _deviceMenu

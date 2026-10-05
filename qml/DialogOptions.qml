@@ -90,6 +90,16 @@ ApplicationWindow {
                 }
 
                 Item { Layout.fillHeight: true }
+                // Earlier settings, to look at or put back (Tools > History).
+                Button {
+                    objectName: "optionsHistory"
+                    text: "History"
+                    focusPolicy: Qt.NoFocus
+                    Layout.fillWidth: true
+                    onClicked: Helpers.createComponent("DialogHistory.qml", {
+                        filter: JSON.stringify({ area: "settings" })
+                    })
+                }
             }
         }
 

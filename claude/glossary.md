@@ -54,5 +54,7 @@ meanings; define a new idea here before it appears on screen.
 | **Logical Device** | A virtual device inside the program, fed by physical inputs, with actions of its own. |
 | **Output View** | The read-only page of an output device: what its output module sends. |
 | **Appearance** | How a page looks (Configuration, Output View, Logical Device); never what it does. |
+| **History** | Every saved change (profile saves, module files, settings), kept in its own files so it can be seen later (Tools > History, or History in an editor). Not Undo: Undo steps back while editing; History keeps what was saved. |
+| **Restore** | Putting back the version before or after a change from the History. It is itself a saved change (a new History entry). |
 | **Button Map** | A picture of a device with a **chip** per control, a **hotspot** on the photo for each and a **leader** line between them; unplaced chips wait in the **pool**. Layout only: it never changes actions. |
 | **Wire** | The link from a device's control, through its input module, to an output module (the wiring layer: hardware > input module > wiring > output module > driver). A wire carries the control's actions. Button Map lines are never wires: they are **leaders**. |

@@ -356,6 +356,16 @@ ApplicationWindow {
                     _moduleFileDialog.open()
                 }
             }
+            // This device's saved changes (Tools > History).
+            Button {
+                objectName: "moduleHistory"
+                text: "History"
+                focusPolicy: Qt.NoFocus
+                enabled: deviceName.length > 0
+                onClicked: Helpers.createComponent("DialogHistory.qml", {
+                    filter: JSON.stringify({ device: deviceName })
+                })
+            }
             Item { Layout.fillWidth: true }
             Button {
                 text: "Cancel"

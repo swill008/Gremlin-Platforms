@@ -1525,6 +1525,24 @@ Item {
                                         "Delete", function() { model.removeSequence(dev, seq) }, null, true)
                                 }
                             }
+                            // Its saved changes (Tools > History, only this input).
+                            Button {
+                                objectName: "catalogHistory"
+                                visible: (rowKind === "group" || rowKind === "unmapped") && selected
+                                         && _root.device !== null && deviceIndex >= 0
+                                text: "History"
+                                implicitWidth: Style.dp(80)
+                                implicitHeight: Style.dp(28)
+                                z: 2
+                                onClicked: Helpers.createComponent("DialogHistory.qml", {
+                                    filter: JSON.stringify({
+                                        deviceId: _root.device.guid,
+                                        inputType: _root.device.kindAt(deviceIndex),
+                                        inputId: String(_root.device.hwIdAt(deviceIndex)),
+                                        mode: uiState ? uiState.currentMode : "Default"
+                                    })
+                                })
+                            }
                             Button {
                                 visible: (rowKind === "group" || rowKind === "unmapped") && !lv.catalogLocked
                                 text: "Add Action"

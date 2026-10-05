@@ -94,6 +94,9 @@ function commandList() {
           run: function() { openTool("DialogAutoMapper.qml") } },
         { id: "tools.manageModes", text: "Manage Modes", group: "Tools › Mapping",
           run: function() { openTool("DialogManageModes.qml") } },
+        { id: "tools.history", text: "History", group: "Tools",
+          keywords: "undo restore versions changes saved",
+          run: function() { openTool("DialogHistory.qml") } },
         { id: "tools.options", text: "Options", group: "Tools", keywords: "settings preferences",
           run: function() { openTool("DialogOptions.qml") } },
 

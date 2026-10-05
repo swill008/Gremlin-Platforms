@@ -45,6 +45,11 @@ _WORDS = {
 }
 
 
+# The pictures kept with each file's last save, by file: the next save's
+# "before" (by then the pictures on disk may already be the new ones).
+_last_pictures: dict[str, list[dict]] = {}
+
+
 def _modules() -> Path:
     from gremlin import util
 
@@ -145,16 +150,25 @@ def _record(
             dict.fromkeys(word for key, word in _WORDS.items() if key in changed)
         )
         title = f"Saved {device}" + (": " + ", ".join(words) if words else "")
+        if old_text is None:
+            title = f"Created the module file of {device}"
         area = "button-map" if changed <= MAP_KEYS | {"ui"} else "modules"
     before = {
         "text": old_text,
-        "pictures": old_pictures if old_pictures is not None else _keep_pictures(old),
+        "pictures": old_pictures
+        if old_pictures is not None
+        else (
+            _last_pictures[str(path)]
+            if str(path) in _last_pictures
+            else _keep_pictures(old)
+        ),
     }
     after = (
         {"text": new_text, "pictures": _keep_pictures(new)}
         if new_text is not None
         else None
     )
+    _last_pictures[str(path)] = after["pictures"] if after else []
     history.write_now(
         area,
         title,

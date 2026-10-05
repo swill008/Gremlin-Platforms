@@ -33,6 +33,7 @@ _WINDOWS = [
     "DialogConfigureModule", "DialogDevicePack", "DialogCalibration",
     "DialogManageModes", "DialogAutoMapper", "DialogDeviceInformation",
     "DialogOptions", "DialogJoystickButtonMap", "DialogInputViewer",
+    "DialogHistory",
 ]
 
 _CODE = """

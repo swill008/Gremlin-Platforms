@@ -1206,6 +1206,21 @@ Item {
     // The page's right-click menu (Gremlin.Menus): on a row, a group or the
     // empty list. Quick rows first, then sections; Undo and Redo by the
     // title.
+    // Tools > History, only this control's saved changes ("parent:button:3").
+    function _openHistory() {
+        var parts = String(_menuKey).split(":")
+        if (parts.length < 3)
+            return
+        Helpers.createComponent("DialogHistory.qml", {
+            filter: JSON.stringify({
+                device: "Logical Device",
+                inputType: parts[1],
+                inputId: parts[2],
+                mode: uiState ? uiState.currentMode : "Default"
+            })
+        })
+    }
+
     function _layoutMenuModel() {
         var locked = editorLocked
         var onRow = _menuOnRow && !locked
@@ -1223,6 +1238,8 @@ Item {
             quick.push(MenuModel.action("Add Action", function() { _openNewPane(_menuKey, _menuTitle) }))
             quick.push(MenuModel.action("Rename", _renameRow))
             quick.push(MenuModel.action("Assign Hardware", _assignHardware))
+            if (!many)
+                quick.push(MenuModel.action("History", _openHistory))
         }
         if (onGroup)
             quick.push(MenuModel.action("Rename Group", _renameGroup))
