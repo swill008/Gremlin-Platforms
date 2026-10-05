@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import Gremlin.Menus
 import Gremlin.Style
 
 // One of a window's tool rows: "top" (under the menus), "bottom", or a side
@@ -12,8 +13,11 @@ import Gremlin.Style
 // facing the map, where its panel (ToolPane) joins it; a closed one is an
 // outline. What each tool does, and where its tab sits, is the ToolDock's
 // (`dock`); see there for the rules. A tab can be dragged along its row or
-// onto another row (unlocked); the row it would land on lights up. Places
-// along a row are kept as shares of its length.
+// onto another row (unlocked); the row it would land on lights up; let go
+// off every row, its panel floats there. Its right-click menu floats or
+// docks it. A floating tool's tab stays on its row (it shows and hides the
+// panel) with a small floating mark. Places along a row are kept as shares
+// of its length.
 //
 //   ToolRow { dock: _tools; side: "top" }
 Item {
@@ -248,7 +252,8 @@ Item {
                 // (the side facing the map, where an open tool's panel joins).
                 readonly property string side: _row.side
                 // Joined to its panel (showing); open without one: lit.
-                readonly property bool joined: open && !!_row.dock.paneShown[modelData]
+                readonly property bool floating: { dock.rev; return dock.isFloating(modelData) }
+                readonly property bool joined: open && !floating && !!_row.dock.paneShown[modelData]
                 readonly property color edge: open ? Style.lineStrong : Style.line
                 readonly property real lengthWanted: _inner.implicitWidth + Style.dp(14)
                 width: _row.vertical ? _row.width - Style.dp(4) : lengthWanted
@@ -306,6 +311,30 @@ Item {
                             font.pixelSize: Style.dp(12)
                             color: _btn.open ? Style.fg : Style.fgMuted
                         }
+                        // Floating: two small frames, one over the other.
+                        Item {
+                            objectName: "floatMark"
+                            visible: _btn.floating
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Style.dp(11)
+                            height: Style.dp(10)
+                            Rectangle {
+                                width: Style.dp(8)
+                                height: Style.dp(6)
+                                color: Style.clear
+                                border.color: Style.fgMuted
+                                border.width: 1
+                            }
+                            Rectangle {
+                                x: Style.dp(3)
+                                y: Style.dp(4)
+                                width: Style.dp(8)
+                                height: Style.dp(6)
+                                color: _btn.color.a > 0 ? _btn.color : Style.bgRaised
+                                border.color: Style.accent
+                                border.width: 1
+                            }
+                        }
                         // Pin: stays open when the map is clicked.
                         Label {
                             id: _pin
@@ -351,6 +380,26 @@ Item {
 
                 // Click: open or hide. Drag (unlocked): move along the row or
                 // onto another one.
+                // Float and Dock (its panel over the map, or back on this row).
+                ThemedMenu {
+                    id: _tabMenu
+                    ThemedMenuItem {
+                        text: "Float"
+                        enabled: _btn.dock.canFloat(_btn.modelData) && !_btn.floating && !_btn.locked
+                        onTriggered: _btn.dock.setFloating(_btn.modelData, true)
+                    }
+                    ThemedMenuItem {
+                        text: "Dock"
+                        enabled: _btn.floating && !_btn.locked
+                        onTriggered: _btn.dock.setFloating(_btn.modelData, false)
+                    }
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    z: -2
+                    acceptedButtons: Qt.RightButton
+                    onClicked: (m) => _tabMenu.popup()
+                }
                 MouseArea {
                     id: _main
                     anchors.fill: parent
@@ -379,12 +428,23 @@ Item {
                         _btn.dragDy = dy
                         var s = mapToItem(null, m.x, m.y)
                         _btn.dock.dragging = _btn.modelData
-                        _btn.dock.dropSide = _btn.dock.sideAt(s.x, s.y) || _row.side
+                        // "" off every row: let go there, its panel floats.
+                        _btn.dock.dropSide = _btn.dock.sideAt(s.x, s.y)
                     }
                     onReleased: (m) => {
                         var dock = _btn.dock
                         if (!_moved) {
                             dock.toggle(_btn.modelData)
+                            return
+                        }
+                        var id = _btn.modelData
+                        // Let go off every row: its panel floats there.
+                        if (!dock.dropSide.length && dock.canFloat(id) && dock.floatArea) {
+                            var f = dock.floatArea.mapFromItem(_buttons, _btn.x + _btn.dragDx, _btn.y + _btn.dragDy)
+                            _btn.dragDx = 0
+                            _btn.dragDy = 0
+                            dock.dragging = ""
+                            Qt.callLater(function() { dock.floatAt(id, f.x, f.y) })
                             return
                         }
                         // Where it was let go: on this row or another, along
@@ -399,7 +459,6 @@ Item {
                         dock.dropSide = ""
                         // After this handler: a tab put on another row leaves
                         // this one (its delegate goes).
-                        var id = _btn.modelData
                         Qt.callLater(function() { dock.dropAt(id, along, target) })
                     }
                     onCanceled: {

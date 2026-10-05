@@ -20,6 +20,11 @@ import Gremlin.Style
 // A tool's panel (ToolPane) is joined to its tab: it opens from the tab's
 // place and follows it to another row; its size is kept here (sizeOf /
 // setSize), and the panel opened or clicked last is in front (raise).
+// Unlocked, a panel can float (a tab dragged off every row, or Float on
+// its tab's menu): it sits over the map where it was put, with a title bar,
+// and its tab stays on its row (it shows and hides it). Dropped on a row
+// (or Dock), it docks there again. A tool with `floats: false` in `tools`
+// (no panel) never floats.
 // What is open, pinned and locked, the rows, places and docks are kept with
 // the window layout under `name`. Adding a tool is one more entry in `tools`.
 //
@@ -50,6 +55,8 @@ Item {
     // The rows drawing the buttons, side -> row (ToolRow registers itself;
     // a plain value, not a binding, as the rows set it).
     property var rows: null
+    // Where floating panels sit (the window's map area): set by the window.
+    property var floatArea: null
     // A button being dragged (its id), and the row it would land on.
     property string dragging: ""
     property string dropSide: ""
@@ -80,7 +87,8 @@ Item {
         var s = _state[id]
         if (!s) {
             var d = defaults[id] || {}
-            s = { open: !!d.open, pinned: !!d.pinned, locked: !!d.locked, side: _side(d.side), w: 0, h: 0 }
+            s = { open: !!d.open, pinned: !!d.pinned, locked: !!d.locked, side: _side(d.side), w: 0, h: 0,
+                  floating: false, fx: -1, fy: -1, fw: 0, fh: 0 }
             _state[id] = s
         }
         return s
@@ -113,6 +121,11 @@ Item {
                     s.side = _side(keep.side)
                 s.w = Math.max(0, Number(keep.w) || 0)
                 s.h = Math.max(0, Number(keep.h) || 0)
+                s.floating = !!keep.floating && canFloat(id)
+                s.fx = keep.fx === undefined ? -1 : Number(keep.fx)
+                s.fy = keep.fy === undefined ? -1 : Number(keep.fy)
+                s.fw = Math.max(0, Number(keep.fw) || 0)
+                s.fh = Math.max(0, Number(keep.fh) || 0)
             }
         }
         // The saved order, then any tool it doesn't have yet.
@@ -148,7 +161,8 @@ Item {
         for (var i = 0; i < tools.length; i++) {
             var s = _entry(tools[i].id)
             items[tools[i].id] = { open: s.open, pinned: s.pinned, locked: s.locked, side: s.side,
-                                   w: s.w || 0, h: s.h || 0 }
+                                   w: s.w || 0, h: s.h || 0, floating: !!s.floating,
+                                   fx: s.fx, fy: s.fy, fw: s.fw || 0, fh: s.fh || 0 }
         }
         _store.saveToolRowState(name, JSON.stringify({ order: _order, items: items, pos: _pos }))
     }
@@ -162,6 +176,59 @@ Item {
     }
 
     function isUsable(id) { return usable[id] !== false }
+
+    // --- floating --------------------------------------------------------------
+
+    function canFloat(id) {
+        var t = tool(id)
+        return !!t && t.floats !== false
+    }
+    function isFloating(id) { rev; return !!_entry(id).floating }
+    // Where a floating panel sits in floatArea ({x, y}; -1: not put yet) and
+    // its floating size ({w, h}; 0: its first size).
+    function floatPos(id) { rev; var s = _entry(id); return { x: s.fx, y: s.fy } }
+    function floatSize(id) { rev; var s = _entry(id); return { w: s.fw || 0, h: s.fh || 0 } }
+
+    // Floats a tool's panel at x, y of floatArea (where it was let go), and
+    // shows it.
+    function floatAt(id, x, y) {
+        if (!canFloat(id) || isLocked(id))
+            return
+        var s = _entry(id)
+        s.floating = true
+        s.fx = Math.round(x)
+        s.fy = Math.round(y)
+        s.open = true
+        _save()
+        raise(id)
+        toolChanged(id)
+    }
+
+    // Float (from its tab's menu): where it floated last, or in the middle.
+    function setFloating(id, on) {
+        if (!canFloat(id) || isLocked(id))
+            return
+        var s = _entry(id)
+        if (!!s.floating === !!on)
+            return
+        s.floating = !!on
+        if (on)
+            s.open = true
+        _save()
+        relayout()
+        toolChanged(id)
+    }
+
+    function setFloatPlace(id, x, y, w, h) {
+        var s = _entry(id)
+        s.fx = Math.round(x)
+        s.fy = Math.round(y)
+        if (w !== undefined) {
+            s.fw = Math.round(Math.max(0, w))
+            s.fh = Math.round(Math.max(0, h))
+        }
+        _save()
+    }
     function isOpen(id) { rev; return _entry(id).open && isUsable(id) }
     function isPinned(id) { rev; return _entry(id).pinned }
     function isLocked(id) { rev; return _entry(id).locked }
@@ -320,6 +387,11 @@ Item {
             s.side = _side((defaults[tools[i].id] || {}).side)
             s.w = 0
             s.h = 0
+            s.floating = false
+            s.fx = -1
+            s.fy = -1
+            s.fw = 0
+            s.fh = 0
         }
         _save()
         relayout()
@@ -361,6 +433,7 @@ Item {
             _pos = all
         }
         _entry(id).side = side
+        _entry(id).floating = false
         var next = {}
         for (var key in _pos)
             next[key] = _pos[key]

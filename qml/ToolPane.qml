@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
+import QtQuick.Controls
 import Gremlin.Style
 
 // A tool's panel, joined to its tab on a tool row (ToolDock, ToolRow): it
@@ -13,6 +14,12 @@ import Gremlin.Style
 // corner); the size is kept with the tool (Reset Tool Rows forgets it). The
 // one opened or clicked last is in front. The panel's own content fills it
 // and draws its frame: `color` and `radius` must match that frame.
+//
+// Floating (ToolDock.floatAt / setFloating), it sits over the map where it
+// was put, with a title bar: its name, pin, lock and close. Unlocked, the
+// title bar moves it (dropped on a tool row, it docks there; double-click:
+// back to its row) and every edge and corner resizes it. Kept in the map
+// area; its place and size are kept with the tool.
 //
 //   ToolPane { dock: _tools; toolId: "layers"; defaultW: ...; RigLayersPanel { anchors.fill: parent } }
 Item {
@@ -42,6 +49,39 @@ Item {
     // Kept for tests and older callers: at the top row.
     readonly property bool atTop: side === "top"
     readonly property bool locked: { dock ? dock.rev : 0; return dock ? dock.isLocked(toolId) : true }
+    readonly property bool floating: { dock ? dock.rev : 0; return dock ? dock.isFloating(toolId) : false }
+    readonly property bool pinned: { dock ? dock.rev : 0; return dock ? dock.isPinned(toolId) : false }
+    readonly property string title: { var t = dock ? dock.tool(toolId) : null; return t ? t.label : toolId }
+    readonly property real titleH: Style.dp(26)
+    // Floating, while its title bar is dragged: how far it has moved (drawn
+    // with this offset; moving the panel itself would end the drag).
+    property real dragDx: 0
+    property real dragDy: 0
+    transform: Translate { x: _pane.dragDx; y: _pane.dragDy }
+    // Floating: its place and size so far while moved or resized.
+    property real liveFX: -1
+    property real liveFY: -1
+    property real liveFW: -1
+    property real liveFH: -1
+    readonly property var fPos: { dock ? dock.rev : 0; return dock ? dock.floatPos(toolId) : { x: -1, y: -1 } }
+    readonly property var fSize: { dock ? dock.rev : 0; return dock ? dock.floatSize(toolId) : { w: 0, h: 0 } }
+    readonly property real floatW: {
+        var w = liveFW >= 0 ? liveFW
+              : (fSize.w > 0 ? fSize.w : (fullWidth ? Math.min(pw - 2 * margin, Style.dp(720)) : defaultW))
+        return Math.max(Math.min(minW, pw), Math.min(w, pw))
+    }
+    readonly property real floatH: {
+        var h = liveFH >= 0 ? liveFH : (fSize.h > 0 ? fSize.h : defaultH + titleH)
+        return Math.max(Math.min(minH + titleH, ph), Math.min(h, ph))
+    }
+    readonly property real floatX: {
+        var x = liveFX >= 0 ? liveFX : (fPos.x >= 0 ? fPos.x : (pw - floatW) / 2)
+        return Math.max(0, Math.min(x, pw - floatW))
+    }
+    readonly property real floatY: {
+        var y = liveFY >= 0 ? liveFY : (fPos.y >= 0 ? fPos.y : (ph - floatH) / 3)
+        return Math.max(0, Math.min(y, ph - floatH))
+    }
     // The tab, in the parent's coordinates ({x, y, w, h}), or null.
     readonly property var tab: {
         if (!dock || !parent)
@@ -108,12 +148,13 @@ Item {
         if (!dock)
             return 30
         dock._front
-        return 30 + dock.frontOf(toolId)
+        // Floating panels over docked ones.
+        return 30 + dock.frontOf(toolId) + (floating ? 20 : 0)
     }
-    width: vertical ? depth : length
-    height: vertical ? length : depth
-    x: side === "left" ? reach : (side === "right" ? reach - width : start)
-    y: side === "top" ? reach : (side === "bottom" ? reach - height : start)
+    width: floating ? floatW : (vertical ? depth : length)
+    height: floating ? floatH : (vertical ? length : depth)
+    x: floating ? floatX : (side === "left" ? reach : (side === "right" ? reach - width : start))
+    y: floating ? floatY : (side === "top" ? reach : (side === "bottom" ? reach - height : start))
 
     onVisibleChanged: {
         if (!dock)
@@ -124,16 +165,240 @@ Item {
     }
     Component.onCompleted: if (dock) dock.setPaneColor(toolId, color)
 
+    // Floating: a frame round the title bar and the content.
+    Rectangle {
+        visible: _pane.floating
+        anchors.fill: parent
+        radius: _pane.radius
+        color: _pane.color
+        border.color: _pane.lineColor
+        border.width: 1
+    }
+
     Item {
         id: _body
         anchors.fill: parent
+        anchors.topMargin: _pane.floating ? _pane.titleH : 0
     }
+
+    // Floating: the title bar (its name, pin, lock, close). Drag it to move
+    // the panel; dropped on a tool row it docks there; double-click: back
+    // to its row.
+    Item {
+        id: _titleBar
+        objectName: "paneTitle"
+        visible: _pane.floating
+        z: 65
+        width: parent.width
+        height: _pane.titleH
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: _pane.radius
+            color: Style.bgRaised
+        }
+        Label {
+            anchors.verticalCenter: parent.verticalCenter
+            x: Style.dp(10)
+            text: _pane.title
+            color: Style.fg
+            font.pixelSize: Style.dp(12)
+            font.bold: true
+        }
+        MouseArea {
+            id: _move
+            objectName: "paneMove"
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            // Nothing above takes the drag over.
+            preventStealing: true
+            enabled: !_pane.locked
+            hoverEnabled: true
+            cursorShape: !enabled ? Qt.ArrowCursor : (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+            property point start: Qt.point(0, 0)
+            property real startX: 0
+            property real startY: 0
+            onPressed: (m) => {
+                start = mapToItem(_pane.parent, m.x, m.y)
+                startX = _pane.x
+                startY = _pane.y
+            }
+            onPositionChanged: (m) => {
+                if (!pressed)
+                    return
+                var p = mapToItem(_pane.parent, m.x, m.y)
+                // Kept inside the map area.
+                _pane.dragDx = Math.max(-startX, Math.min(p.x - start.x, _pane.pw - _pane.width - startX))
+                _pane.dragDy = Math.max(-startY, Math.min(p.y - start.y, _pane.ph - _pane.height - startY))
+                var s = mapToItem(null, m.x, m.y)
+                _pane.dock.dragging = _pane.toolId
+                _pane.dock.dropSide = _pane.dock.sideAt(s.x, s.y)
+            }
+            onReleased: (m) => {
+                var dock = _pane.dock
+                var side = dock.dropSide
+                dock.dragging = ""
+                dock.dropSide = ""
+                var nx = startX + _pane.dragDx
+                var ny = startY + _pane.dragDy
+                _pane.dragDx = 0
+                _pane.dragDy = 0
+                if (side.length) {
+                    // Docked on that row where it was let go.
+                    var s = mapToItem(null, m.x, m.y)
+                    var row = dock.rows[side]
+                    var p = row.mapFromItem(null, s.x, s.y)
+                    var id = _pane.toolId
+                    Qt.callLater(function() {
+                        dock.dropAt(id, (row.vertical ? p.y : p.x) - Style.dp(20), side)
+                    })
+                    return
+                }
+                dock.setFloatPlace(_pane.toolId, nx, ny)
+            }
+            onCanceled: {
+                _pane.dragDx = 0
+                _pane.dragDy = 0
+                _pane.dock.dragging = ""
+                _pane.dock.dropSide = ""
+            }
+            onDoubleClicked: _pane.dock.setFloating(_pane.toolId, false)
+        }
+        Row {
+            anchors.right: parent.right
+            anchors.rightMargin: Style.dp(8)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.dp(10)
+            component TitleIcon: Label {
+                id: _icon
+                property alias area: _iconArea
+                signal clicked()
+                font.family: Style.iconFont
+                font.pixelSize: Style.dp(12)
+                MouseArea {
+                    id: _iconArea
+                    anchors.fill: parent
+                    anchors.margins: -Style.dp(4)
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: _icon.clicked()
+                }
+            }
+            TitleIcon {
+                objectName: "panePin"
+                text: _pane.pinned ? "\uF4EC" : "\uF4EB"
+                color: _pane.pinned ? Style.accent : (area.containsMouse ? Style.fg : Style.fgMuted)
+                onClicked: _pane.dock.setPinned(_pane.toolId, !_pane.pinned)
+                ToolTip.visible: area.containsMouse
+                ToolTip.delay: 600
+                ToolTip.text: _pane.pinned ? "Unpin: hides when you click the map" : "Pin: stays open when you click the map"
+            }
+            TitleIcon {
+                objectName: "paneLock"
+                text: _pane.locked ? "\uF47A" : "\uF600"
+                color: _pane.locked ? Style.accent : (area.containsMouse ? Style.fg : Style.fgMuted)
+                onClicked: _pane.dock.setLocked(_pane.toolId, !_pane.locked)
+                ToolTip.visible: area.containsMouse
+                ToolTip.delay: 600
+                ToolTip.text: _pane.locked ? "Unlock: can be moved and resized" : "Lock: can't be moved or resized"
+            }
+            Label {
+                objectName: "paneClose"
+                text: "×"
+                font.pixelSize: Style.dp(16)
+                color: _closeArea.containsMouse ? Style.fg : Style.fgMuted
+                MouseArea {
+                    id: _closeArea
+                    anchors.fill: parent
+                    anchors.margins: -Style.dp(4)
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: _pane.dock.setOpen(_pane.toolId, false)
+                }
+                ToolTip.visible: _closeArea.containsMouse
+                ToolTip.delay: 600
+                ToolTip.text: "Close (it floats here again next time)"
+            }
+        }
+    }
+
+    // Floating, unlocked: every edge and corner resizes it.
+    component FloatGrip: MouseArea {
+        property bool l: false
+        property bool r: false
+        property bool t: false
+        property bool b: false
+        property point start: Qt.point(0, 0)
+        property rect from: Qt.rect(0, 0, 0, 0)
+        visible: _pane.floating
+        enabled: !_pane.locked
+        z: 75
+        hoverEnabled: true
+        preventStealing: true
+        cursorShape: !enabled ? Qt.ArrowCursor
+                     : ((l && t) || (r && b)) ? Qt.SizeFDiagCursor
+                     : ((r && t) || (l && b)) ? Qt.SizeBDiagCursor
+                     : (l || r) ? Qt.SizeHorCursor : Qt.SizeVerCursor
+        onPressed: (m) => {
+            start = mapToItem(_pane.parent, m.x, m.y)
+            from = Qt.rect(_pane.x, _pane.y, _pane.width, _pane.height)
+            _pane.dock.raise(_pane.toolId)
+        }
+        onPositionChanged: (m) => {
+            if (!pressed)
+                return
+            var p = mapToItem(_pane.parent, m.x, m.y)
+            var dx = p.x - start.x
+            var dy = p.y - start.y
+            var minW = _pane.minW
+            var minH = _pane.minH + _pane.titleH
+            var x = from.x, y = from.y, w = from.width, h = from.height
+            if (r)
+                w = Math.max(minW, from.width + dx)
+            if (b)
+                h = Math.max(minH, from.height + dy)
+            if (l) {
+                w = Math.max(minW, from.width - dx)
+                x = from.x + from.width - w
+            }
+            if (t) {
+                h = Math.max(minH, from.height - dy)
+                y = from.y + from.height - h
+            }
+            _pane.liveFX = x
+            _pane.liveFY = y
+            _pane.liveFW = w
+            _pane.liveFH = h
+        }
+        onReleased: {
+            _pane.dock.setFloatPlace(_pane.toolId, _pane.x, _pane.y, _pane.width, _pane.height)
+            _pane.liveFX = -1
+            _pane.liveFY = -1
+            _pane.liveFW = -1
+            _pane.liveFH = -1
+        }
+        onCanceled: {
+            _pane.liveFX = -1
+            _pane.liveFY = -1
+            _pane.liveFW = -1
+            _pane.liveFH = -1
+        }
+    }
+    FloatGrip { objectName: "floatGripLeft"; l: true; width: _pane.grip; y: _pane.corner; height: parent.height - 2 * _pane.corner }
+    FloatGrip { objectName: "floatGripRight"; r: true; width: _pane.grip; x: parent.width - width; y: _pane.corner; height: parent.height - 2 * _pane.corner }
+    FloatGrip { objectName: "floatGripTop"; t: true; height: Style.dp(4); x: _pane.corner; width: parent.width - 2 * _pane.corner }
+    FloatGrip { objectName: "floatGripBottom"; b: true; height: _pane.grip; y: parent.height - height; x: _pane.corner; width: parent.width - 2 * _pane.corner }
+    FloatGrip { objectName: "floatGripTopLeft"; l: true; t: true; width: _pane.corner; height: _pane.corner }
+    FloatGrip { objectName: "floatGripTopRight"; r: true; t: true; width: _pane.corner; height: _pane.corner; x: parent.width - width }
+    FloatGrip { objectName: "floatGripBottomLeft"; l: true; b: true; width: _pane.corner; height: _pane.corner; y: parent.height - height }
+    FloatGrip { objectName: "floatGripBottomRight"; r: true; b: true; width: _pane.corner; height: _pane.corner; x: parent.width - width; y: parent.height - height }
 
     // The join: the frame's border opened where the tab meets it (and a
     // corner the tab sits on squared off).
     Item {
         id: _join
-        visible: !!_pane.tab
+        visible: !!_pane.tab && !_pane.floating
         z: 50
         // The tab along the panel's edge: its start and length there.
         readonly property real t0: _pane.tab ? (_pane.vertical ? _pane.tab.y - _pane.y : _pane.tab.x - _pane.x) : 0
@@ -196,6 +461,7 @@ Item {
         property real startLength: 0
         property point start: Qt.point(0, 0)
         z: 70
+        visible: !_pane.floating
         enabled: !_pane.locked
         hoverEnabled: true
         preventStealing: true
@@ -268,7 +534,7 @@ Item {
     // The far edge along the row (right for top/bottom, bottom for sides).
     Grip {
         objectName: "paneGripRight"
-        visible: !_pane.fullWidth
+        visible: !_pane.fullWidth && !_pane.floating
         long: true
         x: _pane.vertical ? (_pane.side === "left" ? 0 : _pane.corner) : parent.width - _pane.grip
         y: _pane.vertical ? parent.height - _pane.grip : (_pane.side === "top" ? 0 : _pane.corner)
@@ -277,7 +543,7 @@ Item {
     }
     Grip {
         objectName: "paneGripCorner"
-        visible: !_pane.fullWidth
+        visible: !_pane.fullWidth && !_pane.floating
         deep: true
         long: true
         width: _pane.corner

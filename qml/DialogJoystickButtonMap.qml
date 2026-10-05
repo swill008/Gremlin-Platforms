@@ -1612,11 +1612,21 @@ ApplicationWindow {
             return opened ? _tools.tabRect("palette", _buttonMap.contentItem) : null
         }
         readonly property string side: { _tools.rev; return _tools.sideOf("palette") }
+        // Floating: where it was let go over the map (it has no title bar:
+        // its tab's Dock puts it back).
+        readonly property bool floating: { _tools.rev; return _tools.isFloating("palette") }
+        readonly property var floatAt: {
+            _tools.rev
+            var p = _tools.floatPos("palette")
+            return p.x >= 0 ? _mapHost.mapToItem(_buttonMap.contentItem, p.x, p.y) : null
+        }
         modal: false
         // On the map side of its tab: under a top-row tab, over a bottom-row
         // one, beside a side-row one; kept in the window.
         x: {
             var w = parent ? parent.width : 0
+            if (floating)
+                return floatAt ? Math.max(0, Math.min(floatAt.x, w - width)) : Math.round((w - width) / 2)
             if (!tab)
                 return Math.round((w - width) / 2)
             if (side === "left")
@@ -1627,6 +1637,8 @@ ApplicationWindow {
         }
         y: {
             var h = parent ? parent.height : 0
+            if (floating)
+                return floatAt ? Math.max(0, Math.min(floatAt.y, h - height)) : Math.round(h * 0.12)
             if (!tab)
                 return Math.round(h * 0.12)
             if (side === "top")
@@ -3300,12 +3312,14 @@ ApplicationWindow {
         ToolDock {
             id: _tools
             name: "button-map"
+            // Floating panels sit over the map.
+            floatArea: _mapHost
             tools: [
                 { id: "chips", label: "Chips", tip: "Chips not on the map yet: drag one onto the map" },
                 { id: "props", label: "Properties", tip: "The selected item's place, size, angle and style" },
                 { id: "layers", label: "Layers", tip: "Every item, with an eye and a lock, top of the stack first" },
                 { id: "palette", label: "Command Palette", tip: "Every command, by name (Ctrl+K)" },
-                { id: "printArea", label: "Print Area",
+                { id: "printArea", label: "Print Area", floats: false,
                   tip: "The part of the page every export and print takes: Alt+drag on the map to set it" },
                 { id: "options", label: "Options",
                   tip: "The Button Map's settings (also Edit → Button Map Options…)" }

@@ -163,6 +163,109 @@ def main() -> None:
     QtTest.QTest.qWait(300)
     out["wider"] = round(pane.width() - before)
     out["size-kept"] = ev("JSON.stringify(_tools.sizeOf('options'))")
+    # --- floating ---------------------------------------------------------------
+    def drag(a: QtCore.QPointF, b: QtCore.QPointF, steps: int = 10) -> None:
+        QtTest.QTest.mousePress(win, Button.LeftButton, none, a.toPoint())
+        QtTest.QTest.qWait(30)
+        for i in range(1, steps + 1):
+            p = a + (b - a) * (i / steps)
+            move = QtGui.QMouseEvent(QtCore.QEvent.Type.MouseMove, p, p,
+                                     Button.NoButton, Button.LeftButton, none)
+            QtCore.QCoreApplication.sendEvent(win, move)
+            QtTest.QTest.qWait(15)
+        QtTest.QTest.mouseRelease(win, Button.LeftButton, none, b.toPoint())
+        QtTest.QTest.qWait(300)
+
+    def rect(item: QtQuick.QQuickItem) -> list:
+        p = item.mapToScene(QtCore.QPointF(0, 0))
+        return [round(p.x()), round(p.y()), round(item.width()), round(item.height())]
+
+    def at(item: QtQuick.QQuickItem, fx: float, fy: float) -> QtCore.QPointF:
+        return item.mapToScene(QtCore.QPointF(item.width() * fx, item.height() * fy))
+
+    host = child("_mapHost") or pane.parentItem()
+    ev("_tools.setOpen('options', false)")
+    QtTest.QTest.qWait(200)
+    # The tab dragged off its row onto the map: its panel floats there.
+    tab = child("tool:options")
+    drop = at(host, 0.4, 0.45)
+    drag(tab.mapToScene(QtCore.QPointF(10, tab.height() / 2)), drop)
+    out["floated"] = [ev("_tools.isFloating('options')"), pane.isVisible(),
+                      ev("_tools.sideOf('options')")]
+    title = child("paneTitle")
+    out["title"] = [title.isVisible(), child("panePin") is not None,
+                    child("paneLock") is not None, child("paneClose") is not None]
+    first = rect(pane)
+    # Where it was let go (kept inside the map area).
+    out["near-drop"] = [first[0] <= drop.x() <= first[0] + first[2],
+                        first[1] <= drop.y() <= first[1] + first[3]]
+    # Its title bar moves it.
+    start = at(title, 0.3, 0.5)
+    drag(start, start + QtCore.QPointF(-50, 30))
+    moved = rect(pane)
+    out["moved"] = [moved[0] - first[0], moved[1] - first[1]]
+    # Its corner and its left edge resize it.
+    corner = child("floatGripBottomRight")
+    start = at(corner, 0.5, 0.5)
+    drag(start, start + QtCore.QPointF(40, 30))
+    grown = rect(pane)
+    out["corner"] = [grown[2] - moved[2], grown[3] - moved[3]]
+    edge = child("floatGripLeft")
+    start = at(edge, 0.5, 0.5)
+    drag(start, start - QtCore.QPointF(30, 0))
+    left = rect(pane)
+    out["left-edge"] = [left[0] - grown[0], left[2] - grown[2]]
+    # Locked: the title bar doesn't move it.
+    ev("_tools.setLocked('options', true)")
+    QtTest.QTest.qWait(100)
+    start = at(title, 0.3, 0.5)
+    drag(start, start + QtCore.QPointF(60, 0))
+    out["locked-still"] = rect(pane) == left
+    ev("_tools.setLocked('options', false)")
+    # Closed and opened again from its tab: in the same place.
+    close = child("paneClose")
+    QtTest.QTest.mouseClick(win, Button.LeftButton, none, at(close, 0.5, 0.5).toPoint())
+    QtTest.QTest.qWait(200)
+    out["closed"] = [pane.isVisible(), ev("_tools.isFloating('options')")]
+    tab = child("tool:options")
+    on_tab = tab.mapToScene(QtCore.QPointF(10, tab.height() / 2)).toPoint()
+    QtTest.QTest.mouseClick(win, Button.LeftButton, none, on_tab)
+    QtTest.QTest.qWait(300)
+    out["reopened-same"] = pane.isVisible() and rect(pane) == left
+    out["tab-mark"] = child("floatMark") is not None and child("floatMark").isVisible()
+    # Kept: loaded again, still floating where it was.
+    ev("_tools._load()")
+    QtTest.QTest.qWait(200)
+    out["kept-floating"] = [ev("_tools.isFloating('options')"),
+                            ev("JSON.stringify(_tools.floatPos('options'))")]
+    ev("_tools.setOpen('options', true)")
+    QtTest.QTest.qWait(200)
+    # Its title bar dropped on the bottom row: docked there.
+    bottom_row = child("toolRowBottom")
+    start = at(title, 0.3, 0.5)
+    drag(start, at(bottom_row, 0.2, 0.5), 14)
+    def place() -> list:
+        return [ev("_tools.isFloating('options')"), ev("_tools.sideOf('options')")]
+
+    out["docked-bottom"] = place()
+    # Float from its tab's menu, then double-click the title: back to its row.
+    ev("_tools.setFloating('options', true)")
+    QtTest.QTest.qWait(300)
+    title = child("paneTitle")
+    on_title = at(title, 0.3, 0.5).toPoint()
+    QtTest.QTest.mouseDClick(win, Button.LeftButton, none, on_title)
+    QtTest.QTest.qWait(300)
+    out["double-click"] = place()
+    # Print Area has no panel: it never floats.
+    out["print-area"] = [ev("_tools.canFloat('printArea')"),
+                         ev("_tools.canFloat('layers')")]
+    ev("_tools.setFloating('printArea', true)")
+    out["print-area-floating"] = ev("_tools.isFloating('printArea')")
+    # Reset Tool Rows: nothing floats.
+    ev("_tools.setFloating('options', true)")
+    ev("_tools.resetPlaces()")
+    QtTest.QTest.qWait(200)
+    out["reset"] = [ev("_tools.isFloating('options')"), ev("_tools.sideOf('options')")]
     print("RESULT " + json.dumps(out), flush=True)
     os._exit(0)
 
