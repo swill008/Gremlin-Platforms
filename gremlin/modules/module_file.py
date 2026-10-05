@@ -69,6 +69,10 @@ def write_text(
     and their line ends kept: encoding "utf-8-sig", newline "")."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Tools > History: a module file's save is kept (other files are not).
+    from gremlin import history_modules
+
+    history_modules.note_write(path, text)
     temporary = path.with_name(path.name + ".tmp")
     try:
         temporary.write_text(text, encoding=encoding, newline=newline)

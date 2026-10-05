@@ -25,6 +25,7 @@ import queue
 import shutil
 import threading
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -41,8 +42,10 @@ KEEP_DAYS = 90
 MAX_MEGABYTES = 20
 # How long the writer waits for more before it ends.
 _IDLE = 1.0
+# Whole-profile copies kept per profile (the newest saves).
+SNAPSHOTS = 20
 
-_queue: queue.Queue[dict] = queue.Queue()
+_queue: queue.Queue[dict | Callable[[], None]] = queue.Queue()
 _write_lock = threading.Lock()
 _start_lock = threading.Lock()
 _writer: threading.Thread | None = None
@@ -88,7 +91,21 @@ def record(
     """Queues one entry; returns its id. area: one of AREAS. title: what
     happened, as the History window shows it. subject: what it was about
     (profile, device, input, mode, file...). before/after: the content."""
-    entry = {
+    entry = _make(area, title, subject, before, after, kind)
+    _queue.put(entry)
+    _wake_writer()
+    return entry["id"]
+
+
+def _make(
+    area: str,
+    title: str,
+    subject: dict,
+    before: Any,  # noqa: ANN401
+    after: Any,  # noqa: ANN401
+    kind: str,
+) -> dict:
+    return {
         "id": uuid.uuid4().hex,
         "at": clock.now(),
         "area": area if area in AREAS else "settings",
@@ -98,9 +115,27 @@ def record(
         "before": before,
         "after": after,
     }
-    _queue.put(entry)
-    _wake_writer()
+
+
+def write_now(
+    area: str,
+    title: str,
+    subject: dict,
+    before: Any,  # noqa: ANN401
+    after: Any,  # noqa: ANN401
+    kind: str = "save",
+) -> str:
+    """Writes an entry at once: for work later() runs on the writer thread."""
+    entry = _make(area, title, subject, before, after, kind)
+    _append(entry)
     return entry["id"]
+
+
+def later(work: Callable[[], None]) -> None:
+    """Runs work on the writer thread (comparing a save, keeping pictures),
+    so the save itself stays quick. It writes with write_now()."""
+    _queue.put(work)
+    _wake_writer()
 
 
 def _wake_writer() -> None:
@@ -126,7 +161,7 @@ def _run() -> None:
                     _writer = None
                     return
             continue
-        _append(entry)
+        _handle(entry)
 
 
 def flush() -> None:
@@ -136,7 +171,17 @@ def flush() -> None:
             entry = _queue.get_nowait()
         except queue.Empty:
             return
-        _append(entry)
+        _handle(entry)
+
+
+def _handle(item: dict | Callable[[], None]) -> None:
+    if callable(item):
+        try:
+            item()
+        except Exception:
+            syslog.exception("History: could not record a change")
+        return
+    _append(item)
 
 
 def _file(area: str) -> Path:
@@ -259,6 +304,7 @@ def prune() -> None:
             if not path.is_file():
                 continue
             kept = [e for e in _lines(area) if float(e.get("at") or 0) >= oldest]
+            _trim_snapshots(kept)
             lines = [json.dumps(e, ensure_ascii=False) + "\n" for e in kept]
             while lines and sum(len(line.encode("utf-8")) for line in lines) > limit:
                 lines.pop(0)
@@ -275,6 +321,19 @@ def prune() -> None:
                         path.unlink()
                     except OSError:
                         pass
+
+
+def _trim_snapshots(kept: list[dict]) -> None:
+    """Only the newest SNAPSHOTS saves of each profile keep the whole
+    profile; older ones keep what they changed (their other entries)."""
+    seen: dict[str, int] = {}
+    for item in sorted(kept, key=lambda e: float(e.get("at") or 0), reverse=True):
+        if item.get("kind") != "profile":
+            continue
+        name = str((item.get("subject") or {}).get("profile") or "")
+        seen[name] = seen.get(name, 0) + 1
+        if seen[name] > SNAPSHOTS:
+            item["before"] = item["after"] = None
 
 
 def _file_refs(value: Any) -> set[str]:  # noqa: ANN401

@@ -709,7 +709,12 @@ class Profile:
         from gremlin.modules import module_file
 
         module_file.write_text(Path(fpath), text, encoding="utf-8-sig", newline="")
-        self._saved_snapshot = text
+        before, self._saved_snapshot = self._saved_snapshot, text
+        if before != text:
+            # Tools > History: what this save changed (worked out off this thread).
+            from gremlin import history_profile
+
+            history_profile.record_save(Path(fpath), before, text)
         from gremlin.ui.live_debug import trace
         trace("SAVE", "Profile", "to_xml", fpath, "ok")
 

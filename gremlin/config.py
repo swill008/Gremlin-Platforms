@@ -10,6 +10,7 @@ import os
 import re
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 from gremlin import (
@@ -160,6 +161,55 @@ class Configuration(metaclass=common.SingletonMetaclass):
             )
 
         self._last_reload = time.time()
+        self._history_view = self._settings_view()
+
+    # Settings the user chooses (Options, HidHide, OSC, folders) go in the
+    # history; window places, sizes and other things the program remembers
+    # for itself don't.
+    _HIDHIDE_PLACES = {"window-width", "window-height", "split-ratio"}
+
+    def _settings_view(self) -> dict[str, str]:
+        view = {}
+        for (section, group, name), entry in self._data.items():
+            if group == "internal":
+                continue
+            hidhide = (section, group) == ("display", "hidhide")
+            if not entry.get("expose") and not hidhide:
+                continue
+            if hidhide and name in self._HIDHIDE_PLACES:
+                continue
+            value = entry["value"]
+            if entry["data_type"] in util._property_to_string:
+                value = util.property_to_string(entry["data_type"], value)
+            view[f"{section}/{group}/{name}"] = json.dumps(value, sort_keys=True)
+        return view
+
+    def _record_history(self) -> None:
+        """Tools > History: the settings this save changed (only ones that
+        were there before: a setting appearing for the first time isn't a
+        change)."""
+        before = getattr(self, "_history_view", None)
+        after = self._settings_view()
+        self._history_view = after
+        if before is None:
+            return
+        changed = sorted(
+            key for key in after if key in before and before[key] != after[key]
+        )
+        if not changed:
+            return
+        from gremlin import history
+
+        names = [
+            key.rsplit("/", 1)[-1].replace("-", " ").capitalize() for key in changed
+        ]
+        history.record(
+            "settings",
+            "Changed " + ", ".join(names),
+            {"keys": changed},
+            {key: json.loads(before[key]) for key in changed},
+            {key: json.loads(after[key]) for key in changed},
+        )
 
     def save(self) -> None:
         """Save soon: one write about a second after the last change (and
@@ -194,24 +244,14 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 "expose": entry["expose"],
             }
         text = json.JSONEncoder(sort_keys=True, indent=4).encode(json_data)
-        temp_path = path + ".tmp"
-        # The folder may not exist yet (first run, or settings saved before
-        # the program set its folders up).
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        try:
-            with open(temp_path, "w") as hdl:
-                hdl.write(text)
-            os.replace(temp_path, path)
-        except OSError:
-            # Windows refuses the swap while another program (antivirus, an
-            # indexer) has the file open: write it directly instead.
-            with open(path, "w") as hdl:
-                hdl.write(text)
-            try:
-                os.remove(temp_path)
-            except OSError:
-                pass
+        # The same safe write as module files and profiles: a temporary file,
+        # then a swap (a direct write when Windows refuses the swap). It also
+        # makes the folder on the first run.
+        from gremlin.modules import module_file
+
+        module_file.write_text(Path(path), text)
         trace("SAVE", "Program Settings", "save", path, "ok")
+        self._record_history()
 
     def register(
         self,

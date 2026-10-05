@@ -609,6 +609,13 @@ def _archive_path(stem: str, stamp: str) -> Path:
 def _replace_file(path: Path, data: bytes) -> None:
     """Write a temporary file, then replace the live file only if that write finishes."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Tools > History, as module_file.write_text does (import, Device Pack).
+    from gremlin import history_modules
+
+    try:
+        history_modules.note_write(path, data.decode("utf-8"))
+    except UnicodeDecodeError:
+        pass
     temporary = path.with_name(path.name + ".tmp")
     try:
         temporary.write_bytes(data)
@@ -868,6 +875,9 @@ def delete_module_file(device_name: str, guid: str) -> str:
         kept = _keep_deleted_copy(path)
         if kept is None:
             return "Could not keep a copy of the module file, so it was not deleted."
+        from gremlin import history_modules
+
+        history_modules.note_delete(path)
         path.unlink()
         trace(
             "SAVE", "Configure Module", "delete_module_file", path,
@@ -1066,6 +1076,9 @@ def _delete_own_module_files(device_name: str) -> str:
     try:
         path = _maps_dir() / f"{slug}.json"
         if path.is_file():
+            from gremlin import history_modules
+
+            history_modules.note_delete(path)
             path.unlink()
             trace("SAVE", "Delete Device", "_delete_own_module_files", path, "removed")
         folder = _maps_dir() / slug
