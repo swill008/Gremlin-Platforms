@@ -37,6 +37,8 @@ ApplicationWindow {
     Shortcut { sequence: "Enter"; onActivated: {} }
 
     XboxViewerDeviceModel { id: _devices }
+    // Checked again each time the window comes to the front.
+    onActiveChanged: if (active) _driver.reload()
 
     function pairTitle(guid, name) {
         return name && name.length ? name : guid
@@ -62,6 +64,11 @@ ApplicationWindow {
             id: _stateDisplay
             width: Math.max(_dynamicScroll.availableWidth, Style.dp(760))
             spacing: Style.dp(8)
+
+            XboxDriverCheck {
+                id: _driver
+                Layout.fillWidth: true
+            }
 
             JGText {
                 visible: !_devices || _devices.count === 0

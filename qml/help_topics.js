@@ -83,7 +83,8 @@ function topics() {
             + "<p>A wire to an output that is not claimed sends nothing. It is kept, and shown as <b>(not claimed)</b> on the Configuration page, Button Map chips, the viewers, and in Map to vJoy, and the log notes it once. Claim the output to make it work.</p>"),
         topic("Devices and Modules", "Xbox output module",
             "<p>The Xbox controller (<b>Xbox 360 Controller</b>, pad 1) is a virtual Xbox 360 pad provided by the <b>ViGEmBus</b> driver. Its output module passes every control straight to the driver; there is nothing to claim.</p>"
-            + "<p>Send to it with the <b>Map to Xbox</b> action: right-click an input on the Configuration page or the Logical Device, choose <b>Add Action</b>, then <b>Map to Xbox</b>. Its page (double-click the card) shows whether ViGEmBus is ready and which inputs drive each control. The <b>Xbox Viewer</b> shows the live pad. The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when Toggle is turned off.</p>"),
+            + "<p>Send to it with the <b>Map to Xbox</b> action: right-click an input on the Configuration page or the Logical Device, choose <b>Add Action</b>, then <b>Map to Xbox</b>. Its page (double-click the card) shows which inputs drive each control. The <b>Xbox Viewer</b> shows the live pad. The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when Toggle is turned off.</p>"
+            + "<p>The page and the Xbox Viewer check the driver at their top, as HidHide does: <b>ViGEmBus driver found</b> with its version, or what is wrong (not installed, installed but not running, ViGEmClient.dll missing) and what to do. <b>Get ViGEmBus</b> opens the Nefarius releases page; <b>Test ViGEmBus</b> opens Windows Game Controllers, where the pad shows while the profile runs. The check shows even when nothing is mapped to Xbox yet.</p>"),
         topic("Devices and Modules", "Module files and Device Pack",
             "<p>Each device has its own module file, found by the device first and then by its name. In Input/Output Module Setup, <b>Module File</b> shows the current file and offers <b>Import from</b> (copy another file into this device's file), <b>Browse for File</b>, <b>Open Modules Folder</b>, and <b>Delete File</b>. <b>Import Image…</b> sets the device picture.</p>"
             + "<p>Tools → Device Setup → <b>Device Pack</b> shares a device setup. <b>Export</b> saves a device's module file and pictures to a zip. <b>Import</b> loads a zip onto a device you choose under <b>Put this pack on</b>.</p>"),
@@ -212,7 +213,7 @@ function topics() {
             "<p>The viewers show live values; they change nothing. Open them from the toolbar, Tools → Viewers, or a card's menu.</p>"
             + "<ul>"
             + "<li><b>vJoy Viewer</b>: each physical device beside the vJoy device it drives. The physical side shows claimed inputs; the vJoy side shows what the vJoy output module sent (claimed outputs, while the profile runs).</li>"
-            + "<li><b>Xbox Viewer</b>: the Xbox 360 Controller with every control, and which inputs drive it.</li>"
+            + "<li><b>Xbox Viewer</b>: the Xbox 360 Controller with every control, and which inputs drive it. The ViGEmBus check is at its top.</li>"
             + "</ul>"),
         topic("Tools", "Calibration",
             "<p>Sets the center and the ends of each axis so its full travel is used. It is stored in the device's input module and applied before any action sees the axis.</p>"
@@ -287,7 +288,7 @@ function topics() {
             + "</ul>"),
         topic("Troubleshooting", "Xbox does nothing",
             "<ul>"
-            + "<li>Open the Xbox page: it must say <b>ViGEmBus ready</b>. If not, install ViGEmBus.</li>"
+            + "<li>Open the Xbox page or the Xbox Viewer: the check at the top must say <b>ViGEmBus driver found</b>. If not, it says what to do.</li>"
             + "<li>The pad exists only while the profile runs and after a Map to Xbox action has sent.</li>"
             + "<li>Check the action uses <b>Map to Xbox</b> with <b>Xbox 360 Controller</b> and the right Target.</li>"
             + "</ul>"),

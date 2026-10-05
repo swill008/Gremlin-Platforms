@@ -39,12 +39,8 @@ Item {
             Item { Layout.fillWidth: true }
         }
 
-        Label {
+        XboxDriverCheck {
             Layout.fillWidth: true
-            wrapMode: Text.WordWrap
-            text: _model ? _model.statusText : ""
-            color: (_model && _model.available) ? Style.foreground : Style.alert
-            opacity: 0.9
         }
 
         Label {

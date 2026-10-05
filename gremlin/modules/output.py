@@ -495,6 +495,20 @@ def xbox_available() -> bool:
         return False
 
 
+def xbox_driver_installed() -> bool:
+    """True when the ViGEmBus driver is installed, running or not."""
+    from vigem.ids import driver_installed
+
+    return driver_installed()
+
+
+def xbox_driver_version() -> str:
+    """The installed ViGEmBus driver's version ("" when not installed)."""
+    from vigem.ids import driver_version
+
+    return driver_version()
+
+
 def xbox_error() -> str:
     """Why the Xbox driver cannot be used ("" when it can)."""
     from vigem.ids import vigem_client_error

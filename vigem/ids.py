@@ -5,12 +5,32 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 from typing import Any
 
 XBOX_TAB_GUID = "c8e4b6a1-3d92-4f17-9a50-7b2c4e8f1d60"
 XBOX_HID_VID = 0x045E
 XBOX_HID_PID = 0x028E
+
+
+def driver_file() -> str:
+    """Where ViGEmBus installs its driver."""
+    root = os.environ.get("SystemRoot", r"C:\Windows")
+    return os.path.join(root, "System32", "drivers", "ViGEmBus.sys")
+
+
+def driver_installed() -> bool:
+    """True when the ViGEmBus driver is installed (it may still not be
+    running: see XboxProxy.available)."""
+    return os.name == "nt" and os.path.isfile(driver_file())
+
+
+def driver_version() -> str:
+    """The installed ViGEmBus driver's file version ("" when not installed)."""
+    from gremlin.util import file_version
+
+    return file_version(driver_file())
 
 
 def vigem_client_error() -> str:

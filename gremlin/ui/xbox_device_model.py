@@ -3,7 +3,10 @@
 
 from __future__ import annotations
 
-from PySide6 import QtCore
+import logging
+import os
+
+from PySide6 import QtCore, QtGui
 
 import gremlin.ui.type_aliases as ta
 from gremlin import shared_state
@@ -57,6 +60,85 @@ def _incoming_for(pad_id: int, target: XboxTarget) -> str:
             guid = str(device_id)
             hits.append(f"{device_label(guid)} · {_input_text(guid, item)}")
     return "  ·  ".join(hits)
+
+
+_VIGEM_DOWNLOAD = "https://github.com/nefarius/ViGEmBus/releases"
+
+
+@ta.QmlElement
+class XboxDriverStatus(QtCore.QObject):
+    """The ViGEmBus check at the top of the Xbox Viewer, like HidHide's:
+    installed, running (the program can connect), and its version."""
+
+    changed = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        self._installed = False
+        self._ready = False
+        self._version = ""
+        self._error = ""
+        self.reload()
+
+    @QtCore.Slot()
+    def reload(self) -> None:
+        self._installed = output.xbox_driver_installed()
+        self._ready = output.xbox_available()
+        self._version = output.xbox_driver_version() if self._installed else ""
+        self._error = "" if self._ready else output.xbox_error()
+        self.changed.emit()
+
+    def _get_installed(self) -> bool:
+        return self._installed
+
+    def _get_ready(self) -> bool:
+        return self._ready
+
+    def _get_version(self) -> str:
+        return self._version
+
+    def _get_status(self) -> str:
+        if self._ready:
+            return "ViGEmBus driver found"
+        if self._error:
+            return self._error
+        if self._installed:
+            return "ViGEmBus is installed but not running"
+        return "ViGEmBus is not installed"
+
+    def _get_hint(self) -> str:
+        if self._ready:
+            return ""
+        if self._installed and not self._error:
+            return "Restart Windows, or reinstall ViGEmBus 1.22, then restart Gremlin-Platforms."
+        return (
+            "Install ViGEmBus 1.22 from the Nefarius releases page, then restart "
+            "Gremlin-Platforms. This program does not download or bundle that installer."
+        )
+
+    @QtCore.Slot()
+    def openDownload(self) -> None:
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(_VIGEM_DOWNLOAD))
+
+    @QtCore.Slot()
+    def openGameControllers(self) -> None:
+        if os.name != "nt":
+            return
+        import subprocess
+
+        try:
+            subprocess.Popen(
+                ["rundll32.exe", "shell32.dll,Control_RunDLL", "joy.cpl"],
+                close_fds=True,
+            )
+        except OSError as exc:
+            logging.getLogger("system").warning(f"joy.cpl failed: {exc}")
+
+    installed = QtCore.Property(bool, fget=_get_installed, notify=changed)
+    ready = QtCore.Property(bool, fget=_get_ready, notify=changed)
+    driverVersion = QtCore.Property(str, fget=_get_version, notify=changed)
+    statusText = QtCore.Property(str, fget=_get_status, notify=changed)
+    hint = QtCore.Property(str, fget=_get_hint, notify=changed)
 
 
 @ta.QmlElement
@@ -124,24 +206,7 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
         module = output.xbox_module(self._pad_id)
         return module.name if module is not None else f"Xbox pad {self._pad_id}"
 
-    def _get_available(self) -> bool:
-        return output.xbox_available()
-
-    def _get_status(self) -> str:
-        if output.xbox_available():
-            return "ViGEmBus ready. Map hardware with Map to Xbox, then run the profile."
-        err = output.xbox_error()
-        if err:
-            return err
-        return (
-            "Xbox outputs aren't available. Install ViGEmBus 1.22 "
-            "(github.com/nefarius/ViGEmBus/releases), then restart "
-            "Gremlin-Platforms."
-        )
-
     guid = QtCore.Property(str, fget=_get_guid, constant=True)
     padId = QtCore.Property(int, fget=_get_pad_id, fset=_set_pad_id, notify=padIdChanged)
-    available = QtCore.Property(bool, fget=_get_available, notify=statusChanged)
-    statusText = QtCore.Property(str, fget=_get_status, notify=statusChanged)
     moduleName = QtCore.Property(str, fget=_get_module_name, notify=statusChanged)
 

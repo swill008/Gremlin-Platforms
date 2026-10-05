@@ -1235,3 +1235,52 @@ def first_available_input(
                 else:
                     return (device, input_type, 1)
     return None
+
+
+def file_version(path: str) -> str:
+    """A Windows file's version ("1.21.442.0"); "" when it has none or is
+    missing."""
+    if os.name != "nt" or not os.path.isfile(path):
+        return ""
+    from ctypes import wintypes
+    ver = ctypes.WinDLL("version", use_last_error=True)
+    ver.GetFileVersionInfoSizeW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(wintypes.DWORD)]
+    ver.GetFileVersionInfoSizeW.restype = wintypes.DWORD
+    ver.GetFileVersionInfoW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p]
+    ver.GetFileVersionInfoW.restype = wintypes.BOOL
+    ver.VerQueryValueW.argtypes = [
+        ctypes.c_void_p, wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.UINT)
+    ]
+    ver.VerQueryValueW.restype = wintypes.BOOL
+    ignored = wintypes.DWORD(0)
+    size = ver.GetFileVersionInfoSizeW(path, ctypes.byref(ignored))
+    if not size:
+        return ""
+    buf = ctypes.create_string_buffer(size)
+    if not ver.GetFileVersionInfoW(path, 0, size, buf):
+        return ""
+
+    class VS_FIXEDFILEINFO(ctypes.Structure):
+        _fields_ = [
+            ("dwSignature", wintypes.DWORD),
+            ("dwStrucVersion", wintypes.DWORD),
+            ("dwFileVersionMS", wintypes.DWORD),
+            ("dwFileVersionLS", wintypes.DWORD),
+            ("dwProductVersionMS", wintypes.DWORD),
+            ("dwProductVersionLS", wintypes.DWORD),
+            ("dwFileFlagsMask", wintypes.DWORD),
+            ("dwFileFlags", wintypes.DWORD),
+            ("dwFileOS", wintypes.DWORD),
+            ("dwFileType", wintypes.DWORD),
+            ("dwFileSubtype", wintypes.DWORD),
+            ("dwFileDateMS", wintypes.DWORD),
+            ("dwFileDateLS", wintypes.DWORD),
+        ]
+
+    ptr = ctypes.c_void_p()
+    length = wintypes.UINT(0)
+    if not ver.VerQueryValueW(buf, "\\", ctypes.byref(ptr), ctypes.byref(length)):
+        return ""
+    info = ctypes.cast(ptr, ctypes.POINTER(VS_FIXEDFILEINFO)).contents
+    ms, ls = int(info.dwFileVersionMS), int(info.dwFileVersionLS)
+    return f"{ms >> 16}.{ms & 0xFFFF}.{ls >> 16}.{ls & 0xFFFF}"
