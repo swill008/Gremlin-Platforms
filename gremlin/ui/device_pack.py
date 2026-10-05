@@ -1570,15 +1570,6 @@ def _apply_wires(
 _last_import: dict | None = None
 
 
-def _roots(items: list) -> list:
-    return [
-        binding.root_action
-        for item in items
-        for binding in item.action_sequences
-        if binding.root_action is not None
-    ]
-
-
 def can_undo_import() -> bool:
     return _last_import is not None
 
@@ -1594,7 +1585,7 @@ def drop_import_undo() -> None:
 
     profile = current_profile
     if profile is not None and wires["profile"] is profile:
-        profile.drop_unused_actions(_roots(wires["removed"]))
+        profile.drop_unused_actions(profile.roots_of(wires["removed"]))
 
 
 def undo_import() -> dict:
@@ -1630,7 +1621,7 @@ def undo_import() -> dict:
                 if id(item) not in added
             ]
             profile.inputs[wires["uid"]] = items + list(wires["removed"])
-            profile.drop_unused_actions(_roots(wires["added"]))
+            profile.drop_unused_actions(profile.roots_of(wires["added"]))
             for mode in reversed(wires["modes"]):
                 modes = profile.modes
                 if modes.mode_exists(mode) and modes.bindings_in_mode(mode) == 0:

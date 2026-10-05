@@ -138,7 +138,9 @@ class AutoMapper:
                     )
                     target = types.VjoyInput(vjoy_id, input_type, int(hid))
                     if options.overwrite_used_inputs:
+                        roots = self._profile.roots_of([item] if item is not None else [])
                         item.action_sequences.clear()
+                        self._profile.drop_unused_actions(roots)
                         used.discard(target)
                     if item.action_sequences:
                         self._num_retained_bindings += 1

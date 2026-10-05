@@ -903,7 +903,10 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             sequences = getattr(item, "action_sequences", None) or []
             if seq >= len(sequences):
                 return False
-            item.remove_item_binding(sequences[seq])
+            binding = sequences[seq]
+            item.remove_item_binding(binding)
+            if binding.root_action is not None:
+                profile.drop_unused_actions([binding.root_action])
             signal.inputItemChanged.emit(want)
             signal.reloadCurrentInputItem.emit()
             return True

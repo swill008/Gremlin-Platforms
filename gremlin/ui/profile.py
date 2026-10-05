@@ -698,6 +698,10 @@ class InputItemModel(QtCore.QAbstractListModel):
             self.beginRemoveRows(QtCore.QModelIndex(), index, index)
             self._input_item.remove_item_binding(binding.input_item_binding)
             self.endRemoveRows()
+            profile = shared_state.current_profile
+            root = binding.input_item_binding.root_action
+            if profile is not None and root is not None:
+                profile.drop_unused_actions([root])
             signal.inputItemChanged.emit(self._enumeration_index)
         except ValueError:
             pass

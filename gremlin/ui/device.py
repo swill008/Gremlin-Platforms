@@ -810,7 +810,7 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
     def deleteInput(self, index: int) -> None:
         self.beginResetModel()
         item = self._all_keyboard_inputs()[index]
-        self._profile.inputs[dill.UUID_Keyboard].remove(item)
+        self._profile.drop_inputs(dill.UUID_Keyboard, [item])
         self.endResetModel()
 
     @QtCore.Slot(list, str)

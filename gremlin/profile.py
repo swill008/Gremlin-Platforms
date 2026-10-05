@@ -345,6 +345,23 @@ class Library:
             recursive: if true all children of the action will be subjected
                 to the same removal check
         """
+        self._remove_unused(action, recursive, self._used_by_inputs())
+
+    def _used_by_inputs(self) -> set[uuid.UUID]:
+        """Actions the open profile's inputs use, when this is its library."""
+        from gremlin import shared_state
+
+        profile = shared_state.current_profile
+        if profile is None or profile.library is not self:
+            return set()
+        return profile.actions_in_use()
+
+    def _remove_unused(
+        self, action: AbstractActionData, recursive: bool, used: set[uuid.UUID]
+    ) -> None:
+        # An input still uses it (an action can be shared): it stays.
+        if action.id in used:
+            return
         # If the action occurs in another action we can abort any further
         # processing
         for entry in self._actions.values():
@@ -353,10 +370,10 @@ class Library:
 
         # Delete before recursing, else children see this as still referenced
         children = action.get_actions()[0] if recursive else []
-        del self._actions[action.id]
+        self._actions.pop(action.id, None)
 
         for child in children:
-            self.remove_unused(child, True)
+            self._remove_unused(child, True, used)
 
     def actions_by_type(
         self, action_type: type[AbstractActionData]
@@ -510,18 +527,21 @@ class Library:
                 for i in reversed(to_remove):
                     action.remove_action(i, selector)
 
-    def to_xml(self) -> ElementTree.Element:
+    def to_xml(self, used: set[uuid.UUID] | None = None) -> ElementTree.Element:
         """Returns an XML node encoding the content of this library.
 
         Invalid actions are left out of the node. They stay in the open
-        profile until drop_invalid_actions is called.
+        profile until drop_invalid_actions is called. used: when given, only
+        these actions are written (the profile passes the ones its inputs
+        use, so deleted, replaced and draft actions don't reach the file).
 
         Returns:
             XML node holding the instance's content
         """
         node = ElementTree.Element("library")
         for action in [n for n in self._actions.values() if n.is_valid()]:
-            node.append(action.to_xml())
+            if used is None or action.id in used:
+                node.append(action.to_xml())
         return node
 
     def _parse_xml_action(self, action: ElementTree.Element) -> None:
@@ -712,7 +732,9 @@ class Profile:
         root.append(self.settings.to_xml())
         root.append(self._logical_devices_to_xml())
         root.append(self._osc_devices_to_xml())
-        root.append(self.library.to_xml())
+        # Only what an input uses: what was deleted or replaced (kept in
+        # memory for Undo) and editor drafts stay out of the file.
+        root.append(self.library.to_xml(self.actions_in_use()))
         root.append(self.modes.to_xml())
         root.append(self.scripts.to_xml())
         self.device_database.update_for_uuids(self.inputs)
@@ -808,6 +830,25 @@ class Profile:
             return item
         else:
             return None
+
+    @staticmethod
+    def roots_of(items: Iterable[InputItem]) -> list[AbstractActionData]:
+        """The root action of every binding of these inputs."""
+        return [
+            binding.root_action
+            for item in items
+            for binding in item.action_sequences
+            if binding.root_action is not None
+        ]
+
+    def drop_inputs(self, device_id: uuid.UUID, doomed: Iterable[InputItem]) -> None:
+        """Removes these inputs of a device and the actions only they used."""
+        gone = {id(item) for item in doomed}
+        items = self.inputs.get(device_id, [])
+        removed = [item for item in items if id(item) in gone]
+        if device_id in self.inputs:
+            self.inputs[device_id] = [item for item in items if id(item) not in gone]
+        self.drop_unused_actions(self.roots_of(removed))
 
     def actions_in_use(self) -> set[uuid.UUID]:
         """Ids of every action an input uses, with every action inside them."""
@@ -1251,11 +1292,11 @@ class ModeHierarchy:
             child.set_parent(parent_node)
 
         # Find all InputItem actions using the mode being deleted and remove
-        # them as well.
-        for device_id, input_items in self._profile.inputs.items():
-            self._profile.inputs[device_id] = [
-                x for x in input_items if x.mode != mode_name
-            ]
+        # them as well, with the actions only they used.
+        for device_id, input_items in list(self._profile.inputs.items()):
+            self._profile.drop_inputs(
+                device_id, [x for x in input_items if x.mode == mode_name]
+            )
 
         if self._profile.settings.startup_mode == mode_name:
             self._profile.settings.startup_mode = "Use Heuristic"

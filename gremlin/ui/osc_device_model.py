@@ -236,11 +236,14 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         if profile is None:
             return
         items = profile.inputs.get(OSC_DEVICE_UUID, [])
-        profile.inputs[OSC_DEVICE_UUID] = [
-            item
-            for item in items
-            if not (item.input_type == input_type and item.input_id == input_id)
-        ]
+        profile.drop_inputs(
+            OSC_DEVICE_UUID,
+            [
+                item
+                for item in items
+                if item.input_type == input_type and item.input_id == input_id
+            ],
+        )
 
     @QtCore.Slot(str)
     def deleteInput(self, label: str) -> None:
