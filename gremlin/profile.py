@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import codecs
 import dataclasses
 import logging
 import uuid
@@ -685,8 +684,11 @@ class Profile:
         if prune:
             self.library.drop_invalid_actions()
         text = self._xml_text()
-        with codecs.open(str(fpath), "w", "utf-8-sig") as out:
-            out.write(text)
+        # Safely (a temporary file, then a swap), as module files are: a
+        # crash mid-save leaves the old profile whole.
+        from gremlin.modules import module_file
+
+        module_file.write_text(Path(fpath), text, encoding="utf-8-sig", newline="")
         self._saved_snapshot = text
         from gremlin.ui.live_debug import trace
         trace("SAVE", "Profile", "to_xml", fpath, "ok")

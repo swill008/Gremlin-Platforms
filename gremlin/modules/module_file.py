@@ -61,13 +61,17 @@ def load_for_update(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def write_text(path: Path, text: str) -> None:
-    """Writes the whole file safely: a temporary file, then a swap."""
+def write_text(
+    path: Path, text: str, encoding: str = "utf-8", newline: str | None = None
+) -> None:
+    """Writes the whole file safely: a temporary file, then a swap. A crash
+    mid-write leaves the old file whole. Also used for profiles (with a BOM
+    and their line ends kept: encoding "utf-8-sig", newline "")."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
     try:
-        temporary.write_text(text, encoding="utf-8")
+        temporary.write_text(text, encoding=encoding, newline=newline)
         os.replace(temporary, path)
     except OSError:
         # Windows refuses the swap while another program (antivirus, an
@@ -76,7 +80,7 @@ def write_text(path: Path, text: str) -> None:
             temporary.unlink()
         except OSError:
             pass
-        path.write_text(text, encoding="utf-8")
+        path.write_text(text, encoding=encoding, newline=newline)
 
 
 def write_json(path: Path, doc: dict, indent: int = 2) -> None:
