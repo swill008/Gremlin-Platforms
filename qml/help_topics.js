@@ -103,7 +103,7 @@ function topics() {
             + "</ul>"
             + "<p>An output device opens its <b>Output View</b> instead: a live view of what its output module sends, labelled “View only — driven by input module mappings.”</p>"),
         topic("Configuration", "Appearance",
-            "<p>Appearance changes how a Configuration page or Output View looks, not what it does. The look is saved in that device's module file.</p>"
+            "<p>Appearance changes how a Configuration page or Output View looks, not what it does. The look is saved in that device's module file. The Xbox output page has no Appearance.</p>"
             + "<p><b>Appearance…</b> opens the panel. Changes show at once and are kept only with <b>Save Appearance</b>. <b>Reset Appearance</b> (red) restores the built-in look; <b>Copy Appearance from…</b> copies another device's look. Both still need Save Appearance. Closing the panel with unsaved changes asks first.</p>"
             + "<p>Sections: <b>Screen</b> (background color or image), <b>Shown</b> (child rows, live bars, LED dots, summary), <b>List</b> and <b>Group</b> (spacing and group cards), <b>Parent Row</b> and <b>Child Row</b> (row size, padding, colors), <b>Text</b>, <b>Selection</b>, and <b>Editor</b> (the action editor beside a row). Use <b>Open All</b> / <b>Close All</b> to expand them.</p>"),
 

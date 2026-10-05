@@ -1527,8 +1527,10 @@ ApplicationWindow {
                         font.pixelSize: Style.dp(12)
                     }
                 }
+                // The Xbox page has no Appearance panel.
                 Button {
-                    visible: configDirection === "dest"
+                    objectName: "outputAppearanceButton"
+                    visible: configDirection === "dest" && !(uiState && uiState.currentTab === "xbox")
                     text: outputViewPanel ? "Hide Appearance" : "Appearance…"
                     // Hiding goes through the panel's close, which asks about unsaved
                     // display options and then hides it.

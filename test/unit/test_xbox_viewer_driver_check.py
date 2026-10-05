@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The Xbox Viewer and the Xbox output page check the ViGEmBus driver at
-their top, like HidHide (XboxDriverCheck).
+their top, like HidHide (XboxDriverCheck). On the page it sits above the
+pad's name. The page has no Appearance panel, so the header shows no
+Appearance button there (vJoy outputs keep theirs).
 
 The row shows whether ViGEmBus is installed and running, its version, and
 what to do when it isn't, with Get ViGEmBus and Test ViGEmBus. It shows
@@ -104,6 +106,23 @@ status = next((i for i in items if i.objectName() == 'xboxDriverStatus'), None)
 out['page-row'] = row is not None and row.isVisible() and row.height() > 0
 out['page-row-top'] = top(row)
 out['page-status'] = status.property('text') if status else ''
+# The pad's name: Xbox pad 1 here (a fresh profile has no Xbox module file).
+name = next((i for i in items if i.property('text') == 'Xbox pad 1'), None)
+out['above-name'] = bool(row and name and top(row) < top(name))
+
+# The header's Appearance button: none on the Xbox page, there on vJoy's.
+def appearance_shown(tab):
+    ui = QtQml.QQmlExpression(QtQml.qmlContext(win), win, 'uiState').evaluate()[0]
+    ui.setCurrentRoom('configuration')
+    ui.setCurrentTab(tab)
+    dest = '_root.configDirection = "dest"'
+    QtQml.QQmlExpression(QtQml.qmlContext(win), win, dest).evaluate()
+    QtTest.QTest.qWait(300)
+    button = win.findChild(QtQuick.QQuickItem, 'outputAppearanceButton')
+    return button.property('visible') if button else None
+
+out['appearance-xbox'] = appearance_shown('xbox')
+out['appearance-vjoy'] = appearance_shown('physical')
 if len(sys.argv) > 2:
     host.grabWindow().save(sys.argv[2])
 print('RESULT ' + json.dumps(out), flush=True)
@@ -147,8 +166,14 @@ def test_not_installed_says_what_to_do(run: dict) -> None:
 def test_the_output_page_shows_the_same_check_at_its_top(run: dict) -> None:
     assert run["page-row"] is True
     assert run["page-status"] == "ViGEmBus is not installed"
-    # Under the name and pad line, above the description and the rows.
-    assert 0 < run["page-row-top"] < 80
+    # At the top: above the pad's name, the description and the rows.
+    assert 0 <= run["page-row-top"] < 30
+    assert run["above-name"] is True
+
+
+def test_the_xbox_page_has_no_appearance_button(run: dict) -> None:
+    assert run["appearance-xbox"] is False
+    assert run["appearance-vjoy"] is True
 
 
 def _status(

@@ -21,6 +21,10 @@ Item {
         anchors.margins: Style.dp(10)
         spacing: Style.dp(8)
 
+        XboxDriverCheck {
+            Layout.fillWidth: true
+        }
+
         RowLayout {
             Layout.fillWidth: true
             spacing: Style.dp(8)
@@ -39,9 +43,6 @@ Item {
             Item { Layout.fillWidth: true }
         }
 
-        XboxDriverCheck {
-            Layout.fillWidth: true
-        }
 
         Label {
             Layout.fillWidth: true
