@@ -164,3 +164,25 @@ def test_picking_a_log_after_live_stops_shows_that_log(tmp_path: Path) -> None:
     )
     # The list without Live: All logs and every file, Qt included.
     assert 'model: _debug.live' in page
+
+
+def test_live_from_all_logs_keeps_what_was_shown(tmp_path: Path) -> None:
+    (tmp_path / "system.log").write_text(
+        "2026-10-04 10:00:01       INFO started\n", encoding="utf-8")
+    (tmp_path / "qt.log").write_text(
+        "2026-10-04 10:00:02 a Qt line\n", encoding="utf-8")
+    log = _debug_log(tmp_path, "all")
+    log.refresh()
+    log.setProperty("live", True)
+    try:
+        texts = [t for _r, t in log._shown]
+        # What All logs showed stays, then the Live divider.
+        assert texts[:2] == [
+            "2026-10-04 10:00:01 [System]       INFO started",
+            "2026-10-04 10:00:02 [Qt] a Qt line",
+        ]
+        assert "Live started" in texts[2]
+        sources = [src for _r, src, _t in (log._session or [])][:2]
+        assert sources == ["System", "Qt"]
+    finally:
+        log.setProperty("live", False)

@@ -255,6 +255,12 @@ def tagged(entries: list[tuple[int, str]], name: str) -> list[tuple[int, str]]:
     return out
 
 
+def _tag_source(text: str) -> str:
+    """The log an All logs entry came from, by its tag ("System" if none)."""
+    match = re.match(r"^(?:\d{4}-\d\d-\d\d \d\d:\d\d:\d\d )?\[(\w+)\]", text)
+    return match.group(1) if match else "System"
+
+
 def merged_entries(files: dict[str, str]) -> list[tuple[int, str]]:
     """Every file's entries (name -> its text), tagged, in time order; the
     same second keeps each file's own order."""
@@ -456,12 +462,21 @@ class DebugLog(QtCore.QObject):
         if on:
             empty = self._get_start_empty()
             if self._session is None or empty:
-                # Keep what the file view showed (unless Start empty).
-                source = SOURCE_OF.get(self._file, "System")
-                self._session = [] if empty else [
-                    (rank, source, text)
-                    for rank, text in debug_entries(self._raw or "")
-                ]
+                # Keep what the file view showed (unless Start empty): one
+                # file, or All logs (each entry's log from its tag).
+                if empty:
+                    self._session = []
+                elif self._file == "all":
+                    self._session = [
+                        (rank, _tag_source(text), text)
+                        for rank, text in (self._merged or [])
+                    ]
+                else:
+                    source = SOURCE_OF.get(self._file, "System")
+                    self._session = [
+                        (rank, source, text)
+                        for rank, text in debug_entries(self._raw or "")
+                    ]
             self._seq = log_feed.last_seq()
             self._file = "all"
             self._divide("started")
