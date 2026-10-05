@@ -465,12 +465,17 @@ class Library:
             parse_later = waiting
 
         # Restore action sequence as it appears in the file to maintain serialization
-        # consistency for change detection tests.
+        # consistency for change detection tests. Actions already here (a
+        # Device Pack adds its actions to an open profile) stay, before them.
         file_ids = [
             safe_read(entry, "id", uuid.UUID)
             for entry in node.findall("./library/action")
         ]
-        self._actions = {
+        in_file = set(file_ids)
+        kept = {
+            aid: action for aid, action in self._actions.items() if aid not in in_file
+        }
+        self._actions = kept | {
             fid: self._actions[fid] for fid in file_ids if fid in self._actions
         }
 
@@ -801,6 +806,39 @@ class Profile:
             return item
         else:
             return None
+
+    def actions_in_use(self) -> set[uuid.UUID]:
+        """Ids of every action an input uses, with every action inside them."""
+        used: set[uuid.UUID] = set()
+        pending = [
+            binding.root_action
+            for items in self.inputs.values()
+            for item in items
+            for binding in item.action_sequences
+            if binding.root_action is not None
+        ]
+        while pending:
+            action = pending.pop()
+            if action is None or action.id in used:
+                continue
+            used.add(action.id)
+            pending.extend(action.get_actions()[0])
+        return used
+
+    def drop_unused_actions(self, roots: list[AbstractActionData]) -> None:
+        """Removes these actions, and every action inside them, from the
+        library, except those an input still uses (an action can be shared)."""
+        used = self.actions_in_use()
+        seen: set[uuid.UUID] = set()
+        pending = [root for root in roots if root is not None]
+        while pending:
+            action = pending.pop()
+            if action.id in seen:
+                continue
+            seen.add(action.id)
+            pending.extend(action.get_actions()[0])
+            if action.id not in used and self.library.has_action(action.id):
+                self.library.delete_action(action.id)
 
     def has_unsaved_changes(self) -> bool:
         """Checks if the profile has unsaved changes.

@@ -1853,19 +1853,23 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def peekPackDevice(self, device_name: str) -> str:
-        from gremlin.ui.device_pack import assemble
+        from gremlin.ui.device_pack import assemble, pack_modes
 
         built = assemble(device_name, self._resolve_existing)
         if isinstance(built, str):
             return json.dumps({"ok": False, "error": built, "device": device_name})
         _data, info = built
         photo = info.get("photoPath") or ""
+        match = _match_pack_device(device_name)
+        guid = str(match["guid"]) if match and match.get("guid") else ""
         return json.dumps({
             "ok": True,
             "device": info["device"],
             "photoUrl": Path(photo).as_uri() if photo else "",
             "sizeText": info["sizeText"],
             "bytes": info["bytes"],
+            # The modes in which it has wires, for Export's choice.
+            "modes": pack_modes(guid),
         })
 
     @QtCore.Slot(str, result=str)
@@ -1883,11 +1887,24 @@ class HardwareProfile(QtCore.QObject):
             return json.dumps({"ok": False, "error": described})
         return json.dumps(described)
 
-    @QtCore.Slot(str, str, result=str)
-    def exportPack(self, device_name: str, dest_url: str) -> str:
+    @QtCore.Slot(str, str, str, result=str)
+    def exportPack(self, device_name: str, dest_url: str, options: str) -> str:
+        """options: {"modes": [...] (or absent: all), "author", "note"}."""
         from gremlin.ui.device_pack import assemble
 
-        built = assemble(device_name, self._resolve_existing)
+        try:
+            chosen = json.loads(options) if str(options or "").strip() else {}
+        except json.JSONDecodeError:
+            chosen = {}
+        if not isinstance(chosen, dict):
+            chosen = {}
+        modes = chosen.get("modes")
+        built = assemble(
+            device_name,
+            self._resolve_existing,
+            [str(m) for m in modes] if isinstance(modes, list) else None,
+            {"author": chosen.get("author"), "note": chosen.get("note")},
+        )
         if isinstance(built, str):
             return json.dumps({"ok": False, "error": built})
         data, info = built
@@ -1914,6 +1931,7 @@ class HardwareProfile(QtCore.QObject):
         return json.dumps({
             "ok": True,
             "path": str(dest),
+            "folderUrl": dest.parent.as_uri(),
             "device": info["device"],
             "sizeText": info["sizeText"],
         })
@@ -1945,12 +1963,52 @@ class HardwareProfile(QtCore.QObject):
                     slug = str(section["id"])[4:]
                     outputs[slug] = section.get("target") or section.get("title") or ""
                 for item in section.get("items") or []:
-                    if str(item.get("id", "")).endswith("camera"):
+                    if item.get("checked") is False:
                         continue
                     items.append(item["id"])
             chosen = {"items": items, "outputs": outputs}
         result = apply_zip(Path(src), target_name, chosen if isinstance(chosen, dict) else {})
         return json.dumps(result)
+
+    @QtCore.Slot(str, str, str, result=str)
+    def previewPackImport(self, zip_url: str, target_name: str, selection: str) -> str:
+        """What Import would replace, for the warning before it."""
+        from gremlin.ui.device_pack import preview_import
+
+        try:
+            src = to_local_path(zip_url)
+            chosen = json.loads(selection) if str(selection or "").strip() else {}
+        except Exception:
+            error = "The pack or the selection could not be read."
+            return json.dumps({"ok": False, "error": error})
+        if not src or not src.is_file():
+            return json.dumps({"ok": False, "error": "File not found."})
+        chosen = chosen if isinstance(chosen, dict) else {}
+        return json.dumps(preview_import(Path(src), target_name, chosen))
+
+    @QtCore.Slot(result=str)
+    def undoPackImport(self) -> str:
+        from gremlin.ui.device_pack import undo_import
+
+        return json.dumps(undo_import())
+
+    @QtCore.Slot()
+    def keepPackImport(self) -> None:
+        """The last import stays: Undo Import is no longer offered."""
+        from gremlin.ui.device_pack import drop_import_undo
+
+        drop_import_undo()
+
+    @QtCore.Slot(result=bool)
+    def canUndoPackImport(self) -> bool:
+        from gremlin.ui.device_pack import can_undo_import
+
+        return can_undo_import()
+
+    @QtCore.Slot(str)
+    def showFolder(self, folder_url: str) -> None:
+        """Opens a folder in Explorer (Show Folder after Export)."""
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(folder_url))
 
     @QtCore.Slot(str, result="QVariant")
     def chips(self, guid: str):

@@ -50,6 +50,17 @@ ApplicationWindow {
     property int tickRev: 0
     property int openRev: 0
     property var folded: ({})
+    // Export: the device's modes with wires ({name, count}) and which are
+    // ticked; the folder of the last export (Show Folder).
+    property var exportModes: []
+    property var exportTicks: ({})
+    property int exportRev: 0
+    property string exportFolder: ""
+    // Import: the pack's notes, and whether Undo Import is offered.
+    property var packNotes: ({})
+    property bool canUndo: false
+    // What the warning before Import showed (preview from the program).
+    property var preview: ({})
 
     ListModel { id: _deviceModel }
     HardwareProfile { id: _hw }
@@ -90,6 +101,9 @@ ApplicationWindow {
         exportName = name
         exportPhoto = ""
         exportSize = ""
+        exportModes = []
+        exportTicks = {}
+        exportFolder = ""
         if (!name.length) {
             status = "Choose a device."
             return
@@ -102,13 +116,33 @@ ApplicationWindow {
         exportName = info.device || name
         exportPhoto = info.photoUrl || ""
         exportSize = info.sizeText || ""
+        exportModes = info.modes || []
+        var ticks = {}
+        for (var m = 0; m < exportModes.length; ++m)
+            ticks[exportModes[m].name] = true
+        exportTicks = ticks
+        exportRev = exportRev + 1
         status = ""
+    }
+
+    function exportOptions() {
+        var modes = []
+        for (var m = 0; m < exportModes.length; ++m) {
+            if (exportTicks[exportModes[m].name] === true)
+                modes.push(exportModes[m].name)
+        }
+        return JSON.stringify({
+            modes: modes,
+            author: _author.text,
+            note: _note.text
+        })
     }
 
     function loadPack(info) {
         packInfo = info
         importName = info.exportedName || ""
         importPhoto = info.photoUrl || ""
+        packNotes = info.notes || {}
         var rows = info.sections || []
         var next = {}
         var names = {}
@@ -231,25 +265,73 @@ ApplicationWindow {
     }
 
     function runImport() {
-        var info = _parse(_hw.importPack(zipUrl, _saveAs.text, selectionJson()))
+        var chosen = JSON.parse(selectionJson())
+        // Read from the preview: the warning has closed by now.
+        chosen.createLogical = (preview.missingLogical || []).length > 0 && _createLogical.checked
+        var info = _parse(_hw.importPack(zipUrl, _saveAs.text, JSON.stringify(chosen)))
         status = info.ok ? (info.report || "Imported.") : (info.error || "Import failed.")
+        canUndo = info.ok === true && info.canUndo === true
         if (info.ok)
             reloadDevices()
     }
 
-    function askImport() {
+    function undoImport() {
+        var info = _parse(_hw.undoPackImport())
+        status = info.ok ? (info.report || "Undid the import.") : (info.error || "Undo failed.")
+        canUndo = false
+        reloadDevices()
+    }
+
+    // The warning before Import: what will be replaced, and what is kept.
+    function warningText(p) {
+        var lines = []
+        var device = p.device || _saveAs.text
+        lines.push("Import replaces these on " + device + ":")
+        var pieces = p.pieces || []
+        for (var i = 0; i < pieces.length; ++i)
+            lines.push("\u2022 " + pieces[i])
+        var modes = p.modes || []
+        for (var m = 0; m < modes.length; ++m) {
+            var mode = modes[m]
+            lines.push("\u2022 The wires and actions of " + device + " in " + mode.name
+                       + ": " + mode.here + " here, " + mode.pack + " from the pack.")
+        }
+        var moves = p.moves || []
+        for (var v = 0; v < moves.length; ++v)
+            lines.push("Wires to " + moves[v].from + " will send to " + moves[v].to + ".")
+        if ((p.leftOut || []).length)
+            lines.push(device + " doesn't have " + p.leftOut.join(", ") + ": those are left out.")
+        if (p.missingLogical && p.missingLogical.length)
+            lines.push("Some wires send to Logical Device inputs that don't exist here: "
+                       + p.missingLogical.join(", ") + ".")
         var missing = missingPictures()
-        if (!missing.length) {
-            runImport()
+        if (missing.length)
+            lines.push("The map uses a picture that is not ticked (" + missing.join(", ")
+                       + "): those chips will have no picture.")
+        lines.push("")
+        if (p.hasModuleFile)
+            lines.push("The previous module file is kept in the imported folder.")
+        if (modes.length)
+            lines.push("The profile changes on disk only when you save it.")
+        lines.push("Undo Import puts this import back until you import again or close this window.")
+        return lines.join("\n")
+    }
+
+    function askImport() {
+        var p = _parse(_hw.previewPackImport(zipUrl, _saveAs.text, selectionJson()))
+        if (!p.ok) {
+            status = p.error || "Could not read that pack."
             return
         }
-        _warnText.text = "The map uses a picture that is not ticked: "
-                + missing.join(", ")
-                + ". Those chips will have no picture."
+        preview = p
+        _warnText.text = warningText(p)
+        _createLogical.checked = true
         _warn.open()
     }
 
     Component.onCompleted: reloadDevices()
+    // Closing keeps the last import: Undo Import is no longer offered.
+    onClosing: _hw.keepPackImport()
 
     FileDialog {
         id: _save
@@ -261,10 +343,11 @@ ApplicationWindow {
         onAccepted: {
             var dest = Helpers.fileDialogUrl(_save)
             var name = _exportDevice.currentText || ""
-            var info = _parse(_hw.exportPack(name, dest))
+            var info = _parse(_hw.exportPack(name, dest, exportOptions()))
             status = info.ok
                     ? ("Wrote " + info.path + (info.sizeText ? " (" + info.sizeText + ")." : "."))
                     : (info.error || "Export failed.")
+            exportFolder = info.ok ? (info.folderUrl || "") : ""
         }
     }
 
@@ -276,6 +359,9 @@ ApplicationWindow {
         currentFolder: _hw.exportFolderUrl()
         onAccepted: {
             zipUrl = Helpers.fileDialogUrl(_pick)
+            // Another pack: the last import stays.
+            _hw.keepPackImport()
+            canUndo = false
             var info = _parse(_hw.peekPackZip(zipUrl))
             if (!info.ok) {
                 status = info.error || "Could not read that pack."
@@ -297,30 +383,44 @@ ApplicationWindow {
         }
     }
 
+    // Import is destructive: it replaces the ticked pieces on this machine.
     Dialog {
         id: _warn
-        title: "Picture Not Included"
+        objectName: "packWarning"
+        title: "Replace with This Pack?"
         modal: true
         anchors.centerIn: Overlay.overlay
-        width: Style.dp(460)
+        width: Math.min(Style.dp(560), _win.width - Style.dp(32))
         standardButtons: Dialog.NoButton
-        background: Rectangle { color: Style.bgCard; border.color: Style.line; radius: 4 }
+        background: Rectangle { color: Style.bgCard; border.color: Style.danger; radius: 4 }
         contentItem: ColumnLayout {
             spacing: Style.dp(12)
             Label {
                 id: _warnText
+                objectName: "packWarningText"
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
+                Layout.maximumHeight: _win.height * 0.6
+                elide: Text.ElideRight
                 color: Style.fg
+            }
+            CheckBox {
+                id: _createLogical
+                objectName: "packCreateLogical"
+                visible: (_win.preview.missingLogical || []).length > 0
+                text: "Create the missing Logical Device inputs"
             }
             RowLayout {
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: "Go Back"
+                    text: "Cancel"
                     onClicked: _warn.close()
                 }
                 Button {
-                    text: "Import"
+                    objectName: "packReplace"
+                    text: "Replace"
+                    highlighted: true
+                    U.Universal.accent: Style.danger
                     onClicked: {
                         _warn.close()
                         runImport()
@@ -442,6 +542,53 @@ ApplicationWindow {
                             color: Style.fg
                             font.pixelSize: Style.dp(24)
                         }
+                        // The modes whose wires go in the pack.
+                        Label {
+                            visible: exportModes.length > 0
+                            text: "Wires in these modes"
+                            color: Style.fg
+                        }
+                        Flow {
+                            visible: exportModes.length > 0
+                            Layout.fillWidth: true
+                            spacing: Style.dp(8)
+                            Repeater {
+                                model: exportModes
+                                delegate: CheckBox {
+                                    required property var modelData
+                                    objectName: "exportMode:" + modelData.name
+                                    text: modelData.name + " (" + modelData.count + ")"
+                                    checked: {
+                                        var rev = _win.exportRev
+                                        return _win.exportTicks[modelData.name] === true
+                                    }
+                                    onToggled: {
+                                        _win.exportTicks[modelData.name] = checked
+                                        _win.exportRev = _win.exportRev + 1
+                                    }
+                                }
+                            }
+                        }
+                        // Shown at the top of the import screen.
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: 2
+                            columnSpacing: Style.dp(8)
+                            Label { text: "Made by"; color: Style.fg }
+                            TextField {
+                                id: _author
+                                objectName: "packAuthor"
+                                Layout.fillWidth: true
+                                placeholderText: "Your name (optional)"
+                            }
+                            Label { text: "Note"; color: Style.fg }
+                            TextField {
+                                id: _note
+                                objectName: "packNote"
+                                Layout.fillWidth: true
+                                placeholderText: "For whoever imports it (optional)"
+                            }
+                        }
                         Button {
                             text: "Export…"
                             focusPolicy: Qt.NoFocus
@@ -460,6 +607,13 @@ ApplicationWindow {
                                 }
                                 _save.open()
                             }
+                        }
+                        Button {
+                            objectName: "packShowFolder"
+                            text: "Show Folder"
+                            focusPolicy: Qt.NoFocus
+                            visible: exportFolder.length > 0
+                            onClicked: _hw.showFolder(exportFolder)
                         }
                         Item { Layout.fillHeight: true }
                     }
@@ -515,6 +669,30 @@ ApplicationWindow {
                             color: Style.fgMuted
                             visible: importName.length > 0
                         }
+                        // Who made the pack, when, and their note.
+                        Label {
+                            objectName: "packNotes"
+                            visible: text.length > 0
+                            text: {
+                                var n = _win.packNotes || {}
+                                var by = []
+                                if (n.author)
+                                    by.push("By " + n.author)
+                                if (n.exportedOn)
+                                    by.push(n.exportedOn)
+                                if (n.program)
+                                    by.push("Gremlin-Platforms " + n.program)
+                                var lines = []
+                                if (by.length)
+                                    lines.push(by.join(" \u00b7 "))
+                                if (n.note)
+                                    lines.push(n.note)
+                                return lines.join("\n")
+                            }
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                            color: Style.fg
+                        }
                     }
                 }
                 RowLayout {
@@ -557,8 +735,13 @@ ApplicationWindow {
                 }
                 ScrollView {
                     id: _scroll
+                    objectName: "packList"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    // The list takes the room left and scrolls: its content's
+                    // height must not push it up over the buttons above.
+                    Layout.preferredHeight: Style.dp(120)
+                    Layout.minimumHeight: Style.dp(60)
                     clip: true
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                     ColumnLayout {
@@ -720,14 +903,24 @@ ApplicationWindow {
                         }
                     }
                 }
-                Button {
-                    text: "Import"
-                    focusPolicy: Qt.NoFocus
-                    enabled: {
-                        var rev = tickRev
-                        return zipUrl.length > 0 && packInfo.ok === true && _saveAs.text.length > 0 && anyChecked()
+                RowLayout {
+                    Button {
+                        objectName: "packImport"
+                        text: "Import"
+                        focusPolicy: Qt.NoFocus
+                        enabled: {
+                            var rev = tickRev
+                            return zipUrl.length > 0 && packInfo.ok === true && _saveAs.text.length > 0 && anyChecked()
+                        }
+                        onClicked: askImport()
                     }
-                    onClicked: askImport()
+                    Button {
+                        objectName: "packUndo"
+                        text: "Undo Import"
+                        focusPolicy: Qt.NoFocus
+                        visible: canUndo
+                        onClicked: undoImport()
+                    }
                 }
             }
         }

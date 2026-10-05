@@ -1,7 +1,12 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""One zip for a whole device. Import chooses which pieces to append."""
+"""One zip for a whole device: a working copy of what was exported.
+
+Import is destructive by design: each ticked piece replaces what is on this
+machine (module file pieces; for a ticked mode, the device's wires and
+actions in that mode). The window warns first, the previous module file is
+kept in the imported folder, and Undo Import puts back the last import."""
 
 from __future__ import annotations
 
@@ -15,6 +20,8 @@ import uuid
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
+
+from typing import TYPE_CHECKING
 
 from gremlin.ui.live_debug import trace
 from gremlin.modules.claim import claim_ids
@@ -39,10 +46,21 @@ from gremlin.ui.hardware_profile import (
     module_json_path,
 )
 
+if TYPE_CHECKING:
+    from gremlin.profile import Profile
+
 _UUID_RE = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 )
 _KIND_WORD = {"btn": "Button", "button": "Button", "axis": "Axis", "hat": "Hat"}
+# The pack format this program writes and reads. A newer pack is refused.
+PACK_FORMAT = 2
+# The Button Map's view settings (module file "ui"), in two rows.
+_MAP_VIEW_KEYS = (
+    "gridOn", "snapOn", "snapEntOn", "gridSize", "viewPct", "panX", "panY",
+    "guidesX", "guidesY", "guidesOn",
+)
+_PRINT_KEYS = ("printArea", "print")
 _FRIENDLY_KIND = {"btn": "button", "button": "button", "axis": "axis", "hat": "hat"}
 _VIEW_WORDS = {
     "layout": "Layout",
@@ -218,14 +236,46 @@ def _chip_lines(doc: dict) -> list[str]:
     return lines
 
 
-def _camera_lines(doc: dict) -> list[str]:
-    ui = doc.get("ui")
-    if not isinstance(ui, dict) or not ui:
+def _ui(doc: dict) -> dict:
+    raw = doc.get("ui")
+    return raw if isinstance(raw, dict) else {}
+
+
+def _map_view_lines(doc: dict) -> list[str]:
+    ui = _ui(doc)
+    if not any(key in ui for key in _MAP_VIEW_KEYS):
         return []
-    lines = ["Pan, zoom, and grid. This is how the map was last viewed."]
+    lines = ["Pan, zoom, grid and guides: how the map was last viewed."]
     if "viewPct" in ui:
-        lines.append(f"Zoom: {ui.get('viewPct')}")
+        lines.append(f"Zoom: {ui.get('viewPct')}%")
+    if "gridSize" in ui:
+        lines.append(f"Grid size: {ui.get('gridSize')}")
     return lines
+
+
+def _print_lines(doc: dict) -> list[str]:
+    ui = _ui(doc)
+    if not any(key in ui for key in _PRINT_KEYS):
+        return []
+    lines = ["The print area and the Print & Export settings."]
+    area = isinstance(ui.get("printArea"), dict)
+    lines.append("Print area: " + ("set" if area else "none"))
+    setup = ui.get("print")
+    if not isinstance(setup, dict):
+        setup = {}
+    if setup.get("paper"):
+        lines.append(f"Size: {setup.get('paper')}")
+    return lines
+
+
+def _catalog_lines(doc: dict) -> list[str]:
+    catalog = doc.get("catalog")
+    if not isinstance(catalog, dict) or not catalog:
+        return []
+    return [
+        "How the Configuration page looks: rows, colors and sizes.",
+        f"Settings: {len(catalog)}",
+    ]
 
 
 def _clip(lines: list[str], limit: int = 40) -> str:
@@ -259,7 +309,12 @@ def _module_items(prefix: str, doc: dict, pictures: list[dict]) -> list[dict]:
         items.append(_item(prefix + "calibration", "Calibration", _clip(calibration)))
     view = _view_lines(doc)
     if view:
-        items.append(_item(prefix + "view", "Display Editor", _clip(view)))
+        items.append(_item(prefix + "view", "Output View Appearance", _clip(view)))
+    catalog = _catalog_lines(doc)
+    if catalog:
+        items.append(
+            _item(prefix + "catalog", "Configuration Appearance", _clip(catalog))
+        )
     chips = _chip_lines(doc)
     needs = [row["id"] for row in pictures if row.get("onMap")]
     if chips:
@@ -268,9 +323,15 @@ def _module_items(prefix: str, doc: dict, pictures: list[dict]) -> list[dict]:
         items.append(row)
     for picture in pictures:
         items.append(picture["item"])
-    camera = _camera_lines(doc)
-    if camera:
-        items.append(_item(prefix + "camera", "Map camera", _clip(camera), checked=False))
+    map_view = _map_view_lines(doc)
+    if map_view:
+        items.append(
+            _item(prefix + "mapview", "Map view", _clip(map_view), checked=False)
+        )
+    print_setup = _print_lines(doc)
+    if print_setup:
+        title = "Print area and print settings"
+        items.append(_item(prefix + "print", title, _clip(print_setup), checked=False))
     return items
 
 
@@ -374,9 +435,47 @@ def _input_word(item) -> str:
     return f"Control {number}"
 
 
-def _collect_wires(guid: str) -> dict:
+def _mode_tree(profile: Profile, names: list[str]) -> dict[str, str]:
+    """Each mode's parent ("" at the top), for these modes and their parents."""
+    tree: dict[str, str] = {}
+    pending = list(names)
+    while pending:
+        name = pending.pop()
+        if name in tree:
+            continue
+        try:
+            node = profile.modes.find_mode(name)
+        except Exception:
+            tree[name] = ""
+            continue
+        parent = node.parent.value if node.parent is not None else ""
+        tree[name] = parent or ""
+        if parent:
+            pending.append(parent)
+    return tree
+
+
+def pack_modes(guid: str) -> list[dict]:
+    """The modes in which this device has actions: [{name, count}]."""
+    try:
+        from gremlin.shared_state import current_profile
+        from gremlin.ui.input_pairing import _guid
+    except Exception:
+        return []
+    uid = _guid(str(guid or "").strip())
+    if current_profile is None or uid is None:
+        return []
+    counts: dict[str, int] = {}
+    for item in current_profile.inputs.get(uid, []) or []:
+        if getattr(item, "action_sequences", None):
+            mode = str(getattr(item, "mode", "") or "Default")
+            counts[mode] = counts.get(mode, 0) + 1
+    return [{"name": name, "count": counts[name]} for name in sorted(counts)]
+
+
+def _collect_wires(guid: str, only_modes: list[str] | None = None) -> dict:
     text = str(guid or "").strip()
-    empty = {"modes": [], "actions": [], "outputs": []}
+    empty = {"modes": [], "actions": [], "outputs": [], "tree": {}}
     if not text:
         return empty
     try:
@@ -403,6 +502,8 @@ def _collect_wires(guid: str) -> dict:
             except Exception:
                 continue
             mode = str(getattr(item, "mode", "") or "Default")
+            if only_modes is not None and mode not in only_modes:
+                continue
             dest = ""
             try:
                 dest = " + ".join(_dest_labels_for_item(item))
@@ -465,6 +566,7 @@ def _collect_wires(guid: str) -> dict:
         "modes": list(modes.values()),
         "actions": action_xml,
         "outputs": outputs,
+        "tree": _mode_tree(profile, list(modes)),
     }
 
 
@@ -492,7 +594,36 @@ def _device_path(name: str) -> Path:
     return module_json_path(name, guid)
 
 
-def assemble(device_name: str, resolve) -> tuple[bytes, dict] | str:
+def _pack_label(name: str, guid: str, notes: dict | None) -> dict:
+    from datetime import date
+
+    from gremlin.util import get_code_version
+
+    label = {
+        "exportedName": name,
+        "exportedGuid": guid,
+        "format": PACK_FORMAT,
+        "program": get_code_version(),
+        "exportedOn": date.today().isoformat(),
+    }
+    notes = notes if isinstance(notes, dict) else {}
+    author = " ".join(str(notes.get("author") or "").split())
+    note = str(notes.get("note") or "").strip()
+    if author:
+        label["author"] = author
+    if note:
+        label["note"] = note
+    return label
+
+
+def assemble(
+    device_name: str,
+    resolve,
+    modes: list[str] | None = None,
+    notes: dict | None = None,
+) -> tuple[bytes, dict] | str:
+    """The pack for one device. modes: the modes whose wires go in (None:
+    all of them). notes: {author, note}, shown when the pack is imported."""
     name = " ".join(str(device_name or "").split())
     if not name:
         return "Choose a device."
@@ -508,8 +639,8 @@ def assemble(device_name: str, resolve) -> tuple[bytes, dict] | str:
     packed.pop("boundGuidLocal", None)
     packed.pop("boundName", None)
     packed["device"] = name
-    packed["pack"] = {"exportedName": name, "exportedGuid": guid}
-    wires = _collect_wires(guid)
+    packed["pack"] = _pack_label(name, guid, notes)
+    wires = _collect_wires(guid, modes)
     outputs: list[dict] = []
     for output_name in wires["outputs"]:
         built = _output_doc(output_name, resolve, used, files)
@@ -524,6 +655,7 @@ def assemble(device_name: str, resolve) -> tuple[bytes, dict] | str:
             zf.writestr("wires.json", json.dumps({
                 "modes": wires["modes"],
                 "actions": wires["actions"],
+                "tree": wires["tree"],
             }, indent=2) + "\n")
         for output in outputs:
             slug = str((output["doc"].get("pack") or {}).get("slug") or _slug(output["name"]))
@@ -603,11 +735,31 @@ def _stage_images(files: dict[str, bytes]) -> tuple[str, dict[str, str]]:
 _preview_dir = ""
 
 
+def _too_new(doc: dict) -> str:
+    """Why a pack from a newer program can't be read ("" when it can)."""
+    label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
+    try:
+        made = int(label.get("format") or 1)
+    except (TypeError, ValueError):
+        made = 1
+    if made <= PACK_FORMAT:
+        return ""
+    program = str(label.get("program") or "").strip()
+    by = f" (version {program})" if program else ""
+    return (
+        f"This pack was made by a newer Gremlin-Platforms{by}. "
+        "Update the program to import it."
+    )
+
+
 def describe_zip(path: Path) -> dict | str:
     loaded = _read_zip(path)
     if isinstance(loaded, str):
         return loaded
     doc = loaded["doc"]
+    newer = _too_new(doc)
+    if newer:
+        return newer
     label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
     exported = str(label.get("exportedName") or doc.get("device") or "").strip()
     if not exported:
@@ -645,11 +797,15 @@ def describe_zip(path: Path) -> dict | str:
             "item": _picture_item(arc, f"Map picture {map_count}", urls.get(arc, ""), True),
         })
     sections = []
-    module_rows, map_rows = _split_sections(doc, pictures, "in.")
+    module_rows, map_rows, setting_rows = _split_sections(doc, pictures, "in.")
     if module_rows:
         sections.append({"id": "input", "title": "Input module", "items": module_rows})
     if map_rows:
         sections.append({"id": "map", "title": "Button map", "items": map_rows})
+    if setting_rows:
+        sections.append(
+            {"id": "mapset", "title": "Map settings", "items": setting_rows}
+        )
     wire_items = []
     for mode in loaded["wires"].get("modes") or []:
         if not isinstance(mode, dict):
@@ -658,7 +814,9 @@ def describe_zip(path: Path) -> dict | str:
         lines = [str(line) for line in (mode.get("lines") or []) if str(line).strip()]
         if not lines:
             continue
-        wire_items.append(_item("wire:" + mode_name, mode_name, _clip(lines)))
+        parent = str((loaded["wires"].get("tree") or {}).get(mode_name) or "")
+        title = f"{mode_name} (under {parent})" if parent else mode_name
+        wire_items.append(_item("wire:" + mode_name, title, _clip(lines)))
     if wire_items:
         sections.append({"id": "wires", "title": "Wires", "items": wire_items})
     for output in loaded["outputs"]:
@@ -678,8 +836,11 @@ def describe_zip(path: Path) -> dict | str:
             "title": out_name,
             "kind": "output",
             "target": _suggest_pack_name(out_name) or out_name,
-            "items": _split_sections(output, out_pictures, "out:" + slug + ".")[0]
-            + _split_sections(output, out_pictures, "out:" + slug + ".")[1],
+            "items": [
+                row
+                for rows in _split_sections(output, out_pictures, "out:" + slug + ".")
+                for row in rows
+            ],
         })
     photo_url = urls.get(photo_arc, "") if photo_arc else ""
     return {
@@ -690,15 +851,29 @@ def describe_zip(path: Path) -> dict | str:
         "photoUrl": photo_url,
         "direction": _doc_direction(doc, exported),
         "sections": [row for row in sections if row.get("items")],
+        "notes": {
+            "author": str(label.get("author") or ""),
+            "note": str(label.get("note") or ""),
+            "exportedOn": str(label.get("exportedOn") or ""),
+            "program": str(label.get("program") or ""),
+        },
     }
 
 
-def _split_sections(doc: dict, pictures: list[dict], prefix: str) -> tuple[list[dict], list[dict]]:
+def _split_sections(
+    doc: dict, pictures: list[dict], prefix: str
+) -> tuple[list[dict], list[dict], list[dict]]:
+    """The module rows, the Button Map rows and the Map settings rows."""
     placed = _place_pictures(doc, pictures, prefix)
-    module_ids = {prefix + "checks", prefix + "names", prefix + "calibration", prefix + "view"}
+    module_ids = {
+        prefix + "checks", prefix + "names", prefix + "calibration",
+        prefix + "view", prefix + "catalog",
+    }
+    setting_ids = {prefix + "mapview", prefix + "print"}
     return (
         [row for row in placed if row["id"] in module_ids],
-        [row for row in placed if row["id"] not in module_ids],
+        [row for row in placed if row["id"] not in module_ids | setting_ids],
+        [row for row in placed if row["id"] in setting_ids],
     )
 
 
@@ -719,9 +894,7 @@ def _place_pictures(doc: dict, pictures: list[dict], prefix: str = "in.") -> lis
     if not inserted:
         placed.extend(photos)
         placed.extend(maps)
-    camera = [row for row in placed if row["id"].endswith("camera")]
-    rest = [row for row in placed if not row["id"].endswith("camera")]
-    return rest + camera
+    return placed
 
 
 def _checked_ids(doc: dict) -> tuple[set[int], set[int], set[int]]:
@@ -766,7 +939,17 @@ def _copy_names_onto_nodes(nodes: list, names: dict) -> None:
                 member["friendly"] = label
 
 
-def _merge_module(existing: dict | None, incoming: dict, chosen: set[str], prefix: str, name: str, guid: str) -> tuple[dict, list[str]]:
+def _merge_module(
+    existing: dict | None,
+    incoming: dict,
+    chosen: set[str],
+    prefix: str,
+    name: str,
+    guid: str,
+    limits: dict[str, set[int]] | None = None,
+) -> tuple[dict, list[str]]:
+    """The module file after the ticked pieces replace what is here. limits:
+    the controls the device has (None: not known); others are left out."""
     direction = _doc_direction(incoming, str((incoming.get("pack") or {}).get("exportedName") or name))
     base = json.loads(json.dumps(existing)) if isinstance(existing, dict) else _skeleton(name, direction, guid)
     base["kind"] = "control.hardware"
@@ -784,6 +967,20 @@ def _merge_module(existing: dict | None, incoming: dict, chosen: set[str], prefi
     claim.setdefault("friendly", {})
     buttons, axes, hats = _checked_ids(base)
     in_buttons, in_axes, in_hats = _checked_ids(incoming)
+    if limits is not None and prefix + "checks" in chosen:
+        has_buttons = limits.get("button", in_buttons)
+        left_out = (
+            [f"Button {n}" for n in sorted(in_buttons - has_buttons)]
+            + [f"Axis {n}" for n in sorted(in_axes - limits.get("axis", in_axes))]
+            + [f"Hat {n}" for n in sorted(in_hats - limits.get("hat", in_hats))]
+        )
+        in_buttons &= limits.get("button", in_buttons)
+        in_axes &= limits.get("axis", in_axes)
+        in_hats &= limits.get("hat", in_hats)
+        if left_out:
+            notes.append(
+                f"Left out controls {name} doesn't have: " + ", ".join(left_out) + "."
+            )
     if prefix + "checks" in chosen:
         buttons |= in_buttons
         axes |= in_axes
@@ -847,7 +1044,13 @@ def _merge_module(existing: dict | None, incoming: dict, chosen: set[str], prefi
         if missing:
             unique = sorted(set(missing))
             noun = "that axis is" if len(unique) == 1 else "those axes are"
-            notes.append("The Display Editor points at " + ", ".join(unique) + f", and {noun} not checked.")
+            notes.append(
+                "The Output View Appearance points at "
+                + ", ".join(unique)
+                + f", and {noun} not checked."
+            )
+    if prefix + "catalog" in chosen and isinstance(incoming.get("catalog"), dict):
+        base["catalog"] = json.loads(json.dumps(incoming["catalog"]))
     nodes = [node for node in (base.get("nodes") or []) if isinstance(node, dict)]
     if prefix + "layout" in chosen:
         incoming_nodes = [json.loads(json.dumps(node)) for node in (incoming.get("nodes") or []) if isinstance(node, dict)]
@@ -883,11 +1086,24 @@ def _merge_module(existing: dict | None, incoming: dict, chosen: set[str], prefi
     if prefix + "names" in chosen and prefix + "layout" in chosen:
         _copy_names_onto_nodes(nodes, claim.get("friendly") or {})
     base["nodes"] = nodes
-    if prefix + "camera" in chosen and isinstance(incoming.get("ui"), dict):
-        base["ui"] = json.loads(json.dumps(incoming["ui"]))
+    in_ui = _ui(incoming)
+    rows = ((prefix + "mapview", _MAP_VIEW_KEYS), (prefix + "print", _PRINT_KEYS))
+    for row, keys in rows:
+        if row not in chosen or not any(key in in_ui for key in keys):
+            continue
+        ui = json.loads(json.dumps(_ui(base)))
+        for key in keys:
+            if key in in_ui:
+                ui[key] = json.loads(json.dumps(in_ui[key]))
+            else:
+                ui.pop(key, None)
+        base["ui"] = ui
     photo = Path(str(incoming.get("image") or "")).name
     if photo and ("pic:" + photo) in chosen:
         base["image"] = photo
+        # Where the photo sits on the page (position, size, turn, crop).
+        if isinstance(incoming.get("photo"), dict):
+            base["photo"] = json.loads(json.dumps(incoming["photo"]))
     base.pop("pack", None)
     return base, notes
 
@@ -923,89 +1139,13 @@ def _remap_actions(action_xml: list[str], input_xml: list[str], library) -> tupl
     return [swap(block) for block in action_xml], [swap(block) for block in input_xml]
 
 
-def _apply_wires(wires: dict, chosen: set[str], target_guid: str, target_name: str) -> list[str]:
-    modes = [mode for mode in (wires.get("modes") or []) if isinstance(mode, dict)]
-    wanted = []
-    for mode in modes:
-        name = str(mode.get("name") or "Default")
-        if "wire:" + name in chosen:
-            wanted.append(mode)
-    if not wanted:
-        return []
-    if not target_guid:
-        return ["The wires were not written. This name has no device id."]
-    try:
-        from gremlin.profile import DeviceInfo, InputItem
-        from gremlin.shared_state import current_profile
-        from gremlin.ui.input_pairing import _guid
-    except Exception:
-        return ["The wires were not written."]
-    profile = current_profile
-    if profile is None:
-        return ["The wires were not written. No profile is open."]
-    uid = _guid(target_guid)
-    if uid is None:
-        return ["The wires were not written. This name has no device id."]
-    action_xml = [str(block) for block in (wires.get("actions") or [])]
-    input_xml = []
-    for mode in wanted:
-        input_xml.extend(str(block) for block in (mode.get("inputs") or []))
-    try:
-        action_xml, input_xml = _remap_actions(action_xml, input_xml, profile.library)
-        if action_xml:
-            library_node = ElementTree.Element("library")
-            for block in action_xml:
-                library_node.append(ElementTree.fromstring(block))
-            root = ElementTree.Element("profile")
-            root.append(library_node)
-            profile.library.from_xml(root)
-        added = 0
-        skipped = 0
-        created_modes: list[str] = []
-        for block in input_xml:
-            node = ElementTree.fromstring(block)
-            item = InputItem(profile.library)
-            item.from_xml(node)
-            item.device_id = uid
-            mode_name = str(item.mode or "Default")
-            item.mode = mode_name
-            if not profile.modes.mode_exists(mode_name):
-                profile.modes.add_mode(mode_name)
-                created_modes.append(mode_name)
-            existing = profile.get_input_item(uid, item.input_type, item.input_id, mode_name, False)
-            if existing is not None and existing.action_sequences:
-                skipped += 1
-                continue
-            for seq in item.action_sequences:
-                seq.input_item = item
-            if existing is None:
-                profile.inputs.setdefault(uid, []).append(item)
-            else:
-                existing.action_sequences = item.action_sequences
-                for seq in existing.action_sequences:
-                    seq.input_item = existing
-            added += 1
-        if uid not in profile.device_database.devices:
-            profile.device_database.devices[uid] = DeviceInfo(uid, target_name)
-    except Exception as exc:
-        return [f"The wires were not written. {exc}"]
-    notes = []
-    if added:
-        notes.append(
-            f"Added {added} {'wire' if added == 1 else 'wires'} to the open profile. Save the profile to keep them."
-        )
-    if skipped:
-        notes.append(
-            f"Left {skipped} {'control' if skipped == 1 else 'controls'} alone because {'it already has' if skipped == 1 else 'they already have'} a wire in that mode."
-        )
-    if created_modes:
-        notes.append("Created " + ", ".join(created_modes) + ".")
-    if not added and not skipped:
-        notes.append("No wires were written.")
-    return notes
-
-
-def _write_pictures(slug: str, files: dict[str, bytes], chosen: set[str], doc: dict) -> dict[str, str]:
+def _write_pictures(
+    slug: str,
+    files: dict[str, bytes],
+    chosen: set[str],
+    doc: dict,
+    record: list[tuple[Path, bytes | None]] | None = None,
+) -> dict[str, str]:
     written: dict[str, str] = {}
     folder = _maps_dir() / slug
     folder.mkdir(parents=True, exist_ok=True)
@@ -1025,6 +1165,8 @@ def _write_pictures(slug: str, files: dict[str, bytes], chosen: set[str], doc: d
         if arc not in wanted or arc not in used:
             continue
         dest = folder / _safe_name(arc, arc)
+        if record is not None:
+            record.append((dest, dest.read_bytes() if dest.is_file() else None))
         if dest.is_file():
             backup = _unique_archive(f"{slug}_{dest.stem}")
             _replace_file(backup.with_suffix(dest.suffix), dest.read_bytes())
@@ -1048,7 +1190,516 @@ def _write_pictures(slug: str, files: dict[str, bytes], chosen: set[str], doc: d
     return written
 
 
+def _device_limits(guid: str) -> dict[str, set[int]] | None:
+    """The buttons, axes and hats the connected device has (None: not
+    connected, so not known)."""
+    from gremlin.ui.hardware_profile import _guid_text, _live_devices
+
+    want = str(guid or "").strip().lower()
+    if not want:
+        return None
+    for dev in _live_devices():
+        if _guid_text(getattr(dev, "device_guid", "")).lower() != want:
+            continue
+        axes_count = int(getattr(dev, "axis_count", 0) or 0)
+        axes = {
+            int(getattr(entry, "axis_index", 0) or 0)
+            for entry in list(getattr(dev, "axis_map", []) or [])[:axes_count]
+        } - {0}
+        if len(axes) < axes_count:
+            axes = set(range(1, axes_count + 1))
+        return {
+            "button": set(range(1, int(getattr(dev, "button_count", 0) or 0) + 1)),
+            "axis": axes,
+            "hat": set(range(1, int(getattr(dev, "hat_count", 0) or 0) + 1)),
+        }
+    return None
+
+
+def _vjoy_number(name: str) -> int:
+    match = re.fullmatch(r"\s*vjoy\s*(\d+)\s*", str(name or ""), re.IGNORECASE)
+    return int(match.group(1)) if match else 0
+
+
+def _vjoy_moves(outputs: list[dict], targets: dict) -> dict[int, int]:
+    """vJoy device numbers the wires should follow: an output put on
+    another vJoy ("vJoy 2" on vJoy 1) sends there."""
+    moves: dict[int, int] = {}
+    for output in outputs:
+        label = output.get("pack")
+        if not isinstance(label, dict):
+            label = {}
+        slug = str(label.get("slug") or _slug(str(output.get("device") or "")))
+        old = _vjoy_number(str(label.get("exportedName") or output.get("device") or ""))
+        new = _vjoy_number(str(targets.get(slug) or ""))
+        if old and new and old != new:
+            moves[old] = new
+    return moves
+
+
+def _retarget_vjoy(action_xml: list[str], moves: dict[int, int]) -> list[str]:
+    if not moves:
+        return action_xml
+    out = []
+    for block in action_xml:
+        node = ElementTree.fromstring(block)
+        if node.get("type") == "map-to-vjoy":
+            for prop in node.findall("property"):
+                if prop.findtext("name") != "vjoy-device-id":
+                    continue
+                value = prop.find("value")
+                if value is None or value.text is None:
+                    continue
+                try:
+                    old = int(value.text.strip())
+                except ValueError:
+                    continue
+                if old in moves:
+                    value.text = str(moves[old])
+            block = ElementTree.tostring(node, encoding="unicode")
+        out.append(block)
+    return out
+
+
+def _logical_targets(action_xml: list[str]) -> list[tuple[str, int]]:
+    """The Logical Device inputs these actions send to: (type, number)."""
+    found: list[tuple[str, int]] = []
+    for block in action_xml:
+        node = ElementTree.fromstring(block)
+        if node.get("type") != "map-to-logical-device":
+            continue
+        props = {
+            prop.findtext("name"): prop.findtext("value")
+            for prop in node.findall("property")
+        }
+        kind = str(props.get("logical-input-type") or "").strip().lower()
+        try:
+            number = int(str(props.get("logical-input-id") or "").strip())
+        except ValueError:
+            continue
+        if kind and (kind, number) not in found:
+            found.append((kind, number))
+    return found
+
+
+def _missing_logical(action_xml: list[str]) -> list[tuple[str, int]]:
+    from gremlin.logical_device import LogicalDevice
+    from gremlin.types import InputType
+
+    missing = []
+    for kind, number in _logical_targets(action_xml):
+        try:
+            ident = LogicalDevice.Input.Identifier(InputType.to_enum(kind), number)
+        except Exception:
+            continue
+        if not LogicalDevice().exists(ident):
+            missing.append((kind, number))
+    return missing
+
+
+def _plan_wires(
+    wires: dict, chosen: set[str], limits: dict[str, set[int]] | None
+) -> dict:
+    """What importing the ticked modes would write, before anything changes:
+    their inputs (less the controls the device doesn't have) and only the
+    actions those inputs use."""
+    from gremlin.types import InputType
+    from gremlin.util import read_subelement
+
+    modes = []
+    inputs: list[str] = []
+    left_out: list[str] = []
+    counts: dict[str, int] = {}
+    for mode in wires.get("modes") or []:
+        if not isinstance(mode, dict):
+            continue
+        name = str(mode.get("name") or "Default")
+        if "wire:" + name not in chosen:
+            continue
+        modes.append(name)
+        counts[name] = 0
+        for block in mode.get("inputs") or []:
+            node = ElementTree.fromstring(str(block))
+            try:
+                kind = InputType.to_string(read_subelement(node, "input-type"))
+                number = int(read_subelement(node, "input-id"))
+            except Exception:
+                kind, number = "", 0
+            if limits is not None and kind in limits and number not in limits[kind]:
+                label = f"{kind.capitalize()} {number}"
+                if label not in left_out:
+                    left_out.append(label)
+                continue
+            inputs.append(str(block))
+            counts[name] += 1
+    by_id: dict[str, str] = {}
+    for block in wires.get("actions") or []:
+        node = ElementTree.fromstring(str(block))
+        aid = node.get("id")
+        if aid:
+            by_id[aid.lower()] = str(block)
+    reachable: set[str] = set()
+    pending = [found.lower() for block in inputs for found in _UUID_RE.findall(block)]
+    while pending:
+        aid = pending.pop()
+        if aid in reachable or aid not in by_id:
+            continue
+        reachable.add(aid)
+        pending.extend(found.lower() for found in _UUID_RE.findall(by_id[aid]))
+    actions = [block for aid, block in by_id.items() if aid in reachable]
+    return {
+        "modes": modes,
+        "counts": counts,
+        "inputs": inputs,
+        "actions": actions,
+        "leftOut": left_out,
+        "missingLogical": _missing_logical(actions),
+    }
+
+
+def _ensure_modes(
+    profile: Profile, names: list[str], tree: dict, notes: list[str]
+) -> list[str]:
+    """Creates the modes that aren't in the profile, under their parent from
+    the pack (a parent that isn't here: under Default)."""
+    created: list[str] = []
+
+    def ensure(name: str, chain: tuple[str, ...]) -> None:
+        if profile.modes.mode_exists(name) or name in chain:
+            return
+        parent = str(tree.get(name) or "")
+        if parent and not profile.modes.mode_exists(parent):
+            if parent in names or parent in tree:
+                ensure(parent, chain + (name,))
+        if parent and not profile.modes.mode_exists(parent):
+            fallback = "Default" if profile.modes.mode_exists("Default") else ""
+            notes.append(
+                f"{parent} isn't in this profile, so {name} was put "
+                + (f"under {fallback}." if fallback else "at the top.")
+            )
+            parent = fallback
+        profile.modes.add_mode(name)
+        if parent:
+            profile.modes.set_parent(name, parent)
+        created.append(name)
+
+    for name in names:
+        ensure(name, ())
+    if created:
+        notes.append("Created " + ", ".join(created) + ".")
+    return created
+
+
+def _apply_wires(
+    plan: dict,
+    tree: dict,
+    target_guid: str,
+    target_name: str,
+    moves: dict[int, int],
+    create_logical: bool,
+) -> tuple[list[str], dict | None]:
+    """Replaces the device's wires and actions in each ticked mode with the
+    pack's. Returns the notes and what Undo Import needs."""
+    if not plan["modes"]:
+        return [], None
+    if not target_guid:
+        return ["The wires were not written. This name has no device id."], None
+    try:
+        from gremlin.logical_device import LogicalDevice
+        from gremlin.profile import DeviceInfo, InputItem
+        from gremlin.shared_state import current_profile
+        from gremlin.types import InputType
+        from gremlin.ui.input_pairing import _guid
+    except Exception:
+        return ["The wires were not written."], None
+    profile = current_profile
+    if profile is None:
+        return ["The wires were not written. No profile is open."], None
+    uid = _guid(target_guid)
+    if uid is None:
+        return ["The wires were not written. This name has no device id."], None
+    notes: list[str] = []
+    try:
+        action_xml, input_xml = _remap_actions(
+            plan["actions"], plan["inputs"], profile.library
+        )
+        action_xml = _retarget_vjoy(action_xml, moves)
+        created_logical = []
+        missing = plan["missingLogical"]
+        if missing and create_logical:
+            for kind, number in missing:
+                made = LogicalDevice().create(InputType.to_enum(kind), input_id=number)
+                created_logical.append(made.identifier)
+            notes.append(
+                "Created on the Logical Device: "
+                + ", ".join(f"{kind.capitalize()} {number}" for kind, number in missing)
+                + "."
+            )
+        elif missing:
+            notes.append(
+                "These wires send to Logical Device inputs that don't exist here, "
+                "so they do nothing until you add them: "
+                + ", ".join(f"{kind.capitalize()} {number}" for kind, number in missing)
+                + "."
+            )
+        created_modes = _ensure_modes(profile, plan["modes"], tree, notes)
+        # Each ticked mode: everything the device had there goes.
+        removed = []
+        kept = []
+        for item in profile.inputs.get(uid, []) or []:
+            replaced = str(item.mode or "Default") in plan["modes"]
+            (removed if replaced else kept).append(item)
+        if uid in profile.inputs:
+            profile.inputs[uid] = kept
+        if action_xml:
+            library_node = ElementTree.Element("library")
+            for block in action_xml:
+                library_node.append(ElementTree.fromstring(block))
+            root = ElementTree.Element("profile")
+            root.append(library_node)
+            profile.library.from_xml(root)
+        added = []
+        for block in input_xml:
+            item = InputItem(profile.library)
+            item.from_xml(ElementTree.fromstring(block))
+            item.device_id = uid
+            item.mode = str(item.mode or "Default")
+            for seq in item.action_sequences:
+                seq.input_item = item
+            profile.inputs.setdefault(uid, []).append(item)
+            added.append(item)
+        if uid not in profile.device_database.devices:
+            profile.device_database.devices[uid] = DeviceInfo(uid, target_name)
+    except Exception as exc:
+        return [f"The wires were not written. {exc}"], None
+    had = sum(1 for item in removed if item.action_sequences)
+    for mode in plan["modes"]:
+        count = plan["counts"].get(mode, 0)
+        noun = "wire" if count == 1 else "wires"
+        notes.insert(0, f"{mode}: {count} {noun} from the pack.")
+    notes.insert(
+        0,
+        f"Replaced the wires of {target_name} in "
+        + ", ".join(plan["modes"])
+        + f" ({had} {'control' if had == 1 else 'controls'} had actions here). "
+        "Save the profile to keep them.",
+    )
+    if plan["leftOut"]:
+        notes.append(
+            f"Left out wires for controls {target_name} doesn't have: "
+            + ", ".join(plan["leftOut"]) + "."
+        )
+    if created_logical:
+        from gremlin.signal import signal
+
+        signal.logicalDeviceModified.emit()
+    undo = {
+        "profile": profile,
+        "uid": uid,
+        "removed": removed,
+        "added": added,
+        "modes": created_modes,
+        "logical": created_logical,
+    }
+    return notes, undo
+
+
+# The last import, so Undo Import can put it back: the files it replaced
+# (with their previous bytes, None for a new file) and the wires.
+_last_import: dict | None = None
+
+
+def _roots(items: list) -> list:
+    return [
+        binding.root_action
+        for item in items
+        for binding in item.action_sequences
+        if binding.root_action is not None
+    ]
+
+
+def can_undo_import() -> bool:
+    return _last_import is not None
+
+
+def drop_import_undo() -> None:
+    """Keeps the last import: the actions it replaced leave the profile."""
+    global _last_import
+    record, _last_import = _last_import, None
+    wires = (record or {}).get("wires")
+    if not wires:
+        return
+    from gremlin.shared_state import current_profile
+
+    profile = current_profile
+    if profile is not None and wires["profile"] is profile:
+        profile.drop_unused_actions(_roots(wires["removed"]))
+
+
+def undo_import() -> dict:
+    """Puts back what the last import replaced."""
+    global _last_import
+    record, _last_import = _last_import, None
+    if record is None:
+        return {"ok": False, "error": "There is no import to undo."}
+    notes: list[str] = []
+    for path, previous in reversed(record["files"]):
+        try:
+            if previous is None:
+                if path.is_file():
+                    path.unlink()
+            else:
+                _replace_file(path, previous)
+            trace("SAVE", "Device Pack", "undo_import", path, "ok")
+        except OSError:
+            notes.append(f"{path.name} could not be put back.")
+    wires = record.get("wires")
+    if wires:
+        from gremlin.logical_device import LogicalDevice
+        from gremlin.shared_state import current_profile
+
+        profile = wires["profile"]
+        if profile is not current_profile:
+            notes.append("Another profile is open now, so the wires were not put back.")
+        else:
+            added = {id(item) for item in wires["added"]}
+            items = [
+                item
+                for item in profile.inputs.get(wires["uid"], [])
+                if id(item) not in added
+            ]
+            profile.inputs[wires["uid"]] = items + list(wires["removed"])
+            profile.drop_unused_actions(_roots(wires["added"]))
+            for mode in reversed(wires["modes"]):
+                modes = profile.modes
+                if modes.mode_exists(mode) and modes.bindings_in_mode(mode) == 0:
+                    profile.modes.delete_mode(mode)
+            for ident in wires["logical"]:
+                if LogicalDevice().exists(ident):
+                    LogicalDevice().delete(ident)
+    try:
+        from gremlin.signal import signal
+
+        if wires and wires.get("logical"):
+            signal.logicalDeviceModified.emit()
+        signal.configChanged.emit()
+        signal.profileChanged.emit()
+        signal.reloadUi.emit()
+    except Exception:
+        pass
+    return {"ok": True, "report": "\n".join(["Undid the import."] + notes)}
+
+
+def _write_module(
+    dest: Path,
+    merged: dict,
+    record: list[tuple[Path, bytes | None]],
+) -> str:
+    """Writes one module file, keeping the previous one in imported\\ and
+    for Undo Import. Returns the backup's name, "" for a new file; raises
+    OSError when it can't."""
+    previous = dest.read_bytes() if dest.is_file() else None
+    backup_name = ""
+    if previous is not None:
+        backup = _unique_archive(dest.stem)
+        _replace_file(backup, previous)
+        trace("SAVE", "Device Pack", "apply_zip", backup, "ok")
+        backup_name = backup.name
+    record.append((dest, previous))
+    _replace_file(dest, (json.dumps(merged, indent=2) + "\n").encode("utf-8"))
+    trace("SAVE", "Device Pack", "apply_zip", dest, "ok")
+    return backup_name
+
+
+_INPUT_KEYS = {
+    "in.checks", "in.names", "in.calibration", "in.view", "in.catalog",
+    "in.layout", "in.mapview", "in.print",
+}
+
+
+def _titles(path: Path, chosen: set[str]) -> list[str]:
+    described = describe_zip(path)
+    if isinstance(described, str):
+        return []
+    out = []
+    for section in described.get("sections") or []:
+        # Wires are listed per mode, with their counts, by the warning.
+        if section.get("id") == "wires":
+            continue
+        names = [
+            str(item.get("title") or "")
+            for item in section.get("items") or []
+            if item.get("id") in chosen
+        ]
+        if names:
+            out.append(f"{section.get('title')}: " + ", ".join(names))
+    return out
+
+
+def preview_import(path: Path, target_name: str, selection: dict | None) -> dict:
+    """What Import would replace, for the warning before it."""
+    target = " ".join(str(target_name or "").split())
+    loaded = _read_zip(path)
+    if isinstance(loaded, str):
+        return {"ok": False, "error": loaded}
+    newer = _too_new(loaded["doc"])
+    if newer:
+        return {"ok": False, "error": newer}
+    chosen = _selected(selection)
+    match = _match_pack_device(target)
+    guid = str(match["guid"]) if match and match.get("guid") else ""
+    limits = _device_limits(guid)
+    plan = _plan_wires(loaded["wires"], chosen, limits)
+    here: dict[str, int] = {}
+    profile_open = False
+    try:
+        from gremlin.shared_state import current_profile
+        from gremlin.ui.input_pairing import _guid
+
+        profile_open = current_profile is not None
+        uid = _guid(guid) if guid else None
+        if current_profile is not None and uid is not None:
+            for item in current_profile.inputs.get(uid, []) or []:
+                mode = str(item.mode or "Default")
+                if mode in plan["modes"] and item.action_sequences:
+                    here[mode] = here.get(mode, 0) + 1
+    except Exception:
+        pass
+    left_out = list(plan["leftOut"])
+    if limits is not None and "in.checks" in chosen:
+        buttons, axes, hats = _checked_ids(loaded["doc"])
+        for word, ids in (("Button", buttons), ("Axis", axes), ("Hat", hats)):
+            for number in sorted(ids - limits[word.lower()]):
+                label = f"{word} {number}"
+                if label not in left_out:
+                    left_out.append(label)
+    targets = selection.get("outputs") if isinstance(selection, dict) else {}
+    moves = _vjoy_moves(loaded["outputs"], targets if isinstance(targets, dict) else {})
+    return {
+        "ok": True,
+        "device": target,
+        "pieces": _titles(path, chosen),
+        "modes": [
+            {
+                "name": name,
+                "here": here.get(name, 0),
+                "pack": plan["counts"].get(name, 0),
+            }
+            for name in plan["modes"]
+        ],
+        "hasModuleFile": _device_path(target).is_file() if target else False,
+        "profileOpen": profile_open,
+        "missingLogical": [f"{k.capitalize()} {n}" for k, n in plan["missingLogical"]],
+        "leftOut": left_out,
+        "moves": [
+            {"from": f"vJoy {a}", "to": f"vJoy {b}"} for a, b in sorted(moves.items())
+        ],
+        "deviceKnown": limits is not None,
+    }
+
+
 def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
+    global _last_import
     target = " ".join(str(target_name or "").split())
     if not target:
         return {"ok": False, "error": "Choose the device this pack is for."}
@@ -1058,6 +1709,9 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         return {"ok": False, "error": loaded}
     trace("READ", "Device Pack", "apply_zip", path, "ok")
     doc = loaded["doc"]
+    newer = _too_new(doc)
+    if newer:
+        return {"ok": False, "error": newer}
     label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
     exported = str(label.get("exportedName") or doc.get("device") or "").strip()
     if not exported:
@@ -1069,38 +1723,34 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
     chosen = _selected(selection)
     if not chosen:
         return {"ok": False, "error": "Choose at least one piece to import."}
+    # A new import keeps the one before it for good.
+    drop_import_undo()
     match = _match_pack_device(target)
     guid = str(match["guid"]) if match and match.get("guid") else ""
+    limits = _device_limits(guid)
     notes: list[str] = []
-    input_keys = {"in.checks", "in.names", "in.calibration", "in.view", "in.layout", "in.camera"}
-    input_pics = {item for item in chosen if item.startswith("pic:") and not item.startswith("pic:out_")}
+    files: list[tuple[Path, bytes | None]] = []
     # Picture ids are pic:<archive name>, including output photos that share the zip root.
-    touches_input = bool(chosen & input_keys) or any(
+    touches_input = bool(chosen & _INPUT_KEYS) or any(
         item.startswith("pic:") and _picture_is_input(item, doc) for item in chosen
     )
     if touches_input:
         dest = _device_path(target)
         existing = _read_json_dict(dest) if dest.is_file() else None
-        merged, merged_notes = _merge_module(existing, doc, chosen, "in.", target, guid)
-        _write_pictures(_slug_for_path(dest), loaded["files"], chosen, merged)
-        previous = dest.read_bytes() if dest.is_file() else None
-        backup_name = ""
-        if previous is not None:
-            backup = _unique_archive(dest.stem)
-            try:
-                _replace_file(backup, previous)
-                trace("SAVE", "Device Pack", "apply_zip", backup, "ok")
-            except OSError:
-                return {"ok": False, "error": "The previous file could not be saved, so nothing was replaced."}
-            backup_name = backup.name
+        merged, merged_notes = _merge_module(
+            existing, doc, chosen, "in.", target, guid, limits
+        )
+        _write_pictures(_slug_for_path(dest), loaded["files"], chosen, merged, files)
         try:
-            _replace_file(dest, (json.dumps(merged, indent=2) + "\n").encode("utf-8"))
-            trace("SAVE", "Device Pack", "apply_zip", dest, "ok")
+            backup_name = _write_module(dest, merged, files)
         except OSError:
-            return {"ok": False, "error": "The module file could not be written."}
+            return {
+                "ok": False,
+                "error": "The module file could not be written, so nothing was replaced.",
+            }
         notes.append(f"Saved {dest.name} for {target}.")
         notes.append(
-            f"The previous file was saved as {backup_name}."
+            f"The previous file was kept as imported\\{backup_name}."
             if backup_name
             else "A new file was created."
         )
@@ -1126,27 +1776,29 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         dest = _device_path(out_name)
         existing = _read_json_dict(dest) if dest.is_file() else None
         merged, merged_notes = _merge_module(existing, output, chosen, prefix, out_name, out_guid)
-        _write_pictures(dest.stem, loaded["files"], chosen, merged)
-        previous = dest.read_bytes() if dest.is_file() else None
-        if previous is not None:
-            archive = _unique_archive(dest.stem)
-            try:
-                _replace_file(archive, previous)
-                trace("SAVE", "Device Pack", "apply_zip", archive, "ok")
-            except OSError:
-                notes.append(f"The previous file for {out_name} could not be saved, so it was not changed.")
-                continue
+        _write_pictures(dest.stem, loaded["files"], chosen, merged, files)
         try:
-            _replace_file(dest, (json.dumps(merged, indent=2) + "\n").encode("utf-8"))
-            trace("SAVE", "Device Pack", "apply_zip", dest, "ok")
+            _write_module(dest, merged, files)
         except OSError:
-            notes.append(f"The file for {out_name} could not be written.")
+            notes.append(
+                f"The file for {out_name} could not be written, so it was not changed."
+            )
             continue
         notes.append(f"Saved {dest.name} for {out_name}.")
         notes.extend(merged_notes)
-    notes.extend(_apply_wires(loaded["wires"], chosen, guid, target))
+    plan = _plan_wires(loaded["wires"], chosen, limits)
+    wire_notes, wires_undo = _apply_wires(
+        plan,
+        loaded["wires"].get("tree") or {},
+        guid,
+        target,
+        _vjoy_moves(loaded["outputs"], targets),
+        bool((selection or {}).get("createLogical")),
+    )
+    notes.extend(wire_notes)
     if not notes:
         return {"ok": False, "error": "Nothing in the pack matched the pieces you ticked."}
+    _last_import = {"files": files, "wires": wires_undo}
     try:
         from gremlin.signal import signal
         signal.configChanged.emit()
@@ -1154,7 +1806,7 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         signal.reloadUi.emit()
     except Exception:
         pass
-    return {"ok": True, "device": target, "report": "\n".join(notes)}
+    return {"ok": True, "device": target, "report": "\n".join(notes), "canUndo": True}
 
 
 def _slug_for_path(path: Path) -> str:
