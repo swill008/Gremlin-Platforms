@@ -83,7 +83,7 @@ function topics() {
             + "<p>A wire to an output that is not claimed sends nothing. It is kept, and shown as <b>(not claimed)</b> on the Configuration page, Button Map chips, the viewers, and in Map to vJoy, and the log notes it once. Claim the output to make it work.</p>"),
         topic("Devices and Modules", "Xbox output module",
             "<p>The Xbox controller (<b>Xbox 360 Controller</b>, pad 1) is a virtual Xbox 360 pad provided by the <b>ViGEmBus</b> driver. Its output module passes every control straight to the driver; there is nothing to claim.</p>"
-            + "<p>Send to it with the <b>Map to Xbox</b> action. Its page (double-click the card) shows whether ViGEmBus is ready and which inputs drive each control. The <b>Xbox Viewer</b> shows the live pad. The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when Toggle is turned off.</p>"),
+            + "<p>Send to it with the <b>Map to Xbox</b> action: right-click an input on the Configuration page or the Logical Device, choose <b>Add Action</b>, then <b>Map to Xbox</b>. Its page (double-click the card) shows whether ViGEmBus is ready and which inputs drive each control. The <b>Xbox Viewer</b> shows the live pad. The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when Toggle is turned off.</p>"),
         topic("Devices and Modules", "Module files and Device Pack",
             "<p>Each device has its own module file, found by the device first and then by its name. In Input/Output Module Setup, <b>Module File</b> shows the current file and offers <b>Import from</b> (copy another file into this device's file), <b>Browse for File</b>, <b>Open Modules Folder</b>, and <b>Delete File</b>. <b>Import Image…</b> sets the device picture.</p>"
             + "<p>Tools → Device Setup → <b>Device Pack</b> shares a device setup. <b>Export</b> saves a device's module file and pictures to a zip. <b>Import</b> loads a zip onto a device you choose under <b>Put this pack on</b>.</p>"),
@@ -186,6 +186,15 @@ function topics() {
             "<p><b>Assign Hardware</b> lists claimed physical controls of the same type (keyboard keys for a button; OSC too). Tick a control to add a Map to Logical Device action to it in the current mode; untick to remove that link. <b>Search</b> filters the list.</p>"
             + "<p>The control then shows <b>Written by</b> with the source. On that line an axis has Absolute/Relative and a scale; a button has <b>Invert</b>.</p>"
             + "<p><b>Add Action</b> opens the action editor beside the list, the same editor as on the Configuration page. Click an action row to edit it; right-click it to <b>Open</b> or <b>Delete</b> it.</p>"),
+        topic("Logical Device", "Sending to Xbox or vJoy",
+            "<p>A Logical Device control sends on to the Xbox controller or vJoy through an action, not through Assign Hardware. Assign Hardware only picks what feeds the control; it never lists outputs.</p>"
+            + "<ol>"
+            + "<li>Right-click the control (for example Hat 1) and choose <b>Add Action</b>.</li>"
+            + "<li>Choose <b>Map to Xbox</b> (or <b>Map to vJoy</b>).</li>"
+            + "<li>Pick the Target (a hat can drive the D-pad, a button, or a stick) and press <b>OK</b>.</li>"
+            + "</ol>"
+            + "<p>The whole path: physical control → Assign Hardware → Logical Device control → Map to Xbox → Xbox 360 Controller. Map to Xbox needs <b>ViGEmBus</b>; see <b>Xbox output module</b>.</p>"
+            + "<p>Map to Xbox not in the list? Options → Action → <b>Action list</b> may hide it.</p>"),
         topic("Logical Device", "Appearance",
             "<p><b>Appearance…</b> (also in the menu) opens the Logical Device appearance panel. Its sections — Shown, Handles, List, Group, Parent row, Action row, Text, Selection — change how the page looks. Changes are kept with <b>Save Appearance</b> (saved for this page, in the program settings); <b>Reset Appearance</b> restores the built-in look.</p>"),
         topic("Modes", "Modes",
