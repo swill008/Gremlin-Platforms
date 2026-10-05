@@ -109,6 +109,7 @@ import gremlin.ui.window_placement
 import gremlin.ui.module_model  # noqa: F401
 import gremlin.deferred_write
 import gremlin.threads
+import gremlin.history
 import gremlin.watchdog
 import gremlin.qt_log
 import gremlin.ui.debug_mode
@@ -595,6 +596,7 @@ def register_config_options() -> None:
         ("profiles", "profiles-folder", "Folder the profile dialogs open in."),
         ("scripts", "scripts-folder", "User scripts."),
         ("export", "export-folder", "Device packs saved from the program."),
+        ("history", "history-folder", "The history of every saved change."),
         (
             "deleted devices",
             "deleted-devices-folder",
@@ -670,6 +672,18 @@ def register_config_options() -> None:
         "global", "general", "refresh-axis-on-mode-change", PropertyType.Bool, True,
         "Force an update of all axes by emitting axis events upon a mode change.",
         {}, True,
+    )
+    cfg.register(
+        "global", "history", "keep-days", PropertyType.Int,
+        gremlin.history.KEEP_DAYS,
+        "Days the history keeps each saved change (Tools > History).",
+        {"min": 1, "max": 3650}, True,
+    )
+    cfg.register(
+        "global", "history", "max-megabytes", PropertyType.Int,
+        gremlin.history.MAX_MEGABYTES,
+        "Largest size of each history file, in MB. The oldest changes go first.",
+        {"min": 1, "max": 500}, True,
     )
     cfg.register(
         "global", "general", "log-when-not-responding", PropertyType.Bool, False,
@@ -1027,6 +1041,7 @@ def main() -> int:
     # Writes still waiting (settings, the activity log): os._exit below skips
     # atexit, and a restart must start from saved settings.
     gremlin.deferred_write.flush_all()
+    gremlin.history.flush()
     if lock is not None:
         try:
             lock.unlock()

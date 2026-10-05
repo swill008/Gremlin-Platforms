@@ -926,6 +926,11 @@ def export_dir() -> Path:
     return _child_dir("export")
 
 
+def history_dir() -> Path:
+    """The program's history: every saved change (gremlin.history)."""
+    return _child_dir("history")
+
+
 def deleted_devices_dir() -> Path:
     """Backup packs saved by Delete Device."""
     return _configured_child("deleted-devices-folder", "deleted devices")
@@ -974,6 +979,7 @@ def ensure_data_folders() -> None:
     profiles_dir()
     scripts_dir()
     export_dir()
+    history_dir()
     deleted_devices_dir()
     plugins_dir()
     copy_legacy_modules()
