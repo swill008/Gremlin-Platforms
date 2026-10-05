@@ -21,7 +21,7 @@ function topics() {
             + "<li>Right-click each vJoy device and choose <b>Module</b> → <b>Module Setup…</b>. Tick the outputs you will use, then <b>Save Module</b>. The Xbox controller needs no setup.</li>"
             + "<li>Double-click a physical device to open <b>Configuration</b>. Use <b>Add Action</b> on an input, for example Map to vJoy, then <b>OK</b>.</li>"
             + "<li><b>File → Save Profile</b> (Ctrl+S).</li>"
-            + "<li>Press <b>Toggle</b> to run the profile. Use the <b>vJoy Viewer</b> or <b>Xbox Viewer</b> to watch the result.</li>"
+            + "<li>Press <b>Run</b> to run the profile. Use the <b>vJoy Viewer</b> or <b>Xbox Viewer</b> to watch the result.</li>"
             + "</ol>"
             + "<p>Tools → Mapping → <b>Auto Mapper</b> can create the Map to vJoy actions for a whole device in one step.</p>"),
         topic("Getting Started", "Installing and updating",
@@ -30,13 +30,13 @@ function topics() {
             + "<li><b>Gremlin-Platforms-R1-X.Y.Z-Setup.exe</b>, the installer. It installs for your Windows user only and needs no administrator rights. The suggested folder is %LOCALAPPDATA%\\Programs\\Gremlin-Platforms; you can choose another folder you can write to. It adds a Start menu entry, an optional desktop shortcut, and an uninstaller in Settings → Apps.</li>"
             + "<li><b>Gremlin-Platforms-R1-X.Y.Z.zip</b>, the portable copy. Unzip it anywhere outside Program Files and run gremlin_platforms.exe.</li>"
             + "</ul>"
-            + "<p><b>Help → Check for Updates</b> asks GitHub for the latest release. When Options → Global → <b>Check for updates</b> is on (the default), it also checks when the program starts and only speaks up when there is a newer version.</p>"
+            + "<p><b>Help → Check for Updates</b> asks GitHub for the latest release. When Options → General → Startup and Tray → <b>Check for updates</b> is on (the default), it also checks when the program starts and only speaks up when there is a newer version.</p>"
             + "<p>An installed copy offers <b>Update Now</b>: it downloads the installer, checks it against the SHA-256 checksum GitHub reports, closes the program the usual way (asking about unsaved changes), installs, and starts the new version. <b>Skip This Version</b> stops the startup check from offering that version. A portable copy, or one run from source, only points you to the release page.</p>"
             + "<p>Updates and uninstalling never touch your profiles, modules or settings; they are kept in your Gremlin Platforms folder (see What is saved where).</p>"),
         topic("Getting Started", "Run and status",
             "<p><b>Run</b> on the toolbar runs the loaded profile; while it runs the button reads <b>Stop</b>. While it is off you are only editing; nothing is sent to vJoy or Xbox. The button uses the accent color while the profile runs.</p>"
-            + "<p>The bottom bar shows <b>Status</b> (Running, Stopped, or Paused, and 'unsaved changes' when the running profile has some) and what the last save wrote. The toolbar's <b>Mode</b> is the mode you edit and the mode that runs.</p>"
-            + "<p>Running does not hide controllers from games; use <b>HidHide</b> for that. What happens when a controller is plugged in or removed while running is set by Options → Global → <b>Device change behavior</b> (Reload, Ignore, or Disable).</p>"),
+            + "<p>The bottom bar shows <b>Status</b> (Running, Stopped, or Running (Paused), and 'unsaved changes' when the running profile has some) and what the last save wrote. The toolbar's <b>Mode</b> is the mode you edit and the mode that runs.</p>"
+            + "<p>Running does not hide controllers from games; use <b>HidHide</b> for that. What happens when a controller is plugged in or removed while running is set by Options → General → Devices → <b>Device change behavior</b> (Reload, Ignore, or Disable).</p>"),
         topic("Getting Started", "Menus and the command palette",
             "<p>Every menu in the program works the same way, in light and dark mode:</p>"
             + "<ul>"
@@ -44,15 +44,15 @@ function topics() {
             + "<li><b>Right-click menus</b> start with the name of what you clicked and its most used commands, then <b>sections</b> (▸) that open one at a time. The section you opened last opens again next time. Some show <b>Undo</b> and <b>Redo</b> beside the name.</li>"
             + "<li><b>Keys</b>: Up and Down move, Right and Left open or close a section or step a row of choices, Enter runs, Esc closes.</li>"
             + "<li><b>Dropdown lists</b> of ten or more entries have a search box: type part of a name, Up and Down move, Enter picks.</li>"
-            + "<li><b>Command Palette</b>: Ctrl+K (or View → <b>Command Palette</b>) lists every menu command you can use now. Type part of a name and press Enter. Shortcuts show beside the commands.</li>"
+            + "<li><b>Command Palette</b>: Ctrl+K (or View → <b>Command Palette…</b>) lists every menu command you can use now. Type part of a name and press Enter. Shortcuts show beside the commands.</li>"
             + "<li><b>Shortcuts</b>: Ctrl+N new profile, Ctrl+O load, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+K command palette, F1 this guide.</li>"
             + "</ul>"),
         topic("Getting Started", "Profiles",
             "<p>A profile holds the modes, the actions on every input, the profile settings, and the list of scripts.</p>"
             + "<ul>"
-            + "<li><b>File → New Profile</b> (Ctrl+N), <b>Load Profile</b> (Ctrl+O), <b>Recent</b>, <b>Save Profile</b> (Ctrl+S), <b>Save Profile As</b>.</li>"
+            + "<li><b>File → New Profile</b> (Ctrl+N), <b>Load Profile…</b> (Ctrl+O), <b>Recent</b>, <b>Save Profile</b> (Ctrl+S), <b>Save Profile As…</b> (Ctrl+Shift+S).</li>"
             + "<li>Closing the program or loading another profile asks first when there are unsaved changes.</li>"
-            + "<li>Options → Profile → <b>Load profiles automatically</b> loads a profile when a chosen program starts.</li>"
+            + "<li>Options → Profiles → Auto-load → <b>Load profiles automatically</b> loads a profile when a chosen program starts.</li>"
             + "</ul>"),
         topic("Getting Started", "What is saved where",
             "<p>Three separate stores. Saving one does not save the others, except where noted.</p>"
@@ -67,7 +67,7 @@ function topics() {
             "<p>Home shows one card per device: your physical devices, each vJoy device, and the Xbox controller.</p>"
             + "<ul>"
             + "<li><b>Double-click</b> a card to open its Configuration page (or <b>Output View</b> for an output).</li>"
-            + "<li><b>Right-click</b> a card for its menu; the card shows as picked first, as a click does (a card in a Shift selection keeps the selection, for menu items that act on all of it). It has: Open Configuration, Button Map, Module Setup…, Auto Mapper, the viewer, Calibration, Device Information, Swap Device…, stacking, Reset Size, Hide Card, Reset card layout (its size and stacking), and Delete Device.</li>"
+            + "<li><b>Right-click</b> a card for its menu; the card shows as picked first, as a click does (a card in a Shift selection keeps the selection, for menu items that act on all of it). It has: Open Configuration (Output View on an output card), Button Map, Hide Card, Module Setup…, Auto Mapper, Calibration, the viewer, Device Information, stacking, Reset Size, Swap Device…, Reset Card Layout (its size and stacking), and Delete Device. Items that don't apply to a card are left out: the Xbox card has no Module Setup; output, Keyboard and OSC cards have no Calibration; the Keyboard, OSC and Xbox cards have no Auto Mapper or Device Information; output, Keyboard and OSC cards have no Swap Device….</li>"
             + "<li><b>Shift-click</b> cards, then <b>Stack Selected Cards</b>, to group them.</li>"
             + "<li>Each card's <b>last:</b> line shows the latest input it passed or output it sent.</li>"
             + "<li><b>Compact view</b> and <b>Layout</b> (Single list, Side by side, or Stacked; also View → <b>Home Layout</b>) change how the cards are laid out. Right-click empty space for <b>Unhide All Cards</b>, <b>Reset All Card Sizes</b>, <b>Hidden Cards</b> (each hidden card; click one to unhide it) and <b>Layout</b>.</li>"
@@ -83,7 +83,7 @@ function topics() {
             + "<p>A wire to an output that is not claimed sends nothing. It is kept, and shown as <b>(not claimed)</b> on the Configuration page, Button Map chips, the viewers, and in Map to vJoy, and the log notes it once. Claim the output to make it work.</p>"),
         topic("Devices and Modules", "Xbox output module",
             "<p>The Xbox controller (<b>Xbox 360 Controller</b>, pad 1) is a virtual Xbox 360 pad provided by the <b>ViGEmBus</b> driver. Its output module passes every control straight to the driver; there is nothing to claim.</p>"
-            + "<p>Send to it with the <b>Map to Xbox</b> action: right-click an input on the Configuration page or the Logical Device, choose <b>Add Action</b>, then <b>Map to Xbox</b>. Its page (double-click the card) shows which inputs drive each control. The <b>Xbox Viewer</b> shows the live pad. The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when Toggle is turned off.</p>"
+            + "<p>Send to it with the <b>Map to Xbox</b> action: click <b>Add Action</b> on the input's row on the Configuration page (or right-click a Logical Device control and choose <b>Add Action</b>), then <b>Map to Xbox</b>. Its page (double-click the card) shows which inputs drive each control. The <b>Xbox Viewer</b> shows the live pad. The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when the profile stops.</p>"
             + "<p>The page and the Xbox Viewer check the driver at their top, as HidHide does: <b>ViGEmBus driver found</b> with its version, or what is wrong (not installed, installed but not running, ViGEmClient.dll missing) and what to do. <b>Get ViGEmBus</b> opens the Nefarius releases page; <b>Test ViGEmBus</b> opens Windows Game Controllers, where the pad shows while the profile runs. The check shows even when nothing is mapped to Xbox yet.</p>"),
         topic("Devices and Modules", "Module files and Device Pack",
             "<p>Each device has its own module file, found by the device first and then by its name. In Input/Output Module Setup, <b>Module File</b> shows the current file and offers <b>Import from</b> (copy another file into this device's file), <b>Browse for File</b>, <b>Open Modules Folder</b>, and <b>Delete File</b>. <b>Import Image…</b> sets the device picture.</p>"
@@ -106,18 +106,18 @@ function topics() {
             + "<li><b>Move inputs with no actions to the end</b> lists them together under a <b>No actions</b> heading.</li>"
             + "<li>OK keeps the action in the profile; File → <b>Save Profile</b> writes it to disk.</li>"
             + "</ul>"
-            + "<p>An output device opens its <b>Output View</b> instead: a live view of what its output module sends, labelled “View only — driven by input module mappings.”</p>"),
+            + "<p>An output device opens its <b>Output View</b> instead: a live view of what its output module sends, labelled “View only — shows what the input modules' actions send.”</p>"),
         topic("Configuration", "Appearance",
-            "<p>Appearance changes how a Configuration page or Output View looks, not what it does. The look is saved in that device's module file. The Xbox output page has no Appearance.</p>"
+            "<p>Appearance changes how a Configuration page or Output View looks, not what it does. The look is saved in that device's module file. The Xbox, Keyboard and OSC pages have no Appearance.</p>"
             + "<p><b>Appearance…</b> opens the panel. Changes show at once and are kept only with <b>Save Appearance</b>. <b>Reset Appearance</b> (red) restores the built-in look; <b>Copy Appearance from…</b> copies another device's look. Both still need Save Appearance. Closing the panel with unsaved changes asks first.</p>"
-            + "<p>Sections: <b>Screen</b> (background color or image), <b>Shown</b> (child rows, live bars, LED dots, summary), <b>List</b> and <b>Group</b> (spacing and group cards), <b>Parent Row</b> and <b>Child Row</b> (row size, padding, colors), <b>Text</b>, <b>Selection</b>, and <b>Editor</b> (the action editor beside a row). Use <b>Open All</b> / <b>Close All</b> to expand them.</p>"),
+            + "<p>On the Configuration page the sections are <b>Screen</b> (background color or image), <b>Shown</b> (child rows, live bars, LED dots, summary), <b>List</b> and <b>Group</b> (spacing and group cards), <b>Parent Row</b> and <b>Child Row</b> (row size, padding, colors), <b>Text</b>, <b>Selection</b>, and <b>Editor</b> (the action editor beside a row). On the Output View they are <b>Screen</b>, <b>Layout</b>, <b>Pads</b>, <b>Meters</b>, <b>Buttons</b> and <b>Colors</b>. Use <b>Open All</b> / <b>Close All</b> to expand them.</p>"),
 
         topic("Actions", "Choosing an action",
             "<p><b>Add Action</b> lists the actions that suit the input type (axis, button, hat, or key). Container actions hold other actions; add the container first, then the actions inside it.</p>"
-            + "<p>Options → Action → <b>Action list</b> sets the order of that list and can hide actions you never use.</p>"),
+            + "<p>Options → Actions → Add Action Menu → <b>Actions offered</b> sets the order of that list and can hide actions you never use.</p>"),
         topic("Actions", "Map to vJoy",
             "<p>Sends the input to a vJoy axis, button, or hat. Pick the vJoy device (by output module name) and the output.</p>"
-            + "<ul><li>Axis: <b>Absolute</b>, or <b>Relative</b> with <b>Scaling</b> (the axis moves while the input is held off-center).</li>"
+            + "<ul><li>Axis: <b>Absolute</b>, or <b>Relative</b> with <b>Speed</b> (the axis moves while the input is held off-center).</li>"
             + "<li>Button: <b>Invert activation</b>.</li>"
             + "<li>Only outputs claimed by the vJoy output module are sent. An unclaimed output shows <b>Output not claimed</b>.</li></ul>"),
         topic("Actions", "Map to Xbox",
@@ -125,9 +125,9 @@ function topics() {
             + "<ul><li><b>Xbox</b>: the Xbox output module (Xbox 360 Controller).</li>"
             + "<li><b>Target</b>: any of the 22 controls — sticks, triggers, buttons, D-pad.</li>"
             + "<li>Trigger: <b>Full axis</b> (−1 → 0%, +1 → 100%) or <b>Upper half</b> (center → 0%).</li>"
-            + "<li>Button: <b>Invert</b>.</li></ul>"),
+            + "<li>Button: <b>Invert activation</b>.</li></ul>"),
         topic("Actions", "Map to Logical Device",
-            "<p>Sends the input to a control on the Logical Device. Pick the logical control of the same type. Axis: <b>Absolute</b> or <b>Relative</b> with <b>Scaling</b>. Button: <b>Invert activation</b>. The Logical Device page's <b>Assign Hardware</b> creates these actions for you.</p>"),
+            "<p>Sends the input to a control on the Logical Device. Pick the logical control of the same type. Axis: <b>Absolute</b> or <b>Relative</b> with <b>Speed</b>. Button: <b>Invert activation</b>. The Logical Device page's <b>Assign Hardware</b> creates these actions for you.</p>"),
         topic("Actions", "Map to Keyboard",
             "<p>Holds the recorded keys while the input is held and releases them when it is released. Use <b>Record Keys</b> to set the <b>Key Combination</b>; modifiers are pressed first.</p>"),
         topic("Actions", "Map to Mouse",
@@ -149,13 +149,13 @@ function topics() {
         topic("Actions", "Condition",
             "<p>Runs one action list when its conditions are true and another when false. Choose <b>Any</b> or <b>All</b>, then <b>Add Condition</b>: Joystick, Keyboard, Current Input, vJoy, or Logical Device state.</p>"),
         topic("Actions", "Chain",
-            "<p>Each press runs the next <b>Chain Sequence</b> in turn. After <b>Timeout (sec)</b> without a press it starts again at the first.</p>"),
+            "<p>Each press runs the next <b>Sequence</b> in turn (<b>Add Chain Sequence</b> adds one). After <b>Timeout (sec, 0 = never)</b> without a press it starts again at the first.</p>"),
         topic("Actions", "Double Tap",
             "<p>Separate actions for a single tap and a double tap within <b>Double-tap threshold (sec)</b>. <b>exclusive</b> waits to see if a second tap comes; <b>combined</b> runs the single-tap actions on every press.</p>"),
         topic("Actions", "Tempo",
             "<p>Separate actions for a <b>Short press</b> and a <b>Long press</b> (longer than <b>Long-press threshold (sec)</b>). <b>Activate on</b> press or release.</p>"),
         topic("Actions", "Smart Toggle",
-            "<p>A quick press (released within <b>Toggle delay</b>) latches its actions on until the next press; a longer hold acts only while held.</p>"),
+            "<p>A quick press (released within <b>Hold time (sec)</b>) latches its actions on until the next press; a longer hold acts only while held.</p>"),
         topic("Actions", "Hat as Buttons",
             "<p>Gives each hat direction its own action list. <b>Button mode</b>: <b>4 way</b> or <b>8 way</b>.</p>"),
         topic("Actions", "Change Mode",
@@ -165,9 +165,9 @@ function topics() {
         topic("Actions", "Pause and Resume",
             "<p><b>Pause</b>, <b>Resume</b>, or <b>Toggle</b> the processing of all actions.</p>"),
         topic("Actions", "Play Sound",
-            "<p>Plays a WAV, MP3, or OGG file at the chosen <b>Volume</b>. Options → Action → Play-Sound sets what happens when sounds overlap.</p>"),
+            "<p>Plays a WAV, MP3, or OGG file at the chosen <b>Volume</b>. Options → Actions → Play Sound sets what happens when sounds overlap.</p>"),
         topic("Actions", "Text to Speech",
-            "<p>Speaks the text you type. Choose <b>Interrupt</b>, <b>Queue Front</b>, or <b>Queue Back</b>, and set <b>Volume</b>, <b>Rate</b>, and <b>Pitch</b>. The voice is set in Options → Action → Text-To-Speech.</p>"),
+            "<p>Speaks the text you type. Choose <b>Interrupt</b>, <b>Queue Front</b>, or <b>Queue Back</b>, and set <b>Volume</b>, <b>Rate</b>, and <b>Pitch</b>. The voice is set in Options → Actions → Text to Speech.</p>"),
         topic("Actions", "Run Command",
             "<p>Starts a program: <b>Executable</b> plus <b>Arguments</b> (split on spaces; quote values that contain spaces). It runs with your own permissions.</p>"),
         topic("Actions", "Description",
@@ -178,10 +178,10 @@ function topics() {
         topic("Logical Device", "Logical Device",
             "<p>The Logical Device is a virtual device inside the program. Its buttons, axes, and hats are fed by physical inputs (<b>Assign Hardware</b> or Map to Logical Device) and have actions of their own. Use it to combine several physical controls before sending them on.</p>"
             + "<p>Open it with <b>Logical Device</b> on the toolbar or Tools → Mapping → Logical Device. Controls are identified by type and number (Button 1, Axis 1, Hat 1). <b>Rename</b> adds your own name; <b>Hide system name</b> shows only yours; <b>Clear Name</b> removes it.</p>"
-            + "<p>Editing is locked while the profile runs (“Running”).</p>"),
+            + "<p>Editing is locked while the profile runs (“Profile running: stop it to edit”).</p>"),
         topic("Logical Device", "Controls, groups, and the menu",
             "<ul>"
-            + "<li>Right-click empty space: <b>Display</b>, then the sections <b>Add Inputs</b> (Buttons, Axes and Hats, each with a count up to 180 and <b>Add</b>), <b>Groups</b> (<b>New group</b>) and <b>Order</b> (By system name, By your name, Group names A to Z). <b>Undo</b> and <b>Redo</b> sit beside the menu's title.</li>"
+            + "<li>Right-click empty space: <b>Appearance…</b>, then the sections <b>Add Inputs</b> (Buttons, Axes and Hats, each with a count up to 180 and <b>Add</b>), <b>Groups</b> (<b>New Group</b>) and <b>Order</b> (By System Name, By Your Name, Group Names A to Z). <b>Undo</b> and <b>Redo</b> sit beside the menu's title.</li>"
             + "<li>Right-click a control: <b>Add Action</b>, <b>Rename</b> and <b>Assign Hardware</b>, then <b>Row</b> (<b>Clear Name</b>, <b>Delete</b>) and <b>Group</b> (<b>Group as</b>, and <b>Move to</b> each group). Shift-click selects several; the menu's title then counts them.</li>"
             + "<li>Right-click a group: <b>Rename Group</b>, then <b>Groups</b> → <b>Move Group Up</b>, <b>Move Group Down</b> or <b>Delete Group</b> (its controls go to Ungrouped). Click a group header to fold it.</li>"
             + "<li>Drag a control by its grey handle onto another control (top half = before, bottom half = after) or onto a group header. Drag a header to move the group.</li>"
@@ -200,9 +200,9 @@ function topics() {
             + "<li>Pick the Target (a hat can drive the D-pad, a button, or a stick) and press <b>OK</b>.</li>"
             + "</ol>"
             + "<p>The whole path: physical control → Assign Hardware → Logical Device control → Map to Xbox → Xbox 360 Controller. Map to Xbox needs <b>ViGEmBus</b>; see <b>Xbox output module</b>.</p>"
-            + "<p>Map to Xbox not in the list? Options → Action → <b>Action list</b> may hide it.</p>"),
+            + "<p>Map to Xbox not in the list? Options → Actions → Add Action Menu → <b>Actions offered</b> may hide it.</p>"),
         topic("Logical Device", "Appearance",
-            "<p><b>Appearance…</b> (also in the menu) opens the Logical Device appearance panel. Its sections — Shown, Handles, List, Group, Parent row, Action row, Text, Selection — change how the page looks. Changes are kept with <b>Save Appearance</b> (saved for this page, in the program settings); <b>Reset Appearance</b> restores the built-in look.</p>"),
+            "<p><b>Appearance…</b> (also in the menu) opens the Logical Device appearance panel. Its sections — Shown, Handles, List, Group, Parent Row, Action Row, Text, Selection — change how the page looks. Changes are kept with <b>Save Appearance</b> (saved for this page, in the program settings); <b>Reset Appearance</b> restores the built-in look.</p>"),
         topic("Modes", "Modes",
             "<p>A mode is a set of actions. The same button can do different things in different modes. A mode can <b>inherit</b> from a parent: anything it does not map itself uses the parent's actions.</p>"
             + "<ul>"
@@ -229,19 +229,19 @@ function topics() {
             "<p><b>Tools → History</b> lists every saved change, newest first: profile saves (each input whose actions changed, and other parts such as modes and the Logical Device), module files (checked controls and names, calibration, Appearance, the Button Map), and the settings you choose in Options, HidHide and OSC. Window sizes and places, and the Button Map's zoom, guides and print area, aren't kept.</p>"
             + "<p>Pick a change to see it <b>Before</b> and <b>After</b>. <b>Show</b> narrows the list to one kind; <b>Search</b> finds a device, input or file. <b>History</b> in an editor opens it for just what that editor shows: on the Configuration page (the selected input), on a Logical Device control's menu, in Module Setup, in the Button Map's File menu, and in Options.</p>"
             + "<p><b>Restore Before</b> or <b>Restore After</b> puts that version back, and is itself a new change in the History. An input's actions go back into the open profile, unsaved (save the profile to keep them); open that profile first. A module file, with its pictures, and settings are saved at once. A whole profile (on its save's entry) is written as a copy next to the profile, to open with File → Load Profile….</p>"
-            + "<p>The history is kept in the <b>history</b> folder of the data folder. Options → History sets how many days it keeps changes (90) and how big each of its files may grow (20 MB); the oldest go first. The whole profile is kept for the newest 20 saves of each profile.</p>"),
+            + "<p>The history is kept in the <b>history</b> folder of the data folder. Options → General → History sets how many days it keeps changes (90) and how big each of its files may grow (20 MB); the oldest go first. The whole profile is kept for the newest 20 saves of each profile.</p>"),
         topic("Tools", "Auto Mapper",
             "<p>Creates Map to vJoy actions in one step: each claimed input of an input module gets an action to the same number on a vJoy output module.</p>"
             + "<ol>"
             + "<li>Tools → Mapping → <b>Auto Mapper</b> (or a card's menu).</li>"
             + "<li>Tick the input modules and output modules. The first ticked input goes to the first ticked output, the second to the second, and so on.</li>"
-            + "<li>Choose <b>Select Mode</b>, then <b>Create 1:1 actions</b>.</li>"
+            + "<li>Choose <b>Select Mode</b>, then <b>Create 1:1 Actions</b>.</li>"
             + "</ol>"
             + "<ul>"
             + "<li>Only outputs the output module claims are used. Skipped controls are listed with the reason (not claimed, or not on the vJoy device).</li>"
             + "<li><b>Also claim the matching outputs on the output module</b> (off by default) claims what the new actions need first.</li>"
             + "<li><b>Overwrite used inputs</b> replaces existing actions on those inputs; off keeps them.</li>"
-            + "<li><b>Combine onto Selected Outputs</b> reuses the outputs when you tick more inputs than outputs.</li>"
+            + "<li><b>Combine onto selected outputs</b> reuses the outputs when you tick more inputs than outputs.</li>"
             + "</ul>"),
         topic("Tools", "Swap Devices",
             "<p>Swaps every binding between two devices, for example after replacing a stick. Tools → Device Setup → <b>Swap Devices</b>: choose <b>From profile device</b> and <b>To connected device</b>, then <b>Swap Bindings</b>. References inside actions and script variables are swapped too. Save the profile afterwards.</p>"),
@@ -281,7 +281,7 @@ function topics() {
         topic("Options and Profile", "Profile Settings",
             "<p>View → <b>Profile Settings</b>. Stored in the profile; save the profile to keep them.</p>"
             + "<ul>"
-            + "<li><b>Startup Mode</b>: the mode the profile is in when it is loaded, including when a program auto-loads it. <b>Use Heuristic</b> picks the first mode, in alphabetical order, that has no parent; <b>Last Active</b> picks the mode the profile was using the last time it ran; a mode by name picks that mode. <b>Toggle</b> starts in the mode shown in the toolbar, so change the toolbar mode to start somewhere else.</li>"
+            + "<li><b>Startup Mode</b>: the mode the profile is in when it is loaded, including when a program auto-loads it. <b>Use Heuristic</b> picks the first mode, in alphabetical order, that has no parent; <b>Last Active</b> picks the mode the profile was using the last time it ran; a mode by name picks that mode. <b>Run</b> starts in the mode shown in the toolbar, so change the toolbar mode to start somewhere else.</li>"
             + "<li><b>Macro Default Delay</b>: the pause between macro steps.</li>"
             + "<li><b>vJoy Behavior</b>: treat each vJoy device as an output (default) or as an input.</li>"
             + "<li><b>vJoy Initial Values</b>: axis values set when the profile starts.</li>"
@@ -294,7 +294,7 @@ function topics() {
             + "<li>Is the input <b>claimed</b> in its input module? Unclaimed inputs are ignored.</li>"
             + "<li>Does the wire show <b>(not claimed)</b>? Claim that output in Output Module Setup.</li>"
             + "<li>Is the action in the running <b>Mode</b> (on the toolbar)? Only that mode's actions (and its parents') run.</li>"
-            + "<li><b>system.log</b> in the Logs folder (Options → Global → Files) notes each blocked output once.</li>"
+            + "<li><b>system.log</b> in the Logs folder (Options → Folders) notes each blocked output once.</li>"
             + "</ul>"),
         topic("Troubleshooting", "Xbox does nothing",
             "<ul>"
@@ -344,9 +344,9 @@ function buttonMapTopics() {
         topic("Getting started", "Button Map Options",
             "<p><b>Options</b> on the top tool row, or <b>Edit → Button Map Options…</b>, opens the Button Map's settings in a panel joined to its tab (they are not in the program's main Options), as large as its settings need. The groups are down its left; the chosen group's settings sit on the right, one line each, with each setting's description on its ⓘ. Changes apply and are kept at once, and the pane opens on the group you used last. Like every tool it can be pinned, locked, moved with its tab (to the other row too), or resized by its edges. They apply to every device.</p>"
             + "<ul>"
-            + "<li><b>Labels</b>: <b>Chip Text</b>, <b>Description first</b>, <b>Several actions</b> and <b>No actions</b> (see Action labels).</li>"
-            + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror layout and Copy layout from also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
-            + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Autosave seconds</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
+            + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>No actions</b> (see Action labels).</li>"
+            + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror Layout and Copy Button Map from Device also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b> (see Selecting, undo and keys).</li>"
+            + "<li><b>Autosave</b>: <b>Autosave</b> keeps a recovery copy of unsaved edits every <b>Seconds between recovery copies</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy; the module file is only written by Save.</li>"
             + "<li><b>View</b>: <b>Zoom speed</b>, how fast the mouse wheel zooms; <b>Rulers</b>, shown or not (also View → Rulers).</li>"
             + "<li><b>Colors</b>: <b>Recent colors</b>, how many the color picker keeps.</li>"
             + "<li><b>Library</b>: the saved styles and layout templates, to rename or delete.</li>"
@@ -387,7 +387,7 @@ function buttonMapTopics() {
             + "<li><b>Rename</b> and <b>Delete Chip</b> (back to the pool; Delete or Backspace does the same).</li>"
             + "<li>Or drag a chip back onto the pool: the pool lights up, and letting go takes the chip off the map. With several chips selected, they all go; a group goes whole, and while a group is being edited the member you drag leaves it. Locked chips stay. Undo brings them back.</li>"
             + "<li><b>Chip Style</b>: font size, chip size, <b>Round</b>, <b>Square</b> or <b>Circle</b>, Filled or Hollow, and <b>Highlight on press</b>. A <b>Circle</b> is always a true circle: it grows to fit its label (<b>Circle Size</b> → <b>Auto</b>), or keeps a size you choose and makes the text smaller to fit.</li>"
-            + "<li><b>Colors</b>: Fill color…, Outline color… and Text color…, and <b>Pressed Fill…</b>, <b>Pressed Outline…</b> and <b>Pressed Text…</b> used while the control is held.</li>"
+            + "<li><b>Colors</b>: Fill Color…, Outline Color… and Text Color…, and <b>Pressed Fill…</b>, <b>Pressed Outline…</b> and <b>Pressed Text…</b> used while the control is held.</li>"
             + "<li><b>Hotspot</b> and <b>Leader Ends</b> (see Hotspots and leaders), <b>Arrange</b> (stacking, Lock, Hide).</li>"
             + "</ul>"
             + "<p>Ctrl+D duplicates the selection; Ctrl+C and Ctrl+V copy and paste it inside the editor.</p>"),
@@ -412,7 +412,7 @@ function buttonMapTopics() {
             + "<p>Right-click a five-chip hat group: <b>Style</b> → <b>Format</b> shows it as <b>Plus</b>, <b>Mini hat</b> or <b>Radial</b>; <b>Clear Format</b> removes it.</p>"
             + "<p>Grouping chips or text boxes together with a table packs them into the table (see Tables).</p>"),
         topic("Chips", "Mirror layout",
-            "<p><b>Edit → Mirror layout</b> turns the whole map left to right while editing: every chip, group, drawing and picture goes to the other side of the page, with its hotspot, leader bends and loose leader ends. Shapes and lines are mirrored, so an arrow points the other way; text boxes, tables and the arrangement inside a group stay as they are, so they still read. Pictures move but are only flipped when Button Map Options → Editing → Mirror pictures is on. Undo puts it back.</p>"
+            "<p><b>Edit → Mirror Layout</b> turns the whole map left to right while editing: every chip, group, drawing and picture goes to the other side of the page, with its hotspot, leader bends and loose leader ends. Shapes and lines are mirrored, so an arrow points the other way; text boxes, tables and the arrangement inside a group stay as they are, so they still read. Pictures move but are only flipped when Button Map Options → Editing → Mirror pictures is on. Undo puts it back.</p>"
             + "<p>To lay out a left-hand stick from a right-hand one, open the left stick and use <b>Edit → Copy Button Map from Device</b> with Mirror left to right ticked.</p>"),
         topic("Drawing", "Right-click menu",
             "<p>While editing, the menu shows only what applies to what you right-clicked: a chip, a group, a leader, a shape, a line, a picture, a text box, a table, several selected items, or empty canvas.</p>"
@@ -421,7 +421,7 @@ function buttonMapTopics() {
         topic("Drawing", "Drawing shapes",
             "<p>Right-click empty canvas → <b>Draw</b> and pick a <b>Shape</b>: Rectangle, Rounded, Ellipse, Triangle, Diamond, Arrow or Double arrow. Drag on the photo to draw it; hold Shift to keep its proportions. The tool stays on for the next one until <b>Stop Drawing</b> or Esc.</p>"
             + "<p>With chips selected, <b>Shape Around Selection</b> draws a shape around them that moves with them; its <b>Padding</b> sets the gap, and Arrange → <b>Detach from Chips</b> frees it.</p>"
-            + "<p>Right-click a shape for <b>Duplicate</b> and <b>Delete</b>, then sections: <b>Shape</b> (change the kind), <b>Fill and Outline</b> (Filled or Hollow, Fill color…, Outline color…, Width, outline Solid, Dashed or Dotted, Opacity), <b>Rotate and Flip</b> and <b>Arrange</b>.</p>"),
+            + "<p>Right-click a shape for <b>Duplicate</b> and <b>Delete</b>, then sections: <b>Shape</b> (change the kind), <b>Fill and Outline</b> (Filled or Hollow, Fill Color…, Outline Color…, Width, outline Solid, Dashed or Dotted, Opacity), <b>Rotate and Flip</b> and <b>Arrange</b>.</p>"),
         topic("Drawing", "Lines and arrows",
             "<p>Draw → <b>Line</b> picks <b>Line</b> or <b>Arrow</b>. Drag from one end to the other; hold Shift to keep to 15° steps.</p>"
             + "<p>A selected line has a handle on each end; drag one to move that end (Shift for 15° steps). To turn a line, move its ends.</p>"
@@ -450,7 +450,7 @@ function buttonMapTopics() {
             "<p>Draw → <b>Box</b> → <b>Text box</b>, then drag. Double-click a text box (or <b>Edit Text…</b>) to type.</p>"
             + "<ul>"
             + "<li><b>Text</b>: Font size, Bold, Word wrap, <b>Scale font with box</b>, and alignment Across (Left, Center, Right) and Down (Top, Middle, Bottom).</li>"
-            + "<li><b>Box</b>: preset Size (Caption, Small, Medium, Large, Title, Wide), Theme (Dark, Hollow, Sheet), Text color…, Fill color…, Outline color…, Fill opacity and Outline opacity.</li>"
+            + "<li><b>Box</b>: preset Size (Caption, Small, Medium, Large, Title, Wide), Theme (Dark, Hollow, Sheet), Text Color…, Fill Color…, Outline Color…, Fill opacity and Outline opacity.</li>"
             + "<li><b>Copy and Paint Format</b>: <b>Copy Format</b> takes this box's look; <b>Paint format</b> puts it on the next boxes you click; <b>Clear Formatting</b> resets it; <b>Copy Text</b> copies the words.</li>"
             + "</ul>"),
         topic("Drawing", "Callouts",
@@ -460,7 +460,7 @@ function buttonMapTopics() {
         topic("Drawing", "Tables",
             "<p>Draw → <b>Box</b> → <b>Table</b>, then drag. Double-click a cell to type in it.</p>"
             + "<ul>"
-            + "<li><b>Rows and Columns</b>: Insert row above, Delete this row, Insert column left, Delete this column, and an <b>ID column</b>.</li>"
+            + "<li><b>Rows and Columns</b>: Insert Row Above, Delete This Row, Insert Column Left, Delete This Column, and an <b>ID column</b>.</li>"
             + "<li><b>Cell</b>: <b>Free position</b> lets a cell be dragged out of the grid; <b>Independent of table</b> keeps it still when the table moves; <b>Spawn Empty Cell</b> adds a loose cell; <b>Delete This Cell</b>; <b>Place Across</b> and <b>Place Down</b> park a cell at a side.</li>"
             + "<li><b>Look</b>: Theme (Dark, Hollow, Sheet) and font size.</li>"
             + "</ul>"
@@ -483,7 +483,7 @@ function buttonMapTopics() {
             + "<li>The <b>eye</b> hides an item: it is not drawn, on the live map either, and is left out of exports.</li>"
             + "<li>The <b>lock</b> keeps an item in place: clicks pass through it, and it is not moved, nudged or deleted. Ctrl+L locks or unlocks the selection; Ctrl+Shift+L unlocks everything.</li>"
             + "<li>Open a chip (the arrow) to hide or lock its hotspot or each leader on its own. Locking or hiding the chip covers them all.</li>"
-            + "<li>Drag a row up or down to change what is on top. The right-click menu's <b>Arrange</b> section does the same a step at a time: Bring to front, Bring forward, Send back, Send to back.</li>"
+            + "<li>Drag a row up or down to change what is on top. The right-click menu's <b>Arrange</b> section does the same a step at a time: Bring to Front, Bring Forward, Send Back, Send to Back.</li>"
             + "<li>Click a row to select the item (Ctrl or Shift to add); a right-click selects it too before its menu opens (a row in a selection keeps the selection). Double-click a drawing's row to name it.</li>"
             + "<li><b>Show all</b> and <b>Unlock all</b> undo every hide and lock. The filter shows only Chips, Drawings, Pictures, or Text &amp; tables.</li>"
             + "</ul>"),

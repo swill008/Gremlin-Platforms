@@ -140,6 +140,14 @@ def test_shared_menus_work(tmp_path: pathlib.Path) -> None:
         "|  Reset Card Layout|  Delete Device"
     )
     assert "Unstack" not in results["card-device"]
+    # The Keyboard card leaves out what doesn't list the Keyboard.
+    assert "Module Setup" in results["kb-module"]
+    assert "Auto Mapper" not in results["kb-module"]
+    assert "Calibration" not in results["kb-module"]
+    assert "vJoy Viewer" in results["kb-view"]
+    assert "Device Information" not in results["kb-view"]
+    assert "Reset Card Layout" in results["kb-device"]
+    assert "Swap Device" not in results["kb-device"]
     # A text box's menu: only the edits that can be made; none, no menu.
     assert results["text-menu"] == (
         "Cut (Ctrl+X)|Copy (Ctrl+C)|Delete|-|Select All (Ctrl+A)"

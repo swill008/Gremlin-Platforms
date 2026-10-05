@@ -44,6 +44,8 @@ SECTION_DISPLAY_NAMES = {
 _ENTRY_TITLES = {
     "ui-scale": "UI scale",
     "refresh-axis-on-activation": "Refresh axes when Run starts",
+    "keep-days": "Days to keep changes",
+    "max-megabytes": "Largest history file (MB)",
     "disable-windows-scaling": "Ignore Windows display scaling",
     "show-stubs": "Show devices without a module",
     "last-keep-after-release": "Keep last value after release",
@@ -86,6 +88,10 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ("Diagnostics", [
             ("global", "general", "debug"),
             ("global", "general", "log-when-not-responding"),
+        ]),
+        ("History", [
+            ("global", "history", "keep-days"),
+            ("global", "history", "max-megabytes"),
         ]),
     ]),
     ("Interface", [

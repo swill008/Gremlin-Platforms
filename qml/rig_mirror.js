@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // Mirroring a whole layout left to right: for a left-hand stick laid out
-// from a right-hand one (Edit → Mirror layout, File → Copy layout from).
+// from a right-hand one (Edit → Mirror Layout, Edit → Copy Button Map from Device).
 // Code-behind for VkbRigEditor.qml (imported without .pragma library): it
 // uses the editor's ids, properties and functions directly, and each
 // function here has a forwarder of the same name in the editor.

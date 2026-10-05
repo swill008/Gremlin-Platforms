@@ -84,6 +84,6 @@ MetaConfigOption().register(
     SECTION_DISPLAY,
     "status",
     "reset-card-sizes",
-    "Restore every Status card to its default size. Stacks, order, and hidden cards stay as they are. Right-click a card for Reset size or Clear all settings (size and stack).",
+    "Restore every Home card to its default size. Stacks, order, and hidden cards stay as they are. Right-click a card for Reset Size, or Reset Card Layout (size and stacking).",
     StatusResetModel,
 )

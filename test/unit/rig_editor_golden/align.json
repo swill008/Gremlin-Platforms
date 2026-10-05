@@ -1412,9 +1412,9 @@
     "layers": [],
     "menu": [
      "3 selected",
-     "Group Selected",
-     "Duplicate",
-     "Delete",
+     "Group Selected (Ctrl+G)",
+     "Duplicate (Ctrl+D)",
+     "Delete (Delete)",
      "Copy (Ctrl+C)",
      "Paste (Ctrl+V) (off)",
      "Hide Selected [ ]",

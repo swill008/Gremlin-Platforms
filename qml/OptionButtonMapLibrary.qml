@@ -99,7 +99,7 @@ Item {
         }
         Label {
             visible: _library.templateList.length === 0
-            text: "None yet. In the Button Map: File → Templates → Save layout as template. Export and import are there too."
+            text: "None yet. In the Button Map: File → Templates → Save Layout as Template…. Export and import are there too."
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             color: Style.fgMuted

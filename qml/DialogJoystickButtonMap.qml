@@ -1009,6 +1009,15 @@ ApplicationWindow {
         Qt.callLater(refreshReservoir)
     }
 
+    // View > Reset View and Ctrl+0.
+    function resetViewNow() {
+        var f = _cardLoader.item
+        if (f && f.resetView)
+            f.resetView()
+        captureView()
+        persistUi()
+    }
+
     function deleteOrBreak() {
         var e = _ed()
         if (!e)
@@ -1414,7 +1423,7 @@ ApplicationWindow {
         persistUi()
     }
 
-    // Editor settings from Options (Edit → Editor options).
+    // Editor settings from Options (Edit → Button Map Options…).
     function applyOptionsToEditor() {
         var e = _cardLoader.item ? _cardLoader.item.editorItem : null
         if (!e)
@@ -1867,7 +1876,7 @@ ApplicationWindow {
 
     Dialog {
         id: _copyDlg
-        title: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply template" : "Copy Button Map"
+        title: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply Template" : "Copy Button Map"
         modal: true
         // Another device's layout is usually the other hand's; a template is not.
         onOpened: _copyMirror.checked = !(_buttonMap._copyFrom && _buttonMap._copyFrom.template)
@@ -1911,7 +1920,7 @@ ApplicationWindow {
                     onClicked: _copyDlg.close()
                 }
                 Button {
-                    text: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply template" : "Copy Button Map"
+                    text: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply Template" : "Copy Button Map"
                     highlighted: true
                     onClicked: {
                         var row = _buttonMap._copyFrom
@@ -2048,7 +2057,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: Style.fgMuted
-                text: "Keeps this layout's chips, leaders and drawings under a name, to apply to any device later (File → Templates → Apply template)."
+                text: "Keeps this layout's chips, leaders and drawings under a name, to apply to any device later (File → Templates → Apply Template)."
             }
             TextField {
                 id: _templateName
@@ -2099,7 +2108,7 @@ ApplicationWindow {
                 color: Style.fgMuted
                 text: _buttonMap.templateList.length
                       ? "Templates are kept with the module files. Export writes one to a file to share; Import adds one. Pictures in a template stay where they are, so share a Device Pack to send pictures too."
-                      : "No templates yet. File → Templates → Save layout as template keeps the current layout."
+                      : "No templates yet. File → Templates → Save Layout as Template… keeps the current layout."
             }
             ListView {
                 Layout.fillWidth: true
@@ -2482,6 +2491,38 @@ ApplicationWindow {
                     onTriggered: _buttonMap.mirrorNow()
                 }
                 ThemedMenuSeparator {}
+                // The shortcuts' rows: shown with their keys and in the palette.
+                ThemedMenuItem {
+                    text: "Delete"
+                    hint: "Delete"
+                    enabled: { var e = _ed(); return editing && e && e.selectedId !== "" }
+                    onTriggered: _buttonMap.deleteOrBreak()
+                }
+                ThemedMenuItem {
+                    text: "Group Selected"
+                    hint: "Ctrl+G"
+                    enabled: { var e = _ed(); return editing && e ? e.canGroup() : false }
+                    onTriggered: { var e = _ed(); if (e) e.groupSelection() }
+                }
+                ThemedMenuItem {
+                    text: "Break Group"
+                    hint: "Ctrl+Shift+G"
+                    enabled: { var e = _ed(); return editing && e ? e.canUngroup() : false }
+                    onTriggered: { var e = _ed(); if (e) e.ungroupSelection() }
+                }
+                ThemedMenuItem {
+                    text: "Lock / Unlock"
+                    hint: "Ctrl+L"
+                    enabled: { var e = _ed(); return editing && e && e.selectedId !== "" }
+                    onTriggered: { var e = _ed(); if (e) e.toggleLockSelection() }
+                }
+                ThemedMenuItem {
+                    text: "Unlock All"
+                    hint: "Ctrl+Shift+L"
+                    enabled: editing
+                    onTriggered: { var e = _ed(); if (e) e.unlockAll() }
+                }
+                ThemedMenuSeparator {}
                 ThemedMenuItem {
                     text: "Set Print Area"
                     hint: "Alt+drag"
@@ -2612,13 +2653,8 @@ ApplicationWindow {
                 }
                 ThemedMenuItem {
                     text: "Reset View (View 100%)"
-                    onTriggered: {
-                        var f = _cardLoader.item
-                        if (f && f.resetView)
-                            f.resetView()
-                        captureView()
-                        persistUi()
-                    }
+                    hint: "Ctrl+0"
+                    onTriggered: _buttonMap.resetViewNow()
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
@@ -3524,12 +3560,9 @@ ApplicationWindow {
                     onActivated: _buttonMap.zoomToSelection()
                 }
                 Shortcut {
-                    enabled: editing
+                    // As View > Reset View: in and out of Edit, and kept.
                     sequence: "Ctrl+0"
-                    onActivated: {
-                        if (_cardLoader.item)
-                            _cardLoader.item.resetView()
-                    }
+                    onActivated: _buttonMap.resetViewNow()
                 }
                 Item { Layout.fillWidth: true; visible: !editing }
             }

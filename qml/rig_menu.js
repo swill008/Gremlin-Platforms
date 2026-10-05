@@ -353,8 +353,8 @@ function _leaderEnds() {
 function _group() {
     var n = ctxTarget()
     return _sect("group", "Group", [
-        _act("Group Selected", groupSelection, canGroup()),
-        _act("Break Group", ungroupSelection, canUngroup() || isGroup(n)),
+        _act("Group Selected", groupSelection, canGroup(), "Ctrl+G"),
+        _act("Break Group", ungroupSelection, canUngroup() || isGroup(n), "Ctrl+Shift+G"),
         _act("Edit Group", function() { beginGroupEdit(_ctx.nodeId) }, isGroup(n)),
         _act("Done Editing Group", endGroupEdit, groupEditId !== "")
     ])
@@ -845,7 +845,9 @@ function menuModel() {
         quick = [_act("Add Row Below", function() { addTableRow(true) }), _act("Add Column Right", function() { addTableCol(true) })]
         sections = _tableSections()
     } else if (kind === "multi") {
-        quick = [_act("Group Selected", groupSelection, canGroup()), _act("Duplicate", duplicateSelection), _act("Delete", function() { deleteSelected() })]
+        quick = [_act("Group Selected", groupSelection, canGroup(), "Ctrl+G"),
+                 _act("Duplicate", duplicateSelection, true, "Ctrl+D"),
+                 _act("Delete", function() { deleteSelected() }, true, "Delete")]
         sections = _multiSections()
     } else {
         quick = quick.concat(_copyPaste(false))

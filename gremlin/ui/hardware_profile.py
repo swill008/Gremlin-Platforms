@@ -1687,12 +1687,6 @@ class HardwareProfile(QtCore.QObject):
             return False
         return data.hasImage() or bool(_image_files(data.urls()))
 
-    @QtCore.Slot(str, result=str)
-    def pasteClipboardImage(self, device_name: str) -> str:
-        """Saves the clipboard's picture as a layer picture for the device."""
-        pasted = self.pasteClipboardPictures(device_name)
-        return pasted[0] if pasted else ""
-
     @QtCore.Slot(str, result=list)
     def pasteClipboardPictures(self, device_name: str) -> list[str]:
         """The clipboard's pictures as layer pictures for the device: copied
@@ -2081,7 +2075,7 @@ class HardwareProfile(QtCore.QObject):
                     pass
         return QtCore.QUrl.fromLocalFile(str(target)).toString()
 
-    # --- layouts of other devices (File > Copy layout from) ---------------------
+    # --- layouts of other devices (Edit > Copy Button Map from Device) ---
 
     @QtCore.Slot(str, result=list)
     def savedLayouts(self, device_name: str) -> list:

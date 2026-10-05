@@ -66,9 +66,9 @@ function commandList() {
 
         // Tools
         { id: "tools.vjoyViewer", text: "vJoy Viewer", group: "Tools › Viewers",
-          run: function() { toggleTool("DialogInputViewer.qml") } },
+          run: function() { openTool("DialogInputViewer.qml") } },
         { id: "tools.xboxViewer", text: "Xbox Viewer", group: "Tools › Viewers",
-          run: function() { toggleTool("DialogXboxViewer.qml") } },
+          run: function() { openTool("DialogXboxViewer.qml") } },
         { id: "tools.calibration", text: "Calibration", group: "Tools › Device Setup",
           run: function() { openTool("DialogCalibration.qml") } },
         { id: "tools.hidhide", text: "HidHide", group: "Tools › Device Setup", keywords: "hide devices",
@@ -96,7 +96,7 @@ function commandList() {
           run: function() { openTool("DialogManageModes.qml") } },
         { id: "tools.history", text: "History", group: "Tools",
           keywords: "undo restore versions changes saved",
-          run: function() { openTool("DialogHistory.qml") } },
+          run: function() { openToolWith("DialogHistory.qml", { filter: "" }) } },
         { id: "tools.options", text: "Options", group: "Tools", keywords: "settings preferences",
           run: function() { openTool("DialogOptions.qml") } },
 

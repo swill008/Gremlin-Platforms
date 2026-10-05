@@ -590,8 +590,10 @@ ApplicationWindow {
         Helpers.createComponent(spec)
     }
 
-    function toggleTool(spec) {
-        Helpers.toggleComponent(spec)
+    // The same, with properties (Tools > History shows everything, even
+    // when it is open on one device's changes).
+    function openToolWith(spec, properties) {
+        Helpers.createComponent(spec, properties)
     }
 
     function loadRecent(file) {

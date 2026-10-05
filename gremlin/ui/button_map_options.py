@@ -5,7 +5,7 @@
 
 They live in the program's configuration under the "button-map" section, so
 Options lists them like any other setting; the Button Map window opens Options
-at that section from Edit -> Editor options. QML reads them through
+at that section from Edit -> Button Map Options. QML reads them through
 ButtonMapOptions, which is keyed by the option's name without its ordering
 prefix ("01-undo-steps" -> "undo-steps").
 """
@@ -90,8 +90,8 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
     ),
     (
         "editing", "05-mirror-pictures", PropertyType.Bool, False,
-        "Mirror layout and Copy layout from also mirror pictures. Off, pictures "
-        "only move, so text in them still reads.",
+        "Mirror Layout and Copy Button Map from Device also mirror pictures. "
+        "Off, pictures only move, so text in them still reads.",
         {},
     ),
     (

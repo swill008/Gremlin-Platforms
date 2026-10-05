@@ -61,3 +61,16 @@ def test_move_among_keeps_other_kinds_in_place() -> None:
             assert all(shown for _n, shown in cfg.value(*key))
     finally:
         cfg.set(*key, old)
+
+
+def test_history_settings_have_their_own_group() -> None:
+    # Help says Options -> General -> History (they were under "Other").
+    general = dict(dict(option.main_layout())["General"])
+    keys = general.get("History", [])
+    assert ("global", "history", "keep-days") in keys
+    assert ("global", "history", "max-megabytes") in keys
+    assert "Other" not in general or not [
+        k for k in general["Other"] if k[1] == "history"
+    ]
+    assert option.entry_title("keep-days") == "Days to keep changes"
+    assert option.entry_title("max-megabytes") == "Largest history file (MB)"

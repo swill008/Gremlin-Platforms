@@ -77,6 +77,19 @@ STEPS = [
      " _probe.describe().join('|')"),
     ("card-device", "_probe.activate('Device'); _probe.describe().join('|')"),
     ("card-closed", "_probe.close(); 'ok'"),
+    # The Keyboard card: no Auto Mapper, Device Information or Swap Device
+    # (they don't list the Keyboard).
+    ("kb-module",
+     "_card.slug = 'keyboard'; _probe.build = _card.menuModel;"
+     " _probe.openAt(_card, 20, 20); _probe.activate('Module');"
+     " _probe.describe().join('|')"),
+    ("kb-view",
+     "_probe.close(); _probe.openAt(_card, 20, 20); _probe.activate('View');"
+     " _probe.describe().join('|')"),
+    ("kb-device",
+     "_probe.close(); _probe.openAt(_card, 20, 20); _probe.activate('Device');"
+     " _probe.describe().join('|')"),
+    ("kb-closed", "_probe.close(); _card.slug = ''; 'ok'"),
     # A text box's right-click menu: only the edits that can be made.
     ("text-menu",
      "_field.select(0, 5); var m = _field.ContextMenu.menu; m.popup(_field, 0, 0);"

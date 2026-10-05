@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import "helpers.js" as Helpers
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -218,6 +219,17 @@ ApplicationWindow {
                 focusPolicy: Qt.NoFocus
                 enabled: _calib ? _calib.canRedo : false
                 onClicked: _calibrationDialog.redoEdit()
+            }
+
+            // This module's saved changes (Tools > History).
+            Button {
+                objectName: "calibrationHistory"
+                text: "History"
+                focusPolicy: Qt.NoFocus
+                enabled: _moduleSelection.currentText.length > 0
+                onClicked: Helpers.createComponent("DialogHistory.qml", {
+                    filter: JSON.stringify({ device: _moduleSelection.currentText })
+                })
             }
 
             // Every axis with unsaved changes at once (each axis also has its own).

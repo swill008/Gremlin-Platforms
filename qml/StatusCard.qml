@@ -446,6 +446,9 @@ Rectangle {
     function menuModel() {
         var dest = direction === "dest"
         var xbox = bus === "XInput" || tab === "xbox" || slug === "xbox"
+        // The Keyboard and OSC aren't game controllers: Swap Devices, the
+        // Auto Mapper and Device Information don't list them.
+        var notStick = slug === "keyboard" || slug === "osc"
         return MenuModel.menu("card", cardName || rawName || "Device", [
             MenuModel.action(dest ? "Output View" : "Open Configuration",
                              function() { dest ? _card.openOutputView() : _card.openConfiguration() }),
@@ -457,13 +460,15 @@ Rectangle {
                 // no axes to calibrate.
                 xbox ? null : MenuModel.action("Module Setup…",
                                  function() { _card.configureModule() }),
-                MenuModel.action("Auto Mapper", function() { _card.autoMap() }),
+                (notStick || xbox) ? null
+                    : MenuModel.action("Auto Mapper", function() { _card.autoMap() }),
                 (dest || slug === "keyboard" || slug === "osc") ? null
                     : MenuModel.action("Calibration", function() { _card.openCalibration() })
             ]),
             MenuModel.section("view", "View", [
                 MenuModel.action(xbox ? "Xbox Viewer" : "vJoy Viewer", function() { _card.openPairing() }),
-                MenuModel.action("Device Information", function() { _card.openDeviceInformation() })
+                (notStick || xbox) ? null
+                    : MenuModel.action("Device Information", function() { _card.openDeviceInformation() })
             ]),
             MenuModel.section("cards", "Cards", [
                 MenuModel.action("Stack Selected Cards", function() { _card.stackSelectedCards() }, _card.canStackSelected),
@@ -475,7 +480,8 @@ Rectangle {
             MenuModel.section("device", "Device", [
                 _card.damaged === "" ? null
                     : MenuModel.action("Start Fresh…", function() { _card.startFresh() }),
-                dest ? null : MenuModel.action("Swap Device…", function() { _card.assignHardware() }),
+                (dest || notStick) ? null
+                    : MenuModel.action("Swap Device…", function() { _card.assignHardware() }),
                 MenuModel.action("Reset Card Layout", function() { _card.clearSettings() }),
                 MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })
             ])

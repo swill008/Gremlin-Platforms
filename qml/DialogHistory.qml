@@ -34,6 +34,8 @@ ApplicationWindow {
 
     // Set by whoever opens the window (JSON text).
     property string filter: ""
+    // The device's name for the "Only ..." line when the filter has only its id.
+    property string filterLabel: ""
     property string selected: ""
     property var shown: ({})
     property string message: ""
@@ -63,6 +65,8 @@ ApplicationWindow {
         var parts = []
         if (w.device)
             parts.push(w.device)
+        else if (filterLabel.length)
+            parts.push(filterLabel)
         if (w.inputType && w.inputId)
             parts.push(w.inputType.charAt(0).toUpperCase() + w.inputType.slice(1) + " " + w.inputId)
         var text = parts.join(" ")
@@ -116,7 +120,11 @@ ApplicationWindow {
             }, null, false)
     }
 
-    onFilterChanged: applyFilter()
+    // A new filter drops the old one's label (whoever opens it sets its own).
+    onFilterChanged: {
+        filterLabel = ""
+        applyFilter()
+    }
     Component.onCompleted: applyFilter()
     // New changes appear when the window comes back to the front.
     onActiveChanged: {

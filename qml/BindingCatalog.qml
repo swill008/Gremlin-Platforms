@@ -1577,7 +1577,9 @@ Item {
                                         inputType: _root.device.kindAt(deviceIndex),
                                         inputId: String(_root.device.hwIdAt(deviceIndex)),
                                         mode: uiState ? uiState.currentMode : "Default"
-                                    })
+                                    }),
+                                    // After the filter: a new filter clears the label.
+                                    filterLabel: _root.device.name
                                 })
                             }
                             Button {

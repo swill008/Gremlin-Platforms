@@ -911,8 +911,10 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         ):
             changed.connect(self._theme_refresh_timer.start)
 
-        self.tray_icon = gremlin.ui.system_tray.SystemTrayIcon(self.main_window)
-        self.aboutToQuit.connect(self.tray_icon.release_resources)
+        self.tray_icon = None
+        if os.environ.get("QT_QPA_PLATFORM", "") != "offscreen":
+            self.tray_icon = gremlin.ui.system_tray.SystemTrayIcon(self.main_window)
+            self.aboutToQuit.connect(self.tray_icon.release_resources)
         self.syslog.info("Gremlin UI launching")
         self.aboutToQuit.connect(shutdown_cleanup)
 
