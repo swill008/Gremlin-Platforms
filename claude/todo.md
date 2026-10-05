@@ -38,6 +38,20 @@ tracker) so the details stay in one place.
     (recommended), the user re-places them, or a one-time conversion of
     their files (only with their go-ahead, on a backup).
 
+## Program-wide history (planned 2026-10-05)
+
+- [ ] **G-HISTORY – History across the whole program.** A shared history
+  in its own files (per area: input modules, output modules, action
+  editor, Button Map) that the program reads and writes, so earlier
+  versions can be seen and restored, also after a restart. To be fleshed
+  out with the user first: notes and open questions in
+  `claude/history-notes.md`.
+- [ ] **G-LIBLEAK – Unused actions written to the profile.** Some edit
+  paths drop an action's link without removing the action, and saving
+  writes every action, so the file grows (the user's profile: 1,172
+  actions, 408 used). Under discussion: fix each leak, and skip unused
+  actions when writing the file (kept in memory so Undo still works).
+
 ## OSC (parked 2026-10-02: leave OSC alone for now)
 
 - [ ] **B15 – Default ports clash and disagree.** The program listens on 8000
