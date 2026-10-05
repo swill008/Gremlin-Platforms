@@ -74,7 +74,7 @@ function topics() {
             + "</ul>"),
         topic("Devices and Modules", "Input modules",
             "<p>An input module decides which controls of a physical device exist for Gremlin-Platforms. Only <b>claimed</b> controls reach your actions, the viewers, and the Auto Mapper.</p>"
-            + "<p>Open it from the card menu or Tools → Device Setup → <b>Input Module Setup</b>. Press a control on the device to claim it, or tick it; untick to release it. Give a control a <b>Friendly name</b> if you like. <b>Save module</b> writes the module file; <b>Cancel</b> discards.</p>"
+            + "<p>Open it from the card menu or Tools → Device Setup → <b>Input Module Setup</b>. Press a control on the device to claim it, or tick it; untick to release it. Give a control a <b>Friendly name</b> if you like. <b>Undo</b> and <b>Redo</b> (Ctrl+Z, Ctrl+Y) step back through the ticks and names until you open another device. <b>Save module</b> writes the module file; <b>Cancel</b> discards.</p>"
             + "<p><b>Keyboard</b> is an input module too. Key bindings only fire for keys it claims. Until you save a choice, every key is claimed. Typing in Windows and games is never affected.</p>"
             + "<p>Calibration for a stick is stored in its input module (see Calibration).</p>"),
         topic("Devices and Modules", "vJoy output modules",

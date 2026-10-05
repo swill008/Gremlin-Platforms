@@ -1672,9 +1672,15 @@ class DriverInputModel(QtCore.QAbstractListModel):
     changed = QtCore.Signal()
     rowActivated = QtCore.Signal(int)
     userEdited = QtCore.Signal()
+    undoChanged = QtCore.Signal()
+
+    # Undo steps kept (each a check, a press that checks, or a name).
+    UNDO_STEPS = 100
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
+        self._undo: list[list[tuple[bool, str]]] = []
+        self._redo: list[list[tuple[bool, str]]] = []
         self._guid = ""
         # Why Save is refused for the loaded device ("" when it isn't).
         self._not_connected = ""
@@ -1814,6 +1820,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 )
         self.beginResetModel()
         self._rows = rows
+        self._forget_steps()
         self.endResetModel()
         self.changed.emit()
 
@@ -1854,6 +1861,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             )
         self.beginResetModel()
         self._rows = rows
+        self._forget_steps()
         self.endResetModel()
         self.changed.emit()
 
@@ -1909,6 +1917,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 )
         self.beginResetModel()
         self._rows = rows
+        self._forget_steps()
         self.endResetModel()
         self.changed.emit()
 
@@ -1985,6 +1994,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             )
         self.beginResetModel()
         self._rows = rows
+        self._forget_steps()
         self.endResetModel()
         self.changed.emit()
 
@@ -2039,12 +2049,70 @@ class DriverInputModel(QtCore.QAbstractListModel):
         except Exception:
             return
 
+    # --- Undo / Redo: the checks and names, as they were before each edit ---
+
+    def _marks(self) -> list[tuple[bool, str]]:
+        return [(bool(r["claimed"]), str(r.get("friendly") or "")) for r in self._rows]
+
+    def _step(self) -> None:
+        """Before an edit: keep how it was, for Undo."""
+        self._undo.append(self._marks())
+        del self._undo[: -self.UNDO_STEPS]
+        self._redo.clear()
+        self.undoChanged.emit()
+
+    def _forget_steps(self) -> None:
+        if self._undo or self._redo:
+            self._undo.clear()
+            self._redo.clear()
+            self.undoChanged.emit()
+
+    def _put_marks(self, marks: list[tuple[bool, str]]) -> None:
+        if len(marks) != len(self._rows):
+            return
+        for row, (claimed, friendly) in zip(self._rows, marks, strict=True):
+            row["claimed"] = claimed
+            row["friendly"] = friendly
+        if self._rows:
+            self.dataChanged.emit(
+                self.index(0, 0),
+                self.index(len(self._rows) - 1, 0),
+                [
+                    QtCore.Qt.ItemDataRole.UserRole + 4,
+                    QtCore.Qt.ItemDataRole.UserRole + 5,
+                ],
+            )
+        self.userEdited.emit()
+        self.undoChanged.emit()
+
+    @QtCore.Slot()
+    def undo(self) -> None:
+        if self._undo:
+            self._redo.append(self._marks())
+            self._put_marks(self._undo.pop())
+
+    @QtCore.Slot()
+    def redo(self) -> None:
+        if self._redo:
+            self._undo.append(self._marks())
+            self._put_marks(self._redo.pop())
+
+    def _can_undo(self) -> bool:
+        return bool(self._undo)
+
+    def _can_redo(self) -> bool:
+        return bool(self._redo)
+
+    canUndo = QtCore.Property(bool, fget=_can_undo, notify=undoChanged)
+    canRedo = QtCore.Property(bool, fget=_can_redo, notify=undoChanged)
+
     @QtCore.Slot(int, bool)
     def setClaimed(self, index: int, claimed: bool) -> None:
         if not (0 <= index < len(self._rows)):
             return
         if bool(self._rows[index]["claimed"]) == bool(claimed):
             return
+        self._step()
         self._rows[index]["claimed"] = bool(claimed)
         ix = self.index(index, 0)
         self.dataChanged.emit(ix, ix, [QtCore.Qt.ItemDataRole.UserRole + 4])
@@ -2056,6 +2124,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             return
         if str(self._rows[index].get("friendly") or "") == str(name or ""):
             return
+        self._step()
         self._rows[index]["friendly"] = name
         ix = self.index(index, 0)
         self.dataChanged.emit(ix, ix, [QtCore.Qt.ItemDataRole.UserRole + 5])

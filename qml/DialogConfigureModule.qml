@@ -96,6 +96,10 @@ ApplicationWindow {
 
     // Stick HID often synthesizes Esc/Return. Do not let those click Cancel/Save.
     Shortcut { sequence: "Esc"; onActivated: {} }
+    // Undo and Redo for the checks and names (a name being typed keeps its
+    // own Ctrl+Z).
+    Shortcut { sequences: [StandardKey.Undo]; onActivated: _win.undoEdit() }
+    Shortcut { sequences: [StandardKey.Redo, "Ctrl+Y"]; onActivated: _win.redoEdit() }
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
 
@@ -159,6 +163,18 @@ ApplicationWindow {
             backend.noteSave(note)
         }
         return true
+    }
+
+    function undoEdit() {
+        if (!_driver.canUndo)
+            return
+        _driver.undo()
+    }
+
+    function redoEdit() {
+        if (!_driver.canRedo)
+            return
+        _driver.redo()
     }
 
     function showImportResult(message) {
@@ -355,6 +371,20 @@ ApplicationWindow {
                     moduleFileMessage = ""
                     _moduleFileDialog.open()
                 }
+            }
+            Button {
+                objectName: "moduleUndo"
+                text: "Undo"
+                focusPolicy: Qt.NoFocus
+                enabled: _driver.canUndo
+                onClicked: _win.undoEdit()
+            }
+            Button {
+                objectName: "moduleRedo"
+                text: "Redo"
+                focusPolicy: Qt.NoFocus
+                enabled: _driver.canRedo
+                onClicked: _win.redoEdit()
             }
             // This device's saved changes (Tools > History).
             Button {
