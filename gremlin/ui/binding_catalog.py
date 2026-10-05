@@ -132,8 +132,12 @@ def _fingerprint(binding: InputItemBinding) -> str:
     return "\n".join(chunks)
 
 
-def _attach_binding(real: InputItem, shadow: InputItem, sequence_index: int) -> int:
-    """Move the draft binding onto the real control. Returns its index."""
+def _attach_binding(
+    real: InputItem, shadow: InputItem, sequence_index: int, drop_old: bool = True
+) -> int:
+    """Move the draft binding onto the real control. Returns its index.
+    drop_old=False keeps the replaced action in the library (an Undo step
+    that holds it puts it back)."""
     binding = shadow.action_sequences[0]
     binding.input_item = real
     if sequence_index < 0:
@@ -142,7 +146,8 @@ def _attach_binding(real: InputItem, shadow: InputItem, sequence_index: int) -> 
     old = real.action_sequences[sequence_index]
     real.action_sequences[sequence_index] = binding
     if (
-        old is not binding
+        drop_old
+        and old is not binding
         and old.root_action is not None
         and old.root_action is not binding.root_action
     ):
@@ -362,8 +367,10 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._undo: list[dict] = []
         self._redo: list[dict] = []
         signal.profileChanged.connect(self.reload)
-        # Another profile (or one changed under the page): no steps.
+        # Another profile (or one changed under the page), or modes renamed
+        # or deleted (steps name their mode): no steps.
         signal.profileChanged.connect(self._forget_steps)
+        signal.modesChanged.connect(self._forget_steps)
         # Undo waits while an action is open in the pane.
         self.paneModelChanged.connect(self.undoChanged)
         self._claimed.countChanged.connect(self.reload)
@@ -374,6 +381,9 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._pane_hid = -1
         self._pane_base = ""
         self._pane_whole = False
+        # The input the pane edits (guid, kind, hw, mode): OK writes there and
+        # records its Undo step there, whatever mode is shown by then.
+        self._pane_input: tuple | None = None
 
     def _get_guid(self) -> str:
         return self._claimed.guid
@@ -895,6 +905,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         seq = int(sequence_index)
         if want < 0 or seq < 0:
             return False
+        if self._pane_shadow is not None and want == self._pane_hid:
+            return False
         profile = shared_state.current_profile
         dev = getattr(self._claimed, "_device", None)
         if profile is None or dev is None:
@@ -927,15 +939,29 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
 
     # --- Undo / Redo: an input as it was before and after each OK or Delete
 
-    def _snapshot(self, device_index: int) -> dict | None:
-        spec = self._control_spec(device_index)
+    def _spec_for(self, device_index: int, key: tuple | None = None) -> tuple | None:
+        """The input shown at device_index, or the given (guid, kind, hw,
+        mode) one."""
+        if key is None:
+            return self._control_spec(device_index)
+        profile = shared_state.current_profile
+        if profile is None:
+            return None
+        guid, kind, hw, mode = key
+        item = profile.get_input_item(guid, kind, hw, mode, create_if_missing=False)
+        return profile, guid, kind, hw, mode, item
+
+    def _snapshot(self, device_index: int, key: tuple | None = None) -> dict | None:
+        spec = self._spec_for(device_index, key)
         if spec is None:
             return None
         profile, _guid, _kind, _hw, _mode, item = spec
         return profile.input_snapshot(item)
 
-    def _step(self, device_index: int, before: dict | None) -> None:
-        spec = self._control_spec(device_index)
+    def _step(
+        self, device_index: int, before: dict | None, key: tuple | None = None
+    ) -> None:
+        spec = self._spec_for(device_index, key)
         if spec is None:
             return
         profile, guid, kind, hw, mode, item = spec
@@ -1089,6 +1115,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._pane_shadow = shadow
         self._pane_seq = seq
         self._pane_hid = int(device_index)
+        self._pane_input = (guid, kind, hw, mode)
         self._pane_whole = whole
         self._pane_base = _fingerprint_item(shadow)
         self._pane_model = InputItemModel(shadow, int(device_index), self)
@@ -1098,20 +1125,25 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     @QtCore.Slot(result=bool)
     def paneDirty(self) -> bool:
         shadow = self._pane_shadow
-        if shadow is None or not shadow.action_sequences:
+        if shadow is None:
             return False
+        if not shadow.action_sequences:
+            # Every action removed in the pane: OK takes them off the input.
+            real = self._pane_real
+            return self._pane_whole and bool(real and real.action_sequences)
         return _fingerprint_item(shadow) != self._pane_base
 
     @QtCore.Slot(result=int)
     def commitPane(self) -> int:
         """Write the draft onto the real control. Returns the child index."""
         shadow = self._pane_shadow
-        if shadow is None or not shadow.action_sequences or not self.paneDirty():
+        if shadow is None or not self.paneDirty():
             return self._pane_seq
-        before = self._snapshot(self._pane_hid)
+        key = self._pane_input
+        before = self._snapshot(self._pane_hid, key)
         real = self._pane_real
         if real is None:
-            spec = self._control_spec(self._pane_hid)
+            spec = self._spec_for(self._pane_hid, key)
             if spec is None:
                 return -1
             profile, guid, kind, hw, mode, _item = spec
@@ -1130,7 +1162,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             self._pane_seq = index
             self._pane_whole = False
             self._retarget_draft(real, index)
-        self._step(self._pane_hid, before)
+        self._step(self._pane_hid, before, key)
         signal.inputItemChanged.emit(self._pane_hid)
         return index
 
@@ -1149,6 +1181,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._pane_real = None
         self._pane_seq = -1
         self._pane_hid = -1
+        self._pane_input = None
         self._pane_base = ""
         self._pane_whole = False
         self._clear_pane_model()

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 
 from PySide6 import QtCore
 
@@ -190,8 +191,14 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._pane_whole = False
         self._pane_new = False
         signal.logicalDeviceModified.connect(self._on_external)
-        signal.profileChanged.connect(self._on_external)
+        signal.profileChanged.connect(self._on_profile)
         self._rebuild()
+
+    def _on_profile(self) -> None:
+        # Another profile: the steps belong to the old one.
+        self._undo.clear()
+        self._redo.clear()
+        self._on_external()
 
     def _on_external(self) -> None:
         if self._writing:
@@ -213,6 +220,10 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         before = self._logical.memento()
         links = fn() or []
         after = self._logical.memento()
+        if before == after and not links:
+            # Nothing changed (the same name typed again): no step.
+            self._changed()
+            return
         self._undo.append({"before": before, "after": after, "links": links})
         if len(self._undo) > 50:
             self._undo.pop(0)
@@ -223,6 +234,14 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         entries = list(reversed(links)) if reverse else list(links)
         for entry in entries:
             op = entry.get("op")
+            if op == "set-seqs":
+                # OK on an action edited in the pane: its actions before / after.
+                item = entry["item"]
+                sequences = list(entry["before"] if reverse else entry["after"])
+                for binding in sequences:
+                    binding.input_item = item
+                item.action_sequences = sequences
+                continue
             if op == "drop-item":
                 self._restore_item(entry["item"])
                 continue
@@ -1180,21 +1199,38 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
     @QtCore.Slot(result=bool)
     def paneDirty(self) -> bool:
         shadow = self._pane_shadow
-        if shadow is None or not shadow.action_sequences:
+        if shadow is None:
             return False
+        if not shadow.action_sequences:
+            # Every action removed in the pane: OK takes them off the input.
+            real = self._pane_real
+            return self._pane_whole and bool(real and real.action_sequences)
         return _fingerprint_item(shadow) != self._pane_base
 
     def _replace_sequences(self, real: InputItem, shadow: InputItem) -> None:
-        old = list(real.action_sequences)
-        moved = list(shadow.action_sequences)
+        # The replaced actions stay in the library for Undo; a save writes
+        # only the ones inputs use.
         real.action_sequences = []
-        for binding in moved:
+        for binding in list(shadow.action_sequences):
             binding.input_item = real
             real.action_sequences.append(binding)
-        for binding in old:
-            if binding.root_action is None or binding in moved:
-                continue
-            real.library.remove_unused(binding.root_action)
+
+    def _set_sequences(self, real: InputItem, change: Callable[[], object]) -> int:
+        """Runs change (it edits real's actions) as one Undo step; returns
+        what change returned when it is an index."""
+        result: list[object] = []
+
+        def fn() -> list[dict]:
+            before = list(real.action_sequences)
+            result.append(change())
+            return [{
+                "op": "set-seqs", "item": real, "before": before,
+                "after": list(real.action_sequences),
+            }]
+
+        self._apply(fn)
+        value = result[0] if result else 0
+        return value if isinstance(value, int) else 0
 
     def _append_sequence(self, real: InputItem, shadow: InputItem) -> int:
         binding = shadow.action_sequences[0]
@@ -1209,7 +1245,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
     @QtCore.Slot(result=int)
     def commitPane(self) -> int:
         shadow = self._pane_shadow
-        if shadow is None or not shadow.action_sequences or not self.paneDirty():
+        if shadow is None or not self.paneDirty():
             return self._pane_seq
         real = self._pane_real
         if real is None:
@@ -1234,13 +1270,16 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._pane_whole = False
             only = index
         elif self._pane_whole or self._pane_seq < 0:
-            self._replace_sequences(real, shadow)
+            self._set_sequences(real, lambda: self._replace_sequences(real, shadow))
             self._pane_seq = -1
             self._pane_whole = True
             only = None
             index = 0
         else:
-            index = _attach_binding(real, shadow, self._pane_seq)
+            seq = self._pane_seq
+            index = self._set_sequences(
+                real, lambda: _attach_binding(real, shadow, seq, drop_old=False)
+            )
             self._pane_seq = index
             self._pane_whole = False
             only = index

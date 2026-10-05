@@ -239,8 +239,13 @@ Item {
     Connections {
         target: uiState
         function onModeChanged() {
-            if (uiState)
-                _catalog.setMode(uiState.currentMode)
+            if (!uiState)
+                return
+            // A pane with nothing changed closes: it shows the old mode's
+            // control. One with changes stays; OK writes to its own mode.
+            if (_root.paneHid >= 0 && !_catalog.paneDirty())
+                _root.closeAdvancedPane()
+            _catalog.setMode(uiState.currentMode)
         }
         function onDeviceChanged() {
             if (!uiState)
@@ -1539,7 +1544,10 @@ Item {
                                 wrapMode: Text.NoWrap
                             }
                             Button {
+                                // Not for the control open in the pane: it is
+                                // edited there (OK would bring it back).
                                 visible: isLeaf && !lv.catalogLocked
+                                         && deviceIndex !== _root.paneHid
                                 text: "Delete"
                                 implicitWidth: Style.dp(70)
                                 implicitHeight: Style.dp(28)
