@@ -40,13 +40,13 @@ tracker) so the details stay in one place.
 
 ## Program-wide history (planned 2026-10-05)
 
-- [ ] **G-HISTORY – History across the whole program.** A shared history
+- [x] **G-HISTORY – History across the whole program.** (built 2026-10-05: 4597e486, 20155486, 780f16b8; Undo where it's missing is still to do) A shared history
   in its own files (per area: input modules, output modules, action
   editor, Button Map) that the program reads and writes, so earlier
   versions can be seen and restored, also after a restart. To be fleshed
   out with the user first: notes and open questions in
   `claude/history-notes.md`.
-- [ ] **G-LIBLEAK – Unused actions written to the profile.** Some edit
+- [x] **G-LIBLEAK – Unused actions written to the profile.** (fixed 2026-10-05: b4539968) Some edit
   paths drop an action's link without removing the action, and saving
   writes every action, so the file grows (the user's profile: 1,172
   actions, 408 used). Under discussion: fix each leak, and skip unused

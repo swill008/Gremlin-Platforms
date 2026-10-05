@@ -1,7 +1,8 @@
 # Program-wide history (notes and design, 2026-10-05)
 
-Status: design gathered; decisions below need the user's answers before
-code. Tracker refs: G-HISTORY (the system), G-LIBLEAK (leaks), and the
+Status: built 2026-10-05 with the recommended decisions (the user's go-ahead):
+store 4597e486, recording 20155486, window and Restore 780f16b8. Still to
+do: Undo where an editor has none (decision 8, last step). Tracker refs: G-HISTORY (the system), G-LIBLEAK (leaks), and the
 bugs in "Found while gathering".
 
 ## Why
