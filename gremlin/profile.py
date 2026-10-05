@@ -16,6 +16,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
+    Any,
     Callable,
 )
 from xml.dom import minidom
@@ -918,7 +919,7 @@ class Profile:
             "input": ElementTree.tostring(item.to_xml(), encoding="unicode"),
             "actions": [
                 ElementTree.tostring(node, encoding="unicode")
-                for node in (action.to_xml() for action in seen.values())
+                for node in (action.to_xml(True) for action in seen.values())
                 if node is not None
             ],
         }
@@ -931,7 +932,10 @@ class Profile:
         mode: str,
         snapshot: dict | None,
     ) -> None:
-        """Replaces an input's actions with a snapshot (None: no actions)."""
+        """Replaces an input's actions with a snapshot (None: no actions).
+        The snapshot is read first: one that can't be read changes nothing."""
+        if snapshot:
+            _check_snapshot(snapshot)
         current = [
             item
             for item in self.inputs.get(device_id, [])
@@ -1242,8 +1246,8 @@ class InputItemBinding:
             vb_node = node.find("virtual-button")
             if vb_node is None:
                 raise error.ProfileError(
-                    f"Missing virtual-button entry library item "
-                    f"{self.library_reference.id}"
+                    f"Missing virtual-button entry for input "
+                    f"{self.input_item.input_id} of device {self.input_item.device_id}"
                 )
             virtual_button.from_xml(vb_node)
 
@@ -1276,6 +1280,19 @@ class InputItemBinding:
                 f"configuration part of input {self.input_item.descriptor()}."
             )
         return self.virtual_button.to_xml()
+
+
+def _check_snapshot(snapshot: dict) -> None:
+    """Raises ProfileError when an input snapshot can't be read back, before
+    anything in the profile is changed."""
+    trial = Library()
+    root = ElementTree.Element("profile")
+    library = ElementTree.SubElement(root, "library")
+    for block in snapshot.get("actions") or []:
+        library.append(ElementTree.fromstring(block))
+    trial.from_xml(root)
+    item = InputItem(trial)
+    item.from_xml(ElementTree.fromstring(snapshot["input"]))
 
 
 class ModeHierarchy:
@@ -1385,12 +1402,16 @@ class ModeHierarchy:
                 f"Attempting to delete a non-existant mode '{mode_name}'."
             )
 
+        if len(self.mode_list()) <= 1:
+            raise error.GremlinError("A profile needs at least one mode.")
+
         # Find node and remove it from the hierarchy tree but reconnect its
-        # children to their grandparent.
+        # children to their grandparent. A copy of the list: set_parent
+        # takes each child out of it (every other child was lost).
         node = self.find_mode(mode_name)
         parent_node = node.parent
         node.detach()
-        for child in node.children:
+        for child in list(node.children):
             child.set_parent(parent_node)
 
         # Find all InputItem actions using the mode being deleted and remove
@@ -1433,6 +1454,14 @@ class ModeHierarchy:
         # Find all actions associated to the old mode name
         for action in self._actions_with_mode(old_name):
             action.mode = new_name
+        # Actions that switch to the mode (Change Mode) follow the new name.
+        for action in self._profile.library.actions_by_predicate(
+            lambda a: old_name in (getattr(a, "_target_modes", None) or [])
+        ):
+            change: Any = action
+            change._target_modes = [
+                new_name if mode == old_name else mode for mode in change._target_modes
+            ]
 
         if self._profile.settings.startup_mode == old_name:
             self._profile.settings.startup_mode = new_name
@@ -1472,6 +1501,12 @@ class ModeHierarchy:
 
         # Reconstruct tree structure
         for child, parent in node_parents.items():
+            if parent not in nodes:
+                logging.getLogger("system").warning(
+                    f"Mode '{child}' names a parent mode '{parent}' that isn't "
+                    "in the profile; it is kept as a top-level mode."
+                )
+                continue
             nodes[child].set_parent(nodes[parent])
 
         self._hierarchy = TreeNode("")

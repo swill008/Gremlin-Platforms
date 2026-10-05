@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     List,
@@ -26,6 +27,7 @@ from gremlin.base_classes import (
 )
 from gremlin.error import GremlinError
 from gremlin.profile import Library
+from gremlin.signal import signal
 from gremlin.types import (
     ActionProperty,
     InputType,
@@ -55,11 +57,24 @@ class LoadProfileFunctor(AbstractFunctor):
         if not self._should_execute(value):
             return
 
+        name = Path(self.data.profile_filename).name
+        be = backend.Backend()
+        # As auto-load does: never over unsaved edits.
+        if be.profile.has_unsaved_changes():
+            signal.showNotification.emit(
+                "Load Profile Waited",
+                f"{name} was not loaded because the open profile has unsaved "
+                "changes. Save or discard them first.",
+            )
+            return
+        if not file_exists_and_is_accessible(self.data.profile_filename):
+            signal.showNotification.emit(
+                "Load Profile", f"{name} was not loaded: the file is missing."
+            )
+            return
         logging.getLogger("system").debug(
             f"Loading profile ... {self.data.profile_filename}"
         )
-
-        be = backend.Backend()
         be.loadProfile(self.data.profile_filename)
         be.activate_gremlin(False)
         be.activate_gremlin(True)
@@ -126,14 +141,11 @@ class LoadProfileData(AbstractActionData):
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:
         self._id = util.read_action_id(node)
+        # A file that is missing now doesn't stop the profile loading: the
+        # action says so (user_feedback) and keeps its file name.
         self.profile_filename = util.read_property(
             node, "load-profile", PropertyType.String
         )
-
-        if not self.is_valid():
-            raise GremlinError(
-                f"{self.profile_filename} does not exists or is not accessible."
-            )
 
     @override
     def _to_xml(self) -> ElementTree.Element:
@@ -148,10 +160,15 @@ class LoadProfileData(AbstractActionData):
     @override
     def user_feedback(self) -> List[UserFeedback]:
         messages = []
-        if not file_exists_and_is_accessible(self.profile_filename):
+        if not self.profile_filename:
+            messages.append(
+                UserFeedback(UserFeedback.FeedbackType.Error, "Choose a profile file.")
+            )
+        elif not file_exists_and_is_accessible(self.profile_filename):
+            # A warning: the action (and its file name) is kept when saved.
             messages.append(
                 UserFeedback(
-                    UserFeedback.FeedbackType.Error,
+                    UserFeedback.FeedbackType.Warning,
                     f"Profile file '{self.profile_filename}' does not exist or "
                     f"is not accessible.",
                 )

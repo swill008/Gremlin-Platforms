@@ -30,7 +30,7 @@ from gremlin.base_classes import (
     Value,
 )
 from gremlin.code_runner import CallbackObject
-from gremlin.error import GremlinError
+from gremlin.error import GremlinError, ProfileError
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
@@ -270,6 +270,11 @@ class HatButtonsData(AbstractActionData):
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:
         self._id = util.read_action_id(node)
         self.button_count = util.read_property(node, "button-count", PropertyType.Int)
+        if self.button_count not in HatButtonsData.name_list:
+            raise ProfileError(
+                f"Hat Buttons action {self._id}: button count {self.button_count} "
+                "must be 4 or 8."
+            )
         self.direction = {}
         for name in HatButtonsData.name_list[self.button_count]:
             self.direction[name] = []

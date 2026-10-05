@@ -238,15 +238,19 @@ class AbstractActionData(ABC):
         )
         self._from_xml(node, library)
 
-    def to_xml(self) -> ElementTree.Element | None:
+    def to_xml(self, keep_invalid: bool = False) -> ElementTree.Element | None:
         """Returns an XML node representing the instance's contents.
 
         Calls the implementation specific serialization routine.
 
+        Args:
+            keep_invalid: also an unfinished action (an Undo step keeps the
+                input exactly as it was; a save leaves them out)
+
         Returns:
             XML node containing the instance's contents, or None if invalid
         """
-        if not self.is_valid():
+        if not keep_invalid and not self.is_valid():
             logging.getLogger("system").debug(
                 f"Disacarding invalid node with id: {self.id}"
             )

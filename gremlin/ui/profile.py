@@ -892,6 +892,9 @@ class ModeHierarchyModel(QtCore.QObject):
 
     @QtCore.Slot(str)
     def deleteMode(self, name: str) -> None:
+        # A profile keeps at least one mode (the window disables Delete).
+        if len(self.current_modes.mode_names()) <= 1:
+            return
         self.current_modes.delete_mode(name)
         from gremlin.mode_manager import ModeManager
 

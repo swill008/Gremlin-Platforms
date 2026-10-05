@@ -42,7 +42,7 @@ ApplicationWindow {
             : "Its " + (n === 1 ? "binding" : n + " bindings") + " will be deleted too."
         _deleteGate.confirmThen("Delete Mode \"" + mode + "\"?",
             what + " Modes under it move up one level.",
-            "Delete mode", function() { modeHierarchy.deleteMode(mode) }, null, true)
+            "Delete Mode", function() { modeHierarchy.deleteMode(mode) }, null, true)
     }
 
     DismissibleDialog {
@@ -161,6 +161,7 @@ ApplicationWindow {
         RowLayout {
             required property string name
             required property string parentName
+            readonly property int modeCount: ListView.view ? ListView.view.count : 0
 
             width: ListView.view.width
             height: _parentMode.height
@@ -236,6 +237,8 @@ ApplicationWindow {
 
             IconButton {
                 text: bsi.icons.trash
+                // A profile keeps at least one mode.
+                enabled: modeCount > 1
 
                 Layout.rightMargin: Style.dp(10)
 
