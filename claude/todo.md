@@ -70,9 +70,12 @@ goes to the lead (the main session), which passes it on. Shared files
     listed above (`merge_axis`, `dual_axis_deadzone`, `reference`,
     `condition`, …); tests `test_action_editor_fixes`, `test_action_fixes`.
   - Files not listed: ask the lead first.
-- **Batch 2 – urgent fixes + behaviour/UX, 9–10 agents** (sections 2 and
-  6): one agent per subsystem page, two for the largest; Device Pack
-  all-or-nothing (GL-099/GL-109, A3) is here.
+- **Batch 2 – urgent fixes + behaviour/UX, 9 agents** (sections 2 and 6,
+  plus GL-074, GL-098 rest, GL-099, GL-106, GL-109 from batch 1). File
+  owners, contracts and rules: `claude/catchup-batch2-rules.md` (B1 shell,
+  B2a input events, B2b devices/HidHide, B3 modules/Home, B4 profiles/modes,
+  B5a action pane/locking, B5b action logic/speech, B6 Button Map, B7
+  History/Device Pack/Auto Mapper). Left out: GL-029, 168, 185, 186, 201.
 - **Batch 3 – text, glossary, help, clean-up, about 4 agents** (sections
   7 and 8).
 
