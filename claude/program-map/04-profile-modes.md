@@ -162,10 +162,10 @@ Who else changes profile data (not single-owner)
 ### Profile file: New, Load, Save, Save As, Recent
 
 - S1. It should hold the modes, the actions on every input, the Profile Settings and the list of scripts, and save them only on Save / Save As. [help: Profiles] [help: What is saved where] [glossary: Profile]
-- S2. It should save the Logical Device and OSC rows and the device names list in the same file. [code only]
+- S2. It should save the Logical Device and OSC rows and the device names list in the same file. [user confirmed 2026-10-06; was code only]
 - S3. It should open File › New Profile, Load Profile…, Recent, Save Profile and Save Profile As… with Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S. [help: Profiles]
 - S4. It should ask Save / Discard / Cancel before New, Load, Recent and quit only when there are unsaved changes; with nothing changed it asks nothing. [help: Profiles] [test-plan: F-06a, WORKFLOW-HANDS-ON] [tracker: C1]
-- S5. It should stop a running profile before New or Load. [code only]
+- S5. It should stop a running profile before New or Load. [user confirmed 2026-10-06; was code only]
 - S6. It should give a new profile the title "Untitled" and one mode, "Default", and count it as having nothing to lose. [tracker: C2] [test: test_profile_unsaved.py::test_a_new_profile_marked_clean_has_nothing_to_lose]
 - S7. It should show `*` in the window title while there are unsaved changes, and the file name (not the full path) otherwise. [test-plan: WORKFLOW-HANDS-ON] [tracker: C2]
 - S8. It should count only real edits as unsaved: a file saved by an older build that loads with new default values is not unsaved. [test-plan: F-06] [test: test_profile_unsaved.py::test_freshly_loaded_older_file_is_not_unsaved]
@@ -179,16 +179,16 @@ Who else changes profile data (not single-owner)
 - S16. It should show "Saved to the profile." after every successful save and name the written file in the footer. [help: What is saved where] [tracker: C3]
 - S17. It should record a History entry for every save that changed something. [help: History] [help: What is saved where]
 - S18. It should put a loaded or saved profile at the top of Recent (max 5, one entry per file whatever the case or slashes) and remember it as the last profile. [test-plan: F-03] [test: test_recent_profiles.py]
-- S19. It should, when a Recent file is missing, say so and keep the open profile. [test-plan: F-03] [code only for "keep the entry"]
-- S20. It should open the file dialogs in the profiles folder, filtered to `*.xml`. [code only]
+- S19. It should, when a Recent file is missing, say so and keep the open profile. [test-plan: F-03] [user confirmed 2026-10-06; was code only for "keep the entry"]
+- S20. It should open the file dialogs in the profiles folder, filtered to `*.xml`. [user confirmed 2026-10-06; was code only]
 
 ### Loading: start-up, damaged and missing files
 
-- S21. It should open the last profile at start; a `--profile` path wins and is read relative to the folder the program was started from. [tracker: APP10] [code only for the order]
+- S21. It should open the last profile at start; a `--profile` path wins and is read relative to the folder the program was started from. [tracker: APP10] [user confirmed 2026-10-06; was code only for the order]
 - S22. It should, when the last profile won't open at start, say why once and offer Forget It (off the start-up and Recent lists; the file stays) or Keep. [tracker: APP17] [test: test_startup_messages.py]
 - S23. It should, when any load fails (bad XML, wrong version, unknown action type, missing child action, broken input), show the reason and reopen the profile that was open; only if that fails, open a new empty one and say so. [tracker: B11, ACT15] [test: test_load_and_rename_safety.py::test_failed_load_reopens_the_profile_that_was_open]
 - S24. It should not add a profile that failed to load to Recent or make it the last profile. [tracker: ACT15] [test-plan: S-05]
-- S25. It should read only profile version 14 and refuse others with a message. [code only]
+- S25. It should read only profile version 14 and refuse others with a message. [user confirmed 2026-10-06; was code only]
 - S26. It should finish loading (refuse with a message, never hang) when an action names a child action that is missing. [test-plan: PROFILE-LOAD-NO-HANG] [test: test_profile_missing_child_action.py]
 - S27. It should keep a mode whose parent is unknown, or whose parents loop, as a top-level mode. [test-plan: AUDIT-A-PROFILE, AUDIT2-F-H-REST] [test: test_audit_profile.py::test_a_mode_with_an_unknown_parent_is_kept]
 - S28. It should open a profile whose Play Sound or Load Profile file is missing, keep the action with a warning. [tracker: ACT11, AU-14] [test: test_audit_profile.py::test_a_missing_load_profile_file_still_loads]
@@ -203,7 +203,7 @@ Who else changes profile data (not single-owner)
 - S34. It should not reload or restart the profile that is already open when its program comes back to the front. [tracker: AU-38]
 - S35. It should never switch over unsaved edits; it says "Auto-load Waited" once per profile. [test-plan: SAFE-4] [tracker: A11] [test: test_autoload_and_mode_prompts.py::test_auto_load_waits_for_unsaved_edits]
 - S36. It should, when the matched profile file is missing, say so once and stop the running profile unless Keep running is on. [tracker: AU-95] [test: test_audit2_saving.py::test_a_missing_auto_load_profile_stops_the_open_one]
-- S37. It should stop the running profile when a program with no profile comes to the front, unless Keep running when the program loses focus is on. [help: Options] [code only]
+- S37. It should stop the running profile when a program with no profile comes to the front, unless Keep running when the program loses focus is on. [help: Options] [user confirmed 2026-10-06; was code only]
 - S38. It should make the Load Profile action wait (with a notice) over unsaved changes, skip a missing file, otherwise load and run the new profile. [tracker: AU-15] [test: test_audit2_coverage.py::test_load_profile_loads_and_restarts_the_run]
 
 ### Modes: the tree and Manage Modes
@@ -211,7 +211,7 @@ Who else changes profile data (not single-owner)
 - S39. It should have at least one mode; the last mode can't be deleted (Delete is disabled). [tracker: AU-19] [test: test_audit_profile.py::test_the_last_mode_stays]
 - S40. It should refuse a blank mode name and any name that matches another ignoring capitals and spacing; a mode may change the capitals of its own name. [test-plan: MM-01b] [tracker: B14] [test: test_mode_hierarchy_model.py::test_mode_names_refuse_blank_and_look_alikes]
 - S41. It should list modes alphabetically. [test-plan: MM-01]
-- S42. It should let a mode inherit from any mode that is not itself or below it; "(none)" makes it top-level. [help: Modes] [code only for the allowed list]
+- S42. It should let a mode inherit from any mode that is not itself or below it; "(none)" makes it top-level. [help: Modes] [user confirmed 2026-10-06; was code only for the allowed list]
 - S43. It should use a parent's actions for every input the child mode leaves empty, through any number of levels. [help: Modes] [glossary: Mode]
 - S44. It should, on rename, move everything that names the mode: inputs, Change Mode targets (also a running Cycle), script mode settings (also of scripts that failed to load), Startup Mode, the stored last mode, the running mode stack and lookup, the toolbar, Configuration and Logical Device panes and Undo steps, the Button Map labels mode. [test-plan: AUDIT-A-PROFILE, AUDIT2-C-MODES, AUDIT3-TRACE] [tracker: AU-20, AU-82, AU-88, AU-112] [test: test_audit2_modes.py] [test: test_audit3_modes.py]
 - S45. It should, before delete, ask and say how many bindings go with the mode. [test-plan: SAFE-4] [tracker: A9] [test: test_autoload_and_mode_prompts.py::test_mode_delete_counts_the_bindings_it_removes]
@@ -226,12 +226,12 @@ Who else changes profile data (not single-owner)
 - S51. It should have one Mode on the toolbar: the mode you edit is the mode that runs; while running it shows the running mode. [help: Modes] [help: Run and status] [glossary: D10]
 - S52. It should, when a profile is loaded (Load, New, auto-load, start-up), put the toolbar in the Startup Mode: a named mode as itself; Last Active as the mode it last ran in, if that mode still exists; Use Heuristic (and any fallback) as the alphabetically first mode without a parent. [help: Profile Settings] [test-plan: HELP-BUG] [test: test_modes.py::test_heuristic_is_first_parentless_mode] [test: test_modes.py::test_last_active_deleted_mode_falls_back]
 - S53. It should start Run in the mode shown on the toolbar (not the Startup Mode). [help: Profile Settings] [test-plan: HELP-BUG]
-- S54. It should let the toolbar Mode box switch the running mode while running. [code only]
+- S54. It should let the toolbar Mode box switch the running mode while running. [user confirmed 2026-10-06; was code only]
 - S55. It should keep the last mode per profile in memory while running and save it on Stop, quit, or at most hourly. [test-plan: WRITE-LESS] [test: test_write_less.py]
 - S56. It should switch to a named mode (Switch), swap back to the one before (Previous), step back one (Unwind), go to the next in a list (Cycle) or stay in a mode only while held (Temporary). [help: Change Mode] [test: action_interaction/test_modes.py]
 - S57. It should, on Cycle, go to the mode after the current one (the first if the current one isn't in the list), skip deleted modes, and stay put when only the current mode is left; an empty Cycle does nothing. [tracker: ACT3, ACT9, AU-112] [test: test_audit3_modes.py::test_cycle_steps_over_a_deleted_mode]
 - S58. It should ignore (and log once) a switch to a mode the profile doesn't have. [tracker: ACT2] [test: action_interaction/test_modes.py::test_switching_to_a_mode_the_profile_does_not_have_is_ignored]
-- S59. It should resolve a loop in the mode history by Options › Change Mode resolution (Oldest or Newest), including loops made by temporary modes. [code only] [test: test_modes.py::test_cycling] [test: test_modes.py::test_temporaries]
+- S59. It should resolve a loop in the mode history by Options › Change Mode resolution (Oldest or Newest), including loops made by temporary modes. [user confirmed 2026-10-06; was code only] [test: test_modes.py::test_cycling] [test: test_modes.py::test_temporaries]
 - S60. It should refresh axes on a mode change only while running and only when the option is on. [test: test_mode_refresh_and_add_key.py::test_runner_refreshes_axes_on_mode_change_only_while_listening]
 - S61. It should run mode changes from timer actions (Tempo, Double Tap, Smart Toggle) on the main thread. [tracker: ACT20]
 
@@ -240,38 +240,38 @@ Who else changes profile data (not single-owner)
 - S62. It should store Startup Mode, Macro Default Delay, vJoy Behavior and vJoy Initial Values in the profile; they need a save to stick. [help: Profile Settings]
 - S63. It should offer Use Heuristic, Last Active and every mode by name as Startup Mode. [test-plan: PS-01]
 - S64. It should use Options › Action › Macro › Default delay while "Use the Options default" is ticked (box greyed, showing the Options value); unticking keeps today's value as the profile's own. [test-plan: MACRO-DELAY] [tracker: B27] [test: test_profile_settings.py::test_settings_model_switches_between_options_and_own]
-- S65. It should read old profiles' delay of 0.05 as "follow Options". [test: test_profile_settings.py::test_macro_delay_follows_options_unless_set] [code only for the 0.05 rule]
-- S66. It should treat each vJoy device as an output by default; one switched to input is listed with the physical devices and not offered for Initial Values. [help: Profile Settings] [code only for the lists]
-- S67. It should set each vJoy axis to its Initial Value when the profile starts (values clamped to -1..1 on load). [help: Profile Settings] [code only for the clamp]
+- S65. It should read old profiles' delay of 0.05 as "follow Options". [test: test_profile_settings.py::test_macro_delay_follows_options_unless_set] [user confirmed 2026-10-06; was code only for the 0.05 rule]
+- S66. It should treat each vJoy device as an output by default; one switched to input is listed with the physical devices and not offered for Initial Values. [help: Profile Settings] [user confirmed 2026-10-06; was code only for the lists]
+- S67. It should set each vJoy axis to its Initial Value when the profile starts (values clamped to -1..1 on load). [help: Profile Settings] [user confirmed 2026-10-06; was code only for the clamp]
 
 ### Bindings, inputs and the action library
 
-- S68. It should keep one input item per device, input and mode; an input with no actions is not written to the file. [code only]
-- S69. It should keep each binding's root action and behaviour ("Treat as"); an axis or hat treated as a button needs its virtual button settings or the profile is refused. [test-plan: AUDIT-A-PROFILE] [code only for the refusal]
+- S68. It should keep one input item per device, input and mode; an input with no actions is not written to the file. [user confirmed 2026-10-06; was code only]
+- S69. It should keep each binding's root action and behaviour ("Treat as"); an axis or hat treated as a button needs its virtual button settings or the profile is refused. [test-plan: AUDIT-A-PROFILE] [user confirmed 2026-10-06; was code only for the refusal]
 - S70. It should ask before changing "Treat as" on a binding that has actions. [test-plan: SAFE-4]
 - S71. It should remove a deleted action and its children from the library unless another input uses them; a shared action stays. [tracker: ACT16] [test: test_profile_unused_actions.py::test_a_shared_action_stays_while_an_input_uses_it]
-- S72. It should give actions added twice (Device Pack, History) new ids so they never clash. [code only] [test-plan: UNDO-CONFIGURATION]
+- S72. It should give actions added twice (Device Pack, History) new ids so they never clash. [user confirmed 2026-10-06; was code only] [test-plan: UNDO-CONFIGURATION]
 - S73. It should take a snapshot of any input (unfinished actions left out of the snapshot and of their parents), and refuse a snapshot it can't read before changing anything. [test-plan: AUDIT2-B-UNDO] [test: test_audit_profile.py::test_a_snapshot_that_cannot_be_read_changes_nothing]
 - S74. It should, when restoring into the same profile, keep an action another input still uses (shared stays shared) and keep ids. [test-plan: AUDIT2-B-UNDO]
 - S75. It should offer in pick lists and Reuse only actions an input uses, plus the one being edited, and show a draft copy instead of its original. [test-plan: AUDIT2-B-UNDO, AUDIT3-TRACE]
-- S76. It should let bindings on one input be reordered by drag. [code only]
+- S76. It should let bindings on one input be reordered by drag. [user confirmed 2026-10-06; was code only]
 
 ### Swap Devices
 
 - S77. It should move every binding, every device reference inside actions and every script variable from the chosen profile device to the chosen connected device, and the connected device's bindings the other way (a swap, not a copy). [help: Swap Devices] [tracker: AU-36]
 - S78. It should move inputs with no actions with their device too. [tracker: AU-36]
 - S79. It should leave out and refuse the Keyboard, Logical Device, OSC and Xbox. [tracker: AU-91] [test-plan: AUDIT2-F-H-REST]
-- S80. It should ask first, say nothing is saved yet and that undo means reloading without saving; there is no Undo. [tracker: C11] [code only for "no Undo"]
+- S80. It should ask first, say nothing is saved yet and that undo means reloading without saving; there is no Undo. [tracker: C11] [user confirmed 2026-10-06; was code only for "no Undo"]
 - S81. It should list each profile device with its action count, and "Unknown device (short id)" when its name isn't known; the list refreshes after a swap, a load or a device change. [test-plan: AUDIT3-TRACE] [test: test_audit3_screens.py]
 - S82. It should start with the card's device as the connected device when opened from a card. [tracker: C5] [glossary: D5]
 - S83. It should need a profile save afterwards to keep the swap. [help: Swap Devices]
 
 ### User scripts
 
-- S84. It should add a .py file from the scripts folder as a script instance named "Instance N"; one file may be added more than once under different names. [help: Scripts] [code only for naming]
+- S84. It should add a .py file from the scripts folder as a script instance named "Instance N"; one file may be added more than once under different names. [help: Scripts] [user confirmed 2026-10-06; was code only for naming]
 - S85. It should let a script be renamed (unique per file), configured (its variables), and removed after asking. [help: Scripts] [tracker: C14]
 - S86. It should save scripts and their variable values with the profile; a script path inside the scripts folder may be saved relative. [help: Scripts] [test-plan: INTEG-SCRIPTS]
-- S87. It should run only scripts whose required variables are set, reload each script fresh at every Run, and retry a script that failed to load. [test-plan: SCRIPTS-THAT-CANT-LOAD] [code only for "required set"]
+- S87. It should run only scripts whose required variables are set, reload each script fresh at every Run, and retry a script that failed to load. [test-plan: SCRIPTS-THAT-CANT-LOAD] [user confirmed 2026-10-06; was code only for "required set"]
 - S88. It should keep the saved settings of a script that can't load and write them back unchanged on save. [test: test_user_script_load_errors.py::test_syntax_error_keeps_the_script_and_its_settings]
 - S89. It should give scripts `joy`, `keyboard` and `vjoy` only through the input and output modules: a script's vJoy can use only claimed outputs; unclaimed inputs read neutral. [help: Scripts] [test-plan: P2b, P3c]
 - S90. It should run periodic callbacks no faster than every 0.01 s, log a failing callback without stopping the others, and stop them all at Stop. [tracker: AU-34] [test: test_user_script.py::test_periodic_callback_exception_is_logged_and_does_not_stop_other_callbacks]
@@ -369,3 +369,14 @@ Thin or untested
 - Swap Devices: one data test (`test_swap_devices.py`), plus refusal and list-refresh tests; no test of a swap onto a device that already has bindings, of script variables in both directions through the UI slot, or of the device names list after a swap.
 - Script add running top-level code; script removal leaving its variables registered.
 - Manage Modes window itself (rename/delete flow) beyond the name check and the closed-window test.
+
+## 12. Review (user, 2026-10-06)
+
+Approved by the user as recommended (2026-10-06, blanket approval of the remaining pages): every [code only] statement in section 8 is confirmed, except where a question's recommendation changes it; every question in section 9 is decided as its **Recommend** says. Where a recommendation and a section 8 statement disagree, the recommendation wins.
+
+| Q | Decision |
+|---|---|
+| All | As recommended in section 9 |
+
+The section 8 statements (with the changes above) are now the definition
+of correct for this subsystem.

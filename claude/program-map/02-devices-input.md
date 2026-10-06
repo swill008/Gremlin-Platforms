@@ -167,16 +167,16 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 
 ### A. Device list and scan
 
-- **S1** It should list every controller Windows reports, physical ones first sorted by name, then vJoy devices sorted by vJoy number. [code only]
+- **S1** It should list every controller Windows reports, physical ones first sorted by name, then vJoy devices sorted by vJoy number. [user confirmed 2026-10-06; was code only]
 - **S2** It should never list Gremlin's own virtual Xbox pads as devices, but a real wired or wireless Xbox 360 pad should be a normal device. [tracker: DEV2] [test: test_xbox_pads_told_apart.py::test_real_xbox_pad_is_a_normal_device]
 - **S3** It should show Home with one card per device: physical devices, each vJoy device, and the Xbox controller. [help: Home]
-- **S4** It should scan devices once at start, before the main window loads; if that scan fails it should show the failure window instead of the main window. [code only]
+- **S4** It should scan devices once at start, before the main window loads; if that scan fails it should show the failure window instead of the main window. [user confirmed 2026-10-06; was code only]
 - **S5** It should never wait more than 10 s for a device scan that is still busy; it should report it instead. [test: test_bounded_waits.py::test_a_busy_device_scan_is_reported_not_waited_for]
 - **S6** It should always release the scan lock, so a failed scan never stops later hot-plug updates. [tracker: DEV4] [test-plan: DEVICE-SCAN-FIXES] [test: test_device_scan.py::test_a_scan_error_does_not_leave_the_lock_held]
 - **S7** It should show a failed hot-plug update in the error dialog ("The device list could not be updated."), not lose it on a background thread. [test: test_device_scan.py::test_hot_plug_error_is_shown_not_lost]
 - **S8** It should do nothing when a scan finds the same device ids as before (no vJoy reset, no reload). [test: test_device_scan.py::test_nothing_changed_resets_nothing]
 - **S9** It should list in Device Information every device Windows reports: Name, Axes, Buttons, Hats, VID, PID, Joystick ID and Device GUID. [help: Device Information] (Today it leaves out left-out vJoy devices and Gremlin's own Xbox pads: Q6.)
-- **S10** It should label inputs from `device_db.json` by VID/PID when Options > Input names asks for labels, and fall back to "Axis 3" style names otherwise. [code only]
+- **S10** It should label inputs from `device_db.json` by VID/PID when Options > Input names asks for labels, and fall back to "Axis 3" style names otherwise. [user confirmed 2026-10-06; was code only]
 
 ### B. Identical devices (twins)
 
@@ -184,14 +184,14 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 - **S12** It should give the plain name to the device the existing "<name>" module file is bound to. [test: test_twin_devices.py::test_the_device_the_file_is_bound_to_keeps_the_plain_name]
 - **S13** It should keep each twin's name by device id, the same every session and port. [test-plan: TWIN-DEVICES]
 - **S14** It should not rename a device that has no twin. [test: test_twin_devices.py::test_a_single_device_is_not_renamed]
-- **S15** It should keep a stored twin name even when that device is later the only one plugged in (the "(2)" stick alone is still "(2)"). [code only]
-- **S16** It should keep a stored twin name even if the driver later reports a different name for that device id. [code only] (doubtful: Q3)
+- **S15** It should keep a stored twin name even when that device is later the only one plugged in (the "(2)" stick alone is still "(2)"). [user confirmed 2026-10-06; was code only]
+- **S16** It should keep a stored twin name even if the driver later reports a different name for that device id. [user confirmed 2026-10-06; was code only] (doubtful: Q3)
 - **S17** It should use the shown (twin) name in labels and input pairing, not the driver's name. [test: test_twin_devices.py::test_labels_use_the_shown_name]
 - **S18** Profiles should be unaffected by twin names (they use device ids). [test-plan: TWIN-DEVICES]
 
 ### C. vJoy devices at scan
 
-- **S19** It should link each vJoy number to its DirectInput device by its count of axes, buttons and hats. [code only]
+- **S19** It should link each vJoy number to its DirectInput device by its count of axes, buttons and hats. [user confirmed 2026-10-06; was code only]
 - **S20** It should leave out (and keep running without) a vJoy device that has discrete hats, one Windows doesn't list, or two set up alike; the rest should work. [user decision: start without a problem vJoy] [test-plan: STARTUP-MESSAGES] [test: test_startup_messages.py::test_vjoy_devices_alike_are_both_left_out]
 - **S21** It should say once, after the main window is up, which vJoy devices were left out, why, and how to fix each; again only when that changes (e.g. on a hot-plug). [test-plan: STARTUP-MESSAGES]
 - **S22** It should log each left-out vJoy as an error, also with Diagnostic logs Off. [test-plan: STARTUP-MESSAGES]
@@ -200,26 +200,26 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 
 ### D. Plug, unplug, reconnect
 
-- **S25** It should wait 0.2 s after the last plug/unplug event and then rescan once, so several devices arriving together cause one update. [code only]
-- **S26** It should ignore plug events from Gremlin's own Xbox pads (re-scanning on them unplugged the pad again and made Steam flap). [code only] [tracker: DEV2]
-- **S27** It should tell the rest of the program "devices changed" only when the visible list actually changed. [code only]
+- **S25** It should wait 0.2 s after the last plug/unplug event and then rescan once, so several devices arriving together cause one update. [user confirmed 2026-10-06; was code only]
+- **S26** It should ignore plug events from Gremlin's own Xbox pads (re-scanning on them unplugged the pad again and made Steam flap). [user confirmed 2026-10-06; was code only] [tracker: DEV2]
+- **S27** It should tell the rest of the program "devices changed" only when the visible list actually changed. [user confirmed 2026-10-06; was code only]
 - **S28** It should let go of every button held and centre every hat of a stick that is unplugged, as the stick's own events would; axes stay where they were (a throttle has no rest). [user decision: agreed 'release held inputs'] [tracker: R3] [test: test_device_reconnect.py::test_held_inputs_are_let_go_on_unplug]
 - **S29** On a reconnect it should load what every screen shows for that stick (Input Configuration list, axis graph, live values, claimed inputs, Module Setup, Calibration). [user decision: agreed with the user] [test: test_device_reconnect.py::test_screens_set_while_unplugged_read_the_stick_when_it_connects]
 - **S30** It should refuse Module Setup Save while its stick is unplugged and keep the work on screen. [tracker: DEV10] [test: test_device_reconnect.py::test_unplugging_keeps_what_is_shown_and_refuses_save]
 - **S31** It should give a stick plugged in during a Run its input module claims, also with Device change behavior set to Ignore. [tracker: DEV11] [test: test_device_fixes.py::test_input_modules_reload_when_a_device_is_plugged_in]
 - **S32** While a profile runs, it should follow Options > Device change behavior when a controller is plugged in or removed: Reload (default) stops and runs again, Ignore does nothing, Disable stops. [help: Run and status] [help: Options]
-- **S33** When the selected physical device disappears it should move the page to the first physical device, or to the Logical tab when none is left. [code only] (`UIState._device_change`)
+- **S33** When the selected physical device disappears it should move the page to the first physical device, or to the Logical tab when none is left. [user confirmed 2026-10-06; was code only] (`UIState._device_change`)
 - **S34** HidHide's device list should re-read itself on a device change. [test: test_device_reconnect.py::test_hidhide_rereads_its_list]
 - **S35** Auto Mapper should keep its ticks when the device list is rebuilt. [test: test_device_reconnect.py::test_auto_mapper_keeps_its_ticks]
-- **S36** A failed device update during play should not be the only thing that breaks: the error is shown and the old list stays. [code only]
+- **S36** A failed device update during play should not be the only thing that breaks: the error is shown and the old list stays. [user confirmed 2026-10-06; was code only]
 
 ### E. Stick events, calibration, cached state
 
 - **S37** It should apply each axis's calibration before any action sees it. [help: Calibration]
-- **S38** It should use a default centred calibration for an axis with no calibration data and log that once per axis at Info level. [tracker: F9] [code only for the once-per-axis part]
-- **S39** It should reload calibration for every stick on each scan, and for one axis right after Calibration saves it. [code only]
-- **S40** It should stamp each event with the mode that is current when the hardware event arrives. [code only] (Q8)
-- **S41** It should keep the last value of every stick input so scripts, conditions and "refresh axes" can read it. [code only]
+- **S38** It should use a default centred calibration for an axis with no calibration data and log that once per axis at Info level. [tracker: F9] [user confirmed 2026-10-06; was code only for the once-per-axis part]
+- **S39** It should reload calibration for every stick on each scan, and for one axis right after Calibration saves it. [user confirmed 2026-10-06; was code only]
+- **S40** It should stamp each event with the mode that is current when the hardware event arrives. [user confirmed 2026-10-06; was code only] (Q8)
+- **S41** It should keep the last value of every stick input so scripts, conditions and "refresh axes" can read it. [user confirmed 2026-10-06; was code only]
 - **S42** On Run (and on mode change, when that option is on) it should re-send every input device's current axis values. [help: Options (refresh axes on activation and mode change)] [test: test_mode_refresh_and_add_key.py::test_runner_refreshes_axes_on_mode_change_only_while_listening]
 - **S43** An unclaimed input should read neutral to actions and scripts. [test: test_input_state_claims.py::test_unclaimed_inputs_read_neutral]
 - **S44** Only the input module runtime, Module Setup, Calibration/axis graph, input highlighting, Listen and macro recording may listen to raw stick and key events; viewers and live values use the claimed feed. [user decision: P3 'highlighting and Listen stay as they are'] [test: test_raw_input_listeners.py::test_raw_hardware_listeners_are_only_the_allowed_ones]
@@ -227,72 +227,72 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 ### F. Keyboard
 
 - **S45** It should see every key press and release in Windows without blocking or changing what Windows and games get. [help: Input modules ("Typing in Windows and games is never affected")]
-- **S46** It should report one press per key hold (no auto-repeat), and the release. [code only]
-- **S47** It should treat AltGr as Right Alt, not Right Alt plus Ctrl. [code only]
+- **S46** It should report one press per key hold (no auto-repeat), and the release. [user confirmed 2026-10-06; was code only]
+- **S47** It should treat AltGr as Right Alt, not Right Alt plus Ctrl. [user confirmed 2026-10-06; was code only]
 - **S48** Key bindings should fire only for keys the Keyboard input module claims; with no saved keyboard choice every key is claimed; saved with no keys, none pass. [help: Input modules] [tracker: AU-23] [test: test_keyboard_gate.py::test_no_saved_keyboard_claim_passes_every_key] [test: test_audit_devices.py::test_keyboard_saved_with_no_keys_passes_none]
 - **S49** It should tell an extended key (Right Ctrl, arrows, Numpad Enter) from its plain twin. [test: test_keyboard_gate.py::test_key_id_packs_the_extended_flag]
-- **S50** Keys the program itself sends (Map to Keyboard, macros) currently come back through the hook as key events like real ones. [code only] (doubtful: Q4)
+- **S50** Keys the program itself sends (Map to Keyboard, macros) currently come back through the hook as key events like real ones. [user confirmed 2026-10-06; was code only] (doubtful: Q4)
 
 ### G. Mouse
 
-- **S51** It should hook the mouse only while Listen or macro Record asks for mouse input, and unhook afterwards. [code only]
-- **S52** It should report left, right, middle, back and forward buttons with press and release, and wheel up/down as a single press. [code only]
-- **S53** Mouse buttons are not inputs a profile can bind (no mouse events reach a running profile). [code only] (Q5)
+- **S51** It should hook the mouse only while Listen or macro Record asks for mouse input, and unhook afterwards. [user confirmed 2026-10-06; was code only]
+- **S52** It should report left, right, middle, back and forward buttons with press and release, and wheel up/down as a single press. [user confirmed 2026-10-06; was code only]
+- **S53** Mouse buttons are not inputs a profile can bind (no mouse events reach a running profile). [user confirmed 2026-10-06; was code only] (Q5)
 
 ### H. Routing to the profile (EventHandler)
 
-- **S54** It should run every action registered for an input in the current mode, and a child mode should use its parent's actions for inputs it leaves empty. [glossary: Mode] [code only for the copy at Run]
+- **S54** It should run every action registered for an input in the current mode, and a child mode should use its parent's actions for inputs it leaves empty. [glossary: Mode] [user confirmed 2026-10-06; was code only for the copy at Run]
 - **S55** One failing action should not stop the others or the release handling. [test: test_audit_runtime.py::test_one_failing_action_does_not_stop_the_others]
-- **S56** A vJoy error during an action should show "Error encountered with vJoy." and pause the profile. [code only]
+- **S56** A vJoy error during an action should show "Error encountered with vJoy." and pause the profile. [user confirmed 2026-10-06; was code only]
 - **S57** While paused, only actions marked "always execute" (Pause and Resume) should run; a script callback should not stop the rest. [test: test_action_fixes.py::test_while_paused_a_script_callback_does_not_stop_the_rest] [test: test_pause_resume.py::test_pause_resume]
 - **S58** A Change Mode to a mode the running profile does not have should be ignored and logged once. [test: test_audit2_modes.py::test_the_running_mode_list_follows]
-- **S59** Renaming a mode while running should move its actions to the new name; deleting a mode should drop its actions. [tracker: AU-99 group] [code only for the running case]
-- **S60** Stop should remove every registered action and the running mode list. [code only]
+- **S59** Renaming a mode while running should move its actions to the new name; deleting a mode should drop its actions. [tracker: AU-99 group] [user confirmed 2026-10-06; was code only for the running case]
+- **S60** Stop should remove every registered action and the running mode list. [user confirmed 2026-10-06; was code only]
 
 ### I. Listen for input
 
-- **S61** Listen should end at the first press (single input), or at the first release after one or more presses (several inputs). [code only]
-- **S62** An axis should count only after a big enough move; a hat only when pushed off centre; the mouse wheel at once. [code only]
-- **S63** Listen should ignore events from the Logical Device and virtual buttons. [code only]
-- **S64** Holding Esc for 1 s should cancel Listen and return nothing. [code only] (a short Esc tap also cancels when keys are not being listened for: Q9)
-- **S65** Input highlighting should pause while Listen runs and while a macro records. [code only]
+- **S61** Listen should end at the first press (single input), or at the first release after one or more presses (several inputs). [user confirmed 2026-10-06; was code only]
+- **S62** An axis should count only after a big enough move; a hat only when pushed off centre; the mouse wheel at once. [user confirmed 2026-10-06; was code only]
+- **S63** Listen should ignore events from the Logical Device and virtual buttons. [user confirmed 2026-10-06; was code only]
+- **S64** Holding Esc for 1 s should cancel Listen and return nothing. [user confirmed 2026-10-06; was code only] (a short Esc tap also cancels when keys are not being listened for: Q9)
+- **S65** Input highlighting should pause while Listen runs and while a macro records. [user confirmed 2026-10-06; was code only]
 
 ### J. HidHide
 
 - **S66** HidHide should hide physical controllers from games so they only see vJoy or Xbox; Gremlin-Platforms always sees them. [help: HidHide]
-- **S67** It should not ship or install the HidHide driver; "Get HidHide" opens the Nefarius releases page; without the driver it says "HidHide is not installed". [help: HidHide] [code only for the text]
+- **S67** It should not ship or install the HidHide driver; "Get HidHide" opens the Nefarius releases page; without the driver it says "HidHide is not installed". [help: HidHide] [user confirmed 2026-10-06; was code only for the text]
 - **S68** It should change nothing in HidHide until "Gremlin-Platforms controls HidHide" is on; until then the settings show but can't be changed, with a note saying why. [help: HidHide] [tracker: C16] [glossary: program's name]
 - **S69** Turning that control off should leave HidHide as it is (devices may stay hidden). [user decision: DEV12 wont-fix]
 - **S70** "HidHide Enabled" should turn hiding on or off; if the driver refuses, the switch flips back and the error shows. [tracker: B18]
 - **S71** "Automatically Start" should, at each start, turn on Gremlin control and HidHide Enabled and write the saved lists. [help: HidHide]
-- **S72** Every switch should be off on a new install; a new install hides nothing. [help: HidHide] [code only for "hides nothing"]
+- **S72** Every switch should be off on a new install; a new install hides nothing. [help: HidHide] [user confirmed 2026-10-06; was code only for "hides nothing"]
 - **S73** Ticking a device should hide every interface of that physical device (grouped by USB parent, not by vendor). [test: test_hidhide_group.py::test_nxt_interfaces_share_usb_parent_group] [test: test_hidhide_group.py::test_no_parent_does_not_merge_whole_vendor]
 - **S74** A hidden device should be dimmed and marked HIDDEN. [help: HidHide]
 - **S75** "Gaming devices only" should shorten the list to game controllers. [help: HidHide]
-- **S76** Allow list: only listed programs (and Gremlin-Platforms itself) see hidden devices; Block list: listed programs don't (Gremlin-Platforms is never blocked). [help: HidHide] [code only for the Gremlin part]
+- **S76** Allow list: only listed programs (and Gremlin-Platforms itself) see hidden devices; Block list: listed programs don't (Gremlin-Platforms is never blocked). [help: HidHide] [user confirmed 2026-10-06; was code only for the Gremlin part]
 - **S77** "Test HidHide" should open Windows Game Controllers. [help: HidHide]
 - **S78** A setting that can't be saved should be shown in the window. [tracker: N12]
 - **S79** HidHide messages should go to the system log; a missing driver at start is a warning. [test: test_hidhide_log.py::test_missing_driver_at_start_is_a_warning]
 - **S80** An off-screen run should never change HidHide. [tracker: AU-114] [test: test_audit3_startup.py::test_the_app_built_off_screen_installs_no_hook_hidhide_or_tray]
 - **S81** Saved programs should load sorted by name; devices sorted by name then id. [test: test_hidhide_group.py::test_saved_programs_load_sorted]
-- **S82** A device picture is used where it was picked (not copied); if moved or deleted the card shows no picture until another is picked. [code only] [tracker: B19]
+- **S82** A device picture is used where it was picked (not copied); if moved or deleted the card shows no picture until another is picked. [user confirmed 2026-10-06; was code only] [tracker: B19]
 - **S83** HidHide choices are program settings (saved ~1 s after a change) and appear in History, but window size, split and automatic picture links do not. [help: What is saved where] [tracker: AU-54]
 
 ### K. Foreground program and auto-load
 
 - **S84** With "Load profiles automatically" on, it should load and run the profile chosen for a program when that program gets focus. [help: Profiles] [help: Options]
 - **S85** It should read program paths with non-ASCII characters in full. [tracker: AU-37] [test: test_audit_runtime.py::test_the_program_path_is_read_in_full]
-- **S86** A program it can't read (run as administrator) should not be announced as if it were the previous one. [tracker: AU-37] [code only]
+- **S86** A program it can't read (run as administrator) should not be announced as if it were the previous one. [tracker: AU-37] [user confirmed 2026-10-06; was code only]
 - **S87** It should not reload the open profile when its own program gets focus again. [tracker: AU-38] [test: test_audit_saving.py::test_auto_load_leaves_the_open_profile_alone]
 - **S88** It should never switch over unsaved edits; it says so once per profile. [tracker: A11] [test: test_autoload_and_mode_prompts.py::test_auto_load_waits_for_unsaved_edits]
 - **S89** If the chosen profile file is missing it should say so once and stop the open one (unless Keep running is on). [tracker: AU-95] [test: test_audit2_saving.py::test_a_missing_auto_load_profile_stops_the_open_one]
-- **S90** When a program with no profile gets focus, it should stop the Run unless "Keep running when the program loses focus" is on. [help: Options] [code only for the exact rule]
+- **S90** When a program with no profile gets focus, it should stop the Run unless "Keep running when the program loses focus" is on. [help: Options] [user confirmed 2026-10-06; was code only for the exact rule]
 
 ### L. Safety, start and exit
 
 - **S91** Tests and off-screen runs should never install a keyboard or mouse hook on the PC. [tracker: H4] [tracker: AU-114] [test: test_bounded_waits.py::test_with_hooks_turned_off_none_is_installed]
 - **S92** A hook stopped right after starting should not hang. [test: test_threads.py::test_a_hook_stopped_right_after_starting_does_not_hang]
-- **S93** On exit it should stop the hooks, the hot-plug timer, the DLL callbacks and the process monitor, within bounded waits. [code only]
+- **S93** On exit it should stop the hooks, the hot-plug timer, the DLL callbacks and the process monitor, within bounded waits. [user confirmed 2026-10-06; was code only]
 - **S94** "Device id" is the word on screen for the device's GUID. [glossary: Internal words] (Device Information still says "Device GUID": Q12)
 
 ## 9. Questions for the user
@@ -394,3 +394,14 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 - `EventHandler.build_event_lookup` (parent-mode copy) directly; covered only through action tests.
 - Device-list race under hot-plug (G2); nothing drives scans and reads in parallel.
 - Real twin sticks and real DirectInput: only the fake driver is tested (test-plan TWIN-DEVICES says so).
+
+## 12. Review (user, 2026-10-06)
+
+Approved by the user as recommended (2026-10-06, blanket approval of the remaining pages): every [code only] statement in section 8 is confirmed, except where a question's recommendation changes it; every question in section 9 is decided as its **Recommend** says. Where a recommendation and a section 8 statement disagree, the recommendation wins.
+
+| Q | Decision |
+|---|---|
+| All | As recommended in section 9 |
+
+The section 8 statements (with the changes above) are now the definition
+of correct for this subsystem.

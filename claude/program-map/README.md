@@ -5,23 +5,31 @@ threads, rule breaks, the behaviour spec ("It should ..." statements S1..,
 each with its source), questions for the user (Q1..), known gaps and test
 coverage. Written read-only from the code at 4f6bdfa4 (2026-10-06).
 
-The behaviour spec is a **draft** until the user reviews it. Statements
-marked [code only] come from the code alone and need the user's yes or no.
-Confirmed statements become the definition of correct (journey tests and
-rule checks in Stage 1 are written from them). See "The plan" in
-`claude/system-maps.md`.
+**The behaviour spec is approved (user, 2026-10-06)**: pages 06, 05 and 03
+reviewed answer by answer, the rest approved as recommended. On each page,
+section 8 plus the decisions in section 9 (recorded in section 12) are the
+definition of correct; where they disagree, the decision wins. Journey tests
+and rule checks (Stage 1) are written from them. OSC stays parked: its
+decisions apply when OSC is unparked.
+
+**Change control.** Any change to the program's behaviour goes through this
+spec. Before coding, check the change against the affected page(s); if it
+changes, removes or contradicts a statement or decision, tell the user first
+and update the spec with their answer, then code. Where today's code differs
+from the spec, that is a gap to fix (each starting as a failing test), not a
+spec change. See "The plan" in `claude/system-maps.md`.
 
 | Page | Subsystem | S | Q | Gaps | Review |
 |---|---|---|---|---|---|
-| [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads | 131 | 16 | 20 | not yet |
-| [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide | 94 | 19 | 24 | not yet |
+| [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads | 131 | 16 | 20 | reviewed 2026-10-06 (all as recommended) |
+| [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide | 94 | 19 | 24 | reviewed 2026-10-06 (all as recommended) |
 | [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device | 122 | 18 | 34 | reviewed 2026-10-06 (all as recommended) |
-| [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 93 | 21 | 27 | not yet |
+| [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 93 | 21 | 27 | reviewed 2026-10-06 (all as recommended) |
 | [05-actions-editors](05-actions-editors.md) | Action plugins, Configuration page, Keyboard page | 108 | 20 | 22 | reviewed 2026-10-06 (all as recommended) |
 | [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device | 85 | 19 | 18 | reviewed 2026-10-06 (all as recommended) |
-| [07-button-map](07-button-map.md) | Button Map editor, photos, recovery, print/export | 100 | 19 | 23 | not yet |
-| [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper | 103 | 21 | 30 | not yet |
-| [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (parked), sound, speech, tray, theme, help; leftover files | 89 | 20 | 27 | not yet |
+| [07-button-map](07-button-map.md) | Button Map editor, photos, recovery, print/export | 100 | 19 | 23 | reviewed 2026-10-06 (all as recommended) |
+| [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper | 103 | 21 | 30 | reviewed 2026-10-06 (all as recommended) |
+| [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (parked), sound, speech, tray, theme, help; leftover files | 89 | 20 | 27 | reviewed 2026-10-06 (all as recommended) |
 | **Total** | | **925** | **173** | **225** | |
 
 ## Most serious findings (to confirm first)

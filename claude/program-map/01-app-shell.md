@@ -201,17 +201,17 @@ Duplicated logic
 
 ### Start-up
 - S1 It should read "Ignore Windows display scaling" from the program's own settings file before Qt starts, and run without Windows scaling when it is on. [help: Options] [test: test_user_data_folder.py::test_startup_scaling_check_reads_the_same_folder]
-- S2 It should start with Windows scaling on when the settings file is missing or can't be read. [code only]
-- S3 It should give the original scaling environment back before a restart, so the new copy reads the setting afresh. [code only]
+- S2 It should start with Windows scaling on when the settings file is missing or can't be read. [user confirmed 2026-10-06; was code only]
+- S3 It should give the original scaling environment back before a restart, so the new copy reads the setting afresh. [user confirmed 2026-10-06; was code only]
 - S4 It should load its modules in the fixed order in `joystick_gremlin.py` (never re-sorted), and every gremlin module should also import on its own. [test-plan: PROGRAM-STARTS-1019, NO-IMPORT-LOOPS] [test: test_program_imports.py, test_modules_import_alone.py]
 - S5 It should create the Gremlin Platforms folder in the user's profile and every data sub-folder at start. [help: What is saved where] [test: test_user_data_folder.py::test_user_data_lives_in_gremlin_platforms]
 - S6 It should register every setting before it removes unused ones, so remembered choices (Live Log Reader tab, window sizes) survive a start. [tracker: AU-47] [test: test_startup_settings_kept.py::test_window_and_tab_settings_survive_purge]
 - S7 It should open the profile given with `--profile`, with a relative path read from the folder the program was started in. [tracker: APP10] [test: test_program_fixes.py::test_a_relative_profile_is_read_from_where_the_program_started]
 - S8 A `--profile` file that doesn't exist: it should say "Profile not found." and open the last profile instead. [user decision: APP10 message, then last profile] [test: test_program_fixes.py::test_a_missing_profile_is_told_and_the_last_one_opens]
 - S9 Without `--profile` it should open the last profile used. If that fails, it should show a new empty profile and ask Forget It / Keep (Forget It takes it off start-up and Recent; the file stays). [test-plan: STARTUP-MESSAGES] [tracker: APP17]
-- S10 `--enable` should start Run once the profile is loaded; `--start-minimized` should start minimized, and in the tray when Minimize to tray is on. [code only]
+- S10 `--enable` should start Run once the profile is loaded; `--start-minimized` should start minimized, and in the tray when Minimize to tray is on. [user confirmed 2026-10-06; was code only]
 - S11 Once the main window is up, the update check, the Settings Reset notice and the vJoy set-up message should each come at most once. [test-plan: SETTINGS-FILE-DAMAGE, STARTUP-MESSAGES]
-- S12 If the joystick driver can't start, it should show the start-up failure page with the reason and a Quit button instead of the main window. [code only]
+- S12 If the joystick driver can't start, it should show the start-up failure page with the reason and a Quit button instead of the main window. [user confirmed 2026-10-06; was code only]
 - S13 A broken user plugin should be left out and logged, never stop the start, and never replace a built-in action or QML type. [tracker: AU-35, AU-86] [test: test_audit2_startup_devices.py::test_a_bad_user_plugin_is_left_out_entirely, test_audit3_startup.py::test_a_user_plugin_cant_replace_a_built_in_qml_element]
 
 ### Could not start
@@ -223,7 +223,7 @@ Duplicated logic
 - S17 A clean start (lock taken, no other Gremlin-Platforms window) should run no process scan and ask nothing. [tracker: APP9] [test: test_program_fixes.py::test_a_clean_start_runs_no_process_scan, test_second_copy_detection.py::test_main_alone_does_not_ask]
 - S18 Otherwise it should scan once and ask: Yes = close the other copies (their unsaved changes are lost) and start; No = start anyway (vJoy may not respond); Cancel = don't start. [test-plan: SECOND-COPY-EXE-NAME, STARTUP-MESSAGES] [test: test_second_copy_detection.py::test_main_cancel_does_not_start, ::test_main_close_others_closes_then_takes_the_lock, ::test_main_continue_starts_without_closing]
 - S19 It should recognise `gremlin_platforms.exe`, `joystick_gremlin.exe` and Python running `joystick_gremlin.py`, and never count itself or the program that launched it. [tracker: F6] [test: test_second_copy_detection.py::test_installed_and_older_exe_count_as_gremlin, ::test_starting_copy_never_finds_itself, ::test_python_counts_only_when_running_gremlin]
-- S20 With No, the second copy runs without the lock. Two copies are then allowed, and History may lose lines. [tracker: AU-41 wont-fix "the lock lets only one copy run"] [code only]
+- S20 With No, the second copy runs without the lock. Two copies are then allowed, and History may lose lines. [tracker: AU-41 wont-fix "the lock lets only one copy run"] [user confirmed 2026-10-06; was code only]
 
 ### Off-screen runs
 - S21 Off-screen (tests, checks), it should install no keyboard or mouse hooks, show no Windows boxes (it logs them and answers Cancel), close no other process, skip HidHide, and make no tray icon. [test-plan: AUDIT3-TRACE W6] [tracker: AU-73, AU-98] [test: test_audit3_startup.py::test_the_app_built_off_screen_installs_no_hook_hidhide_or_tray, ::test_off_screen_another_process_is_never_closed]
@@ -231,7 +231,7 @@ Duplicated logic
 - S23 Tests and off-screen checks should never reach GitHub (`GREMLIN_OFFLINE`). [test-plan: AUDIT-G-SCREENS AU-66]
 
 ### Settings file
-- S24 Settings should live in `configuration.json` in `%USERPROFILE%\Gremlin Platforms`, even when the data folder is moved, so the moved folder can be found. [code only]
+- S24 Settings should live in `configuration.json` in `%USERPROFILE%\Gremlin Platforms`, even when the data folder is moved, so the moved folder can be found. [user confirmed 2026-10-06; was code only]
 - S25 A single setting that can't be read should fall back to its default; every other setting is kept. [user decision: APP1/APP2 keep good settings] [test: test_settings_file_damage.py::test_bad_settings_fall_back_and_good_ones_are_kept]
 - S26 A file that can't be read at all should be kept as `configuration.json.bad-<date-time>`. The program starts with defaults and says so once ("Settings Reset" with the copy's path) when the main window is up. [user decision: APP2 back up, tell once] [test: test_settings_file_damage.py::test_unreadable_file_is_kept_aside_and_announced_once]
 - S27 An empty file should count as no settings (nothing kept aside). [test: test_settings_file_damage.py::test_empty_file_is_like_no_file]
@@ -242,7 +242,7 @@ Duplicated logic
 - S32 An unchanged value or list should not be written. A list edited in place should still be saved. [test-plan: WRITE-LESS (4)] [test: test_write_less.py::test_unchanged_auto_load_list_is_not_saved, test_config.py::test_list_edited_in_place_is_saved]
 - S33 The settings should record the newest program version that used them. An older version keeps settings it doesn't know; the same or a newer version removes retired ones with an Info line. [test-plan: LOG-WARNINGS] [test: test_settings_versions.py::test_an_older_version_keeps_a_newer_versions_settings, ::test_the_same_or_a_newer_version_removes_retired_settings]
 - S34 Every saved change to a setting the user chooses should go into History, titled with the names Options shows. Window places and other things the program remembers for itself should not. [glossary: History] [tracker: AU-103] [test: test_audit2_options_text.py::test_history_names_settings_as_options_does]
-- S35 A setting that appears for the first time should not count as a History change. [code only]
+- S35 A setting that appears for the first time should not count as a History change. [user confirmed 2026-10-06; was code only]
 - S36 Activity lines made before the application runs should be held and kept, not written early. [test: test_settings_file_damage.py::test_activity_lines_before_the_application_runs_are_kept]
 - S37 Whoever had the old Close to tray on should get Minimize to tray on, after which the old key is dropped. [test-plan: TRAY-ONE]
 - S38 A settings file that can't be written should not stop a quit or an update install; it is logged. [tracker: AU-96] [test-plan: AUDIT2-F-H-REST]
@@ -256,9 +256,9 @@ Duplicated logic
 - S44 Switches, number boxes and drop-downs should take effect when changed. Text fields save on leaving the field, on Enter, or when the window closes. [test-plan: WRITE-LESS (3)]
 - S45 Rows should be titled with real names, not keys ("UI scale", "Plugins folder", "Diagnostic logs"), and group titles in US spelling. [tracker: D14] [glossary: Spelling]
 - S46 Folder rows: Select should open a folder picker at the current folder; Reset should put the default back. [test-plan: Batch 7 OPT-F]
-- S47 Options' History button should open History filtered to settings. [code only]
+- S47 Options' History button should open History filtered to settings. [user confirmed 2026-10-06; was code only]
 - S48 Escape should close Options. Options remembers its size and is never larger than the screen. [tracker: UI6, C20]
-- S49 Closing Options should tell the program that settings changed. [code only]
+- S49 Closing Options should tell the program that settings changed. [user confirmed 2026-10-06; was code only]
 - S50 Ignore Windows display scaling should ask Restart / Later / Cancel. Restart quits the usual way and starts again; Cancel undoes the change. [test-plan: W-11, OPT-U02]
 - S51 The UI scale slider should be off while Windows scaling is on, and resize the program when released while it is off. [test-plan: OPT-U06] [help: Options]
 - S52 Dark mode should apply at once on every window. [test-plan: OPT-U01]
@@ -280,7 +280,7 @@ Duplicated logic
 - S66 Menus should show only what can be used now; nothing is greyed out. [help: Menus and the command palette] [tracker: C4 wont-fix, deliberate]
 - S67 Shortcuts: Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S, Ctrl+K, F1, shown beside their commands. [help: Menus and the command palette]
 - S68 The Command Palette (Ctrl+K) should list the main window's commands that can be used now, searched by words, with Up/Down/Enter. [help: Menus and the command palette] [test-plan: MENU-2, MENU-6]
-- S69 A shortcut for a command that can't be used now should do nothing. [code only]
+- S69 A shortcut for a command that can't be used now should do nothing. [user confirmed 2026-10-06; was code only]
 - S70 Run/Stop should be only on the toolbar and the tray: no menu, palette or shortcut. [user decision: AU-74 not done]
 - S71 New, Load and Recent should first close panels with unsaved display edits (asking), then ask Save / Discard / Cancel when the profile has unsaved changes. [help: Profiles] [test-plan: F-02b] [tracker: AU-15]
 - S72 Save on a never-saved profile should open Save As in the profiles folder. A save that would leave out unfinished actions asks first. [test-plan: F-04b, SAFE-1]
@@ -293,7 +293,7 @@ Duplicated logic
 - S77 Closing a Save As window that the quit's Save opened should call off the quit; the next Save As starts clean. [tracker: A10] [test-plan: SAFE-1]
 - S78 On quit it should stop Run, the listener and hooks, release vJoy and Xbox through the output modules, and stop sound, speech and OSC. It asks every program thread to stop (2 s in all, naming any that won't in system.log), writes every waiting settings and activity write, closes History without cutting a line, and gives up the lock. [test-plan: THREAD-OWNER, WRITE-LESS] [tracker: AU-48]
 - S79 The main window's place and size should be saved when it closes and restored at start. [test-plan: W-01]
-- S80 Closing the main window with nothing unsaved (Minimize to tray off) should quit the program. [code only] (see Q1)
+- S80 Closing the main window with nothing unsaved (Minimize to tray off) should quit the program. [user confirmed 2026-10-06; was code only] (see Q1)
 - S81 A restart should quit the usual way and start the program again with the same arguments; a cancelled quit cancels the restart. [test-plan: W-11] [test: test_restart_command.py]
 - S82 History should never be able to stop a quit. [test-plan: AUDIT3-TRACE W5]
 
@@ -303,8 +303,8 @@ Duplicated logic
 - S85 Minimize to tray (off by default): minimizing or closing should hide the window to the tray while the profile keeps running. File → Exit and the tray's Exit still quit. [help: Options] [test-plan: TRAY-ONE]
 - S86 The first time the X hides the window, a tray balloon should say the program is still running, and never again. [test-plan: TRAY-ONE]
 - S87 While hidden in the tray, the pages should be unloaded (Configuration stays while it has unsaved display edits) and loaded again when shown. The profile keeps running throughout. [test-plan: MEM-2] [test: test_tray_memory.py::test_hidden_window_unloads_and_reloads]
-- S88 The tray icon should come back after Explorer restarts. [code only]
-- S89 Tray Exit should bring the window back first, so the unsaved-changes questions can be seen. [code only]
+- S88 The tray icon should come back after Explorer restarts. [user confirmed 2026-10-06; was code only]
+- S89 Tray Exit should bring the window back first, so the unsaved-changes questions can be seen. [user confirmed 2026-10-06; was code only]
 
 ### Threads and time
 - S90 Every program thread should start through `gremlin.threads` with a readable name and a stop request, and be listed while it runs. [test-plan: THREAD-OWNER] [user decision: project rule] [test: test_threads.py::test_a_thread_is_named_and_listed_while_it_runs]
@@ -316,7 +316,7 @@ Duplicated logic
 
 ### Logs and errors
 - S96 The logs folder should hold system.log and user.log (1 MB, one backup each), event.log (new each session) and qt.log, all written as UTF-8. [help: Live Log Reader] [tracker: AU-39]
-- S97 Diagnostic logs should default to Warning. [code only]
+- S97 Diagnostic logs should default to Warning. [user confirmed 2026-10-06; was code only]
 - S98 An unhandled error should be logged to system.log, shown in an error dialog ("An unhandled exception occurred."), and passed to a console when there is one. [tracker: APP16] [test: test_error_report.py::test_a_top_level_error_is_logged_shown_and_passed_on]
 - S99 An error inside a program thread should be logged as "Error in <thread name>" with its traceback. A thread ending with SystemExit is not an error. [user decision: H3 thread errors logged only] [test: test_error_report.py::test_an_error_in_a_thread_is_logged_with_its_name]
 - S100 A hard crash in native code should write every thread's stack to crash.log in the logs folder, appending so an earlier crash is kept. [user decision: crash.log in the logs folder] [test: test_error_report.py::test_the_crash_log_is_turned_on_in_the_logs_folder]
@@ -353,8 +353,8 @@ Duplicated logic
 ### User data folders
 - S124 The data folder should default to Gremlin Platforms in the user's profile. Each folder (profiles, modules, scripts, export, logs, history, deleted devices, plugins) can be chosen in Options → Folders and defaults to a folder inside the data folder. [help: Options] [test-plan: Batch 7 OPT-F] [test-plan: AUDIT2-F-H-REST]
 - S125 Changes to the logs folder and the plugins folder should take effect on the next start. [test-plan: OPT-F01..F08 "Plugin dir and logs need a restart"]
-- S126 A chosen folder that can't be made or reached should fall back to the default folder. [code only]
-- S127 Device files from the old `qml/maps` folder should be copied once into the modules folder, never over an existing file. [code only]
+- S126 A chosen folder that can't be made or reached should fall back to the default folder. [user confirmed 2026-10-06; was code only]
+- S127 Device files from the old `qml/maps` folder should be copied once into the modules folder, never over an existing file. [user confirmed 2026-10-06; was code only]
 
 ### Help viewer
 - S128 Help → User Guide (F1) should open the guide by section. The Button Map has its own guide (its F1), apart from the main one. [help] [test: test_help_guide.py::test_button_map_help_is_its_own_guide]
@@ -441,3 +441,14 @@ Obvious untested paths
 - `UpdateModel.skipVersion` and `openReleasePage` (no test calls them; `should_offer` is tested).
 - History Restore of a setting that acts at once (K8).
 - Failures before `main()` (K4).
+
+## 12. Review (user, 2026-10-06)
+
+Approved by the user as recommended (2026-10-06, blanket approval of the remaining pages): every [code only] statement in section 8 is confirmed, except where a question's recommendation changes it; every question in section 9 is decided as its **Recommend** says. Where a recommendation and a section 8 statement disagree, the recommendation wins.
+
+| Q | Decision |
+|---|---|
+| All | As recommended in section 9 |
+
+The section 8 statements (with the changes above) are now the definition
+of correct for this subsystem.

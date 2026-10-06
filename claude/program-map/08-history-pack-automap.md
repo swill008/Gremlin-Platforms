@@ -172,17 +172,17 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S3** It should treat an input whose actions only got new ids (an editor's OK copies them) as unchanged. [test-plan: HISTORY-B] [test: test_history_recording.py::test_new_ids_with_the_same_actions_are_no_change]
 - **S4** It should record one entry for each other part of the profile that changed: Profile Settings, the Logical Device, the OSC inputs, the modes, the scripts. [help: History] [test: test_history_recording.py::test_other_parts_and_the_whole_profile]
 - **S5** It should keep the whole profile before and after each save (compressed) for the newest 20 saves of each profile; older saves keep only their per-input and per-part entries. [help: History] [test-plan: HISTORY-B]
-- **S6** A save whose text is the same as the last load or save should make no entry. [code only]
-- **S7** A Save As to a new file should be recorded under the new file, with the old file's text as "before". [code only]
+- **S6** A save whose text is the same as the last load or save should make no entry. [user confirmed 2026-10-06; was code only]
+- **S7** A Save As to a new file should be recorded under the new file, with the old file's text as "before". [user confirmed 2026-10-06; was code only]
 - **S8** Every save of a device's module file should be kept with the file before and after and every picture it names (the device photo and map pictures), each picture kept once by its content. [help: History] [test: test_history_recording.py::test_a_module_save_is_kept_with_its_pictures] [test: test_history_store.py::test_a_picture_is_kept_once_and_put_back]
 - **S9** A save that changes only the Button Map's view (zoom, pan, grid, guides, print area) should not be kept. [help: History] [test: test_history_recording.py::test_the_maps_view_alone_is_not_kept]
 - **S10** A module-file save that changes only Button Map parts should be filed under Button Map; any other under Module files. [test-plan: HISTORY-B]
-- **S11** The first save of a module file should read "Created the module file of X"; later ones "Saved X: <what changed in words>". [test-plan: HISTORY-C] [code only for the wording list]
+- **S11** The first save of a module file should read "Created the module file of X"; later ones "Saved X: <what changed in words>". [test-plan: HISTORY-C] [user confirmed 2026-10-06; was code only for the wording list]
 - **S12** Deleting a module file (Delete File, Delete Device, Undo Import of a new file, Module Setup's Undo of an import) should record "Deleted the module file of X" with the file and its pictures, and only once the delete went through. [test-plan: AUDIT3-TRACE W5] [tracker: AU-113] [test: test_audit3_saving.py::test_a_delete_that_went_through_is_recorded] [test: test_audit3_saving.py::test_a_delete_that_failed_is_no_history_entry] [test: test_audit3_saving.py::test_undo_import_of_a_locked_new_file_isnt_recorded_as_deleted]
 - **S13** A write that failed should leave no entry. [tracker: AU-94] [test: test_audit2_saving.py::test_a_save_that_failed_is_no_history_entry] [test: test_audit2_saving.py::test_an_import_write_that_failed_is_no_history_entry]
 - **S14** Files outside the modules folder itself (imported backups, recovery copies, templates, profile copies) should not be module-file entries. [test: test_history_recording.py::test_other_files_are_not_kept]
 - **S15** Only the settings the user chooses (Options, HidHide choices, OSC, folders) should be recorded; window sizes and places, internal memory and HidHide's automatic picture links should not. [help: History] [tracker: AU-54] [test: test_history_recording.py::test_settings_the_user_chooses_are_kept]
-- **S16** A setting appearing for the first time should not count as a change; several changes within about a second should make one entry. [test-plan: HISTORY-B] [code only for the one-second grouping]
+- **S16** A setting appearing for the first time should not count as a change; several changes within about a second should make one entry. [test-plan: HISTORY-B] [user confirmed 2026-10-06; was code only for the one-second grouping]
 - **S17** Settings entries should be titled by the names Options shows, old entries too. [tracker: AU-103] [test-plan: AUDIT2-F-H-REST]
 
 ### History: store, limits, threads
@@ -196,7 +196,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S24** At quit everything queued should be written and quit should wait for the writer only a bounded time; History should never stop quit, also when its folder can't be made. [tracker: AU-48] [tracker: AU-113] [test: test_audit_saving.py::test_history_close_writes_at_once] [test: test_audit3_saving.py::test_quit_goes_on_when_the_history_folder_cant_be_made] [test: test_audit2_coverage.py::test_quit_closes_history_between_the_two_writes]
 - **S25** Only one running copy of the program should write the history (the lock file). [tracker: AU-41]
 - **S26** The history folder should follow Options > Folders > History folder. [test-plan: AUDIT2-F-H-REST]
-- **S27** After the history folder is moved, the old entries stay in the old folder and the window shows only the new one. [code only]
+- **S27** After the history folder is moved, the old entries stay in the old folder and the window shows only the new one. [user confirmed 2026-10-06; was code only]
 
 ### History window
 
@@ -207,8 +207,8 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S32** A filter should match a device id however it is written (case, braces, spaces). [test: test_history_restore.py::test_filters_match_a_device_id_however_written]
 - **S33** The "Only ..." line should name what the filter is about; Show All should drop everything but the chosen area. [test: test_history_window.py::test_show_all_drops_the_device]
 - **S34** Tools > History from the menu should always open on every change, not keep another window's filter. [tracker: AU-69]
-- **S35** New changes should appear when the window comes back to the front, and with Refresh. [code only]
-- **S36** With nothing to show it should say "No saved changes to show."; with nothing picked, "Pick a change to see it before and after." [code only]
+- **S35** New changes should appear when the window comes back to the front, and with Refresh. [user confirmed 2026-10-06; was code only]
+- **S36** With nothing to show it should say "No saved changes to show."; with nothing picked, "Pick a change to see it before and after." [user confirmed 2026-10-06; was code only]
 - **S37** Picking the same change again should read it again (after a Restore). [test: test_history_window.py::test_picking_the_same_change_again_reads_it_again]
 
 ### Restore
@@ -217,25 +217,25 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S39** A restore should itself be a new History entry. [glossary: Restore] [help: History] (see Q1: only true for module files and settings at once)
 - **S40** An input's actions should go back into the open profile as an unsaved change, only when the entry's profile is the one open; otherwise it says "Open <profile> first." [help: History] [test: test_history_restore.py::test_an_input_goes_back_into_the_open_profile] [test: test_history_restore.py::test_an_input_needs_its_profile_open]
 - **S41** An input restore that can't be read should change nothing (the input is not dropped first). [tracker: AU-02]
-- **S42** An input restore into a mode deleted since should be refused with its reason, nothing changed. [code only]
+- **S42** An input restore into a mode deleted since should be refused with its reason, nothing changed. [user confirmed 2026-10-06; was code only]
 - **S43** A module file should be put back at once, with its pictures, into today's modules folder; pictures it couldn't put back are named. [help: History] [tracker: AU-94] [tracker: AU-83] [test: test_history_restore.py::test_a_module_file_and_its_picture_go_back] [test: test_audit2_saving.py::test_restore_names_the_pictures_it_could_not_put_back] [test: test_audit2_saving.py::test_restore_writes_into_the_modules_folder_of_today]
 - **S44** Settings should be put back at once; when one value can't be read nothing is applied; lists (action priorities) go back as lists. [tracker: AU-43] [test: test_history_restore.py::test_settings_go_back]
 - **S45** A whole profile should be written as a copy next to the profile, named with its date, time and Before/After, never over another file, to open with File > Load Profile. [help: History] [tracker: AU-44] [test: test_history_restore.py::test_a_whole_profile_is_written_as_a_copy] [test: test_audit_saving.py::test_restored_profile_copies_never_overwrite]
-- **S46** A part of the profile (modes, Logical Device, OSC, Profile Settings, scripts) can't be restored on its own; the window points to Restore on that save's entry. [code only]
-- **S47** A version no longer kept (an older save's whole profile, a pruned entry) should say so and change nothing. [code only]
-- **S48** "Created ..." entries have no Before and "Deleted ..." entries no After to restore; those buttons are off. [code only]
+- **S46** A part of the profile (modes, Logical Device, OSC, Profile Settings, scripts) can't be restored on its own; the window points to Restore on that save's entry. [user confirmed 2026-10-06; was code only]
+- **S47** A version no longer kept (an older save's whole profile, a pruned entry) should say so and change nothing. [user confirmed 2026-10-06; was code only]
+- **S48** "Created ..." entries have no Before and "Deleted ..." entries no After to restore; those buttons are off. [user confirmed 2026-10-06; was code only]
 
 ### Device Pack: export
 
 - **S49** Tools > Device Setup > Device Pack should save a device's module file, its pictures, its wires (with their actions) and the output modules those wires send to into one zip. [help: Module files and Device Pack] [test-plan: G-PACKIMPORT]
 - **S50** The device list should hold connected devices, devices the profile has seen and saved module files, and open on the first device with a module file. [test-plan: CLEANUP-C]
-- **S51** A device without a module file can't be exported ("This device has no module file yet."). [code only]
+- **S51** A device without a module file can't be exported ("This device has no module file yet."). [user confirmed 2026-10-06; was code only]
 - **S52** A damaged module file should be skipped and named in the log, never stop the window. [tracker: AU-93] [test: test_device_pack_import.py::test_a_damaged_module_file_is_skipped]
 - **S53** Wires in these modes should list each mode where the device has actions, all ticked; unticked modes are left out. [help: Module files and Device Pack] [test: test_device_pack_import.py::test_export_can_take_some_modes] [test: test_device_pack_window.py::test_export_lists_the_modes_and_takes_notes]
 - **S54** Made by and Note should go in the pack and show to whoever imports it. [help: Module files and Device Pack] [test: test_device_pack_window.py::test_import_shows_who_made_it]
 - **S55** The pack should carry its format (2), the program version, the date and each mode's parent. [test-plan: G-PACKIMPORT]
-- **S56** The pack should not carry this machine's device binding (bound id, bound name). [code only]
-- **S57** A pack can't be saved inside the modules folder; a name without .zip gets .zip. [code only]
+- **S56** The pack should not carry this machine's device binding (bound id, bound name). [user confirmed 2026-10-06; was code only]
+- **S57** A pack can't be saved inside the modules folder; a name without .zip gets .zip. [user confirmed 2026-10-06; was code only]
 - **S58** Show Folder should open where the pack was saved. [help: Module files and Device Pack]
 
 ### Device Pack: import
@@ -244,39 +244,39 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S60** A pack made by a newer program should be refused with "Update the program to import it." [help: Module files and Device Pack] [test: test_device_pack_import.py::test_a_newer_pack_is_refused]
 - **S61** When a driver the pack's wires need is missing (vJoy, a vJoy device, ViGEmBus), it should say so as soon as the pack is opened and again in the warning, in the output module's own wording. [help: Module files and Device Pack] [test-plan: PACK-DRIVER-CHECK] [test-plan: DRIVER-WORDING-ONE-PLACE] [test: test_device_pack_import.py::test_opening_a_pack_says_the_vjoy_driver_is_missing] [test: test_device_pack_import.py::test_the_pack_and_the_xbox_viewer_say_the_same]
 - **S62** Put this pack on should suggest the device with the pack's name; the text box is what is written to. [tracker: C17]
-- **S63** A stick pack can't go on a vJoy, nor a vJoy pack on a stick. [code only]
+- **S63** A stick pack can't go on a vJoy, nor a vJoy pack on a stick. [user confirmed 2026-10-06; was code only]
 - **S64** Before anything changes, a red Replace / Cancel warning should list the pieces, each mode's wire counts here and in the pack, outputs moved to another vJoy, controls the device doesn't have, missing Logical Device inputs (with a ticked "Create" box), driver problems, map pictures left unticked, the imported backup, and that the profile changes on disk only when saved. [help: Module files and Device Pack] [test-plan: G-PACKIMPORT] [test: test_device_pack_import.py::test_the_warning_says_what_is_replaced] [test: test_device_pack_window.py::test_the_warning_says_what_is_replaced]
 - **S65** Each ticked piece should replace what is on this machine. [help: Module files and Device Pack] (code merges checked controls instead: see Q3)
 - **S66** Controls the target device doesn't have (when it is connected) should be left out of checks and wires, and said. [help: Module files and Device Pack] [test-plan: G-PACKIMPORT]
-- **S67** Friendly names should be written only for checked controls; a calibration curve that can't be used should not replace a good one. [tracker: AU-113] [code only for names]
+- **S67** Friendly names should be written only for checked controls; a calibration curve that can't be used should not replace a good one. [tracker: AU-113] [user confirmed 2026-10-06; was code only for names]
 - **S68** Each ticked mode should replace the device's wires and actions in that mode; other modes and other devices stay, also after save and reload. [help: Module files and Device Pack] [tracker: G-PACKWIPE] [test: test_device_pack_import.py::test_a_ticked_mode_is_replaced_and_others_stay] [test: test_device_pack_import.py::test_other_devices_keep_their_actions] [test: test_device_pack_import.py::test_adding_actions_keeps_the_ones_already_there]
 - **S69** Only the actions the imported inputs use should be added; the replaced ones leave the profile when the import is kept; shared actions stay. [test-plan: G-PACKIMPORT] [test: test_device_pack_import.py::test_no_unused_actions_are_saved]
 - **S70** An output put on another vJoy should take its wires with it. [help: Module files and Device Pack] [test: test_device_pack_import.py::test_wires_follow_the_output_they_were_put_on]
 - **S71** Missing modes should be created under their parent from the pack; when the parent isn't here, under Default, and said. [help: Module files and Device Pack] [test: test_device_pack_import.py::test_modes_keep_their_parent]
 - **S72** Missing Logical Device inputs should be created only when that box is ticked; otherwise the wires are kept and the note says they do nothing until added. [help: Module files and Device Pack] [test: test_device_pack_import.py::test_missing_logical_inputs_can_be_created]
-- **S73** The previous module file should be kept in the imported folder with a dated name; a picture that is overwritten is kept there too. [help: Module files and Device Pack] [code only for pictures]
+- **S73** The previous module file should be kept in the imported folder with a dated name; a picture that is overwritten is kept there too. [help: Module files and Device Pack] [user confirmed 2026-10-06; was code only for pictures]
 - **S74** The profile should change in memory only; the user saves it to keep the wires. [help: Module files and Device Pack]
 - **S75** Configuration Appearance, Output View Appearance and where the photo sits should come with the pack. [test-plan: G-PACKIMPORT] [test: test_device_pack_import.py::test_configuration_appearance_comes_with_the_pack] [test: test_device_pack_import.py::test_the_photo_keeps_its_placement]
 - **S76** When a module file or picture can't be written, what was written for it should be put back and nothing replaced, and the previous import stays undoable. [tracker: AU-93] [test: test_device_pack_import.py::test_a_picture_that_cannot_be_written_puts_everything_back] [test: test_device_pack_import.py::test_an_output_picture_that_cannot_be_written_is_reported]
 - **S77** An import that matches or writes nothing should keep the previous Undo Import. [tracker: AU-113] [test: test_device_pack_import.py::test_an_import_that_matches_nothing_keeps_the_last_undo] [test: test_audit3_saving.py::test_an_import_that_wrote_nothing_keeps_undo_import] [test: test_device_pack_window.py::test_a_failed_import_keeps_undo_import]
-- **S78** Import onto a damaged module file replaces it and keeps the old one in imported. [code only] (decision F1 pending; recommended: refuse)
+- **S78** Import onto a damaged module file replaces it and keeps the old one in imported. [user confirmed 2026-10-06; was code only] (decision F1 pending; recommended: refuse)
 - **S79** A wire import that fails partway should undo everything it did. [user decision: A3 pending, recommended] (code leaves inputs, modes and Logical inputs: see gaps)
 
 ### Undo Import
 
 - **S80** Undo Import should put back the module files (old content, or remove a new file), the pictures, the device's wires in the replaced modes, and remove the modes and Logical Device inputs the import created (a mode only when empty, with the full Manage Modes delete). [help: Module files and Device Pack] [test-plan: G-PACKIMPORT] [tracker: AU-112] [test: test_device_pack_import.py::test_undo_import_puts_everything_back] [test: test_audit3_modes.py::test_undo_import_deletes_a_mode_everywhere] [test: test_device_pack_window.py::test_replace_then_undo]
 - **S81** Undo Import should be offered until the next import or closing the window; after that the actions the import replaced leave the profile. [help: Module files and Device Pack]
-- **S82** Opening another pack should also end Undo Import. [code only] (help doesn't say so: Q6)
-- **S83** When another profile is open, Undo Import puts the files back but not the wires, and says so. [code only]
-- **S84** A file Undo Import can't put back should be named. [code only]
+- **S82** Opening another pack should also end Undo Import. [user confirmed 2026-10-06; was code only] (help doesn't say so: Q6)
+- **S83** When another profile is open, Undo Import puts the files back but not the wires, and says so. [user confirmed 2026-10-06; was code only]
+- **S84** A file Undo Import can't put back should be named. [user confirmed 2026-10-06; was code only]
 - **S85** Module Setup's own "Import from" Undo puts the device's previous file back and binds the devices again. [test: test_audit2_coverage.py::test_undo_of_a_module_import_binds_the_devices_again] [tracker: AU-21]
 
 ### Deleted-device backups
 
-- **S86** Delete Device with "Save a copy in deleted devices" should first write a full pack (module file, pictures, wires in every mode) to the deleted devices folder in a folder per device name; if it can't be written or read back, nothing is deleted. [code only] [test-plan: H-19g-b for the folder]
+- **S86** Delete Device with "Save a copy in deleted devices" should first write a full pack (module file, pictures, wires in every mode) to the deleted devices folder in a folder per device name; if it can't be written or read back, nothing is deleted. [user confirmed 2026-10-06; was code only] [test-plan: H-19g-b for the folder]
 - **S87** The deleted devices folder should be in the data folder by default and changeable in Options > Folders. [test-plan: H-19g-b] [test: test_deleted_devices_folder.py]
 - **S88** Delete File (Module Setup) should ask first and copy the module file into the deleted devices folder as "<name> <date time>.json"; when the copy fails nothing is deleted. [tracker: A2] [test-plan: SAFE-1] [test: test_data_safety.py]
-- **S89** A deleted device's pack can be put back with Device Pack > Import. [code only]
+- **S89** A deleted device's pack can be put back with Device Pack > Import. [user confirmed 2026-10-06; was code only]
 
 ### Auto Mapper
 
@@ -287,12 +287,12 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S94** With Overwrite used inputs off, inputs that have actions should keep them, and a vJoy output already used by another input in that mode should not be used again. [help: Auto Mapper] [test: test_auto_mapper.py::test_get_used_vjoy_inputs_from_profile]
 - **S95** With Overwrite used inputs on, it should ask first, then remove every action on those inputs in that mode (macros included) and leave no unused actions behind. [tracker: A13] [test-plan: SAFE-1-HANDS-ON] [test: test_profile_unused_actions.py::test_auto_mapper_overwrite_leaves_nothing_behind]
 - **S96** The Overwrite choice should be remembered between openings. [test-plan: OPTIONS-TRIM]
-- **S97** The new actions should be in memory only; to undo, load the profile again without saving. [code only] (dialog text)
+- **S97** The new actions should be in memory only; to undo, load the profile again without saving. [user confirmed 2026-10-06; was code only] (dialog text)
 - **S98** Wires of a stick that is not plugged in should not count as using a vJoy output. [test: test_auto_mapper.py::test_get_used_vjoy_inputs_for_disconnected_device_in_profile] (doubtful: Q7)
 - **S99** Only vJoy outputs; the Keyboard, OSC and Xbox cards have no Auto Mapper. [help: Auto Mapper] [tracker: AU-68]
 - **S100** While the profile runs, a note should say changes take effect the next time it starts. [test-plan: WORKFLOW-4]
-- **S101** The lists should follow sticks being plugged in or out, keeping ticks. [code only]
-- **S102** Esc should not close the Auto Mapper or Device Pack windows (a stick can send Esc). [test-plan: USABILITY-FIXES] [code only for Device Pack]
+- **S101** The lists should follow sticks being plugged in or out, keeping ticks. [user confirmed 2026-10-06; was code only]
+- **S102** Esc should not close the Auto Mapper or Device Pack windows (a stick can send Esc). [test-plan: USABILITY-FIXES] [user confirmed 2026-10-06; was code only for Device Pack]
 - **S103** The result line should say what was made in glossary words (actions, not mappings or bindings). [glossary] [test-plan: GLOSSARY-2] (code doesn't: Q8)
 
 ## 9. Questions for the user
@@ -382,3 +382,14 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - Device Pack: `exportPack` slot itself (path checks, inside-modules refusal, .zip suffix); import onto a damaged file; failure inside `_apply_wires` (AU-118); Undo Import after the profile changed or after a later Button Map save; Undo Import's "another profile is open" path; output modules past the vJoy's size; a zip with a bad `wires.json` or `outputs/*.json`; `importPack` with an empty selection.
 - Deleted devices: `delete_device(..., save_copy=True)` (pack written, read back, refused when unreadable) has no test; importing such a pack back.
 - Auto Mapper: Combine onto selected outputs with more inputs than outputs (mapping result, not just the message); Overwrite on with nested actions; twin sticks (`_source_uuid` by name picks the first); "Also claim" when the output file is damaged or can't be written; the dialog's tick handling after Create (only checked by hand, test-plan AM-05).
+
+## 12. Review (user, 2026-10-06)
+
+Approved by the user as recommended (2026-10-06, blanket approval of the remaining pages): every [code only] statement in section 8 is confirmed, except where a question's recommendation changes it; every question in section 9 is decided as its **Recommend** says. Where a recommendation and a section 8 statement disagree, the recommendation wins.
+
+| Q | Decision |
+|---|---|
+| All | As recommended in section 9 |
+
+The section 8 statements (with the changes above) are now the definition
+of correct for this subsystem.

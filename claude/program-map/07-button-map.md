@@ -169,7 +169,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 ## 8. Behaviour spec
 
 **Opening and devices**
-- **S1** It should open from a device card's right-click menu, the toolbar, or Tools → Mapping → Button Map, and there should be one Button Map window; opening it for another device reuses that window. [help: Tools / Button Map] [code only: one window, `Main.qml:572-585`]
+- **S1** It should open from a device card's right-click menu, the toolbar, or Tools → Mapping → Button Map, and there should be one Button Map window; opening it for another device reuses that window. [help: Tools / Button Map] [user confirmed 2026-10-06; was code only: one window, `Main.qml:572-585`]
 - **S2** It should show "Choose a device from the File menu." when no device is chosen, and then write no file at all (zoom or grid changes don't create one). [tracker: AU-09] [help: File menu and export]
 - **S3** It should list the devices under File → Device, with a tick on the one shown; switching asks to save when there are unsaved edits, and Cancel in that question stays on the current device. [help: File menu and export] [tracker: C25] [test-plan: BM-F01] [test: test_button_map_devices.py::test_device_menu_stays_during_an_edit]
 - **S4** It should not list vJoy or Xbox outputs in File → Device (their cards still open it). [tracker: AU-75, user's choice]
@@ -181,7 +181,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - **S10** It should keep a renamed stick's photo with the module file its Button Map opens. [test: test_audit3_module_files.py::test_renamed_sticks_photo_goes_with_the_file_its_button_map_opens] [tracker: AU-64 part]
 - **S11** It should show no photo for a device that has none, never another device's photo or the Gladiator photo. [tracker: B26]
 - **S12** It should show a damaged module file as an empty map and refuse to save into it, saying so. [test: test_module_file_damage.py::test_button_map_save_is_refused] [test-plan: MODULE-FILE-DAMAGE]
-- **S13** It should close the Button Map when its device is deleted. [code only: `Main.qml:489-492`]
+- **S13** It should close the Button Map when its device is deleted. [user confirmed 2026-10-06; was code only: `Main.qml:489-492`]
 
 **Live map**
 - **S14** It should light a chip while its control is pressed when not editing; hovering a chip says which control it is, and dragging pans. [help: Overview] [test-plan: BM-Z02]
@@ -203,15 +203,15 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - **S28** It should ask once when the window closes or the program quits with unsaved edits, and finish closing after Save or Discard. [help: Overview] [test-plan: W-03] [test-plan: BM-F12]
 - **S29** It should write the module file only on Save. [help: Button Map Options / Autosave] (see Q1, G1, G2: the code writes some parts earlier)
 - **S30** It should count a new photo of the same file type as an unsaved change. [tracker: AU-92] [test: test_audit2_button_map.py::test_the_kept_photo_says_a_change_is_unsaved]
-- **S31** It should leave nothing behind when the window closes (no leaked objects, commands removed from the shared palette). [test: test_button_map_lifecycle.py::test_button_map_leaves_nothing_behind] [code only: `Commands.removeOwner("buttonmap")`]
+- **S31** It should leave nothing behind when the window closes (no leaked objects, commands removed from the shared palette). [test: test_button_map_lifecycle.py::test_button_map_leaves_nothing_behind] [user confirmed 2026-10-06; was code only: `Commands.removeOwner("buttonmap")`]
 
 **Recovery copies**
 - **S32** It should keep a recovery copy of unsaved edits (photo, pose, map) every "Seconds between recovery copies" while editing, and remove it when everything is undone. [help: Button Map Options] [test-plan: BMAP2-1]
-- **S33** It should never write recovery copies more often than every 10 seconds, whatever the option says. [code only: `DialogJoystickButtonMap.qml:671`]
+- **S33** It should never write recovery copies more often than every 10 seconds, whatever the option says. [user confirmed 2026-10-06; was code only: `DialogJoystickButtonMap.qml:671`]
 - **S34** It should offer Restore, Discard or Not now when the device opens or Edit starts and a copy exists; Restore opens the edits unsaved; Discard deletes the copy and puts the saved photo back; Not now keeps both and offers them next time. [help: Button Map Options] [tracker: AU-115] [tracker: AU-78] [test: test_audit3_screens.py::test_button_map_recovery_offer_and_device_switch]
 - **S35** It should put an open offer off (never apply it to another device) when another device is shown. [tracker: AU-115]
 - **S36** It should, after a crash in the middle of a photo change, bring back the saved photo unless a recovery copy is waiting. [tracker: AU-08]
-- **S37** It should quietly remove a recovery copy that is the same as the saved map. [code only: `DialogJoystickButtonMap.qml:600-603`]
+- **S37** It should quietly remove a recovery copy that is the same as the saved map. [user confirmed 2026-10-06; was code only: `DialogJoystickButtonMap.qml:600-603`]
 - **S38** It should treat a damaged or non-map recovery copy as none. [test: test_button_map_recovery.py::test_a_broken_copy_reads_as_none] [test: test_button_map_recovery.py::test_rejects_what_is_not_a_layout]
 
 **Photo**
@@ -224,7 +224,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 
 **Editing the map**
 - **S45** It should list in the pool the device's controls that are not on the map, filterable by name, number or output. [help: Overview] [test-plan: BM-R01..05]
-- **S46** It should fill the pool from the device's claimed controls; with no claims, from what the device reports; unplugged, from what the profile uses. [code only: `hardware_profile.py:1491-1508`]
+- **S46** It should fill the pool from the device's claimed controls; with no claims, from what the device reports; unplugged, from what the profile uses. [user confirmed 2026-10-06; was code only: `hardware_profile.py:1491-1508`]
 - **S47** It should place chips with no leader and no hotspot when Chip only is ticked. [help: Chips] [test-plan: BM-CHIP-ONLY-DBLCLICK]
 - **S48** It should let a chip name have two rows (Shift+Enter). [tracker: BM30]
 - **S49** It should remove every selected item as one undo step on Delete; a selected spine or table cell goes alone. [tracker: A4] [tracker: A6] [test-plan: SAFE-2]
@@ -235,18 +235,18 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - **S54** It should keep the stacking order through save and reopen; only old maps with `zLayer` are sorted once. [tracker: BM1] [test: test_rig_stacking.py::test_list_order_is_kept] [test: test_rig_stacking.py::test_old_layouts_are_sorted_once_by_layer]
 - **S55** It should make one undo step per command: Hide Selected is one step, a run of arrow nudges is one step, a colour-picker drag is one step, and Undo/Redo first save a waiting step. [tracker: BM14] [tracker: BM3] [test: test_button_map_fixes.py::test_nudges_in_a_row_are_one_step] [test: test_button_map_fixes.py::test_hide_selected_is_one_step]
 - **S56** It should go back as many steps as Button Map Options → Undo steps (80 by default), and offer Undo and Redo only while editing. [help: Button Map Options] [tracker: A5]
-- **S57** It should undo the map and the photo's pose, flags and look; Choose Photo, Clear Photo, the print area, guides, grid and view are not undo steps. [code only: `VkbRigEditor.qml:852-858`] (Q3)
+- **S57** It should undo the map and the photo's pose, flags and look; Choose Photo, Clear Photo, the print area, guides, grid and view are not undo steps. [user confirmed 2026-10-06; was code only: `VkbRigEditor.qml:852-858`] (Q3)
 - **S58** It should select a pressed control's chip while editing (Press to find), show an unplaced one in the pool, and add no undo step or act mid-drag. [help: Selecting, undo and keys] [test-plan: BMAP2-2] [tracker: B24]
 - **S59** It should mirror the whole map left to right with Edit → Mirror Layout (pictures flipped only with Mirror pictures on), and Undo puts it back. [help: Mirror layout] [test-plan: BMAP2-5]
 - **S60** It should, with Fit to Photo Frame, shrink an older oversized layout once per edit, moving hotspots, callout pointers and free table cells too; Undo puts it back and makes it available again. [help: File menu and export] [tracker: BM5] [tracker: F1] [tracker: B22]
 - **S61** It should, on Reset Layout, ask first, then clear chips, leaders, hotspots, drawings, text, pictures and tables; actions stay; Ctrl+Z brings the layout back. [help: File menu and export] [tracker: A7]
 - **S62** It should add pictures from Import Picture…, Paste Picture (Ctrl+Shift+V, also files copied in Explorer) and files dropped on the map, and save them beside the module file. [help: Pictures] [test-plan: BM-PICTURES] [test-plan: BM-DROP-COPY] [test: test_paste_picture.py::test_dropped_files_keep_only_pictures]
-- **S63** It should refuse a picture drop outside Edit with "Click Edit Mapping first, then drop the picture again." [code only: `DialogJoystickButtonMap.qml:1332-1335`] [help: Pictures says "while editing"]
+- **S63** It should refuse a picture drop outside Edit with "Click Edit Mapping first, then drop the picture again." [user confirmed 2026-10-06; was code only: `DialogJoystickButtonMap.qml:1332-1335`] [help: Pictures says "while editing"]
 - **S64** It should paste with Ctrl+V a picture copied after the last chip copy, and the chips otherwise. [help: Selecting, undo and keys] [test-plan: BM-PICTURES]
-- **S65** It should keep chips copied with Ctrl+C when another device's map opens, so they can be pasted there. [tracker: AU-105] [code only: `carryCopy` 975]
+- **S65** It should keep chips copied with Ctrl+C when another device's map opens, so they can be pasted there. [tracker: AU-105] [user confirmed 2026-10-06; was code only: `carryCopy` 975]
 - **S66** It should not draw a hidden item on the live map, and leave it out of exports. [help: Layers panel] [test-plan: BMAP-4]
 - **S67** It should keep saved styles and recent colours for every device. [help: Saved styles] [help: Colors] [test: test_button_map_colours.py::test_recent_colours_newest_first_once_at_most_ten] [test: test_button_map_options.py::test_saved_styles_save_replace_rename_delete]
-- **S68** It should place every position as a fraction of a 32000 x 18000 page with a 24000 x 13500 photo frame in its middle. [code only: `VkbRigEditor.qml:153-156`] [tracker: BM41 plans to change it]
+- **S68** It should place every position as a fraction of a 32000 x 18000 page with a 24000 x 13500 photo frame in its middle. [user confirmed 2026-10-06; was code only: `VkbRigEditor.qml:153-156`] [tracker: BM41 plans to change it]
 - **S69** It should open files without a photo frame value as they are and not write them back. [tracker: B25]
 
 **Action labels**
@@ -254,35 +254,35 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - **S71** It should take the text from one mode: the chosen Labels Mode, or with Follow the Program the running mode while running and otherwise the mode chosen in the main window. [help: Action labels]
 - **S72** It should show a parent mode's actions for a control with none in the chosen mode. [help: Action labels] [test: test_button_map_labels.py::test_a_child_mode_inherits_unless_it_binds_the_control]
 - **S73** It should follow profile edits at once, follow a renamed Labels Mode, and go back to Follow the Program when that mode is deleted. [help: Action labels] [tracker: AU-112] [test: test_audit3_modes.py::test_button_map_labels_mode_follows_a_rename]
-- **S74** It should forget the chosen Labels Mode when the window closes. [code only: `labelMode` is not saved]
+- **S74** It should forget the chosen Labels Mode when the window closes. [user confirmed 2026-10-06; was code only: `labelMode` is not saved]
 
 **Copy layout and templates**
 - **S75** It should list under Edit → Copy Button Map from Device the other devices whose module file holds a map (never this one). [help: File menu and export] [tracker: F8] [test: test_button_map_copy_layout.py::test_lists_other_devices_with_a_layout]
-- **S76** It should replace this map's chips, leaders and drawings with the copy, keep this device's photo, offer "Mirror left to right" (ticked for a device, unticked for a template), and save nothing until Save. [help: File menu and export] [code only: tick defaults `DialogJoystickButtonMap.qml:1992`]
+- **S76** It should replace this map's chips, leaders and drawings with the copy, keep this device's photo, offer "Mirror left to right" (ticked for a device, unticked for a template), and save nothing until Save. [help: File menu and export] [user confirmed 2026-10-06; was code only: tick defaults `DialogJoystickButtonMap.qml:1992`]
 - **S77** It should, when copying outside Edit, start Edit from the current map first, so Undo brings the old map back. [tracker: BM9]
 - **S78** It should take back a mirrored copy with one Undo. [tracker: AU-27, open]
-- **S79** It should save a layout as a named template, ask before replacing one of the same name, and refuse an empty layout. [help: File menu and export] [test-plan: BMAP2-6] [code only: the replace question, `DialogJoystickButtonMap.qml:2132-2135`] [test: test_button_map_templates.py::test_nothing_to_save]
+- **S79** It should save a layout as a named template, ask before replacing one of the same name, and refuse an empty layout. [help: File menu and export] [test-plan: BMAP2-6] [user confirmed 2026-10-06; was code only: the replace question, `DialogJoystickButtonMap.qml:2132-2135`] [test: test_button_map_templates.py::test_nothing_to_save]
 - **S80** It should rename, export to a file, import (a taken name gets a number) and delete templates, asking before a delete and saying when rename or export fails. [help: File menu and export] [tracker: C13] [tracker: N12] [test: test_button_map_templates.py::test_export_and_import] [test: test_button_map_templates.py::test_rename_and_delete]
 - **S81** It should keep in a template where its pictures are, not the picture files. [help: File menu and export]
 
 **Print and export**
 - **S82** It should keep Print & Export's settings (paper, orientation, margins, background, scale, Freeform) with the map, the same for every print and export. [help: File menu and export] [tracker: BM34] [tracker: BM38]
 - **S83** It should make 100% scale the photo's own pixels (no photo: the page 1920 pixels wide), from 10% to 800%, whatever the window size or screen scale. [help: File menu and export] [test: test_print_export_window.py::test_every_screen_scale_gives_the_same_picture] [test: test_button_map_print_area.py::test_scale_and_saving]
-- **S84** It should cap an export's longest side at 16384 pixels. [code only: `DialogJoystickButtonMap.qml:1492-1500`]
+- **S84** It should cap an export's longest side at 16384 pixels. [user confirmed 2026-10-06; was code only: `DialogJoystickButtonMap.qml:1492-1500`]
 - **S85** It should take only the print area for every print and export; Alt+drag or Edit → Set Print Area draws it; with a paper it keeps the paper's shape; Clear Print Area goes back to the whole page. [help: File menu and export] [tracker: BM33] [test: test_button_map_print_area.py::test_an_export_takes_only_the_area] [test: test_button_map_print_area.py::test_the_area_keeps_the_papers_shape]
 - **S86** It should show the print area frame only while editing. [tracker: BM45] [test: test_button_map_print_area.py::test_the_frame_shows_only_while_editing]
 - **S87** It should leave selection marks, handles, guides, grid, hidden items and the red debug frame out of every print and export, and draw lines and text at the export's size. [help: File menu and export] [help: Diagnostics / red debug mode] [tracker: BM36]
 - **S88** It should write a PDF on the chosen paper inside its margins, or, with Freeform, on a page of the area's own shape at 96 pixels an inch. [help: File menu and export] [test: test_button_map_export.py::test_pdf_without_a_paper_is_96_pixels_an_inch] [test: test_button_map_export.py::test_pdf_on_a_paper_is_that_page]
 - **S89** It should make the Light background a white page with every colour's lightness turned over, the photo unchanged, the screen unchanged. [help: File menu and export] [test: test_print_export_window.py::test_light_is_a_white_page]
 - **S90** It should show Windows' printer dialog before printing, print nothing on Cancel, and with Freeform turn the page to landscape when the area is wider than tall. [help: File menu and export] [test-plan: BMAP2-15]
-- **S91** It should say "Export failed." when an export can't be written. [code only: `DialogJoystickButtonMap.qml:1864-1867`]
+- **S91** It should say "Export failed." when an export can't be written. [user confirmed 2026-10-06; was code only: `DialogJoystickButtonMap.qml:1864-1867`]
 - **S92** It should keep the Print & Export window hidden until asked for. [tracker: BM44] [test: test_print_export_window.py::test_it_stays_closed_until_asked_for]
 - **S93** It should move the print area by dragging the preview and resize it with the wheel, not while it is locked. [help: File menu and export] [tracker: BM40] [test: test_print_export_window.py::test_dragging_and_zooming_the_preview_moves_the_area]
 
 **View, options, History**
 - **S94** It should zoom from 50% to 600%, with Ctrl+0, Ctrl+1 and Ctrl+2. [help: View, zoom and grid] [tracker: BM42]
 - **S95** It should keep the view, grid, guides and print area with the device's map at once (outside Edit too), and not list those changes in History. [help: Rulers and guides] [help: History] [test-plan: BM-V02 / S-25 "by design"] [test: test_history_recording.py::test_the_maps_view_alone_is_not_kept]
-- **S96** It should not create a module file just because the user zoomed or changed the grid outside Edit. [tracker: AU-92] [code only: `persistUi` 1700-1703]
+- **S96** It should not create a module file just because the user zoomed or changed the grid outside Edit. [tracker: AU-92] [user confirmed 2026-10-06; was code only: `persistUi` 1700-1703]
 - **S97** It should list Button Map saves in History under Button Map, with the old map and its pictures, so they can be put back. [help: History] [tracker: G-HISTORY] [test: test_history_recording.py]
 - **S98** It should apply Button Map Options to every device and keep them at once; the pane remembers its last group. [help: Button Map Options] [tracker: BM46] [test: test_button_map_options_pane.py::test_a_change_is_kept_and_so_is_the_group]
 - **S99** It should keep the tool rows, tabs, pins, locks and floating panels for next time; Reset Tool Rows puts them back. [help: Overview] [test: test_button_map_tool_row.py::test_rows_and_docks_are_kept_and_reset]
@@ -367,3 +367,14 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - `printImage` (the real printer dialog can't run off-screen); only `print_image` drawing is tested.
 - Pool rows for an unplugged device (`chips_for_guid` falling back to profile ids) and the per-press cost (G11).
 - `savedLayouts` with a damaged other-device file (skipped quietly; no test).
+
+## 12. Review (user, 2026-10-06)
+
+Approved by the user as recommended (2026-10-06, blanket approval of the remaining pages): every [code only] statement in section 8 is confirmed, except where a question's recommendation changes it; every question in section 9 is decided as its **Recommend** says. Where a recommendation and a section 8 statement disagree, the recommendation wins.
+
+| Q | Decision |
+|---|---|
+| All | As recommended in section 9 |
+
+The section 8 statements (with the changes above) are now the definition
+of correct for this subsystem.

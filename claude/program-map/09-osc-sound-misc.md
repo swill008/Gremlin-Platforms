@@ -223,65 +223,65 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 ## 8. Behaviour spec
 
 ### OSC connection (parked)
-- **S1** It should listen for OSC only while the profile runs (and during Add → Listen), and stop listening at Stop and at quit. [code only] [test-plan: TB-02 lists only the toolbar; system-maps: map 3 rows B, C, R]
-- **S2** It should be possible to turn OSC off in Options → OSC → Connection → Enabled; off means no socket is opened at Run. [help: Options] [code only]
+- **S1** It should listen for OSC only while the profile runs (and during Add → Listen), and stop listening at Stop and at quit. [user confirmed 2026-10-06; was code only] [test-plan: TB-02 lists only the toolbar; system-maps: map 3 rows B, C, R]
+- **S2** It should be possible to turn OSC off in Options → OSC → Connection → Enabled; off means no socket is opened at Run. [help: Options] [user confirmed 2026-10-06; was code only]
 - **S3** It should listen on the Input host and port set in Options; the host list offers this PC's IPv4 addresses (plus 127.0.0.1 and 0.0.0.0) and a rescan button, and accepts a typed address. [help: Options] [test-plan: OPT-O01..O06]
-- **S4** Changing Enabled, Input host or Input port while running should rebind or stop the listener at once, without a new Run. [code only]
-- **S5** A port that is blank, not a number or outside 1-65535 should fall back to the default. [code only]
+- **S4** Changing Enabled, Input host or Input port while running should rebind or stop the listener at once, without a new Run. [user confirmed 2026-10-06; was code only]
+- **S5** A port that is blank, not a number or outside 1-65535 should fall back to the default. [user confirmed 2026-10-06; was code only]
 - **S6** The default input port and the default output port should be different and shown the same everywhere (Options, the Listening box, the listener). [tracker: B15] [todo: B15 suggests input 8000, output 9000]
-- **S7** If the port cannot be opened (in use, address gone), Run should still run the rest of the profile and show one error "Could not bind OSC on host:port." [code only] [tracker: D16 titled "Error"]
+- **S7** If the port cannot be opened (in use, address gone), Run should still run the rest of the profile and show one error "Could not bind OSC on host:port." [user confirmed 2026-10-06; was code only] [tracker: D16 titled "Error"]
 - **S8** OSC on by default bound to the LAN address should not cause a firewall prompt or a bind error on every Run when the profile has no OSC inputs. [tracker: APP5 (open)]
-- **S9** The Output address should be where OSC feedback goes. [help: Options names "Output address"] [code only: nothing sends today, see G-OSC2]
+- **S9** The Output address should be where OSC feedback goes. [help: Options names "Output address"] [user confirmed 2026-10-06; was code only: nothing sends today, see G-OSC2]
 
 ### OSC inputs (the OSC page, parked)
-- **S10** The OSC page should list every OSC input of the loaded profile as "Button n - /address" or "Axis n - /address", with its action count for the current mode. [code only]
-- **S11** It should be locked (greyed, no clicks) while the profile runs. [code only] [test-plan: system-maps editorLocked list]
-- **S12** Add should create an input with the typed address and the chosen type (Button or Axis), select it, and open its actions on the right. [code only]
+- **S10** The OSC page should list every OSC input of the loaded profile as "Button n - /address" or "Axis n - /address", with its action count for the current mode. [user confirmed 2026-10-06; was code only]
+- **S11** It should be locked (greyed, no clicks) while the profile runs. [user confirmed 2026-10-06; was code only] [test-plan: system-maps editorLocked list]
+- **S12** Add should create an input with the typed address and the chosen type (Button or Axis), select it, and open its actions on the right. [user confirmed 2026-10-06; was code only]
 - **S13** After Add, the new input should be the one selected, also for an Axis. [tracker: APP4 (open)]
-- **S14** Adding an address that already exists should select the existing input, not make a second one. [code only]
-- **S15** Addresses should match without regard to case (`/Deck/1` = `/deck/1`) and are stored in lower case. [code only]
+- **S14** Adding an address that already exists should select the existing input, not make a second one. [user confirmed 2026-10-06; was code only]
+- **S15** Addresses should match without regard to case (`/Deck/1` = `/deck/1`) and are stored in lower case. [user confirmed 2026-10-06; was code only]
 - **S16** "Change" should be its own type, not saved as Axis; "Message only / Message + data" and "Trigger on message" with its delay should either work per input or not be shown. [tracker: B16 (planned)] [todo: B16]
-- **S17** Listen should fill the address from the next packet that arrives and bind it with the chosen type, closing the dialog. [code only]
-- **S18** Listen should tell the user if OSC is off or the port can't be opened ("Could not start OSC listener."). [code only]
-- **S19** Bulk capture should add one input per new address until the user stops listening; the same address twice within 0.3 s counts once. [code only] [OscAddDialog tip: "intended for simple devices such as the Stream Deck"]
+- **S17** Listen should fill the address from the next packet that arrives and bind it with the chosen type, closing the dialog. [user confirmed 2026-10-06; was code only]
+- **S18** Listen should tell the user if OSC is off or the port can't be opened ("Could not start OSC listener."). [user confirmed 2026-10-06; was code only]
+- **S19** Bulk capture should add one input per new address until the user stops listening; the same address twice within 0.3 s counts once. [user confirmed 2026-10-06; was code only] [OscAddDialog tip: "intended for simple devices such as the Stream Deck"]
 - **S20** Cancel, closing the Add dialog, or unticking Bulk should end listening, and when no profile runs, close the port too. [tracker: APP13 (open)]
 - **S21** The "Listening for OSC" box should have a Stop button. [tracker: APP17 note: left out, OSC parked]
-- **S22** Import should add one input per line that starts with "/", skip lines that don't and addresses that exist, and select the last one added. [code only]
+- **S22** Import should add one input per line that starts with "/", skip lines that don't and addresses that exist, and select the last one added. [user confirmed 2026-10-06; was code only]
 - **S23** Import suffixes should give the types the dialog promises (A axis, B button with value, BNP button without value, C change, E encoder). [tracker: B17 (planned)]
-- **S24** Editing an address should keep the input's actions (same id). [code only]
-- **S25** An address should never be blank and should start with "/" and be unique; a duplicate rename should say why it was refused. [tracker: APP11 (open)] [code only: duplicate refused silently]
-- **S26** Delete should remove the input and its actions in every mode. [code only] [tracker: G-LIBLEAK note: OSC Delete leak closed]
-- **S27** Clear should ask first ("This will remove every OSC input in the current profile.") and then remove all inputs and their actions. [code only]
-- **S28** Sort should order the list A-Z by address. [code only]
+- **S24** Editing an address should keep the input's actions (same id). [user confirmed 2026-10-06; was code only]
+- **S25** An address should never be blank and should start with "/" and be unique; a duplicate rename should say why it was refused. [tracker: APP11 (open)] [user confirmed 2026-10-06; was code only: duplicate refused silently]
+- **S26** Delete should remove the input and its actions in every mode. [user confirmed 2026-10-06; was code only] [tracker: G-LIBLEAK note: OSC Delete leak closed]
+- **S27** Clear should ask first ("This will remove every OSC input in the current profile.") and then remove all inputs and their actions. [user confirmed 2026-10-06; was code only]
+- **S28** Sort should order the list A-Z by address. [user confirmed 2026-10-06; was code only]
 - **S29** OSC inputs should be listed in Logical Device → Assign Hardware for a button. [help: Assign hardware and actions]
 - **S30** The OSC page should have no Appearance panel. [help: Appearance] [tracker: AU-52]
 - **S31** The OSC card should not offer Swap Device, Auto Mapper, Device Information or Calibration. [tracker: AU-68, AU-58, AU-91]
-- **S32** Input highlighting should not jump to OSC inputs. [code only] (backend.py 277)
+- **S32** Input highlighting should not jump to OSC inputs. [user confirmed 2026-10-06; was code only] (backend.py 277)
 - **S33** OSC Add and Calibration should each hold their own highlight pause; closing one does not resume while the other is open. [tracker: N11]
 - **S34** The OSC page's empty state should talk about OSC, not sticks. [tracker: AU-58 (left: OSC parked)]
 - **S35** OSC dialogs should say "OK" (not "Ok") and put Cancel where other dialogs do. [glossary: Title Case] [tracker: E1 (left: OSC parked)]
 
 ### OSC at run time (parked)
-- **S36** A packet whose address matches an OSC input should fire that input's actions in the current mode, like a stick input. [code only] [test: test_input_module_gate.py::test_osc_passthrough]
-- **S37** A packet whose address matches nothing should be ignored (logged at debug); `/noop` is always ignored. [code only]
-- **S38** Button: first value not 0 = press, 0 = release; a text value counts as pressed unless it reads as a number 0. [code only]
-- **S39** Button with no value: with "Treat address-only messages as 1.0" it presses; with "Auto-release address-only messages" on, it releases after the Auto-release delay (default 250 ms, 0-10000). [help: Options (Messages, press timing)] [code only]
-- **S40** The auto-release should release in the mode the press happened in. [code only]
-- **S41** Axis: the first value, limited to -1.0 … 1.0; no value or text gives 0.0. [code only] [OscAddDialog help text]
-- **S42** Listen should guess the type from the first packet: no value, 0, 1 or beyond ±1 → Button; anything else → Axis. [code only]
-- **S43** Settings changed in Options should apply to the next packet without a new Run (behaviour flags are read per packet). [code only] [tracker: AU-67 lists per-packet reads as a cost]
+- **S36** A packet whose address matches an OSC input should fire that input's actions in the current mode, like a stick input. [user confirmed 2026-10-06; was code only] [test: test_input_module_gate.py::test_osc_passthrough]
+- **S37** A packet whose address matches nothing should be ignored (logged at debug); `/noop` is always ignored. [user confirmed 2026-10-06; was code only]
+- **S38** Button: first value not 0 = press, 0 = release; a text value counts as pressed unless it reads as a number 0. [user confirmed 2026-10-06; was code only]
+- **S39** Button with no value: with "Treat address-only messages as 1.0" it presses; with "Auto-release address-only messages" on, it releases after the Auto-release delay (default 250 ms, 0-10000). [help: Options (Messages, press timing)] [user confirmed 2026-10-06; was code only]
+- **S40** The auto-release should release in the mode the press happened in. [user confirmed 2026-10-06; was code only]
+- **S41** Axis: the first value, limited to -1.0 … 1.0; no value or text gives 0.0. [user confirmed 2026-10-06; was code only] [OscAddDialog help text]
+- **S42** Listen should guess the type from the first packet: no value, 0, 1 or beyond ±1 → Button; anything else → Axis. [user confirmed 2026-10-06; was code only]
+- **S43** Settings changed in Options should apply to the next packet without a new Run (behaviour flags are read per packet). [user confirmed 2026-10-06; was code only] [tracker: AU-67 lists per-packet reads as a cost]
 
 ### OSC saving
-- **S44** OSC inputs should be saved in the profile (`<osc-device>`), not in program settings; OSC connection settings are program settings. [history-notes: what is saved where] [code only]
-- **S45** Loading another profile or New Profile should replace the OSC inputs with that profile's (none for New). [code only]
-- **S46** Adding, renaming, deleting or clearing OSC inputs should mark the profile unsaved (the saved-file comparison sees the `<osc-device>` section). [code only]
-- **S47** Saving should record OSC changes in History as "the OSC inputs". [code only] [tracker: G-HISTORY]
-- **S48** A damaged `<osc-device>` (two inputs with one address) should not stop the profile from opening. [code only: today `create` raises; unverified]
+- **S44** OSC inputs should be saved in the profile (`<osc-device>`), not in program settings; OSC connection settings are program settings. [history-notes: what is saved where] [user confirmed 2026-10-06; was code only]
+- **S45** Loading another profile or New Profile should replace the OSC inputs with that profile's (none for New). [user confirmed 2026-10-06; was code only]
+- **S46** Adding, renaming, deleting or clearing OSC inputs should mark the profile unsaved (the saved-file comparison sees the `<osc-device>` section). [user confirmed 2026-10-06; was code only]
+- **S47** Saving should record OSC changes in History as "the OSC inputs". [user confirmed 2026-10-06; was code only] [tracker: G-HISTORY]
+- **S48** A damaged `<osc-device>` (two inputs with one address) should not stop the profile from opening. [user confirmed 2026-10-06; was code only: today `create` raises; unverified]
 
 ### Sound (system level)
-- **S49** Sounds should play only while the profile runs; Stop should cut off playing sounds and drop queued ones. [code only] [test: test_bounded_waits.py::test_a_sound_is_not_waited_for_once_the_player_stops]
+- **S49** Sounds should play only while the profile runs; Stop should cut off playing sounds and drop queued ones. [user confirmed 2026-10-06; was code only] [test: test_bounded_waits.py::test_a_sound_is_not_waited_for_once_the_player_stops]
 - **S50** Sequential plays sounds one after another; Interrupt stops what plays and plays the new one; Overlap plays them together. [help: Play Sound] [Options description]
-- **S51** Changing the playback mode in Options should apply at once. [code only] (via `emitConfigChanged`)
+- **S51** Changing the playback mode in Options should apply at once. [user confirmed 2026-10-06; was code only] (via `emitConfigChanged`)
 - **S52** A sound file should be decoded on the playback thread, not the event thread, and freed when it ends. [tracker: APP6] [test-plan: PROGRAM-FIXES] [test: test_program_fixes.py::test_sounds_are_decoded_on_the_playback_thread, ::test_finished_sounds_are_let_go]
 - **S53** A missing file should play nothing and warn once; a damaged or unsupported file should be logged once and not stop other sounds. [tracker: ACT11] [test: test_play_sound_missing_file.py::test_pressing_with_a_missing_file_plays_nothing, ::test_pressing_with_an_unreadable_file_does_not_raise] [test: test_program_fixes.py::test_a_sound_that_cannot_be_decoded_is_logged_once]
 - **S54** Stopping right after starting should end the audio thread. [test: test_threads.py::test_the_audio_player_stopped_right_after_starting_ends]
@@ -289,11 +289,11 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 
 ### Speech (system level)
 - **S56** Text to Speech should speak only while the profile runs, with Interrupt (stop and speak now), Queue Front, Queue Back. [help: Text to Speech]
-- **S57** Stop should stop speech and drop queued text. [code only]
-- **S58** The voice chosen in Options → Actions → Text to Speech should be used by every Text to Speech action, also when changed while running. [help: Text to Speech] [code only]
-- **S59** If the saved voice is no longer installed, the system's default voice should speak. [code only]
-- **S60** `${current_mode}` in the text should be replaced by the current mode name. [code only]
-- **S61** Text to Speech is offered on joystick buttons only (not keyboard keys). [code only] [test-plan: S-34 asks whether that is intended]
+- **S57** Stop should stop speech and drop queued text. [user confirmed 2026-10-06; was code only]
+- **S58** The voice chosen in Options → Actions → Text to Speech should be used by every Text to Speech action, also when changed while running. [help: Text to Speech] [user confirmed 2026-10-06; was code only]
+- **S59** If the saved voice is no longer installed, the system's default voice should speak. [user confirmed 2026-10-06; was code only]
+- **S60** `${current_mode}` in the text should be replaced by the current mode name. [user confirmed 2026-10-06; was code only]
+- **S61** Text to Speech is offered on joystick buttons only (not keyboard keys). [user confirmed 2026-10-06; was code only] [test-plan: S-34 asks whether that is intended]
 
 ### Tray
 - **S62** The tray icon should show while the program runs, idle or active to match Running/Stopped, with the tooltip "Gremlin-Platforms". [glossary: program name in the tray] [test-plan: TB-02]
@@ -301,18 +301,18 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 - **S64** The tray menu should read Show/Hide Gremlin-Platforms, Run Profile / Stop Profile, Exit Gremlin-Platforms. [glossary: D1, D12] [test-plan: GLOSSARY-1]
 - **S65** With Minimize to tray on, minimizing or closing (X) should hide the window and keep the profile running; File → Exit or the tray's Exit quits. [help: Options] [test-plan: TRAY-ONE]
 - **S66** The first time the X hides the window, a balloon should say the program is still running; never again. [test-plan: TRAY-ONE]
-- **S67** Exit from the tray should bring the window back first, so a save question can be answered. [code only]
+- **S67** Exit from the tray should bring the window back first, so a save question can be answered. [user confirmed 2026-10-06; was code only]
 - **S68** Whoever had the old "Close to tray" on should get Minimize to tray on. [test-plan: TRAY-ONE]
 - **S69** While hidden to the tray, the pages should unload and memory be given back, inputs keep working, and unsaved Appearance or Logical Device edits are kept; showing the window reloads the pages. [test-plan: MEM-2, MEM-HANDS-ON] [test: test_tray_memory.py::test_hidden_window_unloads_and_reloads, ::test_pages_load_only_while_needed]
-- **S70** If the tray icon can't be made, minimize and X should behave normally (no hidden window with no way back). [code only]
-- **S71** The icon should come back after Explorer restarts. [code only]
+- **S70** If the tray icon can't be made, minimize and X should behave normally (no hidden window with no way back). [user confirmed 2026-10-06; was code only]
+- **S71** The icon should come back after Explorer restarts. [user confirmed 2026-10-06; was code only]
 - **S72** Off-screen runs (tests, checks) should make no tray icon. [tracker: AU-73, AU-98] [test: test_audit3_startup.py::test_the_app_built_off_screen_installs_no_hook_hidhide_or_tray, test_audit2_startup_devices.py::test_the_tray_icon_follows_the_platform_qt_started_on]
-- **S73** `--start-minimized` should start minimized (to the tray when Minimize to tray is on). [code only]
+- **S73** `--start-minimized` should start minimized (to the tray when Minimize to tray is on). [user confirmed 2026-10-06; was code only]
 
 ### Look: dark/light, colours
 - **S74** Dark mode on/off should apply at once to every window. [test-plan: OPT-U01 PASS]
 - **S75** Every screen should use Style colour tokens, not colour literals; device photos and what is drawn on them keep their own colours. [test-plan: OPT-U01b] [tracker: E5, E6] [test: test_colour_tokens.py::test_no_new_colour_literals]
-- **S76** Light mode is a grey mode: no white surfaces. [code only] (Style.qml 48-49 comment)
+- **S76** Light mode is a grey mode: no white surfaces. [user confirmed 2026-10-06; was code only] (Style.qml 48-49 comment)
 - **S77** Menus, dropdowns and the command palette should look the same everywhere (the Button Map's look). [test-plan: MENU-1, MENU-2]
 - **S78** Fonts should come from `Style.uiFont`, `monoFont`, `iconFont` only. [tracker: E6]
 - **S79** Error and notification dialogs should be readable in both themes. [test-plan: W-12]
@@ -420,3 +420,14 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 | Shared widgets / foundations | ~25 QML files (~1,600 lines); `common.py`, `error.py`, `types.py`, `type_aliases.py` (~980) | Only through screens and unit tests that import them; `test_fsm.py` for dead `fsm.py` | `TextInputDialog` rules (`allowBlank`, validator) are not tested directly |
 
 Checked for this page: the eight test files above (`test_ui_scale`, `test_tray_memory`, `test_help_guide`, `test_glossary_words`, `test_input_module_gate`, `test_colour_tokens`, `test_action_tts`, `test_play_sound_missing_file`) run off-screen: 45 passed. OSC helpers run directly: `parse_port('')` = 8000, blank rename accepted, Axis sorts before Button, import C/E → Axis.
+
+## 12. Review (user, 2026-10-06)
+
+Approved by the user as recommended (2026-10-06, blanket approval of the remaining pages): every [code only] statement in section 8 is confirmed, except where a question's recommendation changes it; every question in section 9 is decided as its **Recommend** says. Where a recommendation and a section 8 statement disagree, the recommendation wins.
+
+| Q | Decision |
+|---|---|
+| All | As recommended in section 9 |
+
+The section 8 statements (with the changes above) are now the definition
+of correct for this subsystem.

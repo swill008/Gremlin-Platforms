@@ -6,7 +6,9 @@ Mapped against code at a1459e22 (audit 3). Line numbers drift as code changes: r
 
 ## The plan (stages, agreed 2026-10-06)
 
-**Stage 0 – Know the program (in progress).**
+**Change control (user, 2026-10-06).** Every change to behaviour or the program goes through this plan and the spec in `claude/program-map/`. If a change would alter the spec (a statement or a decision), alert the user first and update the spec with their answer before coding. Functions may change as features are added or removed, but only through this route.
+
+**Stage 0 – Know the program.** Map and spec done and approved 2026-10-06 (`claude/program-map/`, all decisions as recommended); the gap list is next.
 1. *Program map*: one page per subsystem in `claude/program-map/` (what it owns, entry points, data, threads, callers, where it breaks the layer or single-owner rules). Read-only; no code changes.
 2. *Behaviour spec*: in the same pages, "It should ..." statements gathered from help, glossary, test plan, tracker and code; unclear or contradictory ones are questions for the user. The user reviews each subsystem's list; confirmed statements are the definition of correct.
 3. *Gap list*: where the code differs from the spec, or nothing owns something. Replaces open-ended audits.
@@ -21,21 +23,21 @@ Mapped against code at a1459e22 (audit 3). Line numbers drift as code changes: r
 
 | System | Map | Approved | Built | Open tracker items it closes |
 |---|---|---|---|---|
-| 3. Run lifecycle (do first) | below | not yet | no | AU-116, AU-117 |
-| 1. Module files (second) | below | not yet | no | AU-64 (what is left of it) |
-| 2. Actions (third) | below | not yet | no | AU-118, shared Merge Axis split |
+| 3. Run lifecycle (do first) | below | yes, 2026-10-06 (as recommended) | no | AU-116, AU-117 |
+| 1. Module files (second) | below | yes, 2026-10-06 (as recommended) | no | AU-64 (what is left of it) |
+| 2. Actions (third) | below | yes, 2026-10-06 (as recommended) | no | AU-118, shared Merge Axis split |
 
 ## Decisions (record the user's answer here)
 
 | # | Question | Recommended | User's answer |
 |---|---|---|---|
-| F1 | Device Pack import onto a damaged module file | Refuse; point to Start Fresh | |
+| F1 | Device Pack import onto a damaged module file | Refuse; point to Start Fresh | As recommended (2026-10-06, page 08 approval) |
 | F2 | Home card positions keyed by device name | Keep by name | As recommended (2026-10-06, page 03 review) |
 | F3 | History entry for Start Fresh | Yes | As recommended (2026-10-06, page 03 review) |
 | F4 | Twin sticks always looked up by id | Yes; log when missing | As recommended (2026-10-06, page 03 review) |
 | A1 | OK on a shared action | Change it for every input using it; "Shared with ..." note | As recommended (2026-10-06, page 05 review) |
-| A2 | Undo / History of a shared action | Restore for every input using it | |
-| A3 | Device Pack failing partway | Undo everything it did | |
+| A2 | Undo / History of a shared action | Restore for every input using it | As recommended (2026-10-06, page 08 approval) |
+| A3 | Device Pack failing partway | Undo everything it did | As recommended (2026-10-06, page 08 approval) |
 | A4 | Picking a shared action in the pane | Edit a copy until OK | As recommended, incl. Merge Axis Reuse (2026-10-06, page 05 review) |
 | R1 | Logical Device values at Stop | Back to neutral | As recommended (2026-10-06, page 06 review) |
 | R2 | Release callbacks waiting at Stop | Drop them | As recommended (2026-10-06, page 06 review) |
