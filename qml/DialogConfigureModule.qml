@@ -396,8 +396,12 @@ ApplicationWindow {
                 text: "History"
                 focusPolicy: Qt.NoFocus
                 enabled: deviceName.length > 0
+                // By the device's own file: twin sticks share a name.
                 onClicked: Helpers.createComponent("DialogHistory.qml", {
-                    filter: JSON.stringify({ device: deviceName })
+                    filter: JSON.stringify({
+                        fileName: String(moduleModel ? moduleModel.moduleFileFor(deviceGuid, deviceName) : "") + ".json"
+                    }),
+                    filterLabel: deviceName
                 })
             }
             Item { Layout.fillWidth: true }

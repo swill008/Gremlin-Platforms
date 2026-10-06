@@ -26,6 +26,7 @@ from gremlin.modules.registry import (
     _binding_store,
     _guid_for_name,
     _name_key,
+    device_has_name,
     is_output_name,
     plain_slug,
     resolve_module_slug,
@@ -300,8 +301,9 @@ def guid_for_module(device_name: str, guid: str) -> str:
     given = stored_guid_key(guid)
     if not given:
         return ""
+    # Another connected device of that name may own it (twin sticks).
     owned = _guid_for_name(device_name)
-    if owned and owned != given:
+    if owned and owned != given and not device_has_name(given, device_name):
         return ""
     return str(guid)
 
@@ -1751,8 +1753,9 @@ class HardwareProfile(QtCore.QObject):
         guid = stored_guid_key(self._device_guid)
         if not guid:
             return ""
-        owned = stored_guid_key(_guid_for_name(device_name))
-        if not owned or owned != guid:
+        # Any connected device of that name with that id (the second of two
+        # twin sticks has its own id: it used to get the first one's file).
+        if not device_has_name(guid, device_name):
             return ""
         return str(self._device_guid)
 

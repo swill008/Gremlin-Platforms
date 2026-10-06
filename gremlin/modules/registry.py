@@ -177,46 +177,72 @@ def _name_key(device_name: str) -> str:
     return f"name:{slug}" if slug else ""
 
 
-def _bound_to_device(device_name: str, key: str) -> str:
-    """Slug of the module file bound to this exact device (boundGuidLocal).
-
-    Used only when that file names this device, or when there is no file of
-    this device's own name (the device was renamed). So a stale id never pulls
-    in another device's file.
-    """
-    want = guid_key(key)
+def _bound_elsewhere(slug: str, want: str) -> bool:
+    """True when the module file slug is bound to a device other than want
+    (its boundGuidLocal names another device)."""
     if not want:
-        return ""
-    own = plain_slug(device_name) or "device"
-    wanted_name = " ".join(str(device_name or "").split()).casefold()
-    own_exists = (_folder() / f"{own}.json").is_file()
+        return False
     for module in modules():
-        if guid_key(module.bound_guid) != want:
-            continue
-        names = {module.name.casefold(), module.bound_name.casefold()}
-        if module.slug == own or wanted_name in names or not own_exists:
-            return module.slug
-    return ""
+        if module.slug == slug:
+            other = guid_key(module.bound_guid)
+            return bool(other) and other != want
+    return False
 
 
 def resolve_module_slug(device_name: str, guid: str = "") -> str:
-    """The module file a device uses, device first:
-    1. the file saved for this device (its GUID);
-    2. the file bound to this exact device (boundGuidLocal);
-    3. the file saved for this device name;
-    4. the file named after the device.
+    """The module file a device uses. The one rule Module Setup, the Button
+    Map, Run and Calibration share (they used to differ, so a stick's ticks
+    could do nothing at Run):
+    1. the file saved for this device (its id), unless that file is bound
+       to another device (both twins once saved to one file);
+    2. a file bound to this exact device (boundGuidLocal), when it names
+       this device or there is no file of the device's own name (the device
+       was renamed); so a stale id never pulls in another device's file;
+    3. the file saved for this device name, unless bound to another device;
+    4. the file named after the device (twins are named "<name> (2)").
     """
     data = _binding_store()
     key = stored_guid_key(guid) or _guid_for_name(device_name)
-    bound = data.get(key, "") if key else ""
-    if not bound and key:
-        bound = _bound_to_device(device_name, key)
+    want = guid_key(key)
+    own = plain_slug(device_name) or "device"
+    saved = plain_slug(data.get(key, "")) if key else ""
+    if saved and not _bound_elsewhere(saved, want):
+        return saved
+    if want:
+        wanted_name = " ".join(str(device_name or "").split()).casefold()
+        own_exists = (_folder() / f"{own}.json").is_file()
+        for module in sorted(modules(), key=lambda m: m.slug != own):
+            if guid_key(module.bound_guid) != want:
+                continue
+            names = {module.name.casefold(), module.bound_name.casefold()}
+            if module.slug == own or wanted_name in names or not own_exists:
+                return module.slug
     name_key = _name_key(device_name)
-    if not bound and name_key:
-        bound = data.get(name_key, "")
-    if bound:
-        return plain_slug(bound) or plain_slug(device_name) or "device"
-    return plain_slug(device_name) or "device"
+    by_name = plain_slug(data.get(name_key, "")) if name_key else ""
+    if by_name and not _bound_elsewhere(by_name, want):
+        return by_name
+    return own
+
+
+def device_has_name(guid: str, device_name: str) -> bool:
+    """True when a connected device (stick or vJoy) with this id has this
+    name. (Twin sticks share a name: the first one's id isn't the only one.)"""
+    want = guid_key(guid)
+    wanted = (device_name or "").strip().lower()
+    if not want or not wanted:
+        return False
+    try:
+        from gremlin import device_initialization
+
+        devices = list(device_initialization.physical_devices() or [])
+        devices.extend(device_initialization.vjoy_devices() or [])
+    except Exception:
+        return False
+    return any(
+        guid_key(getattr(dev, "device_guid", "")) == want
+        and str(getattr(dev, "name", "") or "").strip().lower() == wanted
+        for dev in devices
+    )
 
 
 # path -> ((mtime_ns, size), Module | None)

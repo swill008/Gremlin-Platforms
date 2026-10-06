@@ -143,3 +143,58 @@ def test_each_twin_keeps_its_own_calibration(twins: list) -> None:
     first = calibration.values_for_device(dill.GUID.from_str(_first_guid()).uuid, 1)
     second = calibration.values_for_device(dill.GUID.from_str(_twin_guid()).uuid, 1)
     assert first[0] == -100 and second[0] == -200
+
+
+# --- one rule for every part of the program (audit 2, group A) -------------
+
+
+def _module(slug: str, name: str, guid: str, buttons: list[int]) -> None:
+    (modules_dir() / f"{slug}.json").write_text(json.dumps({
+        "device": name, "direction": "source", "boundGuidLocal": guid,
+        "claim": {"buttons": buttons, "axes": [], "hats": [], "keys": []},
+    }), encoding="utf-8")
+
+
+@pytest.fixture
+def bindings() -> Iterator[None]:
+    from gremlin.ui import hardware_profile
+
+    before = hardware_profile._binding_store()
+    yield
+    hardware_profile._write_bindings(before)
+
+
+def test_an_old_shared_choice_doesnt_hand_a_twin_the_other_twins_file(
+    twins: list, bindings: None
+) -> None:
+    from gremlin.modules import registry
+    from gremlin.ui import hardware_profile
+
+    first, second = _first_guid(), _twin_guid()
+    _module("pjoy_pro", "pJoy Pro", first, [1])
+    device_initialization.joystick_devices_initialization()
+    # Both ids chose pjoy_pro before twins had names of their own.
+    from gremlin.modules.ids import stored_guid_key
+
+    hardware_profile._write_bindings({
+        stored_guid_key(first): "pjoy_pro", stored_guid_key(second): "pjoy_pro"
+    })
+    name = _names()[second]
+    assert name == "pJoy Pro (2)"
+    assert registry.resolve_module_slug(name, second) == "pjoy_pro_2"
+    assert registry.resolve_module_slug("pJoy Pro", first) == "pjoy_pro"
+
+
+def test_the_button_map_of_the_second_twin_opens_its_own_file(twins: list) -> None:
+    from gremlin.ui.hardware_profile import HardwareProfile
+
+    first, second = _first_guid(), _twin_guid()
+    _module("pjoy_pro", "pJoy Pro", first, [1])
+    device_initialization.joystick_devices_initialization()
+    _module("pjoy_pro_2", "pJoy Pro (2)", second, [2])
+    assert _names()[second] == "pJoy Pro (2)"
+    hw = HardwareProfile()
+    hw.setDeviceGuid(second)
+    assert hw._file_for("pJoy Pro (2)").name == "pjoy_pro_2.json"
+    hw.deleteLater()
+

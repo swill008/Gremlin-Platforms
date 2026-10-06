@@ -148,7 +148,58 @@ def test_runtime_uses_the_module_setup_file_for_a_stick(
     monkeypatch.setattr(registry, "modules", lambda: [stale])
     monkeypatch.setattr(registry, "for_device", lambda name, device_guid="": bound)
     gate = runtime.InputModuleRuntime()
+    gate.reload()  # one shared instance: it may exist from an earlier test
     try:
         assert gate._claims[guid_key(guid)]["buttons"] == [5]
     finally:
         gate.deleteLater()
+
+
+def test_a_stick_marked_as_an_output_is_repaired_by_saving(setup: Any) -> None:  # noqa: ANN401
+    # The old Output menu bug left input sticks' files marked "dest".
+    from gremlin.ui import module_model
+
+    guid = _pjoy_guid()
+    slug = module_model.resolve_module_slug("pJoy Pro", guid)
+    path = Path(module_model._maps_dir()) / f"{slug}.json"
+    path.write_text(json.dumps({
+        "device": "pJoy Pro", "direction": "dest", "boundGuidLocal": guid,
+        "claim": {"buttons": [1], "axes": [], "hats": []},
+    }), encoding="utf-8")
+    try:
+        setup.loadDevice(guid, "pJoy Pro")
+        assert setup.saveClaim("pJoy Pro", "source")
+        assert json.loads(path.read_text(encoding="utf-8"))["direction"] == "source"
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def test_module_setup_run_and_calibration_use_the_same_file() -> None:
+    # A stick with an old file bound to it and a file of its own name: Module
+    # Setup used one, Run and Calibration the other (ticks did nothing).
+    from gremlin.modules import calibration, runtime
+    from gremlin.modules.ids import guid_key
+    from gremlin.ui import module_model
+
+    guid = _pjoy_guid()
+    folder = Path(module_model._maps_dir())
+    files = {
+        "old_name": ("Old Name", guid, [1, 2, 3]),
+        "pjoy_pro": ("pJoy Pro", "", [9]),
+    }
+    for slug, (name, bound, buttons) in files.items():
+        (folder / f"{slug}.json").write_text(json.dumps({
+            "device": name, "direction": "source", "boundGuidLocal": bound,
+            "claim": {"buttons": buttons, "axes": [1], "hats": [], "keys": []},
+        }), encoding="utf-8")
+    try:
+        setup = module_model.resolve_module_slug("pJoy Pro", guid)
+        gate = runtime.InputModuleRuntime()
+        gate.reload()
+        assert gate._claims[guid_key(guid)]["buttons"] == files[setup][2]
+        rows = {guid_key(r["guid"]): r["slug"] for r in calibration._source_modules()}
+        assert rows[guid_key(guid)] == setup
+    finally:
+        for slug in files:
+            (folder / f"{slug}.json").unlink(missing_ok=True)
+

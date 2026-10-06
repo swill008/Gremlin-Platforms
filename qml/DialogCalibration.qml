@@ -227,8 +227,10 @@ ApplicationWindow {
                 text: "History"
                 focusPolicy: Qt.NoFocus
                 enabled: _moduleSelection.currentText.length > 0
+                // By the module's own file: twin sticks share a name.
                 onClicked: Helpers.createComponent("DialogHistory.qml", {
-                    filter: JSON.stringify({ device: _moduleSelection.currentText })
+                    filter: JSON.stringify({ fileName: String(_moduleSelection.currentValue) + ".json" }),
+                    filterLabel: _moduleSelection.currentText
                 })
             }
 

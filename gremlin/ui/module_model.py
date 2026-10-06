@@ -1331,8 +1331,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=str)
     def moduleFileFor(self, guid: str, device_name: str) -> str:
-        del guid
-        return _slug(device_name)
+        """The device's module file (slug), by the shared rule: twin sticks
+        share a name but not a file."""
+        if not device_name:
+            return ""
+        return resolve_module_slug(device_name, guid)
 
     @QtCore.Slot(str, str, result=str)
     def foreignModuleFile(self, guid: str, device_name: str) -> str:
@@ -2214,6 +2217,10 @@ class DriverInputModel(QtCore.QAbstractListModel):
         doc["device"] = name
         if is_output_name(name):
             doc["direction"] = "dest"
+        elif self._guid and _device_connected(self._guid):
+            # A physical stick is an input (a file the old Output menu
+            # marked "dest" blocked every input; saving here repairs it).
+            doc["direction"] = "source"
         elif doc.get("direction") not in ("source", "dest"):
             doc["direction"] = direction or "source"
         if self._guid:

@@ -102,8 +102,9 @@ class InputModuleRuntime(QtCore.QObject):
             return
         for dev in devices:
             guid = guid_key(getattr(dev, "device_guid", ""))
-            # A connected stick uses the module Module Setup finds for it (its
-            # bound file first), even when another file also names it.
+            # A connected stick uses the module Module Setup finds for it
+            # (registry.resolve_module_slug), even when another file also
+            # names it.
             if not guid or guid in dest or guid in passthrough:
                 continue
             name = str(getattr(dev, "name", "") or "")
@@ -114,10 +115,6 @@ class InputModuleRuntime(QtCore.QObject):
             except Exception:
                 continue
             if module is None:
-                continue
-            # Found only by its name while a file is bound to this exact
-            # stick: the bound file stays (twin sticks share a name).
-            if guid in claims and guid_key(module.bound_guid) != guid:
                 continue
             if module.is_output:
                 dest.add(guid)
