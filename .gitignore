@@ -28,3 +28,4 @@ dill_debug.log
 /export
 # Local testing data (modules, images, logs, settings): never committed.
 /User_Data/
+test/**/dill_debug*.log

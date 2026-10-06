@@ -95,7 +95,14 @@ def unit_test_dir(test_root_dir: pathlib.Path) -> pathlib.Path:
     return test_root_dir / "unit"
 
 
-@pytest.fixture(scope="package")
-def xml_dir(unit_test_dir: pathlib.Path) -> pathlib.Path:
-    """Returns the path for the directory with XML files for unit tests."""
-    return unit_test_dir / "xml"
+@pytest.fixture
+def xml_dir(unit_test_dir: pathlib.Path, tmp_path: pathlib.Path) -> pathlib.Path:
+    """A fresh copy of the unit tests' XML folder for each test. A test that
+    loads a profile and something later saves it (the profile remembers its
+    path) writes into the copy, never into the repo's test data (a full run
+    once rewrote xml/profile_auto_mapper.xml)."""
+    import shutil
+
+    copy = tmp_path / "xml"
+    shutil.copytree(unit_test_dir / "xml", copy)
+    return copy
