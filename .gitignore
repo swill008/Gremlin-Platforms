@@ -29,3 +29,6 @@ dill_debug.log
 # Local testing data (modules, images, logs, settings): never committed.
 /User_Data/
 test/**/dill_debug*.log
+
+# Agent command output the user watches live (tools/agent_log.py)
+.agent-logs/

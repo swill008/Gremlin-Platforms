@@ -100,6 +100,15 @@ commit, the program thread and layer rules, off-screen/safety rules.
 integration tests skip while it is open (run them at the end with it
 closed); full runs load the PC for ~3 min each.
 
+**Live agent output (user, 2026-10-07):** every agent pipes every shell
+command through `tools/agent_log.py <AGENT>` (`<command> 2>&1 | python
+tools/agent_log.py B1`); output goes to `.agent-logs/<AGENT>.log` and,
+prefixed, to `.agent-logs/all.log` (not in git). When agents start, open one
+Terminal tab per agent with `Get-Content .agent-logs\<AGENT>.log -Wait -Tail 50`
+plus one for `all.log`. Put the pipe rule in every agent's rules/prompt. If
+the app can't type into tabs (missing terminal-shell-integration script), give
+the user the commands to run.
+
 **Progress page (user, 2026-10-06):** https://claude.ai/artifact/NQJw6xzumYopoJn5NXJxqR
 (source `claude/progress/catchup-progress.html`; its data is one db document
 `progress/now`, written with the ArtifactData tool). Update it at every step
@@ -202,8 +211,8 @@ Stages 0-3 are written out in `claude/system-maps.md` ("The plan").
   - Zoom-in limit from 8x to about 10x (the page and photo look ~23%
     smaller at the same zoom).
   - Rulers 0-100 over the new page; grid sizes keep their page units.
-  - Convert the built-in maps and templates in the repo (`qml/maps`), redo
-    the golden images and layout tests.
+  - No built-in maps or stock photos ship (07 Q12); convert only the
+    layouts the tests use, and redo the golden images and layout tests.
   - Exports: the print area and Scale unaffected; a whole-page export just
     has more margin.
   - Open questions: (1) 30% per side (about 70% more area, recommended) or
