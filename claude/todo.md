@@ -103,7 +103,7 @@ closed); full runs load the PC for ~3 min each.
 message to the user with its one-line status.
 
 **Status:** CI baseline green (run 37521378227 on 0e790f73). Batch 1
-restarted 2026-10-06 with the 7-agent split above. **Batch 1 done: d68f4d88** (58 GL items fixed; full local run 2016 passed). Next: batch 2.
+restarted 2026-10-06 with the 7-agent split above. **Batch 1 done: d68f4d88** (58 GL items; run 2016 passed). **Batch 2 done: 31861922** (112 GL items; run 2215 passed). Next: 4 user questions, then batch 3.
 
 ## Next up (updated 2026-10-06)
 
