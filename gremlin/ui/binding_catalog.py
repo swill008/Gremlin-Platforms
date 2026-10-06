@@ -13,9 +13,10 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import error, shared_state
+from gremlin.base_classes import AbstractActionData
 from gremlin.modules import wiring
 from gremlin.modules.claim import type_of
-from gremlin.profile import InputItem, InputItemBinding
+from gremlin.profile import InputItem, InputItemBinding, Library
 from gremlin.signal import signal
 from gremlin.ui.module_inputs import ModuleClaimedInputModel
 
@@ -34,43 +35,17 @@ _WRAPPERS = {
 }
 
 def _remap_ids(node: ElementTree.Element, id_map: dict[uuid.UUID, uuid.UUID]) -> None:
-    for entry in node.iter():
-        if "id" in entry.attrib:
-            try:
-                old = uuid.UUID(entry.attrib["id"])
-            except ValueError:
-                old = None
-            if old in id_map:
-                entry.attrib["id"] = str(id_map[old])
-        text = (entry.text or "").strip()
-        if not text:
-            continue
-        try:
-            old = uuid.UUID(text)
-        except ValueError:
-            continue
-        if old in id_map:
-            entry.text = str(id_map[old])
+    Library.remap_ids(node, id_map)
 
 
-def _clone_action(action, library, id_map: dict[uuid.UUID, uuid.UUID]):
-    """Copy one action tree into the library under new ids."""
-    if action is None:
-        return None
-    if action.id in id_map:
-        return library.get_action(id_map[action.id])
-    for child in list(action.get_actions()[0] or []):
-        _clone_action(child, library, id_map)
-    xml = action.to_xml()
-    if xml is None:
-        return None
-    new_id = uuid.uuid4()
-    id_map[action.id] = new_id
-    _remap_ids(xml, id_map)
-    copy = type(action)(action.behavior_type)
-    copy.from_xml(xml, library)
-    library.add_action(copy)
-    return copy
+def _clone_action(
+    action: AbstractActionData | None,
+    library: Library,
+    id_map: dict[uuid.UUID, uuid.UUID],
+) -> AbstractActionData | None:
+    """Copy one action tree into the library under new ids. Unfinished
+    actions too: pane edits must not reach the real input before OK."""
+    return library.clone_action(action, id_map, draft=True)
 
 
 def _clone_binding(binding: InputItemBinding, shadow: InputItem) -> InputItemBinding:
@@ -111,18 +86,40 @@ def _fingerprint_item(item: InputItem) -> str:
     return "\n--\n".join(_fingerprint(binding) for binding in item.action_sequences)
 
 
+def _unwritable_state(action) -> str:
+    """The fields of an action to_xml can't write yet, as text."""
+
+    def plain(value: object) -> object:
+        if hasattr(value, "device_guid") and hasattr(value, "input_id"):
+            return tuple(
+                getattr(value, name) for name in ("device_guid", "input_type", "input_id")
+            )
+        if hasattr(value, "tag") and hasattr(value, "id"):
+            return str(getattr(value, "id"))
+        if isinstance(value, (list, tuple)):
+            return [plain(entry) for entry in value]
+        return value
+
+    try:
+        fields = sorted(vars(action).items())
+    except TypeError:
+        return ""
+    return repr([(name, plain(value)) for name, value in fields])
+
+
 def _fingerprint(binding: InputItemBinding) -> str:
     chunks: list[str] = []
 
     def walk(action) -> None:
         if action is None:
             return
-        node = action.to_xml()
+        # Unfinished ones too: the pane edits a copy, so an edit to one (a
+        # first axis picked) must make OK write it.
+        node = action.to_xml(True)
         if node is not None:
             chunks.append(ElementTree.tostring(node, encoding="unicode"))
         else:
-            kids = action.get_actions()[0] or []
-            chunks.append(f"{getattr(action, 'tag', '')}:{len(kids)}")
+            chunks.append(f"{getattr(action, 'tag', '')}:{_unwritable_state(action)}")
         for child in action.get_actions()[0] or []:
             walk(child)
 

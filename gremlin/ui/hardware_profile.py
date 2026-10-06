@@ -29,6 +29,7 @@ from gremlin.modules.registry import (
     device_has_name,
     is_output_name,
     plain_slug,
+    read_doc,
     resolve_module_slug,
 )
 from gremlin.signal import signal
@@ -316,33 +317,13 @@ def _write_bindings(data: dict[str, str]) -> None:
 
 
 def module_json_path(device_name: str, guid: str = "") -> Path:
-    """The module file for this device.
-
-    A binding may be used only when that file belongs to this device. A vJoy
-    save must not write another vJoy's module file.
+    """The module file for this device: the one Run, Module Setup and the
+    Button Map use (registry.resolve_module_slug). It had a rule of its own,
+    so a Device Pack or the Output View could open a different file. A file
+    of another device (another vJoy's) is never used: the shared rule skips
+    it.
     """
-    own = _slug(device_name)
-    own_path = _maps_dir() / f"{own}.json"
-    slug = resolve_module_slug(device_name, guid_for_module(device_name, guid))
-    if not slug or slug == own:
-        return own_path
-    bound = _maps_dir() / f"{slug}.json"
-    if not bound.is_file():
-        return bound
-    try:
-        doc = json.loads(bound.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return own_path
-    if not isinstance(doc, dict):
-        return own_path
-    named = str(doc.get("device") or "").strip().lower()
-    this = str(device_name or "").strip().lower()
-    if named and named == this:
-        return bound
-    key = stored_guid_key(guid)
-    if key and stored_guid_key(doc.get("boundGuidLocal")) == key:
-        return bound
-    return own_path
+    return _active_module_path(device_name, guid)
 
 
 def module_file_choices(device_name: str, guid: str = "") -> list[str]:
@@ -690,8 +671,9 @@ def undo_last_import() -> str:
             if dest.is_file():
                 from gremlin import history_modules
 
-                history_modules.note_delete(dest)
-                dest.unlink()
+                # History records the delete once it went through.
+                with history_modules.deleting(dest):
+                    dest.unlink()
             note = "The new module file was removed."
         else:
             _replace_file(dest, previous)
@@ -722,9 +704,8 @@ def import_module_file(device_name: str, guid: str, file_name: str, direction: s
             return "That file is already this device's file."
     except OSError:
         return "That file could not be read."
-    try:
-        doc = json.loads(src.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    doc = read_doc(src)
+    if doc is None:
         trace("READ", "Configure Module", "import_module_file", src, "error")
         return "That file could not be read."
     trace("READ", "Configure Module", "import_module_file", src, "ok")
@@ -858,6 +839,16 @@ def _live_devices() -> list:
         return []
 
 
+def _other_users(slug: str, device_name: str, guid: str) -> set[str]:
+    """The other devices that use module file slug (binding store ids, and
+    connected devices whose file it is). Name entries are left out: each is
+    saved with its device's id, and a renamed stick's old name entry is the
+    stick itself."""
+    key = stored_guid_key(guid) or _guid_for_name(device_name)
+    users = {user for user in _users_of_slug(slug) if not user.startswith("name:")}
+    return users - ({key} if key else set())
+
+
 def _users_of_slug(slug: str) -> set[str]:
     users: set[str] = set()
     for key, value in _binding_store().items():
@@ -872,15 +863,14 @@ def _users_of_slug(slug: str) -> set[str]:
 
 
 def delete_module_file(device_name: str, guid: str) -> str:
-    """Delete this device's own file. Do not delete, or unhook, a different file."""
-    slug = _slug(device_name)
+    """Delete this device's file (the one it opens: a renamed stick's is its
+    old file). Do not delete, or unhook, a file another stick uses."""
+    path = _active_module_path(device_name, guid)
+    slug = path.stem
     key = stored_guid_key(guid) or _guid_for_name(device_name)
-    others = _users_of_slug(slug) - ({key} if key else set())
     name_key = _name_key(device_name)
-    others.discard(name_key)
-    if others:
+    if _other_users(slug, device_name, guid):
         return "Another stick is using this file."
-    path = _maps_dir() / f"{slug}.json"
     if path.is_file():
         # The file holds claims, calibration and the Button Map layout: keep
         # a copy in the deleted devices folder, or do not delete it.
@@ -889,8 +879,9 @@ def delete_module_file(device_name: str, guid: str) -> str:
             return "Could not keep a copy of the module file, so it was not deleted."
         from gremlin import history_modules
 
-        history_modules.note_delete(path)
-        path.unlink()
+        # History records the delete once it went through.
+        with history_modules.deleting(path):
+            path.unlink()
         trace(
             "SAVE", "Configure Module", "delete_module_file", path,
             f"removed, copy at {kept}",
@@ -969,13 +960,11 @@ def _active_module_path(device_name: str, guid: str) -> Path:
 
 
 def _own_file_shared(device_name: str, guid: str) -> bool:
-    own = _slug(device_name)
-    if not (_maps_dir() / f"{own}.json").is_file():
+    """True when another stick uses this device's file (the one it opens)."""
+    path = _active_module_path(device_name, guid)
+    if not path.is_file():
         return False
-    key = stored_guid_key(guid) or _guid_for_name(device_name)
-    others = _users_of_slug(own) - ({key} if key else set())
-    others.discard(_name_key(device_name))
-    return bool(others)
+    return bool(_other_users(path.stem, device_name, guid))
 
 
 def _device_stays_listed(device_name: str) -> bool:
@@ -1083,15 +1072,16 @@ def _clear_device_binding_keys(device_name: str, guid: str) -> None:
         _write_bindings(data)
 
 
-def _delete_own_module_files(device_name: str) -> str:
-    slug = _slug(device_name)
+def _delete_own_module_files(slug: str) -> str:
+    """Delete module file slug, its picture folder and old picture files."""
     try:
         path = _maps_dir() / f"{slug}.json"
         if path.is_file():
             from gremlin import history_modules
 
-            history_modules.note_delete(path)
-            path.unlink()
+            # History records the delete once it went through.
+            with history_modules.deleting(path):
+                path.unlink()
             trace("SAVE", "Delete Device", "_delete_own_module_files", path, "removed")
         folder = _maps_dir() / slug
         if folder.is_dir():
@@ -1151,13 +1141,16 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
             except OSError:
                 pass
         return json.dumps({"ok": False, "error": wire_error})
+    # The device's file is the one it opens (a renamed stick's old file),
+    # found before the bindings to it are cleared.
+    own_path = _active_module_path(name, guid)
     shared = _own_file_shared(name, guid)
     protected = is_output_name(name)
     file_error = ""
     if not shared and not protected:
-        file_error = _delete_own_module_files(name)
+        file_error = _delete_own_module_files(own_path.stem)
     _clear_device_binding_keys(name, guid)
-    own_left = (_maps_dir() / f"{_slug(name)}.json").is_file()
+    own_left = own_path.is_file()
     profile = current_profile
     if profile is None:
         saved = True
@@ -1243,18 +1236,9 @@ def _doc_direction(doc: dict, exported_name: str) -> str:
 
 
 def _read_json_dict(path: Path) -> dict | None:
-    try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-    except OSError:
-        return None
-    except ValueError as exc:
-        # A damaged file (bad text or not UTF-8) is skipped and named; it
-        # used to stop the whole Device Pack window.
-        import logging
-
-        logging.getLogger("system").warning(f"Skipped damaged file {path}: {exc}")
-        return None
-    return doc if isinstance(doc, dict) else None
+    # A damaged file (bad text or not UTF-8) is skipped and named; it used
+    # to stop the whole Device Pack window.
+    return read_doc(path)
 
 
 def _claim_summary(doc: dict) -> dict:
@@ -1280,8 +1264,8 @@ def _known_pack_devices() -> list[dict]:
         key = label.lower()
         if not key:
             return
-        slug = _slug(label)
-        path = _maps_dir() / f"{slug}.json"
+        # The file the device opens (a renamed stick's old file).
+        path = _active_module_path(label, guid)
         row = rows.get(key)
         if row is None:
             rows[key] = {
@@ -1289,7 +1273,7 @@ def _known_pack_devices() -> list[dict]:
                 "guid": guid,
                 "connected": bool(connected),
                 "hasFile": path.is_file(),
-                "fileName": f"{slug}.json",
+                "fileName": path.name,
             }
             return
         if guid and not row["guid"]:
@@ -1345,10 +1329,10 @@ def _suggest_pack_name(exported: str, devices: list[dict] | None = None) -> str:
     return ""
 
 
-def _target_direction(name: str) -> str:
+def _target_direction(name: str, guid: str = "") -> str:
     if is_output_name(name):
         return "dest"
-    path = _maps_dir() / f"{_slug(name)}.json"
+    path = _active_module_path(name, guid)
     doc = _read_json_dict(path) if path.is_file() else None
     if doc and str(doc.get("direction") or "").strip().lower() == "dest":
         return "dest"
@@ -1768,13 +1752,19 @@ class HardwareProfile(QtCore.QObject):
             return ""
         return str(self._device_guid)
 
+    def _module_slug(self, device_name: str) -> str:
+        """The device's module file (slug) by the shared rule: the Button Map
+        document, its pictures, its photo and the photo's safety copy all
+        use it. The photo used the device's name, so a renamed stick's photo
+        went where its Button Map never looked."""
+        guid = self._guid_for_this_device(device_name)
+        return resolve_module_slug(device_name, guid) or _slug(device_name)
+
     def _file_for(self, device_name: str) -> Path:
-        slug = resolve_module_slug(device_name, self._guid_for_this_device(device_name))
-        return _maps_dir() / f"{slug}.json"
+        return _maps_dir() / f"{self._module_slug(device_name)}.json"
 
     def _profile_dir(self, device_name: str) -> Path:
-        slug = resolve_module_slug(device_name, self._guid_for_this_device(device_name))
-        path = _maps_dir() / slug
+        path = _maps_dir() / self._module_slug(device_name)
         path.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -2253,8 +2243,7 @@ class HardwareProfile(QtCore.QObject):
     # --- recovery copies (autosave) ------------------------------------------
 
     def _recovery_file(self, device_name: str) -> Path:
-        slug = resolve_module_slug(device_name, self._guid_for_this_device(device_name))
-        return _maps_dir() / "recovery" / f"{slug}.json"
+        return _maps_dir() / "recovery" / f"{self._module_slug(device_name)}.json"
 
     @QtCore.Slot(str, str, result=bool)
     def saveRecovery(self, device_name: str, payload: str) -> bool:
@@ -2308,8 +2297,14 @@ class HardwareProfile(QtCore.QObject):
         self._path = str(path)
         self.pathChanged.emit()
         if path.is_file():
-            self._text = path.read_text(encoding="utf-8")
-            trace("READ", "Button Map", "load", path, "ok")
+            try:
+                self._text = path.read_text(encoding="utf-8")
+                trace("READ", "Button Map", "load", path, "ok")
+            except (OSError, ValueError):
+                # Not UTF-8 (damaged): shown empty; saving into it is
+                # refused (module_file.load_for_update).
+                self._text = ""
+                trace("READ", "Button Map", "load", path, "damaged")
         else:
             self._text = ""
             trace("READ", "Button Map", "load", path, "missing")
@@ -2439,7 +2434,7 @@ class HardwareProfile(QtCore.QObject):
         if ext not in _IMAGE_EXT:
             ext = ".jpg"
         name = device_name or self._device_name
-        slug = _slug(name)
+        slug = self._module_slug(name)
         self._into_library(src)
         folder = _maps_dir() / slug
         folder.mkdir(parents=True, exist_ok=True)
@@ -2457,8 +2452,7 @@ class HardwareProfile(QtCore.QObject):
             self._copy_file(src, dest)
         trace("SAVE", "Button Map", "copyImage", dest, "ok")
         rel = _asset_ref(slug, dest.name)
-        # Record the picture on this device's own file only. A shared module
-        # binding must not change every other card.
+        # Record the picture on the file the Button Map opens.
         path = _maps_dir() / f"{slug}.json"
         if path.is_file():
             try:
@@ -2480,7 +2474,8 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, result=bool)
     def clearImage(self, device_name: str) -> bool:
         name = device_name or self._device_name
-        folder = _maps_dir() / _slug(name)
+        slug = self._module_slug(name)
+        folder = _maps_dir() / slug
         for p in folder.glob("photo.*"):
             try:
                 p.unlink()
@@ -2488,7 +2483,7 @@ class HardwareProfile(QtCore.QObject):
             except OSError:
                 return False
         for ext in _IMAGE_EXT:
-            p = _maps_dir() / f"{_slug(name)}_photo{ext}"
+            p = _maps_dir() / f"{slug}_photo{ext}"
             if p.is_file():
                 try:
                     p.unlink()
@@ -2527,7 +2522,7 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str)
     def stashPhoto(self, device_name: str) -> None:
         """Keep the current photo before this session first changes it."""
-        slug = _slug(device_name or self._device_name)
+        slug = self._module_slug(device_name or self._device_name)
         stash = self._stash_dir(slug)
         if (stash / "manifest.json").is_file():
             return  # This session's starting photo is already kept.
@@ -2538,15 +2533,8 @@ class HardwareProfile(QtCore.QObject):
                 kept = stash / f"{i}{p.suffix}"
                 shutil.copy2(p, kept)
                 files.append({"kept": kept.name, "to": str(p.relative_to(_maps_dir()))})
-            image = None
-            doc_path = _maps_dir() / f"{slug}.json"
-            if doc_path.is_file():
-                try:
-                    loaded = json.loads(doc_path.read_text(encoding="utf-8"))
-                    if isinstance(loaded, dict):
-                        image = loaded.get("image")
-                except (OSError, json.JSONDecodeError):
-                    pass
+            loaded = read_doc(_maps_dir() / f"{slug}.json")
+            image = loaded.get("image") if loaded is not None else None
             (stash / "manifest.json").write_text(
                 json.dumps({"files": files, "image": image}), encoding="utf-8"
             )
@@ -2556,7 +2544,7 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, result=bool)
     def restorePhoto(self, device_name: str) -> bool:
         """Put the session's starting photo back. False when none was kept."""
-        slug = _slug(device_name or self._device_name)
+        slug = self._module_slug(device_name or self._device_name)
         stash = self._stash_dir(slug)
         manifest = stash / "manifest.json"
         if not manifest.is_file():
@@ -2595,13 +2583,13 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, result=bool)
     def hasPhotoStash(self, device_name: str) -> bool:
         """True while a photo change of this editing session isn't saved."""
-        slug = _slug(device_name or self._device_name)
+        slug = self._module_slug(device_name or self._device_name)
         return (self._stash_dir(slug) / "manifest.json").is_file()
 
     @QtCore.Slot(str)
     def dropPhotoStash(self, device_name: str) -> None:
         """The session was saved: its starting photo is no longer needed."""
-        slug = _slug(device_name or self._device_name)
+        slug = self._module_slug(device_name or self._device_name)
         shutil.rmtree(self._stash_dir(slug), ignore_errors=True)
 
     @QtCore.Slot(result=str)
@@ -2624,7 +2612,9 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def profilePhotoUrl(self, device_name: str) -> str:
-        own = _maps_dir() / _slug(device_name)
+        # The folder of the file the Button Map opens (a renamed stick's
+        # old file). The stock photos below go by the device's own name.
+        own = _maps_dir() / self._module_slug(device_name)
         for p in sorted(own.glob("photo.*")):
             if p.is_file():
                 return p.as_uri() + f"?t={int(p.stat().st_mtime_ns)}"

@@ -37,7 +37,7 @@ from gremlin.types import (
     InputType,
     ScanCode,
 )
-from gremlin.user_script import ModeVariable, Script
+from gremlin.user_script import Script, rename_mode_settings
 from gremlin.util import (
     clamp,
     create_subelement_node,
@@ -348,6 +348,131 @@ class Library:
         as the items composed of them.
         """
         self._actions: dict[uuid.UUID, AbstractActionData] = {}
+        # Editor draft copy -> the action it stands in for (pick lists show
+        # the copy, not both).
+        self._copied_from: dict[uuid.UUID, uuid.UUID] = {}
+
+    @staticmethod
+    def remap_ids(
+        node: ElementTree.Element, id_map: dict[uuid.UUID, uuid.UUID]
+    ) -> None:
+        """Swaps the action ids in this XML (attributes and text) by id_map."""
+        for entry in node.iter():
+            if "id" in entry.attrib:
+                try:
+                    old = uuid.UUID(entry.attrib["id"])
+                except ValueError:
+                    old = None
+                if old is not None and old in id_map:
+                    entry.attrib["id"] = str(id_map[old])
+            text = (entry.text or "").strip()
+            if not text:
+                continue
+            try:
+                old = uuid.UUID(text)
+            except ValueError:
+                continue
+            if old in id_map:
+                entry.text = str(id_map[old])
+
+    def clone_action(
+        self,
+        action: AbstractActionData | None,
+        id_map: dict[uuid.UUID, uuid.UUID] | None = None,
+        draft: bool = False,
+    ) -> AbstractActionData | None:
+        """Copies an action, and every action inside it, into the library
+        under new ids (id_map collects old -> new).
+
+        Unfinished actions are copied too, so editing a copy never changes
+        the original. None: the action can't be copied and is shared.
+        draft: the copy stands in for the original in an editor.
+        """
+        if action is None:
+            return None
+        if id_map is None:
+            id_map = {}
+        if action.id in id_map:
+            return self.get_action(id_map[action.id])
+        for child in list(action.get_actions()[0] or []):
+            self.clone_action(child, id_map, draft)
+        node = action.to_xml(True)
+        if node is not None:
+            id_map[action.id] = uuid.uuid4()
+            self.remap_ids(node, id_map)
+            copy = type(action)(action.behavior_type)
+            copy.from_xml(node, self)
+        else:
+            # Not writable yet (a Reference placeholder, a Merge Axis with no
+            # axes): copied field by field, its children as copied above.
+            copy = action.copy_unfinished()
+            if copy is None:
+                return None
+            id_map[action.id] = copy.id
+            for selector in action._valid_selectors():
+                for child in action.get_actions(selector)[0]:
+                    if child.id in id_map:
+                        child = self.get_action(id_map[child.id])
+                    copy.insert_action(child, selector)
+        self.add_action(copy)
+        if draft:
+            self._copied_from[copy.id] = action.id
+        return copy
+
+    def pick_list(
+        self,
+        predicate: Callable[[AbstractActionData], bool],
+        current: AbstractActionData | None,
+        item: InputItem | None,
+    ) -> list[AbstractActionData]:
+        """The actions an action's pick list offers: the current one, those in
+        the input being edited (item, the editor's draft), and those an input
+        of the open profile uses. A draft copy hides the action it stands in
+        for, so it isn't listed twice; once OK has written the copy onto an
+        input it is no longer a draft and the original (maybe still used by
+        another input) is listed again."""
+        draft: list[AbstractActionData] = []
+        if item is not None:
+            seen: set[uuid.UUID] = set()
+            pending = [
+                b.root_action
+                for b in item.action_sequences
+                if b.root_action is not None
+            ]
+            while pending:
+                action = pending.pop(0)
+                if action.id in seen:
+                    continue
+                seen.add(action.id)
+                draft.append(action)
+                pending.extend(action.get_actions()[0])
+        mine = ([current] if current is not None else []) + draft
+        from gremlin import shared_state
+
+        profile = shared_state.current_profile
+        used = (
+            profile.actions_in_use()
+            if profile is not None and profile.library is self
+            else None
+        )
+        if used is not None:
+            # Copies an input uses were committed by OK: no longer drafts.
+            for copy_id in [c for c in self._copied_from if c in used]:
+                del self._copied_from[copy_id]
+        hidden = {self._copied_from[a.id] for a in mine if a.id in self._copied_from}
+        in_use = [
+            a
+            for a in self._actions.values()
+            if used is None or a.id in used
+        ]
+        found: list[AbstractActionData] = []
+        ids: set[uuid.UUID] = set()
+        for action in mine + in_use:
+            if action.id in ids or action.id in hidden or not predicate(action):
+                continue
+            ids.add(action.id)
+            found.append(action)
+        return found
 
     def add_action(self, action: AbstractActionData) -> None:
         if action.id in self._actions:
@@ -368,6 +493,7 @@ class Library:
             )
         if key in self._actions:
             del self._actions[key]
+        self._copied_from.pop(key, None)
 
     def remove_unused(self, action: AbstractActionData, recursive: bool = True) -> None:
         """Removes the provided action and all its children if unsued.
@@ -378,6 +504,36 @@ class Library:
                 to the same removal check
         """
         self._remove_unused(action, recursive, self._used_by_inputs())
+
+    def used_elsewhere(
+        self, action: AbstractActionData, item: InputItem | None
+    ) -> bool:
+        """True when an input of the open profile other than item uses the
+        action (directly or inside another action)."""
+        from gremlin import shared_state
+
+        profile = shared_state.current_profile
+        if profile is None or profile.library is not self:
+            return False
+        for items in profile.inputs.values():
+            for other in items:
+                if other is item:
+                    continue
+                pending = [
+                    b.root_action
+                    for b in other.action_sequences
+                    if b.root_action is not None
+                ]
+                seen: set[uuid.UUID] = set()
+                while pending:
+                    entry = pending.pop()
+                    if entry is None or entry.id in seen:
+                        continue
+                    if entry.id == action.id:
+                        return True
+                    seen.add(entry.id)
+                    pending.extend(entry.get_actions()[0])
+        return False
 
     def _used_by_inputs(self) -> set[uuid.UUID]:
         """Actions the open profile's inputs use, when this is its library."""
@@ -403,6 +559,7 @@ class Library:
         # Delete before recursing, else children see this as still referenced
         children = action.get_actions()[0] if recursive else []
         self._actions.pop(action.id, None)
+        self._copied_from.pop(action.id, None)
 
         for child in children:
             self._remove_unused(child, True, used)
@@ -547,17 +704,24 @@ class Library:
 
         An explicit save does this. Checking for unsaved work must not.
         """
-        invalid_aids = [n.id for n in self._actions.values() if not n.is_valid()]
-        for action in self._actions.values():
-            for selector in action._valid_selectors():
-                to_remove = []
-                for i, child in enumerate(action.get_actions(selector)[0]):
-                    if child.id in invalid_aids:
-                        to_remove.append(i)
-                # Delete from the end so earlier removals do not shift the
-                # positions still waiting to be removed.
-                for i in reversed(to_remove):
-                    action.remove_action(i, selector)
+        # A child that is unfinished, or not in the library (a file listing
+        # it couldn't be loaded), goes. Again until nothing changes: a
+        # container a removal left unfinished goes from its parent too.
+        changed = True
+        while changed:
+            changed = False
+            invalid_aids = {aid for aid, n in self._actions.items() if not n.is_valid()}
+            for action in list(self._actions.values()):
+                for selector in action._valid_selectors():
+                    to_remove = []
+                    for i, child in enumerate(action.get_actions(selector)[0]):
+                        if child.id in invalid_aids or child.id not in self._actions:
+                            to_remove.append(i)
+                    # Delete from the end so earlier removals do not shift the
+                    # positions still waiting to be removed.
+                    for i in reversed(to_remove):
+                        action.remove_action(i, selector)
+                        changed = True
 
     def actions_in_use_by_type(self, action_type: type) -> list[AbstractActionData]:
         """Actions of that type that an input of the open profile uses (the
@@ -966,14 +1130,19 @@ class Profile:
         input_id: int | tuple,
         mode: str,
         snapshot: dict | None,
+        check_only: bool = False,
     ) -> None:
         """Replaces an input's actions with a snapshot (None: no actions).
-        The snapshot is read first: one that can't be read changes nothing."""
+        The snapshot is read first: one that can't be read changes nothing.
+        check_only: only that check (ProfileError when it can't be put back),
+        for a step that puts back several inputs."""
         if snapshot:
             if not self.modes.mode_exists(mode):
                 # An Undo or History entry from a mode deleted since.
                 raise error.ProfileError(f"The mode '{mode}' isn't in the profile.")
             _check_snapshot(snapshot)
+        if check_only:
+            return
         current = [
             item
             for item in self.inputs.get(device_id, [])
@@ -1349,7 +1518,11 @@ def _check_snapshot(snapshot: dict) -> None:
         trial.from_xml(root)
         item = InputItem(trial)
         item.from_xml(ElementTree.fromstring(snapshot["input"]))
-    except ElementTree.ParseError as e:
+    except error.ProfileError:
+        raise
+    except Exception as e:
+        # A damaged copy fails in many ways (bad XML, a missing property, a
+        # missing action): all of them mean it can't be put back.
         raise error.ProfileError(f"The kept copy of the input can't be read: {e}")
 
 
@@ -1522,11 +1695,10 @@ class ModeHierarchy:
                 new_name if mode == old_name else mode for mode in change._target_modes
             ]
         # Script settings that name the mode (it was left on the old name,
-        # the script stopped running and the setting was dropped on save).
+        # the script stopped running and the setting was dropped on save),
+        # also in a script that could not be loaded.
         for script in self._profile.scripts.scripts:
-            for variable in script.variables.values():
-                if isinstance(variable, ModeVariable) and variable.value == old_name:
-                    variable.value = new_name
+            rename_mode_settings(script, old_name, new_name)
 
         if self._profile.settings.startup_mode == old_name:
             self._profile.settings.startup_mode = new_name

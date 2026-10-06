@@ -190,16 +190,20 @@ def flush() -> None:
 def close(timeout: float = 2.0) -> None:
     """At quit: writes what is queued, here, and anything recorded from now
     on at once; waits (bounded) for a writer still writing, so the program
-    doesn't end in the middle of a line."""
+    doesn't end in the middle of a line. Never raises: quit goes on (an
+    update to install, a restart) whatever History couldn't write."""
     global _closing
     _closing = True
-    flush()
-    with _start_lock:
-        writer = _writer
-    if writer is not None and writer is not threading.current_thread():
-        _stop.set()
-        writer.join(timeout)
-    flush()
+    try:
+        flush()
+        with _start_lock:
+            writer = _writer
+        if writer is not None and writer is not threading.current_thread():
+            _stop.set()
+            writer.join(timeout)
+        flush()
+    except Exception:
+        syslog.exception("History: could not write the last changes")
 
 
 def _handle(item: dict | Callable[[], None]) -> None:
@@ -219,10 +223,14 @@ def _file(area: str) -> Path:
 def _append(entry: dict) -> None:
     from gremlin.ui.live_debug import trace
 
-    path = _file(entry["area"])
-    line = json.dumps(entry, ensure_ascii=False) + "\n"
+    path: Path | str = f"{entry.get('area')}.jsonl"
     with _write_lock:
         try:
+            # Finding the folder makes it (util.history_dir()): a folder that
+            # can't be made is a warning, not an error out of the writer
+            # thread or quit.
+            path = _file(entry["area"])
+            line = json.dumps(entry, ensure_ascii=False) + "\n"
             path.parent.mkdir(parents=True, exist_ok=True)
             # A line cut short by a crash: this entry starts on a line of its
             # own, or it would be lost with it.
@@ -230,7 +238,7 @@ def _append(entry: dict) -> None:
                 line = "\n" + line
             with open(path, "a", encoding="utf-8", newline="") as out:
                 out.write(line)
-        except OSError as exc:
+        except (OSError, TypeError, ValueError) as exc:
             syslog.warning(f"History: could not write {path}: {exc}")
             trace("SAVE", "History", "record", path, "error")
             return
@@ -257,9 +265,8 @@ def _text(path: Path) -> str:
 
 
 def _lines(area: str) -> list[dict]:
-    path = _file(area)
     try:
-        text = _text(path)
+        text = _text(_file(area))
     except OSError:
         return []
     entries = []
@@ -305,12 +312,12 @@ def keep_file(path: Path) -> str:
     except OSError:
         return ""
     name = hashlib.sha1(data).hexdigest() + Path(path).suffix.lower()
-    dest = files_folder() / name
-    if not dest.is_file():
-        try:
+    try:
+        dest = files_folder() / name
+        if not dest.is_file():
             dest.write_bytes(data)
-        except OSError:
-            return ""
+    except OSError:
+        return ""
     _kept_now.add(name)
     return name
 

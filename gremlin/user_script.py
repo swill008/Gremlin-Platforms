@@ -424,6 +424,21 @@ class ScriptVariableRegistry:
         return self._registry[script_id].get(name, None)
 
 
+def rename_mode_settings(script: Script, old_name: str, new_name: str) -> None:
+    """A script's mode settings naming old_name follow the new name, both
+    the loaded ones and those kept as saved (a script that could not be
+    loaded wrote the old name back on save)."""
+    for variable in script.variables.values():
+        if isinstance(variable, ModeVariable) and variable.value == old_name:
+            variable.value = new_name
+    for saved in getattr(script, "_saved_variables", ()):
+        if saved.get("type") != ModeVariable.xml_tag:
+            continue
+        value = saved.find("./property/name[.='value']/../value")
+        if value is not None and value.text == old_name:
+            value.text = new_name
+
+
 def describe_load_error(error_: BaseException, path: Path) -> str:
     """Why a script could not be loaded, in words for the Scripts page."""
     if isinstance(error_, FileNotFoundError) or not path.is_file():

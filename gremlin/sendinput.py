@@ -7,6 +7,7 @@ from __future__ import annotations
 import ctypes
 import ctypes.wintypes
 import enum
+import logging
 import math
 import threading
 import time
@@ -357,6 +358,11 @@ class MouseController:
         self._is_running = False
         if self._thread is not None and self._thread.is_alive():
             self._thread.join(timeout=2.0)
+        # No motion left for the next Run: it used to move the cursor at
+        # the speed an axis or button had at Stop as soon as it started.
+        self._motion_type = MotionType.Fixed
+        self._delta_generator = FixedMouseMotion(0, 0)
+        self._motion_commands = {}
 
     def _control_loop(self) -> None:
         """Loop responsible for creating and sending mouse motion events."""
@@ -431,7 +437,36 @@ def mouse_relative_motion(dx: int, dy: int) -> None:
     _send_input(_mouse_input(MOUSEEVENTF_MOVE, dx, dy))
 
 
+# Buttons pressed through here and not released yet (Stop lets go of them).
+_held_buttons: list[MouseButton] = []
+_held_buttons_lock = threading.Lock()
+
+
+def _note_button(button: MouseButton, is_pressed: bool) -> None:
+    with _held_buttons_lock:
+        if button in _held_buttons:
+            _held_buttons.remove(button)
+        if is_pressed:
+            _held_buttons.append(button)
+
+
+def release_held_buttons() -> None:
+    """Releases every mouse button still held down, last pressed first."""
+    with _held_buttons_lock:
+        buttons = list(_held_buttons)
+    for button in reversed(buttons):
+        # One failing release must not keep the others (or the rest of Stop)
+        # from running.
+        try:
+            mouse_release(button)
+        except Exception:
+            logging.getLogger("system").exception(
+                "Could not release a held mouse button"
+            )
+
+
 def mouse_press(button: MouseButton) -> None:
+    _note_button(button, True)
     if button == MouseButton.Left:
         _send_input(_mouse_input(MOUSEEVENTF_LEFTDOWN))
     elif button == MouseButton.Right:
@@ -445,6 +480,7 @@ def mouse_press(button: MouseButton) -> None:
 
 
 def mouse_release(button: MouseButton) -> None:
+    _note_button(button, False)
     if button == MouseButton.Left:
         _send_input(_mouse_input(MOUSEEVENTF_LEFTUP))
     elif button == MouseButton.Right:

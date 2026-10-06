@@ -549,7 +549,21 @@ class JoystickCondition(AbstractCondition):
             self.device_uuid = device_uuid
             self.device_lookup = DeviceDatabase().get_mapping_by_uuid(device_uuid)
 
+        def _find_joystick(self) -> None:
+            """Looks the stick up again while it is missing: one plugged in
+            after the profile loaded used to fail every press until reload."""
+            if self.joystick is None:
+                try:
+                    self.joystick = Joystick()[self.device_uuid]
+                except error.GremlinError:
+                    return
+                if self.device_lookup is None:
+                    self.device_lookup = DeviceDatabase().get_mapping_by_uuid(
+                        self.device_uuid
+                    )
+
         def get(self, value: Value) -> bool | float | HatDirection:
+            self._find_joystick()
             if self.joystick is None:
                 raise error.GremlinError(
                     f"ConditionAction: Joystick with UUID {self.device_uuid} "
@@ -571,6 +585,7 @@ class JoystickCondition(AbstractCondition):
                     )
 
         def display_name(self) -> str:
+            self._find_joystick()
             input_name = common.input_to_ui_string(self.input_type, self.input_id)
             if self.device_lookup:
                 input_name = self.device_lookup.input_name(

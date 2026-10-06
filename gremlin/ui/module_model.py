@@ -30,7 +30,8 @@ from gremlin.modules.claim import (
     kind_of,
     read_claim,
 )
-from gremlin.modules.registry import is_output_name, resolve_module_slug
+from gremlin.modules.registry import is_output_name, read_doc, resolve_module_slug
+from gremlin.modules.registry import modules as registry_modules
 from gremlin.ui.hardware_profile import (
     HardwareProfile,
     _maps_dir,
@@ -309,6 +310,30 @@ def _merged_order(saved: list[str], showing: list[str]) -> list[str]:
     return out
 
 
+def _renamed_into_order(order: list[str], rows: list, hidden: set[str]) -> list[str]:
+    """The card order with a renamed stick in its old card's place. A card
+    is named after its device; a renamed stick still opens its old module
+    file, whose name is its old card's. Without this the old card's place
+    stayed in the order for good and the stick went last. Only a file bound
+    to this stick counts: a file chosen in Module Setup that is another
+    (unplugged) stick's would take that stick's place."""
+    showing = {row.slug for row in rows}
+    bound = {module.slug: guid_key(module.bound_guid) for module in registry_modules()}
+    out = list(order)
+    for row in rows:
+        if row.direction != "source" or row.tab != "physical" or row.slug in out:
+            continue
+        try:
+            old = resolve_module_slug(row.raw_name or row.name, row.guid)
+        except Exception:
+            continue
+        if old == row.slug or old not in out or old in showing or old in hidden:
+            continue
+        if bound.get(old) and bound.get(old) == guid_key(row.guid):
+            out[out.index(old)] = row.slug
+    return out
+
+
 def _sizes() -> dict[str, tuple[int, int]]:
     _ensure_display_options()
     raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SIZES) or "")
@@ -356,13 +381,11 @@ def _load_module_doc(device_name: str, guid: str = "") -> dict:
     if not path.is_file():
         _plog("load miss", name=device_name, guid=guid, slug=slug, path=str(path))
         return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        _plog("load bad", name=device_name, guid=guid, path=str(path), error=exc)
-        return {}
-    if not isinstance(data, dict):
-        _plog("load bad", name=device_name, guid=guid, path=str(path), error="not an object")
+    # One reader for every module file: a damaged one (not UTF-8 too) reads
+    # as {} here; it used to stop Home, the Run lists and the card polling.
+    data = read_doc(path)
+    if data is None:
+        _plog("load bad", name=device_name, guid=guid, path=str(path))
         return {}
     claim = data.get("claim") if isinstance(data.get("claim"), dict) else {}
     _plog(
@@ -725,14 +748,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if device_name:
             path = module_json_path(device_name, guid)
             if path.is_file():
-                try:
-                    loaded = json.loads(path.read_text(encoding="utf-8"))
-                    if isinstance(loaded, dict):
-                        doc = loaded
-                    trace("READ", "Output Configuration", "viewConfigJson", path, "ok")
-                except (OSError, json.JSONDecodeError):
-                    doc = {}
-                    trace("READ", "Output Configuration", "viewConfigJson", path, "error")
+                loaded = read_doc(path)
+                doc = loaded or {}
+                result = "ok" if loaded is not None else "error"
+                trace("READ", "Output Configuration", "viewConfigJson", path, result)
             else:
                 trace("READ", "Output Configuration", "viewConfigJson", path, "missing")
         view = dict(_DEFAULT_VIEW)
@@ -945,9 +964,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
         expanded: list[str] = []
         for lead in leaders:
             expanded.extend(groups.get(lead, [lead]))
-        hidden = _hidden_slugs()
-        saved = [s for s in _order_slugs() if s not in hidden]
-        _set_order(_merged_order(saved, expanded))
+        # Hidden cards keep their places (they used to be dropped here, while
+        # a reload kept them): _merged_order keeps every card not showing.
+        _set_order(_merged_order(_order_slugs(), expanded))
         self._reload()
         self.panesChanged.emit()
 
@@ -1352,7 +1371,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         share a name but not a file."""
         if not device_name:
             return ""
-        return resolve_module_slug(device_name, guid)
+        return module_json_path(device_name, guid).stem
 
     @QtCore.Slot(str, str, result=str)
     def foreignModuleFile(self, guid: str, device_name: str) -> str:
@@ -1368,8 +1387,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=bool)
     def moduleFileExists(self, guid: str, device_name: str) -> bool:
-        del guid
-        return (_maps_dir() / f"{_slug(device_name)}.json").is_file()
+        """True when the file moduleFileFor names is saved (a renamed stick's
+        old file: it was looked for under the new name)."""
+        if not device_name:
+            return False
+        return module_json_path(device_name, guid).is_file()
 
     @QtCore.Slot(str, str, str, str, result=str)
     def importModuleFile(self, guid: str, device_name: str, file_name: str, direction: str) -> str:
@@ -1414,6 +1436,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
             if self._focus == slug:
                 self._focus = ""
             self._reload()
+            # Its card is gone: so is its place in the card order (a stick
+            # still plugged in keeps its card and its place).
+            if slug not in {row.slug for row in self._rows}:
+                order = _order_slugs()
+                if slug in order:
+                    _set_order([s for s in order if s != slug])
         return raw
 
     @QtCore.Slot(str, str, result=str)
@@ -1672,13 +1700,14 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 src = next((r for r in rows if r.direction == "source"), rows[0])
             self._focus = src.slug
 
-        order = _order_slugs()
+        saved_order = _order_slugs()
+        order = _renamed_into_order(saved_order, rows, hidden)
         if order:
             rank = {slug: index for index, slug in enumerate(order)}
             rows.sort(key=lambda row: rank.get(row.slug, 1000 + len(rank)))
         visible = [row.slug for row in rows]
         merged = _merged_order(order, visible)
-        if visible and merged != order:
+        if visible and merged != saved_order:
             _set_order(merged)
 
         apply_bound_targets(rows)

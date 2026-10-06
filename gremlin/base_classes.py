@@ -440,6 +440,16 @@ class AbstractActionData(ABC):
         clone._id = uuid.uuid4()
         return clone
 
+    def copy_unfinished(self) -> AbstractActionData | None:
+        """A copy under a new id, without children, of an action to_xml
+        can't write yet (Library.clone_action uses it for editor drafts).
+
+        Returns:
+            The copy, or None when the action can't be copied (it is then
+            shared, not copied)
+        """
+        return None
+
     def swap_uuid(self, old_uuid: uuid.UUID, new_uuid: uuid.UUID) -> bool:
         """Swaps occurrences of the old UUID with the new one for this action.
 

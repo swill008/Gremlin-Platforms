@@ -49,6 +49,26 @@ from gremlin.types import (
 
 MacroEntry = collections.namedtuple("MacroEntry", ["macro", "state"])
 
+# Keys a macro pressed and hasn't released yet: Stop lets go of them (they
+# used to stay down after Stop when it came between a press and its release).
+_held_keys: dict[tuple[int, bool], Key] = {}
+_held_keys_lock = Lock()
+
+# How long a step waits for another macro's step to finish sending.
+_STEP_LOCK_TIMEOUT = 2.0
+
+
+def release_held_keys() -> None:
+    """Sends a key up for every key a macro still holds, last pressed first."""
+    with _held_keys_lock:
+        keys = list(_held_keys.values())
+        _held_keys.clear()
+    for key in reversed(keys):
+        try:
+            send_key_up(key)
+        except Exception:
+            logging.getLogger("system").exception("Could not release a held key")
+
 
 class MacroManager(metaclass=SingletonMetaclass):
     """Manages the proper dispatching and scheduling of macros."""
@@ -76,6 +96,10 @@ class MacroManager(metaclass=SingletonMetaclass):
         self._run = 0
         # Set at Stop: a Pause or a repeat delay ends at once.
         self._stopped = Event()
+        # Held while a step sends its output: Stop waits for a step in
+        # flight, and no step starts after it (a press after the releases
+        # would stay down).
+        self._step_lock = Lock()
 
         self._run_scheduler_thread = None
 
@@ -123,6 +147,20 @@ class MacroManager(metaclass=SingletonMetaclass):
             with self._executing_macro_lock:
                 for key in self._executing_macro:
                     self._executing_macro[key] = False
+        self._release_held()
+
+    def _release_held(self) -> None:
+        """Lets go of the keys and mouse buttons still held (a macro stopped
+        between press and release, a release macro dropped from the queue,
+        a Map to Mouse button held at Stop)."""
+        # Bounded: a step stuck in a driver must not freeze Stop.
+        locked = self._step_lock.acquire(timeout=1.0)
+        try:
+            release_held_keys()
+            sendinput.release_held_buttons()
+        finally:
+            if locked:
+                self._step_lock.release()
 
     def queue_macro(self, macro: Macro) -> None:
         """Queues a macro in the schedule taking the repeat type into account.
@@ -280,7 +318,24 @@ class MacroManager(metaclass=SingletonMetaclass):
         for action in macro.sequence:
             if not self._wait_while_paused(macro, run, own_flag):
                 return False
-            action()
+            if isinstance(action, PauseAction):
+                action()  # ends at once on Stop; not under the lock
+                continue
+            # Checked again under the lock: Stop may have come since, and
+            # its releases must come after this step's output. Bounded: a
+            # step stuck in a driver ends the macros waiting behind it
+            # instead of blocking them all.
+            if not self._step_lock.acquire(timeout=_STEP_LOCK_TIMEOUT):
+                logging.getLogger("system").warning(
+                    "Macro ended: another macro's step did not finish"
+                )
+                return False
+            try:
+                if not self._going(macro, run, own_flag):
+                    return False
+                action()
+            finally:
+                self._step_lock.release()
         return True
 
     def _execute_macro(self, macro: Macro, run: int) -> None:
@@ -649,10 +704,16 @@ class KeyAction(AbstractAction):
         if self.key is None:
             return
 
+        ident = (self.key.scan_code, self.key.is_extended)
         if self.is_pressed:
             send_key_down(self.key)
+            with _held_keys_lock:
+                _held_keys.pop(ident, None)  # to the end: released first
+                _held_keys[ident] = self.key
         else:
             send_key_up(self.key)
+            with _held_keys_lock:
+                _held_keys.pop(ident, None)
 
     def to_xml(self) -> ElementTree.Element:
         node = self._create_node(self.tag)

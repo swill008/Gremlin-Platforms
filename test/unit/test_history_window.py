@@ -5,7 +5,8 @@
 """The History window, off-screen (history_window_smoke.py): opened for one
 device as Module Setup opens it, it lists that device's saved changes,
 shows one before and after, Restore Before puts the file back (a new
-change in the list), and Show All drops the device filter."""
+change in the list), Show All drops the device filter, and picking the
+same change again reads it again."""
 
 from __future__ import annotations
 
@@ -61,3 +62,9 @@ def test_restore_before_puts_the_file_back(run: dict) -> None:
 
 def test_show_all_drops_the_device(run: dict) -> None:
     assert run["about-after-show-all"] in ("", "Only ")
+
+
+def test_picking_the_same_change_again_reads_it_again(run: dict) -> None:
+    # pick() bumps shownRevision; selected alone doesn't change for the
+    # same entry, so the details stayed as first read.
+    assert run["repicked-title"] == "Changed since it was shown"

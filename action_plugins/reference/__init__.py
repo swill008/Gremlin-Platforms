@@ -91,15 +91,11 @@ class ReferenceModel(ActionModel):
             return True
 
         # Grab library and get all actions that fit with the given input
-        # modality, that an input uses (not deleted or replaced ones).
-        from gremlin import shared_state
-
-        profile = shared_state.current_profile
-        used = profile.actions_in_use() if profile is not None else None
-        actions = [
-            a for a in self.library.actions_by_predicate(selector)
-            if used is None or a.id in used
-        ]
+        # modality: those an input uses (not deleted or replaced ones) and
+        # those in the input being edited.
+        actions = self.library.pick_list(
+            selector, self._data, self._binding_model.input_item_binding.input_item
+        )
         return LabelValueSelectionModel(
             [a.action_label for a in actions],
             [str(a.id) for a in actions],
@@ -113,9 +109,11 @@ class ReferenceModel(ActionModel):
 
     @QtCore.Slot(str)
     def duplicateAction(self, value: str) -> None:
-        # Retrieve action and duplicate it before adding it to the tree
-        action = self.library.get_action(uuid.UUID(value)).clone()
-        self.library.add_action(action)
+        # Duplicate the action, and every action inside it, under new ids
+        # into the library before adding it to the tree.
+        action = self.library.clone_action(self.library.get_action(uuid.UUID(value)))
+        if action is None:
+            raise GremlinError("Reference: this action can't be duplicated.")
         self._replace_reference(action)
 
     def _replace_reference(self, action: AbstractActionData) -> None:
@@ -123,8 +121,9 @@ class ReferenceModel(ActionModel):
         self._binding_model.append_action(action, self.sequence_index)
         self._binding_model.remove_action(self.sequence_index)
 
-        # Delete the reference action itself
-        self.library.delete_action(self._data.id)
+        # Delete the reference action itself, unless an input still uses it
+        # (the pane edits a copy until OK; the real input keeps its own).
+        self.library.remove_unused(self._data)
 
     actions = QtCore.Property(
         LabelValueSelectionModel, fget=_get_actions, notify=modelChanged
@@ -169,6 +168,13 @@ class ReferenceData(AbstractActionData):
                 "Always invalid, use to insert an existing action into the profile.",
             )
         ]
+
+    @override
+    def copy_unfinished(self) -> ReferenceData:
+        copy = ReferenceData(self.behavior_type)
+        copy.action_label = self.action_label
+        copy.activation_mode = self.activation_mode
+        return copy
 
     @override
     def _valid_selectors(self) -> List[str]:

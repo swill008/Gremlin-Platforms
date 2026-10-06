@@ -138,10 +138,11 @@ def test_a_new_merge_axis_gets_the_next_free_name() -> None:
         ),
         _binding_model=SimpleNamespace(behavior_type=InputType.JoystickAxis),
         modelChanged=SimpleNamespace(emit=lambda: None),
+        _set_merge_action=lambda value: None,  # "+" selects the new one
     )
     with mock.patch.object(
         MergeAxisData, "create",
-        return_value=SimpleNamespace(label=""),
+        return_value=SimpleNamespace(label="", id="new"),
     ):
         MergeAxisModel.newMergeAxis(fake)
     assert added[0].label == "Merge Axis 3"

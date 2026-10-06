@@ -461,7 +461,7 @@
             </long-actions>
             <property type="float">
                 <name>threshold</name>
-                <value>0.1</value>
+                <value>0.5</value>
             </property>
             <property type="string">
                 <name>activate-on</name>

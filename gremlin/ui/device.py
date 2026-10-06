@@ -830,14 +830,20 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
         self.beginResetModel()
         item = self._mode_item(keys[index])
         if item is not None:
+            # Only this mode's input: an empty one in another mode may be a
+            # key added there on purpose (Add Key), which can't be told from
+            # one made by viewing the key. Its Delete shows there.
             self._profile.drop_inputs(dill.UUID_Keyboard, [item])
         self.endResetModel()
 
-    @QtCore.Slot(list, str)
-    def addKey(self, data: list[event_handler.Event], mode: str) -> None:
-        """Adds the pressed key to the profile in the mode the user is viewing."""
+    @QtCore.Slot(list, str, result=int)
+    def addKey(self, data: list[event_handler.Event], mode: str) -> int:
+        """Adds the pressed key to the profile in the mode the user is viewing.
+
+        Returns the key's row (-1: nothing added), for the page to select it.
+        """
         if not data:
-            return
+            return -1
 
         self.beginResetModel()
         self._profile.get_input_item(
@@ -848,6 +854,36 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
             True,
         )
         self.endResetModel()
+        return self._row_of_key(data[0].identifier)
+
+    @QtCore.Slot(InputIdentifier, result=int)
+    def rowOf(self, identifier: InputIdentifier | None) -> int:
+        """The row of this key, or -1 (no key, another device's input, or
+        a key no longer listed)."""
+        if (
+            identifier is None
+            or not identifier.isValid
+            or identifier.device_guid != dill.UUID_Keyboard
+        ):
+            return -1
+        return self._row_of_key(identifier.input_id)
+
+    def _row_of_key(self, key: Any) -> int:  # noqa: ANN401
+        try:
+            wanted = tuple(key)
+        except TypeError:
+            return -1
+        for row, listed in enumerate(self._keys()):
+            if tuple(listed) == wanted:
+                return row
+        return -1
+
+    def _items_of(self, key: Any) -> list[InputItem]:  # noqa: ANN401
+        """The key's inputs in every mode."""
+        if self._profile is None:
+            return []
+        items = self._profile.inputs.get(dill.UUID_Keyboard, [])
+        return [i for i in items if tuple(cast(Any, i.input_id)) == tuple(key)]
 
     @QtCore.Slot(int)
     def refreshInput(self, index: int) -> None:
@@ -904,9 +940,15 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
             case "description":
                 return _description_from_item(input_item) if input_item else ""
             case "inMode":
-                # Only this mode's actions can be deleted here: a key added
-                # in another mode only had a Delete button that did nothing.
-                return input_item is not None
+                # Delete only where it does something: this mode's actions,
+                # or a key with no actions in any mode (Delete removes it).
+                # A key only looked at in this mode has an empty input here
+                # (the editor makes one), which is nothing to delete.
+                if input_item is None:
+                    return False
+                if input_item.action_sequences:
+                    return True
+                return not any(i.action_sequences for i in self._items_of(key))
             case _:
                 return ""
 

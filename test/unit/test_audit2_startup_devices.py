@@ -215,13 +215,28 @@ def test_the_lookup_table_uses_the_shared_input_types() -> None:
 
 
 def test_the_tray_icon_follows_the_platform_qt_started_on(
-    tmp_path: pathlib.Path,
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import joystick_gremlin
 
+    # The tray follows the shared off-screen check, nothing of its own.
     source = inspect.getsource(joystick_gremlin.JoystickGremlinApp)
-    assert 'self.platformName() != "offscreen"' in source
+    assert "if not running_offscreen():" in source
     assert "QT_QPA_PLATFORM" not in source
+    # Before Qt starts the check reads the platform part of the variable;
+    # undone inside the test, Qt's teardown asks for the real instance.
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            joystick_gremlin.QtCore.QCoreApplication, "instance", lambda: None
+        )
+        patch.setattr(sys, "argv", ["joystick_gremlin.py"])
+        for value, expected in (
+            ("offscreen:configfile=x.json", True),
+            ("offscreen", True),
+            ("windows", False),
+        ):
+            patch.setenv("QT_QPA_PLATFORM", value)
+            assert joystick_gremlin.running_offscreen() is expected, value
 
     # With options the variable isn't just "offscreen", the platform still is.
     (tmp_path / "screen.json").write_text(
@@ -276,7 +291,7 @@ def test_swap_devices_lists_only_sticks(profile: Profile) -> None:
     profile.get_input_item(
         dill.UUID_Keyboard, InputType.Keyboard, (0x1E, False), "Default", True
     )
-    for device in (ids.LOGICAL_DEVICE, ids.OSC):
+    for device in (ids.LOGICAL_DEVICE, ids.OSC, ids.XBOX):
         profile.get_input_item(device, InputType.JoystickButton, 1, "Default", True)
     listed = [d.device_uuid for d in swap_devices.get_profile_devices(profile)]
     assert listed == [_STICK]
@@ -284,8 +299,8 @@ def test_swap_devices_lists_only_sticks(profile: Profile) -> None:
 
 @pytest.mark.parametrize(
     "device",
-    [ids.KEYBOARD, ids.LOGICAL_DEVICE, ids.OSC],
-    ids=["keyboard", "logical", "osc"],
+    [ids.KEYBOARD, ids.LOGICAL_DEVICE, ids.OSC, ids.XBOX],
+    ids=["keyboard", "logical", "osc", "xbox"],
 )
 def test_swap_devices_refuses_what_isnt_a_stick(
     profile: Profile, device: uuid.UUID

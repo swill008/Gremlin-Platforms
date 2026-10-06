@@ -65,6 +65,8 @@ _ENTRY_TITLES = {
     "recent-colours": "Recent colors",
     "display-mode": "Input names",
     "action-list": "Actions offered",
+    # The Actions offered list's stored order (History names it).
+    "action-priorities": "Actions offered",
     "action-sequence-information": "Action details",
 }
 
@@ -210,12 +212,38 @@ _GROUP_TITLES = {
 }
 
 
-def entry_title(name: str) -> str:
-    """An option's name as Options shows it ("01-chip-text" -> "Chip text")."""
+def entry_title(name: str, key: str = "") -> str:
+    """An option's name as Options shows it ("01-chip-text" -> "Chip text").
+    key ("section/group/name", for History): a name Options shows in more
+    than one group gets its group's title first ("Tempo duration")."""
     shown = re.sub(r"^[0-9]+-", "", name)
     if shown in _ENTRY_TITLES:
-        return _ENTRY_TITLES[shown]
-    return re.sub(r"[_-]+", " ", shown).capitalize()
+        title = _ENTRY_TITLES[shown]
+    else:
+        title = re.sub(r"[_-]+", " ", shown).capitalize()
+    group = _repeated_name_group(key) if key else ""
+    if group:
+        # "Duration" -> "Tempo duration"; "UI scale" keeps its capitals.
+        if not title[:2].isupper():
+            title = title[:1].lower() + title[1:]
+        title = f"{group} {title}"
+    return title
+
+
+def _repeated_name_group(key: str) -> str:
+    """The Options group title of a setting whose name repeats in _LAYOUT
+    (Double Tap, Smart Toggle and Tempo each have a "duration"), else ""."""
+    parts = tuple(str(key).split("/", 2))
+    if len(parts) != 3:
+        return ""
+    names = [k[2] for _s, groups in _LAYOUT for _g, keys in groups for k in keys]
+    if names.count(parts[2]) < 2:
+        return ""
+    for _section, groups in _LAYOUT:
+        for group, keys in groups:
+            if parts in keys:
+                return group
+    return ""
 
 
 def group_title(name: str) -> str:

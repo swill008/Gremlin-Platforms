@@ -122,6 +122,7 @@ import gremlin.ui.module_pairing  # noqa: F401
 import gremlin.ui.module_calibration  # noqa: F401
 import gremlin.ui.shell_option  # noqa: F401
 import gremlin.osc_persist  # noqa: F401
+import gremlin.windows_event_hook
 # isort: on
 
 
@@ -162,8 +163,49 @@ def exception_hook(
     gremlin.error_report.pass_on(exception_type, value, trace)
 
 
+def _platform_argument(argv: list[str]) -> str | None:
+    """The value of a -platform (or --platform) argument, if there is one."""
+    for i, arg in enumerate(argv[:-1]):
+        if arg in ("-platform", "--platform"):
+            return argv[i + 1]
+    return None
+
+
+def running_offscreen() -> bool:
+    """True when the program runs off-screen (tests, screenshot checks).
+
+    The one check for everything that reaches outside the program's own
+    windows: keyboard and mouse hooks, Windows message boxes, closing
+    another copy, HidHide, the tray icon. Once Qt has started, the platform
+    it started on decides; before that, the -platform argument or
+    QT_QPA_PLATFORM. Either can be a fallback list ("offscreen;minimal"),
+    where Qt starts on the first entry, and options after ':'
+    ("offscreen:configfile=...") don't count.
+    """
+    app = QtCore.QCoreApplication.instance()
+    if isinstance(app, QtGui.QGuiApplication):
+        return app.platformName() == "offscreen"
+    platform = _platform_argument(sys.argv)
+    if platform is None:
+        platform = os.environ.get("QT_QPA_PLATFORM", "")
+    first = platform.split(";", 1)[0]
+    return first.split(":", 1)[0].strip().lower() == "offscreen"
+
+
+def _no_hooks_offscreen() -> None:
+    """Off-screen, no keyboard or mouse hook is installed on the PC."""
+    if running_offscreen():
+        gremlin.windows_event_hook.enabled = False
+
+
 def _message_box(text: str, title: str, flags: int) -> int:
-    """A Windows message box (shown even off-screen; tests replace this)."""
+    """A Windows message box. Off-screen nothing is shown: the text is
+    logged and the answer is Cancel (2)."""
+    if running_offscreen():
+        logging.getLogger("system").warning(
+            f"Message box not shown (off-screen): {title}: {text}"
+        )
+        return 2
     return ctypes.windll.user32.MessageBoxW(None, text, title, flags)
 
 
@@ -455,6 +497,11 @@ def _other_gremlin_pids() -> list[int]:
 
 
 def _terminate_other_gremlin(pids: list[int]) -> None:
+    if running_offscreen():
+        logging.getLogger("system").warning(
+            f"Other Gremlin-Platforms not closed (off-screen): {pids}"
+        )
+        return
     protected = _this_process_tree()
     kernel32 = ctypes.windll.kernel32
     process_terminate = 0x0001
@@ -830,16 +877,22 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         )
         cmd_args, qt_argv = parser.parse_known_args(argv)
         super().__init__(qt_argv)
+        # Before the first EventListener (Backend, below) starts the hook.
+        _no_hooks_offscreen()
 
         configure_loggers()
         gremlin.ui.live_debug.start()
         self.syslog = logging.getLogger("system")
         register_config_options()
         gremlin.ui.log_option.apply_log_level()
-        try:
-            gremlin.ui.hidhide.apply_on_start()
-        except Exception:
-            self.syslog.exception("HidHide start")
+        # HidHide settings are for the whole PC, not for an off-screen run.
+        if running_offscreen():
+            self.syslog.info("HidHide start skipped (off-screen)")
+        else:
+            try:
+                gremlin.ui.hidhide.apply_on_start()
+            except Exception:
+                self.syslog.exception("HidHide start")
         sys.excepthook = exception_hook
         gremlin.error_report.install(gremlin.util.logs_dir())
         # Log When Not Responding (Options), and when the option changes.
@@ -912,10 +965,8 @@ class JoystickGremlinApp(QtWidgets.QApplication):
             changed.connect(self._theme_refresh_timer.start)
 
         self.tray_icon = None
-        # The platform Qt actually started on: the variable can carry
-        # options ("offscreen:configfile=...") and then put a real tray
-        # icon up during off-screen runs.
-        if self.platformName() != "offscreen":
+        # No real tray icon during off-screen runs.
+        if not running_offscreen():
             self.tray_icon = gremlin.ui.system_tray.SystemTrayIcon(self.main_window)
             self.aboutToQuit.connect(self.tray_icon.release_resources)
         self.syslog.info("Gremlin UI launching")
@@ -1019,6 +1070,7 @@ def _check_second_copy() -> tuple[QtCore.QLockFile | None, bool]:
 
 
 def main() -> int:
+    _no_hooks_offscreen()
     lock, start = _check_second_copy()
     if not start:
         return 0

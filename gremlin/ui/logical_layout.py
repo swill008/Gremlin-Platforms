@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Callable
+from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
@@ -24,9 +25,14 @@ from gremlin.ui.module_model import (
     module_exists,
 )
 from gremlin.plugin_manager import PluginManager
-from gremlin.profile import InputItem
+from gremlin.profile import (
+    InputItem,
+    InputItemBinding,
+    VirtualAxisButton,
+    VirtualHatButton,
+)
 from gremlin.signal import signal
-from gremlin.types import AxisMode, InputType
+from gremlin.types import AxisMode, DataInsertionMode, InputType
 from gremlin.modules.ids import guid_key
 from gremlin.modules.claim import claim_friendly, claim_ids, key_id, read_claim
 from gremlin.ui.binding_catalog import (
@@ -297,6 +303,14 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
     def _replay(self, entry: dict, reverse: bool) -> bool:
         """Plays a step; False when it couldn't be (a damaged copy)."""
         try:
+            # Every input copy is checked first: one that can't be put back
+            # leaves the whole step unplayed, not half of it.
+            profile = self._profile()
+            for link in entry["links"]:
+                if link.get("op") == "input" and profile is not None:
+                    guid, kind, number, mode = link["key"]
+                    side = link["before"] if reverse else link["after"]
+                    profile.put_input(guid, kind, number, mode, side, check_only=True)
             self._logical.restore(entry["before"] if reverse else entry["after"])
             self._play(entry["links"], reverse)
         except error.ProfileError as e:
@@ -354,8 +368,10 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     found.append((item, binding, child))
         return found
 
-    def _link_record(self, item, action, op: str) -> dict:
-        return {
+    def _link_record(
+        self, item, action, op: str, binding: InputItemBinding | None = None  # noqa: ANN001
+    ) -> dict:
+        record = {
             "op": op,
             "guid": str(item.device_id),
             "src_type": item.input_type,
@@ -367,6 +383,47 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             "scale": float(getattr(action, "axis_scaling", 1.0) or 1.0),
             "invert": bool(getattr(action, "button_inverted", False)),
         }
+        # Where the link sits: Undo puts it back into that binding, with its
+        # behaviour (a button-behaviour link on an axis stays one).
+        if (
+            binding is not None
+            and binding.root_action is not None
+            and binding in item.action_sequences
+        ):
+            kids = binding.root_action.get_actions()[0]
+            record["binding_index"] = item.action_sequences.index(binding)
+            record["behavior"] = binding.behavior
+            record["alone"] = len(kids) == 1
+            record["child_index"] = next(
+                (i for i, kid in enumerate(kids) if kid is action), len(kids)
+            )
+            if binding.virtual_button is not None:
+                record["virtual_button"] = ElementTree.tostring(
+                    binding.virtual_button.to_xml(), encoding="unicode"
+                )
+            node = action.to_xml(True)
+            if node is not None:
+                record["action"] = ElementTree.tostring(node, encoding="unicode")
+        return record
+
+    @staticmethod
+    def _virtual_button(
+        item: InputItem, behavior: InputType, text: str | None
+    ) -> VirtualAxisButton | VirtualHatButton | None:
+        """The binding's virtual button kept in a link record, or None."""
+        if text is None or behavior != InputType.JoystickButton:
+            return None
+        if item.input_type == InputType.JoystickAxis:
+            button = VirtualAxisButton()
+        elif item.input_type == InputType.JoystickHat:
+            button = VirtualHatButton()
+        else:
+            return None
+        try:
+            button.from_xml(ElementTree.fromstring(text))
+        except (ElementTree.ParseError, error.GremlinError, ValueError):
+            return None
+        return button
 
     def _add_link(self, record: dict):
         profile = self._profile()
@@ -395,7 +452,22 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 and _item.mode == item.mode
             ):
                 return None
-        action = PluginManager().create_instance("Map to Logical Device", src_type)
+        # The binding it was taken from: still there unless the link was
+        # its only action; else a new one with the old behaviour.
+        index = record.get("binding_index")
+        behavior = record.get("behavior") or src_type
+        virtual = self._virtual_button(item, behavior, record.get("virtual_button"))
+        if behavior != src_type and virtual is None:
+            behavior = src_type
+        binding = None
+        if (
+            index is not None
+            and not record.get("alone")
+            and 0 <= index < len(item.action_sequences)
+            and item.action_sequences[index].behavior == behavior
+        ):
+            binding = item.action_sequences[index]
+        action = PluginManager().create_instance("Map to Logical Device", behavior)
         if action is None:
             return None
         action.logical_input_type = logical_type
@@ -405,8 +477,30 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             action.axis_scaling = float(record.get("scale", 1.0))
         if logical_type == InputType.JoystickButton:
             action.button_inverted = bool(record.get("invert", False))
-        binding = item.add_item_binding()
-        binding.root_action.insert_action(action, "children")
+        if record.get("action"):
+            # Everything the link had (its label too), under the new id.
+            try:
+                node = ElementTree.fromstring(record["action"])
+                node.set("id", str(action.id))
+                action.from_xml(node, profile.library)
+            except (ElementTree.ParseError, error.GremlinError, ValueError):
+                pass
+        if binding is None:
+            binding = item.add_item_binding()
+            binding.behavior = behavior
+            binding.virtual_button = virtual
+            if index is not None:
+                item.action_sequences.remove(binding)
+                item.action_sequences.insert(
+                    min(max(int(index), 0), len(item.action_sequences)), binding
+                )
+            binding.root_action.insert_action(action, "children")
+        elif binding.root_action is not None:
+            kids = binding.root_action.get_actions()[0]
+            position = min(max(int(record.get("child_index", len(kids))), 0), len(kids))
+            binding.root_action.insert_action(
+                action, "children", DataInsertionMode.Prepend, position
+            )
         return action
 
     def _remove_link(self, record: dict) -> bool:
@@ -449,7 +543,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
     def _detach_links(self, kind: InputType, input_id: int) -> list[dict]:
         records = []
         for item, binding, action in list(self._links_for(kind, input_id)):
-            records.append(self._link_record(item, action, "remove"))
+            records.append(self._link_record(item, action, "remove", binding))
             root = binding.root_action
             kids, selectors = root.get_actions()
             for index, child in enumerate(list(kids)):
@@ -1158,7 +1252,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     # Capture the current axis settings before the link is removed.
                     for item, _binding, action in self._links_for(logical_kind, logical_id):
                         if str(item.device_id) == guid and item.input_type == src_type and item.input_id == src_id and item.mode == self._mode:
-                            record = self._link_record(item, action, "remove")
+                            record = self._link_record(item, action, "remove", _binding)
                             if isinstance(record["src_id"], tuple):
                                 record["src_id"] = list(record["src_id"])
                             break

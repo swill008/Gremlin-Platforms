@@ -273,7 +273,8 @@ ApplicationWindow {
         chosen.createLogical = (preview.missingLogical || []).length > 0 && _createLogical.checked
         var info = _parse(_hw.importPack(zipUrl, _saveAs.text, JSON.stringify(chosen)))
         status = info.ok ? (info.report || "Imported.") : (info.error || "Import failed.")
-        canUndo = info.ok === true && info.canUndo === true
+        // An import that wrote nothing keeps the one before it undoable.
+        canUndo = _hw.canUndoPackImport()
         if (info.ok)
             reloadDevices()
     }
@@ -281,7 +282,7 @@ ApplicationWindow {
     function undoImport() {
         var info = _parse(_hw.undoPackImport())
         status = info.ok ? (info.report || "Undid the import.") : (info.error || "Undo failed.")
-        canUndo = false
+        canUndo = _hw.canUndoPackImport()
         reloadDevices()
     }
 
@@ -367,7 +368,7 @@ ApplicationWindow {
             zipUrl = Helpers.fileDialogUrl(_pick)
             // Another pack: the last import stays.
             _hw.keepPackImport()
-            canUndo = false
+            canUndo = _hw.canUndoPackImport()
             var info = _parse(_hw.peekPackZip(zipUrl))
             if (!info.ok) {
                 status = info.error || "Could not read that pack."

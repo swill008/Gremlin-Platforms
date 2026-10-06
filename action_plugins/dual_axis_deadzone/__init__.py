@@ -137,12 +137,19 @@ class DualAxisDeadzoneModel(ActionModel):
         action.label = "Dual Axis Deadzone"
 
         self.library.add_action(action)
-        self.modelChanged.emit()
+        # The new one is the one shown (as picking it from the list).
+        self._set_deadzone(str(action.id))
 
     @QtCore.Property(LabelValueSelectionModel, notify=modelChanged)
     def deadzoneActionList(self) -> LabelValueSelectionModel:
+        # The one shown, those in the input being edited (the pane edits
+        # copies; "+" makes one no input uses yet) and those an input uses.
         deadzone_actions = sorted(
-            self.library.actions_in_use_by_type(DualAxisDeadzoneData),
+            self.library.pick_list(
+                lambda a: isinstance(a, DualAxisDeadzoneData),
+                self._data,
+                self._binding_model.input_item_binding.input_item,
+            ),
             key=lambda x: x.label,
         )
 
@@ -173,14 +180,17 @@ class DualAxisDeadzoneModel(ActionModel):
         if util.parse_id_or_uuid(uuid_str) == self._data.id:
             return
 
-        # Remove current input item assignments from the action being deselected
+        # Remove current input item assignments from the action being
+        # deselected, unless another input still uses it (clearing an axis
+        # would leave it unfinished there, and a save would drop it)
         item = self._binding_model.input_item_binding.input_item
         identifier = InputIdentifier(item.device_id, item.input_type, item.input_id)
 
-        if self._data.axis1 == identifier:
-            self._data.axis1 = InputIdentifier()
-        if self._data.axis2 == identifier:
-            self._data.axis2 = InputIdentifier()
+        if not self.library.used_elsewhere(self._data, item):
+            if self._data.axis1 == identifier:
+                self._data.axis1 = InputIdentifier()
+            if self._data.axis2 == identifier:
+                self._data.axis2 = InputIdentifier()
 
         # Update the library and action entries
         self._binding_model.append_action(
@@ -373,6 +383,22 @@ class DualAxisDeadzoneData(AbstractActionData):
             self.axis2.device_guid = new_uuid
             performed_swap = True
         return performed_swap
+
+    @override
+    def copy_unfinished(self) -> DualAxisDeadzoneData:
+        copy = DualAxisDeadzoneData(self.behavior_type)
+        copy.action_label = self.action_label
+        copy.activation_mode = self.activation_mode
+        copy.label = self.label
+        copy.inner_deadzone = self.inner_deadzone
+        copy.outer_deadzone = self.outer_deadzone
+        copy.axis1 = InputIdentifier(
+            self.axis1.device_guid, self.axis1.input_type, self.axis1.input_id
+        )
+        copy.axis2 = InputIdentifier(
+            self.axis2.device_guid, self.axis2.input_type, self.axis2.input_id
+        )
+        return copy
 
     @override
     def _handle_behavior_change(

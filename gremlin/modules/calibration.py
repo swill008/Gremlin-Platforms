@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import json
 import uuid
 from pathlib import Path
 from typing import Any
@@ -49,32 +48,28 @@ def _as_tuple(raw: object) -> tuple[int, int, int, int, bool] | None:
 
 
 def _load(path: Path) -> dict:
-    try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return doc if isinstance(doc, dict) else {}
+    return registry.read_doc(path) or {}
 
 
 def _source_modules() -> list[dict]:
-    """The input modules of connected sticks, by the device each is bound
-    to, else (the stick has a new id: another USB port, a reinstalled
-    driver) by its name, the way claims find their module. A stick found by
-    name is marked "rebind": saving its calibration records its new id."""
+    """The input modules of connected sticks, each as Module Setup and Run
+    find it (registry.for_device: by the device it is bound to, else, when
+    the stick has a new id, by its name). A stick found by name is marked
+    "rebind": saving its calibration records its new id."""
     physical = {guid_key(dev.device_guid): dev for dev in physical_devices()}
     modules = [m for m in registry.inputs() if m.slug not in _SKIP_SLUGS]
     found: dict[str, tuple[Any, bool]] = {}
-    by_guid = {guid_key(m.bound_guid): m for m in modules if m.bound_guid}
-    # Each stick's module as Module Setup finds it (registry.for_device),
-    # else one bound to the stick's id.
     for key, device in physical.items():
         try:
             module = registry.for_device(device.name, str(device.device_guid))
         except Exception:
             module = None
+        # No module, or an output one: Run passes none of its inputs, so
+        # there is nothing to calibrate (another file bound to the stick's
+        # id used to be shown and saved instead).
         if module is None or module.is_output or module.slug in _SKIP_SLUGS:
-            module = by_guid.get(key)
-        if module is None or module.slug in found:
+            continue
+        if module.slug in found:
             continue
         found[module.slug] = (device, guid_key(module.bound_guid) != key)
     rows = []

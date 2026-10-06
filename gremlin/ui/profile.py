@@ -826,6 +826,52 @@ def _clean_mode_name(name: str) -> str:
     return " ".join(str(name or "").split())
 
 
+def _follow_editor(old_name: str, new_name: str) -> None:
+    """The mode shown in the main window follows a renamed or deleted mode."""
+    from gremlin.ui.backend import Backend
+
+    # No main window (tests, tools): nothing to follow.
+    if Backend.instance is None:
+        return
+    state = Backend().ui_state
+    if state.currentMode == old_name and new_name:
+        state.setCurrentMode(new_name)
+
+
+def rename_mode(old_name: str, new_name: str) -> None:
+    """Renames a mode of the open profile everywhere it is named: the
+    profile, the running mode stack, the main window and the pages
+    (modeRenamed). Every rename goes through here."""
+    from gremlin.mode_manager import ModeManager
+
+    profile = shared_state.current_profile
+    if profile is None:
+        return
+    profile.modes.rename_mode(old_name, new_name)
+    ModeManager().rename_mode(old_name, new_name)
+    _follow_editor(old_name, new_name)
+    signal.modeRenamed.emit(old_name, new_name)
+    signal.modesChanged.emit()
+
+
+def delete_mode(name: str) -> None:
+    """Deletes a mode of the open profile everywhere: the profile, the
+    running mode stack, the main window (moves to the first mode) and the
+    pages (modeDeleted). Every delete goes through here (Undo Import
+    skipped all but the profile)."""
+    from gremlin.mode_manager import ModeManager
+
+    profile = shared_state.current_profile
+    if profile is None:
+        return
+    modes = profile.modes
+    modes.delete_mode(name)
+    ModeManager().drop_mode(name)
+    _follow_editor(name, modes.first_mode)
+    signal.modeDeleted.emit(name)
+    signal.modesChanged.emit()
+
+
 @ta.QmlElement
 class ModeHierarchyModel(QtCore.QObject):
     """Model exposing the mode hierarchy and allows managing it."""
@@ -846,13 +892,6 @@ class ModeHierarchyModel(QtCore.QObject):
     @property
     def current_modes(self) -> gremlin.profile.ModeHierarchy:
         return shared_state.current_profile.modes
-
-    def _follow_editor(self, old_name: str, new_name: str) -> None:
-        from gremlin.ui.backend import Backend
-
-        state = Backend().ui_state
-        if state.currentMode == old_name and new_name:
-            state.setCurrentMode(new_name)
 
     @QtCore.Slot(str, str, result=bool)
     def nameTaken(self, name: str, ignore: str) -> bool:
@@ -878,14 +917,8 @@ class ModeHierarchyModel(QtCore.QObject):
     def renameMode(self, old_name: str, new_name: str) -> None:
         new_name = _clean_mode_name(new_name)
         if old_name != new_name and not self.nameTaken(new_name, old_name):
-            self.current_modes.rename_mode(old_name, new_name)
-            from gremlin.mode_manager import ModeManager
-
-            ModeManager().rename_mode(old_name, new_name)
-            self._follow_editor(old_name, new_name)
-            signal.modeRenamed.emit(old_name, new_name)
+            rename_mode(old_name, new_name)
             self.modesChanged.emit()
-            signal.modesChanged.emit()
 
     @QtCore.Slot(str, result=int)
     def bindingCount(self, name: str) -> int:
@@ -896,14 +929,8 @@ class ModeHierarchyModel(QtCore.QObject):
         # A profile keeps at least one mode (the window disables Delete).
         if len(self.current_modes.mode_names()) <= 1:
             return
-        self.current_modes.delete_mode(name)
-        from gremlin.mode_manager import ModeManager
-
-        ModeManager().drop_mode(name)
-        self._follow_editor(name, self.current_modes.first_mode)
-        signal.modeDeleted.emit(name)
+        delete_mode(name)
         self.modesChanged.emit()
-        signal.modesChanged.emit()
 
     @QtCore.Slot(str, str)
     def setParent(self, mode_name: str, parent_name: str) -> None:
@@ -1332,9 +1359,14 @@ class ProfileDeviceListModel(QtCore.QAbstractListModel):
         self._devices: list[swap_devices.ProfileDeviceInfo] = []
         self.update_model()
         event_handler.EventListener().device_change_event.connect(self.update_model)
+        # A swap or another profile loaded: the list showed the old devices
+        # and counts, and a second Swap swapped everything back.
+        signal.profileChanged.connect(self.update_model)
 
+    @QtCore.Slot()
     def update_model(self) -> None:
-        """Updates the model if the connected devices change."""
+        """Lists the open profile's devices again (devices plugged in or out,
+        a swap, another profile)."""
         self.beginResetModel()
         self._devices = swap_devices.get_profile_devices(shared_state.current_profile)
         self.endResetModel()

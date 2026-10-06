@@ -1429,13 +1429,23 @@ ApplicationWindow {
                     openConfigureModule(card.direction === "dest" ? "dest" : "source", card)
                 }
                 onAutoMap: function(card) {
-                    Helpers.createComponent("DialogAutoMapper.qml", {"initialSlug": card.slug || ""})
+                    Helpers.createComponent("DialogAutoMapper.qml", {
+                        // The card's module file (a renamed stick's old file),
+                        // as the window's list names it; card.slug is its name.
+                        "initialSlug": String(_moduleModel.moduleFileFor(card.guid || "",
+                                card.rawName || card.name || "") || card.slug || "")
+                    })
                 }
                 onOpenPairing: function(card) {
                     pairingForCard(card)
                 }
                 onOpenCalibration: function(card) {
-                    Helpers.createComponent("DialogCalibration.qml", {"initialSlug": card.slug || ""})
+                    Helpers.createComponent("DialogCalibration.qml", {
+                        // The card's module file (a renamed stick's old file),
+                        // as the window's list names it; card.slug is its name.
+                        "initialSlug": String(_moduleModel.moduleFileFor(card.guid || "",
+                                card.rawName || card.name || "") || card.slug || "")
+                    })
                 }
                 onOpenDeviceInformation: function(card) {
                     Helpers.createComponent("DialogDeviceInformation.qml", {"initialGuid": card.guid || ""})

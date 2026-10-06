@@ -356,7 +356,8 @@ def main() -> None:
         QtTest.QTest.qWait(300)
         print(f"RESULT group-drawings {group}", flush=True)
         # After a crash with unsaved edits: opening the map keeps the new
-        # photo for Restore; Not now puts the saved one back (item 3).
+        # photo for Restore; Discard puts the saved one back (item 3). Not
+        # now keeps both (decision A, test_audit3_screens.py).
         js("var n = _buttonMap.targetName; _hw.stashPhoto(n);"
            " _hw.saveRecovery(n, JSON.stringify({nodes: [{id: 'z9', kind: 'draw',"
            " shape: 'rect', fx: 0.2, fy: 0.2, fw: 0.1, fh: 0.1}]})); 1")

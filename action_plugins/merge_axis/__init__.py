@@ -200,8 +200,14 @@ class MergeAxisModel(ActionModel):
 
     @QtCore.Property(LabelValueSelectionModel, notify=modelChanged)
     def mergeActionList(self) -> LabelValueSelectionModel:
+        # The one shown, those in the input being edited (the pane edits
+        # copies; "+" makes one no input uses yet) and those an input uses.
         merge_actions = sorted(
-            self.library.actions_in_use_by_type(MergeAxisData),
+            self.library.pick_list(
+                lambda a: isinstance(a, MergeAxisData),
+                self._data,
+                self._binding_model.input_item_binding.input_item,
+            ),
             key=lambda x: x.label,
         )
 
@@ -237,14 +243,17 @@ class MergeAxisModel(ActionModel):
         if util.parse_id_or_uuid(uuid_str) == self._data.id:
             return
 
-        # Remove current input item assignments from the action being deselected
+        # Remove current input item assignments from the action being
+        # deselected, unless another input still uses it (clearing an axis
+        # would leave it unfinished there, and a save would drop it)
         item = self._binding_model.input_item_binding.input_item
         identifier = InputIdentifier(item.device_id, item.input_type, item.input_id)
 
-        if self._data.axis_in1 == identifier:
-            self._data.axis_in1 = InputIdentifier()
-        if self._data.axis_in2 == identifier:
-            self._data.axis_in2 = InputIdentifier()
+        if not self.library.used_elsewhere(self._data, item):
+            if self._data.axis_in1 == identifier:
+                self._data.axis_in1 = InputIdentifier()
+            if self._data.axis_in2 == identifier:
+                self._data.axis_in2 = InputIdentifier()
 
         # Update the library and action entries
         self._binding_model.append_action(
@@ -290,7 +299,8 @@ class MergeAxisModel(ActionModel):
         action.label = f"Merge Axis {number}"
 
         self.library.add_action(action)
-        self.modelChanged.emit()
+        # The new one is the one shown (as picking it from the list).
+        self._set_merge_action(str(action.id))
 
     label = QtCore.Property(str, fget=_get_label, fset=_set_label, notify=modelChanged)
 
@@ -315,6 +325,10 @@ class MergeAxisModel(ActionModel):
     operation = QtCore.Property(
         str, fget=_get_operation, fset=_set_operation, notify=modelChanged
     )
+
+
+def _copy_identifier(source: InputIdentifier) -> InputIdentifier:
+    return InputIdentifier(source.device_guid, source.input_type, source.input_id)
 
 
 class MergeAxisData(AbstractActionData):
@@ -416,6 +430,17 @@ class MergeAxisData(AbstractActionData):
             self.axis_in2.device_guid = new_uuid
             performed_swap = True
         return performed_swap
+
+    @override
+    def copy_unfinished(self) -> MergeAxisData:
+        copy = MergeAxisData(self.behavior_type)
+        copy.action_label = self.action_label
+        copy.activation_mode = self.activation_mode
+        copy.label = self.label
+        copy.operation = self.operation
+        copy.axis_in1 = _copy_identifier(self.axis_in1)
+        copy.axis_in2 = _copy_identifier(self.axis_in2)
+        return copy
 
     @classmethod
     @override

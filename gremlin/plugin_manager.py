@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6 import QtQml
+from PySide6 import QtCore, QtQml
 
 from gremlin import (
     config,
@@ -34,6 +34,9 @@ if TYPE_CHECKING:
     PluginDict = dict[str, Plugin]
 
 
+# The QML module every action model and its helper elements live in.
+QML_MODULE = "Gremlin.ActionPlugins"
+
 # The input types an action can be offered for. The type-to-action map has
 # one list for each, so a plugin naming any other type is refused.
 ACTION_INPUT_TYPES: tuple[InputType, ...] = (
@@ -47,6 +50,10 @@ ACTION_INPUT_TYPES: tuple[InputType, ...] = (
 class PluginManager(metaclass=SingletonMetaclass):
     """Handles discovery and management of action plugins."""
 
+    # QML element names the core plugins put in QML_MODULE, besides their
+    # action models; a user plugin may not use them either.
+    _core_qml_names: frozenset[str] = frozenset()
+
     def __init__(self) -> None:
         """Initializes the action plugin manager."""
         self._plugins: PluginDict = {}
@@ -54,8 +61,9 @@ class PluginManager(metaclass=SingletonMetaclass):
         self._name_to_type_map: PluginDict = {}
         self._tag_to_type_map: PluginDict = {}
         self._parameter_requirements: dict[str, PluginList] = {}
-
-        self._discover_plugins(Path(util.resource_path("action_plugins")), True)
+        core_path = Path(util.resource_path("action_plugins"))
+        self._discover_plugins(core_path, True)
+        self._core_qml_names = frozenset(core_qml_names(core_path.name))
         user_plugins_path = config.Configuration().value(
             "global", "files", "plugin-directory"
         )
@@ -203,7 +211,7 @@ class PluginManager(metaclass=SingletonMetaclass):
                     # Register QML type.
                     type_id = QtQml.qmlRegisterType(
                         action.model,
-                        "Gremlin.ActionPlugins",
+                        QML_MODULE,
                         1,
                         0,
                         action.model.__name__,
@@ -261,6 +269,13 @@ class PluginManager(metaclass=SingletonMetaclass):
         ):
             raise error.GremlinError("its properties are not a list")
 
+        # A second registration of a name replaces the element QML creates
+        # (qmlRegisterType accepts it), so a built-in element would become
+        # the user plugin's class.
+        if model.__name__ in self._core_qml_names:
+            raise error.GremlinError(
+                f"QML type '{model.__name__}' is a built-in element"
+            )
         # Core plugins load first, so a clash means a user plugin would
         # replace a built-in action (or an earlier user plugin).
         for other in self._plugins.values():
@@ -274,3 +289,26 @@ class PluginManager(metaclass=SingletonMetaclass):
                 raise error.GremlinError(
                     f"QML type '{model.__name__}' is already used by '{other.name}'"
                 )
+
+
+def core_qml_names(package: str) -> set[str]:
+    """Names of the QObject classes the loaded core plugin modules define
+    for QML_MODULE (their QmlElement classes and base classes).
+
+    Args:
+        package: Name of the core plugin package ("action_plugins").
+    """
+    names: set[str] = set()
+    for name, module in list(sys.modules.items()):
+        if module is None or not (name == package or name.startswith(f"{package}.")):
+            continue
+        if getattr(module, "QML_IMPORT_NAME", None) != QML_MODULE:
+            continue
+        for value in list(vars(module).values()):
+            if (
+                isinstance(value, type)
+                and issubclass(value, QtCore.QObject)
+                and value.__module__ == name
+            ):
+                names.add(value.__name__)
+    return names

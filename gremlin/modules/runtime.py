@@ -40,6 +40,17 @@ def _vjoy_as_input_ids() -> set[int]:
         return set()
 
 
+def _connected_stick_ids() -> set[str]:
+    from gremlin import device_initialization
+
+    try:
+        devices = list(device_initialization.physical_devices() or [])
+    except Exception:
+        return set()
+    ids = {guid_key(getattr(dev, "device_guid", "")) for dev in devices}
+    return {key for key in ids if key}
+
+
 @SingletonDecorator
 class InputModuleRuntime(QtCore.QObject):
     """Hardware events in; claimed input-module events out.
@@ -74,12 +85,15 @@ class InputModuleRuntime(QtCore.QObject):
         dest: set[str] = set()
         passthrough = always_forwarded()
         as_input = _vjoy_as_input_ids()
+        connected = _connected_stick_ids()
         for module in registry.modules():
             guid = guid_key(module.bound_guid)
-            if not guid:
+            # A connected stick's module is the one registry.for_device finds
+            # (below), and only that one: an old second file bound to it
+            # (one marked output) used to block it at Run.
+            if not guid or guid in connected:
                 continue
             if not module.is_output:
-                # A connected stick is looked up again below.
                 claims[guid] = module.claim
             elif registry.vjoy_id_from_name(module.name) in as_input:
                 # a vJoy read back as an input: its events pass unfiltered
@@ -104,8 +118,8 @@ class InputModuleRuntime(QtCore.QObject):
             guid = guid_key(getattr(dev, "device_guid", ""))
             # A connected stick uses the module Module Setup finds for it
             # (registry.resolve_module_slug), even when another file also
-            # names it.
-            if not guid or guid in dest or guid in passthrough:
+            # names it. None found: no claim, so nothing of it gets through.
+            if not guid or guid in passthrough:
                 continue
             name = str(getattr(dev, "name", "") or "")
             if not name:

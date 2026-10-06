@@ -32,17 +32,42 @@ Item {
             _inputList.model.setMode(uiState.currentMode)
     }
 
-    // A profile loaded with the page open: the editor let go of the old
-    // profile's key, so the row still selected is shown again.
+    // The list was rebuilt (a key added or deleted, another mode or
+    // profile): rows move, so the highlight goes to the editor's key, or it
+    // stayed on the same row number, now another key. With no key in the
+    // editor (another profile loaded), the row still selected is shown.
     Connections {
         target: _inputList.model
         function onModelReset() {
-            if (editorLocked || !uiState || uiState.currentInput.isValid)
-                return
-            var row = _inputList.currentIndex
-            if (row >= 0 && row < _inputList.count)
-                uiState.setCurrentInput(_inputList.model.inputIdentifier(row), row)
+            // Once the list has taken the reset in.
+            Qt.callLater(followEditor)
         }
+    }
+
+    function followEditor() {
+        if (editorLocked || !uiState)
+            return
+        var current = uiState.currentInput
+        if (current && current.isValid) {
+            var at = _inputList.model.rowOf(current)
+            if (at >= 0 && (at !== _inputList.currentIndex || uiState.currentInputIndex !== at))
+                selectRow(at)
+            return
+        }
+        var row = _inputList.currentIndex
+        if (row >= 0 && row < _inputList.count)
+            uiState.setCurrentInput(_inputList.model.inputIdentifier(row), row)
+    }
+
+    // Highlights a row and shows its key in the editor (the editor keeps
+    // the row number: the right row is refreshed when its actions change).
+    function selectRow(row) {
+        if (row < 0 || row >= _inputList.count)
+            return
+        if (_inputList.currentIndex !== row)
+            _inputList.currentIndex = row
+        else
+            uiState.setCurrentInput(_inputList.model.inputIdentifier(row), row)
     }
 
     // After a delete the editor moves to the row now in that place (it
@@ -158,7 +183,8 @@ Item {
             enabled: !editorLocked
 
             text: "Add Key"
-            callback: (inputs) => { _inputList.model.addKey(inputs, uiState.currentMode) }
+            // The key added is the one shown.
+            callback: (inputs) => { selectRow(_inputList.model.addKey(inputs, uiState.currentMode)) }
             multipleInputs: false
             eventTypes: ["key"]
         }

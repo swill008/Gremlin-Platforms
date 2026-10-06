@@ -97,6 +97,15 @@ def test_replace_then_undo(run: dict) -> None:
     assert run["undo-hidden"] is True
 
 
+def test_a_failed_import_keeps_undo_import(run: dict) -> None:
+    # The backend keeps the earlier import; the button has to stay with it.
+    assert "could not be written" in run["status-failed"]
+    assert run["backend-undo-after-failed"] is True
+    assert run["undo-after-failed"] is True
+    # And Undo Import still puts back the first import.
+    assert run["default-undone"] == [1, 3, 5]
+
+
 def test_a_missing_driver_is_told_before_import(run: dict) -> None:
     assert run["drivers-shown"] is True
     assert run["drivers"].startswith("vJoy is not installed or not running:")

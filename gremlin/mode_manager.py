@@ -73,13 +73,15 @@ class ModeSequence:
         self.modes = modes
         self._current_index = -1
 
-    def next(self, current: str | None = None) -> str:
+    def next(self, current: str | None = None, known: set[str] | None = None) -> str:
         """Returns the next mode in the sequence.
 
         Args:
             current: the mode now active: the result is the one after it (the
                 first when it isn't in the sequence). Without it, the
                 sequence's own counter is used.
+            known: the modes that exist; others (deleted after the action
+                named them) are skipped. None or empty: no check.
 
         Returns:
             Next mode in the sequence, wrapping around at the end.
@@ -94,6 +96,12 @@ class ModeSequence:
                 self._current_index = 0
         else:
             self._current_index = (self._current_index + 1) % len(self.modes)
+        if known:
+            # A deleted mode is stepped over (the cycle stayed put on it).
+            for _ in range(len(self.modes)):
+                if self.modes[self._current_index] in known:
+                    break
+                self._current_index = (self._current_index + 1) % len(self.modes)
         return self.modes[self._current_index]
 
 
@@ -142,6 +150,16 @@ def resolve_start_mode(active_profile: Profile) -> str:
         if last_mode in mode_names:
             return last_mode
     return active_profile.modes.first_mode
+
+
+def _known_modes() -> set[str]:
+    """The running profile's modes; with none running, the open profile's."""
+    from gremlin.event_handler import EventHandler
+
+    known = set(getattr(EventHandler(), "known_modes", set()))
+    if not known and shared_state.current_profile is not None:
+        known = set(shared_state.current_profile.modes.mode_names())
+    return known
 
 
 @SingletonDecorator
@@ -248,9 +266,12 @@ class ModeManager(QtCore.QObject):
     def cycle(self, sequence: ModeSequence) -> None:
         if not sequence.modes:  # nothing to cycle through
             return
-        self.switch_to(
-            Mode(sequence.next(self.current.name), self.current.name)
-        )
+        target = sequence.next(self.current.name, _known_modes())
+        # Only the current mode left to go to (a one-mode Cycle, or the
+        # others deleted): stay, rather than stack the mode on itself.
+        if target == self.current.name:
+            return
+        self.switch_to(Mode(target, self.current.name))
 
     def previous(self) -> None:
         if len(self._mode_stack) < 2:
@@ -275,11 +296,7 @@ class ModeManager(QtCore.QObject):
         # A mode the profile no longer has (deleted after an action named
         # it): switching to it left every input with nothing to do. The
         # running profile's modes; with none running, the open profile's.
-        from gremlin.event_handler import EventHandler
-
-        known = set(getattr(EventHandler(), "known_modes", set()))
-        if not known and shared_state.current_profile is not None:
-            known = set(shared_state.current_profile.modes.mode_names())
+        known = _known_modes()
         if known and mode.name not in known:
             from gremlin.log_once import log_once
 

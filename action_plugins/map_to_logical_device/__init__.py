@@ -136,12 +136,15 @@ class MapToLogicalDeviceFunctor(AbstractFunctor):
             if self.thread.is_alive():
                 self._report_stuck_loop()
                 return
+        from gremlin import code_runner
+
         # Set here, not in the thread: a second event before the thread
         # starts would otherwise join it, on the main thread.
         self.thread_running = True
         self.thread = threads.start(
             "logical device relative axis",
             self.relative_axis_thread,
+            code_runner.run_number(),
             stop=self._ask_to_stop,
         )
 
@@ -159,7 +162,11 @@ class MapToLogicalDeviceFunctor(AbstractFunctor):
         """Ends the relative axis loop after its current step."""
         self.thread_running = False
 
-    def relative_axis_thread(self) -> None:
+    def relative_axis_thread(self, run: int | None = None) -> None:
+        """Moves the logical axis each step; ends with Stop (run: the Run it
+        belongs to, None: no Run to follow)."""
+        from gremlin import code_runner
+
         input = self._logical[
             LogicalDevice.Input.Identifier(
                 self.data.logical_input_type, self.data.logical_input_id
@@ -167,6 +174,11 @@ class MapToLogicalDeviceFunctor(AbstractFunctor):
         ]
         self.axis_value = input.value
         while self.thread_running:
+            # Stop (or Stop and Run again) ends it: it used to go on sending
+            # into the next Run.
+            if run is not None and code_runner.run_number() != run:
+                self.thread_running = False
+                return
             # If the value was changed from what we set it to in the last
             # iteration, terminate the thread
             change = input.value - self.axis_value

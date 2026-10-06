@@ -1015,13 +1015,27 @@ def _merge_module(
             notes.append("No friendly names were written.")
     if prefix + "calibration" in chosen and isinstance(incoming.get("calibration"), dict):
         stored = base.get("calibration") if isinstance(base.get("calibration"), dict) else {}
+        from gremlin.modules.calibration import _as_tuple
+
+        unusable = []
         for key, value in incoming["calibration"].items():
             try:
                 number = int(key)
             except (TypeError, ValueError):
                 continue
-            if number in axes:
-                stored[str(number)] = value
+            if number not in axes:
+                continue
+            # A curve loading would throw away (low not below high, the
+            # center outside them) doesn't replace a good one.
+            if _as_tuple(value) is None:
+                unusable.append(f"Axis {number}")
+                continue
+            stored[str(number)] = value
+        if unusable:
+            notes.append(
+                "Calibration that can't be used was left out: "
+                + ", ".join(unusable) + "."
+            )
         base["calibration"] = stored
     if prefix + "view" in chosen and isinstance(incoming.get("view"), dict):
         base["view"] = json.loads(json.dumps(incoming["view"]))
@@ -1565,9 +1579,10 @@ def undo_import() -> dict:
         try:
             if previous is None:
                 if path.is_file():
-                    # Tools > History shows the removal (and keeps the file).
-                    history_modules.note_delete(path)
-                    path.unlink()
+                    # Tools > History shows the removal (and keeps the
+                    # file) once it went through.
+                    with history_modules.deleting(path):
+                        path.unlink()
             else:
                 _replace_file(path, previous)
             trace("SAVE", "Device Pack", "undo_import", path, "ok")
@@ -1590,10 +1605,18 @@ def undo_import() -> dict:
             ]
             profile.inputs[wires["uid"]] = items + list(wires["removed"])
             profile.drop_unused_actions(profile.roots_of(wires["added"]))
+            # The full delete (running modes, main window, pages), as Manage
+            # Modes does; the profile alone left them on the deleted mode.
+            from gremlin.ui.profile import delete_mode
+
             for mode in reversed(wires["modes"]):
                 modes = profile.modes
-                if modes.mode_exists(mode) and modes.bindings_in_mode(mode) == 0:
-                    profile.modes.delete_mode(mode)
+                if (
+                    modes.mode_exists(mode)
+                    and modes.bindings_in_mode(mode) == 0
+                    and len(modes.mode_names()) > 1
+                ):
+                    delete_mode(mode)
             for ident in wires["logical"]:
                 if LogicalDevice().exists(ident):
                     LogicalDevice().delete(ident)
@@ -1838,6 +1861,10 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
     notes.extend(wire_notes)
     if not notes:
         return {"ok": False, "error": "Nothing in the pack matched the pieces you ticked."}
+    if not files and wires_undo is None:
+        # Nothing was written (an output that couldn't be, wires that
+        # weren't): the import before this one can still be undone.
+        return {"ok": False, "error": "\n".join(notes)}
     # A new import keeps the one before it for good (only an import that
     # changed something: a failed one leaves the last one undoable).
     drop_import_undo()

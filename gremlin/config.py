@@ -94,6 +94,18 @@ def announce_damaged_settings() -> None:
     _damaged_copy = ""
 
 
+def settings_history_title(keys: list[str]) -> str:
+    """A settings entry's title in Tools > History, by the names Options
+    shows ("plugin-directory" -> "Plugins folder", a repeated name with its
+    group: "Tempo duration"). Old entries are shown with it too."""
+    from gremlin.ui.option import entry_title
+
+    names = dict.fromkeys(
+        entry_title(str(key).rsplit("/", 1)[-1], str(key)) for key in keys
+    )
+    return "Changed " + ", ".join(names)
+
+
 class Configuration(metaclass=common.SingletonMetaclass):
     """Responsible for loading and saving configuration data."""
 
@@ -200,14 +212,11 @@ class Configuration(metaclass=common.SingletonMetaclass):
         )
         if not changed:
             return
-        # The names Options shows ("plugin-directory" -> "Plugins folder").
         from gremlin import history
-        from gremlin.ui.option import entry_title
 
-        names = [entry_title(key.rsplit("/", 1)[-1]) for key in changed]
         history.record(
             "settings",
-            "Changed " + ", ".join(names),
+            settings_history_title(changed),
             {"keys": changed},
             {key: json.loads(before[key]) for key in changed},
             {key: json.loads(after[key]) for key in changed},

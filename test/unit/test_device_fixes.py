@@ -175,6 +175,8 @@ def test_calibration_of_a_stick_found_by_id_leaves_its_binding(
     with (
         mock.patch.object(calibration, "physical_devices", lambda: [device]),
         mock.patch.object(registry, "inputs", lambda: [module]),
+        # The stick's file is the one the shared rule picks for it.
+        mock.patch.object(registry, "for_device", lambda *a, **k: module),
     ):
         assert calibration.module_for_slug("stick")["rebind"] is False
         assert calibration.write_axis("stick", 1, (-100, -5, 5, 100, True))

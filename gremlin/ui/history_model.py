@@ -129,9 +129,20 @@ def _settings_text(side: dict | None) -> str:
         return ""
     # Each setting by the name Options shows ("Plugins folder").
     return "\n".join(
-        f"{entry_title(key.rsplit('/', 1)[-1])}: {value}"
+        f"{entry_title(key.rsplit('/', 1)[-1], key)}: {value}"
         for key, value in side.items()
     )
+
+
+def _title(entry: dict) -> str:
+    """An entry's title. A settings entry's is made from its keys, so one
+    written before a name changed reads as a new one does."""
+    keys = (entry.get("subject") or {}).get("keys")
+    if entry.get("area") == "settings" and keys and isinstance(keys, list):
+        from gremlin.config import settings_history_title
+
+        return settings_history_title(keys)
+    return str(entry.get("title", ""))
 
 
 def describe(entry: dict) -> dict:
@@ -174,7 +185,7 @@ def describe(entry: dict) -> dict:
         )
         note = "Saved at once, with its pictures."
     return {
-        "title": entry.get("title", ""),
+        "title": _title(entry),
         "when": _when(entry.get("at", 0)),
         "area": history.AREAS.get(str(area or ""), str(area or "")),
         "before": texts[0],
@@ -249,6 +260,7 @@ def _restore_profile(entry: dict, side: dict | None, which: str) -> tuple[bool, 
 
 
 def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
+    from gremlin import history_modules
     from gremlin.modules import module_file
     from gremlin.util import modules_dir
 
@@ -261,8 +273,13 @@ def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
     missing = []
     for picture in side.get("pictures") or []:
         ref = str(picture.get("ref") or "")
-        dest = modules_dir() / ref.replace("\\", "/").lstrip("/")
-        if not history.restore_file(str(picture.get("keptFile") or ""), dest):
+        # "qml/maps/..." is in the modules folder, as the Button Map finds it.
+        dest = history_modules.picture_path(ref)
+        try:
+            put = history.restore_file(str(picture.get("keptFile") or ""), dest)
+        except OSError:
+            put = False
+        if not put:
             missing.append(ref)
     module_file.write_text(path, side["text"])
     _changed_everywhere()
@@ -364,7 +381,7 @@ class HistoryModel(QtCore.QAbstractListModel):
         if name == "areaName":
             return history.AREAS.get(str(entry.get("area") or ""), "")
         if name == "title":
-            return entry.get("title", "")
+            return _title(entry)
         return None
 
     @QtCore.Slot()
@@ -380,7 +397,7 @@ class HistoryModel(QtCore.QAbstractListModel):
             for e in self._all
             if _matches(e, self._filter)
             and all(
-                w in (e.get("title", "") + " " + json.dumps(e.get("subject"))).lower()
+                w in (_title(e) + " " + json.dumps(e.get("subject"))).lower()
                 for w in words
             )
         ]

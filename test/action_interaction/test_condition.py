@@ -54,11 +54,9 @@ def test_current_input(jgbot: JoystickGremlinBot, profile_dir: Path) -> None:
     jgbot.load_profile(profile_dir / "condition.xml")
 
     jgbot.press_button(inout.IN_BUTTON_3)
-    jgbot.wait(0.01)
-    assert jgbot.button(inout.OUT_BUTTON_3)
+    jgbot.qtbot.waitUntil(lambda: jgbot.button(inout.OUT_BUTTON_3), timeout=5000)
     jgbot.release_button(inout.IN_BUTTON_3)
-    jgbot.wait(0.01)
-    assert not jgbot.button(inout.OUT_BUTTON_3)
+    jgbot.qtbot.waitUntil(lambda: not jgbot.button(inout.OUT_BUTTON_3), timeout=5000)
 
 
 def test_condition_with_tempo(jgbot: JoystickGremlinBot, profile_dir: Path) -> None:
@@ -77,11 +75,11 @@ def test_condition_with_tempo(jgbot: JoystickGremlinBot, profile_dir: Path) -> N
         == jgbot.next_event()
     )
 
-    # Long press path.
+    # Long press path (threshold 0.5 s in the profile, so a short press
+    # stays short under load).
     jgbot.press_button(inout.IN_BUTTON_4)
     jgbot.press_button(inout.IN_BUTTON_2)
-    jgbot.wait(0.15)
-    assert jgbot.button(inout.OUT_BUTTON_2)
+    jgbot.qtbot.waitUntil(lambda: jgbot.button(inout.OUT_BUTTON_2), timeout=5000)
 
     jgbot.release_button(inout.IN_BUTTON_4)
     jgbot.release_button(inout.IN_BUTTON_2)

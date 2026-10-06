@@ -505,30 +505,63 @@ function demoteSpecialKinds() {
     }
 }
 
-// What groupSelection can do with the selection: two or more chips, or one
-// table with chips or text. Drawings alone can't be grouped (the menu offered
-// it, then nothing happened).
-function canGroup() {
+// What groupSelection does with the selection, worked out once for it and
+// for canGroup (they disagreed: a chip on a table with a text, no table
+// selected, packs but the menu said it couldn't). kind: "table" packs chips
+// and text into one table (selected, or the one the chips sit on), "chips"
+// makes a group, "" nothing; warn says why not.
+function groupPlan() {
+    var plan = { kind: "", warn: "", table: null, chips: [], texts: [] }
     var ids = selectedIds || []
     if (ids.length < 2)
-        return false
-    var chips = 0
-    var tables = 0
-    var texts = 0
+        return plan
+    var tables = []
     for (var i = 0; i < ids.length; i++) {
         var n = nodeAt(ids[i])
         if (!n)
             continue
-        if (isTable(n))
-            tables++
-        else if (isText(n))
-            texts++
-        else if (!isDraw(n))
-            chips++
+        if (isTable(n)) {
+            tables.push(n)
+        } else if (isText(n)) {
+            plan.texts.push(n)
+        } else if (!isDraw(n)) {
+            plan.chips.push(n)
+        }
     }
-    if (tables === 1)
-        return chips + texts > 0
-    return tables === 0 && chips >= 2
+    if (!tables.length && plan.chips.length) {
+        var inferred = tablesUnderChips(plan.chips)
+        if (inferred.length > 1) {
+            plan.warn = "Chips sit on more than one table."
+            return plan
+        }
+        if (inferred.length === 1)
+            tables = inferred
+    }
+    if (tables.length > 1) {
+        plan.warn = "Group one table at a time."
+        return plan
+    }
+    if (tables.length === 1) {
+        if (!plan.chips.length && !plan.texts.length) {
+            plan.warn = "Select chips or text with the table to pack."
+            return plan
+        }
+        plan.kind = "table"
+        plan.table = tables[0]
+        return plan
+    }
+    if (plan.chips.length >= 2)
+        plan.kind = "chips"
+    return plan
+}
+
+// Group Selected is offered when it does something: two or more chips, or
+// one table with chips or text. Where it can't (chips on two tables, two
+// tables, a table with nothing to pack) it stays on, so the click or Ctrl+G
+// says why. Drawings alone can't be grouped.
+function canGroup() {
+    var plan = groupPlan()
+    return plan.kind.length > 0 || plan.warn.length > 0
 }
 
 function canUngroup() {
@@ -601,44 +634,18 @@ function groupSelection() {
     if (ids.length < 2)
         return
     packWarn = ""
-    var tables = []
-    var chipNodes = []
-    var textNodes = []
+    var plan = groupPlan()
     var i
     var n
-    for (i = 0; i < ids.length; i++) {
-        n = nodeAt(ids[i])
-        if (!n)
-            continue
-        if (isTable(n))
-            tables.push(n)
-        else if (isText(n))
-            textNodes.push(n)
-        else if (!isDraw(n))
-            chipNodes.push(n)
-    }
-    if (!tables.length && chipNodes.length) {
-        var inferred = tablesUnderChips(chipNodes)
-        if (inferred.length > 1) {
-            packWarn = "Chips sit on more than one table."
-            bump()
-            return
-        }
-        if (inferred.length === 1)
-            tables = inferred
-    }
-    if (tables.length > 1) {
-        packWarn = "Group one table at a time."
+    if (plan.warn.length) {
+        packWarn = plan.warn
         bump()
         return
     }
-    if (tables.length === 1) {
-        if (!chipNodes.length && !textNodes.length) {
-            packWarn = "Select chips or text with the table to pack."
-            bump()
-            return
-        }
-        var table = tables[0]
+    if (plan.kind === "table") {
+        var chipNodes = plan.chips
+        var textNodes = plan.texts
+        var table = plan.table
         for (i = 0; i < chipNodes.length; i++)
             attachChipToTable(table, chipNodes[i])
         for (i = 0; i < textNodes.length; i++)
@@ -652,6 +659,8 @@ function groupSelection() {
         bump()
         return
     }
+    if (plan.kind !== "chips")
+        return
     var parts = []
     var chipIds = []
     for (i = 0; i < ids.length; i++) {

@@ -57,6 +57,13 @@ def ev(code):
     assert not expr.hasError(), expr.error().toString()
     return value
 
+def until(pred, ms=10000):
+    # The edit starts a 200 ms timer; under load it can fire late.
+    waited = 0
+    while not pred() and waited < ms:
+        QtTest.QTest.qWait(20)
+        waited += 20
+
 model = ev('_moduleModel')
 role = QtCore.Qt.ItemDataRole.UserRole + 15
 
@@ -67,6 +74,7 @@ def card(name):
             return model.data(at, role)
     return None
 
+until(lambda: any(r.direction == 'source' and r.tab == 'physical' for r in model._rows))
 src = next(r for r in model._rows if r.direction == 'source' and r.tab == 'physical')
 guid = module_model.guid_key(src.guid)
 ev('_root.configDirection = "dest"')
@@ -77,22 +85,25 @@ out = {'source': src.name, 'before': [card('Xbox 360 Controller'), card('vJoy 1'
 # A Map to Xbox and a Map to vJoy added on the stick.
 wires[:] = [(guid, 'xbox', 1), (guid, 'vjoy', 1)]
 signal.inputItemChanged.emit(0)
-QtTest.QTest.qWait(400)
+until(lambda: card(src.name) == 'Xbox 360 Controller, vJoy 1'
+      and ev('_destBound.text') != 'Driven by: [nothing]')
 out['added'] = [card('Xbox 360 Controller'), card('vJoy 1'), card(src.name),
                 ev('_destBound.text')]
 # Removed again, told by the Logical Device page this time.
 wires[:] = []
 signal.logicalDeviceModified.emit()
-QtTest.QTest.qWait(400)
+until(lambda: card('Xbox 360 Controller') == '' and card('vJoy 1') == ''
+      and ev('_destBound.text') == 'Driven by: [nothing]')
 out['removed'] = [card('Xbox 360 Controller'), card('vJoy 1'), ev('_destBound.text')]
 # Added from the Logical Device's action editor (OK).
 wires[:] = [(guid, 'xbox', 1)]
 signal.actionsChanged.emit()
-QtTest.QTest.qWait(400)
+until(lambda: card('Xbox 360 Controller') == src.name
+      and ev('_destBound.text') == f'Driven by: [{src.name}]')
 out['logical-ok'] = [card('Xbox 360 Controller'), ev('_destBound.text')]
 wires[:] = []
 signal.actionsChanged.emit()
-QtTest.QTest.qWait(400)
+until(lambda: card('Xbox 360 Controller') == '')
 # A page opening asks afresh, before the timer.
 wires[:] = [(guid, 'xbox', 1)]
 out['asked'] = model.boundLine('Xbox 360 Controller')

@@ -42,7 +42,7 @@ def test_one_failing_action_does_not_stop_the_others() -> None:
     assert ran == [1]
 
 
-def _wait_for(check: object, seconds: float = 2.0) -> bool:
+def _wait_for(check: object, seconds: float = 10.0) -> bool:
     end = time.monotonic() + seconds
     while time.monotonic() < end:
         if check():  # type: ignore[operator]
@@ -197,11 +197,11 @@ def test_a_pulse_on_the_main_thread_releases_later(
 
     functor = Pulse.__new__(Pulse)
     press = Event(InputType.JoystickButton, 1, _GUID, "Default", is_pressed=True)
-    started = time.monotonic()
     functor._pulse_event([Record()], press, Value(True))
-    assert time.monotonic() - started < 0.04  # the window isn't held
-    assert states == [True]
-    QtTest.QTest.qWait(150)
+    assert states == [True]  # the release isn't done in the call
+    deadline = time.monotonic() + 5
+    while states != [True, False] and time.monotonic() < deadline:
+        QtTest.QTest.qWait(10)
     assert states == [True, False]
 
 

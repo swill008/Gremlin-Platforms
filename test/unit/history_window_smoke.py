@@ -6,12 +6,14 @@
 
 Two saves of a module file are made, then History opens filtered to that
 device as Module Setup opens it: the list, a change before and after,
-Restore Before through its confirm step, and Show All. Prints RESULT
+Restore Before through its confirm step, Show All, and the same change
+picked again (read again). Prints RESULT
 {json}.
 """
 
 from __future__ import annotations
 
+import copy
 import importlib.util
 import json
 import os
@@ -120,5 +122,26 @@ out["count-after-restore"] = hv("_list.count")
 hv("showAll()")
 QtTest.QTest.qWait(200)
 out["about-after-show-all"] = item("historyAbout").property("text")
+# The same change picked again is read again: its entry, changed since it
+# was first shown, shows as it is now (the title here).
+hv(f'pick("{first}")')
+QtTest.QTest.qWait(100)
+real_entries = history.entries
+
+
+def edited_entries() -> list[dict]:
+    entries = copy.deepcopy(real_entries())
+    for entry in entries:
+        if entry.get("id") == first:
+            entry["title"] = "Changed since it was shown"
+    return entries
+
+
+history.entries = edited_entries
+hv("_model.reload()")
+hv(f'pick("{first}")')
+QtTest.QTest.qWait(100)
+out["repicked-title"] = hv("shown.title")
+history.entries = real_entries
 print("RESULT " + json.dumps(out), flush=True)
 os._exit(0)  # threads started by the app would keep it alive

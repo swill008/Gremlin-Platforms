@@ -22,6 +22,7 @@ sys.path.append(".")
 import time
 from collections.abc import Iterator
 from pathlib import Path
+from types import SimpleNamespace
 from xml.dom import minidom
 from xml.etree import ElementTree
 
@@ -135,6 +136,51 @@ def test_card_order_keeps_an_unplugged_stick_in_its_place() -> None:
     assert module_model._merged_order(saved, showing) == [
         "throttle", "stick", "pedals", "vjoy1", "new"
     ]
+
+
+def _fake_stick(name: str, number: int) -> SimpleNamespace:
+    return SimpleNamespace(
+        name=name, device_guid=f"{{0000000{number}-0000-0000-0000-000000000000}}",
+        vendor_id=number, product_id=number,
+        button_count=4, axis_count=2, hat_count=0,
+    )
+
+
+def test_home_cards_keep_an_unplugged_stick_in_its_place(
+    cfg: config.Configuration, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Through the Home cards' own reload and drag, not just the merge."""
+    from PySide6 import QtCore
+
+    from gremlin import device_initialization
+
+    QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
+    plugged = [_fake_stick("Throttle", 1), _fake_stick("Pedals", 3)]
+    monkeypatch.setattr(
+        device_initialization, "physical_devices", lambda: list(plugged)
+    )
+    monkeypatch.setattr(device_initialization, "vjoy_devices", lambda: [])
+    monkeypatch.setattr(module_model, "module_exists", lambda _name: False)
+    monkeypatch.setattr(module_model, "_show_stubs", lambda: True)
+    monkeypatch.setattr(module_model, "apply_bound_targets", lambda _rows: None)
+    monkeypatch.setattr(module_model.ModuleListModel, "_stacks", lambda _self: [])
+    tail = ["keyboard", "osc", "xbox"]
+    module_model._set_order(["throttle", "stick", "pedals", *tail])
+
+    model = module_model.ModuleListModel()  # reloads
+    model._reload()
+    assert [r.slug for r in model._rows] == ["throttle", "pedals", *tail]
+    assert module_model._order_slugs() == ["throttle", "stick", "pedals", *tail]
+
+    # Pedals dragged before the throttle while the stick is away.
+    model.moveSlugBefore("pedals", "throttle")
+    assert [r.slug for r in model._rows] == ["pedals", "throttle", *tail]
+    assert module_model._order_slugs() == ["pedals", "stick", "throttle", *tail]
+
+    # The stick plugged back in comes back in its slot, not last.
+    plugged.insert(1, _fake_stick("Stick", 2))
+    model._reload()
+    assert [r.slug for r in model._rows] == ["pedals", "stick", "throttle", *tail]
 
 
 GOOD = (

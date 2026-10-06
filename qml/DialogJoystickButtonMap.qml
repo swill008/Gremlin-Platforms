@@ -357,8 +357,8 @@ ApplicationWindow {
         // A photo kept by an editing session that never finished (the
         // program closed mid-edit): the photo change was never saved, so the
         // saved photo goes back before the map is read. Not while unsaved
-        // edits wait to be offered: Restore keeps the new photo with them,
-        // Discard and Not now put the saved one back (putPhotoBack).
+        // edits wait to be offered: Restore and Not now keep the new photo
+        // with them, Discard puts the saved one back (putPhotoBack).
         if (!editing && targetName.length && !_hw.loadRecovery(targetName).length
                 && _hw.restorePhoto(targetName))
             _photoStamp = Date.now()
@@ -382,6 +382,17 @@ ApplicationWindow {
     }
 
     function enterEdit() {
+        if (editing)
+            return
+        // Unsaved edits a crash left (put off with Not now) are offered
+        // again: a new session would write over their copy, and Cancel
+        // would delete it with their photo. Restore starts Edit with them.
+        if (offerRecovery())
+            return
+        _startEdit()
+    }
+
+    function _startEdit() {
         if (editing)
             return
         // (A photo left by a session that never finished was put back by
@@ -567,26 +578,28 @@ ApplicationWindow {
             _hw.clearRecovery(targetName)
     }
 
-    // After a device opens: offer unsaved edits a crash left behind.
+    // After a device opens, or on Edit: offer unsaved edits a crash left
+    // behind. True when the offer is shown.
     function offerRecovery() {
         if (editing || !targetName.length)
-            return
+            return false
         var text = _hw.loadRecovery(targetName)
         if (!text.length)
-            return
+            return false
         var doc = null
         try { doc = JSON.parse(text) } catch (e) { doc = null }
         if (!doc || !doc.nodes)
-            return
+            return false
         var live = { image: liveImage.length ? liveImage : stockImage, photo: livePhoto || photoFromDoc(null), nodes: liveNodes }
         var same = false
         try {
             same = JSON.stringify({ image: doc.image, photo: doc.photo, nodes: doc.nodes }) === JSON.stringify(live)
         } catch (e2) {}
-        if (same) {
+        // A new photo with the old file name reads the same: the kept copy
+        // of the old photo says it changed (as isDirty).
+        if (same && !_hw.hasPhotoStash(targetName)) {
             _hw.clearRecovery(targetName)
-            putPhotoBack()
-            return
+            return false
         }
         _pendingRecovery = doc
         var when = String(doc.savedAt || "").replace("T", " at ")
@@ -596,6 +609,7 @@ ApplicationWindow {
                             + "Restore opens them for editing; save to keep them. Discard deletes them.",
                             "Restore", "Discard")
         _recoverGate.cancelText = "Not now"
+        return true
     }
 
     // An unsaved photo change goes back (the recovery copy was discarded or
@@ -607,12 +621,33 @@ ApplicationWindow {
         loadLive()
     }
 
+    // Not now: the copy and its photo stay as they are, offered again the
+    // next time this device's map opens.
+    function putOffRecovery() {
+        _pendingRecovery = null
+    }
+
+    // Another device (or a blank page) is about to show: an offer still open
+    // is put off, never applied to the next device or deleted.
+    function dropRecoveryOffer() {
+        if (!_pendingRecovery && !_recoverGate.opened)
+            return
+        putOffRecovery()
+        if (_recoverGate.opened)
+            _recoverGate.close()
+    }
+
     function restoreRecovery() {
         var doc = _pendingRecovery
         _pendingRecovery = null
-        if (!doc)
+        // (Only ever this device's copy: another device showing puts the
+        // offer off, dropRecoveryOffer. The copy is found by module file, so
+        // a stick renamed since keeps its copy under the old name.)
+        if (!doc || editing)
             return
-        enterEdit()
+        _startEdit()
+        // This session carries on with the copy: Save or Cancel removes it.
+        _lastRecovery = JSON.stringify(doc)
         // The restored work is unsaved: compared with the saved map.
         _baseWanted = false
         var nodes = JSON.parse(JSON.stringify(doc.nodes || []))
@@ -640,12 +675,19 @@ ApplicationWindow {
     }
 
     function discardEdit() {
-        clearRecovery()
+        // The edit's own recovery copy and photo change go. Outside Edit,
+        // a copy left by a crash (put off with Not now) keeps both; Edit
+        // offers that copy before it starts, so a session's copy is one it
+        // wrote or restored.
+        if (editing) {
+            if (_lastRecovery.length)
+                clearRecovery()
+            // Photo files changed in this session go back to how they were.
+            if (_hw.restorePhoto(targetName))
+                _photoStamp = Date.now()
+        }
         editBase = null
         _baseWanted = false
-        // Photo files changed in this session go back to how they were.
-        if (_hw.restorePhoto(targetName))
-            _photoStamp = Date.now()
         editing = false
         workNodes = []
         selectedId = ""
@@ -750,6 +792,7 @@ ApplicationWindow {
     }
 
     function clearToBlank() {
+        dropRecoveryOffer()
         discardEdit()
         faceLive = false
         targetName = ""
@@ -781,6 +824,7 @@ ApplicationWindow {
             pendingDevice = ""
             return
         }
+        dropRecoveryOffer()
         discardEdit()
         // This device's photo only; never the previous device's.
         initialPhoto = pendingPhoto
@@ -846,10 +890,7 @@ ApplicationWindow {
             _buttonMap.clearRecovery()
             _buttonMap.putPhotoBack()
         }
-        onCancelled: {
-            _buttonMap._pendingRecovery = null
-            _buttonMap.putPhotoBack()
-        }
+        onCancelled: _buttonMap.putOffRecovery()
     }
 
     // Asks before a template is deleted.
@@ -940,10 +981,15 @@ ApplicationWindow {
                 e.copiedNodes = keptCopy
                 e.clipSerial = keptCopySerial
             }
-            e.copiedNodesChanged.connect(function() {
+            // Both, whichever changes last: the copy and the clipboard
+            // count it was made at (a stale count pasted the clipboard's
+            // picture instead of the copy on the next device).
+            function keep() {
                 _buttonMap.keptCopy = e.copiedNodes || []
                 _buttonMap.keptCopySerial = e.clipSerial
-            })
+            }
+            e.copiedNodesChanged.connect(keep)
+            e.clipSerialChanged.connect(keep)
         })
     }
 
@@ -1520,6 +1566,20 @@ ApplicationWindow {
         }
     }
 
+    // The chosen mode follows a rename (it went back to following the
+    // program); a deleted one goes back to following the program.
+    Connections {
+        target: typeof signal !== "undefined" ? signal : null
+        function onModeRenamed(oldName, newName) {
+            if (_buttonMap.labelMode === oldName)
+                _buttonMap.labelMode = newName
+        }
+        function onModeDeleted(name) {
+            if (_buttonMap.labelMode === name)
+                _buttonMap.labelMode = ""
+        }
+    }
+
     function labelsFor(mode) {
         var o = _opts.values
         return _hw.actionLabels(targetGuid, mode, o["description-first"] !== false, o["several-actions"] === "All")
@@ -1894,6 +1954,9 @@ ApplicationWindow {
             // Edit starts from the current map first, so its undo history
             // holds it before the copy replaces it.
             enterEdit()
+            // Unsaved edits from a crash were offered first.
+            if (!editing)
+                return
             // The copy is a change: compared with the saved map.
             _baseWanted = false
             Qt.callLater(function() { _replaceLayout(nodes, mirror) })
@@ -3559,7 +3622,8 @@ ApplicationWindow {
                 Shortcut {
                     enabled: editing
                     sequence: "Ctrl+G"
-                    onActivated: { var e = _ed(); if (e) e.groupSelection() }
+                    // As Group Selected: only when it would do something.
+                    onActivated: { var e = _ed(); if (e && e.canGroup()) e.groupSelection() }
                 }
                 Shortcut {
                     enabled: editing

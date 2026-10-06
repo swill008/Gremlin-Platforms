@@ -277,6 +277,22 @@ class CallbackObject:
         return [value]
 
 
+# Changes at every Run and every Stop. A loop an action starts notes it and
+# ends once it changes: the loop's functor belongs to one Run, and it used to
+# go on into the next one (runtime_active() alone is True again by then).
+_run_number = 0
+
+
+def run_number() -> int:
+    """The current Run's number (a different one after Stop)."""
+    return _run_number
+
+
+def _next_run_number() -> None:
+    global _run_number
+    _run_number += 1
+
+
 class CodeRunner:
     """Runs the actual profile code."""
 
@@ -294,6 +310,7 @@ class CodeRunner:
         return self._running
 
     def start(self, profile: profile.Profile, start_mode: str) -> None:
+        _next_run_number()
         self._profile = profile
         self._reset_state()
 
@@ -381,6 +398,8 @@ class CodeRunner:
             raise
 
     def stop(self) -> None:
+        # First: the action loops of this Run end at their next step.
+        _next_run_number()
         self._listen_to_mode_changes(False)
         if getattr(self, "_connected", False):
             evt_lst = event_handler.EventListener()
@@ -409,6 +428,8 @@ class CodeRunner:
         OscRuntime().stop()
         # Pulse releases still waiting go out now, while the outputs are open.
         base_classes.flush_pulses()
+        # Ends the macros, then lets go of the keys and mouse buttons still
+        # held (also a flushed release that only queued a macro).
         macro.MacroManager().stop()
         sendinput.MouseController().stop()
         audio_player.AudioPlayer().stop()

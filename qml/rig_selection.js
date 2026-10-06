@@ -360,8 +360,9 @@ function copySelection() {
         if (n)
             arr.push(JSON.parse(JSON.stringify(n)))
     }
-    copiedNodes = arr
+    // The count first: whoever follows copiedNodes reads it with the copy.
     clipSerial = clipboardSerial
+    copiedNodes = arr
 }
 
 // Ctrl+V: a picture copied since the last chip copy (or with nothing copied

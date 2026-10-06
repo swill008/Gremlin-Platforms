@@ -36,7 +36,10 @@ ColumnLayout {
         var name = String(entryModel.data(ix, Qt.UserRole + 5) || "")
         var text = String(entryModel.data(ix, Qt.UserRole + 3) || "")
         // The group's title counts too: "Tempo" finds Tempo's "Duration".
-        return (groupName + " " + name + " " + text).toLowerCase().indexOf(needle) >= 0
+        // Not "Other", which only gathers what has no group: "other" showed
+        // every row in it.
+        var title = groupName === "Other" ? "" : groupName
+        return (title + " " + name + " " + text).toLowerCase().indexOf(needle) >= 0
     }
 
     // The first row that shows (it has no divider above it), or -1.

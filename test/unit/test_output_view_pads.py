@@ -105,5 +105,6 @@ def test_vjoy_view_save_uses_that_devices_module_file() -> None:
     assert "module_json_path(device_name, guid)" in load
     rule = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/hardware_profile.py").read_text(encoding="utf-8")
     body = rule[rule.find("def module_json_path"): rule.find("def module_file_choices")]
-    assert "return own_path" in body
-    assert 'doc.get("device")' in body
+    # The one rule every page uses (a vJoy never opens another vJoy's file:
+    # test_audit3_module_files.test_one_vjoy_never_opens_another_vjoys_file).
+    assert "_active_module_path(" in body

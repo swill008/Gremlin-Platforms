@@ -254,6 +254,23 @@ out["default-after"] = buttons
 out["logical-created"] = LogicalDevice().exists(
     LogicalDevice.Input.Identifier(InputType.JoystickButton, 9)
 )
+
+# The same import again, but the module file can't be written: nothing is
+# replaced, and Undo Import still offers the import before it.
+def _cannot_write(*_args: object, **_kwargs: object) -> str:
+    raise OSError("locked")
+
+
+_write_module = device_pack._write_module
+device_pack._write_module = _cannot_write
+pv("runImport()")
+QtTest.QTest.qWait(300)
+device_pack._write_module = _write_module
+out["status-failed"] = pv("status")
+undo_button = child(pack_win, "packUndo")
+out["undo-after-failed"] = bool(undo_button and undo_button.isVisible())
+out["backend-undo-after-failed"] = device_pack.can_undo_import()
+
 pv("undoImport()")
 QtTest.QTest.qWait(300)
 buttons = sorted(
