@@ -58,6 +58,7 @@ Quick patches in one place kept breaking neighbouring paths, so every step of th
 8. **Behaviour changes go to the user** with a recommendation before coding.
 9. **Safety:** off-screen only (now enforced by `running_offscreen()`: no hooks, no native boxes, no process kills, no HidHide off-screen); temp USERPROFILE and GREMLIN_OFFLINE=1; never the user's data folder (one check script once used it and cleared logs\logs.txt).
 10. **Editing:** use the Edit/Write tools for code with backslashes (shell heredocs mangle `\n`); keep each file's line endings.
+11. **Tracker in step with the gap list.** `claude/gap-list.md` is the master list; the tracker (https://claude.ai/artifact/QTmzBoHqL8rDerX41Wa9EN) has the same entries in its GL group. When an item is fixed or changes status, mark it in the gap list (commit + guarding test) and update its tracker entry in the same piece of work; new gaps get a GL id in both.
 
 ---
 
