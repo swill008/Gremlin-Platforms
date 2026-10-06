@@ -130,6 +130,9 @@ def main() -> None:
     QtTest.QTest.qWait(200)
     out["unpinned-after-map-click"] = ev("_tools.isOpen('printArea')")
     ev("_tools.setOpen('printArea', true)")
+    # Part of the edit: written by Save (07 Q1, GL-173).
+    out["file-before-save"] = hp.module_json_path("pJoy Pro", GUID).is_file()
+    ev("_buttonMap.saveEdit(false)")
     doc = json.loads(hp.module_json_path("pJoy Pro", GUID).read_text(encoding="utf-8"))
     out["saved"] = (doc.get("ui") or {}).get("printArea")
     out["export"] = export()
@@ -175,6 +178,7 @@ def main() -> None:
     out["scale-50"] = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
     ev("_buttonMap.setPrint('scale', 100)")
     out["scale-100"] = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
+    ev("_buttonMap.saveEdit(false)")
     doc = json.loads(hp.module_json_path("pJoy Pro", GUID).read_text(encoding="utf-8"))
     out["saved-print"] = (doc.get("ui") or {}).get("print")
     # Only while editing: its tool open and pinned, the frame shows in Edit,

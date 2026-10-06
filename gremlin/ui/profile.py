@@ -403,6 +403,8 @@ class InputItemBindingModel(QtCore.QObject):
                 moved action
             container: name of the container to insert the action into
         """
+        if _edit_refused():
+            return
         s_model = self.get_action_model_by_sidx(source_idx)
         t_model = self.get_action_model_by_sidx(target_idx)
 
@@ -464,6 +466,8 @@ class InputItemBindingModel(QtCore.QObject):
                 library unless used elsewhere (False when it is being moved);
                 else Merge Axis 'Reuse' offered deleted ones
         """
+        if _edit_refused():
+            return
         if isinstance(action_index, int):
             action_index = self._index_lookup[action_index]
 
@@ -495,6 +499,8 @@ class InputItemBindingModel(QtCore.QObject):
             target_index: sequence index of the action after which to insert
                 the new action's data
         """
+        if _edit_refused():
+            return
         # If the parent index of the target is None the target is the single
         # RootAction and thus should be used to insert into directly.
         if target_index.parent_index is None:
@@ -586,6 +592,8 @@ class InputItemBindingModel(QtCore.QObject):
         return InputType.to_string(self._input_item_binding.behavior)
 
     def _set_behavior(self, text: str) -> None:
+        if _edit_refused():
+            return
         behavior = InputType.to_enum(text)
         if behavior != self._input_item_binding.behavior:
             self._input_item_binding.behavior = behavior
@@ -686,6 +694,8 @@ class InputItemModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot()
     def newActionSequence(self) -> None:
+        if _edit_refused():
+            return
         self.beginInsertRows(QtCore.QModelIndex(), self.rowCount(), self.rowCount())
         self._input_item.add_item_binding()
         self.endInsertRows()
@@ -693,6 +703,8 @@ class InputItemModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(InputItemBindingModel)
     def deleteActionSequnce(self, binding: InputItemBindingModel) -> None:
+        if _edit_refused():
+            return
         try:
             index = self._input_item.action_sequences.index(binding.input_item_binding)
             self.beginRemoveRows(QtCore.QModelIndex(), index, index)
@@ -717,6 +729,8 @@ class InputItemModel(QtCore.QAbstractListModel):
             method: "before" places the source above the target, anything else
                 places it below
         """
+        if _edit_refused():
+            return
         if not source or not target or source == target:
             return
         try:
@@ -823,8 +837,33 @@ class ModeListModel(QtCore.QAbstractListModel):
         return self.roles
 
 
+def _edit_refused() -> bool:
+    """Bindings are not edited while the profile runs: the one edit lock
+    (binding_catalog.editing_locked, GL-171); the pages are disabled too."""
+    from gremlin.ui.binding_catalog import editing_locked
+
+    if not editing_locked():
+        return False
+    logging.getLogger("system").info("Edit refused: the profile is running")
+    return True
+
+
 def _clean_mode_name(name: str) -> str:
-    return " ".join(str(name or "").split())
+    return gremlin.profile.clean_mode_name(name)
+
+
+# Mode deletes that Manage Modes can undo, newest last: (profile, what
+# ModeHierarchy.restore_mode needs). Only the open profile's count (GL-027).
+_deleted_modes: list[tuple[object, dict]] = []
+
+
+def _undoable_deletes() -> list[dict]:
+    """The open profile's undoable mode deletes (others are dropped)."""
+    profile = shared_state.current_profile
+    _deleted_modes[:] = [
+        entry for entry in _deleted_modes if entry[0] is profile
+    ]
+    return [memo for _, memo in _deleted_modes]
 
 
 def _follow_editor(old_name: str, new_name: str) -> None:
@@ -855,22 +894,35 @@ def rename_mode(old_name: str, new_name: str) -> None:
     signal.modesChanged.emit()
 
 
-def delete_mode(name: str) -> None:
+def delete_mode(name: str) -> dict | None:
     """Deletes a mode of the open profile everywhere: the profile, the
     running mode stack, the main window (moves to the first mode) and the
     pages (modeDeleted). Every delete goes through here (Undo Import
-    skipped all but the profile)."""
+    skipped all but the profile). Returns what undo_delete_mode needs."""
     from gremlin.mode_manager import ModeManager
 
     profile = shared_state.current_profile
     if profile is None:
-        return
+        return None
     modes = profile.modes
-    modes.delete_mode(name)
+    memo = modes.delete_mode(name)
     ModeManager().drop_mode(name)
     _follow_editor(name, modes.first_mode)
     signal.modeDeleted.emit(name)
     signal.modesChanged.emit()
+    return memo
+
+
+def undo_delete_mode(memo: dict) -> None:
+    """Puts a deleted mode of the open profile back, with its bindings
+    (GL-027, 04 Q6). Raises GremlinError when it can't (a mode with that
+    name was added since)."""
+    profile = shared_state.current_profile
+    if profile is None:
+        return
+    profile.modes.restore_mode(memo)
+    signal.modesChanged.emit()
+    signal.reloadCurrentInputItem.emit()
 
 
 @ta.QmlElement
@@ -897,14 +949,9 @@ class ModeHierarchyModel(QtCore.QObject):
     @QtCore.Slot(str, str, result=bool)
     def nameTaken(self, name: str, ignore: str) -> bool:
         """True when name is blank or matches another mode, ignoring capitals and
-        spacing (the rule Logical Device groups use). ignore is the mode being renamed."""
-        text = _clean_mode_name(name)
-        if not text:
-            return True
-        return any(
-            existing != ignore and _clean_mode_name(existing).casefold() == text.casefold()
-            for existing in self.modeStringList()
-        )
+        spacing (the rule Logical Device groups use). ignore is the mode being renamed.
+        The rule is the mode tree's own (ModeHierarchy.name_taken)."""
+        return self.current_modes.name_taken(name, ignore)
 
     @QtCore.Slot(str)
     def newMode(self, name: str) -> None:
@@ -930,8 +977,41 @@ class ModeHierarchyModel(QtCore.QObject):
         # A profile keeps at least one mode (the window disables Delete).
         if len(self.current_modes.mode_names()) <= 1:
             return
-        delete_mode(name)
+        memo = delete_mode(name)
+        if memo is not None:
+            _deleted_modes.append((shared_state.current_profile, memo))
         self.modesChanged.emit()
+
+    def _can_undo_delete(self) -> bool:
+        return bool(_undoable_deletes())
+
+    canUndoDelete = QtCore.Property(bool, fget=_can_undo_delete, notify=modesChanged)
+
+    def _undo_delete_name(self) -> str:
+        deletes = _undoable_deletes()
+        return str(deletes[-1]["name"]) if deletes else ""
+
+    # The mode Undo Delete brings back ("" when none).
+    undoDeleteName = QtCore.Property(str, fget=_undo_delete_name, notify=modesChanged)
+
+    @QtCore.Slot(result=str)
+    def undoDelete(self) -> str:
+        """Brings back the mode deleted last, with its bindings; returns why
+        it couldn't ("" when it did)."""
+        deletes = _undoable_deletes()
+        if not deletes:
+            return ""
+        memo = deletes[-1]
+        try:
+            undo_delete_mode(memo)
+        except GremlinError as e:
+            logging.getLogger("system").warning(f"Undo Delete Mode: {e}")
+            signal.showNotification.emit("Undo Delete Mode", str(e))
+            return str(e)
+        finally:
+            _deleted_modes[:] = [e for e in _deleted_modes if e[1] is not memo]
+            self.modesChanged.emit()
+        return ""
 
     @QtCore.Slot(str, str)
     def setParent(self, mode_name: str, parent_name: str) -> None:
@@ -1090,7 +1170,9 @@ class StartupModeModel(QtCore.QAbstractListModel):
         return self.roles
 
     def _get_current_selection_index(self) -> int:
-        return self._valid_names.index(self._profile.settings.startup_mode)
+        # A Startup Mode that isn't listed shows as Use Heuristic (GL-039).
+        name = self._profile.settings.startup_mode
+        return self._valid_names.index(name) if name in self._valid_names else 0
 
     def _set_current_selection_index(self, index: int) -> None:
         if index != self._get_current_selection_index():
@@ -1159,8 +1241,17 @@ class VJoyInputOrOutputModel(QtCore.QAbstractListModel):
             case "isInput":
                 vid = self._vjoy_devices[index.row()].vjoy_id
                 self._profile.settings.vjoy_as_input[vid] = bool(value)
+                # Device lists and claims follow profileChanged; only a device
+                # scan sends device_change_event, which with Device change
+                # behavior Stop or Reload stopped or restarted a Run (GL-119,
+                # 02 Q1, 04 Q12).
                 signal.profileChanged.emit()
-                event_handler.EventListener().device_change_event.emit()
+                listener = event_handler.EventListener.instance
+                if listener is not None and listener.gremlin_active:
+                    signal.showNotification.emit(
+                        "vJoy Behavior",
+                        "This change takes effect at the next Run.",
+                    )
                 return True
             case _:
                 return False

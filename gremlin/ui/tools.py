@@ -80,6 +80,11 @@ class Tools(QtCore.QObject):
             return (
                 "Could not swap: choose a profile device and a connected device."
             )
+        except swap_devices.SameDevice:
+            return (
+                "Could not swap: the profile device and the connected device "
+                "are the same device."
+            )
         except error.GremlinError as e:
             # The keyboard, logical device, OSC or Xbox: not a stick.
             logging.getLogger("system").error(f"Swap devices refused: {e}")

@@ -95,7 +95,9 @@ def output_modules() -> list[dict]:
 
 
 def merge_claim_into_output(dest: dict, claim: dict) -> dict:
-    """Write the input-module selection onto the output module so they match."""
+    """Write the input-module selection onto the output module so they match.
+    Returns the output module's claim now; when the file can't be written
+    (damaged, or a write error) that is the claim it had before."""
     path = dest.get("path")
     current = dest.get("claim") or {}
     buttons = sorted(
@@ -136,9 +138,10 @@ def merge_claim_into_output(dest: dict, claim: dict) -> dict:
     except OSError:
         saved = False
     if not saved:
+        # Not claimed: the output module keeps what it had, so the Auto
+        # Mapper skips those outputs and lists them "not claimed" (03 Q15).
         trace("SAVE", "Auto Mapper", "merge_claim_into_output", path, "not written")
-        dest["claim"] = merged
-        return merged
+        return current
     dest["doc"] = written
     dest["claim"] = merged
     return merged

@@ -30,7 +30,7 @@ from gremlin import (
     error,
     plugin_manager,
 )
-from gremlin.logical_device import LogicalDevice
+from gremlin.logical_device import LogicalDevice, LogicalRows
 from gremlin.osc import OscDevice
 from gremlin.tree import TreeNode
 from gremlin.types import (
@@ -305,7 +305,8 @@ class Settings:
         """
         if vid not in self.vjoy_initial_values:
             self.vjoy_initial_values[vid] = {}
-        self.vjoy_initial_values[vid][aid] = value
+        # Kept in -1..1 as a load does (GL-156, 04 S67).
+        self.vjoy_initial_values[vid][aid] = clamp(float(value), -1.0, 1.0)
 
 
 _ACTION_ID = re.compile(
@@ -1430,8 +1431,22 @@ class Profile:
         self.fpath: Path | None = None
         # The profile as it would be written right after the last load or save.
         self._saved_snapshot: str | None = None
-        LogicalDevice().reset()
-        OscDevice().reset()
+        # The Logical Device and OSC rows saved with this profile (04 S2).
+        # Owned here, so another Profile object no longer wipes them (GL-074).
+        self.logical_device = LogicalRows()
+        self._osc_inputs: dict[str, OscDevice.Input] = {}
+        self._osc_by_id: dict[tuple[InputType, int], str] = {}
+        # A new profile is the one shown until another is bound.
+        self.bind_devices()
+
+    def bind_devices(self) -> None:
+        """LogicalDevice() and OscDevice() show this profile's rows (the open
+        profile; the Backend binds it whenever the open profile changes)."""
+        LogicalDevice().bind(self.logical_device)
+        osc = OscDevice()
+        # Shared, not copied: edits through OscDevice() land in this profile.
+        osc._inputs = self._osc_inputs
+        osc._by_id = self._osc_by_id
 
     def from_xml(self, fpath: Path) -> None:
         """Reads the content of an XML file and initializes the profile.
@@ -1474,14 +1489,49 @@ class Profile:
                 "but do nothing."
             )
         self.device_database.from_xml(root)
-        self.modes.from_xml(root)
+        self.load_warnings.extend(self.modes.from_xml(root))
+        self._check_startup_mode()
         self.scripts.from_xml(root)
 
         # Parse individual inputs.
         for node in root.findall("./inputs/input"):
             self._process_input(node)
+        self._warn_unlisted_modes()
 
         self._saved_snapshot = self._xml_text()
+
+    def _check_startup_mode(self) -> None:
+        """A Startup Mode that is neither a mode nor Use Heuristic / Last
+        Active (a damaged or hand-edited file) is Use Heuristic (GL-039,
+        04 Q10)."""
+        name = self.settings.startup_mode
+        if name in ("Use Heuristic", "Last Active") or self.modes.mode_exists(name):
+            return
+        logging.getLogger("system").warning(
+            f"Startup Mode '{name}' isn't a mode of this profile; "
+            "Use Heuristic is used instead."
+        )
+        self.settings.startup_mode = "Use Heuristic"
+
+    def _warn_unlisted_modes(self) -> None:
+        """Inputs saved in a mode the mode list doesn't have never show and
+        never run: they are listed in a load warning (GL-028, 04 Q8)."""
+        counts: dict[str, int] = {}
+        for items in self.inputs.values():
+            for item in items:
+                mode = str(item.mode or "")
+                if item.action_sequences and not self.modes.mode_exists(mode):
+                    counts[mode] = counts.get(mode, 0) + 1
+        if not counts:
+            return
+        listed = ", ".join(
+            f"{mode} ({count} input{'' if count == 1 else 's'})"
+            for mode, count in sorted(counts.items())
+        )
+        self.load_warnings.append(
+            "Some bindings are in modes this profile doesn't list, so they "
+            f"don't show or run: {listed}."
+        )
 
     def to_xml(self, fpath: Path, *, prune: bool = True) -> None:
         """Writes the profile's content to an XML file.
@@ -1494,6 +1544,10 @@ class Profile:
         """
         if prune:
             self.library.prune_for_save()
+        # Device names are filled only here, at a save: the unsaved check
+        # (every 1.5 s) changed the profile when a stick was plugged in
+        # (GL-153, 04 Q18, R14).
+        self.device_database.update_for_uuids(self.inputs)
         text = self._xml_text()
         # Safely (a temporary file, then a swap), as module files are: a
         # crash mid-save leaves the old profile whole.
@@ -1533,7 +1587,6 @@ class Profile:
         root.append(self.library.to_xml(self.actions_in_use()))
         root.append(self.modes.to_xml())
         root.append(self.scripts.to_xml())
-        self.device_database.update_for_uuids(self.inputs)
         root.append(self.device_database.to_xml())
 
         # Serialize XML document.
@@ -1699,6 +1752,30 @@ class Profile:
             self.inputs[device_id] = [item for item in items if id(item) not in gone]
         self.library.release(self.roots_of(removed))
 
+    def remember_device(self, device_id: uuid.UUID, name: str) -> None:
+        """Records a device's name in the profile's device list (saved with
+        it). Library.change puts the list back if the change fails."""
+        self.device_database.devices[device_id] = DeviceInfo(device_id, name)
+
+    def swap_device_inputs(self, first: uuid.UUID, second: uuid.UUID) -> int:
+        """Every input of one device moves to the other and back (Swap
+        Devices, 04 S77, S78), inputs with no actions too. Returns how many
+        moved inputs have actions."""
+        if first == second:
+            raise error.GremlinError("A device can't be swapped with itself.")
+        moved = 0
+        first_items = self.inputs.get(first, [])
+        second_items = self.inputs.get(second, [])
+        for item in first_items:
+            item.device_id = second
+            moved += 1 if item.action_sequences else 0
+        for item in second_items:
+            item.device_id = first
+            moved += 1 if item.action_sequences else 0
+        self.inputs[second] = first_items
+        self.inputs[first] = second_items
+        return moved
+
     def actions_in_use(self) -> set[uuid.UUID]:
         """Ids of every action an input uses (Library.in_use)."""
         return self.library.in_use()
@@ -1741,7 +1818,7 @@ class Profile:
         self.inputs[item.device_id].append(item)
 
     def _logical_devices_from_xml(self, root_node: ElementTree.Element) -> None:
-        logical = LogicalDevice()
+        logical = self.logical_device
         logical.reset()
         groups = []
         for node in root_node.findall("./logical-device/groups/group"):
@@ -1770,7 +1847,7 @@ class Profile:
 
     def _logical_devices_to_xml(self) -> ElementTree.Element:
         node = ElementTree.Element("logical-device")
-        logical = LogicalDevice()
+        logical = self.logical_device
         if logical.group_names():
             groups = ElementTree.Element("groups")
             for name in logical.group_names():
@@ -1799,19 +1876,28 @@ class Profile:
         return node
 
     def _osc_devices_from_xml(self, root_node: ElementTree.Element) -> None:
-        osc = OscDevice()
-        osc.reset()
+        # Into this profile's own rows (cleared in place: OscDevice() may be
+        # showing them), with the checks OscDevice.create makes.
+        self._osc_inputs.clear()
+        self._osc_by_id.clear()
         for node in root_node.findall("./osc-device/input"):
-            osc.create(
-                read_subelement(node, "input-type"),
-                label=read_subelement(node, "label"),
-                input_id=read_subelement(node, "input-id"),
-            )
+            kind = read_subelement(node, "input-type")
+            if kind not in (InputType.JoystickAxis, InputType.JoystickButton):
+                raise error.GremlinError(
+                    f"OSC inputs must be axis or button, got {kind}"
+                )
+            input_id = int(read_subelement(node, "input-id"))
+            label = str(read_subelement(node, "label")).casefold()
+            if label in self._osc_inputs:
+                raise error.GremlinError(f"OSC address '{label}' already exists")
+            self._osc_inputs[label] = OscDevice.Input(label, input_id, kind)
+            self._osc_by_id[(kind, input_id)] = label
 
     def _osc_devices_to_xml(self) -> ElementTree.Element:
         node = ElementTree.Element("osc-device")
-        for label in OscDevice().labels_of_type():
-            item = OscDevice()[label]
+        for item in sorted(
+            self._osc_inputs.values(), key=lambda x: (x.type.name, x.id)
+        ):
             input_node = ElementTree.Element("input")
             input_node.append(create_subelement_node("input-type", item.type))
             input_node.append(create_subelement_node("input-id", item.id))
@@ -2000,6 +2086,11 @@ class InputItemBinding:
         return self.virtual_button.to_xml()
 
 
+def clean_mode_name(name: str | None) -> str:
+    """A mode name as it is compared: spacing collapsed, ends trimmed."""
+    return " ".join(str(name or "").split())
+
+
 def _check_snapshot(snapshot: dict) -> None:
     """Raises ProfileError when an input snapshot can't be read back, before
     anything in the profile is changed."""
@@ -2088,20 +2179,41 @@ class ModeHierarchy:
         Returns:
             Node corresponding to the node with the provided name
         """
-        nodes = self._hierarchy.nodes_matching(lambda x: mode_name == x.value)
+        # The hidden root (named "") is not a mode.
+        nodes = self._hierarchy.nodes_matching(
+            lambda x: x is not self._hierarchy and mode_name == x.value
+        )
         if len(nodes) > 1:
             raise error.GremlinError(f"More than one mode named '{mode_name}' exists")
         elif len(nodes) == 0:
             raise error.GremlinError(f"No node with the name '{mode_name}' exists")
         return nodes[0]
 
+    def name_taken(self, name: str, ignore: str = "") -> bool:
+        """True when name is blank or matches a mode other than ignore,
+        ignoring capitals and spacing: the one mode name rule (04 S40, Q21),
+        for Manage Modes, Device Pack and scripts alike."""
+        text = clean_mode_name(name)
+        if not text:
+            return True
+        return any(
+            existing != ignore
+            and clean_mode_name(existing).casefold() == text.casefold()
+            for existing in self.mode_names()
+        )
+
     def add_mode(self, mode_name: str) -> None:
         """Adds a new mode to the hierarchy.
 
         Args:
             mode_name: name of the new mode to add
+
+        Raises:
+            GremlinError: the name is blank or looks like another mode's
         """
-        if self.mode_exists(mode_name):
+        if not clean_mode_name(mode_name):
+            raise error.GremlinError("A mode needs a name.")
+        if self.name_taken(mode_name):
             raise error.GremlinError(
                 f"Attempting to add an already existing mode '{mode_name}'."
             )
@@ -2116,11 +2228,14 @@ class ModeHierarchy:
             if item.mode == mode_name
         )
 
-    def delete_mode(self, mode_name: str) -> None:
+    def delete_mode(self, mode_name: str) -> dict:
         """Deletes the mode with the given name from the hierarchy.
 
         Args:
             mode_name: name of the mode to delete
+
+        Returns:
+            What restore_mode needs to put it back (GL-027, 04 Q6)
         """
         if not self.mode_exists(mode_name):
             raise error.GremlinError(
@@ -2135,6 +2250,20 @@ class ModeHierarchy:
         # takes each child out of it (every other child was lost).
         node = self.find_mode(mode_name)
         parent_node = node.parent
+        profile = self._profile
+        memo = {
+            "name": mode_name,
+            "parent": self._parent_name(node),
+            "children": [child.value for child in node.children],
+            "startup": profile.settings.startup_mode == mode_name,
+            "inputs": [
+                (device_id, item.input_type, item.input_id, snapshot)
+                for device_id, items in profile.inputs.items()
+                for item in items
+                if item.mode == mode_name
+                and (snapshot := profile.library.snapshot(item)) is not None
+            ],
+        }
         node.detach()
         for child in list(node.children):
             child.set_parent(parent_node)
@@ -2148,6 +2277,40 @@ class ModeHierarchy:
 
         if self._profile.settings.startup_mode == mode_name:
             self._profile.settings.startup_mode = "Use Heuristic"
+        return memo
+
+    def _parent_name(self, node: TreeNode) -> str:
+        """The name of a mode's parent mode, "" at the top."""
+        parent = node.parent
+        if parent is None or parent is self._hierarchy:
+            return ""
+        return str(parent.value)
+
+    def restore_mode(self, memo: dict) -> None:
+        """Puts back a mode delete_mode removed: the mode under its parent,
+        its child modes that are still where the delete moved them, its
+        bindings and the Startup Mode. All or nothing (Library.change)."""
+        name = memo["name"]
+        if self.name_taken(name):
+            raise error.GremlinError(
+                f"The mode '{name}' can't be put back: a mode with that name "
+                "is in the profile now."
+            )
+        profile = self._profile
+        parent = memo["parent"]
+        with profile.library.change():
+            self.add_mode(name)
+            if parent and self.mode_exists(parent):
+                self.set_parent(name, parent)
+            for child in memo["children"]:
+                if not self.mode_exists(child):
+                    continue
+                if self._parent_name(self.find_mode(child)) == parent:
+                    self.set_parent(child, name)
+            for device_id, input_type, input_id, snapshot in memo["inputs"]:
+                profile.put_input(device_id, input_type, input_id, name, snapshot)
+            if memo["startup"] and profile.settings.startup_mode == "Use Heuristic":
+                profile.settings.startup_mode = name
 
     def rename_mode(self, old_name: str, new_name: str) -> None:
         """Changes the name of an existing mode.
@@ -2165,8 +2328,11 @@ class ModeHierarchy:
             raise error.GremlinError(
                 f"Attempting to rename non-existant mode '{old_name}'"
             )
-        # Raise an error if renaming to an existing name
-        elif self.mode_exists(new_name):
+        elif not clean_mode_name(new_name):
+            raise error.GremlinError("A mode needs a name.")
+        # Raise an error if renaming to an existing name, or one that only
+        # differs in capitals or spacing (the mode's own capitals may change).
+        elif self.name_taken(new_name, old_name):
             raise error.GremlinError(
                 f"Unable to rename '{old_name}' to '{new_name}' as a mode "
                 f"with that name already exists"
@@ -2209,7 +2375,10 @@ class ModeHierarchy:
             parent_name: name of the new parent mode
         """
         mode_node = self.find_mode(mode_name)
-        parent_node = self.find_mode(parent_name)
+        # None or "": no parent (top level).
+        parent_node = (
+            self._hierarchy if not parent_name else self.find_mode(parent_name)
+        )
         # Checked before detaching: the mode itself or one under it as the
         # parent is refused, and a refusal after detaching lost the mode.
         if parent_node is mode_node or mode_node.is_descendant(parent_node):
@@ -2230,16 +2399,35 @@ class ModeHierarchy:
         Returns:
             True if the mode exists, False otherwise
         """
-        return len(self._hierarchy.nodes_matching(lambda x: name == x.value)) > 0
+        # The hidden root (named "") is not a mode (GL-154).
+        found = self._hierarchy.nodes_matching(
+            lambda x: x is not self._hierarchy and name == x.value
+        )
+        return len(found) > 0
 
-    def from_xml(self, root: ElementTree.Element) -> None:
+    def from_xml(self, root: ElementTree.Element) -> list[str]:
+        """Reads the modes; returns what to warn about (04 Q9): a mode list
+        with no modes gets "Default", a name listed twice is kept once."""
+        warnings: list[str] = []
         # Parse individual nodes
         nodes = {}
         node_parents = {}
         for node in root.findall("./modes/mode"):
+            name = node.text or ""
+            if not clean_mode_name(name):
+                warnings.append("A mode with no name was left out.")
+                continue
+            if name in nodes:
+                warnings.append(
+                    f"The mode '{name}' is listed more than once; it is kept once."
+                )
+                continue
             if "parent" in node.attrib:
-                node_parents[node.text] = node.get("parent")
-            nodes[node.text] = TreeNode(node.text)
+                node_parents[name] = node.get("parent")
+            nodes[name] = TreeNode(name)
+        if not nodes:
+            warnings.append("This profile has no modes; the mode Default was added.")
+            nodes["Default"] = TreeNode("Default")
 
         # Reconstruct tree structure
         for child, parent in node_parents.items():
@@ -2263,6 +2451,7 @@ class ModeHierarchy:
         for node in nodes.values():
             if node.parent is None:
                 node.set_parent(self._hierarchy)
+        return warnings
 
     def to_xml(self) -> ElementTree.Element:
         node = ElementTree.Element("modes")
@@ -2330,6 +2519,8 @@ class ScriptManager:
         script = self._find_instance(path, name)
         if script:
             self._scripts.remove(script)
+            # Its settings go with it (GL-155, 04 S85).
+            Script.variable_registry.remove_script(script)
 
     def rename_script(self, path: Path, old_name: str, new_name: str) -> None:
         """Renames the specified script.

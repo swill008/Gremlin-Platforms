@@ -443,7 +443,10 @@ def _button_map(out: pathlib.Path) -> None:
     _js(win, "var n = 'Stick A';"
              " _hw.save(n, JSON.stringify({kind: 'control.hardware',"
              f" device: n, nodes: [{a1}]}}));"
-             f" _hw.copyImage('{old_url}', n)")
+             f" var r = _hw.copyImage('{old_url}', n);"
+             # Saved with that photo: Save names it (07 Q2, GL-174).
+             " _hw.save(n, JSON.stringify({kind: 'control.hardware',"
+             f" device: n, image: r, nodes: [{a1}]}}))")
     _js(win, "_hw.save('Stick B', JSON.stringify({kind: 'control.hardware',"
              " device: 'Stick B', nodes: []}))")
     _js(win, crash)

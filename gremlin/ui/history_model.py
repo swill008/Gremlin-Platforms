@@ -14,6 +14,7 @@ profile, to open with File > Load Profile.
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -51,6 +52,11 @@ def _matches(entry: dict, wanted: dict) -> bool:
     for key, value in wanted.items():
         if key == "area":
             if value and entry.get("area") != value:
+                return False
+            continue
+        if key == "profile":
+            # A path however written (case, slashes, relative): GL-194.
+            if not _same_file(subject.get("profile"), value):
                 return False
             continue
         if _norm(subject.get(key, "")) != _norm(value):
@@ -120,8 +126,13 @@ def _module_text(side: dict | None, parts: list[str]) -> str:
         doc = json.loads(side["text"])
     except ValueError:
         return "Can't be read."
-    shown = {key: doc.get(key) for key in parts if key in doc} if parts else doc
-    return json.dumps(shown, indent=2) if shown else "Not set."
+    if not isinstance(doc, dict):
+        return "Can't be read."
+    # In the Device Pack's words, not raw JSON (08 Q13, GL-192).
+    from gremlin.ui.device_pack import module_text
+
+    shown = [key for key in parts if key in doc] if parts else None
+    return module_text(doc, shown) or "Not set."
 
 
 def _settings_text(side: dict | None) -> str:
@@ -151,10 +162,14 @@ def describe(entry: dict) -> dict:
     area = entry.get("area")
     before, after = entry.get("before"), entry.get("after")
     note = ""
+    panes = False
     if area == "profile" and kind == "input":
         texts = (_input_text(before), _input_text(after))
         can = (True, True)
         note = "Goes back into the open profile, unsaved."
+        # The action panes close first (05 Q8): a pane's OK would write
+        # its old copy back over the restored actions.
+        panes = True
     elif area == "profile" and kind == "section":
         texts = (before or "Not there.", after or "Not there.")
         can = (False, False)
@@ -193,6 +208,7 @@ def describe(entry: dict) -> dict:
         "canRestoreBefore": can[0],
         "canRestoreAfter": can[1],
         "note": note,
+        "closesPanes": panes,
     }
 
 
@@ -203,9 +219,10 @@ def _same_file(a: object, b: object) -> bool:
     if not a or not b:
         return False
     try:
-        return Path(str(a)).resolve() == Path(str(b)).resolve()
+        first, second = Path(str(a)).resolve(), Path(str(b)).resolve()
     except OSError:
-        return str(a) == str(b)
+        first, second = Path(str(a)), Path(str(b))
+    return os.path.normcase(str(first)) == os.path.normcase(str(second))
 
 
 def _changed_everywhere() -> None:
@@ -328,16 +345,41 @@ def _restore_settings(side: dict | None) -> tuple[bool, str]:
         section, group, name = key.split("/", 2)
         if not cfg.exists(section, group, name):
             continue
-        kind = cfg._data[(section, group, name)]["data_type"]
+        kind = cfg.data_type(section, group, name)
         if kind in _property_from_string:
             text = json.dumps(value) if not isinstance(value, str) else value
             value = property_from_string(kind, text)
         # A list or a dict (action priorities) is kept as itself.
         values.append((section, group, name, value))
     for section, group, name, value in values:
-        cfg.set(section, group, name, value)
+        if not _apply_at_once(section, group, name, value):
+            cfg.set(section, group, name, value)
     signal.configChanged.emit()
     return True, "Settings put back."
+
+
+def _apply_at_once(section: str, group: str, name: str, value: object) -> bool:
+    """A setting that acts at once (Diagnostic logs, UI scale) is put back
+    through its Options control, so it applies now as it does there (01 Q7,
+    GL-115). False: an ordinary setting, for Configuration.set."""
+    from gremlin.ui import log_option, ui_scale_option
+
+    key = (section, group, name)
+    if key == (log_option.LOG_SECTION, log_option.LOG_GROUP, log_option.LOG_NAME):
+        log_option.LogLevelModel().setLevel(str(value))
+        return True
+    if key == (
+        ui_scale_option.SCALE_SECTION,
+        ui_scale_option.SCALE_GROUP,
+        ui_scale_option.SCALE_NAME,
+    ):
+        try:
+            scale = int(str(value))
+        except ValueError:
+            return False
+        ui_scale_option.UiScaleModel().setScale(scale)
+        return True
+    return False
 
 
 def restore(entry_id: str, which: str) -> dict:

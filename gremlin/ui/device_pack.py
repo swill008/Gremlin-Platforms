@@ -327,6 +327,45 @@ def _module_items(prefix: str, doc: dict, pictures: list[dict]) -> list[dict]:
     return items
 
 
+def module_text(doc: dict, parts: list[str] | None = None) -> str:
+    """A module file (or only its changed parts) in the words of the pack's
+    rows, for History's Before and After (08 Q13): "Checked controls",
+    "Button 3 — Fire", "Axis 1: 0 to 65535", not raw JSON."""
+    wanted = set(parts or doc)
+    sections: list[tuple[str, list[str]]] = []
+    if "claim" in wanted:
+        sections.append(("Checked controls", _control_lines(doc)))
+        names = _name_lines(doc)
+        if names:
+            sections.append(("Friendly names", names))
+    if "calibration" in wanted:
+        sections.append(("Calibration", _calibration_lines(doc)))
+    if "view" in wanted:
+        sections.append(("Output View Appearance", _view_lines(doc)))
+    if "catalog" in wanted:
+        sections.append(("Configuration Appearance", _catalog_lines(doc)))
+    if "nodes" in wanted:
+        sections.append(("Map", _chip_lines(doc)))
+    if wanted & {"photo", "image"}:
+        photo = str(doc.get("image") or doc.get("photo") or "")
+        sections.append(("Photo", [Path(photo).name] if photo else []))
+    if "ui" in wanted:
+        sections.append(("Map view", _map_view_lines(doc) + _print_lines(doc)))
+    shown = {"claim", "calibration", "view", "catalog", "nodes", "photo", "image", "ui"}
+    other = [
+        f"{key}: {doc[key]}" if isinstance(doc[key], (str, int, float)) else key
+        for key in sorted(wanted - shown)
+        if key in doc
+    ]
+    if other:
+        sections.append(("Other settings", other))
+    blocks = [
+        f"{title}:\n" + (_clip(lines) if lines else "None.")
+        for title, lines in sections
+    ]
+    return "\n\n".join(blocks)
+
+
 def _picture_item(arc: str, title: str, url: str, on_map: bool) -> dict:
     row = _item("pic:" + arc, title, title, kind="image")
     row["url"] = url
@@ -1215,6 +1254,23 @@ def _device_limits(guid: str) -> dict[str, set[int]] | None:
     return None
 
 
+def _vjoy_limits(number: int) -> dict[str, set[int]] | None:
+    """What vJoy device number has, as _device_limits() for a stick (None:
+    not a vJoy name, or that vJoy isn't here)."""
+    if not number:
+        return None
+    for dev in store.live_devices():
+        if not getattr(dev, "is_virtual", False):
+            continue
+        try:
+            if int(getattr(dev, "vjoy_id", 0) or 0) != number:
+                continue
+        except (TypeError, ValueError):
+            continue
+        return _device_limits(store.guid_text(getattr(dev, "device_guid", "")))
+    return None
+
+
 def _vjoy_number(name: str) -> int:
     match = re.fullmatch(r"\s*vjoy\s*(\d+)\s*", str(name or ""), re.IGNORECASE)
     return int(match.group(1)) if match else 0
@@ -1416,6 +1472,52 @@ def _plan_wires(
     }
 
 
+def _mode_here(profile: Profile, name: str) -> str:
+    """The profile's mode a pack mode is: "test mode" is this profile's
+    "Test Mode" (capitals and spacing don't count, as Manage Modes, 04 S40);
+    a mode not here keeps its own name."""
+    from gremlin.profile import clean_mode_name
+
+    if profile.modes.mode_exists(name):
+        return name
+    text = clean_mode_name(name).casefold()
+    for existing in profile.modes.mode_names():
+        if text and clean_mode_name(existing).casefold() == text:
+            return existing
+    return name
+
+
+def _match_modes(profile: Profile, plan: dict, tree: dict) -> tuple[dict, dict]:
+    """The plan and mode tree with each pack mode under the name of the
+    look-alike mode this profile has (add_mode refuses look-alikes)."""
+    wanted = set(plan["modes"]) | set(tree)
+    names = {name: _mode_here(profile, name) for name in wanted}
+    names.update(
+        {str(p): _mode_here(profile, str(p)) for p in tree.values() if p}
+    )
+    if all(old == new for old, new in names.items()):
+        return plan, tree
+    inputs = []
+    for block in plan["inputs"]:
+        node = ElementTree.fromstring(str(block))
+        mode = node.find("mode")
+        if mode is not None and (mode.text or "") in names:
+            mode.text = names[mode.text or ""]
+        inputs.append(ElementTree.tostring(node, encoding="unicode"))
+    matched = dict(plan)
+    matched["modes"] = list(dict.fromkeys(names.get(m, m) for m in plan["modes"]))
+    matched["counts"] = {}
+    for mode, count in plan["counts"].items():
+        key = names.get(mode, mode)
+        matched["counts"][key] = matched["counts"].get(key, 0) + count
+    matched["inputs"] = inputs
+    new_tree = {
+        names.get(name, name): (names.get(str(parent), parent) if parent else parent)
+        for name, parent in tree.items()
+    }
+    return matched, new_tree
+
+
 def _ensure_modes(
     profile: Profile, names: list[str], tree: dict, notes: list[str]
 ) -> list[str]:
@@ -1465,7 +1567,6 @@ def _apply_wires(
         return ["The wires were not written. This name has no device id."], None
     try:
         from gremlin.logical_device import LogicalDevice
-        from gremlin.profile import DeviceInfo
         from gremlin.shared_state import current_profile
         from gremlin.types import InputType
     except Exception:
@@ -1477,40 +1578,56 @@ def _apply_wires(
     if uid is None:
         return ["The wires were not written. This name has no device id."], None
     notes: list[str] = []
+    plan, tree = _match_modes(profile, plan, tree)
     try:
-        action_xml = _retarget_vjoy(plan["actions"], moves)
-        created_logical = []
-        missing = plan["missingLogical"]
-        if missing and create_logical:
-            for kind, number in missing:
-                made = LogicalDevice().create(InputType.to_enum(kind), input_id=number)
-                created_logical.append(made.identifier)
-            notes.append(
-                "Created on the Logical Device: "
-                + ", ".join(f"{kind.capitalize()} {number}" for kind, number in missing)
-                + "."
-            )
-        elif missing:
-            notes.append(
-                "These wires send to Logical Device inputs that don't exist here, "
-                "so they do nothing until you add them: "
-                + ", ".join(f"{kind.capitalize()} {number}" for kind, number in missing)
-                + "."
-            )
-        created_modes = _ensure_modes(profile, plan["modes"], tree, notes)
-        # Each ticked mode: everything the device had there goes.
-        removed = []
-        kept = []
-        for item in profile.inputs.get(uid, []) or []:
-            replaced = str(item.mode or "Default") in plan["modes"]
-            (removed if replaced else kept).append(item)
-        if uid in profile.inputs:
-            profile.inputs[uid] = kept
-        added = profile.add_inputs(uid, plan["inputs"], action_xml)
-        if uid not in profile.device_database.devices:
-            profile.device_database.devices[uid] = DeviceInfo(uid, target_name)
+        # All or nothing (decision A3, 08 S79): when any step fails, the
+        # Library puts back the inputs, actions, modes, Logical Device
+        # inputs and device list as they were (map 2, GL-099, GL-109).
+        with profile.library.change():
+            action_xml = _retarget_vjoy(plan["actions"], moves)
+            created_logical = []
+            missing = plan["missingLogical"]
+            if missing and create_logical:
+                for kind, number in missing:
+                    made = LogicalDevice().create(
+                        InputType.to_enum(kind), input_id=number
+                    )
+                    created_logical.append(made.identifier)
+                notes.append(
+                    "Created on the Logical Device: "
+                    + ", ".join(
+                        f"{kind.capitalize()} {number}" for kind, number in missing
+                    )
+                    + "."
+                )
+            elif missing:
+                notes.append(
+                    "These wires send to Logical Device inputs that don't exist "
+                    "here, so they do nothing until you add them: "
+                    + ", ".join(
+                        f"{kind.capitalize()} {number}" for kind, number in missing
+                    )
+                    + "."
+                )
+            created_modes = _ensure_modes(profile, plan["modes"], tree, notes)
+            # Each ticked mode: everything the device had there goes. Undo
+            # Import puts each back from its snapshot.
+            removed = [
+                item
+                for item in profile.inputs.get(uid, []) or []
+                if str(item.mode or "Default") in plan["modes"]
+            ]
+            restore = [_input_back(profile, item) for item in removed]
+            profile.drop_inputs(uid, removed)
+            added = profile.add_inputs(uid, plan["inputs"], action_xml)
+            if uid not in profile.device_database.devices:
+                profile.remember_device(uid, target_name)
     except Exception as exc:
-        return [f"The wires were not written. {exc}"], None
+        # Nothing of the wires stays (the module files written before are
+        # kept, and Undo Import puts them back).
+        return [
+            f"The wires were not written, and nothing in the profile was changed. {exc}"
+        ], None
     had = sum(1 for item in removed if item.action_sequences)
     for mode in plan["modes"]:
         count = plan["counts"].get(mode, 0)
@@ -1535,7 +1652,8 @@ def _apply_wires(
     undo = {
         "profile": profile,
         "uid": uid,
-        "removed": removed,
+        "removed": [],
+        "restore": restore,
         "added": added,
         "modes": created_modes,
         "logical": created_logical,
@@ -1543,8 +1661,63 @@ def _apply_wires(
     return notes, undo
 
 
+def _input_back(profile: Profile, item: object) -> dict:
+    """What Undo Import needs to put a replaced input back: its snapshot
+    (Library.snapshot), or, for one without actions, its XML."""
+    from gremlin.types import InputType
+
+    snapshot = profile.input_snapshot(item)  # type: ignore[arg-type]
+    return {
+        "type": InputType.to_string(getattr(item, "input_type")),
+        "id": getattr(item, "input_id"),
+        "mode": str(getattr(item, "mode", "") or "Default"),
+        "snapshot": snapshot,
+        "xml": None
+        if snapshot
+        else ElementTree.tostring(item.to_xml(), encoding="unicode"),  # type: ignore[attr-defined]
+    }
+
+
+def _put_inputs_back(profile: Profile, uid: uuid.UUID, wires: dict) -> None:
+    """Undo Import's wires: the imported inputs go, the replaced ones come
+    back. All or nothing (Library.change); Profile methods only (GL-109)."""
+    from gremlin.types import InputType
+
+    with profile.library.change():
+        added = {id(item) for item in wires.get("added") or []}
+        doomed = [item for item in profile.inputs.get(uid, []) if id(item) in added]
+        profile.drop_inputs(uid, doomed)
+        for back in wires.get("restore") or []:
+            if back.get("snapshot"):
+                profile.put_input(
+                    uid,
+                    InputType.to_enum(back["type"]),
+                    back["id"],
+                    back["mode"],
+                    back["snapshot"],
+                )
+            elif back.get("xml"):
+                profile.add_inputs(uid, [back["xml"]], [], remap=False)
+
+
+def _logical_has_actions(profile: Profile, ident: object) -> bool:
+    """Whether an input of the profile on this Logical Device input has
+    actions (Undo Import keeps it then, 08 Q21)."""
+    from gremlin.logical_device import LogicalDevice
+
+    for item in profile.inputs.get(LogicalDevice.device_guid, []) or []:
+        try:
+            same = item.input_type == ident.type and int(item.input_id) == int(ident.id)  # type: ignore[attr-defined]
+        except (TypeError, ValueError):
+            continue
+        if same and item.action_sequences:
+            return True
+    return False
+
+
 # The last import, so Undo Import can put it back: the files it replaced
-# (with their previous bytes, None for a new file) and the wires.
+# (with their previous bytes, None for a new file), what it wrote in them
+# ("written": a file changed since is asked about, 08 Q5) and the wires.
 _last_import: dict | None = None
 
 
@@ -1553,17 +1726,10 @@ def can_undo_import() -> bool:
 
 
 def drop_import_undo() -> None:
-    """Keeps the last import: the actions it replaced leave the profile."""
+    """Keeps the last import: Undo Import is no longer offered. The actions
+    it replaced left the profile with their inputs (Library.release)."""
     global _last_import
-    record, _last_import = _last_import, None
-    wires = (record or {}).get("wires")
-    if not wires:
-        return
-    from gremlin.shared_state import current_profile
-
-    profile = current_profile
-    if profile is not None and wires["profile"] is profile:
-        profile.library.release(profile.roots_of(wires["removed"]))
+    _last_import = None
 
 
 def _put_back(files: list[tuple[Path, bytes | None]]) -> None:
@@ -1579,9 +1745,49 @@ def _put_back(files: list[tuple[Path, bytes | None]]) -> None:
             pass
 
 
-def undo_import() -> dict:
-    """Puts back what the last import replaced."""
+def _bytes_now(path: Path) -> bytes | None:
+    try:
+        return path.read_bytes() if path.is_file() else None
+    except OSError:
+        return None
+
+
+def _written(files: list[tuple[Path, bytes | None]]) -> dict[str, bytes | None]:
+    """What the import left in each file it wrote, to see later edits."""
+    return {str(path): _bytes_now(path) for path, _ in files}
+
+
+def changed_since_import() -> list[str]:
+    """Files of the last import saved again since (the Button Map, Module
+    Setup): Undo Import would lose those changes (08 Q5)."""
+    record = _last_import
+    if record is None or "written" not in record:
+        return []
+    written = record["written"]
+    names: list[str] = []
+    for path, _ in record["files"]:
+        if str(path) in written and _bytes_now(path) != written[str(path)]:
+            if path.name not in names:
+                names.append(path.name)
+    return names
+
+
+def undo_import(force: bool = False) -> dict:
+    """Puts back what the last import replaced. A file changed since the
+    import is asked about first (08 Q5, GL-031): {"ask": True, ...} and
+    nothing changes; force=True puts it back anyway."""
     global _last_import
+    changed = changed_since_import()
+    if changed and not force:
+        return {
+            "ok": False,
+            "ask": True,
+            "changed": changed,
+            "error": "Changed after the import: "
+            + ", ".join(changed)
+            + ". Undo Import puts these back as they were before the import, "
+            "and those changes are lost.",
+        }
     record, _last_import = _last_import, None
     if record is None:
         return {"ok": False, "error": "There is no import to undo."}
@@ -1598,22 +1804,22 @@ def undo_import() -> dict:
         except OSError:
             notes.append(f"{path.name} could not be put back.")
     wires = record.get("wires")
+    logical_changed = False
     if wires:
         from gremlin.logical_device import LogicalDevice
         from gremlin.shared_state import current_profile
+        from gremlin.types import InputType
 
         profile = wires["profile"]
         if profile is not current_profile:
             notes.append("Another profile is open now, so the wires were not put back.")
         else:
-            added = {id(item) for item in wires["added"]}
-            items = [
-                item
-                for item in profile.inputs.get(wires["uid"], [])
-                if id(item) not in added
-            ]
-            profile.inputs[wires["uid"]] = items + list(wires["removed"])
-            profile.library.release(profile.roots_of(wires["added"]))
+            try:
+                _put_inputs_back(profile, wires["uid"], wires)
+            except Exception as exc:
+                notes.append(f"The wires could not be put back, so they stay. {exc}")
+                wires = None
+        if wires and profile is current_profile:
             # The full delete (running modes, main window, pages), as Manage
             # Modes does; the profile alone left them on the deleted mode.
             from gremlin.ui.profile import delete_mode
@@ -1626,13 +1832,28 @@ def undo_import() -> dict:
                     and len(modes.mode_names()) > 1
                 ):
                     delete_mode(mode)
+            kept = []
             for ident in wires["logical"]:
-                if LogicalDevice().exists(ident):
-                    LogicalDevice().delete(ident)
+                if not LogicalDevice().exists(ident):
+                    continue
+                if _logical_has_actions(profile, ident):
+                    # Actions added since the import stay with it (08 Q21).
+                    kept.append(
+                        f"{InputType.to_string(ident.type).capitalize()} {ident.id}"
+                    )
+                    continue
+                LogicalDevice().delete(ident)
+                logical_changed = True
+            if kept:
+                notes.append(
+                    "Kept on the Logical Device, because they have actions now: "
+                    + ", ".join(kept)
+                    + "."
+                )
     try:
         from gremlin.signal import signal
 
-        if wires and wires.get("logical"):
+        if logical_changed:
             signal.logicalDeviceModified.emit()
         signal.configChanged.emit()
         signal.profileChanged.emit()
@@ -1856,7 +2077,11 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
             )
             continue
         existing = _read_doc(dest)
-        merged, merged_notes = _merge_module(existing, output, chosen, prefix, out_name, out_guid)
+        # Within what the vJoy device has, as for a stick (08 Q18, GL-191).
+        out_limits = _vjoy_limits(_vjoy_number(out_name))
+        merged, merged_notes = _merge_module(
+            existing, output, chosen, prefix, out_name, out_guid, out_limits
+        )
         start = len(files)
         try:
             _write_pictures(dest.stem, loaded["files"], chosen, merged, files)
@@ -1891,7 +2116,7 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
     # A new import keeps the one before it for good (only an import that
     # changed something: a failed one leaves the last one undoable).
     drop_import_undo()
-    _last_import = {"files": files, "wires": wires_undo}
+    _last_import = {"files": files, "wires": wires_undo, "written": _written(files)}
     try:
         from gremlin.signal import signal
         signal.configChanged.emit()

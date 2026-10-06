@@ -70,7 +70,8 @@ def test_get_used_vjoy_inputs_from_profile(
     mapper = auto_mapper.AutoMapper(p)
     used_vjoy_inputs = mapper._get_used_vjoy_inputs("Default")
 
-    assert len(used_vjoy_inputs) == 14
+    # Every Map to vJoy, also those inside a Chain or Condition (08 Q7).
+    assert len(used_vjoy_inputs) == 19
 
     with subtests.test("axis single mapping"):
         assert types.VjoyInput(1, types.InputType.JoystickAxis, 1) in used_vjoy_inputs
@@ -110,7 +111,8 @@ def test_get_used_vjoy_inputs_from_empty_mode(
     assert len(used_vjoy_inputs) == 0
 
 
-# Intentionally not using the register_profile_device fixture in this test.
+# Intentionally not using the register_profile_device fixture in this test:
+# a stick not plugged in still uses its vJoy outputs (08 Q7, S98 replaced).
 def test_get_used_vjoy_inputs_for_disconnected_device_in_profile(
     xml_dir: pathlib.Path,
 ) -> None:
@@ -121,5 +123,6 @@ def test_get_used_vjoy_inputs_for_disconnected_device_in_profile(
     mapper = auto_mapper.AutoMapper(p)
     used_vjoy_inputs = mapper._get_used_vjoy_inputs("Default")
 
-    assert not len(used_vjoy_inputs)
+    # Every Map to vJoy, also those inside a Chain or Condition (08 Q7).
+    assert len(used_vjoy_inputs) == 19
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -291,6 +292,9 @@ def device_has_name(guid: str, device_name: str) -> bool:
 
 # path -> ((mtime_ns, size), Module | None)
 _cache: dict[Path, tuple[tuple[int, int], Module | None]] = {}
+# modules() runs on the main thread and on action threads (output claims):
+# one reader at a time walks and changes _cache (GL-038).
+_cache_lock = threading.RLock()
 
 
 def _folder() -> Path:
@@ -342,24 +346,26 @@ def modules() -> list[Module]:
     folder = _folder()
     if not folder.is_dir():
         return []
-    seen: set[Path] = set()
-    out: list[Module] = []
-    for path in sorted(folder.glob("*.json")):
-        seen.add(path)
-        try:
-            stat = path.stat()
-        except OSError:
-            continue
-        stamp = (stat.st_mtime_ns, stat.st_size)
-        cached = _cache.get(path)
-        if cached is None or cached[0] != stamp:
-            cached = (stamp, _read(path))
-            _cache[path] = cached
-        if cached[1] is not None:
-            out.append(cached[1])
-    for gone in [p for p in _cache if p not in seen]:
-        _cache.pop(gone, None)
-    return out
+    with _cache_lock:
+        cache = _cache
+        seen: set[Path] = set()
+        out: list[Module] = []
+        for path in sorted(folder.glob("*.json")):
+            seen.add(path)
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            stamp = (stat.st_mtime_ns, stat.st_size)
+            cached = cache.get(path)
+            if cached is None or cached[0] != stamp:
+                cached = (stamp, _read(path))
+                cache[path] = cached
+            if cached[1] is not None:
+                out.append(cached[1])
+        for gone in [p for p in cache if p not in seen]:
+            cache.pop(gone, None)
+        return out
 
 
 def inputs() -> list[Module]:

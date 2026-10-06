@@ -434,6 +434,56 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     w.leave_edit()
     out["clear-photo-fails"]["after-cancel"] = (MODULES / SLUG / "photo.jpg").is_file()
 
+    # Choose Photo and Clear Photo are undo steps (07 Q3, GL-179).
+    other = make_picture(_HOME / "pictures" / "other photo.png", "#20a0a0")
+    saved_image = read_doc(MAP_FILE).get("image")
+    w.enter_edit()
+    w.ev("_imageDialog.selectedFile = "
+         + json.dumps(QtCore.QUrl.fromLocalFile(str(other)).toString())
+         + "; _imageDialog.accepted(); true")
+    wait_for(lambda: str(w.ev("_buttonMap.storedImage")).endswith(".png"))
+    w.ev("_ed().flushPendingStep()")
+    w.ev(menu_item("Clear Photo"))
+    wait_for(lambda: w.ev("_buttonMap.storedImage === _buttonMap.stockImage"))
+    w.ev("_ed().flushPendingStep()")
+    w.ev("_ed().undo()")
+    after_one = {
+        "shown": w.ev("_buttonMap.storedImage"),
+        "file": (MODULES / SLUG / "photo.png").is_file(),
+    }
+    w.ev("_ed().undo()")
+    out["photo-undo"] = {
+        "after-one": after_one,
+        "after-two": w.ev("_buttonMap.storedImage"),
+        "saved": saved_image,
+        "jpg-back": (MODULES / SLUG / "photo.jpg").is_file(),
+        "png-gone": not (MODULES / SLUG / "photo.png").exists(),
+        "dirty": w.ev("_buttonMap.isDirty()"),
+    }
+    w.ev("_ed().redo()")
+    out["photo-redo"] = str(w.ev("_buttonMap.storedImage"))
+    w.leave_edit()
+    out["photo-undo"]["after-cancel"] = read_doc(MAP_FILE).get("image") == saved_image
+
+    # A guide and the print area are undo steps too (07 Q3, GL-179).
+    w.enter_edit()
+    w.ev("(function() { var e = _ed(); e.rulerGuidesX = [0.25];"
+         " e.rulerGuidesEdited(); return true })()")
+    w.ev("(function() { var e = _ed();"
+         " e.printArea = {fx: 0.1, fy: 0.1, fw: 0.3, fh: 0.3};"
+         " e.printAreaEdited(false); return true })()")
+    w.ev("_ed().undo()")
+    undo_one = {"printArea": w.js("_buttonMap.printArea"),
+                "guidesX": w.js("_buttonMap.guidesX") or []}
+    w.ev("_ed().undo()")
+    out["ui-undo"] = {
+        "after-one": undo_one,
+        "after-two": {"printArea": w.js("_buttonMap.printArea"),
+                      "guidesX": w.js("_buttonMap.guidesX") or []},
+        "dirty": w.ev("_buttonMap.isDirty()"),
+    }
+    w.leave_edit()
+
     # Print area and a guide changed in Edit, then Cancel (07 Q1, GL-173).
     before_ui = read_doc(MAP_FILE).get("ui") or {}
     out["ui-before"] = {"printArea": before_ui.get("printArea"),
@@ -486,6 +536,17 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     w.ev("_ed().undo()")
     wait_for(lambda: 80 not in [n.get("hwId") for n in w.nodes()])
     out["copy-undo"] = hw_ids(w.nodes()) == old_ids
+    # A mirrored copy: one Undo puts the old map back (S78, GL-184).
+    old_fx = {n.get("hwId"): n.get("chipFx") for n in w.nodes()}
+    w.ev("_ed().findMsg = ''")
+    w.ev("_buttonMap.copyLayoutFrom(" + json.dumps(row) + ", true)")
+    wait_for(lambda: w.ev("_ed().findMsg.length > 0 && _ed().seeded"))
+    w.ev("_ed().flushPendingStep()")
+    w.ev("_ed().undo()")
+    out["mirror-copy-undo"] = {
+        "ids": hw_ids(w.nodes()) == old_ids,
+        "fx": {n.get("hwId"): n.get("chipFx") for n in w.nodes()} == old_fx,
+    }
     w.leave_edit()
 
     # Recovery copies (S32-S37).
@@ -626,6 +687,12 @@ def part_outside(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     setup.setDeviceGuid(GUID)
     setup_ref = setup.keepPhoto(
         NAME, QtCore.QUrl.fromLocalFile(str(setup_photo)).toString())
+    # Module Setup's photo reaches the file with its Save (03 Q2, 07 Q5),
+    # as ModuleListModel's save names it.
+    from gremlin.modules import store
+
+    store.update(
+        NAME, GUID, lambda doc: doc.__setitem__("image", setup_ref), "Module Setup")
     out["setup-photo-written"] = read_doc(MAP_FILE).get("image") == setup_ref
     w.ev("_buttonMap.saveEdit(true)")
     wait_for(lambda: w.opened("_saveGate"))

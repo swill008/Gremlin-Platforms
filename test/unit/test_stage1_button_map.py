@@ -25,12 +25,11 @@ GL-021 (07-T4): Clear Photo when the file is open elsewhere (S41), the
 picture folder and a read-only install folder, the pool of an unplugged
 device (S46), other devices' damaged module files (S75).
 
-Known gaps, written for the spec and marked xfail(strict) until fixed:
-GL-173 (print area and guides, 07 Q1),
-GL-174 (Choose Photo waits for Save, 07 Q2), GL-175 (no module file made by
-a guide change, S29), GL-176 (Delete Device mid-edit, 07 Q7), GL-178 (no
-folder in the install folder, 07 Q13), GL-182 (chips for controls the device
-lacks, 07 Q8).
+Known gaps were marked xfail(strict) until fixed; all are fixed in batch 2:
+GL-176 (Delete Device mid-edit, 07 Q7), GL-173 (print area
+and guides, 07 Q1), GL-174 (Choose Photo waits for Save, 07 Q2), GL-175 (no
+module file made by a guide change, S29), GL-178 (no folder in the install
+folder, 07 Q13), GL-182 (chips for controls the device lacks, 07 Q8).
 """
 
 from __future__ import annotations
@@ -144,12 +143,6 @@ def test_choose_photo_then_cancel_puts_the_starting_photo_back(flows: dict) -> N
     assert back["new-photo"] is False
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-174: Choose Photo writes the module file and History at once;"
-    " Cancel adds a second entry",
-)
 def test_choose_photo_writes_nothing_until_save(flows: dict) -> None:
     # 07 Q2, S29: the new photo waits beside the old one; nothing in the
     # module file or History until Save.
@@ -165,11 +158,6 @@ def test_choose_photo_then_save_is_one_history_entry(flows: dict) -> None:
     assert saved["after-save"] == 1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-174: the History entry is made by Choose Photo, not by Save"
-)
 def test_the_photo_history_entry_comes_with_save(flows: dict) -> None:
     assert flows["choose-photo-save"]["before-save"] == 0
 
@@ -194,15 +182,39 @@ def test_clear_photo_failure_keeps_the_photo_and_says_so(flows: dict) -> None:
     assert failed["after-cancel"] is True
 
 
+def test_choose_and_clear_photo_are_undo_steps(flows: dict) -> None:
+    # 07 Q3 (decided; S57 changed by it), GL-179: each Undo puts the photo
+    # before back, files too; back at the start nothing is unsaved.
+    undone = flows["photo-undo"]
+    assert undone["after-one"]["shown"].endswith("/photo.png")
+    assert undone["after-one"]["file"] is True
+    assert undone["after-two"] == undone["saved"]
+    assert undone["jpg-back"] is True
+    assert undone["png-gone"] is True
+    assert undone["dirty"] is False
+    assert flows["photo-redo"].endswith("/photo.png")
+    assert undone["after-cancel"] is True
+
+
+def test_print_area_and_guides_are_undo_steps(flows: dict) -> None:
+    # 07 Q3, GL-179.
+    undone = flows["ui-undo"]
+    assert undone["after-one"]["guidesX"] == [0.25]
+    drawn = {"fx": 0.1, "fy": 0.1, "fw": 0.3, "fh": 0.3}
+    assert undone["after-one"]["printArea"] != drawn
+    assert undone["after-two"]["guidesX"] != [0.25]
+    assert undone["dirty"] is False
+
+
+def test_a_mirrored_copy_is_one_undo(flows: dict) -> None:
+    # S78 (AU-27, GL-184).
+    assert flows["mirror-copy-undo"] == {"ids": True, "fx": True}
+
+
 # +-------------------------------------------------------------------------
 # | GL-019: print area and guides
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-173: print area and guides are written mid-edit and Cancel keeps them",
-)
 def test_cancel_takes_back_print_area_and_guides(flows: dict) -> None:
     # 07 Q1 (decided): part of the edit; Save writes, Cancel takes back.
     before = flows["ui-before"]
@@ -211,11 +223,6 @@ def test_cancel_takes_back_print_area_and_guides(flows: dict) -> None:
     assert flows["ui-shown-after-cancel"] == before
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-175: a guide change in Edit creates the module file with the old map",
-)
 def test_guide_change_makes_no_module_file(flows: dict) -> None:
     # S29: the module file is written only on Save.
     assert flows["third-file-at-start"] is False
@@ -250,11 +257,6 @@ def test_copy_onto_fewer_controls_keeps_chips_saves_nothing_and_undoes(
     assert flows["copy-undo"] is True
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-182: no notice of chips for controls the device does not have",
-)
 def test_copy_says_how_many_chips_the_device_lacks(flows: dict) -> None:
     # 07 Q8: "N chips are for controls this device does not have".
     wanted = "2 chips are for controls this device does not have"
@@ -343,11 +345,6 @@ def test_delete_device_removes_the_module_file(outside: dict) -> None:
     assert outside["delete-ok"] == [True, False]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-176: Delete Device mid-edit asks Save, which would recreate the file",
-)
 def test_delete_device_mid_edit_closes_without_asking(outside: dict) -> None:
     # S13, 07 Q7: closes without saving (a short note says why).
     assert outside["delete-mid-edit"] == {"closed": True, "asked": False, "file": False}
@@ -398,11 +395,6 @@ def test_saved_layouts_skip_damaged_other_files(maps: pathlib.Path) -> None:
         assert profile.layoutNodes(slug) == ""
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-178: Choose Photo makes qml/images in the install folder"
-)
 def test_picture_folder_is_not_made_in_the_install_folder(
     monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> None:
@@ -414,11 +406,6 @@ def test_picture_folder_is_not_made_in_the_install_folder(
     assert list(install.iterdir()) == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=PermissionError,
-    reason="GL-178: a read-only install folder makes the picture folder fail",
-)
 def test_picture_folder_with_a_read_only_install_folder(
     monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> None:

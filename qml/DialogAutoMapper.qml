@@ -13,6 +13,7 @@ import Gremlin.Tools
 import Gremlin.Menus as Menus
 import Gremlin.Style
 import Gremlin.Config
+import "helpers.js" as Helpers
 
 ApplicationWindow {
     id: _mapper
@@ -207,7 +208,7 @@ ApplicationWindow {
                 text: "Create 1:1 Actions"
 
                 onClicked: () => {
-                    var run = function() {
+                    var create = function() {
                         _statusMessage.text = tools.createMappings(
                             _modeSelector.currentText,
                             selectedInputModules,
@@ -220,6 +221,9 @@ ApplicationWindow {
                         selectedInputModules = ({})
                         selectedOutputModules = ({})
                     }
+                    // The action panes close first, asking when one has
+                    // changes, or a later OK would undo these (05 Q8).
+                    var run = function() { Helpers.closeActionPanes(create) }
                     if (!_overwriteNonEmpty.checked) {
                         run()
                         return

@@ -238,14 +238,24 @@ class ActionModel(QtCore.QObject):
         ]
 
         # Sort actions according to the priority list but hide those we don't
-        # intend to show.
-        sort_names = [name for name, vis in priority_list if vis]
-        remove_names = [name for name, vis in priority_list if not vis]
+        # intend to show. Damaged settings (bad entries, an action missing
+        # from the list) never empty the menu: unlisted actions go to the end
+        # (05 S6, S7).
+        entries = [
+            entry
+            for entry in (priority_list if isinstance(priority_list, list) else [])
+            if isinstance(entry, (list, tuple)) and len(entry) == 2
+        ]
+        sort_names = [name for name, vis in entries if vis]
+        remove_names = {name for name, vis in entries if not vis}
+        position: dict[str, int] = {}
+        for name in sort_names:
+            position.setdefault(name, len(position))
 
         filtered_names = [
             name for name in all_valid_action_names if name not in remove_names
         ]
-        return sorted(filtered_names, key=lambda x: sort_names.index(x))
+        return sorted(filtered_names, key=lambda x: position.get(x, len(position)))
 
     @QtCore.Slot(str, result=list)
     def getActions(self, selector: str) -> list[ActionModel]:
@@ -277,7 +287,9 @@ class ActionModel(QtCore.QObject):
         if action:
             self._data.insert_action(action, selector)
             self._binding_model.sync_data()
-            _emit_input_item_changed_later(self._binding_model.parent().enumeration_index)
+            _emit_input_item_changed_later(
+                self._binding_model.parent().enumeration_index
+            )
         else:
             logging.getLogger("system").error(
                 f"Failed to create action of type {action_name}"

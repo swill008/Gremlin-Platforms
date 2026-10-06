@@ -14,8 +14,8 @@ and the registry from several threads: 03 7.13, 7.14).
 
 Tests that pass lock in today's behaviour where it matches the spec. Known
 gaps are strict xfails named by their gap-list id, so each flips when it is
-fixed: GL-038, GL-043, GL-138,
-GL-139, GL-140, GL-142, GL-143, GL-146, GL-147, GL-245. GL-141 (suspected)
+fixed: GL-245 (GL-038, GL-043, GL-138, GL-139, GL-140, GL-142, GL-143,
+GL-146 and GL-147 were fixed in catch-up batch 2). GL-141 (suspected)
 does not happen on the History Restore path: that is locked in instead.
 """
 
@@ -317,11 +317,6 @@ def test_hiding_a_stacked_card_alone_keeps_its_stack(folder: Path) -> None:
     assert model.pileMembers("pjoy_pro") == ["pjoy_pro", "keyboard", "osc"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-142: a stack edit drops cards that aren't showing"
-)
 def test_a_stack_edit_keeps_a_hidden_card_in_its_stack(folder: Path) -> None:
     setup_cards(folder)
     model = module_model.ModuleListModel()
@@ -438,11 +433,6 @@ def test_delete_device_without_save_a_copy_still_keeps_the_file(
     assert [c.read_bytes() for c in copies] == [before]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-043: Delete Device is allowed while running",
-)
 def test_delete_device_is_refused_while_running(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -457,11 +447,6 @@ def test_delete_device_is_refused_while_running(
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Combat", 2)}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-138: Delete Device saves the whole profile to disk"
-)
 def test_delete_device_leaves_the_profile_unsaved(
     folder: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -647,11 +632,6 @@ def test_card_counts_after_a_settings_change_are_the_claimed_counts(
     assert (card["buttons"], card["axes"], card["hats"]) == (1, 0, 0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-139: at a reload, a kind with no claim shows the device's count",
-)
 def test_card_counts_at_a_reload_are_the_claimed_counts(folder: Path) -> None:
     setup_cards(folder)
     model = module_model.ModuleListModel()
@@ -671,11 +651,6 @@ def test_a_busy_vjoy_card_says_in_use(
     assert model.cardMap("vjoy_1")["status"] == "In use by another program"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-140: a settings change drops the vJoy card's In use status"
-)
 def test_a_busy_vjoy_card_still_says_in_use_after_a_settings_change(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -785,22 +760,12 @@ def test_card_menus_leave_out_what_does_not_apply() -> None:
         assert not (_NOT_FOR_LOGICAL - {"Module Setup…"}) & set(menu)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-146: the Logical Device card menu offers what doesn't work"
-)
 def test_the_logical_device_card_menu() -> None:
     menu = card_menu("logical", "Logical Device", "source", "Logical", "logical")
     # Q7.
     assert not _NOT_FOR_LOGICAL & set(menu)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-147: Delete Device is offered on vJoy and Xbox cards"
-)
 def test_output_cards_have_no_delete_device() -> None:
     vjoy = card_menu("vjoy_1", "vJoy 1", "dest", "DirectInput", "physical")
     xbox = card_menu("xbox", "Xbox 360 Controller", "dest", "XInput", "xbox")
@@ -814,11 +779,6 @@ def test_an_input_card_offers_delete_device() -> None:
     assert "Delete Device" in stick
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-143: Also claim maps outputs it could not claim"
-)
 def test_auto_mapper_also_claim_on_a_damaged_output_file_makes_no_actions(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -876,11 +836,6 @@ class _PausingCache(dict):
         yield from walk
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=RuntimeError,
-    reason="GL-038: registry._cache is changed while another thread reads it",
-)
 def test_the_module_cache_read_on_two_threads_at_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

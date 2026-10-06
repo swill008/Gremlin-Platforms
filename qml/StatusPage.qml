@@ -369,6 +369,16 @@ Item {
     function askDelete(card) {
         if (!card || !model)
             return
+        // Output cards have no Delete Device (03 Q18).
+        if (card.direction === "dest")
+            return
+        // It changes the running profile: refused while running (03 Q6).
+        if (typeof backend !== "undefined" && backend && backend.gremlinActive) {
+            _doneTitle = "Delete stopped"
+            _doneMessage = "Stop the profile first. A device can't be deleted while the profile is running."
+            _doneDialog.open()
+            return
+        }
         var raw = String(card.rawName || card.cardName || card.name || "")
         var preview = {}
         try {

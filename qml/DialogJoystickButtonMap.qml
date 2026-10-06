@@ -275,12 +275,52 @@ ApplicationWindow {
     // the photo reloads instead of showing Qt's cached copy.
     property double _photoStamp: 0
 
-    function applyImage(rel) {
+    // source: where undo gets this photo again (see VkbRigEditor's
+    // photoImageRestored): a copy of it, "clear", or "" for the photo the
+    // edit started with.
+    function applyImage(rel, source) {
         storedImage = rel && rel.length ? rel : stockImage
         var url = _hw.imageUrl(storedImage)
         if (_photoStamp > 0 && url.indexOf("file:") === 0)
             url += (url.indexOf("?") < 0 ? "?" : "&") + "t=" + _photoStamp
         photoOverride = url
+        var e = _ed()
+        if (e) {
+            e.photoImage = storedImage
+            e.photoSource = source ? String(source) : ""
+        }
+    }
+
+    // Undo or redo went to a step with another photo (07 Q3): that photo
+    // becomes the device's photo again (the safety copy keeps the
+    // session's starting one for Cancel).
+    function photoFromHistory(image, source) {
+        var e = _ed()
+        if (!editing || !targetName.length) {
+            if (e)
+                e.photoImage = storedImage
+            return
+        }
+        var rel = ""
+        if (source === "clear") {
+            _hw.stashPhoto(targetName)
+            if (_hw.clearImage(targetName))
+                rel = stockImage
+        } else if (!source.length) {
+            // The photo this edit started with.
+            if (_hw.restorePhoto(targetName))
+                rel = image
+        } else {
+            _hw.stashPhoto(targetName)
+            rel = _hw.copyImage(source, targetName)
+        }
+        if (rel.length) {
+            _photoStamp = Date.now()
+            applyImage(rel, source)
+        } else if (e) {
+            // It could not be put back: the photo shown stays.
+            e.photoImage = storedImage
+        }
     }
 
     function sceneShiftList(list) {
@@ -446,6 +486,9 @@ ApplicationWindow {
         workPhoto = photoFromDoc(livePhoto)
         applyPhoto(workPhoto)
         applyImage(liveImage.length ? liveImage : stockImage)
+        // The print area, print setup and guides as this edit starts:
+        // Cancel puts them back (07 Q1).
+        noteEditUiBase()
         editing = true
         // The map as the editor tidies it on loading is where this edit
         // starts (taken when the editor is done: noteSeeded).
@@ -532,6 +575,7 @@ ApplicationWindow {
         // Saved: later changes are compared with what was just saved.
         editBase = JSON.stringify(nodes)
         _baseWanted = false
+        noteEditUiBase()
         clearRecovery()
         // Saved: the photo this session started with is no longer needed.
         _hw.dropPhotoStash(targetName)
@@ -576,6 +620,9 @@ ApplicationWindow {
         // A new photo of the same file type keeps the same file name: the
         // kept copy of the old one says it changed.
         if (targetName.length && _hw.hasPhotoStash(targetName))
+            return true
+        // The print area, print setup or guides changed in this edit.
+        if (editUiChanged())
             return true
         try {
             var now = JSON.stringify(editorNodesNow())
@@ -702,7 +749,12 @@ ApplicationWindow {
         hydrateOverlays(nodes)
         workNodes = nodes
         if (doc.image && String(doc.image).length)
-            applyImage(String(doc.image))
+        {
+            // A photo change waiting with the copy: undo comes back to it
+            // from a copy of the photo (or to no photo).
+            var copy = _hw.hasPhotoStash(targetName) ? (_hw.photoCopyUrl(targetName) || "clear") : ""
+            applyImage(String(doc.image), copy)
+        }
         workPhoto = photoFromDoc(doc.photo)
         applyPhoto(workPhoto)
         Qt.callLater(function() {
@@ -733,7 +785,10 @@ ApplicationWindow {
             // Photo files changed in this session go back to how they were.
             if (_hw.restorePhoto(targetName))
                 _photoStamp = Date.now()
+            // So do the print area, print setup and guides (07 Q1).
+            restoreEditUi()
         }
+        _editUi = null
         editBase = null
         _baseWanted = false
         editing = false
@@ -1626,6 +1681,15 @@ ApplicationWindow {
         guidesX = e.rulerGuidesX.slice()
         guidesY = e.rulerGuidesY.slice()
         persistUi()
+        noteEditStep()
+    }
+
+    // A print area or guide change in Edit is an undo step (07 Q3); Undo
+    // itself adds none (the editor is restoring then).
+    function noteEditStep() {
+        var e = _ed()
+        if (editing && e && e.pushHist)
+            e.pushHist()
     }
 
     // Editor settings from Options (Edit → Button Map Options…).
@@ -1805,6 +1869,46 @@ ApplicationWindow {
         }
     }
 
+    // The parts of the ui block that belong to an edit (07 Q1): written by
+    // Save, taken back by Cancel. The rest (view, zoom, grid, guides shown)
+    // is kept at once.
+    readonly property var editUiKeys: ["printArea", "print", "guidesX", "guidesY"]
+    // The edit parts as the edit started (or was last saved).
+    property var _editUi: null
+
+    function editUiNow() {
+        return {
+            printArea: printArea,
+            print: printSetup,
+            guidesX: guidesX.slice(),
+            guidesY: guidesY.slice()
+        }
+    }
+
+    function noteEditUiBase() {
+        _editUi = JSON.parse(JSON.stringify(editUiNow()))
+    }
+
+    // Cancel: the print area, print setup and guides go back to how the
+    // edit found them.
+    function restoreEditUi() {
+        if (!_editUi)
+            return
+        var b = _editUi
+        _editUi = null
+        printArea = b.printArea ? { fx: +b.printArea.fx, fy: +b.printArea.fy,
+                                    fw: +b.printArea.fw, fh: +b.printArea.fh } : null
+        printSetup = b.print
+        guidesX = (b.guidesX || []).slice()
+        guidesY = (b.guidesY || []).slice()
+        applyGridToEditor()
+    }
+
+    function editUiChanged() {
+        return editing && _editUi !== null
+            && JSON.stringify(editUiNow()) !== JSON.stringify(_editUi)
+    }
+
     function persistUi() {
         // No device: nothing to keep them in (they used to go to a built-in
         // default device's file).
@@ -1812,24 +1916,24 @@ ApplicationWindow {
             return
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
-        // Just looking at a device with no module file: zoom, grid and the
-        // like don't make one (it showed up as an empty input module). In
-        // Edit they do (the print area is part of the map).
-        if (!doc && !editing)
+        // No module file: zoom, grid, guides and the print area don't make
+        // one (it showed up as an empty input module, or, in Edit, a file
+        // with the old map). They wait here; Save writes them (07 S29, S96).
+        if (!doc)
             return
-        if (!doc) {
-            doc = {
-                kind: "control.hardware",
-                device: targetName,
-                image: liveImage.length ? liveImage : stockImage,
-                nodes: liveNodes || []
+        var ui = uiBag()
+        if (editing) {
+            // In Edit the print area, print setup and guides wait for Save.
+            var kept = doc.ui || {}
+            for (var i = 0; i < editUiKeys.length; i++) {
+                var key = editUiKeys[i]
+                if (kept[key] === undefined)
+                    delete ui[key]
+                else
+                    ui[key] = kept[key]
             }
         }
-        doc.ui = uiBag()
-        if (_hw.saveUi)
-            _hw.saveUi(targetName, JSON.stringify(doc))
-        else
-            _hw.save(targetName, JSON.stringify(doc))
+        _hw.saveUi(targetName, JSON.stringify({ ui: ui }))
     }
 
     function setGridPref(key, val) {
@@ -1920,12 +2024,16 @@ ApplicationWindow {
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
         currentFolder: _hw.imagesFolderUrl()
         onAccepted: {
+            _hw.notePictureFolder(selectedFile)
             // Cancel can put the current photo back.
             _hw.stashPhoto(targetName)
-            var rel = ownFileChange(function() { return _hw.copyImage(selectedFile, targetName) })
+            // The photo file only: the module file's image waits for Save
+            // (07 Q2).
+            var rel = _hw.copyImage(selectedFile, targetName)
             if (rel.length) {
                 _photoStamp = Date.now()
-                applyImage(rel)
+                // Undo can bring this photo back from its copy (07 Q3).
+                applyImage(rel, _hw.photoCopyUrl(targetName))
                 resetPhoto()
             }
         }
@@ -1938,6 +2046,7 @@ ApplicationWindow {
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
         currentFolder: _hw.imagesFolderUrl()
         onAccepted: {
+            _hw.notePictureFolder(selectedFile)
             var rel = _hw.copyOverlay(selectedFile, targetName)
             var e = _ed()
             if (rel.length && e)
@@ -1978,9 +2087,13 @@ ApplicationWindow {
         var setup = JSON.stringify(printSetup)
         var target = String(url)
         var job = _renderJob(function(result) {
-            if (!result || !_hw.saveArea(result.image, px.w, px.h, target, format, setup)) {
+            if (!result) {
                 console.warn("Button Map export failed: " + target)
-                _buttonMap._say("Export failed.")
+                _buttonMap._say("Export failed. The map could not be drawn.")
+            } else if (!_hw.saveArea(result.image, px.w, px.h, target, format, setup)) {
+                console.warn("Button Map export failed: " + target)
+                // Which file and why (07 Q19), as Template export says.
+                _buttonMap.tellFailure("Export Failed", _hw.exportError() || "Export failed.")
             }
         }, px)
         if (job)
@@ -2076,16 +2189,71 @@ ApplicationWindow {
                 return
             // The copy is a change: compared with the saved map.
             _baseWanted = false
-            Qt.callLater(function() { _replaceLayout(nodes, mirror) })
+            Qt.callLater(function() { _replaceLayout(nodes, mirror, row) })
             return
         }
-        _replaceLayout(nodes, mirror)
+        _replaceLayout(nodes, mirror, row)
     }
 
-    function _replaceLayout(nodes, mirror) {
+    // How many chips (group members too) are for controls this device
+    // does not have (07 Q8); 0 when its controls aren't known.
+    function lackingChips(list) {
+        var e = _ed()
+        if (!e || !targetGuid.length)
+            return 0
+        var have = _hw.deviceControls(targetGuid)
+        if (!have || !have.known)
+            return 0
+        var count = 0
+        function check(kind, hw) {
+            var number = Number(hw)
+            if (!(number > 0))
+                return
+            var ids = have[e.leafKind(kind)] || []
+            for (var k = 0; k < ids.length; k++) {
+                if (Number(ids[k]) === number)
+                    return
+            }
+            count++
+        }
+        for (var i = 0; i < (list || []).length; i++) {
+            var n = list[i]
+            if (!n || e.isDraw(n))
+                continue
+            var mem = n.members || []
+            if (mem.length) {
+                for (var m = 0; m < mem.length; m++)
+                    check(e.memberKind(n, mem[m]), mem[m].hwId)
+            } else if (n.hwId !== undefined) {
+                check(n.kind, n.hwId)
+            }
+        }
+        return count
+    }
+
+    // What Copy Button Map and Apply Template say after the copy: chips for
+    // controls this device lacks (07 Q8) and a template's missing pictures
+    // (S81).
+    function copyNotes(list, row) {
+        var text = ""
+        var lacking = lackingChips(list)
+        if (lacking === 1)
+            text += " 1 chip is for a control this device does not have."
+        else if (lacking > 1)
+            text += " " + lacking + " chips are for controls this device does not have."
+        var missing = row && row.template ? _hw.templateMissingPictures(row.name) : []
+        if (missing.length)
+            text += " Pictures not found (moved or deleted): " + missing.join(", ") + "."
+        return text
+    }
+
+    function _replaceLayout(nodes, mirror, row) {
         var before = _ed()
         if (before && before.flushPendingStep)
             before.flushPendingStep()
+        // The undo position before the copy: the copy (and its mirroring)
+        // is one step after it (S78).
+        var startAt = before ? before.histAt : -1
         hydrateOverlays(nodes)
         workNodes = nodes
         Qt.callLater(function() {
@@ -2096,8 +2264,11 @@ ApplicationWindow {
                 e.mirrorLayout(_opts.values["mirror-pictures"] === true)
             else
                 e.bump()
+            if (e === before && e.squashHistSince)
+                e.squashHistSince(startAt)
             refreshReservoir()
-            e.showFindMessage("Layout copied. Save to keep it; Undo puts the old one back.")
+            e.showFindMessage("Layout copied. Save to keep it; Undo puts the old one back."
+                              + copyNotes(e.nodes, row))
         })
     }
 
@@ -2609,9 +2780,16 @@ ApplicationWindow {
                 ThemedMenuItem {
                     text: "History"
                     enabled: _buttonMap.targetName.length > 0
-                    onTriggered: Helpers.createComponent("DialogHistory.qml", {
-                        filter: JSON.stringify({ area: "button-map", device: _buttonMap.targetName })
-                    })
+                    // By this device's own module file, every area (twin
+                    // sticks apart; a save that also changed claims shows
+                    // too), as Module Setup does (08 Q15).
+                    onTriggered: {
+                        _hw.setDeviceGuid(_buttonMap.targetGuid)
+                        Helpers.createComponent("DialogHistory.qml", {
+                            filter: JSON.stringify({ fileName: _hw.moduleFileName(_buttonMap.targetName) }),
+                            filterLabel: _buttonMap.targetName
+                        })
+                    }
                 }
                 ThemedMenuSeparator {}
                 ThemedMenu {
@@ -3024,7 +3202,7 @@ ApplicationWindow {
                                 "The photo file could not be removed (it may be open in another program).")
                             return
                         }
-                        applyImage(stockImage)
+                        applyImage(stockImage, "clear")
                         resetPhoto()
                     }
                 }
@@ -3145,7 +3323,9 @@ ApplicationWindow {
                                 if (drawn)
                                     _tools.setOpen("printArea", true)
                                 _buttonMap.persistUi()
+                                _buttonMap.noteEditStep()
                             }
+                            function onPhotoImageRestored(image, source) { _buttonMap.photoFromHistory(image, source) }
                             function onSeededChanged() { _buttonMap.noteSeeded() }
                         }
                         Component.onCompleted: _cardLoader.item = _card

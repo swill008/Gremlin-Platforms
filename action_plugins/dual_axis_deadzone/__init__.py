@@ -51,6 +51,7 @@ Vector2 = collections.namedtuple("Vector2", ["x", "y"])
 # Smallest gap kept between the inner and outer deadzone.
 _MIN_GAP = 0.01
 
+
 class DualAxisDeadzoneFunctor(AbstractFunctor):
     """Implements the function executed of the Description action at runtime."""
 
@@ -135,7 +136,15 @@ class DualAxisDeadzoneModel(ActionModel):
         )
         if action is None:
             return
-        action.label = "Dual Axis Deadzone"
+        # Numbered like Merge Axis, so each one has its own name (05 Q14).
+        taken = {
+            getattr(a, "label", "")
+            for a in self.library.actions_by_type(DualAxisDeadzoneData)
+        }
+        number = 1
+        while f"Dual Axis Deadzone {number}" in taken:
+            number += 1
+        action.label = f"Dual Axis Deadzone {number}"
 
         # The new one is the one shown (as picking it from the list).
         self._set_deadzone(str(action.id))

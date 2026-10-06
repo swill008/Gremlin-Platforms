@@ -313,11 +313,13 @@ def _neutral(kind: str) -> Any:  # noqa: ANN401
 
 
 def vjoy_value(vjoy_id: int, kind: str, input_id: int) -> Any:  # noqa: ANN401
-    """Current value of a claimed vJoy output; neutral when unclaimed or missing."""
+    """Current value of a claimed vJoy output; neutral when unclaimed or
+    missing, or when Gremlin does not hold the device: a read never opens
+    one, only writes do (06 Q16)."""
     input_id = int(input_id)
     if not vjoy_allows(vjoy_id, kind, input_id):
         return _neutral(kind)
-    dev = _open_vjoy(vjoy_id)
+    dev = _opened_vjoy(vjoy_id)
     if dev is None or not _has(dev, kind, input_id):
         return _neutral(kind)
     if kind == "axis":

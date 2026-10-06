@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui
 
 import gremlin.ui.type_aliases as ta
 from gremlin import (
@@ -494,6 +494,18 @@ def _device_connected(guid: str) -> bool:
         return False
 
 
+def _typing_in_a_text_box() -> bool:
+    """True while a text box of this program has the keyboard focus (a
+    friendly name being typed): those keys are text, not presses for
+    Keyboard Module Setup (03 Q16). The keyboard hook sees every key."""
+    if not isinstance(QtCore.QCoreApplication.instance(), QtGui.QGuiApplication):
+        return False
+    focus = QtGui.QGuiApplication.focusObject()
+    if focus is None:
+        return False
+    return bool(focus.inherits("QQuickTextInput") or focus.inherits("QQuickTextEdit"))
+
+
 def module_exists(device_name: str, guid: str = "") -> bool:
     """The device has a module file (pass its id: twins share a name)."""
     return store.exists(device_name, guid)
@@ -521,6 +533,7 @@ class ModuleRow:
         "last_friendly",
         "last_hardware",
         "damaged",
+        "vjoy_id",
     )
 
     def __init__(self) -> None:
@@ -545,6 +558,35 @@ class ModuleRow:
         self.pid = ""
         self.last_friendly = ""
         self.last_hardware = ""
+        # The vJoy number of a vJoy card (0: any other card).
+        self.vjoy_id = 0
+
+
+_DAMAGED_STATUS = "Module file damaged – inputs blocked"
+
+
+def _card_status(row: ModuleRow) -> str:
+    """A card's status, one rule for a full reload and a refresh in place:
+    damaged, a vJoy another program holds (03 S34), or what the card is."""
+    if row.damaged:
+        return _DAMAGED_STATUS
+    if row.direction == "dest":
+        if row.vjoy_id:
+            from gremlin.modules.output import vjoy_in_use_elsewhere
+
+            if vjoy_in_use_elsewhere(row.vjoy_id):
+                return "In use by another program"
+        return "Virtual"
+    return "Connected" if row.is_module else "Stub"
+
+
+def _set_claimed_counts(row: ModuleRow, doc: dict | None) -> None:
+    """A card with a module file shows its claimed counts, 0 for a kind
+    with nothing claimed (03 S78, Q8)."""
+    claim = read_claim(doc or {})
+    row.buttons = len(claim["buttons"])
+    row.axes = len(claim["axes"])
+    row.hats = len(claim["hats"])
 
 
 def reset_all_card_sizes() -> None:
@@ -1007,13 +1049,24 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def visibleCount(self) -> int:
         return len(self._rows)
 
-    def _stacks(self) -> list[list[str]]:
+    def _saved_stacks(self) -> list[list[str]]:
+        """Every saved stack, with the cards that aren't showing (hidden or
+        unplugged): stack edits keep them, as card order does (03 Q10)."""
         _ensure_display_options()
         raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_STACKS) or "")
         groups: list[list[str]] = []
-        visible = {row.slug for row in self._rows}
         for part in raw.split("|"):
-            group = [s.strip() for s in part.split("+") if s.strip() and s.strip() in visible]
+            group = [s.strip() for s in part.split("+") if s.strip()]
+            if len(group) > 1:
+                groups.append(group)
+        return groups
+
+    def _stacks(self) -> list[list[str]]:
+        """The stacks as Home shows them: only cards that are showing."""
+        visible = {row.slug for row in self._rows}
+        groups: list[list[str]] = []
+        for saved in self._saved_stacks():
+            group = [s for s in saved if s in visible]
             if len(group) > 1:
                 groups.append(group)
         return groups
@@ -1181,7 +1234,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return
         selected = set(names)
         groups = []
-        for group in self._stacks():
+        for group in self._saved_stacks():
             rest = [s for s in group if s not in selected]
             if len(rest) > 1:
                 groups.append(rest)
@@ -1206,7 +1259,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def unstackSlug(self, slug: str) -> None:
         groups = []
         changed = False
-        for group in self._stacks():
+        for group in self._saved_stacks():
             if slug in group:
                 rest = [s for s in group if s != slug]
                 if len(rest) > 1:
@@ -1223,7 +1276,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def unstackAll(self, slug: str) -> None:
         groups = []
         changed = False
-        for group in self._stacks():
+        for group in self._saved_stacks():
             if slug in group:
                 changed = True
                 continue
@@ -1237,7 +1290,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def raiseSlug(self, slug: str) -> None:
         groups = []
         changed = False
-        for group in self._stacks():
+        for group in self._saved_stacks():
             if slug in group and group[-1] != slug:
                 group = [s for s in group if s != slug] + [slug]
                 changed = True
@@ -1311,12 +1364,13 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, result="QVariantMap")
     def firstCardMap(self, direction: str) -> dict:
         """The first card of that direction ("source" or "dest"), not the
-        Xbox output (it has no Module Setup); {} when there is none."""
+        Xbox output or the Logical Device (they have no Module Setup, 03
+        S39, Q7); {} when there is none."""
         for row in self._rows:
             found = self._row_map(row)
             if found.get("direction") != direction:
                 continue
-            if found.get("bus") == "XInput" or found.get("tab") == "xbox":
+            if found.get("bus") == "XInput" or found.get("tab") in ("xbox", "logical"):
                 continue
             return found
         return {}
@@ -1370,7 +1424,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
             QtCore.Qt.ItemDataRole.UserRole + 13,
         ]
         apply_bound_targets(self._rows)
-        roles = roles + [QtCore.Qt.ItemDataRole.UserRole + 15]
+        roles = roles + [
+            QtCore.Qt.ItemDataRole.UserRole + 15,
+            QtCore.Qt.ItemDataRole.UserRole + 21,
+        ]
         for idx, row in enumerate(self._rows):
             name = row.raw_name or row.name
             row.photo = self._photo(name, row.guid)
@@ -1378,16 +1435,15 @@ class ModuleListModel(QtCore.QAbstractListModel):
             saved = module_exists(name, row.guid)
             row.is_module = saved
             row.is_stub = not saved
+            # Checked again: a file fixed elsewhere (History Restore) is no
+            # longer damaged (03 S65). vJoy cards are not checked, as at a
+            # full reload.
+            row.damaged = (
+                _module_damage(name, row.guid) if saved and not row.vjoy_id else ""
+            )
             if saved:
-                doc = _load_module_doc(name, row.guid)
-                claim = read_claim(doc)
-                row.buttons = len(claim["buttons"])
-                row.axes = len(claim["axes"])
-                row.hats = len(claim["hats"])
-                if row.direction == "dest":
-                    row.status = "Virtual"
-                elif row.status == "Stub":
-                    row.status = "Connected"
+                _set_claimed_counts(row, _load_module_doc(name, row.guid))
+            row.status = _card_status(row)
             ix = self.index(idx, 0)
             self.dataChanged.emit(ix, ix, roles)
         self.claimsChanged.emit()
@@ -1648,17 +1704,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.pid = f"{dev.product_id:04X}"
             row.photo = self._photo(name, str(dev.device_guid))
             if saved:
-                doc = _load_module_doc(name, str(dev.device_guid))
-                claim = read_claim(doc)
                 row.is_stub = False
                 row.is_module = True
-                row.status = "Connected"
                 row.damaged = _module_damage(name, str(dev.device_guid))
-                if row.damaged:
-                    row.status = "Module file damaged – inputs blocked"
-                row.buttons = len(claim["buttons"]) or int(getattr(dev, "button_count", 0) or 0)
-                row.axes = len(claim["axes"]) or int(getattr(dev, "axis_count", 0) or 0)
-                row.hats = len(claim["hats"]) or int(getattr(dev, "hat_count", 0) or 0)
+                _set_claimed_counts(row, _load_module_doc(name, str(dev.device_guid)))
+                row.status = _card_status(row)
             else:
                 row.is_stub = True
                 row.is_module = False
@@ -1685,22 +1735,15 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.bus = bus
             row.is_module = saved
             row.is_stub = not saved
-            row.status = "Virtual" if direction == "dest" else ("Connected" if saved else "Stub")
             row.photo = self._photo(name, guid)
             if saved:
                 row.damaged = _module_damage(name, guid)
-                if row.damaged:
-                    row.status = "Module file damaged – inputs blocked"
-                claim = read_claim(_load_module_doc(name, guid))
-                row.buttons = len(claim["buttons"])
-                row.axes = len(claim["axes"])
-                row.hats = len(claim["hats"])
+                _set_claimed_counts(row, _load_module_doc(name, guid))
+            row.status = _card_status(row)
             rows.append(row)
 
         extra("keyboard", "Keyboard", KEYBOARD_GUID, "keyboard", "HID", "source")
         extra("osc", "OSC", OSC_GUID, "osc", "OSC", "source")
-
-        from gremlin.modules.output import vjoy_in_use_elsewhere
 
         for vdev in device_initialization.vjoy_devices():
             name = f"vJoy {vdev.vjoy_id}"
@@ -1716,19 +1759,15 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.direction = "dest"
             row.tab = "physical"
             row.bus = "DirectInput"
-            row.status = "Virtual"
-            if vjoy_in_use_elsewhere(vdev.vjoy_id):
-                row.status = "In use by another program"
+            row.vjoy_id = int(vdev.vjoy_id)
             row.is_stub = not module_exists(name, str(vdev.device_guid))
             row.is_module = not row.is_stub
+            row.status = _card_status(row)
             row.photo = self._photo(name, str(vdev.device_guid))
             if not row.photo:
                 row.photo = self._photo("vJoy", "")
             if row.is_module:
-                claim = read_claim(_load_module_doc(name, str(vdev.device_guid)))
-                row.buttons = len(claim["buttons"]) or int(vdev.button_count)
-                row.axes = len(claim["axes"]) or int(vdev.axis_count)
-                row.hats = len(claim["hats"]) or int(vdev.hat_count)
+                _set_claimed_counts(row, _load_module_doc(name, str(vdev.device_guid)))
             else:
                 row.buttons = vdev.button_count
                 row.axes = vdev.axis_count
@@ -1935,13 +1974,13 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self.endResetModel()
         self.changed.emit()
 
+    # By the built-in id only: a stick named "Keyboard" or "OSC" is a stick
+    # (03 7.12, S23).
     def _is_keyboard(self) -> bool:
-        name = (self._device_name or "").strip().lower()
-        return name == "keyboard" or guid_key(self._guid) == guid_key(KEYBOARD_GUID)
+        return guid_key(self._guid) == guid_key(KEYBOARD_GUID)
 
     def _is_osc(self) -> bool:
-        name = (self._device_name or "").strip().lower()
-        return name == "osc" or guid_key(self._guid) == guid_key(OSC_GUID)
+        return guid_key(self._guid) == guid_key(OSC_GUID)
 
     def _load_osc(self, claim: dict) -> None:
         from gremlin.osc import OscDevice
@@ -2038,6 +2077,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
         if event is None or not self._is_keyboard():
             return
         if event.is_pressed is False:
+            return
+        if _typing_in_a_text_box():
             return
         ident = event.identifier
         try:

@@ -19,7 +19,7 @@ Spec: 08 S2, S8, S11, S15, S28, S30, S38, S40, S43, S44. No known gap on
 this path (Q1: a restored input becomes a History entry when the profile
 is next saved, so the count is not checked here). The setting is changed
 after the first settings write; a second run changes it right away on a
-first run (08 S16), known gap GL-311, marked xfail.
+first run (08 S16); GL-311 fixed in catch-up batch 2.
 """
 
 from __future__ import annotations
@@ -220,11 +220,6 @@ def test_the_setting_goes_back(run: dict) -> None:
     assert step(run, "setting-after") == 90
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-311: a setting changed right away on a first run leaves no entry",
-)
 def test_a_setting_changed_right_away_on_a_first_run_is_one_entry(
     right_away: dict,
 ) -> None:

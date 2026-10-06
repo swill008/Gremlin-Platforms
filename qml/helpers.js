@@ -77,6 +77,32 @@ function windowOf(componentSpec)
     return _openWindows[componentSpec] || null
 }
 
+// The main window (Main.qml registers itself at start).
+function setMainWindow(window)
+{
+    _openWindows["Main.qml"] = window || null
+}
+
+function mainWindow()
+{
+    return _openWindows["Main.qml"] || null
+}
+
+// For tool windows that change bindings behind an open action pane
+// (Auto Mapper Create, History Restore, Device Pack import): closes the
+// panes first (asking when one has changes), then calls then(). Cancel
+// there means then() is not called.
+function closeActionPanes(then)
+{
+    var main = mainWindow()
+    if (main && typeof main.closeActionPanes === "function") {
+        main.closeActionPanes(then)
+        return
+    }
+    if (typeof then === "function")
+        then()
+}
+
 function capitalize(value)
 {
     return value.replace(/\b\w/g, l => l.toUpperCase())

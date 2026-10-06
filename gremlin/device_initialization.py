@@ -6,8 +6,10 @@ from __future__ import annotations
 
 import collections
 import logging
+import re
 import threading
 import uuid
+from typing import cast
 
 import dill
 from gremlin import (
@@ -23,6 +25,8 @@ _left_out: set[uuid.UUID] = set()
 _vjoy_problems: list[tuple[int, str]] = []
 _told: tuple = ()
 _window_up = False
+# Gremlin's own Xbox pads seen by the last scan (never devices of the list).
+_own_pads: list[dill.DeviceSummary] = []
 _joystick_init_lock = threading.Lock()
 SCAN_WAIT_S = 10.0
 
@@ -54,22 +58,82 @@ def _file_bound_guid(device_name: str) -> str:
         return ""
 
 
-def _name_twins(devices: list[dill.DeviceSummary]) -> None:
+# Twin names not yet written to the settings (the write waits for the main
+# thread); the next scan reads these, not the older saved ones.
+_twin_lock = threading.Lock()
+_twins_unsaved: dict[str, str] | None = None
+_TWIN_NUMBER = re.compile(r" \((\d+)\)$")
+
+
+def _stored_twins() -> dict[str, str]:
     from gremlin.config import Configuration
 
-    physical = [dev for dev in devices if not dev.is_virtual]
+    with _twin_lock:
+        if _twins_unsaved is not None:
+            return dict(_twins_unsaved)
     try:
-        stored = dict(Configuration().value(*TWIN_SETTING) or {})
+        return dict(Configuration().value(*TWIN_SETTING) or {})
     except Exception:
-        stored = {}
+        return {}
+
+
+def _save_twins(stored: dict[str, str]) -> None:
+    """Settings are written on the main thread only: from the hot-plug
+    timer thread the write is handed to it."""
+    global _twins_unsaved
+
+    with _twin_lock:
+        _twins_unsaved = dict(stored)
+
+    def write() -> None:
+        global _twins_unsaved
+        from gremlin.config import Configuration
+
+        with _twin_lock:
+            latest, _twins_unsaved = _twins_unsaved, None
+        if latest is None:
+            return
+        try:
+            Configuration().set(*TWIN_SETTING, latest)
+        except Exception:
+            logging.getLogger("system").exception("Twin device names not saved")
+
+    if threading.current_thread() is threading.main_thread():
+        write()
+        return
+    from PySide6 import QtCore
+
+    app = QtCore.QCoreApplication.instance()
+    if app is None:
+        write()
+        return
+    QtCore.QTimer.singleShot(0, app, write)
+
+
+def _base_name(twin_name: str) -> str:
+    """"T.16000M (2)" -> "T.16000M"."""
+    return _TWIN_NUMBER.sub("", twin_name)
+
+
+def _name_twins(devices: list[dill.DeviceSummary]) -> None:
+    physical = [dev for dev in devices if not dev.is_virtual]
+    stored = _stored_twins()
+    changed = False
     for dev in physical:
-        if _guid_key(dev) in stored:
-            dev.name = stored[_guid_key(dev)]
+        key = _guid_key(dev)
+        if key not in stored:
+            continue
+        # A stored name is used only while the driver still reports its
+        # base name (02 Q3); a stale one is dropped and worked out again.
+        if _base_name(stored[key]) == dev.name:
+            dev.name = stored[key]
+        else:
+            del stored[key]
+            changed = True
     groups: dict[str, list[dill.DeviceSummary]] = {}
     for dev in physical:
         groups.setdefault(dev.name, []).append(dev)
     taken = {dev.name for dev in physical} | set(stored.values())
-    changed = False
     for name, group in groups.items():
         if len(group) < 2:
             continue
@@ -85,10 +149,7 @@ def _name_twins(devices: list[dill.DeviceSummary]) -> None:
             stored[_guid_key(dev)] = dev.name
             changed = True
     if changed:
-        try:
-            Configuration().set(*TWIN_SETTING, stored)
-        except Exception:
-            pass
+        _save_twins(stored)
 
 
 def device_name(device_guid: object) -> str:
@@ -102,6 +163,43 @@ def device_name(device_guid: object) -> str:
         return dill.DILL.get_device_name(dill.GUID.from_uuid(uid))
     except Exception:
         return ""
+
+
+def shown_name(device_guid: object) -> str:
+    """The one name a screen shows for a device before any alias: the
+    device name (twin name for a second identical stick) and, for a vJoy
+    device, its number ("vJoy Device 2"). Aliases on top of it:
+    gremlin.ui.device_names.display_name."""
+    uid = cast(uuid.UUID, getattr(device_guid, "uuid", device_guid))
+    dev = _joystick_devices.get(uid)
+    if dev is None:
+        for pad in _own_pads:
+            if pad.device_guid.uuid == uid:
+                dev = pad
+                break
+    if dev is not None and dev.is_virtual and dev.vjoy_id > 0:
+        return f"{dev.name} {dev.vjoy_id}"
+    if dev is not None:
+        return dev.name
+    return device_name(uid)
+
+
+# Device Information marks the devices the program leaves out (02 Q6).
+NOTE_LEFT_OUT = "left out (see message)"
+NOTE_OWN_PAD = "Gremlin's Xbox pad"
+
+
+def information_devices() -> list[tuple[dill.DeviceSummary, str]]:
+    """Every device Windows reports, for Device Information: the device
+    list (with left-out vJoy devices), then Gremlin's own Xbox pads; each
+    with its note ("" for a device the program uses)."""
+    devices, left_out, pads = _joystick_devices, _left_out, _own_pads
+    rows = [
+        (dev, NOTE_LEFT_OUT if uid in left_out else "")
+        for uid, dev in devices.items()
+    ]
+    rows.extend((pad, NOTE_OWN_PAD) for pad in pads)
+    return rows
 
 
 
@@ -128,7 +226,7 @@ def joystick_devices_initialization() -> None:
 
 
 def _initialize_devices() -> None:
-    global _joystick_devices
+    global _joystick_devices, _own_pads
 
     syslog = logging.getLogger("system")
     syslog.info("Initializing joystick devices")
@@ -137,6 +235,7 @@ def _initialize_devices() -> None:
     # Process all connected devices in order to properly initialize the
     # device registry.
     devices = []
+    own_pads = []
     for i in range(dill.DILL.get_device_count()):
         info = dill.DILL.get_device_information_by_index(i)
         try:
@@ -145,10 +244,13 @@ def _initialize_devices() -> None:
                 syslog.debug(
                     f"Ignored ViGEm Xbox pad: name={info.name} guid={info.device_guid}"
                 )
+                own_pads.append(info)
                 continue
         except Exception:
             pass
         devices.append(info)
+    # Not devices of the program, but Device Information lists them (02 Q6).
+    _own_pads = own_pads
     _name_twins(devices)
 
     # Process all devices again to detect those that have been added and those
@@ -264,11 +366,12 @@ def _initialize_devices() -> None:
     sorted_devices.extend(
         sorted([dev for dev in devices if dev.is_virtual], key=lambda x: x.vjoy_id)
     )
-    # This is an ordered dict, that allows access via device uuid but its
-    # values are enumerate in insertion order.
-    _joystick_devices.clear()
-    for dev in sorted_devices:
-        _joystick_devices[dev.device_guid.uuid] = dev
+    # Built aside and swapped in one step: the main and driver threads read
+    # the list while a hot-plug scan runs, and used to see it empty or half
+    # filled (it was cleared and refilled in place).
+    _joystick_devices = collections.OrderedDict(
+        (dev.device_guid.uuid, dev) for dev in sorted_devices
+    )
 
 
 def _note_vjoy_problems(

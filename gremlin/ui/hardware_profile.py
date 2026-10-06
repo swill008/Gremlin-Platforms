@@ -136,6 +136,44 @@ def save_area(
     return _save_image(page, path, kind)
 
 
+def _write_problem(path: Path) -> str:
+    """Why a file could not be written at path, in a few words."""
+    folder = path.parent
+    if not str(path) or not folder.is_dir():
+        return "the folder does not exist"
+    if path.is_dir():
+        return "a folder has that name"
+    if path.exists():
+        try:
+            with open(path, "r+b"):
+                pass
+        except PermissionError:
+            return "the file is read-only or open in another program"
+        except OSError as exc:
+            return str(exc.strerror or exc)
+    else:
+        import tempfile
+
+        try:
+            with tempfile.TemporaryFile(dir=folder):
+                pass
+        except PermissionError:
+            return "the folder is read-only"
+        except OSError as exc:
+            return str(exc.strerror or exc)
+    return "the picture could not be written there"
+
+
+def export_failure(path: Path) -> str:
+    """What Print & Export says when an export can't be written: which file
+    and why (07 Q19, as Template export names its file)."""
+    path = Path(path)
+    return (
+        f"Export failed. {path.name} could not be written to {path.parent}: "
+        f"{_write_problem(path)}."
+    )
+
+
 def _setup(setup_json: str) -> dict:
     """Print & Export's settings from QML (JSON), or {} when unreadable."""
     try:
@@ -374,11 +412,20 @@ def _device_stays_listed(device_name: str) -> bool:
     return False
 
 
+_STOP_FIRST = (
+    "Stop the profile first. A device can't be deleted while the profile is running."
+)
+
+
 def delete_preview(device_name: str, guid: str) -> str:
     name = " ".join(str(device_name or "").split())
     path = store.path_for(name, guid)
+    running = _profile_running()
     return json.dumps({
         "name": name,
+        # Delete Device is refused while running (03 Q6): said up front.
+        "running": running,
+        "runningText": _STOP_FIRST if running else "",
         "canPack": path.is_file(),
         "shared": store.is_shared(name, guid),
         "foreign": bool(store.foreign_file(name, guid)),
@@ -403,43 +450,45 @@ def _prune_empty_inputs(profile) -> None:
             profile.inputs.pop(key, None)
 
 
-def _save_profile_wires(device_name: str, guid: str) -> str:
+def _drop_profile_wires(device_name: str, guid: str) -> None:
+    """The device's actions leave the profile in memory; the profile is left
+    unsaved, so its own Save (with its unfinished-actions check) keeps the
+    removal (03 Q4)."""
     from gremlin.shared_state import current_profile
     from gremlin.ui.input_pairing import parse_guid
 
     profile = current_profile
     if profile is None:
-        return ""
+        return
     text = str(guid or "").strip() or registry.guid_for_name(device_name)
     uid = parse_guid(text)
-    if uid is not None:
-        _drop_inputs(profile, uid)
-    _prune_empty_inputs(profile)
-    path = getattr(profile, "fpath", None)
-    if path:
-        try:
-            profile.to_xml(path)
-        except Exception as exc:
-            signal.profileChanged.emit()
-            return (
-                "The profile could not be saved, so the module file was kept. "
-                "Reload the profile to bring the wires back. "
-                f"{exc}"
-            )
+    with profile.library.change():
+        if uid is not None:
+            _drop_inputs(profile, uid)
+        _prune_empty_inputs(profile)
     signal.profileChanged.emit()
-    return ""
+
+
+def _profile_running() -> bool:
+    from gremlin import run_scope, shared_state
+
+    return bool(run_scope.running() or shared_state.runtime_active())
 
 
 def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
-    """Delete Device: the pack first when asked, then the device's wires, its
-    module file (a copy always kept in the deleted devices folder, 03 Q5),
-    its pictures, recovery copy and photo safety copies (07 Q11) and its
-    file choices. An output module file, or one another stick uses, stays."""
+    """Delete Device: the pack first when asked, then the device's wires (in
+    memory, the profile left unsaved, 03 Q4), its module file (a copy always
+    kept in the deleted devices folder, 03 Q5), its pictures, recovery copy
+    and photo safety copies (07 Q11) and its file choices. An output module
+    file, or one another stick uses, stays. Refused while running (03 Q6)."""
     from gremlin.shared_state import current_profile
 
     name = " ".join(str(device_name or "").split())
     if not name:
         return json.dumps({"ok": False, "error": "Choose a device."})
+    # It changes the running profile (03 Q6).
+    if _profile_running():
+        return json.dumps({"ok": False, "error": _STOP_FIRST})
     pack_path = ""
     if save_copy:
         if not store.exists(name, guid):
@@ -470,14 +519,7 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
                 "error": "The pack could not be read back, so the device was not deleted.",
             })
         pack_path = str(dest)
-    wire_error = _save_profile_wires(name, guid)
-    if wire_error:
-        if pack_path:
-            try:
-                Path(pack_path).unlink()
-            except OSError:
-                pass
-        return json.dumps({"ok": False, "error": wire_error})
+    _drop_profile_wires(name, guid)
     # The device's file is the one it opens (a renamed stick's old file),
     # found before its file choices are cleared.
     own_path = store.path_for(name, guid)
@@ -491,7 +533,8 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
     store.unbind(name, guid)
     own_left = own_path.is_file()
     profile = current_profile
-    saved = True if profile is None else bool(getattr(profile, "fpath", None))
+    # The removal is in memory only: Save the profile to keep it.
+    saved = profile is None or not profile.has_unsaved_changes()
     if file_error and own_left:
         return json.dumps({
             "ok": False,
@@ -522,6 +565,40 @@ def imported_folder_url() -> str:
     path = store.imported_dir()
     path.mkdir(parents=True, exist_ok=True)
     return path.as_uri()
+
+
+_PICTURE_FOLDER = ("global", "internal", "button-map-picture-folder")
+
+
+def _picture_folder_config():  # noqa: ANN202 - Configuration, imported late
+    """The settings, with the last picture folder's entry in them."""
+    from gremlin.config import Configuration
+    from gremlin.types import PropertyType
+
+    cfg = Configuration()
+    if not cfg.exists(*_PICTURE_FOLDER):
+        cfg.register(
+            *_PICTURE_FOLDER, PropertyType.String, "",
+            "Folder Choose Photo and Import Picture last took a picture from.", {},
+        )
+    return cfg
+
+
+def _picture_folder() -> Path:
+    """The last folder a picture was chosen from (when it is still there),
+    else Pictures, else the home folder."""
+    try:
+        last = str(_picture_folder_config().value(*_PICTURE_FOLDER) or "")
+    except Exception:
+        last = ""
+    if last and Path(last).is_dir():
+        return Path(last)
+    pictures = QtCore.QStandardPaths.writableLocation(
+        QtCore.QStandardPaths.StandardLocation.PicturesLocation
+    )
+    if pictures and Path(pictures).is_dir():
+        return Path(pictures)
+    return Path.home()
 
 
 def _stock_photo() -> Path:
@@ -635,6 +712,48 @@ def _label_for(guid: str, kind: str, hw_id: int) -> str:
     return " + ".join(labels)
 
 
+# Bumped when the profile, its modes or its actions change: the pool rows'
+# labels come from the profile (07 RB8).
+_profile_generation = 0
+_generation_hooked = False
+
+
+def _profile_changed() -> None:
+    global _profile_generation
+    _profile_generation += 1
+
+
+def _hook_profile_generation() -> None:
+    global _generation_hooked
+    if _generation_hooked:
+        return
+    _generation_hooked = True
+    signal.profileChanged.connect(_profile_changed)
+    signal.modesChanged.connect(_profile_changed)
+    signal.actionsChanged.connect(_profile_changed)
+
+
+def chips_key(guid: str) -> str:
+    """What the pool rows of chips_for_guid depend on, cheaply: the module
+    file (its time and size), the profile's generation and what the device
+    reports. The same key: the same rows, so a live press need not read the
+    module file and the profile again (07 RB8, S14)."""
+    text = str(guid or "").strip()
+    if not text:
+        return ""
+    from gremlin.ui import input_pairing as pairing
+
+    name = pairing.device_name(text)
+    stamp = "-"
+    if name:
+        try:
+            stat = store.path_for(name, text).stat()
+            stamp = f"{stat.st_mtime_ns}:{stat.st_size}"
+        except OSError:
+            stamp = "missing"
+    return f"{text}|{name}|{stamp}|{_profile_generation}|{_device_input_ids(text)}"
+
+
 def chips_for_guid(guid: str) -> list[dict]:
     """One chip per input this device's module reports, labeled from its outputs."""
     text = str(guid or "").strip()
@@ -683,12 +802,15 @@ class HardwareProfile(QtCore.QObject):
         self._path = ""
         self._peek_photo = ""
         self._device_guid = ""
+        self._export_error = ""
         # Counts clipboard changes, so Ctrl+V can tell a picture copied after
         # the last chip copy from an old one.
         self._clipboard_serial = 0
         clipboard = _clipboard()
         if clipboard is not None:
             clipboard.dataChanged.connect(self._clipboard_changed)
+        # First: the generation is new before any card asks for its rows.
+        _hook_profile_generation()
         signal.profileChanged.connect(self.profileLabelsChanged)
         signal.modesChanged.connect(self.profileLabelsChanged)
 
@@ -775,10 +897,20 @@ class HardwareProfile(QtCore.QObject):
     ) -> bool:
         """Saves the print area (Print & Export): image is RigRenderer's
         picture of it, written at width x height pixels; setup_json the
-        paper for a PDF."""
-        return save_area(
-            image, width, height, to_local_path(url), fmt, _setup(setup_json)
-        )
+        paper for a PDF. When it fails, exportError() says which file and
+        why (07 Q19)."""
+        self._export_error = ""
+        path = to_local_path(url)
+        if save_area(image, width, height, path, fmt, _setup(setup_json)):
+            return True
+        self._export_error = export_failure(path)
+        return False
+
+    @QtCore.Slot(result=str)
+    def exportError(self) -> str:
+        """Why the last export failed, naming the file ("" after one that
+        worked)."""
+        return self._export_error
 
     # --- printing (Print & Export > Print) ------------------------------------
 
@@ -1000,21 +1132,50 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def peekPackDevice(self, device_name: str) -> str:
-        from gremlin.ui.device_pack import assemble, pack_modes
+        """Device Pack's export preview: the device, its photo, its modes and
+        about how large the pack will be. The size is estimated from the
+        files' sizes; the zip is built only by Export (08 S49, GL-196: this
+        runs at every device change, on the UI thread)."""
+        from gremlin.ui.device_pack import pack_modes, size_text
 
-        built = assemble(device_name, self._resolve_existing)
-        if isinstance(built, str):
-            return json.dumps({"ok": False, "error": built, "device": device_name})
-        _data, info = built
-        photo = info.get("photoPath") or ""
-        match = _match_pack_device(device_name)
+        name = " ".join(str(device_name or "").split())
+        if not name:
+            return json.dumps({"ok": False, "error": "Choose a device.", "device": device_name})
+        # The file the pack takes (device_pack.assemble's rule).
+        match = _match_pack_device(name)
         guid = str(match["guid"]) if match and match.get("guid") else ""
+        path = store.path_for(name, guid)
+        doc = store.read_path(path) if path.is_file() else {}
+        if not doc:
+            return json.dumps({
+                "ok": False,
+                "error": "This device has no module file yet.",
+                "device": device_name,
+            })
+        estimate = path.stat().st_size
+        seen: set[Path] = set()
+        refs = [str(doc.get("image") or "")]
+        refs += [
+            str(node.get("src") or "")
+            for node in doc.get("nodes") or []
+            if isinstance(node, dict) and node.get("shape") == "image"
+        ]
+        photo = self._resolve_existing(refs[0]) if refs[0] else None
+        for ref in refs:
+            found = self._resolve_existing(ref) if ref else None
+            if found is None or found in seen:
+                continue
+            seen.add(found)
+            try:
+                estimate += found.stat().st_size
+            except OSError:
+                continue
         return json.dumps({
             "ok": True,
-            "device": info["device"],
-            "photoUrl": Path(photo).as_uri() if photo else "",
-            "sizeText": info["sizeText"],
-            "bytes": info["bytes"],
+            "device": name,
+            "photoUrl": photo.as_uri() if photo else "",
+            "sizeText": "about " + size_text(estimate),
+            "bytes": estimate,
             # The modes in which it has wires, for Export's choice.
             "modes": pack_modes(guid),
         })
@@ -1068,12 +1229,20 @@ class HardwareProfile(QtCore.QObject):
                 "ok": False,
                 "error": "Save the pack outside the module folder.",
             })
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        # Through a temporary file, so a failed write never leaves half a
+        # zip over an older pack (08 R4); then read back, as Delete Device's
+        # pack is.
         try:
-            dest.write_bytes(data)
+            store.write_file(dest, data)
         except Exception as exc:
             trace("SAVE", "Device Pack", "exportPack", dest, "error")
             return json.dumps({"ok": False, "error": str(exc)})
+        if not _zip_readable(dest):
+            trace("SAVE", "Device Pack", "exportPack", dest, "unreadable")
+            return json.dumps({
+                "ok": False,
+                "error": "The pack was written but could not be read back.",
+            })
         trace("SAVE", "Device Pack", "exportPack", dest, "ok")
         return json.dumps({
             "ok": True,
@@ -1134,10 +1303,13 @@ class HardwareProfile(QtCore.QObject):
         return json.dumps(preview_import(Path(src), target_name, chosen))
 
     @QtCore.Slot(result=str)
-    def undoPackImport(self) -> str:
+    @QtCore.Slot(bool, result=str)
+    def undoPackImport(self, force: bool = False) -> str:
+        """Undo Import. A file saved again since the import makes it ask
+        first ({"ask": True, "changed": [...]}); force: the user said yes."""
         from gremlin.ui.device_pack import undo_import
 
-        return json.dumps(undo_import())
+        return json.dumps(undo_import(bool(force)))
 
     @QtCore.Slot()
     def keepPackImport(self) -> None:
@@ -1161,9 +1333,22 @@ class HardwareProfile(QtCore.QObject):
     def chips(self, guid: str):
         return chips_for_guid(guid)
 
+    @QtCore.Slot(str, result=str)
+    def chipsKey(self, guid: str) -> str:
+        """chips_key: the pool rows are read again only when it changes."""
+        return chips_key(guid)
+
     @QtCore.Slot(str)
     def setDeviceGuid(self, guid: str) -> None:
         self._device_guid = str(guid or "")
+
+    @QtCore.Slot(str, result=str)
+    def moduleFileName(self, device_name: str) -> str:
+        """The file name of the module file this device's map opens (its own
+        file, so twin sticks stay apart): History's filter (08 Q15)."""
+        if not str(device_name or "").strip():
+            return ""
+        return self._file_for(device_name).name
 
     # --- the photo's look (Photo > Adjust photo) ---------------------------------
 
@@ -1297,6 +1482,44 @@ class HardwareProfile(QtCore.QObject):
         path = self._template_file(name)
         doc = _read_template(path) if path else None
         return json.dumps(doc["nodes"]) if doc else ""
+
+    @QtCore.Slot(str, result=list)
+    def templateMissingPictures(self, name: str) -> list:
+        """The pictures a template names that are no longer where it says
+        (moved or deleted; a template keeps where they are, not the files,
+        07 S81): their file names."""
+        path = self._template_file(name)
+        doc = _read_template(path) if path else None
+        if doc is None:
+            return []
+        missing: list[str] = []
+        for node in doc["nodes"]:
+            if not isinstance(node, dict) or node.get("shape") != "image":
+                continue
+            ref = str(node.get("src") or "").strip()
+            if not ref or self._resolve_existing(ref) is not None:
+                continue
+            label = ref.replace("\\", "/").rsplit("/", 1)[-1]
+            if label not in missing:
+                missing.append(label)
+        return missing
+
+    @QtCore.Slot(str, result="QVariantMap")
+    def deviceControls(self, guid: str) -> dict:
+        """The controls a device has, for "N chips are for controls this
+        device does not have" (07 Q8): what it reports when connected, else
+        its pool's controls. {"known": False} when nothing is known."""
+        text = str(guid or "").strip()
+        reported = store.connected_input_ids(text) if text else None
+        if reported is not None:
+            buttons, axes, hats = (sorted(ids) for ids in reported)
+        else:
+            rows = chips_for_guid(text) if text else []
+            buttons = sorted({r["hwId"] for r in rows if r["kind"] == "btn"})
+            axes = sorted({r["hwId"] for r in rows if r["kind"] == "axis"})
+            hats = sorted({r["hwId"] for r in rows if r["kind"] == "hat"})
+        known = bool(buttons or axes or hats)
+        return {"known": known, "btn": buttons, "axis": axes, "hat": hats}
 
     @QtCore.Slot(str, result=bool)
     def deleteTemplate(self, name: str) -> bool:
@@ -1486,15 +1709,17 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=bool)
     def saveUi(self, device_name: str, json_text: str) -> bool:
-        """Write only the ui block. Do not stamp page size or rewrite nodes."""
+        """Write only the ui block. Do not stamp page size or rewrite nodes.
+        With no module file nothing is written: the ui block waits in the
+        window until Save (07 S29, S96)."""
         name = device_name or self._device_name
         path = self._file_for(name)
         try:
             incoming = json.loads(json_text)
         except json.JSONDecodeError:
             return False
-        if not path.is_file():
-            return self.save(name, json_text)
+        if not isinstance(incoming, dict) or not path.is_file():
+            return False
 
         def change(doc: dict) -> None:
             doc["ui"] = incoming.get("ui", doc.get("ui") or {})
@@ -1547,8 +1772,9 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=str)
     def copyImage(self, source_url: str, device_name: str) -> str:
-        """Makes a picture the device's photo: photo.<ext> in its folder, and
-        the module file's "image". A damaged module file is refused before
+        """Makes a picture the device's photo: photo.<ext> in its folder (the
+        window's safety copy keeps the old one for Cancel); its reference
+        for the window's Save. A damaged module file is refused before
         any photo file is touched (03 S64, GL-070). The device's own photo
         again changes nothing: no library copy, no write (03 Q3, GL-089)."""
         src = self._local_image(source_url)
@@ -1589,22 +1815,33 @@ class HardwareProfile(QtCore.QObject):
                 pass
             trace("SAVE", "Button Map", "copyImage", dest, "ok")
         rel = store.picture_ref(slug, dest.name)
-        # Record the picture on the file the Button Map opens.
-        if path.is_file():
-
-            def change(doc: dict) -> bool:
-                if doc.get("image") == rel:
-                    return False  # nothing changed: no write
-                doc["image"] = rel
-                return True
-
-            store.update_path(path, change, "Button Map")
+        # The module file's "image" is written by the window's Save, not
+        # here: nothing in the module file or History until Save (07 Q2).
         persist_log(f"Persist photo name={name!r} guid={self._device_guid!r} path={path} image={rel!r}")
         self._path = str(path)
         self.pathChanged.emit()
         self.documentChanged.emit()
         self.imageChanged.emit()
         return rel
+
+    @QtCore.Slot(str, result=str)
+    def photoCopyUrl(self, device_name: str) -> str:
+        """A lasting copy of the device's photo as it is now (in the
+        library, not copied again when it is there), so Undo can make it
+        the photo again (07 Q3); "" when it has no photo."""
+        slug = self._module_slug(device_name or self._device_name)
+        pictures = store.pictures_dir_of(slug)
+        found = (
+            sorted(p for p in pictures.glob("photo.*") if p.is_file())
+            if pictures.is_dir()
+            else []
+        )
+        if not found:
+            return ""
+        try:
+            return store.into_library(found[0]).as_uri()
+        except OSError:
+            return ""
 
     @QtCore.Slot(str, result=bool)
     def clearImage(self, device_name: str) -> bool:
@@ -1715,9 +1952,24 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(result=str)
     def imagesFolderUrl(self) -> str:
-        path = _install_root() / "qml" / "images"
-        path.mkdir(parents=True, exist_ok=True)
-        return QtCore.QUrl.fromLocalFile(str(path)).toString()
+        """Where Choose Photo and Import Picture open: the last folder a
+        picture was chosen from, else the user's Pictures folder. No folder
+        is made, never in the program's own folder (07 Q13)."""
+        return QtCore.QUrl.fromLocalFile(str(_picture_folder())).toString()
+
+    @QtCore.Slot(str)
+    def notePictureFolder(self, file_url: str) -> None:
+        """A picture was chosen: its folder is where the next one opens."""
+        try:
+            folder = to_local_path(str(file_url or "")).parent
+        except Exception:
+            return
+        if not folder.is_dir():
+            return
+        try:
+            _picture_folder_config().set(*_PICTURE_FOLDER, str(folder))
+        except Exception:
+            persist_log(f"Persist picture folder failed folder={folder}")
 
     @QtCore.Slot(str, result=str)
     def imageUrl(self, stored: str) -> str:

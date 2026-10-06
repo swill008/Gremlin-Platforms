@@ -506,11 +506,6 @@ def test_an_axis_already_in_its_range_at_run_gives_no_press() -> None:
     assert True not in emitted  # Q13: kept, no surprise press at Run
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-312: leaving the range sends a release that had no press",
-)
 def test_leaving_a_range_the_axis_started_in_sends_no_release() -> None:
     # 06 S39 (user, 2026-10-06): no release without a press.
     functor, emitted = _axis_button(0.2, 0.6, AxisButtonDirection.Anywhere)
@@ -519,12 +514,6 @@ def test_leaving_a_range_the_axis_started_in_sends_no_release() -> None:
     assert emitted == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-310: a jump across the range sends nothing "
-    "(the release branch overwrites the forced [True, False])",
-)
 def test_an_axis_jumping_across_its_range_presses_and_releases() -> None:
     functor, emitted = _axis_button(0.2, 0.6, AxisButtonDirection.Anywhere)
     _move(functor, -0.8)
@@ -1093,6 +1082,14 @@ def test_the_tray_offers_run_or_stop_and_changes_its_icon(
     )
     tray._current_icon = lambda: cls._current_icon(tray)
     tray._gremlin_status_change_cb = lambda: cls._gremlin_status_change_cb(tray)
+    tray._toggle_run = lambda: cls._toggle_run(tray)
+    # No main window here: toggleRun can't be reached, so the tray falls back
+    # to the backend (with a window, Main.qml toggleRun asks first, 06 Q6).
+    monkeypatch.setattr(
+        system_tray,
+        "QtCore",
+        SimpleNamespace(QMetaObject=SimpleNamespace(invokeMethod=lambda *a: False)),
+    )
 
     cls._show_menu(tray, 0, 0)
     assert "Run Profile" in win.items

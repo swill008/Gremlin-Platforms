@@ -33,7 +33,15 @@ Item {
     property int editorPadRight: Style.dp(10)
     property int editorPadBottom: Style.dp(10)
     property int editorPadLeft: Style.dp(10)
-    readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
+    // The one edit lock (06 S13): nothing is edited while the profile runs.
+    // Output pages are not locked.
+    EditLock { id: _lock }
+    readonly property bool editorLocked: _lock.locked && !isOutput
+    // The Keyboard page edits a draft of the key: OK writes it, Undo and
+    // Redo step through each OK, as on the Configuration page (05 Q5).
+    readonly property bool keyboardDraft: !holdModel && !isOutput && !inlineMode
+                                          && !!uiState && uiState.currentTab === "keyboard"
+    readonly property var shownModel: keyboardDraft ? _kb.paneModel : inputItemModel
     enabled: true
     opacity: editorLocked ? 0.55 : 1.0
     implicitHeight: inlineMode ? Math.max(Style.dp(80), _content.implicitHeight) + editorPadTop + editorPadBottom : Style.dp(200)
@@ -57,7 +65,68 @@ Item {
         color: editorAccent
     }
 
+    KeyboardPaneModel { id: _kb }
+
+    // The key shown in the Keyboard page's draft. A draft with changes stays
+    // on its key (OK writes there) until it is saved or discarded.
+    function showKey(force) {
+        if (!keyboardDraft || !uiState)
+            return
+        if (!force && _kb.paneDirty())
+            return
+        _kb.showInput(uiState.currentInput, uiState.currentInputIndex, uiState.currentMode)
+    }
+
+    // Main.closeActionPanes() asks these before a tool changes bindings
+    // behind the pane (05 Q8) or Run starts (06 Q6).
+    function paneHasChanges() {
+        return keyboardDraft && _kb.paneDirty()
+    }
+
+    function closeActionPane() {
+        if (keyboardDraft)
+            _kb.revert()
+    }
+
+    // OK for Run's "Save" (06 Q6): false when nothing could be written.
+    function savePane() {
+        return !paneHasChanges() || _kb.commitPane() >= 0
+    }
+
+    // Undo and Redo replace the draft: changes not saved are asked about.
+    function _step(back) {
+        var go = function() { if (back) _kb.undo(); else _kb.redo() }
+        if (!_kb.paneDirty()) {
+            go()
+            return
+        }
+        _discardGate.confirmThen("Unsaved Changes",
+            "The action editor has changes that are not saved.", "Discard", go, null, false)
+    }
+
+    DismissibleDialog { id: _discardGate }
+
+    onKeyboardDraftChanged: showKey(false)
+
+    Connections {
+        target: signal
+        function onProfileChanged() {
+            // The draft belonged to the profile that was open.
+            if (_root.keyboardDraft)
+                _root.showKey(true)
+        }
+    }
+
+    Connections {
+        target: uiState
+        function onModeChanged() { _root.showKey(false) }
+    }
+
     Component.onCompleted: {
+        if (keyboardDraft) {
+            showKey(true)
+            return
+        }
         if (holdModel || !backend || !uiState)
             return
         _root.inputItemModel = backend.getInputItem(
@@ -70,6 +139,10 @@ Item {
         target: uiState
 
         function onInputChanged() {
+            if (_root.keyboardDraft) {
+                _root.showKey(false)
+                return
+            }
             if (_root.holdModel || !backend || !uiState)
                 return
             _root.inputItemModel = backend.getInputItem(
@@ -83,6 +156,10 @@ Item {
         target: signal
 
         function onReloadCurrentInputItem() {
+            if (_root.keyboardDraft) {
+                _root.showKey(false)
+                return
+            }
             if (_root.holdModel || !backend || !uiState)
                 return
             _root.inputItemModel = backend.getInputItem(
@@ -144,8 +221,55 @@ Item {
             Layout.fillWidth: true
             scrollbarAlwaysVisible: true
             enabled: !editorLocked
-            model: _root.inlineMode ? null : _root.inputItemModel
+            model: _root.inlineMode ? null : _root.shownModel
             delegate: _entryDelegate
+        }
+
+        // The Keyboard page's draft: OK writes it (05 Q5). While the
+        // profile runs it is read-only, with no OK (05 Q11).
+        RowLayout {
+            visible: _root.keyboardDraft
+            Layout.fillWidth: true
+            spacing: Style.dp(6)
+            Label {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+                color: Style.fgMuted
+                text: _root.editorLocked
+                      ? "Profile running: stop it to edit"
+                      : (_kb.keyName.length && uiState && _kb.paneMode.length
+                         && _kb.paneMode !== uiState.currentMode
+                         ? _kb.keyName + " (in " + _kb.paneMode + ")" : "")
+            }
+            Button {
+                objectName: "keyboardUndo"
+                text: "Undo"
+                focusPolicy: Qt.NoFocus
+                enabled: _kb.canUndo && !_root.editorLocked
+                onClicked: _root._step(true)
+            }
+            Button {
+                objectName: "keyboardRedo"
+                text: "Redo"
+                focusPolicy: Qt.NoFocus
+                enabled: _kb.canRedo && !_root.editorLocked
+                onClicked: _root._step(false)
+            }
+            Button {
+                objectName: "keyboardCancel"
+                text: "Cancel"
+                visible: !_root.editorLocked
+                enabled: !!_kb.paneModel
+                onClicked: _kb.revert()
+            }
+            Button {
+                objectName: "keyboardOk"
+                text: "OK"
+                visible: !_root.editorLocked
+                enabled: !!_kb.paneModel
+                highlighted: true
+                onClicked: _kb.commitPane()
+            }
         }
 
         Component {
@@ -168,7 +292,7 @@ Item {
                     enabled: !editorLocked
 
                     inputBinding: modelData
-                    inputItemModel: _root.inputItemModel
+                    inputItemModel: _root.shownModel
                     hideControlSetup: _root.hideControlSetup
                 }
             }

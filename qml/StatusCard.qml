@@ -449,6 +449,9 @@ Rectangle {
         // The Keyboard and OSC aren't game controllers: Swap Devices, the
         // Auto Mapper and Device Information don't list them.
         var notStick = slug === "keyboard" || slug === "osc"
+        // The Logical Device has no hardware to set up, calibrate, describe
+        // or swap (03 Q7).
+        var logical = tab === "logical" || slug === "logical"
         return MenuModel.menu("card", cardName || rawName || "Device", [
             MenuModel.action(dest ? "Output View" : "Open Configuration",
                              function() { dest ? _card.openOutputView() : _card.openConfiguration() }),
@@ -458,16 +461,16 @@ Rectangle {
             MenuModel.section("module", "Module", [
                 // The Xbox output claims nothing; the Keyboard and OSC have
                 // no axes to calibrate.
-                xbox ? null : MenuModel.action("Module Setup…",
+                (xbox || logical) ? null : MenuModel.action("Module Setup…",
                                  function() { _card.configureModule() }),
-                (notStick || xbox) ? null
+                (notStick || xbox || logical) ? null
                     : MenuModel.action("Auto Mapper", function() { _card.autoMap() }),
-                (dest || slug === "keyboard" || slug === "osc") ? null
+                (dest || notStick || logical) ? null
                     : MenuModel.action("Calibration", function() { _card.openCalibration() })
             ]),
             MenuModel.section("view", "View", [
                 MenuModel.action(xbox ? "Xbox Viewer" : "vJoy Viewer", function() { _card.openPairing() }),
-                (notStick || xbox) ? null
+                (notStick || xbox || logical) ? null
                     : MenuModel.action("Device Information", function() { _card.openDeviceInformation() })
             ]),
             MenuModel.section("cards", "Cards", [
@@ -480,10 +483,12 @@ Rectangle {
             MenuModel.section("device", "Device", [
                 _card.damaged === "" ? null
                     : MenuModel.action("Start Fresh…", function() { _card.startFresh() }),
-                (dest || notStick) ? null
+                (dest || notStick || logical) ? null
                     : MenuModel.action("Swap Device…", function() { _card.assignHardware() }),
                 MenuModel.action("Reset Card Layout", function() { _card.clearSettings() }),
-                MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })
+                // Output module files are never deleted (03 Q18).
+                dest ? null
+                    : MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })
             ])
         ])
     }

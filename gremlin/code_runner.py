@@ -91,6 +91,14 @@ class VirtualButton(metaclass=ABCMeta):
 
 
 class VirtualAxisButton(VirtualButton):
+    """Treats a range of an axis as a button (06 S39).
+
+    Entering the range (in the chosen direction) presses, leaving releases
+    and a jump across the range in one step presses and releases. An axis
+    already inside the range at Run gives no press, and leaving it then
+    gives no release (D-06-S39-NORELEASE).
+    """
+
     def __init__(
         self, lower_limit: float, upper_limit: float, direction: AxisButtonDirection
     ) -> None:
@@ -98,49 +106,53 @@ class VirtualAxisButton(VirtualButton):
         self._lower_limit = lower_limit
         self._upper_limit = upper_limit
         self._direction = direction
-        self._last_value = None
+        self._last_value: float | None = None
+        # Inside the range at Run: no press until it leaves and re-enters.
+        self._held_from_start = False
 
     def __call__(self, event: event_handler.Event) -> list[bool]:
-        value = event.value if event.value is not None else 0.0
-        forced_activation = False
-        newly_initialized = False
-        direction = AxisButtonDirection.Anywhere
+        value = float(event.value) if isinstance(event.value, (int, float)) else 0.0
+        inside_range = self._lower_limit <= value <= self._upper_limit
 
         if self._last_value is None:
-            newly_initialized = True
-            self._last_value = event.value
-        else:
-            if self._last_value < self._lower_limit and value > self._upper_limit:
-                forced_activation = True
-            elif self._last_value > self._upper_limit and value < self._lower_limit:
-                forced_activation = True
+            # First value of the Run: nothing is sent, inside or not.
+            self._last_value = value
+            self._held_from_start = inside_range
+            return []
 
-            if self._last_value < value:
-                direction = AxisButtonDirection.Below
-            elif self._last_value > value:
-                direction = AxisButtonDirection.Above
-
-        self._last_value = event.value
-
-        states = []
-        if forced_activation:
-            self._fsm.perform("press")
-            self._fsm.perform("release")
-            states = [True, False]
-        inside_range = self._lower_limit <= value <= self._upper_limit
+        last = self._last_value
+        self._last_value = value
+        direction = AxisButtonDirection.Anywhere
+        if last < value:
+            direction = AxisButtonDirection.Below
+        elif last > value:
+            direction = AxisButtonDirection.Above
         valid_direction = (
             direction == self._direction
             or self._direction == AxisButtonDirection.Anywhere
         )
-        if inside_range and valid_direction:
-            if newly_initialized:
-                self._fsm.set_state("down")
-            else:
-                states = [True] if self._fsm.perform("press")[0] else []
-        else:
-            states = [False] if self._fsm.perform("release")[0] else []
 
-        return states
+        jumped = (last < self._lower_limit and value > self._upper_limit) or (
+            last > self._upper_limit and value < self._lower_limit
+        )
+        if jumped:
+            if not valid_direction:
+                return []
+            self._fsm.perform("press")
+            self._fsm.perform("release")
+            return [True, False]
+
+        if self._held_from_start:
+            if not inside_range:
+                self._held_from_start = False
+            return []
+        if inside_range and valid_direction:
+            return [True] if self._fsm.perform("press")[0] else []
+        if inside_range:
+            return []
+        # The FSM is "up" unless a press was sent, so a release only
+        # follows a press.
+        return [False] if self._fsm.perform("release")[0] else []
 
 
 class VirtualHatButton(VirtualButton):

@@ -51,7 +51,10 @@ _ENTRY_TITLES = {
     "last-keep-after-release": "Keep last value after release",
     "debug": "Diagnostic logs",
     "log-when-not-responding": "Log When Not Responding",
-    "hidhide-on-start": "Turn HidHide on at start",
+    # Not shown in Options (the HidHide window has the switch); History
+    # names it by the switch's own words.
+    "hidhide-on-start": "HidHide Automatically Start",
+    "hidhide-start": "HidHide",
     "autorelease-no-arg": "Auto-release address-only messages",
     "pad-args": "Treat address-only messages as 1.0",
     "delay-presets": "Auto-release delay presets",
@@ -80,7 +83,8 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ("Startup and Tray", [
             ("global", "general", "check-for-updates"),
             ("global", "general", "minimize-to-tray"),
-            ("global", "general", "hidhide-on-start"),
+            # Only a pointer: the switch is in the HidHide window (02 Q16).
+            ("global", "general", "hidhide-start"),
         ]),
         ("Devices", [
             ("global", "general", "device-change-behavior"),
@@ -160,8 +164,13 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
     ]),
 ]
 
-# Stored values that are not settings to show: the Action list's raw data.
-_HIDDEN = {("action", "general", "action-priorities")}
+# Stored values that are not settings to show: the Action list's raw data,
+# and HidHide's Automatically Start (switched in the HidHide window only,
+# 02 Q16; still stored, and History still records it).
+_HIDDEN = {
+    ("action", "general", "action-priorities"),
+    ("global", "general", "hidhide-on-start"),
+}
 
 # Sections with a window of their own (the Button Map's options).
 _OWN_WINDOW = {"button-map"}
@@ -706,6 +715,9 @@ class ProfileAutoLoadingModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWid
         return "file:///" + QtCore.QFile("qml:OptionProfileAutoLoading.qml").fileName()
 
 
+_DEFAULT_VOICE = "(default)"
+
+
 @ta.QmlElement
 class TTSVoiceSelectionModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidget):
     roles = {
@@ -719,7 +731,11 @@ class TTSVoiceSelectionModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidg
         BaseMetaConfigOptionWidget.__init__(self)
 
         TTSManager().prepare_engine()
-        self._voices = [voice.name() for voice in TTSManager().available_voices()]
+        # Row 0 is the system's default voice: shown when none is saved or
+        # the saved one is no longer installed (09 Q12, S59).
+        self._voices = [_DEFAULT_VOICE] + [
+            voice.name() for voice in TTSManager().available_voices()
+        ]
         self._config = gremlin.config.Configuration()
         self._cfg_key = ["action", "text-to-speech", "voice"]
 
@@ -740,16 +756,17 @@ class TTSVoiceSelectionModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidg
         return "file:///" + QtCore.QFile("qml:OptionTTSVoiceSelection.qml").fileName()
 
     def _get_current_index(self) -> int:
-        try:
-            return self._voices.index(self._config.value(*self._cfg_key))
-        except ValueError:
-            return 0
+        saved = self._config.value(*self._cfg_key)
+        if saved and saved in self._voices[1:]:
+            return self._voices.index(saved, 1)
+        return 0
 
     def _set_current_index(self, index: int) -> None:
         if not (0 <= index < len(self._voices)):
             return
-        self._config.set(*self._cfg_key, self._voices[index])
-        TTSManager().update_voice(self._voices[index])
+        name = self._voices[index] if index > 0 else ""
+        self._config.set(*self._cfg_key, name)
+        TTSManager().update_voice(name)
         self.currentIndexChanged.emit()
 
     currentIndex = QtCore.Property(
@@ -758,6 +775,14 @@ class TTSVoiceSelectionModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidg
         fset=_set_current_index,
         notify=currentIndexChanged,
     )
+
+
+class OptionPointer(BaseMetaConfigOptionWidget):
+    """An Options row that only explains where a setting lives: its text is
+    the description, no control."""
+
+    def _qml_path(self) -> str:
+        return ""
 
 
 class MetaConfigOption(metaclass=SingletonMetaclass):
@@ -850,6 +875,15 @@ MetaConfigOption().register(
     "voice-selection",
     "Voices available for use with Text to Speech actions.",
     TTSVoiceSelectionModel,
+)
+
+MetaConfigOption().register(
+    "global",
+    "general",
+    "hidhide-start",
+    "To turn HidHide on each time the program starts, use Automatically "
+    "Start in Tools → Device Setup → HidHide.",
+    OptionPointer,
 )
 
 import gremlin.ui.ui_scale_option  # noqa: F401

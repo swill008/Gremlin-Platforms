@@ -541,11 +541,20 @@ def test_tray_clicks_and_menu(tray: types.SimpleNamespace) -> None:
     assert tray.window.shown
 
 
+class _XClose(QtGui.QCloseEvent):
+    """The main window's X: a close from Windows (spontaneous), GL-111."""
+
+    def spontaneous(self) -> bool:
+        return True
+
+
 def test_minimize_to_tray_hides_on_minimize_and_close(
-    tray: types.SimpleNamespace,
+    tray: types.SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    saved: list[object] = []
+    monkeypatch.setattr(tray.module.window_placement, "save_window", saved.append)
     minimized = QtGui.QWindow.Visibility.Minimized
-    close = QtCore.QEvent(QtCore.QEvent.Type.Close)
+    close = _XClose()
 
     # Off (the default): minimize stays minimized, X closes.
     tray.window.visibilityChanged.emit(minimized)
@@ -556,20 +565,24 @@ def test_minimize_to_tray_hides_on_minimize_and_close(
     tray.window.visibilityChanged.emit(minimized)
     assert not tray.window.shown
     tray.window.shown = True
-    close = QtCore.QEvent(QtCore.QEvent.Type.Close)
+    close = _XClose()
     assert tray.icon.eventFilter(tray.window, close) is True
     assert not close.isAccepted() and not tray.window.shown
+    assert saved == [tray.window]  # GL-112: its place is kept
     # Hidden: pages unloaded; shown again: loaded again.
     tray.window.visibilityChanged.emit(QtGui.QWindow.Visibility.Hidden)
     tray.window.visibilityChanged.emit(QtGui.QWindow.Visibility.Windowed)
     assert tray.trayed == ["enter", "leave"]
 
 
-def test_x_says_still_running_once(tray: types.SimpleNamespace) -> None:
+def test_x_says_still_running_once(
+    tray: types.SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(tray.module.window_placement, "save_window", lambda w: None)
     tray.settings.values[("global", "general", "minimize-to-tray")] = True
     for _ in range(3):
         tray.window.shown = True
-        tray.icon.eventFilter(tray.window, QtCore.QEvent(QtCore.QEvent.Type.Close))
+        tray.icon.eventFilter(tray.window, _XClose())
     balloons = [
         d for d in _notified(tray, tray.gui.NIM_MODIFY) if d[2] == tray.gui.NIF_INFO
     ]
@@ -607,7 +620,7 @@ def test_no_tray_icon_never_hides_the_window(
     tray.settings.values[("global", "general", "minimize-to-tray")] = True
     tray.window.visibilityChanged.emit(QtGui.QWindow.Visibility.Minimized)
     assert tray.window.shown
-    close = QtCore.QEvent(QtCore.QEvent.Type.Close)
+    close = _XClose()
     assert tray.icon.eventFilter(tray.window, close) is False
 
 
@@ -701,12 +714,6 @@ def test_data_and_logs_folders_follow_options_and_fall_back(
     assert util.logs_dir() == default / "logs"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=(FileExistsError, FileNotFoundError),
-    reason="GL-033: _configured_child's fallback mkdir raises when the default "
-    "data folder can't be written",
-)
 def test_a_data_folder_that_cannot_be_made_does_not_stop_folder_lookups(
     folder_settings: dict[str, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1044,11 +1051,6 @@ def test_macro_recording_records_a_key_from_the_hook(
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AttributeError,
-    reason="GL-036: DeviceDatabase leaves _device_db unset without device_db.json",
-)
 def test_a_missing_device_database_gives_plain_names(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -1230,11 +1232,6 @@ def test_unknown_startup_mode_resolves_like_use_heuristic(tmp_path: Path) -> Non
     assert mode_manager.resolve_start_mode(p) == "Alpha"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=ValueError,
-    reason="GL-039: an unknown Startup Mode makes the Startup Mode box raise",
-)
 def test_unknown_startup_mode_shows_as_use_heuristic(
     profile: Profile, tmp_path: Path
 ) -> None:

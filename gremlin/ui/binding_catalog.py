@@ -6,11 +6,12 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import error, shared_state
+from gremlin import error, run_scope, shared_state
 from gremlin.modules import wiring
 from gremlin.modules.claim import type_of
 from gremlin.profile import (
@@ -37,6 +38,7 @@ _WRAPPERS = {
     "description",
     "reference",
 }
+
 
 def _fingerprint_item(item: InputItem) -> str:
     return bindings_fingerprint(item.action_sequences)
@@ -220,6 +222,49 @@ def leaves_for_item(item) -> list[tuple[str, str, str]]:
             continue
         out.extend(collect_leaves(root))
     return out
+
+
+# --- The edit lock (06 S13, S82, RB14; 05 S32, S101) ------------------------
+
+
+def editing_locked() -> bool:
+    """The one locked-while-running rule: nothing in a profile is edited
+    while it runs. The pages show it (EditLock) and the models refuse edits
+    with it, so a page that misses it still can't change the profile."""
+    return run_scope.running()
+
+
+def _refused() -> bool:
+    if not editing_locked():
+        return False
+    logging.getLogger("system").info("Edit refused: the profile is running")
+    return True
+
+
+@ta.QmlElement
+class EditLock(QtCore.QObject):
+    """QML side of editing_locked(): locked is true while the profile runs.
+
+    Output pages (vJoy, Xbox) are not locked (06 S13); they don't use it.
+    """
+
+    lockedChanged = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        # Run and Stop are announced by the backend (activityChanged).
+        backend = sys.modules.get("gremlin.ui.backend")
+        owner = getattr(getattr(backend, "Backend", None), "instance", None)
+        if owner is not None:
+            owner.activityChanged.connect(self.lockedChanged)
+
+    @QtCore.Slot()
+    def refresh(self) -> None:
+        self.lockedChanged.emit()
+
+    @QtCore.Property(bool, notify=lockedChanged)
+    def locked(self) -> bool:
+        return editing_locked()
 
 
 @ta.QmlElement
@@ -771,7 +816,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     def addSequence(self, device_index: int) -> int:
         """ADD on a catalog row: new action sequence for that control."""
         want = int(device_index)
-        if want < 0:
+        if want < 0 or _refused():
             return -1
         profile = shared_state.current_profile
         dev = getattr(self._claimed, "_device", None)
@@ -805,7 +850,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         """Delete one action sequence from a control."""
         want = int(device_index)
         seq = int(sequence_index)
-        if want < 0 or seq < 0:
+        if want < 0 or seq < 0 or _refused():
             return False
         shown = str(getattr(self._claimed, "_mode", None) or "Default")
         if (
@@ -941,7 +986,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     @QtCore.Slot()
     def undo(self) -> None:
         # Not while an action is open in the pane: it is edited there.
-        if self._undo and self._pane_shadow is None:
+        if self._undo and self._pane_shadow is None and not _refused():
             step = self._undo.pop()
             if self._play(step, "before"):
                 self._redo.append(step)
@@ -950,7 +995,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot()
     def redo(self) -> None:
-        if self._redo and self._pane_shadow is None:
+        if self._redo and self._pane_shadow is None and not _refused():
             step = self._redo.pop()
             if self._play(step, "after"):
                 self._undo.append(step)
@@ -963,8 +1008,13 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     def _can_redo(self) -> bool:
         return bool(self._redo) and self._pane_shadow is None
 
-    canUndo = QtCore.Property(bool, fget=_can_undo, notify=undoChanged)
-    canRedo = QtCore.Property(bool, fget=_can_redo, notify=undoChanged)
+    # Through lambdas so a subclass's rule is the one used.
+    canUndo = QtCore.Property(
+        bool, fget=lambda self: self._can_undo(), notify=undoChanged
+    )
+    canRedo = QtCore.Property(
+        bool, fget=lambda self: self._can_redo(), notify=undoChanged
+    )
 
     def _control_spec(self, device_index: int):
         want = int(device_index)
@@ -1060,6 +1110,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         draft = self._pane_draft
         if draft is None or not self.paneDirty():
             return self._pane_seq
+        if _refused():
+            return -1
         key = self._pane_input
         before = self._snapshot(self._pane_hid, key)
         real = self._pane_real
@@ -1159,3 +1211,122 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     @QtCore.Property(int, notify=countChanged)
     def count(self) -> int:
         return len(self._rows)
+
+
+@ta.QmlElement
+class KeyboardPaneModel(BindingCatalogModel):
+    """The Keyboard page's action pane (05 Q5, replaces S78): the selected
+    key's actions as a draft that OK writes, with Undo and Redo for each OK,
+    the same as the Configuration page's pane (Library draft and commit).
+
+    A key with no binding yet (a new Add Key) shows one empty binding to
+    fill in (Library.draft, 05 Q4). The pane is always open on the key
+    shown: Undo and Redo drop the draft, play the step and open it again.
+    """
+
+    paneInputChanged = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        # The key shown: (device guid, input type, key) and its mode.
+        self._input: tuple | None = None
+        self._kb_mode = "Default"
+        self._row = -1
+        super().__init__(parent)
+
+    def _rebuild(self) -> None:
+        # No rows: the page lists the keys itself.
+        if self._rows:
+            self.beginResetModel()
+            self._rows = []
+            self.endResetModel()
+
+    @QtCore.Slot(QtCore.QObject, int, str)
+    def showInput(self, identifier: QtCore.QObject | None, row: int, mode: str) -> None:
+        """Opens the pane on this key in this mode (nothing is written
+        until OK). No key: the pane closes."""
+        import dill
+
+        # Only a key: the editor can still hold another page's input.
+        guid = getattr(identifier, "device_guid", None)
+        valid = (
+            bool(getattr(identifier, "isValid", False)) and guid == dill.UUID_Keyboard
+        )
+        self._input = (
+            (guid, getattr(identifier, "input_type"), getattr(identifier, "input_id"))
+            if valid
+            else None
+        )
+        self._kb_mode = str(mode or "Default")
+        self._row = int(row)
+        if self._input is None:
+            self.endPane()
+        else:
+            self.beginPane(self._row, -1)
+        self.paneInputChanged.emit()
+
+    def _control_spec(self, device_index: int) -> tuple | None:
+        profile = shared_state.current_profile
+        if profile is None or self._input is None:
+            return None
+        guid, kind, hw = self._input
+        item = profile.get_input_item(
+            guid, kind, hw, self._kb_mode, create_if_missing=False
+        )
+        return profile, guid, kind, hw, self._kb_mode, item
+
+    def _reopen(self) -> None:
+        if self._input is not None:
+            self.beginPane(self._row, -1)
+            self.paneInputChanged.emit()
+
+    def _can_undo(self) -> bool:
+        return bool(self._undo)
+
+    def _can_redo(self) -> bool:
+        return bool(self._redo)
+
+    @QtCore.Slot()
+    def undo(self) -> None:
+        """The last OK taken back; an unsaved draft is dropped (the page
+        asks first)."""
+        if not self._undo or _refused():
+            return
+        self.endPane()
+        step = self._undo.pop()
+        if self._play(step, "before"):
+            self._redo.append(step)
+        else:
+            self._undo.append(step)
+        self.undoChanged.emit()
+        self._reopen()
+
+    @QtCore.Slot()
+    def redo(self) -> None:
+        if not self._redo or _refused():
+            return
+        self.endPane()
+        step = self._redo.pop()
+        if self._play(step, "after"):
+            self._undo.append(step)
+        else:
+            self._redo.append(step)
+        self.undoChanged.emit()
+        self._reopen()
+
+    @QtCore.Slot()
+    def revert(self) -> None:
+        """Cancel: the draft goes back to the key's saved actions."""
+        self.endPane()
+        self._reopen()
+
+    @QtCore.Property(str, notify=paneInputChanged)
+    def keyName(self) -> str:
+        if self._input is None:
+            return ""
+        _guid, _kind, hw = self._input
+        try:
+            from gremlin import keyboard
+
+            return str(keyboard.key_from_code(*hw).name)
+        except Exception:
+            return str(hw)

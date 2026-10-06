@@ -1665,12 +1665,14 @@ class HidHideModel(QtCore.QObject):
                     kept.append(group_id)
                     have.add(group_id.upper())
         _hh_log(f"set hidden={bool(hidden)} id={instance_id} group={group_ids} blacklist={kept}")
-        _save_hidden(kept)
+        # Saved only after the driver accepts it (02 Q14), as HidHide
+        # Enabled: a refused tick left the saved list and the driver apart.
         if not set_blacklist(kept):
             self._last_error = _ioctl_error or "HidHide driver call failed."
             _hh_log(f"set blacklist failed: {self._last_error}", logging.WARNING)
             self.reload()
             return False
+        _save_hidden(kept)
         self._last_error = ""
         self.reload()
         return True

@@ -243,7 +243,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 
 - **S54** It should run every action registered for an input in the current mode, and a child mode should use its parent's actions for inputs it leaves empty. [glossary: Mode] [user confirmed 2026-10-06; was code only for the copy at Run]
 - **S55** One failing action should not stop the others or the release handling. [test: test_audit_runtime.py::test_one_failing_action_does_not_stop_the_others]
-- **S56** A vJoy error during an action should show "Error encountered with vJoy." and pause the profile. [user confirmed 2026-10-06; was code only]
+- **S56** A vJoy error during an action should be logged like any other action failure; it shows no error box and does not pause the profile, and the other actions still run. [changed 2026-10-06 to follow decision 06 Q10 (auto-pause removed), which wins over the earlier wording]
 - **S57** While paused, only actions marked "always execute" (Pause and Resume) should run; a script callback should not stop the rest. [test: test_action_fixes.py::test_while_paused_a_script_callback_does_not_stop_the_rest] [test: test_pause_resume.py::test_pause_resume]
 - **S58** A Change Mode to a mode the running profile does not have should be ignored and logged once. [test: test_audit2_modes.py::test_the_running_mode_list_follows]
 - **S59** Renaming a mode while running should move its actions to the new name; deleting a mode should drop its actions. [tracker: AU-99 group] [user confirmed 2026-10-06; was code only for the running case]

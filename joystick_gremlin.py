@@ -49,11 +49,21 @@ from PySide6 import (
     QtWidgets,
 )
 
-import dill
-import resources  # noqa: F401
-from gremlin import clock
-from gremlin.config import Configuration
-from gremlin.types import PropertyType
+# A failure while the modules load or the user folder is made (before
+# main() runs) is kept here and shown by main() like any other start-up
+# failure (01 S16, Q8). Imported by a test, the error is raised as usual.
+_startup_failure: tuple[str, str] | None = None
+
+try:
+    import dill
+    import resources  # noqa: F401
+    from gremlin import clock
+    from gremlin.config import Configuration
+    from gremlin.types import PropertyType
+except Exception as _e:
+    if __name__ != "__main__":
+        raise
+    _startup_failure = (f"{type(_e).__name__}: {_e}", traceback.format_exc())
 
 install_path = os.path.normcase(os.path.dirname(os.path.abspath(sys.argv[0])))
 # The folder the program was started from: a relative --profile path is read
@@ -69,64 +79,71 @@ os.environ["QT_FILE_SELECTORS"] = ",".join(
     filter(None, [os.environ.get("QT_FILE_SELECTORS", ""), "Universal"])
 )
 
-import gremlin.util
+if _startup_failure is None:
+    try:
+        import gremlin.util
 
-sys.path.insert(0, gremlin.util.data_folder())
-gremlin.util.setup_userprofile()
+        sys.path.insert(0, gremlin.util.data_folder())
+        gremlin.util.setup_userprofile()
 
-# Several of these modules set things up when they load (settings, QML
-# types), in this order; it has not been checked that any other order gives
-# the same result, so keep it. (Circular imports are a separate matter:
-# test_modules_import_alone loads every module on its own.)
-# isort: off
-import gremlin.audio_player
-import gremlin.config
-import gremlin.device_initialization
-import gremlin.error
-import gremlin.error_report
-import gremlin.event_handler
-import gremlin.mode_manager
-import gremlin.modules.store
-import gremlin.plugin_manager
-import gremlin.run_scope
-import gremlin.signal
-import gremlin.tts
-import gremlin.types
-import gremlin.ui.action_image_generator
-import gremlin.ui.backend
-import gremlin.ui.button_map_options
-import gremlin.ui.system_tray
-import gremlin.ui.option
-import gremlin.ui.osc_option  # noqa: F401
-import gremlin.ui.log_option  # noqa: F401
-import gremlin.ui.tools
-import gremlin.ui.ui_scale_option
-import gremlin.ui.update_model  # noqa: E402
-import gremlin.ui.util
-import gremlin.osc
-import gremlin.ui.osc_device_model  # noqa: F401
-import gremlin.ui.device_names  # noqa: F401
-import gremlin.ui.hidhide  # noqa: F401
-import gremlin.ui.live_debug  # noqa: F401
-import gremlin.ui.vjoy_status
-import gremlin.ui.window_placement
-import gremlin.ui.module_model  # noqa: F401
-import gremlin.deferred_write
-import gremlin.threads
-import gremlin.history
-import gremlin.watchdog
-import gremlin.qt_log
-import gremlin.ui.debug_mode
-import gremlin.ui.live_debug  # noqa: F401
-import gremlin.ui.history_model  # noqa: F401
-import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
-import gremlin.ui.logical_layout  # noqa: F401
-import gremlin.ui.module_pairing  # noqa: F401
-import gremlin.ui.module_calibration  # noqa: F401
-import gremlin.ui.shell_option  # noqa: F401
-import gremlin.osc_persist  # noqa: F401
-import gremlin.windows_event_hook
-# isort: on
+        # Several of these modules set things up when they load (settings, QML
+        # types), in this order; it has not been checked that any other order gives
+        # the same result, so keep it. (Circular imports are a separate matter:
+        # test_modules_import_alone loads every module on its own.)
+        # isort: off
+        import gremlin.audio_player
+        import gremlin.config
+        import gremlin.device_initialization
+        import gremlin.error
+        import gremlin.error_report
+        import gremlin.event_handler
+        import gremlin.mode_manager
+        import gremlin.modules.store
+        import gremlin.plugin_manager
+        import gremlin.run_scope
+        import gremlin.signal
+        import gremlin.tts
+        import gremlin.types
+        import gremlin.ui.action_image_generator
+        import gremlin.ui.backend
+        import gremlin.ui.button_map_options
+        import gremlin.ui.system_tray
+        import gremlin.ui.option
+        import gremlin.ui.osc_option  # noqa: F401
+        import gremlin.ui.log_option  # noqa: F401
+        import gremlin.ui.tools
+        import gremlin.ui.ui_scale_option
+        import gremlin.ui.update_model  # noqa: E402
+        import gremlin.ui.util
+        import gremlin.osc
+        import gremlin.ui.osc_device_model  # noqa: F401
+        import gremlin.ui.device_names  # noqa: F401
+        import gremlin.ui.highlight_option  # loaded by device_names
+        import gremlin.ui.hidhide  # noqa: F401
+        import gremlin.ui.live_debug  # noqa: F401
+        import gremlin.ui.vjoy_status
+        import gremlin.ui.window_placement
+        import gremlin.ui.module_model  # noqa: F401
+        import gremlin.deferred_write
+        import gremlin.threads
+        import gremlin.history
+        import gremlin.watchdog
+        import gremlin.qt_log
+        import gremlin.ui.debug_mode
+        import gremlin.ui.live_debug  # noqa: F401
+        import gremlin.ui.history_model  # noqa: F401
+        import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
+        import gremlin.ui.logical_layout  # noqa: F401
+        import gremlin.ui.module_pairing  # noqa: F401
+        import gremlin.ui.module_calibration  # noqa: F401
+        import gremlin.ui.shell_option  # noqa: F401
+        import gremlin.osc_persist  # noqa: F401
+        import gremlin.windows_event_hook
+        # isort: on
+    except Exception as _e:
+        if __name__ != "__main__":
+            raise
+        _startup_failure = (f"{type(_e).__name__}: {_e}", traceback.format_exc())
 
 
 def configure_logger(config: dict[str, Any]) -> None:
@@ -220,6 +237,37 @@ class StartupError(Exception):
         self.details = details
 
 
+def _default_logs_folder() -> str:
+    """The default logs folder, found without gremlin.util (same folder as
+    util.USER_DATA_FOLDER)."""
+    root = os.environ.get("USERPROFILE") or os.environ.get("userprofile") or ""
+    return os.path.join(root, "Gremlin Platforms", "logs")
+
+
+def _log_startup_failure(summary: str, details: str) -> None:
+    """Writes a start-up failure to system.log, also when it came before the
+    loggers were set up (the modules didn't load)."""
+    log = logging.getLogger("system")
+    # No handler anywhere yet (a test's capture handler counts as one).
+    if not log.handlers and not logging.getLogger().handlers:
+        try:
+            folder = _default_logs_folder()
+            os.makedirs(folder, exist_ok=True)
+            handler = logging.FileHandler(
+                os.path.join(folder, "system.log"), encoding="utf-8"
+            )
+            handler.setFormatter(
+                logging.Formatter(
+                    "%(asctime)s %(levelname)10s %(message)s", "%Y-%m-%d %H:%M:%S"
+                )
+            )
+            log.addHandler(handler)
+            log.setLevel(logging.WARNING)
+        except OSError:
+            pass
+    log.error(f"Could not start: {summary}\n{details}")
+
+
 def tell_could_not_start(summary: str, details: str) -> None:
     """Shows why the program could not start, in a Windows message box: the
     program's own windows may not exist yet. The text can be copied with
@@ -229,7 +277,8 @@ def tell_could_not_start(summary: str, details: str) -> None:
     try:
         logs = str(gremlin.util.logs_dir())
     except Exception:
-        logs = os.path.join(gremlin.util.userprofile_path(), "logs")
+        # The modules may not have loaded (01 S16): the default folder.
+        logs = _default_logs_folder()
     text = (
         "Gremlin-Platforms could not start.\n\n"
         f"{summary}\n\n{shown}\n\n"
@@ -519,8 +568,10 @@ def _terminate_other_gremlin(pids: list[int]) -> None:
 
 
 def _confirm_second_instance(
-    lock_held: bool, windows: list[str], pids: list[int]
+    lock_held: bool, windows: list[str], pids: list[int], not_closed: bool = False
 ) -> str:
+    """Yes / No / Cancel. not_closed: Yes was chosen but the other copy
+    still holds the lock; the box starts by saying so."""
     pid_text = ", ".join(str(pid) for pid in pids) if pids else "unknown"
     extra = ""
     if windows:
@@ -533,9 +584,14 @@ def _confirm_second_instance(
             "\nA Gremlin-Platforms process is running with no visible window."
             " It may be hung."
         )
+    first = (
+        "The other copy could not be closed.\n"
+        if not_closed
+        else "Another Gremlin-Platforms window is already running.\n"
+    )
     text = (
-        "Another Gremlin-Platforms window is already running.\n"
-        f"Process IDs: {pid_text}"
+        first
+        + f"Process IDs: {pid_text}"
         f"{extra}{hung_hint}\n\n"
         "Only one copy can own vJoy.\n\n"
         "Yes = Close the other process(es) and start this copy. Changes not "
@@ -614,7 +670,8 @@ def register_config_options() -> None:
     plugins = str(Path(gremlin.util.data_folder()) / "plugins")
     cfg.register(
         "global", "files", "plugin-directory", PropertyType.Path, plugins,
-        "Directory containing additional action plugins.",
+        "Directory containing additional action plugins. Takes effect on the "
+        "next start.",
         {
             "is_folder": True,
             "allow_reset": True,
@@ -625,7 +682,7 @@ def register_config_options() -> None:
     cfg.register(
         "global", "files", "data-folder", PropertyType.Path,
         gremlin.util.userprofile_path(),
-        "Root folder for user files.",
+        "Root folder for user files. Takes effect on the next start.",
         {
             "is_folder": True,
             "allow_reset": True,
@@ -635,11 +692,20 @@ def register_config_options() -> None:
     )
     for name, key, description in (
         ("modules", "modules-folder", "Device files, pictures, and imported copies."),
-        ("logs", "logs-folder", "Live log and the diagnostic logs."),
+        (
+            "logs",
+            "logs-folder",
+            "Live log and the diagnostic logs. Takes effect on the next start.",
+        ),
         ("profiles", "profiles-folder", "Folder the profile dialogs open in."),
         ("scripts", "scripts-folder", "User scripts."),
         ("export", "export-folder", "Device packs saved from the program."),
-        ("history", "history-folder", "The history of every saved change."),
+        (
+            "history",
+            "history-folder",
+            "The history of every saved change. Changes saved before the "
+            "folder is moved stay in the old folder.",
+        ),
         (
             "deleted devices",
             "deleted-devices-folder",
@@ -693,10 +759,6 @@ def register_config_options() -> None:
     )
     if was_close_to_tray and not cfg.value("global", "general", "minimize-to-tray"):
         cfg.set("global", "general", "minimize-to-tray", True)
-    cfg.register(
-        "global", "internal", "live-start-empty", PropertyType.Bool, False,
-        "Live Log Reader: Live starts with an empty view.", {}, False,
-    )
     cfg.register(
         "global", "internal", "tray-notice-shown", PropertyType.Bool, False,
         "The one-time notice that closing kept the program in the tray was shown.",
@@ -809,6 +871,11 @@ def register_config_options() -> None:
     gremlin.ui.vjoy_status.register_options()
     gremlin.ui.button_map_options.register()
     gremlin.ui.live_debug.register_options()
+    gremlin.ui.update_model._register(cfg)
+    # Registered when its module loads (through device_names); named here so
+    # this list stays the one place every setting is registered before the
+    # purge (01 S6, section 7).
+    gremlin.ui.highlight_option.ensure_registered()
 
 
 def configure_loggers() -> None:
@@ -933,6 +1000,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.process_cmd_args(cmd_args)
         self.updater.startup()
         gremlin.config.announce_damaged_settings()
+        gremlin.util.announce_folder_fallbacks()
         gremlin.device_initialization.announce_vjoy_problems()
 
         self.main_window = self.engine.rootObjects()[0]
@@ -1057,12 +1125,30 @@ def _check_second_copy() -> tuple[QtCore.QLockFile | None, bool]:
             if choice == "close_others":
                 _terminate_other_gremlin(pids)
                 lock = acquire_instance_lock()
+                # Still held: the other copy didn't close. Say so and ask
+                # again rather than start without the lock (01 Q9).
+                while lock is None:
+                    pids = _other_gremlin_pids()
+                    choice = _confirm_second_instance(True, [], pids, not_closed=True)
+                    if choice == "quit":
+                        return lock, False
+                    if choice == "continue":
+                        break
+                    _terminate_other_gremlin(pids)
+                    lock = acquire_instance_lock()
         return lock, True
     finally:
         _scan_cache = None
 
 
 def main() -> int:
+    if _startup_failure is not None:
+        # The modules didn't load or the user folder couldn't be made.
+        summary, details = _startup_failure
+        _log_startup_failure(summary, details)
+        tell_could_not_start(summary, details)
+        logging.shutdown()
+        os._exit(1)
     _no_hooks_offscreen()
     lock, start = _check_second_copy()
     if not start:
@@ -1077,7 +1163,7 @@ def main() -> int:
     except Exception as e:
         summary = str(e) if isinstance(e, StartupError) else f"{type(e).__name__}: {e}"
         details = getattr(e, "details", "") or traceback.format_exc()
-        logging.getLogger("system").error(f"Could not start: {summary}\n{details}")
+        _log_startup_failure(summary, details)
         tell_could_not_start(summary, details)
         gremlin.deferred_write.flush_all()
         gremlin.threads.shutdown(timeout=1.0)
@@ -1128,4 +1214,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # The data and logs folders stay as they are now until the next start
+    # (01 Q4). Only here: tests that call main() keep following Options.
+    if _startup_failure is None:
+        gremlin.util.freeze_start_folders()
     sys.exit(main())

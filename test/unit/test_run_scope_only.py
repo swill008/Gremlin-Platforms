@@ -65,11 +65,16 @@ def _calls(path: Path) -> Iterator[ast.Call]:
             yield node
 
 
+# Main-thread timers that belong to a window, not to a Run: Listen's
+# hold-Esc-to-cancel (02 RB11, GL-037) runs with no profile running too.
+_NOT_A_RUN = {"gremlin/ui/util.py"}
+
+
 def test_no_main_thread_timer_outside_run_scope() -> None:
     found = [
         f"{_rel(p)}:{c.lineno}"
         for p in _program_files()
-        if _rel(p) not in _OWNERS
+        if _rel(p) not in _OWNERS and _rel(p) not in _NOT_A_RUN
         for c in _calls(p)
         if _called(c) == "main_timer"
     ]

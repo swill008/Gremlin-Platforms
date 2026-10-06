@@ -22,6 +22,10 @@ NOT_SWAPPABLE: frozenset[uuid.UUID] = frozenset(
 )
 
 
+class SameDevice(error.GremlinError):
+    """Swap refused: From and To are the same device (04 Q20)."""
+
+
 @dataclasses.dataclass
 class ProfileDeviceInfo:
     device_uuid: uuid.UUID
@@ -69,28 +73,6 @@ def get_profile_devices(profile: gremlin.profile.Profile) -> list[ProfileDeviceI
             profile_devices[dev_info.device_uuid].name = dev_info.name
 
     return list(profile_devices.values())
-
-
-def _swap_device_inputs(
-    profile: gremlin.profile.Profile,
-    source_device_uuid: uuid.UUID,
-    target_device_uuid: uuid.UUID,
-) -> int:
-    swap_count = 0
-    source_device_inputs = profile.inputs.get(source_device_uuid, [])
-    target_device_inputs = profile.inputs.get(target_device_uuid, [])
-
-    # Every input moves with its list (one with no actions too: it kept
-    # the old device's id); only those with actions are counted.
-    for input_item in source_device_inputs:
-        input_item.device_id = target_device_uuid
-        swap_count += 1 if input_item.action_sequences else 0
-    profile.inputs[target_device_uuid] = source_device_inputs
-    for input_item in target_device_inputs:
-        input_item.device_id = source_device_uuid
-        swap_count += 1 if input_item.action_sequences else 0
-    profile.inputs[source_device_uuid] = target_device_inputs
-    return swap_count
 
 
 def _swap_device_actions(
@@ -149,14 +131,17 @@ def swap_devices(
     Raises:
         GremlinError: If either device is not a stick (keyboard, logical
             device, OSC or Xbox).
+        SameDevice: If both are the same device.
     """
     for device_uuid in (source_device_uuid, target_device_uuid):
         if device_uuid in NOT_SWAPPABLE:
             raise error.GremlinError(
                 f"Device {device_uuid} is not a stick and can't be swapped"
             )
+    if source_device_uuid == target_device_uuid:
+        raise SameDevice(f"Device {source_device_uuid} can't be swapped with itself")
     return SwapDevicesResult(
         _swap_device_actions(profile, source_device_uuid, target_device_uuid),
-        _swap_device_inputs(profile, source_device_uuid, target_device_uuid),
+        profile.swap_device_inputs(source_device_uuid, target_device_uuid),
         _swap_device_user_script_vars(profile, source_device_uuid, target_device_uuid),
     )

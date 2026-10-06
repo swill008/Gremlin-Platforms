@@ -27,8 +27,6 @@ _FORBIDDEN = re.compile(
 
 # TODO(batch1/batch2): callers still to move onto the Library.
 _WAITING: dict[str, int] = {
-    "gremlin/swap_devices.py": 2,  # inputs[...] = -> a Profile method
-    "gremlin/ui/device_pack.py": 1,  # inputs[...] =, GL-099 / GL-109 (batch 2)
 }
 
 

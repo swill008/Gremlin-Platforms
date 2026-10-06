@@ -178,7 +178,11 @@ class TextToSpeechData(AbstractActionData):
     model = TextToSpeechModel
 
     properties = (ActionProperty.ActivateOnPress,)
-    input_types = (InputType.JoystickButton,)
+    # Keyboard keys too, like Play Sound (D-09-Q11, D-05-Q7).
+    input_types = (
+        InputType.JoystickButton,
+        InputType.Keyboard,
+    )
 
     def __init__(self, behavior_type: InputType = InputType.JoystickButton) -> None:
         super().__init__(behavior_type)
@@ -225,6 +229,14 @@ class TextToSpeechData(AbstractActionData):
             return [
                 UserFeedback(
                     UserFeedback.FeedbackType.Error, "Text field must not be empty."
+                )
+            ]
+        if not tts.TTSManager().speech_available():
+            # A warning, so a save keeps the action (09 Q13).
+            return [
+                UserFeedback(
+                    UserFeedback.FeedbackType.Warning,
+                    "Windows speech is not available, so nothing is said.",
                 )
             ]
         return []

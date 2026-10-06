@@ -17,7 +17,7 @@ from PySide6 import (
 
 import gremlin.util
 from gremlin.config import Configuration
-from gremlin.ui import tray_memory
+from gremlin.ui import tray_memory, window_placement
 from gremlin.ui.backend import Backend
 
 # Private message the tray icon uses to report activity to the helper window.
@@ -79,14 +79,20 @@ class SystemTrayIcon(QtCore.QObject):
 
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
         # Minimize to tray covers the X too: the window hides, the profile
-        # keeps running, and Exit (File menu or tray menu) quits.
+        # keeps running, and Exit (File menu or tray menu) quits. Only the
+        # X (a close from Windows: spontaneous) hides; the close a quit
+        # makes passes, or Exit would only hide the window (01 Q2).
         if (
             event.type() == QtCore.QEvent.Type.Close
+            and event.spontaneous()
             and self._icon_present
             and Configuration().exists("global", "general", "minimize-to-tray")
             and Configuration().value("global", "general", "minimize-to-tray")
         ):
             event.ignore()
+            # onClosing (which saves it) does not run: save the place here
+            # (01 Q3).
+            window_placement.save_window(self._window)
             self._window.hide()
             self._tell_once_still_running()
             return True
@@ -269,10 +275,16 @@ class SystemTrayIcon(QtCore.QObject):
         if command == _ID_SHOW:
             self._toggle_visibility()
         elif command == _ID_TOGGLE:
-            self._backend.toggleActiveState()
+            self._toggle_run()
         elif command == _ID_QUIT:
             self._quit_gremlin()
         return 0
+
+    def _toggle_run(self) -> None:
+        """Run/Stop the same way as the toolbar (Main.qml toggleRun asks
+        about an open action pane with changes first, 06 Q6)."""
+        if not QtCore.QMetaObject.invokeMethod(self._window, "toggleRun"):
+            self._backend.toggleActiveState()
 
     def _toggle_visibility(self) -> None:
         self._window.hide() if self._window.isVisible() else self.restore_window()

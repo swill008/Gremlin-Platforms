@@ -127,7 +127,8 @@ def test_renamed_sticks_photo_goes_with_the_file_its_button_map_opens(
     # reads, and old_name.json kept no picture.
     assert rel == "old_name/photo.jpg"
     assert (folder / "old_name" / "photo.jpg").is_file()
-    assert json.loads((folder / "old_name.json").read_text())["image"] == rel
+    # 07 Q2 (GL-174): the module file's "image" waits for the window's Save.
+    assert "image" not in json.loads((folder / "old_name.json").read_text())
     assert hw.hasPhotoStash("pJoy Pro")
     assert "old_name/photo.jpg" in hw.profilePhotoUrl("pJoy Pro")
 

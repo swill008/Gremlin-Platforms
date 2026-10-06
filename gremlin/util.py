@@ -849,12 +849,62 @@ def _configured_data_folder() -> str:
     return text
 
 
+# Folders fixed for the session (freeze_start_folders): a change in Options
+# takes effect on the next start (01 Q4), so the log writers and readers
+# stay on one folder.
+_start_folders: dict[str, Path] = {}
+
+# Chosen folders that couldn't be made or reached this session, by the
+# chosen path: the default folder used instead (said once, 01 Q5).
+_fallbacks: dict[str, str] = {}
+_fallbacks_told: set[str] = set()
+
+
+def _note_fallback(chosen: object, used: object) -> None:
+    key = str(chosen)
+    if key in _fallbacks:
+        return
+    _fallbacks[key] = str(used)
+    logging.getLogger("system").warning(
+        f"The folder {key} could not be made or reached; {used} is used instead."
+    )
+
+
+def announce_folder_fallbacks() -> None:
+    """Tells the user once per session (when the main window is up) that a
+    folder chosen in Options couldn't be reached and the default is used
+    (01 Q5, S126)."""
+    new = [chosen for chosen in _fallbacks if chosen not in _fallbacks_told]
+    if not new:
+        return
+    _fallbacks_told.update(new)
+    from gremlin.signal import signal
+
+    lines = "\n".join(f"{chosen}\n  -> {_fallbacks[chosen]}" for chosen in new)
+    signal.showNotification.emit(
+        "Folder Not Found",
+        "A folder chosen in Options could not be made or reached, so the "
+        "default folder is used until it is back:\n" + lines,
+    )
+
+
+def freeze_start_folders() -> None:
+    """At start: the data folder and the logs folder are fixed until the
+    next start (01 S125, Q4)."""
+    _start_folders.clear()
+    _start_folders["data"] = Path(data_folder())
+    _start_folders["logs"] = logs_dir()
+
+
 def data_folder() -> str:
     """Folder that holds user files. The default is the Gremlin Platforms folder.
 
     configuration.json stays in the profile folder so this setting can be found.
     """
+    if "data" in _start_folders:
+        return str(_start_folders["data"])
     chosen = _configured_data_folder()
+    root = Path(userprofile_path())
     if chosen:
         path = Path(chosen)
         if path.is_absolute():
@@ -864,7 +914,7 @@ def data_folder() -> str:
                 path = None
             if path is not None and path.is_dir():
                 return str(path.resolve())
-    root = Path(userprofile_path())
+            _note_fallback(chosen, root)
     try:
         root.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -873,22 +923,42 @@ def data_folder() -> str:
 
 
 def _configured_child(key: str, name: str) -> Path:
+    raw = ""
     try:
         from gremlin.config import Configuration
 
         cfg = Configuration()
         if cfg.exists("global", "files", key):
             raw = str(cfg.value("global", "files", key) or "").strip()
-            if raw and raw != ".":
-                path = Path(raw)
-                if path.is_absolute():
-                    path.mkdir(parents=True, exist_ok=True)
-                    if path.is_dir():
-                        return path.resolve()
     except Exception:
-        pass
+        raw = ""
+    if raw and raw != ".":
+        path = Path(raw)
+        if path.is_absolute():
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+                if path.is_dir():
+                    return path.resolve()
+            except OSError:
+                pass
+            _note_fallback(raw, Path(data_folder()) / name)
+    # The default folder inside the data folder; if even that can't be made
+    # (a data folder that can't be written), the one in the user's profile
+    # (01 S126). Never an error: callers only need a path.
     path = Path(data_folder()) / name
-    path.mkdir(parents=True, exist_ok=True)
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    except OSError:
+        pass
+    fallback = Path(userprofile_path()) / name
+    if fallback != path:
+        _note_fallback(path, fallback)
+        try:
+            fallback.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
+        return fallback
     return path
 
 
@@ -902,7 +972,9 @@ def modules_dir() -> Path:
 
 
 def logs_dir() -> Path:
-    """Live log and the diagnostic logs."""
+    """Live log and the diagnostic logs (fixed at start: freeze_start_folders)."""
+    if "logs" in _start_folders:
+        return _start_folders["logs"]
     return _child_dir("logs")
 
 

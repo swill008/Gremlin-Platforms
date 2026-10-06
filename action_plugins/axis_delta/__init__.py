@@ -53,15 +53,21 @@ class AxisDeltaFunctor(AbstractFunctor):
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
+        # The value as shaped by earlier actions (Response Curve); 0 is a
+        # value like any other (05 Q9).
+        shaped = value.current
+        if isinstance(shaped, (int, float)):
+            current = float(shaped)
+        elif isinstance(event.value, (int, float)):
+            current = float(event.value)
+        else:
+            current = 0.0
         if self._last_value is None:
-            self._last_value = event.value
+            self._last_value = current
             return
 
-        if not event.value:
-            return
-
-        delta = event.value - self._last_value
-        self._last_value = event.value
+        delta = current - self._last_value
+        self._last_value = current
         self._accumulated += delta
 
         press_event = event.clone()

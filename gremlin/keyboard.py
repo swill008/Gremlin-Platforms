@@ -226,8 +226,12 @@ def send_key_down(key: Key) -> None:
     Args:
         key: the key for which to send the KEYDOWN event
     """
+    # Here, not at the top: windows_event_hook -> common -> keyboard.
+    from gremlin.windows_event_hook import OWN_KEY_MARK
+
     flags = win32con.KEYEVENTF_EXTENDEDKEY if key.is_extended else 0
-    win32api.keybd_event(key.virtual_code, key.scan_code, flags, 0)
+    # Marked, so the keyboard hook knows the key came from the program.
+    win32api.keybd_event(key.virtual_code, key.scan_code, flags, OWN_KEY_MARK)
     run_scope.hold(
         run_scope.current_owner(),
         "key",
@@ -242,10 +246,18 @@ def send_key_up(key: Key) -> None:
     Args:
         key: the key for which to send the KEYUP event
     """
+    from gremlin.windows_event_hook import OWN_KEY_MARK
+
     flags = win32con.KEYEVENTF_EXTENDEDKEY if key.is_extended else 0
     flags |= win32con.KEYEVENTF_KEYUP
-    win32api.keybd_event(key.virtual_code, key.scan_code, flags, 0)
+    win32api.keybd_event(key.virtual_code, key.scan_code, flags, OWN_KEY_MARK)
     run_scope.let_go(run_scope.current_owner(), "key", (key.scan_code, key.is_extended))
+
+
+def is_down_in_windows(key: Key) -> bool:
+    """Whether Windows has the key down right now (its own key state, not
+    the program's cache)."""
+    return bool(win32api.GetAsyncKeyState(key.virtual_code) & 0x8000)
 
 
 def key_from_name(name: str) -> Key:
@@ -369,7 +381,7 @@ g_name_to_key = {
     "npmultiply": Key("Numpad *", 0x37, False, win32con.VK_MULTIPLY),
     "npminus": Key("Numpad -", 0x4A, False, win32con.VK_SUBTRACT),
     "npplus": Key("Numpad +", 0x4E, False, win32con.VK_ADD),
-    "npenter": Key("Numpad Enter", 0x1C, True, win32con.VK_SEPARATOR),
+    "npenter": Key("Numpad Enter", 0x1C, True, win32con.VK_RETURN),
     "npdelete": Key("Numpad Delete", 0x53, False, win32con.VK_DECIMAL),
     "np0": Key("Numpad 0", 0x52, False, win32con.VK_NUMPAD0),
     "np1": Key("Numpad 1", 0x4F, False, win32con.VK_NUMPAD1),

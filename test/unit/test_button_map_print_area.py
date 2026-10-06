@@ -6,7 +6,7 @@
 (button_map_print_area_smoke.py, its own process and user folder).
 
 - Alt+drag on an empty part of the map sets the area and shows its frame
-  (its Print Area tool opens); it is saved with the map.
+  (its Print Area tool opens); Save keeps it with the map.
 - An export takes only the area (its size follows the area), and the whole
   page again once the area is cleared.
 - The frame's handle resizes it; locked, Alt+drag leaves it as it is.
@@ -61,6 +61,9 @@ def test_pinned_stays_unpinned_hides(run: dict) -> None:
 
 
 def test_the_area_is_saved_with_the_map(run: dict) -> None:
+    # Written by Save, not when drawn (07 Q1, GL-173): the stand-in stick
+    # has no module file until then (S96).
+    assert run["file-before-save"] is False
     assert run["saved"] == run["area"]
 
 

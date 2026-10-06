@@ -365,7 +365,7 @@ def test_a_new_deadzone_is_added_by_the_library() -> None:
 
     picked: list = []
     fake = SimpleNamespace(
-        library=SimpleNamespace(create=create),
+        library=SimpleNamespace(create=create, actions_by_type=lambda _t: [made]),
         _binding_model=SimpleNamespace(behavior_type=InputType.JoystickAxis),
         _set_deadzone=picked.append,
     )

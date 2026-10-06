@@ -26,6 +26,7 @@ import logging
 import queue
 import shutil
 import threading
+import time
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -44,11 +45,16 @@ KEEP_DAYS = 90
 MAX_MEGABYTES = 20
 # How long the writer waits for more before it ends.
 _IDLE = 1.0
+# How long entries() waits for the writer to write what is queued.
+_SETTLE = 2.0
 # Whole-profile copies kept per profile (the newest saves).
 SNAPSHOTS = 20
 
 _queue: queue.Queue[dict | Callable[[], None]] = queue.Queue()
 _write_lock = threading.Lock()
+# One queued item is handled at a time, by the writer or by flush(): the
+# comparisons share _last_pictures and must keep their order (GL-187).
+_handle_lock = threading.RLock()
 _start_lock = threading.Lock()
 _writer: threading.Thread | None = None
 _stop = threading.Event()
@@ -174,17 +180,50 @@ def _run() -> None:
                     _writer = None
                     return
             continue
-        _handle(entry)
+        try:
+            _handle(entry)
+        finally:
+            _queue.task_done()
 
 
 def flush() -> None:
     """Writes every queued entry now, on this thread (at quit, in tests)."""
     while True:
-        try:
-            entry = _queue.get_nowait()
-        except queue.Empty:
+        # Bounded: a writer stuck on one item never holds up quit (S24).
+        if not _handle_lock.acquire(timeout=_SETTLE):
+            syslog.warning("History: the writer is still busy; not waiting for it")
             return
-        _handle(entry)
+        try:
+            try:
+                entry = _queue.get_nowait()
+            except queue.Empty:
+                return
+            try:
+                _handle(entry)
+            finally:
+                _queue.task_done()
+        finally:
+            _handle_lock.release()
+
+
+def _settle(timeout: float = _SETTLE) -> None:
+    """Before reading: what is queued gets written. While the writer runs it
+    does that and this waits for it (bounded), so profile comparisons and
+    picture copies never run on the caller's (UI) thread beside it (08 S23,
+    GL-187). With no writer running, it is written here."""
+    with _start_lock:
+        writer = _writer
+    if writer is None or writer is threading.current_thread():
+        flush()
+        return
+    deadline = time.monotonic() + timeout
+    with _queue.all_tasks_done:
+        while _queue.unfinished_tasks:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                syslog.warning("History: the writer is busy; listing what is written")
+                return
+            _queue.all_tasks_done.wait(left)
 
 
 def close(timeout: float = 2.0) -> None:
@@ -207,13 +246,14 @@ def close(timeout: float = 2.0) -> None:
 
 
 def _handle(item: dict | Callable[[], None]) -> None:
-    if callable(item):
-        try:
-            item()
-        except Exception:
-            syslog.exception("History: could not record a change")
-        return
-    _append(item)
+    with _handle_lock:
+        if callable(item):
+            try:
+                item()
+            except Exception:
+                syslog.exception("History: could not record a change")
+            return
+        _append(item)
 
 
 def _file(area: str) -> Path:
@@ -264,11 +304,68 @@ def _text(path: Path) -> str:
     return path.read_bytes().decode("utf-8", errors="replace")
 
 
-def _lines(area: str) -> list[dict]:
-    try:
-        text = _text(_file(area))
-    except OSError:
-        return []
+# What was read of each file: the History window comes to the front often,
+# and a file can hold 20 MB. Only what was appended since is read and
+# parsed; a file rewritten (clean-up) or replaced is read again (GL-041).
+_read: dict[str, dict] = {}
+_read_lock = threading.Lock()
+_TAIL = 64
+
+
+def _lines(area: str, fresh: bool = False) -> list[dict]:
+    """The file's entries, oldest first. fresh: read it all again, into new
+    objects the caller may change (the clean-up)."""
+    path = _file(area)
+    if fresh:
+        try:
+            return _parse(_text(path))
+        except OSError:
+            return []
+    key = str(path)
+    with _read_lock:
+        try:
+            stat = path.stat()
+        except OSError:
+            _read.pop(key, None)
+            return []
+        now = (stat.st_ino, stat.st_dev, stat.st_mtime_ns, stat.st_size)
+        known = _read.get(key)
+        if known is not None and known["stat"] == now:
+            return list(known["entries"])
+        start, found = 0, []
+        if known is not None and known["stat"][:2] == now[:2]:
+            if stat.st_size >= known["offset"]:
+                start, found = known["offset"], list(known["entries"])
+        try:
+            with open(path, "rb") as f:
+                if start and known is not None:
+                    # Still the same text up to where it was read last time?
+                    f.seek(max(0, start - _TAIL))
+                    if f.read(start - max(0, start - _TAIL)) != known["tail"]:
+                        start, found = 0, []
+                f.seek(start)
+                data = f.read()
+        except OSError:
+            _read.pop(key, None)
+            return []
+        # Whole lines only: a line still being written (or cut by a crash)
+        # is read again, with what comes after it, next time.
+        whole = data.rfind(b"\n") + 1
+        found.extend(_parse(data[:whole].decode("utf-8", errors="replace")))
+        offset = start + whole
+        tail = data[max(0, whole - _TAIL):whole]
+        if start and known is not None and len(tail) < _TAIL:
+            tail = known["tail"] + tail
+        _read[key] = {
+            "stat": now,
+            "offset": offset,
+            "tail": tail[-_TAIL:],
+            "entries": found,
+        }
+        return list(found)
+
+
+def _parse(text: str) -> list[dict]:
     entries = []
     # Split at line ends only: a line or paragraph separator in a name
     # (splitlines splits there too) cut the entry in two and lost it.
@@ -286,7 +383,7 @@ def _lines(area: str) -> list[dict]:
 
 def entries(area: str | None = None) -> list[dict]:
     """Every entry (of one area, or all), newest first."""
-    flush()
+    _settle()
     found: list[dict] = []
     for name in [area] if area else list(AREAS):
         found.extend(_lines(name))
@@ -365,7 +462,9 @@ def prune() -> None:
             path = _file(area)
             if not path.is_file():
                 continue
-            kept = [e for e in _lines(area) if float(e.get("at") or 0) >= oldest]
+            kept = [
+                e for e in _lines(area, fresh=True) if float(e.get("at") or 0) >= oldest
+            ]
             _trim_snapshots(kept)
             lines = [json.dumps(e, ensure_ascii=False) + "\n" for e in kept]
             # The oldest go first until the file fits (sizes added once: the

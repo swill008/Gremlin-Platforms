@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from PySide6 import QtCore
 
 import gremlin.action_label  # noqa: F401
@@ -66,19 +68,52 @@ def _save(names: dict[str, str]) -> None:
     _ensure().set(SECTION, GROUP, NAME, rows)
 
 
+def _same_key(key: object) -> str:
+    """Device ids match without braces or case ({ABC-1} == abc-1); other
+    keys ("keyboard", "xbox") as they are, trimmed."""
+    text = str(key or "").strip()
+    bare = text.strip("{}")
+    try:
+        return str(uuid.UUID(bare)).upper()
+    except ValueError:
+        return text
+
+
+def _stored_key(names: dict[str, str], key: object) -> str | None:
+    want = _same_key(key)
+    for stored in names:
+        if _same_key(stored) == want:
+            return stored
+    return None
+
+
 def display_name(key: str, default: str) -> str:
-    alias = _load().get(str(key).strip(), "").strip()
+    """The alias the user gave (Home device list, Button Map), else default."""
+    names = _load()
+    stored = _stored_key(names, key)
+    alias = names.get(stored, "").strip() if stored is not None else ""
     return alias or default
+
+
+def shown_name(device_guid: object) -> str:
+    """The name every screen shows for a device: the user's alias, else the
+    device's own name (device_initialization.shown_name: twin name, vJoy
+    number)."""
+    from gremlin import device_initialization
+
+    uid = getattr(device_guid, "uuid", device_guid)
+    return display_name(str(uid), device_initialization.shown_name(uid))
 
 
 def set_alias(key: str, value: str) -> None:
     names = dict(_load())
+    stored = _stored_key(names, key)
+    if stored is not None:
+        names.pop(stored)
     key = str(key).strip()
     text = str(value or "").strip()
     if text:
         names[key] = text
-    else:
-        names.pop(key, None)
     _save(names)
 
 

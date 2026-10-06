@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import jsonschema
 
@@ -113,16 +113,23 @@ class DeviceDatabase(metaclass=common.SingletonMetaclass):
     #       future.
 
     def __init__(self) -> None:
+        # Empty first: without the file every lookup gives plain names.
+        self._device_db = {"revision": 0, "devices": [], "mapping": {}}
         db_file = util.resource_path("device_db.json")
         if not util.file_exists_and_is_accessible(db_file):
             return
 
-        self._device_db = {"revision": 0, "devices": [], "mapping": {}}
         try:
-            json_data = json.load(open(db_file))
+            with open(db_file, encoding="utf-8") as f:
+                json_data = json.load(f)
             jsonschema.validate(json_data, _device_database_schema)
             self._device_db = self._parse_database(json_data)
-        except (json.decoder.JSONDecodeError, jsonschema.ValidationError) as e:
+        except (
+            OSError,
+            UnicodeDecodeError,
+            json.decoder.JSONDecodeError,
+            jsonschema.ValidationError,
+        ) as e:
             logging.getLogger("system").error(
                 f"There was an error loading device database {db_file}: {e}"
             )
@@ -235,13 +242,21 @@ class JoystickWrapper:
             super().__init__(joystick_guid, index)
 
             self._value = 0.0
+            self._seen = False
+
+        def update(self, value: float | bool | types.HatDirection) -> None:
+            self._value = value
+            self._seen = True
+
+        @property
+        def seen(self) -> bool:
+            """False until the axis has a value (it moved, or was read from
+            the driver: EventListener.axis_value)."""
+            return self._seen
 
         @property
         def value(self) -> float:
-            # FIXME: This bypasses calibration and any other possible
-            #        mappings we might do in the future
-            # return DILL.get_axis(self._joystick_guid, self._index) / float(32768)
-            return self._value if self._value else 0.0
+            return cast(float, self._value) if self._value else 0.0
 
     class Button(Input):
         """Represents a single button of a joystick."""
@@ -296,12 +311,15 @@ class JoystickWrapper:
 
     @property
     def name(self) -> str:
-        """Returns the name of the joystick.
+        """Returns the name of the joystick as the program shows it (an
+        identical second stick is "<name> (2)"), not the driver's name.
 
         Returns:
             Name of the joystick
         """
-        return self._info.name
+        from gremlin import device_initialization
+
+        return device_initialization.device_name(self._device_guid) or self._info.name
 
     def is_axis_valid(self, axis_index: int) -> bool:
         """Returns whether the specified axis exists for this device.
@@ -427,6 +445,25 @@ class JoystickWrapper:
             axes[aid] = JoystickWrapper.Axis(self._device_guid, aid)
         return axes
 
+    def reload(self) -> None:
+        """Reads the layout again (the stick came back). Inputs it still
+        has keep their objects and values (scripts and conditions hold
+        them); new ones start empty, gone ones are dropped."""
+        info = DILL.get_device_information_by_guid(self._dill_guid)
+        old_axes, old_buttons, old_hats = self._axis, self._buttons, self._hats
+        self._info = info
+        axes = self._init_axes()
+        for aid in axes:
+            if aid in old_axes:
+                axes[aid] = old_axes[aid]
+        buttons = self._init_buttons()
+        for i in range(1, min(len(buttons), len(old_buttons))):
+            buttons[i] = old_buttons[i]
+        hats = self._init_hats()
+        for i in range(1, min(len(hats), len(old_hats))):
+            hats[i] = old_hats[i]
+        self._axis, self._buttons, self._hats = axes, buttons, hats
+
     def let_go(self) -> tuple[list[int], list[int]]:
         """The stick is gone: its pressed buttons are let go and its hats
         centred. Returns the ids of the buttons and hats this changed."""
@@ -505,6 +542,13 @@ class Joystick(metaclass=common.SingletonMetaclass):
                     )
 
         return self.devices[device_guid]
+
+    def reconnected(self, device_guid: uuid.UUID) -> None:
+        """A stick came back (maybe with another layout under the same id):
+        its cached inputs follow the layout the driver reports now."""
+        wrapper = self.devices.get(device_guid)
+        if isinstance(wrapper, JoystickWrapper):
+            wrapper.reload()
 
 
 class Keyboard(metaclass=common.SingletonMetaclass):

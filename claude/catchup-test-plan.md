@@ -90,3 +90,38 @@ editor was open…", "Open Profile" warning text.
 
 ### Batch-end run
 Full suite in random order + lint baseline: see the commit message.
+
+### Notes for batch 3 (collected during batch 2)
+- help_topics.js Macro topic (~135): "A Joystick step acts like the stick itself: it only does something for controls the stick's input module claims." (GL-163, D-06-Q14)
+- help_topics.js Options topic (~272): drop "Turn HidHide on at start"; point to Tools → Device Setup → HidHide (Automatically Start) (GL-135).
+- help_topics.js Text to Speech topic: works on keyboard keys too (GL-197).
+- Screens that build device names themselves move onto gremlin.ui.device_names.shown_name(guid): input_monitor.device_name, input_pairing.device_label, QML displayName helpers (GL-124 follow-up).
+- Glossary check for batch 2 texts: "(default)", "Windows speech is not available, so nothing is said.", the Options HidHide pointer, "HidHide Automatically Start", "left out (see message)", "Gremlin's Xbox pad", "(not claimed)".
+- help_topics.js Home topic: Delete Device is not on vJoy/Xbox cards; the Logical Device card has no Module Setup, Calibration, Auto Mapper, Device Information or Swap Device (GL-146, GL-147).
+- Open question for the user (B3): cards with no module file still show the device's own counts; 03 Q8 "always claimed counts" could mean they should show 0.
+- Open question for the user (B4, GL-040): a script's top-level code can still freeze the program when loading or adding it. Decision D-04-Q13 says it needs a design (read variables without running the script, or a time limit). Not fixed in batch 2.
+- Open question for the user (B1, GL-116): if the other copy can't be closed, the same Yes / No / Cancel box asks again starting "The other copy could not be closed." (Yes tries again).
+
+## Batch 2 – urgent fixes and behaviour/UX by subsystem (2026-10-06)
+
+9 agents, file owners in `claude/catchup-batch2-rules.md`. New test files:
+`test/unit/test_batch2_*.py`. Each agent checked its new tests fail on the old code.
+Spec text aligned with decisions: 02 S56 (06 Q10), 07 S57 (Q3), S91 (Q19), S95 (Q1).
+
+| Area | GL | Check (automatic) | Hands-on |
+|---|---|---|---|
+| B1 shell & settings | 026, 033, 034, 045, 110-114, 116-118, 157, 176, 193, 311, 098/169/171 (Main side) | test_batch2_B1, test_stage1_app_profile (tray tests now use a spontaneous close) | Minimize to tray: Exit quits, X hides and keeps the place; X with the vJoy Viewer open quits; tray Run with an edited pane asks |
+| B2a input events | 035, 036, 037, 120-128, 131, 137, 172 | test_batch2_b2a_input_events | throttle at 80% before Run; keys keep working while busy; key after Ctrl+Alt+Del; a sent key doesn't fire another binding |
+| B2b devices & HidHide | 035, 045, 124, 132, 133, 134, 136, 148 | test_batch2_b2b | HidHide reload timing on plug/unplug; Device Information with a left-out vJoy and an own Xbox pad; Calibration "(not claimed)" |
+| B3 modules & Home | 038, 043, 139-147, 170 | test_batch2_b3, test_batch2_b3_typing, test_stage1_modules | type "Fire" in Keyboard Module Setup: no keys ticked; Run then Delete Device: refused |
+| B4 profiles, modes, scripts | 027, 028, 039, 074, 119, 129, 130, 149-159, 171 (models) | test_batch2_b4 | auto-load: clicking into Gremlin keeps the Run; Undo Delete Mode; vJoy Behavior switch while running shows the note |
+| B5a action pane & locking | 044, 098, 106, 160, 164, 166, 169, 171, 194 | test_batch2_b5a, test_batch2_b5a_screens | Keyboard page: Add Key then first action + OK; switch keys with changes asks; Run with a pane open shows read-only |
+| B5b action logic & speech | 042, 135, 161-163, 165, 167, 197-199, 310, 312 | test_batch2_B5b, test_stage1_runtime | TTS under Tempo/macro speaks; Options "(default)" voice; HidHide pointer row; TTS on a keyboard key |
+| B6 Button Map | 030, 043, 138, 173-175, 177-184, 188, 196 | test_batch2_B6, test_stage1_button_map, rig golden, j09 | mirrored copy then one Ctrl+Z; Device Pack preview with a large photo; Choose Photo then Undo |
+| B7 History, Device Pack, Auto Mapper | 031, 032, 041, 098 (dialogs), 099, 109, 115, 187, 189-192, 195, 313 | test_batch2_b7, test_stage1_history_pack, test_auto_mapper, test_history_window | large history files: no freeze; tools ask Discard/Cancel with an unsaved pane; import, save Button Map, Undo Import asks; restore log level / UI scale applies at once |
+
+Guard tests: `test_library_only` `_WAITING` is now empty.
+
+Not done in batch 2: GL-040 (script top-level code can freeze: needs a design, user question), GL-153 measuring part, GL-045 History-limits-on-main-thread note (safe through the config lock), GL-029/168/185/186/201 (features / on hold).
+
+Open questions for the user at batch end: GL-040 design; GL-116 re-ask box; cards with no module file (03 Q8); `rig_chips.fullNameOf` adds EVO R part names to hover text on every device (07 RB10 remainder) — drop it?

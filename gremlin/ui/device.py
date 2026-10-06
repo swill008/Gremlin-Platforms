@@ -195,6 +195,7 @@ class DeviceListModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 7: QtCore.QByteArray(b"guid"),
         QtCore.Qt.ItemDataRole.UserRole + 8: QtCore.QByteArray(b"joy_id"),
         QtCore.Qt.ItemDataRole.UserRole + 9: QtCore.QByteArray(b"vjoy_id"),
+        QtCore.Qt.ItemDataRole.UserRole + 10: QtCore.QByteArray(b"note"),
     }
 
     def __init__(self, parent: ta.OQO = None) -> None:
@@ -202,6 +203,8 @@ class DeviceListModel(QtCore.QAbstractListModel):
 
         self._selected_index = -1
         self._devices = device_initialization.input_devices()
+        # Device Information only: why a device is listed but not used.
+        self._notes: list[str] = []
         self._device_types = "all"
         self._reload_devices()
 
@@ -224,9 +227,10 @@ class DeviceListModel(QtCore.QAbstractListModel):
         device = self._devices[index.row()]
         match cast(str, self.roles[role]):
             case "name":
-                if device.is_virtual:
-                    return f"{device.name} {device.vjoy_id}"
-                return device.name
+                return device_initialization.shown_name(device.device_guid)
+            case "note":
+                row = index.row()
+                return self._notes[row] if row < len(self._notes) else ""
             case "axes":
                 return device.axis_count
             case "buttons":
@@ -260,6 +264,7 @@ class DeviceListModel(QtCore.QAbstractListModel):
 
     def _reload_devices(self) -> None:
         self.beginResetModel()
+        self._notes = []
         if self._device_types == "physical":
             self._devices = device_initialization.physical_devices()
         elif self._device_types == "virtual":
@@ -268,6 +273,10 @@ class DeviceListModel(QtCore.QAbstractListModel):
             self._devices = device_initialization.input_devices()
         elif self._device_types == "all":
             self._devices = device_initialization.joystick_devices()
+        elif self._device_types == "information":
+            rows = device_initialization.information_devices()
+            self._devices = [dev for dev, _note in rows]
+            self._notes = [note for _dev, note in rows]
         self.endResetModel()
 
     def _change_device_type(self, types: str) -> None:
@@ -278,6 +287,8 @@ class DeviceListModel(QtCore.QAbstractListModel):
         - virtual
         - input (physical + input vJoy devices)
         - all
+        - information (every device Windows reports, with a note on the
+          ones the program leaves out: Device Information)
 
         Args:
             types: the type of devices to list
@@ -1096,6 +1107,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 7: QtCore.QByteArray(b"high"),
         QtCore.Qt.ItemDataRole.UserRole + 8: QtCore.QByteArray(b"withCenter"),
         QtCore.Qt.ItemDataRole.UserRole + 9: QtCore.QByteArray(b"unsavedChanges"),
+        QtCore.Qt.ItemDataRole.UserRole + 10: QtCore.QByteArray(b"claimed"),
     }
 
     def __init__(self, parent: ta.OQO = None) -> None:
@@ -1147,6 +1159,8 @@ class AxisCalibration(QtCore.QAbstractListModel):
                 return state["withCenter"]
             case "unsavedChanges":
                 return state["unsavedChanges"]
+            case "claimed":
+                return state.get("claimed", True)
             case _:
                 return None
 
@@ -1499,6 +1513,9 @@ class AxisCalibration(QtCore.QAbstractListModel):
         if self._device_uuid is None or self._device is None:
             return
 
+        # Every axis is listed (calibration is about the hardware); the ones
+        # the module doesn't claim are marked (03 Q9).
+        claimed_axes = self._claimed_axes()
         for i in range(self._device.axis_count):
             key = (self._device_uuid, self._device.axis_map[i].axis_index)
             calibration_data = values_for_module(
@@ -1517,12 +1534,31 @@ class AxisCalibration(QtCore.QAbstractListModel):
                     "high": calibration_data[3],
                     "withCenter": calibration_data[4],
                     "unsavedChanges": False,
+                    "claimed": claimed_axes is None or key[1] in claimed_axes,
                 }
             )
 
             self._calibration_fn.append(None)
             self._active_calibrations.append({"center": False, "extrema": False})
             self._update_calibration(i)
+
+    def _claimed_axes(self) -> set[int] | None:
+        """The axes the module file claims (None: not known, all shown as
+        claimed)."""
+        from pathlib import Path
+
+        from gremlin.modules import store
+        from gremlin.modules.calibration import module_for_slug
+        from gremlin.modules.claim import read_claim
+
+        row = module_for_slug(self._module_slug)
+        if not row or not row.get("path"):
+            return None
+        try:
+            doc = store.read_path(Path(str(row["path"])))
+        except Exception:
+            return None
+        return set(read_claim(doc)["axes"])
 
     @QtCore.Slot(event_handler.Event)
     def _event_callback(self, event: event_handler.Event) -> None:

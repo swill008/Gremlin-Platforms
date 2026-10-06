@@ -9,9 +9,12 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import "helpers.js" as Helpers
 
 Item {
-    readonly property bool editorLocked: backend && backend.gremlinActive
+    // The one edit lock (06 S13): nothing is edited while the profile runs.
+    EditLock { id: _lock }
+    readonly property bool editorLocked: _lock.locked
     enabled: !editorLocked
     opacity: editorLocked ? 0.55 : 1.0
 
@@ -70,9 +73,19 @@ Item {
             uiState.setCurrentInput(_inputList.model.inputIdentifier(row), row)
     }
 
+    // Another key in the editor: its draft with changes asks first (the
+    // Keyboard page edits a draft, 05 Q5); Cancel keeps this key.
+    function pickRow(row) {
+        Helpers.closeActionPanes(function() { _inputList.currentIndex = row })
+    }
+
     // After a delete the editor moves to the row now in that place (it
     // stayed on the deleted key when the row number didn't change).
     function deleteKey(row, label) {
+        Helpers.closeActionPanes(function() { _confirmDelete(row, label) })
+    }
+
+    function _confirmDelete(row, label) {
         _deleteGate.confirmThen("Delete Key?",
             "Delete " + label + " and its actions in this mode?",
             "Delete", function() {
@@ -126,7 +139,7 @@ Item {
                 selected: model.index === _inputList.currentIndex
                 onClicked: () => {
                     if (!editorLocked) {
-                        _inputList.currentIndex = model.index
+                        pickRow(model.index)
                     }
                 }
                 onRenameRequested: {
@@ -184,7 +197,11 @@ Item {
 
             text: "Add Key"
             // The key added is the one shown.
-            callback: (inputs) => { selectRow(_inputList.model.addKey(inputs, uiState.currentMode)) }
+            callback: (inputs) => {
+                Helpers.closeActionPanes(function() {
+                    selectRow(_inputList.model.addKey(inputs, uiState.currentMode))
+                })
+            }
             multipleInputs: false
             eventTypes: ["key"]
         }

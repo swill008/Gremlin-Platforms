@@ -111,7 +111,9 @@ Item {
     property var _collapsed: ({})
     property var _picked: ([])
 
-    readonly property bool editorLocked: backend && backend.gremlinActive
+    // The one edit lock (06 S13, S82): nothing is edited while the profile runs.
+    EditLock { id: _lock }
+    readonly property bool editorLocked: _lock.locked
 
     // Same rules as the Undo and Redo menu items. A focused text field keeps these keys.
     readonly property bool _undoKeys: visible && !editorLocked && !actionOpen
@@ -139,6 +141,15 @@ Item {
     property bool _leavingPage: false
 
     function hasUnsaved() { return actionOpen && _layout.paneDirty() }
+
+    // Main.closeActionPanes() asks these before a tool changes bindings
+    // behind the pane (05 Q8) or Run starts (06 Q6).
+    function paneHasChanges() { return hasUnsaved() }
+
+    function closeActionPane() { closePaneNow() }
+
+    // OK for Run's "Save" (06 Q6): false when nothing could be written.
+    function savePane() { return !hasUnsaved() || _layout.commitPane() >= 0 }
 
     function requestLeave() {
         if (!hasUnsaved()) {
@@ -812,7 +823,17 @@ Item {
                     holdModel: true
                     inputItemModel: _layout.paneModel
                 }
+                // A pane open when Run starts turns read-only: no OK (06 Q6, 05 Q11).
+                Label {
+                    objectName: "logicalPaneLocked"
+                    visible: _root.editorLocked
+                    text: "Profile running: stop it to edit"
+                    color: Style.fgMuted
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
                 RowLayout {
+                    visible: !_root.editorLocked
                     CheckBox {
                         text: "Close pane after OK"
                         checked: _root.closeAfterOk

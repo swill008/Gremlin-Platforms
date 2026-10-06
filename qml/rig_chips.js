@@ -90,8 +90,8 @@ function isUserFriendly(kind, hwId, v) {
         return false
     if (t === hardwareLabel(kind, hwId))
         return false
-    if (t === physicalName(kind, hwId))
-        return false
+    // A typed name is always the user's, also when it is an EVO R part name
+    // (physNames is one stick's list, not this device's; 07 Q10).
     return true
 }
 

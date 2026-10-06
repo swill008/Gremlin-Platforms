@@ -19,6 +19,7 @@ import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import (
     device_helpers,
+    device_initialization,
     event_handler,
     keyboard,
     process_monitor,
@@ -67,8 +68,13 @@ class InputListenerModel(QtCore.QObject):
         self._event_types: list[InputType] = []
         # If True more than the first input will be returned.
         self._multiple_inputs = False
-        # Timer terminating the listening process in various scenarios.
-        self._abort_timer: threading.Timer | None = None
+        # Esc held 1 s cancels listening (a main-thread timer: it touches
+        # Qt signals and the mouse hook).
+        self._abort_timer: threads.MainTimer | threading.Timer | None = None
+        # Whether this listener holds the shared mouse hook.
+        self._mouse_hooked = False
+        # Whether its signals are connected (listening right now).
+        self._listening = False
         # Received inputs while listening.
         self._inputs: list[event_handler.Event] = []
         # Flag indicating whether the listener is active or not.
@@ -77,6 +83,7 @@ class InputListenerModel(QtCore.QObject):
     def _connect_listeners(self) -> None:
         # Start listening to user inputs.
         event_listener = event_handler.EventListener()
+        self._listening = True
         # Keyboard events are always listened to in order to catch the ESC
         # key to abort input listening.
         event_listener.keyboard_event.connect(self._kb_event_cb)
@@ -87,10 +94,14 @@ class InputListenerModel(QtCore.QObject):
         ):
             event_listener.joystick_event.connect(self._joy_event_cb)
         if InputType.Mouse in self._event_types:
-            windows_event_hook.MouseHook().start()
+            windows_event_hook.MouseHook().acquire()
+            self._mouse_hooked = True
             event_listener.mouse_event.connect(self._mouse_event_cb)
 
     def _disconnect_listeners(self) -> None:
+        if not self._listening:
+            return
+        self._listening = False
         event_listener = event_handler.EventListener()
         event_listener.keyboard_event.disconnect(self._kb_event_cb)
         if (
@@ -108,19 +119,25 @@ class InputListenerModel(QtCore.QObject):
             except RuntimeError:
                 pass
 
-        # Stop mouse hook in case it is running
-        # FIXME: can this break things?
-        windows_event_hook.MouseHook().stop()
+        # Let go of the shared mouse hook; macro Record may still use it.
+        if self._mouse_hooked:
+            self._mouse_hooked = False
+            windows_event_hook.MouseHook().release()
+
+    def _cancel_abort(self) -> None:
+        if self._abort_timer is not None:
+            self._abort_timer.cancel()
+            self._abort_timer = None
 
     def _listening_done(self) -> None:
         """Stops listening and emits the recorded inputs."""
-        if self._abort_timer is not None and self._abort_timer.is_alive():
-            self._abort_timer.cancel()
+        self._cancel_abort()
         self._disconnect_listeners()
         self.listeningTerminated.emit(list(set(self._inputs)))
 
     def _abort_listening(self) -> None:
         """Stops all listening activities."""
+        self._abort_timer = None
         self._disconnect_listeners()
         self.listeningTerminated.emit([])
 
@@ -169,6 +186,11 @@ class InputListenerModel(QtCore.QObject):
         if event.event_type not in self._event_types:
             return
 
+        # Nor the program's own outputs: while a profile runs, a press comes
+        # back from vJoy or the Xbox pad too (02 S63, G22).
+        if _is_output_device(event.device_guid):
+            return
+
         # Ensure input highlighting is turned off, even if input request
         # dialogs are spawned in quick succession.
         shared_state.set_suspend_input_highlighting(True)
@@ -194,12 +216,15 @@ class InputListenerModel(QtCore.QObject):
             "esc"
         )
         if is_esc:
-            if event.is_pressed and (
-                self._abort_timer is None or not self._abort_timer.is_alive()
-            ):
-                self._abort_timer = threads.timer(
-                    "input listening abort", 1.0, self._abort_listening
-                )
+            # Only a 1 s hold cancels; letting go sooner is no cancel, also
+            # when keys are not being listened for (decision D-02-Q9).
+            if event.is_pressed:
+                if self._abort_timer is None or not self._abort_timer.is_alive():
+                    self._abort_timer = threads.main_timer(
+                        "input listening abort", 1.0, self._abort_listening
+                    )
+            else:
+                self._cancel_abort()
 
             # Avoid processing the ESC key as a regular input if keyboard
             # events are not being listened to.
@@ -260,6 +285,10 @@ class InputListenerModel(QtCore.QObject):
                 self._inputs = []
                 self._connect_listeners()
             else:
+                # Closed before any input: stop listening (and let go of
+                # the shared mouse hook) all the same.
+                self._cancel_abort()
+                self._disconnect_listeners()
                 shared_state.set_suspend_input_highlighting_delayed()
             self.enabledChanged.emit(self._is_enabled)
 
@@ -289,6 +318,22 @@ class InputListenerModel(QtCore.QObject):
     eventTypes = QtCore.Property(
         list, fget=_get_event_types, fset=_set_event_types, notify=eventTypesChanged
     )
+
+
+def _is_output_device(device_guid: object) -> bool:
+    """A vJoy device the profile writes to (not one used as input) or one of
+    Gremlin's own Xbox pads."""
+    inputs = {dev.device_guid.uuid for dev in device_initialization.input_devices()}
+    if device_guid in inputs:
+        return False
+    if any(
+        dev.device_guid.uuid == device_guid
+        for dev in device_initialization.vjoy_devices()
+    ):
+        return True
+    from vigem.ids import is_vigem_xbox_guid
+
+    return is_vigem_xbox_guid(device_guid)
 
 
 class MacroRecorder:
@@ -340,7 +385,7 @@ class MacroRecorder:
         if InputType.Keyboard in self._valid_event_types:
             el.keyboard_event.connect(self._queue_event_recording)
         if InputType.Mouse in self._valid_event_types:
-            windows_event_hook.MouseHook().start()
+            windows_event_hook.MouseHook().acquire()
             el.mouse_event.connect(self._queue_event_recording)
         if any(
             input_type in self._valid_event_types
@@ -367,7 +412,7 @@ class MacroRecorder:
             except RuntimeError:
                 pass
         if InputType.Mouse in self._valid_event_types:
-            windows_event_hook.MouseHook().stop()
+            windows_event_hook.MouseHook().release()
         shared_state.set_suspend_input_highlighting(False)
         self._is_recording = False
 

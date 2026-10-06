@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6 import QtCore
@@ -112,9 +114,40 @@ _pending_last: dict[str, str] = {}
 _LAST_KEY = ("global", "internal", "last-mode-per-profile")
 
 
+def _path_key(fpath: str | Path) -> str:
+    """A profile path as the last-mode store compares it: resolved and
+    case-folded, so another spelling of the same file finds its entry
+    (GL-152, 04 Q17), as Recent does."""
+    try:
+        text = str(Path(fpath).resolve())
+    except OSError:
+        text = str(fpath)
+    return os.path.normcase(text).casefold()
+
+
+def _same_key(a: str | Path, b: str | Path) -> bool:
+    return _path_key(a) == _path_key(b)
+
+
+def _last_mode_of(stored: dict[str, str], fpath: str | Path) -> str | None:
+    for key, mode in stored.items():
+        if _same_key(key, fpath):
+            return mode
+    return None
+
+
+def _put_last_mode(stored: dict[str, str], fpath: str | Path, mode: str | None) -> None:
+    """One entry per file: other spellings of it go."""
+    for key in [key for key in stored if _same_key(key, fpath)]:
+        del stored[key]
+    if mode:
+        stored[str(fpath)] = mode
+
+
 def _stored_last_modes() -> dict[str, str]:
     stored = dict(Configuration().value(*_LAST_KEY))
-    stored.update(_pending_last)
+    for key, mode in _pending_last.items():
+        _put_last_mode(stored, key, mode)
     return stored
 
 
@@ -146,7 +179,7 @@ def resolve_start_mode(active_profile: Profile) -> str:
     if startup_mode in mode_names:
         return startup_mode
     if startup_mode == "Last Active" and active_profile.fpath is not None:
-        last_mode = _stored_last_modes().get(str(active_profile.fpath))
+        last_mode = _last_mode_of(_stored_last_modes(), active_profile.fpath)
         if last_mode in mode_names:
             return last_mode
     return active_profile.modes.first_mode
@@ -224,6 +257,10 @@ class ModeManager(QtCore.QObject):
         return mode in self._mode_stack
 
     def _store_last_mode(self) -> None:
+        """Last Active is the mode last used while running: a toolbar pick
+        while stopped doesn't count (GL-149, 04 Q2)."""
+        if not _profile_running():
+            return
         profile = shared_state.current_profile
         if profile is None or profile.fpath is None:
             return
@@ -233,20 +270,12 @@ class ModeManager(QtCore.QObject):
         )
         if last_mode is None:
             return
-        key = str(profile.fpath)
-        if _profile_running():
-            if _stored_last_modes().get(key) != last_mode.name:
-                _pending_last[key] = last_mode.name
-                from gremlin import deferred_write
+        if _last_mode_of(_stored_last_modes(), profile.fpath) != last_mode.name:
+            _put_last_mode(_pending_last, profile.fpath, last_mode.name)
+            from gremlin import deferred_write
 
-                # Saved on stop or quit; an hour is only a safety net.
-                deferred_write.schedule("last-mode", flush_last_modes, 3_600_000)
-            return
-        config = Configuration()
-        stored = _stored_last_modes()
-        _pending_last.clear()
-        stored[key] = last_mode.name
-        config.set(*_LAST_KEY, stored)
+            # Saved on stop or quit; an hour is only a safety net.
+            deferred_write.schedule("last-mode", flush_last_modes, 3_600_000)
 
     def _rewrite_stored_name(self, old_name: str, new_name: str | None) -> None:
         profile = shared_state.current_profile
@@ -254,15 +283,11 @@ class ModeManager(QtCore.QObject):
             return
         config = Configuration()
         stored = _stored_last_modes()
-        _pending_last.clear()
-        key = str(profile.fpath)
-        if stored.get(key) != old_name:
+        if _last_mode_of(stored, profile.fpath) != old_name:
             return
-        if new_name:
-            stored[key] = new_name
-        else:
-            stored.pop(key, None)
-        config.set("global", "internal", "last-mode-per-profile", stored)
+        _pending_last.clear()
+        _put_last_mode(stored, profile.fpath, new_name)
+        config.set(*_LAST_KEY, stored)
 
     def _update_mode(self) -> None:
         # The running profile refreshes the axes on a mode change (CodeRunner).

@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import re
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -95,6 +96,26 @@ def announce_damaged_settings() -> None:
     _damaged_copy = ""
 
 
+# Told once per session when configuration.json could not be written.
+_write_failure_told = False
+
+
+def _tell_write_failure(reason: str) -> None:
+    """A settings file that can't be written (read-only, locked) is logged
+    every time and told once per session (01 Q6). It never stops a quit or
+    an update install: nothing waits on the answer."""
+    global _write_failure_told
+    logging.getLogger("system").error(f"Settings could not be saved: {reason}")
+    if _write_failure_told:
+        return
+    _write_failure_told = True
+    from gremlin.signal import signal
+
+    signal.showNotification.emit(
+        "Settings Not Saved", f"Settings could not be saved: {reason}"
+    )
+
+
 def settings_history_title(keys: list[str]) -> str:
     """A settings entry's title in Tools > History, by the names Options
     shows ("plugin-directory" -> "Plugins folder", a repeated name with its
@@ -112,6 +133,9 @@ class Configuration(metaclass=common.SingletonMetaclass):
 
     def __init__(self) -> None:
         """Creates a new instance, loading the current configuration."""
+        # Settings may be changed from another thread (device hot-plug,
+        # History), so every change and every walk over _data holds it.
+        self._lock = threading.RLock()
         self._data = {}
         self._last_reload = None
         self.load()
@@ -151,7 +175,7 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 _keep_damaged_file(str(e))
         trace("READ", "Program Settings", "load", _config_file_path, result)
 
-        self._data = {}
+        data: dict = {}
         skipped = []
         for section, sec_data in json_data.items():
             if not isinstance(sec_data, dict):
@@ -163,7 +187,7 @@ class Configuration(metaclass=common.SingletonMetaclass):
                     continue
                 for name, entry in grp_data.items():
                     try:
-                        self._data[(section, group, name)] = _parse_entry(entry)
+                        data[(section, group, name)] = _parse_entry(entry)
                     except Exception:
                         # A bad setting falls back to its default (register).
                         skipped.append(f"{section}/{group}/{name}")
@@ -173,8 +197,10 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 "default: " + ", ".join(skipped)
             )
 
-        self._last_reload = clock.monotonic()
-        self._history_view = self._settings_view()
+        with self._lock:
+            self._data = data
+            self._last_reload = clock.monotonic()
+            self._history_view = self._settings_view()
 
     # Settings the user chooses (Options, HidHide, OSC, folders) go in the
     # history; window places, sizes and other things the program remembers
@@ -183,21 +209,44 @@ class Configuration(metaclass=common.SingletonMetaclass):
     # out by the HidHide window itself.)
     _HIDHIDE_PLACES = {"window-width", "window-height", "split-ratio", "module-links"}
 
+    def _view_entry(self, key: tuple[str, str, str], entry: dict) -> str | None:
+        """A setting's value as History compares it, or None for one History
+        leaves out (window places and other things the program remembers)."""
+        section, group, name = key
+        if group == "internal":
+            return None
+        hidhide = (section, group) == ("display", "hidhide")
+        if not entry.get("expose") and not hidhide:
+            return None
+        if hidhide and name in self._HIDHIDE_PLACES:
+            return None
+        value = entry["value"]
+        if entry["data_type"] in util._property_to_string:
+            value = util.property_to_string(entry["data_type"], value)
+        return json.dumps(value, sort_keys=True)
+
     def _settings_view(self) -> dict[str, str]:
         view = {}
-        for (section, group, name), entry in self._data.items():
-            if group == "internal":
-                continue
-            hidhide = (section, group) == ("display", "hidhide")
-            if not entry.get("expose") and not hidhide:
-                continue
-            if hidhide and name in self._HIDHIDE_PLACES:
-                continue
-            value = entry["value"]
-            if entry["data_type"] in util._property_to_string:
-                value = util.property_to_string(entry["data_type"], value)
-            view[f"{section}/{group}/{name}"] = json.dumps(value, sort_keys=True)
+        with self._lock:
+            items = list(self._data.items())
+        for key, entry in items:
+            shown = self._view_entry(key, entry)
+            if shown is not None:
+                view["/".join(key)] = shown
         return view
+
+    def _note_first_appearance(self, key: tuple[str, str, str]) -> None:
+        """A setting that appears (registered for the first time, or shown
+        in Options from now on) is noted with the value it starts with, so
+        a change made before the next save is still a change (08 S16; it
+        was lost when it fell into the same write)."""
+        view = getattr(self, "_history_view", None)
+        name = "/".join(key)
+        if view is None or name in view:
+            return
+        shown = self._view_entry(key, self._data[key])
+        if shown is not None:
+            view[name] = shown
 
     def _record_history(self) -> None:
         """Tools > History: the settings this save changed (only ones that
@@ -237,8 +286,10 @@ class Configuration(metaclass=common.SingletonMetaclass):
         first and then swapped in, so a crash mid-write cannot leave a
         broken file."""
         path = path or _config_file_path
-        json_data = {}
-        for key, entry in self._data.items():
+        json_data: dict = {}
+        with self._lock:
+            items = [(key, dict(entry)) for key, entry in self._data.items()]
+        for key, entry in items:
             section = key[0]
             group = key[1]
             name = key[2]
@@ -261,7 +312,12 @@ class Configuration(metaclass=common.SingletonMetaclass):
         # makes the folder on the first run.
         from gremlin.modules import module_file
 
-        module_file.write_text(Path(path), text)
+        try:
+            module_file.write_text(Path(path), text)
+        except OSError as e:
+            trace("SAVE", "Program Settings", "save", path, "failed")
+            _tell_write_failure(e.strerror or str(e))
+            return
         trace("SAVE", "Program Settings", "save", path, "ok")
         self._record_history()
 
@@ -276,54 +332,59 @@ class Configuration(metaclass=common.SingletonMetaclass):
         properties: dict[str, Any],
         expose: bool = False,
     ) -> None:
-        self._validate(section, group, name)
-        key = (section, group, name)
-        if data_type not in _required_properties:
-            raise error.GremlinError(
-                "Attempting to register an entry with unsupported data type: "
-                + f"{str(data_type)} in {key}"
-            )
-        if data_type in _required_properties:
-            for req_prop, req_type in _required_properties[data_type].items():
-                if req_prop not in properties:
-                    raise error.GremlinError(
-                        f"Missing property '{req_prop}' of type "
-                        f"{str(req_type)} in entry '{key}'"
-                    )
-                elif not isinstance(properties[req_prop], req_type):
-                    raise error.GremlinError(
-                        f"Incorrect type for property '{req_prop}', expected "
-                        + f"'{req_type}' but got '{type(properties[req_prop])}' "
-                        + f"in entry {key}"
-                    )
-        changed = False
-        if key in self._data:
-            if self._data[key]["properties"] != properties:
-                logging.getLogger("system").warning(
-                    f"Properties for parameter '{key}' changed, updating"
+        with self._lock:
+            self._validate(section, group, name)
+            key = (section, group, name)
+            if data_type not in _required_properties:
+                raise error.GremlinError(
+                    "Attempting to register an entry with unsupported data type: "
+                    + f"{str(data_type)} in {key}"
                 )
-                self._data[key]["properties"] = properties
+            if data_type in _required_properties:
+                for req_prop, req_type in _required_properties[data_type].items():
+                    if req_prop not in properties:
+                        raise error.GremlinError(
+                            f"Missing property '{req_prop}' of type "
+                            f"{str(req_type)} in entry '{key}'"
+                        )
+                    elif not isinstance(properties[req_prop], req_type):
+                        raise error.GremlinError(
+                            f"Incorrect type for property '{req_prop}', expected "
+                            + f"'{req_type}' but got '{type(properties[req_prop])}' "
+                            + f"in entry {key}"
+                        )
+            changed = False
+            if key in self._data:
+                if self._data[key]["properties"] != properties:
+                    logging.getLogger("system").warning(
+                        f"Properties for parameter '{key}' changed, updating"
+                    )
+                    self._data[key]["properties"] = properties
+                    changed = True
+                if data_type != self._data[key]["data_type"]:
+                    logging.getLogger("system").warning(
+                        f"Data type for parameter '{key}' changed, updating from "
+                        + f"'{self._data[key]['data_type']}' to '{data_type}'"
+                    )
+                    self._data[key]["data_type"] = data_type
+                    changed = True
+                if bool(self._data[key].get("expose")) != bool(expose):
+                    self._data[key]["expose"] = bool(expose)
+                    changed = True
+                self._data[key]["description"] = description
+            else:
+                self._data[key] = {
+                    "value": initial_value,
+                    "data_type": data_type,
+                    "description": description,
+                    "properties": properties,
+                    "expose": expose,
+                }
                 changed = True
-            if data_type != self._data[key]["data_type"]:
-                logging.getLogger("system").warning(
-                    f"Data type for parameter '{key}' changed, updating from "
-                    + f"'{self._data[key]['data_type']}' to '{data_type}'"
-                )
-                self._data[key]["data_type"] = data_type
-                changed = True
-            if bool(self._data[key].get("expose")) != bool(expose):
-                self._data[key]["expose"] = bool(expose)
-                changed = True
-            self._data[key]["description"] = description
-        else:
-            self._data[key] = {
-                "value": initial_value,
-                "data_type": data_type,
-                "description": description,
-                "properties": properties,
-                "expose": expose,
-            }
-            changed = True
+            self._data[key]["is_registered"] = True
+            self._note_first_appearance(key)
+        # Saved outside the lock: a save made at once (no Qt) writes the
+        # file and History.
         if changed:
             try:
                 self.save()
@@ -331,7 +392,6 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 logging.getLogger("system").error(
                     f"Failed to save configuration after registering parameter {key}."
                 )
-        self._data[key]["is_registered"] = True
 
     # The newest program version that has used this settings file.
     _VERSION_KEY = ("global", "internal", "settings-version")
@@ -344,7 +404,8 @@ class Configuration(metaclass=common.SingletonMetaclass):
         from gremlin.updater import is_newer
 
         current = util.get_code_version()
-        stored = self._data.get(self._VERSION_KEY, {}).get("value")
+        with self._lock:
+            stored = self._data.get(self._VERSION_KEY, {}).get("value")
         newer = bool(stored) and is_newer(str(stored), current)
         self.register(
             *self._VERSION_KEY, PropertyType.String, current,
@@ -358,19 +419,20 @@ class Configuration(metaclass=common.SingletonMetaclass):
             return
         if stored != current:
             self.set(*self._VERSION_KEY, current)
-        keys_to_delete = []
-        for key, value in self._data.items():
-            if not value.get("is_registered", False):
-                keys_to_delete.append(key)
         removed = False
-        for key in keys_to_delete:
-            if key[0] != "calibration":
-                # A retired setting: cleanup, not a problem.
-                logging.getLogger("system").info(
-                    f"Removed setting {'/'.join(key)}: no longer used."
-                )
-                del self._data[key]
-                removed = True
+        with self._lock:
+            keys_to_delete = [
+                key for key, value in self._data.items()
+                if not value.get("is_registered", False)
+            ]
+            for key in keys_to_delete:
+                if key[0] != "calibration":
+                    # A retired setting: cleanup, not a problem.
+                    logging.getLogger("system").info(
+                        f"Removed setting {'/'.join(key)}: no longer used."
+                    )
+                    del self._data[key]
+                    removed = True
         if removed:
             self.save()
 
@@ -378,37 +440,46 @@ class Configuration(metaclass=common.SingletonMetaclass):
         return self._retrieve_value(section, group, name, entry)
 
     def set(self, section: str, group: str, name: str, value: Any) -> None:
-        key = (section, group, name)
-        if key not in self._data:
-            raise error.GremlinError(f"No parameter with key '{key}' exists.")
-        _, is_valid = util.determine_value_type(value, self._data[key]["data_type"])
-        if is_valid:
-            stored = self._data[key]["value"]
-            # value() hands out the stored object; a list edited in place compares
-            # equal to itself, so saving the same object always writes.
-            if stored is value or stored != value:
-                self._data[key]["value"] = value
-                self.save()
-        else:
-            data_type = self._data[key]["data_type"]
-            raise error.GremlinError(
-                "Value has wrong data type, expted: "
-                + f"'{data_type}' got '{type(value)}'"
-            )
+        with self._lock:
+            key = (section, group, name)
+            if key not in self._data:
+                raise error.GremlinError(f"No parameter with key '{key}' exists.")
+            _, is_valid = util.determine_value_type(value, self._data[key]["data_type"])
+            if is_valid:
+                stored = self._data[key]["value"]
+                # value() hands out the stored object; a list edited in place compares
+                # equal to itself, so saving the same object always writes.
+                changed = stored is value or stored != value
+                if changed:
+                    self._data[key]["value"] = value
+            else:
+                data_type = self._data[key]["data_type"]
+                raise error.GremlinError(
+                    "Value has wrong data type, expted: "
+                    + f"'{data_type}' got '{type(value)}'"
+                )
+        if changed:
+            self.save()
+
+    def _keys(self) -> list[tuple[str, str, str]]:
+        """Every setting's key, read under the lock (another thread may add
+        one while this walks them)."""
+        with self._lock:
+            return list(self._data)
 
     def exists(self, section: str, group: str, name: str) -> bool:
         return (section, group, name) in self._data
 
     def sections(self, only_exposed: bool = True) -> list[str]:
         section_names = []
-        for key in self._data.keys():
+        for key in self._keys():
             if len(self.groups(key[0], only_exposed)) > 0:
                 section_names.append(key[0])
         return sorted(set(section_names))
 
     def groups(self, section: str, only_exposed: bool = True) -> list[str]:
         group_names = []
-        for key in self._data.keys():
+        for key in self._keys():
             if (
                 key[0] == section
                 and len(self.entries(key[0], key[1], only_exposed)) > 0
@@ -423,7 +494,7 @@ class Configuration(metaclass=common.SingletonMetaclass):
                     set(
                         [
                             key[2]
-                            for key in self._data.keys()
+                            for key in self._keys()
                             if key[0] == section
                             and key[1] == group
                             and self.expose(section, group, key[2])
@@ -436,7 +507,7 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 set(
                     [
                         key[2]
-                        for key in self._data.keys()
+                        for key in self._keys()
                         if key[0] == section and key[1] == group
                     ]
                 )

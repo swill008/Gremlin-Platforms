@@ -37,7 +37,7 @@ from gremlin.signal import signal
 from gremlin.types import AxisMode, DataInsertionMode, InputType
 from gremlin.modules.ids import guid_key
 from gremlin.modules.claim import claim_friendly, claim_ids, key_id, read_claim
-from gremlin.ui.binding_catalog import sequences_for_item
+from gremlin.ui.binding_catalog import editing_locked, sequences_for_item
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -252,19 +252,31 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._writing = False
         self._rebuild()
 
-    def _apply(self, fn) -> None:
+    def _refused(self) -> bool:
+        """The edit lock (binding_catalog.editing_locked): nothing changes
+        while the profile runs (06 S82, RB14)."""
+        if not editing_locked():
+            return False
+        logging.getLogger("system").info("Edit refused: the profile is running")
+        return True
+
+    def _apply(self, fn) -> bool:
+        """Runs fn (an edit) as one Undo step. False: refused (running)."""
+        if self._refused():
+            return False
         before = self._logical.memento()
         links = fn() or []
         after = self._logical.memento()
         if before == after and not links:
             # Nothing changed (the same name typed again): no step.
             self._changed()
-            return
+            return True
         self._undo.append({"before": before, "after": after, "links": links})
         if len(self._undo) > 50:
             self._undo.pop(0)
         self._redo.clear()
         self._changed()
+        return True
 
     # An input's actions before and after a change, kept as copies (XML, as
     # the Configuration page keeps them: Library.snapshot / restore).
@@ -318,7 +330,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot()
     def undo(self) -> None:
-        if not self._undo:
+        if not self._undo or self._refused():
             return
         entry = self._undo.pop()
         if self._replay(entry, True):
@@ -329,7 +341,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot()
     def redo(self) -> None:
-        if not self._redo:
+        if not self._redo or self._refused():
             return
         entry = self._redo.pop()
         if self._replay(entry, False):
@@ -828,8 +840,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 "before": before, "after": self._snapshot(real),
             }]
 
-        self._apply(fn)
-        return True
+        return self._apply(fn)
 
     @QtCore.Slot(str, int, str, str)
     def addMany(self, type_name: str, count: int, group: str, user_name: str) -> None:
@@ -1104,7 +1115,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, str)
     def setAxisMode(self, writer_id: str, mode: str) -> None:
         action = self._action_by_id(writer_id)
-        if action is None:
+        if action is None or self._refused():
             return
         try:
             action.axis_mode = AxisMode.to_enum(mode)
@@ -1115,7 +1126,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, float)
     def setAxisScale(self, writer_id: str, scale: float) -> None:
         action = self._action_by_id(writer_id)
-        if action is None:
+        if action is None or self._refused():
             return
         action.axis_scaling = float(scale)
         self._rebuild()
@@ -1123,7 +1134,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, bool)
     def setInverted(self, writer_id: str, inverted: bool) -> None:
         action = self._action_by_id(writer_id)
-        if action is None:
+        if action is None or self._refused():
             return
         action.button_inverted = bool(inverted)
         self._rebuild()
@@ -1353,6 +1364,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         draft = self._pane_draft
         if draft is None or not self.paneDirty():
             return self._pane_seq
+        if self._refused():
+            return -1
         shadow = draft.item
         real = self._pane_real
         if real is None:

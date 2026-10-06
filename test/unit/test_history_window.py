@@ -49,8 +49,10 @@ def test_it_lists_the_devices_changes(run: dict) -> None:
 
 
 def test_a_change_before_and_after(run: dict) -> None:
-    assert '"buttons": [\n      1\n    ]' in run["before"]
-    assert '"buttons": [\n      1,\n      2\n    ]' in run["after"]
+    # In words, as the Device Pack rows (08 Q13), not raw JSON.
+    assert run["before"].startswith("Checked controls:\nButton 1")
+    assert "Button 2" not in run["before"]
+    assert "Button 1\nButton 2" in run["after"]
     assert run["restore-enabled"] is True
 
 

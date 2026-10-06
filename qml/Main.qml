@@ -105,6 +105,8 @@ ApplicationWindow {
         shortcutCommands = Commands.withShortcuts()
         _windowPlacement.restore(_root)
         refreshSourceModuleCount()
+        // Tool windows reach closeActionPanes() through Helpers.
+        Helpers.setMainWindow(_root)
     }
 
     U.Universal.theme: Style.theme
@@ -285,10 +287,122 @@ ApplicationWindow {
             logical.requestLeave()
             return
         }
+        // The Keyboard page's draft (it has no leave prompt of its own).
+        var keyboard = keyboardPane()
+        if (keyboard && _paneChanged(keyboard)) {
+            _keyboardLeaveGate.ask("The action editor has changes that are not saved.")
+            return
+        }
         var next = _afterDisplayLeave
         _afterDisplayLeave = null
         if (next)
             next()
+    }
+
+    // The open action panes (the catalog's pane, the Keyboard page's draft
+    // and the Logical Device pane). Tools that change bindings behind a pane (Auto Mapper Create,
+    // History Restore, Device Pack import) close them first, or a later OK
+    // would write the pane's old copy back (05 Q8, D-05-DRAFT-OUTDATED).
+    function _actionPanes() {
+        var panes = []
+        var catalog = catalogPane()
+        if (catalog)
+            panes.push(catalog)
+        // The Keyboard page's action draft.
+        var keyboard = keyboardPane()
+        if (keyboard)
+            panes.push(keyboard)
+        var logical = logicalPane()
+        if (logical)
+            panes.push(logical)
+        return panes
+    }
+
+    function _paneChanged(pane) {
+        return typeof pane.paneHasChanges === "function" && !!pane.paneHasChanges()
+    }
+
+    // Closes a pane without saving (its draft is dropped).
+    function _closeActionPane(pane) {
+        if (typeof pane.closeActionPane === "function")
+            pane.closeActionPane()
+        else if (typeof pane.closePaneNow === "function")
+            pane.closePaneNow()
+        else if (typeof pane.closeAdvancedPane === "function" && pane.paneHid >= 0)
+            pane.closeAdvancedPane()
+    }
+
+    // Closes the action panes, then calls then(). A pane with changes that
+    // are not saved asks first: Discard closes them and goes on, Cancel
+    // keeps them open and then() is not called.
+    function closeActionPanes(then) {
+        var panes = _actionPanes()
+        var changed = false
+        for (var i = 0; i < panes.length; ++i)
+            changed = changed || _paneChanged(panes[i])
+        var go = function() {
+            var open = _actionPanes()
+            for (var j = 0; j < open.length; ++j)
+                _closeActionPane(open[j])
+            if (typeof then === "function")
+                then()
+        }
+        if (!changed) {
+            go()
+            return
+        }
+        _actionPaneGate.confirmThen("Unsaved Changes",
+                                    "The action editor has changes that are not saved.",
+                                    "Discard", go, null, true)
+    }
+
+    // Run (toolbar and tray). An action pane with changes asks first
+    // ("Save or discard the open action first?", 06 Q6): the profile runs
+    // as saved, and the panes are locked while it runs. Stop never asks.
+    function toggleRun() {
+        if (!backend)
+            return
+        if (_editLock.locked) {
+            // Running: Stop never asks.
+            backend.toggleActiveState()
+            return
+        }
+        var panes = _actionPanes()
+        var changed = false
+        for (var i = 0; i < panes.length; ++i)
+            changed = changed || _paneChanged(panes[i])
+        if (!changed) {
+            _closeActionPanesThenRun()
+            return
+        }
+        // From the tray the window may be hidden: the question must show.
+        if (!_root.visible)
+            _root.show()
+        _root.raise()
+        _root.requestActivate()
+        _runGate.ask("Save or discard the open action first?")
+    }
+
+    function _closeActionPanesThenRun() {
+        var open = _actionPanes()
+        for (var j = 0; j < open.length; ++j)
+            _closeActionPane(open[j])
+        if (backend && !backend.gremlinActive)
+            backend.toggleActiveState()
+    }
+
+    // Save in each pane with changes; false (the pane stays open and Run
+    // waits) when one could not be saved, for example an unfinished action.
+    function _saveChangedPanes() {
+        var panes = _actionPanes()
+        for (var i = 0; i < panes.length; ++i) {
+            var pane = panes[i]
+            if (!_paneChanged(pane))
+                continue
+            if (typeof pane.savePane !== "function" || !pane.savePane())
+                return false
+        }
+        return true
     }
 
     function cancelDisplayLeave() {
@@ -302,7 +416,12 @@ ApplicationWindow {
         }
     }
 
-    // Unsaved display options or an edited Logical action pane.
+    function keyboardPane() {
+        var split = _configSplitLoader.item
+        return split ? split.inputConfig : null
+    }
+
+    // Unsaved display options or an edited Logical or Keyboard action pane.
     function displayUnsaved() {
         var catalog = catalogPane()
         if (catalog && catalog.needsLeave && catalog.needsLeave())
@@ -313,7 +432,8 @@ ApplicationWindow {
             if (pane && pane.hasUnsaved && pane.hasUnsaved())
                 return true
         }
-        return false
+        var keyboard = keyboardPane()
+        return !!(keyboard && _paneChanged(keyboard))
     }
 
     function openConfigurationForCard(card) {
@@ -392,8 +512,9 @@ ApplicationWindow {
         // module must not be saved as an output module.
         if (direction && card && card.slug && (card.direction || "source") !== direction)
             card = _moduleModel.firstCardMap(direction)
-        // The Xbox output has no Module Setup (it claims nothing).
-        if (card && (card.bus === "XInput" || card.tab === "xbox"))
+        // The Xbox output has no Module Setup (it claims nothing), and nor
+        // has the Logical Device (GL-146).
+        if (card && (card.bus === "XInput" || card.tab === "xbox" || card.tab === "logical"))
             return
         if (direction && (!card || !card.slug))
             return
@@ -487,11 +608,26 @@ ApplicationWindow {
         var guid = card ? String(card.guid || "") : ""
         if (name && (configTitleName === name || (uiState && String(uiState.currentDevice || "") === guid)))
             closeWorkRoomNow()
+        // Its windows close without asking: Save would write the deleted
+        // device's module file again (07 Q7).
+        var dropped = false
         var map = buttonMapWindow()
-        if (map && (String(map.targetName || "") === name || String(map.targetGuid || "") === guid))
+        if (map && (String(map.targetName || "") === name || String(map.targetGuid || "") === guid)) {
+            dropped = buttonMapNeedsLeave()
+            map._allowClose = true
             map.close()
-        if (configureWin && (String(configureWin.deviceName || "") === name || String(configureWin.deviceGuid || "") === guid))
-            configureWin.close()
+        }
+        var setup = configureWin
+        if (setup && (String(setup.deviceName || "") === name || String(setup.deviceGuid || "") === guid)) {
+            dropped = dropped || (typeof setup.hasUnsavedWork === "function" && setup.hasUnsavedWork())
+            setup.allowClose = true
+            setup.close()
+        }
+        if (dropped) {
+            _notificationDialog.title = "Device Deleted"
+            _notificationDialog.text = (name.length ? name : "The device") + " was deleted, so its open windows were closed without saving."
+            _notificationDialog.open()
+        }
     }
 
     // Same as opening a profile: asks only when there is something to lose,
@@ -596,11 +732,30 @@ ApplicationWindow {
         Helpers.createComponent(spec, properties)
     }
 
+    // A Recent file that won't open (moved, deleted, damaged) offers
+    // Forget It, as at start (04 Q15): backend.loadRecentProfile reports
+    // it with recentProfileFailed instead of an error box.
     function loadRecent(file) {
         if (backend)
             leaveDisplayThen(function() {
-                guardUnsavedChanges(function() { backend.loadProfile(file) })
+                guardUnsavedChanges(function() {
+                    if (typeof backend.loadRecentProfile === "function")
+                        backend.loadRecentProfile(file)
+                    else
+                        backend.loadProfile(file)
+                })
             })
+    }
+
+    function offerForgetRecent(path, why) {
+        _lastProfileGate.confirmThen(
+            "Recent Profile Didn't Open",
+            "This profile didn't open:\n" + path + "\n\n" + why
+            + "\n\nForget it, so it isn't listed under Recent or opened at start? "
+            + "The file itself stays.",
+            "Forget It",
+            function() { backend.forgetProfile(path) })
+        _lastProfileGate.cancelText = "Keep"
     }
 
     function fileNameOf(path) {
@@ -650,8 +805,14 @@ ApplicationWindow {
             return
         }
         // Quitting stops a running profile once, in shutdown_cleanup.
+        _quitting = true
         Qt.quit()
     }
+
+    // Set once the quit has asked everything: the close the quit makes
+    // then goes through onClosing without asking again or clearing a
+    // restart or install.
+    property bool _quitting: false
 
     // A tool window with unsaved work (Configure module, Calibration), or
     // null. Quitting would close it without its own Save question.
@@ -793,6 +954,48 @@ ApplicationWindow {
             if (quitting)
                 cancelQuitRequest()
         }
+    }
+
+    // continueDisplayLeave(): Save / Discard / Cancel for the Keyboard
+    // page's draft when leaving (profile change, quit).
+    DismissibleDialog {
+        id: _keyboardLeaveGate
+        onSaveChosen: {
+            var keyboard = _root.keyboardPane()
+            if (keyboard && !keyboard.savePane()) {
+                _root.cancelDisplayLeave()
+                return
+            }
+            if (keyboard)
+                keyboard.closeActionPane()
+            _root.continueDisplayLeave()
+        }
+        onDiscardChosen: {
+            var keyboard = _root.keyboardPane()
+            if (keyboard)
+                keyboard.closeActionPane()
+            _root.continueDisplayLeave()
+        }
+        onCancelled: _root.cancelDisplayLeave()
+    }
+
+    // The one locked-while-running rule (B5a, 06 S13): Run asks about
+    // open action panes only when it starts a Run.
+    EditLock { id: _editLock }
+
+    // toggleRun(): Save / Discard / Cancel for an action pane with changes.
+    DismissibleDialog {
+        id: _runGate
+        onSaveChosen: {
+            if (_root._saveChangedPanes())
+                _root._closeActionPanesThenRun()
+        }
+        onDiscardChosen: _root._closeActionPanesThenRun()
+    }
+
+    // closeActionPanes(): Discard / Cancel for an action pane with changes.
+    DismissibleDialog {
+        id: _actionPaneGate
     }
 
     // Asks before a save leaves out unfinished actions (saveProfileChecked).
@@ -1052,11 +1255,7 @@ ApplicationWindow {
                     color: backend && backend.gremlinActive ? Style.accent : Style.foreground
                     tooltip: backend && backend.gremlinActive ? qsTr("Stop the profile") : qsTr("Run the profile")
 
-                    onClicked: () => {
-                        if (backend) {
-                            backend.toggleActiveState()
-                        }
-                    }
+                    onClicked: () => { _root.toggleRun() }
                 }
 
                 JGToolButton {
@@ -1292,6 +1491,14 @@ ApplicationWindow {
             _profileSettingsButton.checked = uiState.currentTab === "settings"
         }
     }
+    // backend.recentProfileFailed (B4's side of 04 Q15); ignored until the
+    // backend has it.
+    Connections {
+        target: backend
+        ignoreUnknownSignals: true
+        function onRecentProfileFailed(path, why) { _root.offerForgetRecent(path, why) }
+    }
+
     Connections {
         target: backend
 
@@ -1362,11 +1569,13 @@ ApplicationWindow {
     }
 
     onClosing: (close) => {
+        _windowPlacement.save(_root)
+        if (_quitting)
+            return
         if (backend)
             backend.setRestartOnExit(false)
         if (updater)
             updater.setInstallOnExit(false)
-        _windowPlacement.save(_root)
         // Same order as File > Exit: tool windows, panels, then the profile,
         // then quit.
         if (toolWindowWithUnsavedWork()) {
@@ -1382,7 +1591,12 @@ ApplicationWindow {
         if (buttonMapNeedsLeave()) {
             offerButtonMapLeaveThenQuit()
             close.accepted = false
+            return
         }
+        // Nothing to ask: the X quits the program, the same as File > Exit,
+        // also while a tool window (they have no parent) is open (01 Q1).
+        _quitting = true
+        Qt.quit()
     }
 
     ColumnLayout {
@@ -1808,6 +2022,7 @@ ApplicationWindow {
             // Each panel loads only for its own tab.
             readonly property var catalog: _catalogLoader.item
             readonly property var oscList: _oscLoader.item
+            readonly property var inputConfig: _inputConfigLoader.item
 
             clip: true
             orientation: (uiState && uiState.currentTab === "physical") ? Qt.Vertical : Qt.Horizontal

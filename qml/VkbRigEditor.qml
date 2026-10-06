@@ -117,6 +117,10 @@ Item {
     // shows, whether it can be changed, its color, Set Print Area waiting
     // for a drag, and the area being drawn.
     property var printArea: null
+    // The photo file shown and where to get it again (set by the window;
+    // part of each undo step, see photoImageRestored).
+    property string photoImage: ""
+    property string photoSource: ""
     property bool printAreaShown: false
     property bool printAreaLocked: false
     // "" until the window sets it (Options' color, or the default red); a
@@ -244,6 +248,11 @@ Item {
     signal colorPickRequested(string field, string hex)
     // Undo or redo put the photo back; the window's sliders follow.
     signal photoRestored()
+    // Undo or redo went to a step with another photo file (Choose Photo,
+    // Clear Photo; 07 Q3): the window makes it the photo again. source: a
+    // copy of that picture, "clear" for no photo, "" for the photo the
+    // session started with.
+    signal photoImageRestored(string image, string source)
     // Press to find: a pressed control that has no chip on the map.
     signal findNotPlaced(string label)
     // Save this style: the window asks for a name.
@@ -848,10 +857,14 @@ Item {
             pushHist()
     }
 
-    // An undo step: the nodes and the photo's pose and flags.
+    // An undo step: the nodes, the photo's pose and flags, the photo file,
+    // the print area and the ruler guides (07 Q3).
     function snapJson() {
         try {
-            return JSON.stringify({ nodes: nodes || [], photo: photoBag() })
+            return JSON.stringify({ nodes: nodes || [], photo: photoBag(),
+                                    image: photoImage, imageSource: photoSource,
+                                    printArea: printArea,
+                                    guidesX: rulerGuidesX || [], guidesY: rulerGuidesY || [] })
         } catch (e) {
             return "[]"
         }
@@ -874,6 +887,19 @@ Item {
         var next = cur.slice()
         next[histAt] = snapJson()
         hist = next
+        historyChanged()
+    }
+
+    // The steps made since position at become one (a command that changes
+    // the map in two goes, such as a mirrored copy: S78).
+    function squashHistSince(at) {
+        var cur = hist || []
+        if (at < 0 || histAt <= at + 1 || histAt >= cur.length)
+            return
+        var next = cur.slice(0, at + 1)
+        next.push(cur[histAt])
+        hist = next
+        histAt = next.length - 1
         historyChanged()
     }
 
@@ -914,6 +940,23 @@ Item {
                                          { look: { bright: ph.bright, contrast: ph.contrast, grey: ph.grey, fade: ph.fade } }))
             photoRestored()
         }
+        if (Array.isArray(doc))
+            return
+        // The print area and guides of that step; the window follows.
+        if (doc.printArea !== undefined
+                && JSON.stringify(doc.printArea) !== JSON.stringify(printArea)) {
+            printArea = doc.printArea
+            printAreaEdited(false)
+        }
+        if (doc.guidesX !== undefined
+                && (JSON.stringify(doc.guidesX) !== JSON.stringify(rulerGuidesX || [])
+                    || JSON.stringify(doc.guidesY || []) !== JSON.stringify(rulerGuidesY || []))) {
+            rulerGuidesX = (doc.guidesX || []).slice()
+            rulerGuidesY = (doc.guidesY || []).slice()
+            rulerGuidesEdited()
+        }
+        if (doc.image !== undefined && doc.image !== photoImage)
+            photoImageRestored(String(doc.image), String(doc.imageSource || ""))
     }
 
     // Photo changes from the Adjust photo sliders come many per drag: one undo
@@ -1003,7 +1046,8 @@ Item {
         paintLeaders()
     }
 
-    // Physical names from the EVO R lock inventory. Shown as default friendly names.
+    // Physical names from the EVO R lock inventory, shown after the control
+    // in a chip's full name. Never used to tell a typed name apart (07 Q10).
     readonly property var physNames: ({
         "btn:1": "Red trigger half",
         "btn:2": "Red trigger full",

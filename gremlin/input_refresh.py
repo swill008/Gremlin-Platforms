@@ -18,7 +18,12 @@ class RefreshPhysicalInputs:
 
     @classmethod
     def refresh_axes(cls) -> None:
-        """Refreshes input axes using cached values."""
+        """Refreshes input axes using cached values. An axis not moved since
+        the program started is read from the driver first (decision D-02-Q7),
+        through the input side (EventListener.axis_value)."""
+        from gremlin.event_handler import EventListener
+
+        listener = EventListener()
         cache = input_cache.Joystick()
         devices = device_initialization.input_devices()
         macro_manager = macro.MacroManager()
@@ -32,7 +37,7 @@ class RefreshPhysicalInputs:
                         dev.device_guid.uuid,
                         InputType.JoystickAxis,
                         axis_id,
-                        joy.axis(axis_id).value,
+                        listener.axis_value(dev.device_guid.uuid, axis_id),
                     )
                 )
                 macro_manager.queue_macro(action)

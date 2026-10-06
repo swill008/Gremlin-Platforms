@@ -96,6 +96,14 @@ class LiveLog(QtCore.QObject):
         self._text = ""
         # (size, mtime) of logs.txt as last read; unchanged means no re-read.
         self._stamp: tuple[int, int] | None = None
+        # logs.txt, found once: the refresh runs every 400 ms on the main
+        # thread and the logs folder stays until the next start (01 S125).
+        self._log_path: Path | None = None
+
+    def _path(self) -> Path:
+        if self._log_path is None:
+            self._log_path = log_path()
+        return self._log_path
 
     @QtCore.Property(str, notify=textChanged)
     def text(self) -> str:
@@ -103,12 +111,12 @@ class LiveLog(QtCore.QObject):
 
     @QtCore.Property(str, constant=True)
     def path(self) -> str:
-        return str(log_path())
+        return str(self._path())
 
     @QtCore.Slot()
     def refresh(self) -> None:
         flush()  # lines still waiting in memory are shown too
-        path = log_path()
+        path = self._path()
         try:
             stat = path.stat()
             stamp: tuple[int, int] | None = (stat.st_size, stat.st_mtime_ns)
@@ -128,7 +136,7 @@ class LiveLog(QtCore.QObject):
 
     @QtCore.Slot()
     def clear(self) -> None:
-        dest = log_path()
+        dest = self._path()
         try:
             with _LOCK:
                 _buffer.clear()
@@ -213,10 +221,28 @@ def _choice_key(name: str) -> tuple[str, str, str]:
     return ("global", "internal", key)
 
 
+_START_EMPTY = ("global", "internal", "live-start-empty")
+
+
+def _start_empty_key() -> tuple[str, str, str]:
+    """The one definition of Live's Start empty setting (registering again
+    changes nothing)."""
+    from gremlin.config import Configuration
+    from gremlin.types import PropertyType
+
+    Configuration().register(
+        *_START_EMPTY, PropertyType.Bool, False,
+        "Live Log Reader: Live starts with an empty view.", {}, False,
+    )
+    return _START_EMPTY
+
+
 def register_options() -> None:
-    """At start, before unused settings are purged: the choices kept."""
+    """At start, before unused settings are purged: every Live Log Reader
+    setting (the choices kept and Start empty)."""
     for name in _CHOICES:
         _choice_key(name)
+    _start_empty_key()
 
 
 def _load_choice(name: str, default: str) -> str:
@@ -347,13 +373,20 @@ class DebugLog(QtCore.QObject):
         self._seq = 0
         # All logs (file view): the merged entries, or None.
         self._merged: list[tuple[int, str]] | None = None
+        # All logs: each file's (stamp, text, cut) as last read, so only a
+        # file that changed is read again (01 K19).
+        self._texts: dict[str, tuple[tuple[int, int] | None, str, bool]] = {}
+        # The logs folder, found once (see LiveLog._path).
+        self._logs: Path | None = None
 
     def _path(self) -> Path:
-        from gremlin.util import logs_dir
+        if self._logs is None:
+            from gremlin.util import logs_dir
 
+            self._logs = logs_dir()
         if self._file == "all":
-            return logs_dir()
-        return logs_dir() / DEBUG_FILES.get(self._file, "system.log")
+            return self._logs
+        return self._logs / DEBUG_FILES.get(self._file, "system.log")
 
     def _set(self, name: str, value: str) -> None:
         if getattr(self, name) != value:
@@ -554,15 +587,8 @@ class DebugLog(QtCore.QObject):
 
     def _set_start_empty(self, value: bool) -> None:
         from gremlin.config import Configuration
-        from gremlin.types import PropertyType
 
-        cfg = Configuration()
-        # Also registered at startup; registering again changes nothing.
-        cfg.register(
-            "global", "internal", "live-start-empty", PropertyType.Bool, False,
-            "Live Log Reader: Live starts with an empty view.", {}, False,
-        )
-        cfg.set("global", "internal", "live-start-empty", bool(value))
+        Configuration().set(*_start_empty_key(), bool(value))
         self.changed.emit()
 
     startEmpty = QtCore.Property(
@@ -711,7 +737,12 @@ class DebugLog(QtCore.QObject):
         texts = {}
         cut = False
         for (name, path), stamp in zip(paths.items(), stamps):
-            text, was_cut = self._read(path, stamp)
+            kept = self._texts.get(name)
+            if kept is not None and kept[0] == stamp:
+                text, was_cut = kept[1], kept[2]
+            else:
+                text, was_cut = self._read(path, stamp)
+                self._texts[name] = (stamp, text, was_cut)
             texts[name] = text
             cut = cut or was_cut
         self._merged = merged_entries(texts)
@@ -722,6 +753,7 @@ class DebugLog(QtCore.QObject):
         self._raw = None
         self._merged = None
         self._stamp = None
+        self._texts = {}
         self.refresh()
 
     @QtCore.Slot()

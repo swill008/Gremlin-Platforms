@@ -13,10 +13,7 @@ import itertools
 from typing import Any, Self
 
 import dill
-from action_plugins import (
-    map_to_vjoy,
-    root,
-)
+from action_plugins import map_to_vjoy
 from gremlin import (
     device_initialization,
     profile,
@@ -114,10 +111,18 @@ class AutoMapper:
             claim = source.get("claim") or {}
             if not any(claim_ids(claim, kind) for kind in ("axis", "button", "hat")):
                 continue
+            vjoy_id = int(dest["vjoyId"])
+            as_input = f"vJoy {vjoy_id} is used as an input"
+            limits = self._vjoy_limits(vjoy_id)
+            if limits is None:
+                # Read back as an input (Options): it can't be sent to, and
+                # a Map to vJoy action can't be made for it (GL-313).
+                for kind in ("axis", "button", "hat"):
+                    for hid in claim_ids(claim, kind):
+                        self._skip(dest, kind, as_input, hid)
+                continue
             if options.claim_outputs:
                 auto_map.merge_claim_into_output(dest, claim)
-            limits = self._vjoy_limits(int(dest["vjoyId"]))
-            vjoy_id = int(dest["vjoyId"])
             out_claim = dest.get("claim") or {}
             jobs = (
                 (types.InputType.JoystickAxis, "axis", limits["axes"]),
@@ -127,7 +132,7 @@ class AutoMapper:
             for input_type, kind, on_driver in jobs:
                 claimed_out = set(claim_ids(out_claim, kind))
                 for hid in claim_ids(claim, kind):
-                    # The output module is the limit; the driver must have it too.
+                    # The output module is the limit; the driver must have it.
                     if hid not in on_driver:
                         self._skip(dest, kind, "not on the vJoy device", hid)
                         continue
@@ -153,7 +158,9 @@ class AutoMapper:
                     if target in used:
                         self._num_retained_bindings += 1
                         continue
-                    self._create_new_mapping(item, target)
+                    if not self._create_new_mapping(item, target):
+                        self._skip(dest, kind, as_input, hid)
+                        continue
                     used.add(target)
         left_out = (
             [
@@ -201,11 +208,19 @@ class AutoMapper:
                 return device.device_guid.uuid
         return None
 
-    def _vjoy_limits(self, vjoy_id: int) -> dict:
-        empty = {"axes": set(), "buttons": set(), "hats": set()}
+    def _vjoy_limits(self, vjoy_id: int) -> dict | None:
+        """What the vJoy device has; empty when it isn't there. None: it is
+        read back as an input, so it is no output (GL-313)."""
+        empty: dict = {"axes": set(), "buttons": set(), "hats": set()}
+        outputs = {
+            int(device.vjoy_id)
+            for device in device_initialization.output_vjoy_devices()
+        }
         for device in device_initialization.vjoy_devices() or []:
             if int(device.vjoy_id) != int(vjoy_id):
                 continue
+            if int(vjoy_id) not in outputs:
+                return None
             axes = {int(axis.axis_index) for axis in device.axis_map}
             buttons = set(range(1, int(device.button_count) + 1))
             hats = set(range(1, int(device.hat_count) + 1))
@@ -213,32 +228,31 @@ class AutoMapper:
         return empty
 
     def _get_used_vjoy_inputs(self, mode: str) -> list[types.VjoyInput]:
+        """The vJoy outputs inputs already send to in this mode: every input
+        of the profile (sticks not plugged in, the Logical Device), and Map
+        to vJoy actions inside others (Condition, Chain, Tempo...) too
+        (08 Q7, GL-189). A binding without a root action has none (GL-190)."""
         used_vjoy_inputs = []
-        connected_device_uuids = [
-            dev.device_guid.uuid for dev in device_initialization.physical_devices()
-        ]
-        for device_uuid, input_items in self._profile.inputs.items():
-            if device_uuid not in connected_device_uuids:
-                continue
+        for input_items in self._profile.inputs.values():
             for input_item in input_items:
                 if input_item.mode != mode:
                     continue
-                for binding in input_item.action_sequences:
-                    assert isinstance(binding.root_action, root.RootData)
-                    for child_action in binding.root_action.children:
-                        if isinstance(child_action, map_to_vjoy.MapToVjoyData):
-                            used_vjoy_inputs.append(
-                                types.VjoyInput(
-                                    child_action.vjoy_device_id,
-                                    child_action.vjoy_input_type,
-                                    child_action.vjoy_input_id,
-                                )
+                roots = profile.Profile.roots_of([input_item])
+                for action in profile.reachable(roots):
+                    if isinstance(action, map_to_vjoy.MapToVjoyData):
+                        used_vjoy_inputs.append(
+                            types.VjoyInput(
+                                action.vjoy_device_id,
+                                action.vjoy_input_type,
+                                action.vjoy_input_id,
                             )
+                        )
         return used_vjoy_inputs
 
     def _create_new_mapping(
         self, physical_input: profile.InputItem, vjoy_input: types.VjoyInput
-    ) -> None:
+    ) -> bool:
+        """False: no Map to vJoy action can be made here (no vJoy output)."""
         # In the library of the input it goes on (GL-102).
         vjoy_action: Any = physical_input.library.create(
             map_to_vjoy.MapToVjoyData.name,
@@ -246,13 +260,14 @@ class AutoMapper:
             item=physical_input,
         )
         if vjoy_action is None:
-            return
+            return False
         vjoy_action.vjoy_device_id = vjoy_input.vjoy_id
         vjoy_action.vjoy_input_id = vjoy_input.input_id
         vjoy_action.vjoy_input_type = vjoy_input.input_type
         binding = physical_input.add_item_binding()
         binding.root_action.insert_action(vjoy_action, "children")
         self._created_mappings.append(vjoy_action)
+        return True
 
     def _create_mappings_report(self) -> str:
         return (

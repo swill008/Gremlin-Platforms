@@ -107,7 +107,9 @@ ApplicationWindow {
                     spacing: 0
 
                     Repeater {
-                        model: DeviceListModel {}
+                        // Every device Windows reports, also the ones the
+                        // program leaves out (marked by their note).
+                        model: DeviceListModel { deviceType: "information" }
 
                         delegate: Rectangle {
                             id: _outer
@@ -122,7 +124,7 @@ ApplicationWindow {
                                 width: parent.width
 
                                 TextEntry {
-                                    text: name
+                                    text: note ? name + " — " + note : name
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: Style.dp(220)
                                     Layout.leftMargin: Style.dp(10)

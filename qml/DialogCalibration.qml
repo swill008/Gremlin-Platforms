@@ -309,6 +309,7 @@ ApplicationWindow {
         required property int high
         required property bool withCenter
         required property bool unsavedChanges
+        required property bool claimed
         required property var model
 
         // Display axis name and current raw value and axis type
@@ -318,7 +319,8 @@ ApplicationWindow {
             JGText {
                 Layout.fillWidth: true
 
-                text: identifier
+                // Every axis is listed; one the module doesn't claim is marked.
+                text: claimed ? identifier : identifier + " (not claimed)"
                 wrapMode: Text.Wrap
             }
 

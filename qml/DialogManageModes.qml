@@ -134,23 +134,38 @@ ApplicationWindow {
             }
         }
 
-        Button {
+        RowLayout {
             Layout.alignment: Qt.AlignHCenter
+            spacing: Style.dp(10)
 
-            text: "Add Mode"
+            Button {
+                text: "Add Mode"
 
-            onClicked: () => {
-                _textInput.heading = "Add new mode"
-                _textInput.text = "New mode"
-                // Refuses blank names and look-alikes such as "test mode" next to "Test Mode".
-                _textInput.validator = function(value)
-                {
-                    return !modeHierarchy.nameTaken(value, "")
+                onClicked: () => {
+                    _textInput.heading = "Add new mode"
+                    _textInput.text = "New mode"
+                    // Refuses blank names and look-alikes such as "test mode" next to "Test Mode".
+                    _textInput.validator = function(value)
+                    {
+                        return !modeHierarchy.nameTaken(value, "")
+                    }
+                    _textInput.callback = function(name) {
+                        modeHierarchy.newMode(name)
+                    }
+                    _textInput.visible = true
                 }
-                _textInput.callback = function(name) {
-                    modeHierarchy.newMode(name)
-                }
-                _textInput.visible = true
+            }
+
+            // Brings back the mode deleted last, with its bindings.
+            Button {
+                text: "Undo Delete Mode"
+                enabled: modeHierarchy.canUndoDelete
+
+                ToolTip.visible: hovered && enabled
+                ToolTip.delay: 500
+                ToolTip.text: "Brings back " + modeHierarchy.undoDeleteName + " and its bindings."
+
+                onClicked: () => { modeHierarchy.undoDelete() }
             }
         }
     }

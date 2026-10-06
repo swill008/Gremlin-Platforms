@@ -271,16 +271,35 @@ ApplicationWindow {
         var chosen = JSON.parse(selectionJson())
         // Read from the preview: the warning has closed by now.
         chosen.createLogical = (preview.missingLogical || []).length > 0 && _createLogical.checked
-        var info = _parse(_hw.importPack(zipUrl, _saveAs.text, JSON.stringify(chosen)))
-        status = info.ok ? (info.report || "Imported.") : (info.error || "Import failed.")
-        // An import that wrote nothing keeps the one before it undoable.
-        canUndo = _hw.canUndoPackImport()
-        if (info.ok)
-            reloadDevices()
+        var target = _saveAs.text
+        var url = zipUrl
+        // The action panes close first (asking when one has changes), or a
+        // later OK would write a pane's old copy back (05 Q8, GL-098).
+        Helpers.closeActionPanes(function() {
+            var info = _parse(_hw.importPack(url, target, JSON.stringify(chosen)))
+            status = info.ok ? (info.report || "Imported.") : (info.error || "Import failed.")
+            // An import that wrote nothing keeps the one before it undoable.
+            canUndo = _hw.canUndoPackImport()
+            if (info.ok)
+                reloadDevices()
+        })
     }
 
     function undoImport() {
-        var info = _parse(_hw.undoPackImport())
+        Helpers.closeActionPanes(function() {
+            var info = _parse(_hw.undoPackImport(false))
+            if (info.ask) {
+                // A file saved again since the import (08 Q5): ask first.
+                _undoGate.confirmThen("Undo Import?", info.error || "", "Undo Import",
+                                      function() { _showUndo(_parse(_hw.undoPackImport(true))) },
+                                      null, true)
+                return
+            }
+            _showUndo(info)
+        })
+    }
+
+    function _showUndo(info) {
         status = info.ok ? (info.report || "Undid the import.") : (info.error || "Undo failed.")
         canUndo = _hw.canUndoPackImport()
         reloadDevices()
@@ -390,6 +409,9 @@ ApplicationWindow {
         }
     }
 
+    // Undo Import over a file changed since the import asks first.
+    DismissibleDialog { id: _undoGate }
+
     // Import is destructive: it replaces the ticked pieces on this machine.
     Dialog {
         id: _warn
@@ -463,6 +485,8 @@ ApplicationWindow {
             font.bold: true
             color: Style.foreground
         }
+        // 08 Q4: the import changes the profile and files while it runs.
+        RunningNote {}
         Label {
             text: mode === "export"
                   ? "Export sends the whole device. Nothing on the device is changed."

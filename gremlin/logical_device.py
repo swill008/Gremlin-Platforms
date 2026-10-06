@@ -43,10 +43,24 @@ def _natural_key(text: str) -> tuple[tuple[str | int, ...], str]:
     return key, text
 
 
-class LogicalDevice(metaclass=SingletonMetaclass):
+class _RowData:
+    """The rows themselves; a LogicalRows and the LogicalDevice showing it
+    share one of these."""
+
+    def __init__(self) -> None:
+        self.inputs: dict = {}
+        self.label_lookup: dict = {}
+        self.groups: list[str] = []
+        self.order: list = []
+
+
+class LogicalRows:
     """Implements a device like system for arbitrary amonuts of logical device
     inputs that can be used to combine and further modify inputs before
-    ultimately feeding them to a vJoy device."""
+    ultimately feeding them to a vJoy device.
+
+    Each Profile owns one (its Logical Device rows, saved with it: 04 S2,
+    R3); LogicalDevice() shows the open profile's."""
 
     device_guid = dill.UUID_LogicalDevice
 
@@ -189,10 +203,39 @@ class LogicalDevice(metaclass=SingletonMetaclass):
             return self._value
 
     def __init__(self) -> None:
-        self._inputs = {}
-        self._label_lookup = {}
-        self._groups: list[str] = []
-        self._order: list[LogicalDevice.Input.Identifier] = []
+        self._data = _RowData()
+
+    @property
+    def _inputs(self) -> dict:
+        return self._data.inputs
+
+    @_inputs.setter
+    def _inputs(self, value: dict) -> None:
+        self._data.inputs = value
+
+    @property
+    def _label_lookup(self) -> dict:
+        return self._data.label_lookup
+
+    @_label_lookup.setter
+    def _label_lookup(self, value: dict) -> None:
+        self._data.label_lookup = value
+
+    @property
+    def _groups(self) -> list[str]:
+        return self._data.groups
+
+    @_groups.setter
+    def _groups(self, value: list[str]) -> None:
+        self._data.groups = value
+
+    @property
+    def _order(self) -> list:
+        return self._data.order
+
+    @_order.setter
+    def _order(self, value: list) -> None:
+        self._data.order = value
 
     def __getitem__(self, identifier_or_label: Input.Identifier | str) -> Input:
         return self._inputs[self._resolve_to_identifier(identifier_or_label)]
@@ -653,3 +696,21 @@ class LogicalDevice(metaclass=SingletonMetaclass):
                 )
         except KeyError:
             raise GremlinError(f"No input exists for '{identifier_or_label}'.")
+
+
+class LogicalDevice(LogicalRows, metaclass=SingletonMetaclass):
+    """The Logical Device rows of the open profile, for the screens and the
+    runtime. The rows belong to the profile (Profile.logical_device); this
+    shows the ones bound last, so a new Profile object no longer wipes
+    another's rows (GL-074)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def bind(self, rows: LogicalRows) -> None:
+        """Shows these rows from now on (they are shared, not copied)."""
+        self._data = rows._data
+
+    def shows(self, rows: LogicalRows) -> bool:
+        """True when these are the rows shown."""
+        return self._data is rows._data

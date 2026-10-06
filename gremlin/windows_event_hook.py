@@ -97,7 +97,31 @@ WM_MOUSEWHEEL   = 0x020A
 WM_XBUTTONDOWN  = 0x020B
 WM_XBUTTONUP    = 0x020C
 WM_MOUSEHWHEEL  = 0x020E
+WM_TIMER        = 0x0113
+# Asks a hook's thread to put its hook back (rehook_soon).
+WM_REHOOK       = 0x8000 + 1
 # fmt: on
+
+# The extra info (dwExtraInfo) on every key the program sends itself
+# (keyboard.send_key_down/up), so the hook can tell them from real keys.
+OWN_KEY_MARK = 0x47524D4C
+
+# A key that reaches the hook this late (ms) may have cost us the hook.
+SLOW_KEY_MS = 200
+# The hooks are put back this often (ms) in any case: Windows says
+# nothing when it removes one.
+REHOOK_EVERY_MS = 10_000
+
+_tick_count = ctypes.windll.kernel32.GetTickCount
+_tick_count.restype = wintypes.DWORD
+_tick_count.argtypes = ()
+
+user32.SetTimer.restype = ctypes.c_size_t
+user32.SetTimer.argtypes = (
+    wintypes.HWND, ctypes.c_size_t, wintypes.UINT, ctypes.c_void_p
+)
+user32.KillTimer.argtypes = (wintypes.HWND, ctypes.c_size_t)
+user32.UnhookWindowsHookEx.argtypes = (wintypes.HHOOK,)
 
 
 class KBDLLHOOKSTRUCT(ctypes.Structure):
@@ -138,6 +162,15 @@ def process_keyboard_event(n_code: int, w_param: int, l_param: int) -> int:
     :param w_param message type identifier
     :param l_param message content
     """
+    # Whatever happens here, the key goes on to the other programs' hooks.
+    try:
+        _keyboard_event(n_code, w_param, l_param)
+    except Exception:
+        logging.getLogger("system").exception("Keyboard hook callback failed")
+    return user32.CallNextHookEx(None, n_code, w_param, l_param)
+
+
+def _keyboard_event(n_code: int, w_param: int, l_param: int) -> None:
     msg = ctypes.cast(l_param, LPKBDLLHOOKSTRUCT)[0]
 
     # Only handle events we're supposed to, see
@@ -148,6 +181,7 @@ def process_keyboard_event(n_code: int, w_param: int, l_param: int) -> int:
         is_extended = msg.flags is not None and bool(msg.flags & 0x0001)
         is_pressed = w_param in [0x0100, 0x0104]
         is_injected = msg.flags is not None and bool(msg.flags & 0x0010)
+        is_own = is_injected and msg.dwExtraInfo == OWN_KEY_MARK
 
         # A scan code of 541 indicates AltGr being pressed. AltGr is sent
         # as a combination of RAlt + RCtrl to the system and as such
@@ -159,12 +193,15 @@ def process_keyboard_event(n_code: int, w_param: int, l_param: int) -> int:
 
         # Create the event and pass it to all all registered callbacks
         if msg.scanCode != 541:
-            evt = KeyEvent(scan_code, is_extended, is_pressed, is_injected)
+            evt = KeyEvent(scan_code, is_extended, is_pressed, is_injected, is_own)
             for cb in g_keyboard_callbacks:
                 cb(evt)
 
-    # Pass the event on to the next callback in the chain
-    return user32.CallNextHookEx(None, n_code, w_param, l_param)
+        # Windows silently removes a low-level hook that keeps it waiting
+        # too long (LowLevelHooksTimeout, at most 1 s): a key that reached
+        # us late means the hook may be gone, so it is put back.
+        if (_tick_count() - msg.time) & 0xFFFFFFFF > SLOW_KEY_MS:
+            KeyboardHook().rehook_soon()
 
 
 @HOOKPROC
@@ -175,6 +212,14 @@ def process_mouse_event(n_code: int, w_param: int, l_param: int) -> int:
     :param w_param message type identifier
     :param l_param message content
     """
+    try:
+        _mouse_event(n_code, w_param, l_param)
+    except Exception:
+        logging.getLogger("system").exception("Mouse hook callback failed")
+    return user32.CallNextHookEx(None, n_code, w_param, l_param)
+
+
+def _mouse_event(n_code: int, w_param: int, l_param: int) -> None:
     if n_code == HC_ACTION and w_param != WM_MOUSEMOVE:
         msg = ctypes.cast(l_param, LPMSLLHOOKSTRUCT)[0]
 
@@ -208,9 +253,6 @@ def process_mouse_event(n_code: int, w_param: int, l_param: int) -> int:
         for cb in g_mouse_callbacks:
             cb(evt)
 
-    # Pass the event on to the next callback in the chain
-    return user32.CallNextHookEx(None, n_code, w_param, l_param)
-
 
 @dataclass
 class KeyEvent:
@@ -220,12 +262,14 @@ class KeyEvent:
     - is_extended indicates whether the scan code is an extended one
     - is_pressed is a flag indicating if the key is pressed
     - is_injected indicates if the event has been injected
+    - is_own: injected by this program (keyboard.send_key_down/up)
     """
 
     scan_code: int
     is_extended: bool
     is_pressed: bool
     is_injected: bool
+    is_own: bool = False
 
     def __str__(self) -> str:
         """Returns a string representation of the event.
@@ -262,6 +306,7 @@ class _Hook:
     def __init__(self) -> None:
         self._running = False
         self._listen_thread: threading.Thread | None = None
+        self._rehook_asked = False
 
     def _handler(self) -> Callable[[int, int, int], int]:
         raise NotImplementedError
@@ -302,9 +347,45 @@ class _Hook:
         if thread.ident is not None:
             user32.PostThreadMessageW(thread.ident, WM_QUIT, 0, 0)
 
+    def rehook_soon(self) -> None:
+        """Asks the hook's thread to put the hook back (Windows may have
+        removed it). Asked once until the thread has done it."""
+        thread = self._listen_thread
+        if not self._running or thread is None or thread.ident is None:
+            return
+        if self._rehook_asked:
+            return
+        self._rehook_asked = True
+        user32.PostThreadMessageW(thread.ident, WM_REHOOK, 0, 0)
+
+    def _install(self) -> int:
+        return user32.SetWindowsHookExW(self._HOOK_TYPE, self._handler(), None, 0)
+
+    def _rehook(self, hook_id: int) -> int:
+        """Installs the hook again, then removes the old one (which fails
+        quietly if Windows already did). Runs on the hook's thread between
+        messages, so no event is seen twice or missed. Returns the hook in
+        use."""
+        self._rehook_asked = False
+        new_id = self._install()
+        if not new_id:
+            logging.getLogger("system").warning(f"{self._NAME} could not be put back")
+            return hook_id
+        try:
+            user32.UnhookWindowsHookEx(hook_id)
+        except Exception:
+            pass
+        return new_id
+
     def _listen(self) -> None:
-        """Installs the hook and runs the message loop until WM_QUIT."""
-        hook_id = user32.SetWindowsHookExW(self._HOOK_TYPE, self._handler(), None, 0)
+        """Installs the hook and runs the message loop until WM_QUIT.
+
+        The hook is put back every REHOOK_EVERY_MS and when a callback
+        asks for it (rehook_soon): Windows removes a slow hook silently.
+        """
+        self._rehook_asked = False
+        hook_id = self._install()
+        timer_id = user32.SetTimer(None, 0, REHOOK_EVERY_MS, None)
         try:
             msg = wintypes.MSG()
             while self._running:
@@ -313,10 +394,17 @@ class _Hook:
                     break
                 if result == -1:
                     raise ctypes.WinError(ctypes.get_last_error())
+                if msg.message == WM_REHOOK or (
+                    msg.message == WM_TIMER and not msg.hWnd and msg.wParam == timer_id
+                ):
+                    hook_id = self._rehook(hook_id)
+                    continue
                 user32.TranslateMessage(ctypes.byref(msg))
                 user32.DispatchMessageW(ctypes.byref(msg))
         finally:
             try:
+                if timer_id:
+                    user32.KillTimer(None, timer_id)
                 user32.UnhookWindowsHookEx(hook_id)
             except Exception:
                 pass
@@ -351,6 +439,12 @@ class MouseHook(_Hook, metaclass=SingletonMetaclass):
     _NAME = "mouse hook"
     _HOOK_TYPE = WH_MOUSE_LL
 
+    def __init__(self) -> None:
+        super().__init__()
+        # Listen and macro Record share the one hook (start/stop count).
+        self._users = 0
+        self._users_lock = threading.Lock()
+
     def _handler(self) -> Callable[[int, int, int], int]:
         return process_mouse_event
 
@@ -361,3 +455,27 @@ class MouseHook(_Hook, metaclass=SingletonMetaclass):
         """
         global g_mouse_callbacks
         g_mouse_callbacks.append(callback)
+
+    def acquire(self) -> None:
+        """One more user (Listen, macro Record) wants mouse events: the hook
+        runs while anyone wants it."""
+        with self._users_lock:
+            self._users += 1
+            first = self._users == 1
+        if first:
+            self.start()
+
+    def release(self) -> None:
+        """A user no longer wants mouse events: the last one out stops the
+        hook. A release without an acquire does nothing."""
+        with self._users_lock:
+            if self._users == 0:
+                return
+            self._users -= 1
+            last = self._users == 0
+        if last:
+            self.stop()
+
+    @property
+    def users(self) -> int:
+        return self._users

@@ -18,6 +18,7 @@ others under Module files.
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -53,6 +54,9 @@ _WORDS = {
 # The pictures kept with each file's last save, by file: the next save's
 # "before" (by then the pictures on disk may already be the new ones).
 _last_pictures: dict[str, list[dict]] = {}
+# The save thread sets it (before_change), the History thread reads and
+# replaces it (_record): one at a time (GL-187).
+_pictures_lock = threading.RLock()
 
 
 def _modules() -> Path:
@@ -101,9 +105,12 @@ def before_change(path: Path) -> None:
     of a session read them after the write, so a picture replaced under the
     same name was kept as its own "before" (08 S8, GL-082)."""
     path = Path(path)
-    if str(path) in _last_pictures or not is_module_file(path) or not path.is_file():
-        return
-    _last_pictures[str(path)] = _keep_pictures(_doc(_read(path)))
+    with _pictures_lock:
+        if str(path) in _last_pictures:
+            return
+        if not is_module_file(path) or not path.is_file():
+            return
+        _last_pictures[str(path)] = _keep_pictures(_doc(_read(path)))
 
 
 def note_write(path: Path, text: str, old: str | None) -> None:
@@ -144,7 +151,8 @@ def note_delete(
     if not isinstance(before, dict):
         return
     old, pictures = before.get("text"), list(before.get("pictures") or [])
-    _last_pictures.pop(str(path), None)
+    with _pictures_lock:
+        _last_pictures.pop(str(path), None)
     history.later(lambda: _record(path, old, None, "delete", pictures, moved_to))
 
 
@@ -232,22 +240,23 @@ def _record(
         if old_text is None:
             title = f"Created the module file of {device}"
         area = "button-map" if changed <= MAP_KEYS | {"ui"} else "modules"
-    before = {
-        "text": old_text,
-        "pictures": old_pictures
-        if old_pictures is not None
-        else (
-            _last_pictures[str(path)]
-            if str(path) in _last_pictures
-            else _keep_pictures(old)
-        ),
-    }
-    after = (
-        {"text": new_text, "pictures": _keep_pictures(new)}
-        if new_text is not None
-        else None
-    )
-    _last_pictures[str(path)] = after["pictures"] if after else []
+    with _pictures_lock:
+        before = {
+            "text": old_text,
+            "pictures": old_pictures
+            if old_pictures is not None
+            else (
+                _last_pictures[str(path)]
+                if str(path) in _last_pictures
+                else _keep_pictures(old)
+            ),
+        }
+        after = (
+            {"text": new_text, "pictures": _keep_pictures(new)}
+            if new_text is not None
+            else None
+        )
+        _last_pictures[str(path)] = after["pictures"] if after else []
     subject = {
         "device": device,
         "file": str(path),

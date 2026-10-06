@@ -116,11 +116,6 @@ def vjoy_targets(profile: Profile) -> list[tuple[int, int]]:
 # --- GL-022: History -------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-187: entries() runs queued History work on the UI thread"
-)
 def test_reading_history_while_the_writer_works_keeps_its_work_on_the_writer(
     folder: Path,
 ) -> None:
@@ -431,11 +426,6 @@ def test_tools_history_opens_on_every_change() -> None:
     assert "fileName" in _qml_history_filter("DialogCalibration.qml")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-188: Button Map History filters by name and one area"
-)
 def test_button_map_history_is_by_its_own_file_in_every_area(
     opened_history: dict,
 ) -> None:
@@ -445,11 +435,6 @@ def test_button_map_history_is_by_its_own_file_in_every_area(
     assert not found.get("area")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-194: the Configuration row's History shows every profile"
-)
 def test_configuration_row_history_is_for_the_open_profile(
     opened_history: dict,
 ) -> None:
@@ -588,11 +573,6 @@ def logical_seven() -> Iterator[object]:
         LogicalDevice().delete(ident)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-099: a wire import failing partway leaves its changes"
-)
 def test_a_wire_import_that_fails_partway_puts_everything_back(
     folder: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -621,11 +601,6 @@ def test_a_wire_import_that_fails_partway_puts_everything_back(
     assert not LogicalDevice().exists(logical_seven)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-031: Undo Import overwrites later edits without asking"
-)
 def test_undo_import_keeps_a_later_save(folder: Path, tmp_path: Path) -> None:
     path = write_module(folder, "pjoy_pro", stick_doc())
     pack = _write_zip(tmp_path / "p.zip", {"map.json": _pack_map()})
@@ -664,11 +639,6 @@ def test_undo_import_with_another_profile_open_puts_back_only_the_files(
     assert mapped(target, stick_uid()) == imported
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-191: pack output modules get no vJoy size limits"
-)
 def test_a_pack_output_module_keeps_to_the_vjoys_size(
     folder: Path, tmp_path: Path
 ) -> None:
@@ -863,11 +833,6 @@ def test_overwrite_removes_nested_actions_and_leaves_nothing_behind(
     assert set(profile.library._actions) == profile.actions_in_use()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-189: nested Map to vJoy actions don't count as used"
-)
 def test_an_output_a_nested_action_uses_is_not_used_again(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -881,11 +846,6 @@ def test_an_output_a_nested_action_uses_is_not_used_again(
     assert vjoy_targets(profile) == [(1, 1)]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-189: an unplugged stick's wires don't count as used"
-)
 def test_an_output_an_unplugged_stick_uses_is_not_used_again(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -949,24 +909,20 @@ def test_each_twin_stick_is_mapped_on_its_own_device(
     assert mapped(profile, twin_uid) == {("Default", 2)}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-143: Also claim maps outputs it could not claim"
-)
 def test_also_claim_with_an_output_file_that_cant_be_written(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _auto_map_setup(folder, [1, 2], [])
     profile = new_profile(monkeypatch)
-    real_write = module_file.write_json
+    real_write = module_file.write_bytes
 
-    def refuse(path: Path, doc: dict, indent: int = 2) -> None:
+    # The store writes every module file through write_bytes.
+    def refuse(path: Path, data: bytes) -> None:
         if Path(path).name == "vjoy_1.json":
             raise OSError("access denied")
-        real_write(path, doc, indent)
+        real_write(path, data)
 
-    monkeypatch.setattr(module_file, "write_json", refuse)
+    monkeypatch.setattr(module_file, "write_bytes", refuse)
     report = AutoMapper(profile).generate_module_mappings(
         ["pjoy_pro"], ["vjoy_1"], AutoMapperOptions(claim_outputs=True)
     )

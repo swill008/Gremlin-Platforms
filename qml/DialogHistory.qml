@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Style
 import Gremlin.UI
+import "helpers.js" as Helpers
 
 // Tools > History: every saved change, newest first. Pick one to see it
 // before and after, and Restore either. An editor opens it filtered to
@@ -120,9 +121,18 @@ ApplicationWindow {
             "Put back " + what + "? " + (shown.note || ""),
             "Restore",
             function() {
-                var result = JSON.parse(_model.restore(selected, which))
-                _model.reload()
-                message = result.message || ""
+                var entryId = selected
+                var put = function() {
+                    var result = JSON.parse(_model.restore(entryId, which))
+                    _model.reload()
+                    message = result.message || ""
+                }
+                // An input's actions go back into the profile: the action
+                // panes close first, asking when one has changes (05 Q8).
+                if (shown.closesPanes === true)
+                    Helpers.closeActionPanes(put)
+                else
+                    put()
             }, null, false)
     }
 
@@ -148,6 +158,9 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.margins: Style.dp(12)
         spacing: Style.dp(8)
+
+        // 08 Q4: a Restore changes the profile and files while it runs.
+        RunningNote {}
 
         RowLayout {
             Layout.fillWidth: true

@@ -226,6 +226,9 @@ class Backend(QtCore.QObject):
     saveNoted = QtCore.Signal(str)
     # The profile used last didn't open at start: (its path, why).
     lastProfileFailed = QtCore.Signal(str, str)
+    # A Recent entry that didn't open: (its path, why); Main.qml offers
+    # Forget It / Keep, as at start (GL-157).
+    recentProfileFailed = QtCore.Signal(str, str)
     uiScaleChanged = QtCore.Signal()
     restartRequested = QtCore.Signal()
 
@@ -251,13 +254,15 @@ class Backend(QtCore.QObject):
         self.runner = code_runner.CodeRunner()
         self.ui_state = UIState(self)
         self.process_monitor = process_monitor.ProcessMonitor()
+        # Connected before the monitor starts: the program in front at start
+        # was missed (GL-129, 02 G21).
+        self.process_monitor.process_changed.connect(self._active_process_changed_cb)
         self.process_monitor.start()
         self.joystick_change_monitor = device_helpers.JoystickInputSignificant()
         mm = mode_manager.ModeManager()
         mm.mode_changed.connect(self._on_mode_changed)
         # One handler, in order: the open profile first, then its modes.
         self.profileChanged.connect(self._profile_change_handler)
-        self.process_monitor.process_changed.connect(self._active_process_changed_cb)
         event_handler.EventHandler().is_active.connect(
             lambda: self.activityChanged.emit()
         )
@@ -298,6 +303,9 @@ class Backend(QtCore.QObject):
         # The open profile is set first: the start mode is worked out from
         # it, not from the profile open before (04 S52, GL-053).
         shared_state.current_profile = self.profile
+        # The screens and the runtime show this profile's Logical Device and
+        # OSC rows (the rows belong to the profile, GL-074).
+        self.profile.bind_devices()
         user_script.forget_other_scripts(self.profile.scripts.scripts)
         mm = mode_manager.ModeManager()
         mm.reset()
@@ -361,6 +369,10 @@ class Backend(QtCore.QObject):
     def _active_process_changed_cb(self, path: str) -> None:
         if not self.config.value("profile", "automation", "enable-auto-loading"):
             return
+        # The program's own window is no change: clicking into it stopped
+        # the Run (GL-130, 02 Q18).
+        if _same_file(path, sys.executable):
+            return
         profile_path = config.get_profile_with_regex(path)
         if profile_path and not os.path.isfile(profile_path):
             # Its profile is gone: say so once, and don't run the open one
@@ -380,6 +392,12 @@ class Backend(QtCore.QObject):
         if profile_path:
             if not _same_file(self.profile.fpath, profile_path):
                 if self.profile.has_unsaved_changes():
+                    # The open profile isn't this program's: it stops, as
+                    # when the file is missing (GL-150, 04 Q3).
+                    if self.gremlinActive and not self.config.value(
+                        "profile", "automation", "remain-active-on-focus-loss"
+                    ):
+                        self.activate_gremlin(False)
                     # Never switch over unsaved edits; say so once per profile.
                     if self._autoload_held != profile_path:
                         self._autoload_held = profile_path
@@ -596,6 +614,20 @@ class Backend(QtCore.QObject):
         return "" if path is None else str(path)
 
     @QtCore.Slot(str)
+    def loadRecentProfile(self, fpath: str) -> None:
+        """File > Recent: as loadProfile, but one that doesn't open (a file
+        that is gone) is reported through recentProfileFailed, so Main.qml
+        offers Forget It as at start, instead of the error box; the open
+        profile stays (GL-157, 04 Q15, S19)."""
+        local_path = to_local_path(fpath)
+        if self._load_profile(str(local_path), report=False):
+            self._record_profile_use(local_path)
+        else:
+            self.recentProfileFailed.emit(str(local_path), self._load_problem)
+        self.profileChanged.emit()
+        signal.reloadCurrentInputItem.emit()
+
+    @QtCore.Slot(str)
     def loadProfile(self, fpath: str) -> None:
         local_path = to_local_path(fpath)
         if self._load_profile(str(local_path)):
@@ -672,7 +704,8 @@ class Backend(QtCore.QObject):
     def _read_profile(self, fpath: str) -> None:
         """Make the profile at fpath the open one; raises when it can't be
         read."""
-        LogicalDevice().reset()
+        # A new Profile has its own Logical Device and OSC rows: the open
+        # one keeps its own if this fails (GL-074).
         new_profile = profile.Profile()
         profile_was_converted = new_profile.from_xml(Path(fpath))
         profile_folder = os.path.dirname(fpath)
@@ -708,9 +741,8 @@ class Backend(QtCore.QObject):
             self._read_profile(fpath)
         except Exception as e:
             # Any failure (bad XML, content this version can't read, a
-            # missing plugin...): say so, and put back what was open. Reading
-            # starts by resetting the Logical Device, so the old profile is
-            # read again from its file.
+            # missing plugin...): say so, and put back what was open, read
+            # again from its file.
             logging.getLogger("system").exception(f"Failed to load profile {fpath}")
             reason = str(e) or type(e).__name__
             reopened = False

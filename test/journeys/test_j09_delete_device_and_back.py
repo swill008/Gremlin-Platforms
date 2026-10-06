@@ -18,8 +18,8 @@ the module file (checked controls, the name "Trigger") and the wires in
 both modes are back; saved and opened again, the profile has them.
 
 Spec: 03 S90, S91, S92, S96 and Q4 (Delete Device leaves the profile
-unsaved, decision); 08 S86, S87, S89, S68, S74. Known gap: GL-138 (Delete
-Device writes the whole profile to disk at once), marked xfail. GL-024
+unsaved, decision); 08 S86, S87, S89, S68, S74. GL-138 (Delete
+Device wrote the whole profile to disk at once) fixed in batch 2. GL-024
 (no test for the "Save a copy" pack and importing it back) is what this
 journey covers.
 """
@@ -172,11 +172,6 @@ def test_the_device_file_and_wires_go_and_others_stay(run: dict) -> None:
     assert step(run, "card-stays") == "pJoy Pro"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-138: Delete Device writes the whole profile to disk",
-)
 def test_delete_device_leaves_the_profile_unsaved(run: dict) -> None:
     assert step(run, "unsaved-after-delete") is True
     assert step(run, "file-still-has-wires") is True

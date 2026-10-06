@@ -46,7 +46,9 @@ Item {
     property bool parkEmptyInUnmapped: false
     signal closePanel()
     signal advancedRequested(int hid)
-    readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
+    // The one edit lock (06 S13); output pages are not locked.
+    EditLock { id: _lock }
+    readonly property bool editorLocked: _lock.locked && !isOutput
     // A focused text field keeps these keys.
     Shortcut {
         enabled: _root.visible && !_root.isOutput && !_root.editorLocked && _catalog.canUndo
@@ -58,7 +60,7 @@ Item {
         sequences: [StandardKey.Redo, "Ctrl+Shift+Z"]
         onActivated: _catalog.redo()
     }
-    readonly property bool runtimeActive: !!(backend && backend.gremlinActive)
+    readonly property bool runtimeActive: _lock.locked
 
     property int listPadding: 8
     property int rowSpacing: 4
@@ -976,6 +978,8 @@ Item {
     }
 
     function acceptPane() {
+        if (editorLocked)
+            return
         if (_catalog.paneDirty()) {
             var seq = _catalog.commitPane()
             if (seq >= 0)
@@ -996,6 +1000,45 @@ Item {
         advancedOpen = editorWindowOpen
         if (!advancedOpen)
             _catalog.reload()
+    }
+
+    // A row's History: this input in this mode, only the open profile's
+    // changes (08 Q16); Show All widens it. A profile never saved has none.
+    function historyFilter(hid) {
+        var w = {
+            deviceId: device.guid,
+            inputType: device.kindAt(hid),
+            inputId: String(device.hwIdAt(hid)),
+            mode: uiState ? uiState.currentMode : "Default"
+        }
+        var path = backend ? backend.profilePath() : ""
+        if (path.length)
+            w.profile = path
+        return JSON.stringify(w)
+    }
+
+    // Main.closeActionPanes() asks these before a tool changes bindings
+    // behind the pane (05 Q8) or Run starts (06 Q6).
+    function paneHasChanges() {
+        return paneHid >= 0 && _catalog.paneDirty()
+    }
+
+    function closeActionPane() {
+        if (paneHid >= 0)
+            closeAdvancedPane()
+    }
+
+    // OK for Run's "Save" (06 Q6): false when nothing could be written.
+    function savePane() {
+        if (paneHid < 0 || !_catalog.paneDirty())
+            return true
+        var seq = _catalog.commitPane()
+        if (seq < 0)
+            return false
+        paneSeq = seq
+        paneSummary = "Editing this action"
+        _catalog.reload()
+        return true
     }
 
     function requestClosePane() {
@@ -1271,21 +1314,16 @@ Item {
                     }
                 }
                 Label { text: "Output"; color: colorMuted }
-                OutputModuleDevices { id: _destModules }
+                // Every destination in use (vJoy, Xbox, keyboard, ...), with
+                // or without a vJoy device (05 S18).
                 ComboBox {
                     id: _destBox
-                    visible: _destModules.hasValidVJoyDevices
-                    Layout.fillWidth: visible
+                    objectName: "catalogOutputFilter"
+                    Layout.fillWidth: true
                     model: _catalog.destChoices
                     onActivated: {
                         _catalog.destFilter = currentText === "All devices" ? "all" : currentText
                     }
-                }
-                Label {
-                    visible: !_destModules.hasValidVJoyDevices
-                    Layout.fillWidth: true
-                    text: "No output module claimed"
-                    color: colorMuted
                 }
                 // Undo and Redo for what OK and Delete changed on this page
                 // (not while an action is open in the pane).
@@ -1581,12 +1619,7 @@ Item {
                                 implicitHeight: Style.dp(28)
                                 z: 2
                                 onClicked: Helpers.createComponent("DialogHistory.qml", {
-                                    filter: JSON.stringify({
-                                        deviceId: _root.device.guid,
-                                        inputType: _root.device.kindAt(deviceIndex),
-                                        inputId: String(_root.device.hwIdAt(deviceIndex)),
-                                        mode: uiState ? uiState.currentMode : "Default"
-                                    }),
+                                    filter: _root.historyFilter(deviceIndex),
                                     // After the filter: a new filter clears the label.
                                     filterLabel: _root.device.name
                                 })
@@ -1720,7 +1753,17 @@ Item {
                     holdModel: true
                     inputItemModel: _catalog.paneModel
                 }
+                // While the profile runs the pane is read-only: no OK (05 Q11).
+                Label {
+                    objectName: "catalogPaneLocked"
+                    visible: _root.editorLocked
+                    text: "Profile running: stop it to edit"
+                    color: Style.fgMuted
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
                 RowLayout {
+                    visible: !_root.editorLocked
                     CheckBox {
                         text: "Close pane after OK"
                         property bool shown: _root.closeAfterOk

@@ -58,20 +58,21 @@ class SplitAxisFunctor(AbstractFunctor):
             for functor in self.functors[self._side]:
                 functor(event, rest, properties)
         self._side = side
+        # The half-axis value stays inside the two lists: actions after the
+        # Split Axis see the input's value (05 Q10).
+        half = copy.copy(value)
         if side == "lower":
-            value.current = -util.linear_axis_value_interpolation(
+            half.current = -util.linear_axis_value_interpolation(
                 value.current, -1.0, self.data.split_value
             )
-            for functor in self.functors["lower"]:
-                functor(event, value, properties)
         else:
-            value.current = util.linear_axis_value_interpolation(
+            half.current = util.linear_axis_value_interpolation(
                 value.current,
                 self.data.split_value,
                 1.0,
             )
-            for functor in self.functors["upper"]:
-                functor(event, value, properties)
+        for functor in self.functors[side]:
+            functor(event, half, properties)
 
 
 class SplitAxisModel(ActionModel):

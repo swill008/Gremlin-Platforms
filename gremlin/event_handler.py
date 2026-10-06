@@ -19,6 +19,7 @@ from PySide6 import QtCore
 
 import dill
 from gremlin import (
+    clock,
     common,
     device_initialization,
     error,
@@ -26,7 +27,7 @@ from gremlin import (
     input_monitor,
     keyboard,
     mode_manager,
-    signal,
+    run_scope,
     threads,
     tree,
     util,
@@ -47,6 +48,10 @@ from vigem.ids import is_vigem_xbox_summary
 if TYPE_CHECKING:
     from gremlin.code_runner import CallbackObject
 
+
+# A "repeat" press this long (s) after the key's last event cannot be
+# Windows' auto-repeat (first repeat within 1 s, then several a second).
+REPEAT_GAP_S = 1.2
 
 # The mode of an event the hardware listener sends: the listener (the input
 # layer) doesn't know the modes; EventHandler.process_event stamps the
@@ -113,22 +118,14 @@ class Event:
                 + common.input_to_ui_string(self.event_type, self.identifier)
             )
 
-        # Retrieve the device instance belonging to this event
-        device = None
-        for dev in device_initialization.joystick_devices():
-            if dev.device_guid.uuid == self.device_guid:
-                device = dev
-                break
-
-        # Retrieve device name
-        label = ""
-        if device is None:
+        # The name the program shows for the device (twin name included),
+        # one lookup instead of walking the list a hot-plug may be rebuilding.
+        label = device_initialization.device_name(self.device_guid)
+        if not label:
             logging.warning(
                 f"Unable to find a device with GUID {str(self.device_guid)}"
             )
             label = "Unknown"
-        else:
-            label = device.name
 
         # Retrive input name
         label += " - "
@@ -248,6 +245,8 @@ class EventListener(QtCore.QObject):
         self._device_update_timer = None
         self._joystick = Joystick()
         self._keyboard = Keyboard()
+        # When each key last had an event (lost-release check).
+        self._key_times: dict[keyboard.Key, float] = {}
 
         self._running = True
         self._stop_event = threading.Event()
@@ -321,6 +320,22 @@ class EventListener(QtCore.QObject):
             data: the joystick event information
         """
         event = dill.InputEvent(data)
+        try:
+            self._joystick_event(event)
+        except Exception as e:
+            # Raised here it would be lost inside the driver's thread.
+            from gremlin.log_once import log_once
+
+            log_once(
+                "system",
+                ("unknown input", event.device_guid.uuid, event.input_type,
+                 event.input_index),
+                logging.WARNING,
+                f"Input {event.input_type} {event.input_index} of device "
+                f"{event.device_guid.uuid} was dropped: {e}",
+            )
+
+    def _joystick_event(self, event: dill.InputEvent) -> None:
         if event.input_type == dill.InputType.Axis:
             calibrated_value = self._apply_calibration(event)
             self._joystick[event.device_guid.uuid].axis(event.input_index).update(
@@ -418,6 +433,11 @@ class EventListener(QtCore.QObject):
         # it held on the outputs until it came back: it is let go now.
         for device_guid in before - after:
             self._let_go(device_guid)
+        # A stick that comes back may have another layout under the same
+        # id: its cached inputs follow the new one (an unplugged stick keeps
+        # its last values for scripts and conditions).
+        for device_guid in after - before:
+            self._joystick.reconnected(device_guid)
         # HID already ignores ViGEm pads; do not fire Reload if the
         # filtered list did not change.
         if before != after:
@@ -469,13 +489,19 @@ class EventListener(QtCore.QObject):
         Returns:
             True to enable the event to propagate up further
         """
-        # Ignore injected keyboard events while Gremlin is active
-        # if self.gremlin_active and event.is_injected:
-        #     return True
+        # Keys the program sends itself (Map to Keyboard, macros) are not
+        # input while a Run is on: one binding's key must not fire another,
+        # nor be recorded or listened for (decision D-02-Q4).
+        if getattr(event, "is_own", False) and run_scope.running():
+            return True
 
         key_id = keyboard.key_from_code(event.scan_code, event.is_extended)
         is_pressed = event.is_pressed
         is_repeat = self._keyboard.is_pressed(key_id) and is_pressed
+        now = clock.monotonic()
+        if is_repeat and self._release_was_lost(key_id, now):
+            is_repeat = False
+        self._key_times[key_id] = now
         # Only emit an event if they key is pressed for the first
         # time or released but not when it's being held down
         if not is_repeat:
@@ -492,6 +518,18 @@ class EventListener(QtCore.QObject):
 
         # Allow the windows event to propagate further
         return True
+
+    def _release_was_lost(self, key: keyboard.Key, now: float) -> bool:
+        """A press of a key the cache has down: True when its release was
+        lost (Windows had it, we did not: Ctrl+Alt+Del, a hook timeout), so
+        this is a new press, not Windows repeating a held key."""
+        last = self._key_times.get(key)
+        if last is not None and now - last <= REPEAT_GAP_S:
+            return False
+        try:
+            return not keyboard.is_down_in_windows(key)
+        except Exception:
+            return False
 
     def _mouse_handler(self, event: Event) -> bool:
         """Callback for mouse events.
@@ -532,8 +570,9 @@ class EventListener(QtCore.QObject):
             Value with applied calibration and scaling
         """
         key = (event.device_guid, event.input_index)
-        if key in self._calibrations:
-            return self._calibrations[key](event.value)
+        calibration = self._calibrations.get(key)
+        if calibration is not None:
+            return calibration(event.value)
         else:
             # Once per axis: this runs on every move of that axis.
             from gremlin.log_once import log_once
@@ -547,11 +586,35 @@ class EventListener(QtCore.QObject):
     def _init_joysticks(self) -> None:
         """Initializes joystick devices.
 
-        Loads calibration data for the joystick.
+        Loads calibration data for the joystick. The new table is built
+        aside and swapped in at once: the driver's thread reads it meanwhile.
         """
+        from gremlin.modules.calibration import values_for_device
+
+        calibrations = {}
         for dev_info in device_initialization.joystick_devices():
             for entry in dev_info.axis_map:
-                self.reload_calibration(dev_info.device_guid, entry.axis_index)
+                key = (dev_info.device_guid, entry.axis_index)
+                calibrations[key] = util.create_calibration_function(
+                    *values_for_device(dev_info.device_guid.uuid, entry.axis_index)
+                )
+        self._calibrations = calibrations
+
+    def axis_value(self, device_guid: uuid.UUID, axis_index: int) -> float:
+        """The calibrated value of a stick's axis. An axis that has not
+        moved since the program started is read from the driver once and
+        cached (a throttle resting at 80% is not centre; decision D-02-Q7)."""
+        axis = self._joystick[device_guid].axis(axis_index)
+        if not axis.seen:
+            guid = dill.GUID.from_uuid(device_guid)
+            raw = int(dill.DILL.get_axis(guid, axis_index))
+            calibration = self._calibrations.get((guid, axis_index))
+            if calibration is not None:
+                value = calibration(raw)
+            else:
+                value = util.with_default_center_calibration(raw)
+            axis.update(value)
+        return axis.value
 
 
 @common.SingletonDecorator
@@ -695,12 +758,10 @@ class EventHandler(QtCore.QObject):
         if input_monitor.enabled():
             input_monitor.record(event, callbacks, not self.process_callbacks)
         for cb in callbacks:
+            # A vJoy error is logged like any other failure; it no longer
+            # pauses the profile (decision 06 Q10).
             try:
                 cb(event)
-            except error.VJoyError as e:
-                signal.display_error("Error encountered with vJoy.", str(e))
-                logging.getLogger("system").exception(f"VJoy error: '{e}'")
-                self.pause()
             except Exception:
                 # One failing action doesn't stop the others, or the release
                 # handling below.
@@ -711,10 +772,6 @@ class EventHandler(QtCore.QObject):
         # Call button release callbacks after basic event processing completes.
         try:
             event_helpers.ButtonReleaseActions().process_release(event)
-        except error.VJoyError as e:
-            signal.display_error("Error encountered with vJoy.", str(e))
-            logging.getLogger("system").exception(f"VJoy error: '{e}'")
-            self.pause()
         except Exception:
             logging.getLogger("system").exception(
                 f"A release action for {event} failed"

@@ -418,9 +418,12 @@ class ScriptListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, str, str)
     def renameScript(self, path: str, old_name: str, new_name: str) -> None:
         self._script_manager.rename_script(Path(path), old_name, new_name)
-        self.dataChanged.emit(
-            self.createIndex(0, 0), self.createIndex(self.rowCount(), 0)
-        )
+        # The list is sorted again, so every row may show another script;
+        # the last row is rowCount - 1 (GL-159).
+        if self.rowCount() > 0:
+            self.dataChanged.emit(
+                self.createIndex(0, 0), self.createIndex(self.rowCount() - 1, 0)
+            )
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._script_manager.scripts)

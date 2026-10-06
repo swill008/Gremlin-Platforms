@@ -50,13 +50,28 @@ Item {
         guid: _root.deviceGuid
     }
 
-    HardwareProfile { id: _inventory }
-
-    property var chipRows: {
-        var _stamp = liveStamp
-        var _guid = deviceGuid
-        return _inventory.chips(_guid) || []
+    HardwareProfile {
+        id: _inventory
+        onProfileLabelsChanged: _root.refreshChipRows()
     }
+
+    // The pool rows. A live press only checks a cheap key (module file time,
+    // profile generation, what the device reports); the module file and the
+    // profile are read again only when it changed (07 RB8).
+    property var chipRows: []
+    property string _rowsKey: "\u0000"
+
+    function refreshChipRows() {
+        var key = _inventory.chipsKey(deviceGuid)
+        if (key === _rowsKey)
+            return
+        _rowsKey = key
+        chipRows = deviceGuid.length ? (_inventory.chips(deviceGuid) || []) : []
+    }
+
+    onLiveStampChanged: refreshChipRows()
+    onDeviceGuidChanged: refreshChipRows()
+    Component.onCompleted: refreshChipRows()
 
     function hwAxis(id) {
         if (!_live) {

@@ -251,6 +251,8 @@ def main() -> None:
     drag_preview(width * 3, 0)
     out["dragged-to-edge"] = area_now()
     QtTest.QTest.qWait(200)
+    # In Edit the area is part of the edit: Save keeps it (07 Q1, GL-173).
+    ev("_buttonMap.saveEdit(false)")
     doc = json.loads(_map.read_text(encoding="utf-8"))
     out["kept"] = (doc.get("ui") or {}).get("printArea")
     # The wheel: in (smaller) about the pointer, out (larger).
