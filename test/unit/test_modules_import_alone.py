@@ -15,7 +15,7 @@ import os
 import pathlib
 import subprocess
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from collections import deque
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -35,20 +35,39 @@ def test_each_gremlin_module_loads_on_its_own(tmp_path: pathlib.Path) -> None:
     env["USERPROFILE"] = str(tmp_path)
     env["QT_QPA_PLATFORM"] = "offscreen"
 
-    def load(name: str) -> str | None:
-        result = subprocess.run(
+    def start(name: str) -> tuple[str, subprocess.Popen]:
+        return name, subprocess.Popen(
             [sys.executable, "-c", f"import {name}"],
             cwd=_ROOT,
             env=env,
-            capture_output=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=120,
         )
-        if result.returncode == 0:
+
+    def finish(name: str, proc: subprocess.Popen) -> str | None:
+        # Waited for here, on the main thread: the test's hang watch counts
+        # waiting on a program as progress (waiting on a thread pool looked
+        # like a stall on CI's slower 4-core machine).
+        try:
+            _, err = proc.communicate(timeout=120)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            return f"{name}: did not load within 120 s"
+        if proc.returncode == 0:
             return None
-        lines = [line for line in result.stderr.splitlines() if line.strip()]
+        lines = [line for line in err.splitlines() if line.strip()]
         return f"{name}: {' / '.join(lines[-2:])}"
 
-    with ThreadPoolExecutor(max_workers=max(2, (os.cpu_count() or 4) // 2)) as pool:
-        failures = [f for f in pool.map(load, _modules()) if f]
+    at_once = max(2, (os.cpu_count() or 4) // 2)
+    running: deque[tuple[str, subprocess.Popen]] = deque()
+    failures = []
+    for name in _modules():
+        if len(running) >= at_once:
+            failures.append(finish(*running.popleft()))
+        running.append(start(name))
+    while running:
+        failures.append(finish(*running.popleft()))
+    failures = [f for f in failures if f]
     assert not failures, "\n".join(failures)
