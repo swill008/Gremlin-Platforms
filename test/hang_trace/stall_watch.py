@@ -253,6 +253,20 @@ class StallWatch:
         if app is None or app is self._app:
             return
         self._app = app
+        if threading.current_thread() is not self._main:
+            # From the watchdog thread nothing of PySide is touched beyond
+            # this one queued call: the rest runs on the main thread. Making
+            # the timer here read Qt's enums while the program's main thread
+            # was setting them up (lazily, on first use), which on CI's
+            # slower machine left Qt without Key or KeyboardModifier in that
+            # program.
+            core.QTimer.singleShot(0, app, self._install_beat)
+            return
+        self._install_beat()
+
+    def _install_beat(self) -> None:
+        """Makes and starts the heartbeat timer; on the main thread."""
+        core = sys.modules["PySide6.QtCore"]
         watch = self
 
         class _Beat(core.QObject):
@@ -268,13 +282,7 @@ class StallWatch:
                 watch._progress()
 
         beat = _Beat()
-        if threading.current_thread() is self._main:
-            beat.start()
-        else:  # made here, handed to the main thread, started there
-            beat.moveToThread(app.thread())
-            core.QMetaObject.invokeMethod(
-                beat, "start", core.Qt.ConnectionType.QueuedConnection
-            )
+        beat.start()
         self._keep.append(beat)  # never deleted from another thread
 
     def _ticking(self) -> bool:
