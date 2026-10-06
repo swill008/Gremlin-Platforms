@@ -505,8 +505,30 @@ function demoteSpecialKinds() {
     }
 }
 
+// What groupSelection can do with the selection: two or more chips, or one
+// table with chips or text. Drawings alone can't be grouped (the menu offered
+// it, then nothing happened).
 function canGroup() {
-    return (selectedIds || []).length >= 2
+    var ids = selectedIds || []
+    if (ids.length < 2)
+        return false
+    var chips = 0
+    var tables = 0
+    var texts = 0
+    for (var i = 0; i < ids.length; i++) {
+        var n = nodeAt(ids[i])
+        if (!n)
+            continue
+        if (isTable(n))
+            tables++
+        else if (isText(n))
+            texts++
+        else if (!isDraw(n))
+            chips++
+    }
+    if (tables === 1)
+        return chips + texts > 0
+    return tables === 0 && chips >= 2
 }
 
 function canUngroup() {

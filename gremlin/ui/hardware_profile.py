@@ -2583,6 +2583,12 @@ class HardwareProfile(QtCore.QObject):
         self.imageChanged.emit()
         return True
 
+    @QtCore.Slot(str, result=bool)
+    def hasPhotoStash(self, device_name: str) -> bool:
+        """True while a photo change of this editing session isn't saved."""
+        slug = _slug(device_name or self._device_name)
+        return (self._stash_dir(slug) / "manifest.json").is_file()
+
     @QtCore.Slot(str)
     def dropPhotoStash(self, device_name: str) -> None:
         """The session was saved: its starting photo is no longer needed."""

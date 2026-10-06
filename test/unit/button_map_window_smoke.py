@@ -335,6 +335,36 @@ def main() -> None:
         has = any(n.get("id") == "t2" for n in saved.get("nodes", []))
         editing = js("String(_buttonMap.editing)")
         print(f"RESULT cancel-save {editing} {has}", flush=True)
+        # A photo change counts as unsaved even when the file name stays the
+        # same (audit 2, item 17).
+        js("_buttonMap.enterEdit(); _hw.stashPhoto(_buttonMap.targetName); 1")
+        QtTest.QTest.qWait(300)
+        dirty = js("String(_buttonMap.isDirty())")
+        js("_buttonMap.discardEdit(); 1")
+        QtTest.QTest.qWait(300)
+        print(f"RESULT photo-dirty {dirty}", flush=True)
+        # Group Selected isn't offered for drawings alone (item 30).
+        js("_buttonMap.enterEdit(); var e = _ed();"
+           " e.nodes.push({id: 'd1', kind: 'draw', shape: 'rect',"
+           " fx: 0.1, fy: 0.1, fw: 0.1, fh: 0.1});"
+           " e.nodes.push({id: 'd2', kind: 'draw', shape: 'rect',"
+           " fx: 0.3, fy: 0.3, fw: 0.1, fh: 0.1}); e.bump();"
+           " e.setSelection(['d1', 'd2']); 1")
+        QtTest.QTest.qWait(300)
+        group = js("String(_ed().canGroup())")
+        js("_buttonMap.discardEdit(); 1")
+        QtTest.QTest.qWait(300)
+        print(f"RESULT group-drawings {group}", flush=True)
+        # After a crash with unsaved edits: opening the map keeps the new
+        # photo for Restore; Not now puts the saved one back (item 3).
+        js("var n = _buttonMap.targetName; _hw.stashPhoto(n);"
+           " _hw.saveRecovery(n, JSON.stringify({nodes: [{id: 'z9', kind: 'draw',"
+           " shape: 'rect', fx: 0.2, fy: 0.2, fw: 0.1, fh: 0.1}]})); 1")
+        kept = js("_buttonMap.loadLive();"
+                  " String(_hw.hasPhotoStash(_buttonMap.targetName))")
+        back = js("_buttonMap.putPhotoBack(); _buttonMap.clearRecovery();"
+                  " String(_hw.hasPhotoStash(_buttonMap.targetName))")
+        print(f"RESULT crash-photo {kept} {back}", flush=True)
         # The colour picker takes a typed hex (#RGB too), and follows the
         # theme (BM17, E5).
         typed = js("_colorPop.openField('color', '#112233', null);"

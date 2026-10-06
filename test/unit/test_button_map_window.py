@@ -73,5 +73,8 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
     assert results["save-while-typing"] == "['typed']"
     assert results["clean-after-save"] == "false"
     assert results["cancel-save"] == "false True"
+    assert results["photo-dirty"] == "true"
+    assert results["group-drawings"] == "false"
+    assert results["crash-photo"] == "true false"
     # A typed hex sets the colour, and the field shows it in full (BM17).
     assert results["typed-hex"] == "#aabbcc #aabbcc"

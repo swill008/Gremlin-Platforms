@@ -356,8 +356,11 @@ ApplicationWindow {
             _hw.setDeviceGuid(targetGuid)
         // A photo kept by an editing session that never finished (the
         // program closed mid-edit): the photo change was never saved, so the
-        // saved photo goes back before the map is read.
-        if (!editing && targetName.length && _hw.restorePhoto(targetName))
+        // saved photo goes back before the map is read. Not while unsaved
+        // edits wait to be offered: Restore keeps the new photo with them,
+        // Discard and Not now put the saved one back (putPhotoBack).
+        if (!editing && targetName.length && !_hw.loadRecovery(targetName).length
+                && _hw.restorePhoto(targetName))
             _photoStamp = Date.now()
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
@@ -511,6 +514,10 @@ ApplicationWindow {
             return false
         var image = storedImage.length ? storedImage : stockImage
         var live = liveImage.length ? liveImage : stockImage
+        // A new photo of the same file type keeps the same file name: the
+        // kept copy of the old one says it changed.
+        if (targetName.length && _hw.hasPhotoStash(targetName))
+            return true
         try {
             var now = JSON.stringify(editorNodesNow())
             var base = editBase !== null ? editBase : JSON.stringify(liveNodes)
@@ -578,6 +585,7 @@ ApplicationWindow {
         } catch (e2) {}
         if (same) {
             _hw.clearRecovery(targetName)
+            putPhotoBack()
             return
         }
         _pendingRecovery = doc
@@ -588,6 +596,15 @@ ApplicationWindow {
                             + "Restore opens them for editing; save to keep them. Discard deletes them.",
                             "Restore", "Discard")
         _recoverGate.cancelText = "Not now"
+    }
+
+    // An unsaved photo change goes back (the recovery copy was discarded or
+    // put off): the saved photo and the map read again.
+    function putPhotoBack() {
+        if (editing || !targetName.length || !_hw.restorePhoto(targetName))
+            return
+        _photoStamp = Date.now()
+        loadLive()
     }
 
     function restoreRecovery() {
@@ -827,8 +844,12 @@ ApplicationWindow {
         onDiscarded: {
             _buttonMap._pendingRecovery = null
             _buttonMap.clearRecovery()
+            _buttonMap.putPhotoBack()
         }
-        onCancelled: _buttonMap._pendingRecovery = null
+        onCancelled: {
+            _buttonMap._pendingRecovery = null
+            _buttonMap.putPhotoBack()
+        }
     }
 
     // Asks before a template is deleted.
@@ -903,6 +924,27 @@ ApplicationWindow {
 
     function _ed() {
         return _cardLoader.item ? _cardLoader.item.editorItem : null
+    }
+
+    // What Ctrl+C copied, kept when another device's map opens (each map
+    // has its own editor: copy on one stick, paste on the other).
+    property var keptCopy: []
+    property int keptCopySerial: -1
+
+    function carryCopy(card) {
+        Qt.callLater(function() {
+            var e = card ? card.editorItem : null
+            if (!e)
+                return
+            if (keptCopy.length) {
+                e.copiedNodes = keptCopy
+                e.clipSerial = keptCopySerial
+            }
+            e.copiedNodesChanged.connect(function() {
+                _buttonMap.keptCopy = e.copiedNodes || []
+                _buttonMap.keptCopySerial = e.clipSerial
+            })
+        })
     }
 
     // The editor leaves Move photo on its own (Esc, picking a node, layers);
@@ -1593,6 +1635,11 @@ ApplicationWindow {
             return
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
+        // Just looking at a device with no module file: zoom, grid and the
+        // like don't make one (it showed up as an empty input module). In
+        // Edit they do (the print area is part of the map).
+        if (!doc && !editing)
+            return
         if (!doc) {
             doc = {
                 kind: "control.hardware",
@@ -2947,6 +2994,7 @@ ApplicationWindow {
                             _cardLoader.item = item
                             _buttonMap.faceLive = true
                             _buttonMap.deferFace()
+                            _buttonMap.carryCopy(item)
                         }
                     }
                 }
