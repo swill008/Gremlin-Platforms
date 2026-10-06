@@ -260,14 +260,14 @@ Every device has a module file that says which of its controls the program may u
 - S8. Device Pack and Output View should use the same rule. [test: test_audit3_module_files::test_device_pack_and_output_view_use_the_one_rule]
 - S9. Every caller should pass the device's name and id and filter a stale id the same way; name-only lookups only for vJoy, Keyboard and OSC. [system-maps: map 1 proposed rules (not yet approved)]
 - S10. vJoy and the program's own Xbox modules should always be outputs whatever the file says; a real Xbox pad (Windows' own names) is an input. [tracker: DEV1] [test: test_xbox_pads_told_apart] [test: test_audit_devices::test_an_unplugged_xbox_pad_is_not_the_xbox_output]
-- S11. Any other file is an output only when marked dest / target / output. [code only]
-- S12. Module files should be re-read when their time or size changes, so every reader sees the last save. [code only]
+- S11. Any other file is an output only when marked dest / target / output. [user confirmed 2026-10-06; was code only]
+- S12. Module files should be re-read when their time or size changes, so every reader sees the last save. [user confirmed 2026-10-06; was code only]
 
 ### B. Claims and the input gate (Run)
 - S13. Only controls an input module claims should reach actions, the viewers and the Auto Mapper; anything not claimed does not exist for the rest of the pipeline. [help: Input modules] [glossary: Claim] [test: test_input_module_gate::test_unclaimed_button_does_not_enter_wire, test_source_claimed_enters_wire]
 - S14. A connected stick with no module file should pass nothing. [help: Overview ("An input that is not claimed is ignored")] [code: runtime.py:119-121]
 - S15. OSC and Logical Device events should pass without a claim. [test-plan: P0.7] [test: test_input_module_gate::test_osc_passthrough, test_logical_events_pass_gate::test_logical_device_events_reach_the_wire]
-- S16. A vJoy's own hardware events should never enter the wire, except a vJoy set to be read back as an input (Profile Settings), which passes unfiltered. [test: test_input_module_gate::test_dest_vjoy_hid_never_enters_wire] [code only: the read-back part, runtime.py:98-100]
+- S16. A vJoy's own hardware events should never enter the wire, except a vJoy set to be read back as an input (Profile Settings), which passes unfiltered. [test: test_input_module_gate::test_dest_vjoy_hid_never_enters_wire] [user confirmed 2026-10-06; was code only: the read-back part, runtime.py:98-100]
 - S17. Events from an unknown device should be dropped. [test: test_input_module_gate::test_unknown_device_dropped]
 - S18. Claims should reload on a settings change, a profile change and a device plugged in or out, so a stick plugged in during a Run gets its claims. [tracker: DEV11] [test: test_device_fixes::test_input_modules_reload_when_a_device_is_plugged_in]
 - S19. An old output file bound to a stick should not block the stick at Run, and a stick whose file is an output gets no claim from another file. [test: test_audit3_module_files::test_old_output_file_bound_to_a_stick_does_not_block_it_at_run, test_stick_whose_file_is_an_output_gets_no_claim_from_another_file]
@@ -291,7 +291,7 @@ Every device has a module file that says which of its controls the program may u
 - S33. Only the output layer should touch the vJoy and ViGEm drivers. [user decision: layer rule] [test: test_xbox_output_module::test_only_the_output_module_holds_the_xbox_driver, test_vjoy_writers_use_firewall]
 - S34. A vJoy held by another program should be told once per Run, retried every 3 s, and its card should say "In use by another program". [tracker: DEV6] [test: test_device_fixes::test_busy_vjoy_is_told_once_and_retried_every_few_seconds, test_the_home_card_says_in_use]
 - S35. At Stop every vJoy should be released and every Xbox pad unplugged. [code: output.reset_drivers; Run lifecycle map]
-- S36. Output claims saved in Module Setup should take effect within about 1 second, also while running. [code only: output._CLAIM_TTL]
+- S36. Output claims saved in Module Setup should take effect at once, also while running (page 06 Q12); today within about 1 second. [user confirmed 2026-10-06; was code only: output._CLAIM_TTL]
 
 ### E. Module Setup
 - S37. It should open from the card menu (Module Setup…) and Tools › Device Setup › Input / Output Module Setup. [help: Input modules, vJoy output modules] [glossary: Module Setup]
@@ -299,24 +299,24 @@ Every device has a module file that says which of its controls the program may u
 - S39. The Xbox card should have no Module Setup. [help: Home] [tracker: AU-49]
 - S40. Opening it for another device while it is open should close the first (asking about unsaved changes) and open a fresh one; the same device just comes to the front. [tracker: A1] [code: Main.qml:407-425]
 - S41. For an input module, pressing a control should claim it, light its row and scroll to it; an output module is ticked only. [help: Input modules] [tracker: AU-58] [test-plan: CFGM-02b]
-- S42. A friendly name should be saved only for a claimed control. [code only: module_model.py:2259-2261]
+- S42. A friendly name should be saved only for a claimed control. [user confirmed 2026-10-06; was code only: module_model.py:2259-2261]
 - S43. Undo / Redo should step back through ticks, presses that tick, and names, 100 steps, until another device is opened. [help: Input modules] [test: test_module_setup_undo::test_undo_and_redo_checks_and_names, test_steps_are_capped, test_another_device_starts_without_steps]
 - S44. Save Module should write the file the window opened (the device's bound file), record the device id, and bind that file to the device. [tracker: AU-04] [test: test_audit_devices::test_save_writes_to_the_bound_file]
 - S45. A physical stick saved here should always be an input module (repairs an old "dest" file). [test: test_audit_devices::test_a_stick_marked_as_an_output_is_repaired_by_saving]
 - S46. Save for a device that is not plugged in should be refused: "Plug in <device> to change its setup. Nothing was saved."; when it is plugged back in, Save works with the work on screen kept. Keyboard, OSC and Xbox are never blocked. [test-plan: MODULE-SETUP-UNPLUGGED] [tracker: DEV10] [test: test_module_setup_unplugged::test_unplugged_device_save_is_refused, test_keyboard_and_osc_are_never_blocked]
 - S47. Saving an output module should also save the profile when the profile has a file; if the profile has unfinished actions, it is not saved and the window says so. [help: What is saved where] [tracker: A12]
-- S48. A save should be checked by reading the file back; a mismatch counts as not saved. [code only: module_model.py:2310-2325]
+- S48. A save should be checked by reading the file back; a mismatch counts as not saved. [user confirmed 2026-10-06; was code only: module_model.py:2310-2325]
 - S49. Cancel, closing the window, or quitting the program with unsaved ticks, names or picture should ask first. [tracker: N4] [code: DialogConfigureModule.qml:201-208]
 - S50. Esc and Return should do nothing in this window (sticks send them). [tracker: C19] [code: DialogConfigureModule.qml:97-104]
 - S51. Its History button should show only this device's own file (twins share a name). [tracker: AU-107]
 - S52. Import Image… should set the device picture. [help: Module files and Device Pack]
-- S53. With no controls reported it should say "Press a key to add it." (Keyboard) or point to Windows' game controller settings (stick). [code only: DialogConfigureModule.qml:362-364]
+- S53. With no controls reported it should say "Press a key to add it." (Keyboard) or point to Windows' game controller settings (stick). [user confirmed 2026-10-06; was code only: DialogConfigureModule.qml:362-364]
 
 ### F. Module File dialog: import, Undo Import, Delete File
 - S54. It should show the current file name, "(not saved yet)" when it is missing, and a note when the stick still opens a file of another name. [help: Module files and Device Pack] [code: DialogConfigureModule.qml:49-76]
 - S55. Import should copy the chosen file into this device's file and leave the chosen file where it is. [help: Module files and Device Pack] [code: hardware_profile.py:691-799]
-- S56. Import should keep only the controls this device has (and name the ones left out), keep this device's existing picture, and not change profile wires. [code only: hardware_profile.py:458-555, 759-779]
-- S57. Import should be refused for: a file that can't be read, a file that is not a module file, a vJoy file onto a stick or a stick file onto a vJoy, a device that isn't connected, and a current file that can't be read. [code only: hardware_profile.py:694-736]
+- S56. Import should keep only the controls this device has (and name the ones left out), keep this device's existing picture, and not change profile wires. [user confirmed 2026-10-06; was code only: hardware_profile.py:458-555, 759-779]
+- S57. Import should be refused for: a file that can't be read, a file that is not a module file, a vJoy file onto a stick or a stick file onto a vJoy, a device that isn't connected, and a current file that can't be read. [user confirmed 2026-10-06; was code only: hardware_profile.py:694-736]
 - S58. The previous file should be kept in the imported folder. [help: Module files and Device Pack]
 - S59. Undo in the import notice should put the previous file back (or remove a new one) and bind again the devices the import unbound; OK drops the Undo. [tracker: AU-21, AU-113] [test: test_audit2_coverage::test_undo_of_a_module_import_binds_the_devices_again, test_module_setup_import_notice::test_an_undo_is_not_red]
 - S60. A failed import or Undo should turn the notice red. [tracker: AU-104] [test: test_module_setup_import_notice::test_a_failed_import_is_red, test_a_failed_undo_turns_it_red]
@@ -334,10 +334,10 @@ Every device has a module file that says which of its controls the program may u
 
 ### H. Home cards: what a card shows
 - S70. Home should show one card per physical device, each vJoy device and the Xbox controller. [help: Home]
-- S71. Home should also show cards for Keyboard, OSC, and the Logical Device when it has a module file. [code only: module_model.py:1653-1695]
+- S71. Home should also show cards for Keyboard, OSC, and the Logical Device when it has a module file. [user confirmed 2026-10-06; was code only: module_model.py:1653-1695]
 - S72. A device with no module file should show "No module" (when Options' show-stubs is on); after Delete Device a device still plugged in keeps a card without a module even with it off. [glossary: Internal words ("device without a module")] [tracker: UI12] [code: module_model.py:153-185]
 - S73. A card should show its photo (not in compact view), name, status · bus, claimed counts in words ("1 hat", "2 hats"), "Driven by: [...]" on output cards only, and "last: ...". [help: Home] [glossary: Driven by] [tracker: AU-57]
-- S74. The last line should show the latest input the input module passed (input cards) or the latest output sent (output cards, only while running), using the friendly name, with the hardware name on hover. [help: Home] [test: test_input_module_gate::test_status_last_hid_only_on_input_cards, test_dest_last_prefers_button_press_then_axis] [code only: friendly name and hover]
+- S74. The last line should show the latest input the input module passed (input cards) or the latest output sent (output cards, only while running), using the friendly name, with the hardware name on hover. [help: Home] [test: test_input_module_gate::test_status_last_hid_only_on_input_cards, test_dest_last_prefers_button_press_then_axis] [user confirmed 2026-10-06; was code only: friendly name and hover]
 - S75. Driven by should follow action edits within a moment, show full Xbox names, and drop extra spaces from a module file's name. [tracker: G-DRIVENBY] [test: test_driven_by_follows_edits, test_bound_cards::test_xbox_wire_uses_full_name, test_driven_by_drops_spaces_from_a_module_files_name]
 - S76. A card should re-read its module file at most twice a second, and only when the file changed. [test: test_status_claim_cache::test_many_events_read_the_file_once, test_a_newer_save_is_picked_up]
 - S77. Each twin card should show its own counts, also after a save elsewhere. [test: test_twin_devices::test_each_twin_has_its_own_card] [system-maps: map 1 part 2 (suspected)]
@@ -362,7 +362,7 @@ Every device has a module file that says which of its controls the program may u
 - S90. Delete Device should take three steps: an explanation with "Save a copy in deleted devices" (ticked when there is a file), a red confirm, then a result. [test-plan: H-19g]
 - S91. "Save a copy" should write a pack to `deleted devices\<name>\<name>.<stamp>.zip` and check it reads back; if it can't, nothing is deleted. [test-plan: H-19g-b] [code: hardware_profile.py:1107-1135]
 - S92. It should remove the device's actions in every mode, its module file and pictures, its file bindings, and the card's size and stack. [code: StatusPage.qml:401] [test: test_audit3_module_files::test_delete_device_removes_a_renamed_sticks_file]
-- S93. For a vJoy or Xbox card it should keep the output module file and remove only actions stored on that device. [code only: hardware_profile.py:1148-1151, StatusPage.qml:394-395]
+- S93. For a vJoy or Xbox card it should keep the output module file and remove only actions stored on that device. [user confirmed 2026-10-06; was code only: hardware_profile.py:1148-1151, StatusPage.qml:394-395]
 - S94. A file another device uses should stay. [test: test_audit3_module_files::test_a_file_another_stick_uses_is_not_deleted]
 - S95. The profile should be written to disk at once when it has a file; if that fails, the module file and the pack are kept and the user is told to reload the profile. [history-notes: "Delete Device, which saves at once"] [code: hardware_profile.py:1033-1057, 1136-1143]
 - S96. A device still plugged in should keep a card without a module; an unplugged one's card and its place in the order go. [code: module_model.py:1431-1444] [test: test_audit3_module_files::test_a_deleted_devices_place_in_the_card_order_goes]
@@ -379,10 +379,10 @@ Every device has a module file that says which of its controls the program may u
 - S105. Each axis should have its own Save; Save All writes every unsaved axis in one file write; an axis shows "Not saved" until saved, and back at the saved values it is not unsaved. [help: Calibration] [tracker: C15] [test: test_calibration_unsaved::test_back_at_the_saved_values_is_not_unsaved, test_a_changed_limit_is_unsaved]
 - S106. Undo / Redo should step back through each axis's changes until another module is chosen; Undo during a capture stops it and its button goes up. [help: Calibration] [tracker: AU-25] [test: test_calibration_undo]
 - S107. Leaving, switching module or quitting with unsaved axes should ask first. [help: Calibration] [tracker: N4]
-- S108. A saved axis should be used at once, also while running. [code only: device.py:1395-1403]
+- S108. A saved axis should be used at once, also while running. [user confirmed 2026-10-06; was code only: device.py:1395-1403]
 - S109. A stick whose id changed should be found by its name, and saving records the new id; a stick found by id leaves its binding alone. [tracker: DEV9] [test: test_device_fixes::test_calibration_finds_a_stick_with_a_new_id_and_records_it, test_calibration_of_a_stick_found_by_id_leaves_its_binding]
 - S110. Twins should each keep their own calibration. [test: test_twin_devices::test_each_twin_keeps_its_own_calibration]
-- S111. Calibration kept in the old program settings should be used until the module file has its own. [code only: calibration.py:111-135]
+- S111. Calibration kept in the old program settings should be used until the module file has its own. [user confirmed 2026-10-06; was code only: calibration.py:111-135]
 - S112. A damaged module file should refuse the save and stay untouched. [test: test_module_file_damage::test_calibration_save_does_not_touch_it]
 - S113. Its History button should show only this module's file. [tracker: AU-71, AU-107]
 - S114. Input highlighting should pause while Calibration is open and resume when it closes. [tracker: N11] [code: DialogCalibration.qml:131, 138]
@@ -487,3 +487,31 @@ Every device has a module file that says which of its controls the program may u
 - Auto Mapper "Also claim" on a damaged or read-only output file.
 - `output.py` and `registry` from several threads at once.
 - QML-level journeys (card menu -> window -> save -> card refresh) are mostly checked off-screen by hand, not by tests.
+
+## 12. Review (user, 2026-10-06)
+
+All [code only] statements in section 8 confirmed; S36 now says "at once" (page 06 Q12) and S93 follows Q18. Every question answered as recommended:
+
+| Q | Decision |
+|---|---|
+| Q1 | Running note changed to "Saved changes work at once."; live behaviour kept |
+| Q2 | Import Image works like the Button Map: the old picture is put back on Cancel |
+| Q3 | Save Module copies the photo to the library only when it changed (one write, one History entry) |
+| Q4 | Delete Device removes the device's actions in memory and leaves the profile unsaved |
+| Q5 | Delete Device always keeps a copy of the module file in deleted devices |
+| Q6 | Delete Device is refused while running ("Stop first"); Module Setup Save stays allowed |
+| Q7 | Logical Device card: no Module Setup, Calibration, Auto Mapper, Device Information or Swap Device |
+| Q8 | Cards always show claimed counts |
+| Q9 | Calibration lists every axis; unclaimed ones marked "not claimed" |
+| Q10 | Stacks keep cards that aren't showing, as card order does |
+| Q11 | "Input Module Setup" / "Output Module Setup" kept and added to the glossary |
+| Q12 | Help's Home topic lists Keyboard, OSC and Logical Device cards |
+| Q13 | Import goes into the file the device uses (map 1) |
+| Q14 | Delete File keeps the pictures and says so in its confirm text |
+| Q15 | Auto Mapper Also claim: an output file that can't be written is skipped and listed |
+| Q16 | Key presses are ignored while a text box has focus (check off-screen first) |
+| Q17 | F2 keep card keys by device name; F3 Start Fresh gets a History entry; F4 twins always by id, logged when missing |
+| Q18 | Delete Device is left out of output (vJoy, Xbox) cards |
+
+The section 8 statements (with the changes above) are now the definition
+of correct for this subsystem.

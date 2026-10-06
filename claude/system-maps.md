@@ -30,9 +30,9 @@ Mapped against code at a1459e22 (audit 3). Line numbers drift as code changes: r
 | # | Question | Recommended | User's answer |
 |---|---|---|---|
 | F1 | Device Pack import onto a damaged module file | Refuse; point to Start Fresh | |
-| F2 | Home card positions keyed by device name | Keep by name | |
-| F3 | History entry for Start Fresh | Yes | |
-| F4 | Twin sticks always looked up by id | Yes; log when missing | |
+| F2 | Home card positions keyed by device name | Keep by name | As recommended (2026-10-06, page 03 review) |
+| F3 | History entry for Start Fresh | Yes | As recommended (2026-10-06, page 03 review) |
+| F4 | Twin sticks always looked up by id | Yes; log when missing | As recommended (2026-10-06, page 03 review) |
 | A1 | OK on a shared action | Change it for every input using it; "Shared with ..." note | As recommended (2026-10-06, page 05 review) |
 | A2 | Undo / History of a shared action | Restore for every input using it | |
 | A3 | Device Pack failing partway | Undo everything it did | |

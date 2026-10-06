@@ -15,7 +15,7 @@ rule checks in Stage 1 are written from them). See "The plan" in
 |---|---|---|---|---|---|
 | [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads | 131 | 16 | 20 | not yet |
 | [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide | 94 | 19 | 24 | not yet |
-| [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device | 122 | 18 | 34 | not yet |
+| [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device | 122 | 18 | 34 | reviewed 2026-10-06 (all as recommended) |
 | [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 93 | 21 | 27 | not yet |
 | [05-actions-editors](05-actions-editors.md) | Action plugins, Configuration page, Keyboard page | 108 | 20 | 22 | reviewed 2026-10-06 (all as recommended) |
 | [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device | 85 | 19 | 18 | reviewed 2026-10-06 (all as recommended) |
