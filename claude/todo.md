@@ -76,8 +76,12 @@ goes to the lead (the main session), which passes it on. Shared files
   B2a input events, B2b devices/HidHide, B3 modules/Home, B4 profiles/modes,
   B5a action pane/locking, B5b action logic/speech, B6 Button Map, B7
   History/Device Pack/Auto Mapper). Left out: GL-029, 168, 185, 186, 201.
-- **Batch 3 – text, glossary, help, clean-up, about 4 agents** (sections
-  7 and 8).
+- **Batch 3 – text, glossary, help, clean-up, 6 agents** (sections 7 and 8,
+  plus GL-040 script time limit (D-04-Q13-TIMELIMIT) and dropping EVO R part
+  names from hover text (D-07-RB10-NOEVOR)). File owners and rules:
+  `claude/catchup-batch3-rules.md` (C1 help/glossary/docs, C2 shell/settings/
+  scripts, C3a modules/Home, C3b devices/input, C4 actions, C5 Button Map/
+  History/Device Pack/Auto Mapper).
 
 The stopped first try at batch 1 (3 agents, partial) is saved as a patch
 for reference only: session scratchpad `batch1_partial/tracked.diff` plus
