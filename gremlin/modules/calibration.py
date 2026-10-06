@@ -20,6 +20,21 @@ _DEFAULT = (-32768, 0, 0, 32767, True)
 _SKIP_SLUGS = {"keyboard", "osc"}
 
 
+def curve_problem(values: tuple[int, int, int, int, bool]) -> str:
+    """Why a curve can't be used: "range" (low not below high), "center"
+    (the center outside low..high), or "" when it can.
+
+    Either one can make an axis divide by zero, so loading drops such a
+    curve and saving refuses it (it was saved, then thrown away on load).
+    """
+    low, center_low, center_high, high, with_center = values
+    if low >= high:
+        return "range"
+    if with_center and not low <= center_low <= center_high <= high:
+        return "center"
+    return ""
+
+
 def _as_tuple(raw: object) -> tuple[int, int, int, int, bool] | None:
     if not isinstance(raw, (list, tuple)) or len(raw) < 5:
         return None
@@ -27,12 +42,8 @@ def _as_tuple(raw: object) -> tuple[int, int, int, int, bool] | None:
         values = (int(raw[0]), int(raw[1]), int(raw[2]), int(raw[3]), bool(raw[4]))
     except (TypeError, ValueError):
         return None
-    # Low below high, and with a center the center inside them, or an axis
-    # can divide by zero (a file edited by hand): the default is used instead.
-    low, center_low, center_high, high, with_center = values
-    if low >= high:
-        return None
-    if with_center and not low <= center_low <= center_high <= high:
+    # A file edited by hand: the default is used instead.
+    if curve_problem(values):
         return None
     return values
 
@@ -139,6 +150,16 @@ def write_axis(slug: str, axis_id: int, data: AxisData) -> bool:
 def write_axes(slug: str, axes: dict[int, AxisData]) -> bool:
     """Write several axes' calibration in one save of the module file
     (Save All writes the file once, not once per axis)."""
+    curves = {
+        str(int(axis_id)): (
+            int(data[0]), int(data[1]), int(data[2]), int(data[3]), bool(data[4])
+        )
+        for axis_id, data in axes.items()
+    }
+    # A curve the next load would drop is not written (the file would keep
+    # values that are never used).
+    if any(curve_problem(curve) for curve in curves.values()):
+        return False
     row = module_for_slug(slug)
     if row is None or not axes:
         return False
@@ -150,14 +171,8 @@ def write_axes(slug: str, axes: dict[int, AxisData]) -> bool:
         return False
     registry.trace("READ", "Calibration", "write_axis", row["path"], "ok")
     calibration = dict(doc.get("calibration") or {})
-    for axis_id, data in axes.items():
-        calibration[str(int(axis_id))] = [
-            int(data[0]),
-            int(data[1]),
-            int(data[2]),
-            int(data[3]),
-            bool(data[4]),
-        ]
+    for axis_id, curve in curves.items():
+        calibration[axis_id] = list(curve)
     doc["calibration"] = calibration
     if row.get("rebind"):
         # Found by name: the stick's id changed. Record it, as Module Setup

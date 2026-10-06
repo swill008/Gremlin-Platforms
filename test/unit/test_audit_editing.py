@@ -11,6 +11,7 @@ import sys
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 sys.path.append(".")
@@ -126,9 +127,18 @@ def test_the_list_delete_waits_while_the_pane_edits_that_input(
     catalog: tuple[Any, Profile, dict],
 ) -> None:
     model, profile, _shown = catalog
+    # A claimed device with button 1 on row 0, so removeSequence reaches the
+    # delete (without one it returns False whatever the pane does).
+    model._claimed._device = SimpleNamespace(device_guid=SimpleNamespace(uuid=_STICK))
+    model._claimed._rows = [
+        {"kind": "button", "hwId": 1, "deviceIndex": 0, "name": "Button 1"}
+    ]
     model.beginPane(0, 1)
     assert model.removeSequence(0, 0) is False
     assert _outs(_input(profile)) == [1, 2]
+    model.endPane()
+    assert model.removeSequence(0, 0) is True  # the pane closed: it deletes
+    assert _outs(_input(profile)) == [2]
 
 
 def test_removing_every_action_in_the_pane_then_ok_clears_the_input(

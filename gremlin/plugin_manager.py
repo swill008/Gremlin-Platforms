@@ -34,6 +34,16 @@ if TYPE_CHECKING:
     PluginDict = dict[str, Plugin]
 
 
+# The input types an action can be offered for. The type-to-action map has
+# one list for each, so a plugin naming any other type is refused.
+ACTION_INPUT_TYPES: tuple[InputType, ...] = (
+    InputType.JoystickAxis,
+    InputType.JoystickButton,
+    InputType.JoystickHat,
+    InputType.Keyboard,
+)
+
+
 class PluginManager(metaclass=SingletonMetaclass):
     """Handles discovery and management of action plugins."""
 
@@ -133,10 +143,7 @@ class PluginManager(metaclass=SingletonMetaclass):
     def _create_type_action_map(self) -> None:
         """Creates a lookup table from input types to available actions."""
         self._type_to_action_map: dict[InputType, PluginList] = {
-            InputType.JoystickAxis: [],
-            InputType.JoystickButton: [],
-            InputType.JoystickHat: [],
-            InputType.Keyboard: [],
+            input_type: [] for input_type in ACTION_INPUT_TYPES
         }
 
         for entry in self._plugins.values():
@@ -186,18 +193,30 @@ class PluginManager(metaclass=SingletonMetaclass):
 
                 # Verify requirements for the plugin are satisfied.
                 if "create" in plugin.__dict__ and plugin.create.can_create():
-                    # Store plugin class information.
-                    self._plugins[plugin.create.tag] = plugin.create
-                    logging.getLogger("system").debug(f"Loaded: {plugin.create.tag}")
+                    action = plugin.create
+                    # Check everything the lookup tables and QML need before
+                    # keeping anything, so a plugin that fails is not left
+                    # half registered (it stopped the program starting) and
+                    # a user plugin can't replace a built-in action.
+                    self._check_plugin(action)
 
                     # Register QML type.
-                    QtQml.qmlRegisterType(
-                        plugin.create.model,
+                    type_id = QtQml.qmlRegisterType(
+                        action.model,
                         "Gremlin.ActionPlugins",
                         1,
                         0,
-                        plugin.create.model.__name__,
+                        action.model.__name__,
                     )
+                    if type_id < 0:
+                        raise error.GremlinError(
+                            f"QML type '{action.model.__name__}' could not "
+                            "be registered"
+                        )
+
+                    # Store plugin class information.
+                    self._plugins[action.tag] = action
+                    logging.getLogger("system").debug(f"Loaded: {action.tag}")
                 else:
                     del plugin
             except Exception as e:
@@ -209,3 +228,49 @@ class PluginManager(metaclass=SingletonMetaclass):
                 )
                 if is_core:
                     raise
+
+    def _check_plugin(self, action: Plugin) -> None:
+        """Checks a plugin's action class before it is registered.
+
+        Args:
+            action: The plugin's action class.
+
+        Raises:
+            GremlinError: If the plugin is unusable or clashes with one
+                already loaded.
+        """
+        if not isinstance(action, type):
+            raise error.GremlinError("'create' is not a class")
+        for field in ("tag", "name"):
+            value = getattr(action, field, None)
+            if not isinstance(value, str) or not value:
+                raise error.GremlinError(f"its {field} is empty or not text")
+        model = getattr(action, "model", None)
+        if not isinstance(model, type):
+            raise error.GremlinError("its model is not a class")
+        input_types = getattr(action, "input_types", None)
+        if not isinstance(input_types, (tuple, list, set, frozenset)):
+            raise error.GremlinError("its input types are not a list")
+        for input_type in input_types:
+            if input_type not in ACTION_INPUT_TYPES:
+                raise error.GremlinError(
+                    f"input type '{input_type}' is not one actions can use"
+                )
+        if not isinstance(
+            getattr(action, "properties", None), (tuple, list, set, frozenset)
+        ):
+            raise error.GremlinError("its properties are not a list")
+
+        # Core plugins load first, so a clash means a user plugin would
+        # replace a built-in action (or an earlier user plugin).
+        for other in self._plugins.values():
+            if other.tag == action.tag:
+                raise error.GremlinError(
+                    f"tag '{action.tag}' is already used by '{other.name}'"
+                )
+            if other.name == action.name:
+                raise error.GremlinError(f"name '{action.name}' is already used")
+            if getattr(other.model, "__name__", None) == model.__name__:
+                raise error.GremlinError(
+                    f"QML type '{model.__name__}' is already used by '{other.name}'"
+                )

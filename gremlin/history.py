@@ -55,6 +55,9 @@ _stop = threading.Event()
 _pruned = False
 # At quit (close()): entries are written at once, no writer is started.
 _closing = False
+# Pictures kept this session: an entry waiting to be written may need them
+# (a delete keeps its pictures at once), so pruning leaves them.
+_kept_now: set[str] = set()
 
 syslog = logging.getLogger("system")
 
@@ -260,7 +263,11 @@ def _lines(area: str) -> list[dict]:
     except OSError:
         return []
     entries = []
-    for raw in text.splitlines():
+    # Split at line ends only: a line or paragraph separator in a name
+    # (splitlines splits there too) cut the entry in two and lost it.
+    for raw in text.split("\n"):
+        if not raw.strip():
+            continue
         try:
             entry = json.loads(raw)
         except ValueError:
@@ -304,6 +311,7 @@ def keep_file(path: Path) -> str:
             dest.write_bytes(data)
         except OSError:
             return ""
+    _kept_now.add(name)
     return name
 
 
@@ -337,13 +345,14 @@ def _prune_once() -> None:
 
 def prune() -> None:
     """Drops entries older than the day limit, then the oldest until each
-    file is under its size limit; then the kept files no entry needs."""
+    file is under its size limit; then the kept files no entry needs (nor
+    one waiting to be written: those kept this session)."""
     from gremlin.modules import module_file
 
     days, megabytes = _limits()
     oldest = clock.now() - days * 86400
     limit = megabytes * 1024 * 1024
-    needed: set[str] = set()
+    needed: set[str] = set(_kept_now)
     with _write_lock:
         for area in AREAS:
             path = _file(area)

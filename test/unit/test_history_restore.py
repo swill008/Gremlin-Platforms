@@ -172,7 +172,8 @@ def test_settings_go_back(
         {"global/history/keep-days": "30"},
     )
     _settle()
-    assert history_model.describe(history.entry(entry_id))["before"] == "Keep days: 90"
+    shown = history_model.describe(history.entry(entry_id))
+    assert shown["before"] == "Days to keep changes: 90"
     assert history_model.restore(entry_id, "before")["ok"]
     assert cfg.value("global", "history", "keep-days") == 90
 

@@ -12,6 +12,14 @@ import dataclasses
 import uuid
 
 import gremlin.profile
+from gremlin import error
+from gremlin.modules import ids
+
+# Ids in a profile that are not a stick: their bindings can't be moved onto
+# one (the keyboard's would all land on a joystick).
+NOT_SWAPPABLE: frozenset[uuid.UUID] = frozenset(
+    {ids.KEYBOARD, ids.LOGICAL_DEVICE, ids.OSC, ids.XBOX}
+)
 
 
 @dataclasses.dataclass
@@ -47,6 +55,8 @@ def get_profile_devices(profile: gremlin.profile.Profile) -> list[ProfileDeviceI
     # Count the number of non-empty bindings.
     profile_devices = {}
     for device_uuid, inputs in profile.inputs.items():
+        if device_uuid in NOT_SWAPPABLE:
+            continue
         if device_uuid not in profile_devices:
             profile_devices[device_uuid] = ProfileDeviceInfo(device_uuid)
 
@@ -135,7 +145,16 @@ def swap_devices(
 
     Returns:
         The SwapDevicesResult object containing stats on the swaps performed.
+
+    Raises:
+        GremlinError: If either device is not a stick (keyboard, logical
+            device, OSC or Xbox).
     """
+    for device_uuid in (source_device_uuid, target_device_uuid):
+        if device_uuid in NOT_SWAPPABLE:
+            raise error.GremlinError(
+                f"Device {device_uuid} is not a stick and can't be swapped"
+            )
     return SwapDevicesResult(
         _swap_device_actions(profile, source_device_uuid, target_device_uuid),
         _swap_device_inputs(profile, source_device_uuid, target_device_uuid),

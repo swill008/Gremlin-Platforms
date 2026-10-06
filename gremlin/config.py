@@ -200,11 +200,11 @@ class Configuration(metaclass=common.SingletonMetaclass):
         )
         if not changed:
             return
+        # The names Options shows ("plugin-directory" -> "Plugins folder").
         from gremlin import history
+        from gremlin.ui.option import entry_title
 
-        names = [
-            key.rsplit("/", 1)[-1].replace("-", " ").capitalize() for key in changed
-        ]
+        names = [entry_title(key.rsplit("/", 1)[-1]) for key in changed]
         history.record(
             "settings",
             "Changed " + ", ".join(names),

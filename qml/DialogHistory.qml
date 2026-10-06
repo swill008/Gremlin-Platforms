@@ -37,7 +37,13 @@ ApplicationWindow {
     // The device's name for the "Only ..." line when the filter has only its id.
     property string filterLabel: ""
     property string selected: ""
-    property var shown: ({})
+    // Bumped by pick() so the selected change's details are read again.
+    property int shownRevision: 0
+    // The selected change's details (HistoryModel.detail), or {}.
+    readonly property var shown: {
+        shownRevision
+        return selected ? JSON.parse(_model.detail(selected)) : ({})
+    }
     property string message: ""
 
     readonly property var areas: [
@@ -104,7 +110,7 @@ ApplicationWindow {
 
     function pick(entryId) {
         selected = entryId
-        shown = entryId ? JSON.parse(_model.detail(entryId)) : ({})
+        shownRevision++
         message = ""
     }
 

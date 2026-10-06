@@ -381,7 +381,7 @@ class UpdateModel(QtCore.QObject):
         self._config.set(*_PENDING_SETUP, str(self._ready_path))
         # Saved now: the program ends right after this (a scheduled save
         # never ran, so a failed update was never noticed).
-        self._config.save_now()
+        self._save_settings()
         started = bool(
             QtCore.QProcess.startDetached(
                 str(self._ready_path),
@@ -392,8 +392,17 @@ class UpdateModel(QtCore.QObject):
         if not started:
             self._config.set(*_PENDING, "")
             self._config.set(*_PENDING_SETUP, "")
-            self._config.save_now()
+            self._save_settings()
         return started
+
+    def _save_settings(self) -> None:
+        """Saves the settings now; a settings file that can't be written
+        (locked, read-only) is logged and the install carries on (the error
+        stopped the quit: the installer never started)."""
+        try:
+            self._config.save_now()
+        except Exception:
+            logging.getLogger("system").exception("Update: could not save settings")
 
     def _note_failed_update(self) -> bool:
         """After an update that didn't finish (setup put the previous version

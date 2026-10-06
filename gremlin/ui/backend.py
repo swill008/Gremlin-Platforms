@@ -76,6 +76,9 @@ class UIState(QtCore.QObject):
         self._theme_revision = 0
         event_handler.EventListener().device_change_event.connect(self._device_change)
         signal.profileChanged.connect(self._device_change)
+        # Keys are the profile's own: the old profile's key, kept as the
+        # current input, was re-created in the new one by the editor.
+        signal.profileChanged.connect(self.clearKeyboardInput)
 
     def _device_change(self) -> None:
         if self._current_room == "status":
@@ -121,6 +124,13 @@ class UIState(QtCore.QObject):
         value = (input, index)
         if value != self._current_input.get(input.device_guid, None):
             self._current_input[input.device_guid] = value
+            self.inputChanged.emit()
+
+    @QtCore.Slot()
+    def clearKeyboardInput(self) -> None:
+        """No key is selected (the last one was deleted, or another profile
+        loaded): the editor kept the old key, and editing it re-created it."""
+        if self._current_input.pop(dill.UUID_Keyboard, None) is not None:
             self.inputChanged.emit()
 
     @QtCore.Slot(str)
@@ -350,13 +360,18 @@ class Backend(QtCore.QObject):
         profile_path = config.get_profile_with_regex(path)
         if profile_path and not os.path.isfile(profile_path):
             # Its profile is gone: say so once, and don't run the open one
-            # in its place.
+            # in its place (it kept running: this game got the last game's
+            # bindings), unless it is set to keep running.
             if self._autoload_held != profile_path:
                 self._autoload_held = profile_path
                 signal.showNotification.emit(
                     "Auto-load",
                     f"{Path(profile_path).name} was not loaded: the file is missing.",
                 )
+            if self.gremlinActive and not self.config.value(
+                "profile", "automation", "remain-active-on-focus-loss"
+            ):
+                self.activate_gremlin(False)
             return
         if profile_path:
             if not _same_file(self.profile.fpath, profile_path):
@@ -436,8 +451,9 @@ class Backend(QtCore.QObject):
     def getInputItem(
         self, identifier: InputIdentifier, enumeration_index: int
     ) -> InputItemModel | None:
-        if identifier is None:
-            return
+        # No input selected (a deleted key, a new profile): nothing to show.
+        if identifier is None or not identifier.isValid:
+            return None
         try:
             item = self.profile.get_input_item(
                 identifier.device_guid,

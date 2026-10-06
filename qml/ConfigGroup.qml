@@ -14,8 +14,8 @@ import Gremlin.Style
 
 // One group of settings in an Options window: a small heading over a card
 // of rows (OptionEntryCard). With filterText set (the search box), only the
-// rows whose name or description contain it show, and a group with none
-// hides.
+// rows whose group title, name or description contain it show, and a group
+// with none hides.
 ColumnLayout {
     id: _group
 
@@ -35,7 +35,8 @@ ColumnLayout {
         var ix = entryModel.index(row, 0)
         var name = String(entryModel.data(ix, Qt.UserRole + 5) || "")
         var text = String(entryModel.data(ix, Qt.UserRole + 3) || "")
-        return (name + " " + text).toLowerCase().indexOf(needle) >= 0
+        // The group's title counts too: "Tempo" finds Tempo's "Duration".
+        return (groupName + " " + name + " " + text).toLowerCase().indexOf(needle) >= 0
     }
 
     // The first row that shows (it has no divider above it), or -1.

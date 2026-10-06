@@ -32,6 +32,19 @@ Item {
             _inputList.model.setMode(uiState.currentMode)
     }
 
+    // A profile loaded with the page open: the editor let go of the old
+    // profile's key, so the row still selected is shown again.
+    Connections {
+        target: _inputList.model
+        function onModelReset() {
+            if (editorLocked || !uiState || uiState.currentInput.isValid)
+                return
+            var row = _inputList.currentIndex
+            if (row >= 0 && row < _inputList.count)
+                uiState.setCurrentInput(_inputList.model.inputIdentifier(row), row)
+        }
+    }
+
     // After a delete the editor moves to the row now in that place (it
     // stayed on the deleted key when the row number didn't change).
     function deleteKey(row, label) {
@@ -100,10 +113,12 @@ Item {
                     _renameDialog.visible = true
                 }
 
+                // A key only in another mode has nothing here to delete.
                 deleteButton: IconButton {
                     text: bsi.icons.remove
                     font.pixelSize: Style.dp(12)
                     width: Style.dp(15)
+                    visible: model.inMode
                     enabled: !editorLocked
 
                     onClicked: () => {
@@ -121,6 +136,13 @@ Item {
 
             onCurrentIndexChanged: () => {
                 if (editorLocked || !uiState) {
+                    return
+                }
+                // No row: the last key was deleted, so the editor lets go of
+                // it (it kept the deleted key, which came back when edited).
+                if (currentIndex < 0) {
+                    if (count === 0)
+                        uiState.clearKeyboardInput()
                     return
                 }
                 uiState.setCurrentInput(

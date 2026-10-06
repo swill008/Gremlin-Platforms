@@ -100,7 +100,9 @@ class TreeNode:
         """
         # Check for direct cycles. If any are present resolve them and log
         # a warning message as this could be a sign of unintended behavior
-        if other.is_descendant(self) or self.is_descendant(other):
+        # A node can't be its own parent either: it was left out of the tree
+        # and listed itself as its child.
+        if other is self or other.is_descendant(self) or self.is_descendant(other):
             raise error.GremlinError("Setting parent would cause a cycle, aborting")
 
         if self.parent is not None:

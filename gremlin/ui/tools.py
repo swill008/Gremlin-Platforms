@@ -13,6 +13,7 @@ import gremlin.ui.type_aliases as ta
 from gremlin import (
     auto_mapper,
     config,
+    error,
     shared_state,
     signal,
     swap_devices,
@@ -78,4 +79,11 @@ class Tools(QtCore.QObject):
             )
             return (
                 "Could not swap: choose a profile device and a connected device."
+            )
+        except error.GremlinError as e:
+            # The keyboard, logical device, OSC or Xbox: not a stick.
+            logging.getLogger("system").error(f"Swap devices refused: {e}")
+            return (
+                "Could not swap: the keyboard, the Logical Device, OSC and "
+                "the Xbox pad can't be swapped."
             )

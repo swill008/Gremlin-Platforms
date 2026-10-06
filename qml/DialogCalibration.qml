@@ -170,8 +170,12 @@ ApplicationWindow {
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: Style.dp(10)
+        anchors.topMargin: Style.dp(10)
 
+        // The header keeps off the window's right edge; the list below runs
+        // to it (its scroll bar sits there).
         RowLayout {
+            Layout.rightMargin: Style.dp(10)
             Layout.bottomMargin: Style.dp(15)
 
             Label {

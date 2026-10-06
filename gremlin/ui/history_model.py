@@ -23,6 +23,7 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import history, history_profile, shared_state
+from gremlin.ui.option import entry_title
 
 QML_IMPORT_NAME = "Gremlin.UI"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -126,8 +127,9 @@ def _module_text(side: dict | None, parts: list[str]) -> str:
 def _settings_text(side: dict | None) -> str:
     if not side:
         return ""
+    # Each setting by the name Options shows ("Plugins folder").
     return "\n".join(
-        f"{key.rsplit('/', 1)[-1].replace('-', ' ').capitalize()}: {value}"
+        f"{entry_title(key.rsplit('/', 1)[-1])}: {value}"
         for key, value in side.items()
     )
 
@@ -252,14 +254,23 @@ def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
 
     if not side or side.get("text") is None:
         return False, "There is no file to put back."
-    path = Path(str((entry.get("subject") or {}).get("file") or ""))
+    subject = entry.get("subject") or {}
+    # Into the modules folder of today (the folder may have moved since).
+    name = str(subject.get("fileName") or Path(str(subject.get("file") or "")).name)
+    path = modules_dir() / name
+    missing = []
     for picture in side.get("pictures") or []:
-        dest = modules_dir() / str(picture.get("ref") or "").replace("\\", "/").lstrip(
-            "/"
-        )
-        history.restore_file(str(picture.get("keptFile") or ""), dest)
+        ref = str(picture.get("ref") or "")
+        dest = modules_dir() / ref.replace("\\", "/").lstrip("/")
+        if not history.restore_file(str(picture.get("keptFile") or ""), dest):
+            missing.append(ref)
     module_file.write_text(path, side["text"])
     _changed_everywhere()
+    if missing:
+        return True, (
+            f"Put back {path.name}, without these pictures (no copy was "
+            f"kept): {', '.join(missing)}."
+        )
     return True, f"Put back {path.name}."
 
 

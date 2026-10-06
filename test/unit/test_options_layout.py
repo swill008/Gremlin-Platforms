@@ -32,6 +32,10 @@ def test_every_setting_shows_once_and_button_map_is_apart() -> None:
         key for key in option._shown_keys() if key[0] not in option._OWN_WINDOW
     }
     assert set(shown) == expected  # nothing left out
+    # Every folder shows on the Folders page (History folder was in Other).
+    for title, groups in layout:
+        for _g, keys in groups:
+            assert title == "Folders" or not [k for k in keys if k[1] == "files"]
 
 
 def _rows(names: list[str]) -> list[list]:

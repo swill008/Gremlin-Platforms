@@ -235,6 +235,6 @@ def test_settings_the_user_chooses_are_kept(
     cfg.set("global", "internal", "window-x", 400)
     cfg.save_now()
     entries = [e for e in _settle() if e["area"] == "settings"]
-    assert [e["title"] for e in entries] == ["Changed Keep days"]
+    assert [e["title"] for e in entries] == ["Changed Days to keep changes"]
     assert entries[0]["before"] == {"global/history/keep-days": "90"}
     assert entries[0]["after"] == {"global/history/keep-days": "30"}

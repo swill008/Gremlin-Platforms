@@ -139,7 +139,14 @@ def install(folder: Path, cap: int = CAP_BYTES, limit: int = MAX_BYTES) -> bool:
         return False
     # A program without a console has no sys.stderr: give it the pipe.
     if sys.stderr is None:
-        sys.stderr = open(2, "w", buffering=1, closefd=False)
+        sys.stderr = open(
+            2,
+            "w",
+            buffering=1,
+            closefd=False,
+            encoding="utf-8",
+            errors="backslashreplace",
+        )
     _saved_fd = os.dup(console) if console is not None else None
     _installed = True
     threads.start("Qt log", _copy, read_fd, path, console, cap, stop=_stop)

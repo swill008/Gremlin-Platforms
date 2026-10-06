@@ -1540,6 +1540,13 @@ class ModeHierarchy:
         """
         mode_node = self.find_mode(mode_name)
         parent_node = self.find_mode(parent_name)
+        # Checked before detaching: the mode itself or one under it as the
+        # parent is refused, and a refusal after detaching lost the mode.
+        if parent_node is mode_node or mode_node.is_descendant(parent_node):
+            raise error.GremlinError(
+                f"Mode '{parent_name}' can't be the parent of '{mode_name}': "
+                "it would cause a cycle"
+            )
         # Detach node before setting new parent to avoid cycle detection
         mode_node.detach()
         mode_node.set_parent(parent_node)
@@ -1572,7 +1579,15 @@ class ModeHierarchy:
                     "in the profile; it is kept as a top-level mode."
                 )
                 continue
-            nodes[child].set_parent(nodes[parent])
+            # A mode that is its own parent, or a loop of parents, stopped
+            # the profile loading (or lost the mode).
+            try:
+                nodes[child].set_parent(nodes[parent])
+            except error.GremlinError:
+                logging.getLogger("system").warning(
+                    f"Mode '{child}' names a parent mode '{parent}' that "
+                    "makes a loop of parents; it is kept as a top-level mode."
+                )
 
         self._hierarchy = TreeNode("")
         for node in nodes.values():

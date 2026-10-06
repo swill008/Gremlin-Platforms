@@ -72,7 +72,7 @@ def write_text(
     # Tools > History: a module file's save is kept (other files are not).
     from gremlin import history_modules
 
-    history_modules.note_write(path, text)
+    old = history_modules.text_before(path)
     temporary = path.with_name(path.name + ".tmp")
     try:
         temporary.write_text(text, encoding=encoding, newline=newline)
@@ -89,12 +89,15 @@ def write_text(
     except OSError:
         # Windows refuses the swap while another program (antivirus, an
         # indexer) has the file open: write it directly instead. The
-        # temporary copy stays if that fails too.
-        path.write_text(text, encoding=encoding, newline=newline)
+        # temporary copy goes too.
         try:
-            temporary.unlink()
-        except OSError:
-            pass
+            path.write_text(text, encoding=encoding, newline=newline)
+        finally:
+            try:
+                temporary.unlink()
+            except OSError:
+                pass
+    history_modules.note_write(path, text, old)
 
 
 def write_json(path: Path, doc: dict, indent: int = 2) -> None:

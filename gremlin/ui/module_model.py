@@ -293,6 +293,22 @@ def _set_order(slugs: list[str]) -> None:
     _write_status(_CFG_ORDER, ",".join(slugs))
 
 
+def _merged_order(saved: list[str], showing: list[str]) -> list[str]:
+    """The card order to save: the showing cards in their given order, and
+    each saved card that isn't showing (a stick unplugged) kept in its saved
+    place, so it comes back there. Showing cards new to the order go last."""
+    here = set(showing)
+    queue = iter(showing)
+    out: list[str] = []
+    for slug in dict.fromkeys(saved):
+        if slug not in here:
+            out.append(slug)
+            continue
+        out.append(next(queue))
+    out.extend(queue)
+    return out
+
+
 def _sizes() -> dict[str, tuple[int, int]]:
     _ensure_display_options()
     raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SIZES) or "")
@@ -929,8 +945,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
         expanded: list[str] = []
         for lead in leaders:
             expanded.extend(groups.get(lead, [lead]))
-        extras = [s for s in _order_slugs() if s not in expanded and s not in _hidden_slugs()]
-        _set_order(expanded + extras)
+        hidden = _hidden_slugs()
+        saved = [s for s in _order_slugs() if s not in hidden]
+        _set_order(_merged_order(saved, expanded))
         self._reload()
         self.panesChanged.emit()
 
@@ -1660,9 +1677,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
             rank = {slug: index for index, slug in enumerate(order)}
             rows.sort(key=lambda row: rank.get(row.slug, 1000 + len(rank)))
         visible = [row.slug for row in rows]
-        trimmed = [slug for slug in order if slug in set(visible)]
-        if visible and visible != trimmed:
-            _set_order(visible)
+        merged = _merged_order(order, visible)
+        if visible and merged != order:
+            _set_order(merged)
 
         apply_bound_targets(rows)
 

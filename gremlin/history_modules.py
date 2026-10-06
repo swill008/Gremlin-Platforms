@@ -4,7 +4,7 @@
 """History of module files: each save or delete of a device's module file.
 
 The module file writers (module_file.write_text, and the import and Device
-Pack replace) tell note_write() what they are about to write; deletes tell
+Pack replace) tell note_write() what they wrote; deletes tell
 note_delete(). An entry keeps the file as it was and as it became, and the
 pictures it uses (kept once each by content), so it can be put back. A
 change to the Button Map's view only (zoom, pan, grid, guides, print area)
@@ -81,12 +81,20 @@ def _read(path: Path) -> str | None:
         return None
 
 
-def note_write(path: Path, text: str) -> None:
-    """A module file is about to be written with text."""
+def text_before(path: Path) -> str | None:
+    """A module file's text before it is written (None: no file yet)."""
+    path = Path(path)
+    if not is_module_file(path) or not path.is_file():
+        return None
+    return _read(path)
+
+
+def note_write(path: Path, text: str, old: str | None) -> None:
+    """A module file was written with text (old: text_before() it). Called
+    after the write: a write that failed is no History entry."""
     path = Path(path)
     if not is_module_file(path):
         return
-    old = _read(path) if path.is_file() else None
     if old == text:
         return
     history.later(lambda: _record(path, old, text, "save"))

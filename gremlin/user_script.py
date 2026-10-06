@@ -435,6 +435,18 @@ def describe_load_error(error_: BaseException, path: Path) -> str:
     return f"{type(error_).__name__}: {error_}"
 
 
+def _without_layout(node: ElementTree.Element) -> ElementTree.Element:
+    """node with the line breaks and indents a saved file put between its
+    tags removed: saving pretty-prints it again, which would otherwise add
+    more each time. A value's own text (a tag with no tags inside) stays."""
+    for element in node.iter():
+        if len(element) and element.text is not None and not element.text.strip():
+            element.text = None
+        if element.tail is not None and not element.tail.strip():
+            element.tail = None
+    return node
+
+
 class Script:
     """Represents the prototype of a script."""
 
@@ -593,7 +605,7 @@ class Script:
         node.set("id", util.safe_format(self._id, uuid.UUID))
         if self.load_error:
             for saved in self._saved_variables:
-                node.append(copy.deepcopy(saved))
+                node.append(_without_layout(copy.deepcopy(saved)))
             return node
         for entry in self.variables.values():
             variable_node = entry.to_xml()

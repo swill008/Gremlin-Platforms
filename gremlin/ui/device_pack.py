@@ -1771,8 +1771,8 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         merged, merged_notes = _merge_module(
             existing, doc, chosen, "in.", target, guid, limits
         )
-        _write_pictures(_slug_for_path(dest), loaded["files"], chosen, merged, files)
         try:
+            _write_pictures(_slug_for_path(dest), loaded["files"], chosen, merged, files)
             backup_name = _write_module(dest, merged, files)
         except OSError:
             # The pictures written for it go back too; the import before
@@ -1780,7 +1780,8 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
             _put_back(files)
             return {
                 "ok": False,
-                "error": "The module file could not be written, so nothing was replaced.",
+                "error": "The module file or its pictures could not be written, "
+                "so nothing was replaced.",
             }
         notes.append(f"Saved {dest.name} for {target}.")
         notes.append(
@@ -1789,9 +1790,6 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
             else "A new file was created."
         )
         notes.extend(merged_notes)
-    # A new import keeps the one before it for good (once its own module
-    # file is written: a failed import leaves the last one undoable).
-    drop_import_undo()
     targets = selection.get("outputs") if isinstance(selection, dict) else {}
     if not isinstance(targets, dict):
         targets = {}
@@ -1813,12 +1811,17 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         dest = _device_path(out_name)
         existing = _read_json_dict(dest) if dest.is_file() else None
         merged, merged_notes = _merge_module(existing, output, chosen, prefix, out_name, out_guid)
-        _write_pictures(dest.stem, loaded["files"], chosen, merged, files)
+        start = len(files)
         try:
+            _write_pictures(dest.stem, loaded["files"], chosen, merged, files)
             _write_module(dest, merged, files)
         except OSError:
+            # Its pictures written so far go back.
+            _put_back(files[start:])
+            del files[start:]
             notes.append(
-                f"The file for {out_name} could not be written, so it was not changed."
+                f"The file or pictures for {out_name} could not be written, "
+                "so it was not changed."
             )
             continue
         notes.append(f"Saved {dest.name} for {out_name}.")
@@ -1835,6 +1838,9 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
     notes.extend(wire_notes)
     if not notes:
         return {"ok": False, "error": "Nothing in the pack matched the pieces you ticked."}
+    # A new import keeps the one before it for good (only an import that
+    # changed something: a failed one leaves the last one undoable).
+    drop_import_undo()
     _last_import = {"files": files, "wires": wires_undo}
     try:
         from gremlin.signal import signal

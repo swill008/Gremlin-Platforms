@@ -32,7 +32,7 @@ from gremlin.input_cache import DeviceDatabase
 from gremlin.logical_device import LogicalDevice
 from gremlin.profile import InputItem
 from gremlin.ui.hardware_profile import persist_log
-from gremlin.modules.calibration import values_for_module, write_axis
+from gremlin.modules.calibration import curve_problem, values_for_module, write_axis
 from gremlin.signal import signal
 from gremlin.types import (
     InputType,
@@ -783,6 +783,7 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
             b"actionSequenceDisplayMode"
         ),
         QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"description"),
+        QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"inMode"),
     }
 
     def __init__(self, parent: ta.OQO = None) -> None:
@@ -806,11 +807,16 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
         self.endResetModel()
 
     @QtCore.Slot(int, result=InputIdentifier)
-    def inputIdentifier(self, index: int) -> InputIdentifier:
+    def inputIdentifier(self, index: int) -> InputIdentifier | None:
+        # None for no row (-1 after the last key is deleted): -1 picked the
+        # last key, or failed on an empty list.
+        keys = self._keys()
+        if not 0 <= index < len(keys):
+            return None
         identifier = InputIdentifier(parent=self)
         identifier.device_guid = dill.UUID_Keyboard
         identifier.input_type = InputType.Keyboard
-        identifier.input_id = self._keys()[index]
+        identifier.input_id = keys[index]
 
         return identifier
 
@@ -874,7 +880,7 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
 
     def data(
         self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
-    ) -> str | int:
+    ) -> str | int | bool:
         if role not in self.roles:
             return "Unknown"
 
@@ -897,6 +903,10 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
                 )
             case "description":
                 return _description_from_item(input_item) if input_item else ""
+            case "inMode":
+                # Only this mode's actions can be deleted here: a key added
+                # in another mode only had a Delete button that did nothing.
+                return input_item is not None
             case _:
                 return ""
 
@@ -1302,11 +1312,21 @@ class AxisCalibration(QtCore.QAbstractListModel):
     def _refused(self, index: int) -> str:
         """Why axis index can't be saved, or "" when it can."""
         row = self._state[index]
-        if row["low"] >= row["high"]:
+        # The check loading uses: a curve it drops was saved, then lost.
+        problem = curve_problem((
+            row["low"], row["centerLow"], row["centerHigh"], row["high"],
+            row["withCenter"],
+        ))
+        if problem == "range":
             # Saved without moving the axis: it would never move again.
             return (
                 "Not saved: the axis's lowest and highest values are the same. "
                 "Move it through its full range, then save."
+            )
+        if problem == "center":
+            return (
+                "Not saved: the axis's center is outside its lowest and highest "
+                "values. Calibrate the center and the full range again, then save."
             )
         return ""
 

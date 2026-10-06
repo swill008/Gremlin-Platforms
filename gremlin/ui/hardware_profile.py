@@ -614,10 +614,7 @@ def _replace_file(path: Path, data: bytes) -> None:
     # Tools > History, as module_file.write_text does (import, Device Pack).
     from gremlin import history_modules
 
-    try:
-        history_modules.note_write(path, data.decode("utf-8"))
-    except UnicodeDecodeError:
-        pass
+    old = history_modules.text_before(path)
     temporary = path.with_name(path.name + ".tmp")
     try:
         temporary.write_bytes(data)
@@ -629,6 +626,11 @@ def _replace_file(path: Path, data: bytes) -> None:
             except OSError:
                 pass
         raise
+    # After the write: a write that failed is no History entry.
+    try:
+        history_modules.note_write(path, data.decode("utf-8"), old)
+    except UnicodeDecodeError:
+        pass
 
 
 def _clear_bindings_to(slug: str) -> None:
@@ -1243,7 +1245,14 @@ def _doc_direction(doc: dict, exported_name: str) -> str:
 def _read_json_dict(path: Path) -> dict | None:
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError:
+        return None
+    except ValueError as exc:
+        # A damaged file (bad text or not UTF-8) is skipped and named; it
+        # used to stop the whole Device Pack window.
+        import logging
+
+        logging.getLogger("system").warning(f"Skipped damaged file {path}: {exc}")
         return None
     return doc if isinstance(doc, dict) else None
 

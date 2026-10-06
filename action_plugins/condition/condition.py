@@ -539,6 +539,9 @@ class JoystickCondition(AbstractCondition):
             self.initialize_for_uuid(device_uuid)
 
         def initialize_for_uuid(self, device_uuid: uuid.UUID) -> None:
+            # Cleared first: a new device that isn't connected otherwise
+            # kept the old stick, which was then shown and read.
+            self.joystick = None
             try:
                 self.joystick = Joystick()[device_uuid]
             except error.GremlinError:

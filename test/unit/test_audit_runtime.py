@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -93,14 +94,32 @@ def test_a_run_after_a_slow_stop_starts_its_own_loop() -> None:
     from gremlin.user_script import PeriodicRegistry
 
     registry = PeriodicRegistry()
-    registry.add(lambda: None, 0.05)
+    busy, release = threading.Event(), threading.Event()
+    ran_on: list[threading.Thread] = []
+
+    def slow() -> None:
+        if not busy.is_set():  # the first call holds the old loop
+            busy.set()
+            release.wait(10)
+        ran_on.append(threading.current_thread())
+
+    registry.add(slow, 0.05)
     registry.start()
     first = registry._thread
-    registry.stop()
-    registry.start()
     try:
-        assert registry._thread is not first
+        assert busy.wait(2)
+        registry.stop()  # gives up waiting: the old loop is still in slow()
+        assert first.is_alive()
+        registry.start()
+        second = registry._thread
+        assert second is not first and second.is_alive()
+        release.set()
+        first.join(2)
+        assert not first.is_alive()  # the old loop ended by itself
+        assert _wait_for(lambda: second in ran_on)
+        assert ran_on.count(first) == 1  # it ran nothing after the new Run
     finally:
+        release.set()
         registry.stop()
 
 

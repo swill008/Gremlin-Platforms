@@ -152,7 +152,10 @@ def test_runtime_uses_the_module_setup_file_for_a_stick(
     try:
         assert gate._claims[guid_key(guid)]["buttons"] == [5]
     finally:
-        gate.deleteLater()
+        # The shared instance stays (deleting it broke later tests that use
+        # it); it reads the real modules again.
+        monkeypatch.undo()
+        gate.reload()
 
 
 def test_a_stick_marked_as_an_output_is_repaired_by_saving(setup: Any) -> None:  # noqa: ANN401

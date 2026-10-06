@@ -912,7 +912,10 @@ class JoystickGremlinApp(QtWidgets.QApplication):
             changed.connect(self._theme_refresh_timer.start)
 
         self.tray_icon = None
-        if os.environ.get("QT_QPA_PLATFORM", "") != "offscreen":
+        # The platform Qt actually started on: the variable can carry
+        # options ("offscreen:configfile=...") and then put a real tray
+        # icon up during off-screen runs.
+        if self.platformName() != "offscreen":
             self.tray_icon = gremlin.ui.system_tray.SystemTrayIcon(self.main_window)
             self.aboutToQuit.connect(self.tray_icon.release_resources)
         self.syslog.info("Gremlin UI launching")

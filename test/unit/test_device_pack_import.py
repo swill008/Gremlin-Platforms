@@ -445,3 +445,77 @@ def test_the_pack_and_the_xbox_viewer_say_the_same(
     note = device_pack.driver_notes(set(), True)[0]
     assert note.startswith(str(viewer.statusText) + ":")
     assert note.endswith(str(viewer.hint))
+
+
+def test_a_picture_that_cannot_be_written_puts_everything_back(
+    pack: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Audit 2: it stopped the import with an error and left what it wrote.
+    _import(pack, ["in.catalog"])
+    last = device_pack._last_import
+    path = util.modules_dir() / f"{hardware_profile._slug(pack['name'])}.json"
+    before = path.read_bytes()
+
+    def half_written(
+        slug: str, files: dict, chosen: set, doc: dict, record: list
+    ) -> None:
+        dest = util.modules_dir() / slug / "half.png"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        record.append((dest, None))
+        dest.write_bytes(b"half")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(device_pack, "_write_pictures", half_written)
+    result = _import(pack, ["in.catalog"])
+    assert not result["ok"]
+    assert "pictures" in result["error"]
+    assert path.read_bytes() == before
+    assert not (util.modules_dir() / path.stem / "half.png").exists()
+    assert device_pack._last_import is last
+
+
+def test_an_output_picture_that_cannot_be_written_is_reported(
+    pack: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = device_pack._write_pictures
+    written: list[Path] = []
+
+    def output_fails(
+        slug: str, files: dict, chosen: set, doc: dict, record: list
+    ) -> dict:
+        if slug == hardware_profile._slug(pack["name"]):
+            return real(slug, files, chosen, doc, record)
+        dest = util.modules_dir() / slug / "half.png"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        record.append((dest, None))
+        dest.write_bytes(b"half")
+        written.append(dest)
+        raise OSError("disk full")
+
+    monkeypatch.setattr(device_pack, "_write_pictures", output_fails)
+    result = _import(pack, ["in.catalog", "out:vjoy_2.claim"])
+    assert result["ok"], result
+    assert "pictures for vJoy 1 could not be written" in result["report"]
+    assert written and not written[0].exists()
+    assert all(path != written[0] for path, _ in device_pack._last_import["files"])
+
+
+def test_an_import_that_matches_nothing_keeps_the_last_undo(pack: dict) -> None:
+    _import(pack, ["in.catalog"])
+    last = device_pack._last_import
+    result = _import(pack, ["wire:No Such Mode"])
+    assert not result["ok"]
+    assert device_pack._last_import is last
+
+
+def test_a_damaged_module_file_is_skipped(caplog: pytest.LogCaptureFixture) -> None:
+    # Audit 2: text that isn't UTF-8 stopped the whole Device Pack window.
+    path = util.modules_dir() / "damaged_stick.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b'{"device": "\xff\xfe"}')
+    try:
+        assert hardware_profile._read_json_dict(path) is None
+        assert "damaged_stick.json" in caplog.text
+        assert isinstance(hardware_profile._known_pack_devices(), list)
+    finally:
+        path.unlink()

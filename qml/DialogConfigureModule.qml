@@ -183,6 +183,7 @@ ApplicationWindow {
         moduleFileMessage = moduleFileError ? message : ("Imported into " + moduleFileLabel)
         if (!moduleFileError)
             reloadModuleControls()
+        _importNotice.failed = moduleFileError
         _importNotice.titleText = moduleFileError ? "Import Failed" : "Imported"
         _importNotice.messageText = message
         _importNotice.canUndo = !moduleFileError && moduleModel && moduleModel.importCanUndo()
@@ -552,6 +553,8 @@ ApplicationWindow {
         property string titleText: "Imported"
         property string messageText: ""
         property bool canUndo: false
+        // The import or its undo failed: the border shows it.
+        property bool failed: false
 
         parent: Overlay.overlay
         anchors.centerIn: parent
@@ -562,7 +565,7 @@ ApplicationWindow {
 
         background: Rectangle {
             color: Style.background
-            border.color: (_importNotice.titleText === "Import failed" || _importNotice.titleText === "Undo failed") ? Style.danger : Style.accent
+            border.color: _importNotice.failed ? Style.danger : Style.accent
             border.width: Style.dp(1)
             radius: Style.dp(4)
         }
@@ -598,6 +601,7 @@ ApplicationWindow {
                             return
                         var message = moduleModel.undoLastImport()
                         var ok = message.indexOf("Undone") === 0
+                        _importNotice.failed = !ok
                         _importNotice.titleText = ok ? "Undone" : "Undo Failed"
                         _importNotice.messageText = message
                         _importNotice.canUndo = false
