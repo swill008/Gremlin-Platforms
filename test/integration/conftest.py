@@ -13,6 +13,7 @@ import logging
 import pathlib
 import shutil
 import tempfile
+import time
 from collections.abc import Iterator
 from typing import Generator
 
@@ -24,8 +25,10 @@ import gremlin.config
 import gremlin.device_initialization
 import gremlin.error
 import gremlin.event_handler
+import gremlin.input_cache
 import gremlin.logical_device
 import gremlin.profile
+import gremlin.types
 import gremlin.ui.backend
 import gremlin.util
 import joystick_gremlin
@@ -245,11 +248,59 @@ def vjoy_ids_or_skip() -> list[int]:
     pytest.skip("No usable vJoy control devices found")
 
 
+def _vjoy_is_neutral(device: dill.DeviceSummary) -> bool:
+    """True once DirectInput and the input cache both read every control of
+    the test vJoy device at rest."""
+    guid = device.device_guid
+    cache = gremlin.input_cache.Joystick()[guid.uuid]
+    for i in range(1, device.button_count + 1):
+        if dill.DILL.get_button(guid, i) or cache.button(i).is_pressed:
+            return False
+    for i in range(1, device.hat_count + 1):
+        if (
+            dill.DILL.get_hat(guid, i) != -1
+            or cache.hat(i).direction != gremlin.types.HatDirection.Center
+        ):
+            return False
+    for i in range(1, device.axis_count + 1):
+        if abs(dill.DILL.get_axis(guid, i)) > 4 or abs(cache.axis(i).value) > 0.001:
+            return False
+    return True
+
+
+@pytest.fixture(scope="module")
+def _neutral_vjoy(
+    vjoy_di_device: dill.DeviceSummary, vjoy_control_device_id: int
+) -> None:
+    """Puts the test vJoy device at rest before a module's profile runs.
+
+    The same vJoy device is every module's input and output, and vJoy keeps
+    its values across acquisitions (VJoyStateCache), so a module would
+    otherwise start with the buttons, hats and axes the previous module (in
+    any order) left: an input already at a test's value sends no event, and
+    an output keeps the last module's value.
+    """
+    vjoy.VJoyProxy.reset()
+    vjoy.VJoyStateCache()._cache.pop(vjoy_control_device_id, None)
+    # Acquiring resets the device to the (now empty) cache: all at rest.
+    vjoy.VJoyProxy()[vjoy_control_device_id]
+    vjoy.VJoyProxy.reset()
+    app = QtCore.QCoreApplication.instance()
+    deadline = time.monotonic() + 5
+    while not _vjoy_is_neutral(vjoy_di_device):
+        assert time.monotonic() < deadline, "the test vJoy device did not come to rest"
+        if app is not None:
+            app.processEvents()
+        time.sleep(0.01)
+
+
 # Do not use directly, see app_tester fixture instead.
 @pytest.fixture(scope="module", autouse=True)
-def _activate_gremlin(edited_profile_path: str, device_modules: None) -> Iterator[None]:
+def _activate_gremlin(
+    edited_profile_path: str, device_modules: None, _neutral_vjoy: None
+) -> Iterator[None]:
     """Activates Gremlin."""
-    del device_modules
+    del device_modules, _neutral_vjoy
     assert gremlin.event_handler.EventListener()._running
     backend = gremlin.ui.backend.Backend()
     backend.loadProfile(edited_profile_path)

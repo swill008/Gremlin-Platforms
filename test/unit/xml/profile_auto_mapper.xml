@@ -1,9 +1,5 @@
 ﻿<?xml version="1.0" ?>
 <profile version="14">
-    <settings>
-        <startup-mode>Default</startup-mode>
-        <macro-default-delay>0.05</macro-default-delay>
-    </settings>
     <inputs>
         <input>
             <device-id>97b77b40-07d8-11f0-8028-444553540000</device-id>
@@ -108,7 +104,13 @@
             </action-configuration>
         </input>
     </inputs>
+    <settings>
+        <startup-mode>Default</startup-mode>
+        <macro-default-delay>0.05</macro-default-delay>
+        <macro-delay-source>options</macro-delay-source>
+    </settings>
     <logical-device/>
+    <osc-device/>
     <library>
         <action id="80117ee9-6113-4d79-95a9-3e9ff5112d89" type="root">
             <actions>
@@ -176,6 +178,16 @@
                     <name>condition-type</name>
                     <value>joystick</value>
                 </property>
+                <comparator>
+                    <property type="string">
+                        <name>comparator-type</name>
+                        <value>pressed</value>
+                    </property>
+                    <property type="bool">
+                        <name>is-pressed</name>
+                        <value>True</value>
+                    </property>
+                </comparator>
                 <input>
                     <property type="uuid">
                         <name>device-guid</name>
@@ -190,16 +202,6 @@
                         <value>1</value>
                     </property>
                 </input>
-                <comparator>
-                    <property type="string">
-                        <name>comparator-type</name>
-                        <value>pressed</value>
-                    </property>
-                    <property type="bool">
-                        <name>is-pressed</name>
-                        <value>True</value>
-                    </property>
-                </comparator>
             </condition>
             <true-actions>
                 <action-id>6f0eca22-7a39-4eff-a349-8202c1c6182c</action-id>
@@ -274,17 +276,6 @@
             <property type="activation-mode">
                 <name>activation-mode</name>
                 <value>both</value>
-            </property>
-        </action>
-        <action id="189df80b-68da-4d73-a84a-fa0bd9f7cca0" type="root">
-            <actions/>
-            <property type="string">
-                <name>action-label</name>
-                <value>Root</value>
-            </property>
-            <property type="activation-mode">
-                <name>activation-mode</name>
-                <value>disallowed</value>
             </property>
         </action>
         <action id="f937e754-2dea-4e84-9be0-0b1a8d382712" type="root">
@@ -423,6 +414,16 @@
                     <name>condition-type</name>
                     <value>joystick</value>
                 </property>
+                <comparator>
+                    <property type="string">
+                        <name>comparator-type</name>
+                        <value>pressed</value>
+                    </property>
+                    <property type="bool">
+                        <name>is-pressed</name>
+                        <value>True</value>
+                    </property>
+                </comparator>
                 <input>
                     <property type="uuid">
                         <name>device-guid</name>
@@ -437,16 +438,6 @@
                         <value>12</value>
                     </property>
                 </input>
-                <comparator>
-                    <property type="string">
-                        <name>comparator-type</name>
-                        <value>pressed</value>
-                    </property>
-                    <property type="bool">
-                        <name>is-pressed</name>
-                        <value>True</value>
-                    </property>
-                </comparator>
             </condition>
             <true-actions>
                 <action-id>5ad1ea65-7a2e-41ed-991d-b02c31090cfb</action-id>
@@ -772,17 +763,6 @@
                 <value>both</value>
             </property>
         </action>
-        <action id="faeced04-0ba9-4af7-8597-5d1a2dc61211" type="root">
-            <actions/>
-            <property type="string">
-                <name>action-label</name>
-                <value>Root</value>
-            </property>
-            <property type="activation-mode">
-                <name>activation-mode</name>
-                <value>disallowed</value>
-            </property>
-        </action>
         <action id="8cb02756-e00a-4e77-9b81-e20a9af88e76" type="map-to-vjoy">
             <property type="int">
                 <name>vjoy-device-id</name>
@@ -995,4 +975,5 @@
         <mode>EmptyMode</mode>
     </modes>
     <scripts/>
+    <devices/>
 </profile>

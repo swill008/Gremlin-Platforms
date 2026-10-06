@@ -84,12 +84,19 @@ class PluginManager(metaclass=SingletonMetaclass):
 
     @property
     def type_action_map(self) -> dict[InputType, PluginList]:
-        """Returns a mapping from input types to valid action plugins.
+        """Returns a mapping from input types to the actions Add Action offers.
+
+        Every built-in action is registered (a profile using one always
+        opens), but only those whose can_create() holds now are offered:
+        Map to vJoy needs a vJoy device that can be an output.
 
         Returns:
             Mapping from input types to associated actions.
         """
-        return self._type_to_action_map
+        return {
+            input_type: [entry for entry in entries if entry.can_create()]
+            for input_type, entries in self._type_to_action_map.items()
+        }
 
     @property
     def tag_map(self) -> PluginDict:
@@ -199,8 +206,13 @@ class PluginManager(metaclass=SingletonMetaclass):
                     )
                     continue
 
-                # Verify requirements for the plugin are satisfied.
-                if "create" in plugin.__dict__ and plugin.create.can_create():
+                # A built-in action is always registered, so profiles using
+                # it open on a PC that can't create it now (Map to vJoy
+                # without vJoy); type_action_map leaves it out of Add Action.
+                # A user plugin still needs its requirements met to load.
+                if "create" in plugin.__dict__ and (
+                    is_core or plugin.create.can_create()
+                ):
                     action = plugin.create
                     # Check everything the lookup tables and QML need before
                     # keeping anything, so a plugin that fails is not left

@@ -109,6 +109,13 @@ def profile_setup(
         )
 
 
+@pytest.fixture(autouse=True)
+def default_merge_operation(merge_axis_action: merge_axis.MergeAxisData) -> None:
+    """Puts the shared action back to its default operation, so a test never
+    sees the operation an earlier test (in any order) left on it."""
+    merge_axis_action.operation = merge_axis.MergeOperation.Average
+
+
 class TestMergeAxis:
     """Tests for merge axis action."""
 

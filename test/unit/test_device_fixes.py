@@ -11,6 +11,10 @@
 - A stick plugged in while a profile ran had no claims until something else
   reloaded the modules (DEV11).
 - Two threads asking for the same Xbox pad could each plug one in (DEV14).
+
+The vJoy retry steps gremlin.clock.monotonic (GL-002); the Xbox pad test
+holds the first plug-in until every thread has asked, instead of a fixed
+sleep (GL-001, AU-119).
 """
 
 from __future__ import annotations
@@ -82,7 +86,7 @@ def test_busy_vjoy_is_told_once_and_retried_every_few_seconds(output: object) ->
     now = [1000.0]
     with (
         mock.patch.object(output, "_vjoy_proxy", lambda: lambda: opener),
-        mock.patch.object(output.time, "monotonic", lambda: now[0]),
+        mock.patch.object(output.clock, "monotonic", lambda: now[0]),
         mock.patch("gremlin.signal.display_error") as told,
     ):
         assert output._open_vjoy(2) is None
@@ -210,11 +214,20 @@ def test_two_threads_asking_for_a_pad_plug_in_one() -> None:
     from vigem import xbox
 
     made: list = []
+    asked: list = []
+    workers_count = 6
 
     def slow_pad(pad_id: int, busp: int) -> object:
         made.append(pad_id)
-        time.sleep(0.05)  # plugging in takes a moment
+        # Plugging in takes a moment: until every thread has asked.
+        end = time.monotonic() + 10.0
+        while len(asked) < workers_count and time.monotonic() < end:
+            time.sleep(0.005)
         return SimpleNamespace(pad_id=pad_id)
+
+    def ask() -> None:
+        asked.append(1)
+        got.append(proxy[1])
 
     proxy = object.__new__(xbox.XboxProxy)
     xbox.XboxProxy.__init__(proxy)
@@ -223,12 +236,10 @@ def test_two_threads_asking_for_a_pad_plug_in_one() -> None:
         mock.patch.object(xbox, "XboxPad", slow_pad),
         mock.patch.object(xbox.XboxProxy, "_ensure_bus", lambda self: 1),
     ):
-        workers = [
-            threading.Thread(target=lambda: got.append(proxy[1])) for _ in range(6)
-        ]
+        workers = [threading.Thread(target=ask) for _ in range(workers_count)]
         for worker in workers:
             worker.start()
         for worker in workers:
-            worker.join(2.0)
+            worker.join(15.0)
     assert made == [1]
     assert len({id(pad) for pad in got}) == 1

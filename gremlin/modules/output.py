@@ -15,9 +15,9 @@ from __future__ import annotations
 import logging
 import re
 import threading
-import time
 from typing import Any
 
+from gremlin import clock
 from gremlin.modules import registry
 from gremlin.modules.claim import claim_allows, claim_ids
 
@@ -45,7 +45,7 @@ _told_busy: set[int] = set()
 
 def _refresh_claims(force: bool = False) -> None:
     global _claims_at, _vjoy_claims, _vjoy_names, _vjoy_modules, _xbox_modules
-    now = time.monotonic()
+    now = clock.monotonic()
     if not force and now - _claims_at < _CLAIM_TTL:
         return
     with _lock:
@@ -68,7 +68,7 @@ def _refresh_claims(force: bool = False) -> None:
         _vjoy_claims = {vid: module.claim for vid, module in found.items()}
         _vjoy_names = {vid: module.name for vid, module in found.items()}
         _xbox_modules = xbox
-        _claims_at = time.monotonic()
+        _claims_at = clock.monotonic()
 
 
 def refresh() -> None:
@@ -148,14 +148,14 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
     """
     vid = int(vjoy_id)
     failed_at = _vjoy_failed_at.get(vid)
-    if failed_at is not None and time.monotonic() - failed_at < _VJOY_RETRY:
+    if failed_at is not None and clock.monotonic() - failed_at < _VJOY_RETRY:
         return None
     try:
         dev = _vjoy_proxy()()[vid]
     except Exception as exc:
         from gremlin.error import VJoyBusyError
 
-        _vjoy_failed_at[vid] = time.monotonic()
+        _vjoy_failed_at[vid] = clock.monotonic()
         if isinstance(exc, VJoyBusyError):
             _log_once(
                 ("vjoy-open", vid),
@@ -495,6 +495,38 @@ def xbox_state(pad_id: int) -> dict[str, float]:
         return dict(XboxProxy().snapshot(int(pad_id)) or {})
     except Exception:
         return {}
+
+
+def held_vjoy_ids() -> list[int]:
+    """vJoy devices Gremlin holds open right now (opens none itself). For
+    checks after Stop (gremlin.validate). Never loads the vJoy module (and
+    with it vJoyInterface.dll) when it isn't loaded yet."""
+    import sys
+
+    vjoy = sys.modules.get("vjoy.vjoy")
+    if vjoy is None:
+        return []
+    try:
+        return sorted(int(k) for k in (vjoy.VJoyProxy.vjoy_devices or {}))
+    except Exception:
+        return []
+
+
+def plugged_xbox_pads() -> list[int]:
+    """Xbox pads Gremlin has plugged in right now. Never plugs one in, and
+    never starts the ViGEm client when it isn't running yet."""
+    import sys
+
+    xbox = sys.modules.get("vigem.xbox")
+    if xbox is None:
+        return []
+    try:
+        from gremlin.common import SingletonMetaclass
+
+        proxy = SingletonMetaclass._instances.get(xbox.XboxProxy)
+        return sorted(int(k) for k in (getattr(proxy, "_pads", None) or {}))
+    except Exception:
+        return []
 
 
 def xbox_available() -> bool:

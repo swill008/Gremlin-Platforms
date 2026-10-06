@@ -3,11 +3,16 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Macros stop with Stop; a pulse release waiting at Stop goes out first
-(audit 2, group D)."""
+(audit 2, group D).
+
+The tests wait for the macro threads to end, or for a later timer, instead
+of fixed sleeps (GL-001, AU-119).
+"""
 
 from __future__ import annotations
 
 import sys
+import threading
 import time
 import uuid
 from collections.abc import Callable, Iterator
@@ -17,6 +22,7 @@ sys.path.append(".")
 import pytest
 from PySide6 import QtCore
 
+from gremlin import threads
 from gremlin.macro import Macro, MacroManager, PauseAction
 from gremlin.types import InputType
 
@@ -38,7 +44,7 @@ def manager() -> Iterator[MacroManager]:
     mm.stop()
 
 
-def _wait_for(check: Callable[[], bool], seconds: float = 2.0) -> bool:
+def _wait_for(check: Callable[[], bool], seconds: float = 10.0) -> bool:
     end = time.monotonic() + seconds
     while time.monotonic() < end:
         if check():
@@ -47,20 +53,29 @@ def _wait_for(check: Callable[[], bool], seconds: float = 2.0) -> bool:
     return False
 
 
+def _macro_threads() -> set[threading.Thread]:
+    """Macro threads running now (not the scheduler)."""
+    name = threads.PREFIX + "macro"
+    return {t for t in threading.enumerate() if t.name == name}
+
+
 def test_a_one_shot_macro_stops_with_stop(manager: MacroManager) -> None:
     ran: list[str] = []
     macro = Macro()
     macro.add_action(lambda: ran.append("a"))
     macro.add_action(PauseAction(1.0))
     macro.add_action(lambda: ran.append("b"))
+    before = _macro_threads()
     manager.queue_macro(macro)
     assert _wait_for(lambda: ran == ["a"])
     manager.stop()
-    time.sleep(1.3)  # past the Pause
+    assert _wait_for(lambda: not _macro_threads() - before)  # its Pause ended
     assert ran == ["a"]  # b used to run after Stop
 
 
-def test_a_macro_paused_behind_a_preempting_one_stops(manager: MacroManager) -> None:
+def test_a_macro_paused_behind_a_preempting_one_stops(
+    manager: MacroManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
     ran: list[str] = []
     long = Macro()
     long.is_exclusive = True
@@ -69,17 +84,19 @@ def test_a_macro_paused_behind_a_preempting_one_stops(manager: MacroManager) -> 
     normal = Macro()
     normal.add_action(lambda: ran.append("n1"))
     normal.add_action(lambda: ran.append("n2"))
-    manager._is_executing_preemptive = True  # as while `long` runs
+    # As while `long` runs.
+    monkeypatch.setattr(manager, "_is_executing_preemptive", True)
+    before = _macro_threads()
     manager.queue_macro(normal)
-    time.sleep(0.2)
+    assert _wait_for(lambda: bool(_macro_threads() - before))  # behind `long`
     manager.stop()
-    time.sleep(0.6)
+    assert _wait_for(lambda: not _macro_threads() - before)
     assert ran == []
     del long
 
 
 def test_a_macro_of_the_last_run_leaves_the_new_run_alone(
-    manager: MacroManager,
+    manager: MacroManager, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     old = Macro()
     old.is_exclusive = True
@@ -88,7 +105,8 @@ def test_a_macro_of_the_last_run_leaves_the_new_run_alone(
     assert _wait_for(lambda: manager._is_executing_exclusive)
     manager.stop()
     manager.start()
-    manager._is_executing_exclusive = True  # the new Run's exclusive macro
+    # The new Run's exclusive macro.
+    monkeypatch.setattr(manager, "_is_executing_exclusive", True)
     manager._finish_macro(old, manager._run - 1)  # the old one ends late
     assert manager._is_executing_exclusive
 
@@ -114,7 +132,8 @@ def test_a_pulse_release_waiting_at_stop_is_sent_first() -> None:
     assert states == [True]
     base_classes.flush_pulses()  # Stop
     assert states == [True, False]
-    QtCore.QCoreApplication.processEvents()
-    time.sleep(0.1)
-    QtCore.QCoreApplication.processEvents()
+    # The pulse's own 50 ms timer runs before a later one.
+    later: list[bool] = []
+    QtCore.QTimer.singleShot(100, lambda: later.append(True))
+    assert _wait_for(lambda: QtCore.QCoreApplication.processEvents() or bool(later))
     assert states == [True, False]  # not sent twice

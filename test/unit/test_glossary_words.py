@@ -12,6 +12,8 @@ import ast
 import re
 from pathlib import Path
 
+import pytest
+
 _ROOT = Path(__file__).resolve().parents[2]
 
 # (pattern, what to use instead). Case-sensitive unless (?i).
@@ -124,3 +126,118 @@ def test_on_screen_text_uses_the_glossary_words() -> None:
 
 def test_options_descriptions_use_the_glossary_words() -> None:
     assert _hits(_option_descriptions()) == []
+
+
+# | Python display strings (GL-018): the Configuration list text built in
+# | binding_catalog.py and the result lines Python hands to the screens
+# | (Auto Mapper, GL-228). The QML check above can't see them.
+
+# Words for what an input does (glossary D2, D11): "action(s)", and an
+# input with none shows "No actions".
+_ACTION_WORDS = [
+    (r"(?i)\bmappings?\b", "action / actions"),
+    (r"(?i)\bassignments?\b", "action / actions"),
+    (r"^(Empty|Sequence)$", "No actions / the action's name"),
+]
+
+_LOG_CALLS = {"debug", "info", "warning", "error", "exception", "critical", "trace"}
+
+
+_SCOPES = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+
+
+def _python_strings(path: Path) -> list[tuple[str, int, str]]:
+    """Text a Python file can put on screen: string literals and f-strings
+    ({} for each value), leaving out docstrings and log lines."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    skip: set[int] = set()
+    for node in ast.walk(tree):
+        body = getattr(node, "body", None)
+        if (
+            isinstance(node, _SCOPES)
+            and body
+            and isinstance(body[0], ast.Expr)
+            and isinstance(body[0].value, ast.Constant)
+        ):
+            skip.add(id(body[0].value))
+        if isinstance(node, ast.Call):
+            name = getattr(node.func, "attr", None) or getattr(node.func, "id", None)
+            if name in _LOG_CALLS:
+                skip.update(id(sub) for sub in ast.walk(node))
+        if isinstance(node, ast.JoinedStr):
+            skip.update(id(part) for part in node.values)
+    where = path.relative_to(_ROOT).as_posix()
+    out = []
+    for node in ast.walk(tree):
+        if id(node) in skip:
+            continue
+        if isinstance(node, ast.JoinedStr):
+            text = "".join(
+                str(part.value) if isinstance(part, ast.Constant) else "{}"
+                for part in node.values
+            )
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            text = node.value
+        else:
+            continue
+        if text and _reads_as_text(text):
+            out.append((where, node.lineno, text))
+    return out
+
+
+def _catalog_strings() -> list[tuple[str, int, str]]:
+    return _python_strings(_ROOT / "gremlin" / "ui" / "binding_catalog.py")
+
+
+def _result_strings() -> list[tuple[str, int, str]]:
+    return _python_strings(_ROOT / "gremlin" / "auto_mapper.py")
+
+
+def _word_hits(strings: list[tuple[str, int, str]]) -> list[str]:
+    hits = []
+    for where, line, text in strings:
+        for pattern, instead in _REPLACED + _ACTION_WORDS:
+            if re.search(pattern, text):
+                hits.append(f"{where}:{line}: {text[:70]!r} -> use {instead}")
+    return hits
+
+
+def test_the_check_reads_the_python_display_text() -> None:
+    catalog = [text for _f, _l, text in _catalog_strings()]
+    assert "Map to vJoy" in catalog and "Unmapped" in catalog
+    results = [text for _f, _l, text in _result_strings()]
+    assert any(text.startswith("Created {} ") for text in results)
+    assert "No input module selected" in results
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="GL-217: Configuration list says Unmapped, assignments, Sequence/Empty",
+)
+def test_configuration_list_text_uses_the_glossary_words() -> None:
+    assert _word_hits(_catalog_strings()) == []
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="GL-217: Configuration list type names are sentence case, not action names",
+)
+def test_configuration_list_type_names_are_the_action_names() -> None:
+    from gremlin.plugin_manager import PluginManager
+    from gremlin.ui import binding_catalog
+
+    tags = PluginManager().tag_map
+    wrong = {
+        tag: label
+        for tag, label in binding_catalog._TYPE_LABELS.items()
+        if tag in tags and label != tags[tag].name
+    }
+    assert wrong == {}
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="GL-228: Auto Mapper result says mappings and bindings",
+)
+def test_auto_mapper_result_uses_the_glossary_words() -> None:
+    assert _word_hits(_result_strings()) == []

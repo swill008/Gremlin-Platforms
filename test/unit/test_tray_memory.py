@@ -4,7 +4,11 @@
 
 """Hidden to the tray, the main window unloads its pages and gives memory
 back; shown again, it loads them. Pages other than Home load only while
-shown."""
+shown.
+
+The clean-up runs on a timer: the test waits until it ran, not a fixed time
+(GL-001, AU-119).
+"""
 
 from __future__ import annotations
 
@@ -21,10 +25,17 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
 # Runs off-screen in its own process: the tests' qapp fixture would start
 # the whole program (test/conftest.py qapp_cls) and show its window.
 _SCRIPT = r"""
-import os, sys
+import os, sys, time
 sys.path.insert(0, sys.argv[1])
 from PySide6 import QtGui, QtQml, QtTest
 from gremlin.ui import tray_memory
+
+released = []
+_release = tray_memory.release
+def _counted(window, engine):
+    released.append(window.isVisible())
+    _release(window, engine)
+tray_memory.release = _counted
 
 app = QtGui.QGuiApplication([])
 engine = QtQml.QQmlApplicationEngine()
@@ -45,8 +56,10 @@ print("visible-left-alone", window.property("entered") == 0, flush=True)
 window.hide()
 tray_memory.enter_tray(window, engine)
 print("hidden-trayed", window.property("trayed"), flush=True)
-QtTest.QTest.qWait(tray_memory._SETTLE_MS + 200)
-print("cleaned-up", True, flush=True)
+end = time.monotonic() + 30  # generous: a busy PC is slow
+while not released and time.monotonic() < end:
+    QtTest.QTest.qWait(20)
+print("cleaned-up", released == [False], flush=True)
 tray_memory.leave_tray(window)
 print("shown-again", window.property("trayed") is False, flush=True)
 os._exit(0)

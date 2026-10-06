@@ -1,0 +1,5302 @@
+{
+ "versions": {
+  "pyright": "1.1.414",
+  "ruff": "0.15.22"
+ },
+ "pyright": [
+  {
+   "file": "action_plugins/axis_delta/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Element[str] | None\" cannot be assigned to parameter \"node\" of type \"Element[str]\" in function \"read_action_ids\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/axis_delta/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"change_threshold\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/axis_delta/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_last_value\" for class \"AxisDeltaFunctor*\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/axis_delta/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"change_threshold\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/axis_delta/__init__.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \"-\" not supported for types \"float | HatDirection\" and \"float\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/chain/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"chain_sequences\" for class \"AbstractActionData\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/chain/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"timeout\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/chain/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"timeout\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/chain/__init__.py",
+   "rule": "reportCallIssue",
+   "message": "Expected N more positional argument",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/chain/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/change_mode/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"ModeSequence | None\" cannot be assigned to parameter \"sequence\" of type \"ModeSequence\" in function \"cycle\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/change_mode/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"change_type\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/change_mode/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"target_modes\" for class \"AbstractActionData\"",
+   "count": 5
+  },
+  {
+   "file": "action_plugins/change_mode/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"change_type\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/change_mode/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"target_modes\" for class \"AbstractActionData\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/change_mode/__init__.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"modes\" is not a known attribute of \"None\"",
+   "count": 3
+  },
+  {
+   "file": "action_plugins/change_mode/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Element[str] | None\" cannot be assigned to parameter \"node\" of type \"Element[str]\" in function \"read_action_ids\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/condition/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"_action_tree\" for class \"ConditionModel*\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/condition/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"_false_action_ids\" for class \"ConditionModel*\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"_true_action_ids\" for class \"ConditionModel*\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"conditions\" for class \"AbstractActionData\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/condition/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"logical_operator\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/condition/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"logical_operator\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/comparator.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"tuple[Literal['direction'], HatDirection | Any, Literal[PropertyType.HatDirection]]\" cannot be assigned to parameter \"object\" of type \"tuple[str, str, PropertyType]\" in function \"append\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputType | None\" cannot be assigned to parameter \"input_type\" of type \"InputType\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"PressedComparator | RangeComparator | DirectionComparator\" cannot be assigned to parameter \"data\" of type \"DirectionComparator\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"PressedComparator | RangeComparator | DirectionComparator\" cannot be assigned to parameter \"data\" of type \"PressedComparator\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"PressedComparator | RangeComparator | DirectionComparator\" cannot be assigned to parameter \"data\" of type \"RangeComparator\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode | None\" cannot be assigned to parameter \"input_id\" of type \"int\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode\" cannot be assigned to parameter \"input_id\" of type \"int\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"list[State]\" cannot be assigned to parameter \"state_list\" of type \"List[AbstractState]\" in function \"_update_states\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"device_uuid\" for class \"AbstractState\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"initialize_for_uuid\" for class \"AbstractState\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"input_id\" for class \"AbstractState\"",
+   "count": 9
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"input_type\" for class \"AbstractState\"",
+   "count": 12
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"key\" for class \"AbstractState\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"model\" for class \"AbstractComparator\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"vjoy_id\" for class \"AbstractState\"",
+   "count": 5
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportIndexIssue",
+   "message": "\"__getitem__\" method not defined on type \"int\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/condition/condition.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"model\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/description/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"description\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/description/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"description\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/description/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Element[str] | None\" cannot be assigned to parameter \"node\" of type \"Element[str]\" in function \"read_action_ids\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Event | None\" cannot be assigned to parameter \"event\" of type \"Event\" in function \"_process_event\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Event | None\" cannot be assigned to parameter \"event_press\" of type \"Event\" in function \"_pulse_event\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Value | None\" cannot be assigned to parameter \"value\" of type \"Value\" in function \"_process_event\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Value | None\" cannot be assigned to parameter \"value_press\" of type \"Value\" in function \"_pulse_event\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"activate_on\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"threshold\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"activate_on\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"threshold\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Function with declared return type \"List[AbstractActionData]\" must return value on all code paths",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/double_tap/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Element[str] | None\" cannot be assigned to parameter \"node\" of type \"Element[str]\" in function \"read_action_ids\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"None\" cannot be assigned to parameter \"behavior_type\" of type \"InputType\" in function \"create\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | UUID\" cannot be assigned to parameter \"key\" of type \"UUID\" in function \"get_action\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"axisN\" for class \"AbstractActionData\"",
+   "count": 6
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"inner_deadzone\" for class \"AbstractActionData\"",
+   "count": 3
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"label\" for class \"AbstractActionData\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"outer_deadzone\" for class \"AbstractActionData\"",
+   "count": 3
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"axisN\" for class \"AbstractActionData\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"inner_deadzone\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"label\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"outer_deadzone\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportRedeclaration",
+   "message": "Method declaration \"innerDeadzone\" is obscured by a declaration of the same name",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportRedeclaration",
+   "message": "Method declaration \"label\" is obscured by a declaration of the same name",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportRedeclaration",
+   "message": "Method declaration \"outerDeadzone\" is obscured by a declaration of the same name",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Function with declared return type \"list[AbstractActionData]\" must return value on all code paths",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/dual_axis_deadzone/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/hat_buttons/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"actions_dropped_by\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/hat_buttons/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"button_count\" for class \"AbstractActionData\"",
+   "count": 3
+  },
+  {
+   "file": "action_plugins/hat_buttons/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"set_button_count\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/hat_buttons/__init__.py",
+   "rule": "reportCallIssue",
+   "message": "Expected N more positional argument",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/load_profile/__init__.py",
+   "rule": "reportAssignmentType",
+   "message": "Type \"list[ActionProperty]\" is not assignable to declared type \"tuple[ActionProperty, ...]\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/load_profile/__init__.py",
+   "rule": "reportAssignmentType",
+   "message": "Type \"list[InputType]\" is not assignable to declared type \"tuple[InputType, ...]\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/load_profile/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"profile_filename\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/load_profile/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"profile_filename\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/load_profile/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | MacroData\" cannot be assigned to parameter \"action\" of type \"AbstractAction\" in function \"add_action\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"axis_mode\" for class \"AbstractAction\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"button\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"device_guid\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"duration\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"dx\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"dy\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"input_id\" for class \"AbstractAction\"",
+   "count": 5
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"input_type\" for class \"AbstractAction\"",
+   "count": 23
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"is_exclusive\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"is_preemptive\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"is_pressed\" for class \"AbstractAction\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"key\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"repeat_data\" for class \"AbstractActionData\"",
+   "count": 6
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"repeat_mode\" for class \"AbstractActionData\"",
+   "count": 6
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"tag\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"value\" for class \"AbstractAction\"",
+   "count": 18
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"vjoy_id\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"axis_mode\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"button\" for class \"AbstractAction\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"device_guid\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"duration\" for class \"AbstractAction\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"dx\" for class \"AbstractAction\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"dy\" for class \"AbstractAction\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"input_id\" for class \"AbstractAction\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"input_type\" for class \"AbstractAction\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"is_exclusive\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"is_preemptive\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"is_pressed\" for class \"AbstractAction\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"key\" for class \"AbstractAction\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"repeat\" for class \"Macro\"",
+   "count": 3
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"repeat_mode\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"value\" for class \"AbstractAction\"",
+   "count": 19
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"vjoy_id\" for class \"AbstractAction\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportGeneralTypeIssues",
+   "message": "\"int\" is not iterable",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Function with declared return type \"bool\" must return value on all code paths",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/macro/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_keyboard/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"keys\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_keyboard/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"keys\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_keyboard/__init__.py",
+   "rule": "reportGeneralTypeIssues",
+   "message": "\"int\" is not iterable",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_keyboard/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"x\" of type \"SupportsAbs[_T@abs]\" in function \"abs\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | bool | None\" cannot be assigned to parameter \"is_pressed\" of type \"bool | None\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"axis_mode\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"axis_scaling\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"button_inverted\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"logical_input_id\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"logical_input_type\" for class \"AbstractActionData\"",
+   "count": 3
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"axis_mode\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"axis_scaling\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"button_inverted\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"logical_input_id\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"logical_input_type\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_logical_device/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"bool | float | HatDirection\" cannot be assigned to parameter \"x\" of type \"SupportsAbs[_T@abs]\" in function \"abs\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"bool | float | HatDirection\" cannot be assigned to parameter \"y\" of type \"_SupportsFloatOrIndex\" in function \"copysign\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"bool | float | Literal[HatDirection.North, HatDirection.NorthEast, HatDirection.East, HatDirection.SouthEast, HatDirection.South, HatDirection.SouthWest, HatDirection.West, HatDirection.NorthWest]\" cannot be assigned to parameter \"key\" of type \"HatDirection\" in function \"__getitem__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | None\" cannot be assigned to parameter \"dx\" of type \"int | None\" in function \"set_absolute_motion\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | None\" cannot be assigned to parameter \"dy\" of type \"int | None\" in function \"set_absolute_motion\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float\" cannot be assigned to parameter \"direction\" of type \"int\" in function \"add_accelerated_motion\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"button\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"direction\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"max_speed\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"min_speed\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"mode\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"time_to_max_speed\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"button\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"direction\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"max_speed\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"min_speed\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"mode\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"time_to_max_speed\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_mouse/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"x\" of type \"SupportsAbs[_T@abs]\" in function \"abs\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"axis_mode\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"axis_scaling\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"button_inverted\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"enumeration_index\" for class \"QObject\"",
+   "count": 3
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"vjoy_device_id\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"vjoy_input_id\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"vjoy_input_type\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"axis_mode\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"axis_scaling\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"button_inverted\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"vjoy_device_id\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"vjoy_input_id\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"vjoy_input_type\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"enumeration_index\" is not a known attribute of \"None\"",
+   "count": 3
+  },
+  {
+   "file": "action_plugins/map_to_vjoy/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal['QVariant']\" cannot be assigned to parameter \"type\" of type \"type\" in function \"__init__\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"button_inverted\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"enumeration_index\" for class \"QObject\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"trigger_range\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"xbox_device_id\" for class \"AbstractActionData\"",
+   "count": 3
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"xbox_target\" for class \"AbstractActionData\"",
+   "count": 5
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"button_inverted\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"trigger_range\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"xbox_device_id\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"xbox_target\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"enumeration_index\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Element[str] | None\" cannot be assigned to parameter \"node\" of type \"Element[str]\" in function \"read_action_ids\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"None\" cannot be assigned to parameter \"behavior_type\" of type \"InputType\" in function \"create\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | UUID\" cannot be assigned to parameter \"key\" of type \"UUID\" in function \"get_action\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"axis_inN\" for class \"AbstractActionData\"",
+   "count": 6
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"label\" for class \"AbstractActionData\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"operation\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"axis_inN\" for class \"AbstractActionData\"",
+   "count": 4
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"label\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"operation\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"library\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Function with declared return type \"AbstractActionData\" must return value on all code paths",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Function with declared return type \"list[AbstractActionData]\" must return value on all code paths",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/merge_axis/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/pause_resume/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"operation\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/pause_resume/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"operation\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/pause_resume/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Function with declared return type \"PauseResumeType\" must return value on all code paths",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/pause_resume/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/play_sound/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"sound_filename\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/play_sound/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"sound_volume\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/play_sound/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"sound_filename\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/play_sound/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"sound_volume\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/play_sound/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/reference/__init__.py",
+   "rule": "reportAssignmentType",
+   "message": "Type \"None\" is not assignable to declared type \"type[AbstractFunctor[Unknown]]\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/reference/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"AbstractActionData\" cannot be assigned to parameter \"data\" of type \"ResponseCurveData\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QPointF | None\" cannot be assigned to parameter \"parent\" of type \"QObject | None\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Self@ResponseCurveModel\" cannot be assigned to parameter \"parent\" of type \"QPointF | None\" in function \"__init__\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"bool | float | HatDirection\" cannot be assigned to parameter \"value\" of type \"float\" in function \"deadzone\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"center\" for class \"PointND\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"curve\" for class \"AbstractActionData\"",
+   "count": 27
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"handle_left\" for class \"PointND\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"handle_right\" for class \"PointND\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"x\" for class \"ControlPoint\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"y\" for class \"ControlPoint\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"curve\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \"+=\" not supported for types \"() -> float\" and \"float\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"x\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"y\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/response_curve/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"QPointF | None\" is not assignable to return type \"QPointF\"",
+   "count": 3
+  },
+  {
+   "file": "action_plugins/root/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Element[str] | None\" cannot be assigned to parameter \"node\" of type \"Element[str]\" in function \"read_action_ids\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/root/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Function with declared return type \"List[AbstractActionData]\" must return value on all code paths",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/root/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/run_command/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"arguments\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/run_command/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"executable\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/run_command/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"arguments\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/run_command/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"executable\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/run_command/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/smart_toggle/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Element[str] | None\" cannot be assigned to parameter \"node\" of type \"Element[str]\" in function \"read_action_ids\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/smart_toggle/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"delay\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/smart_toggle/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"delay\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/smart_toggle/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Function with declared return type \"List[AbstractActionData]\" must return value on all code paths",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/smart_toggle/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/split_axis/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Element[str] | None\" cannot be assigned to parameter \"node\" of type \"Element[str]\" in function \"read_action_ids\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/split_axis/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"bool | float | HatDirection\" cannot be assigned to parameter \"value\" of type \"float\" in function \"linear_axis_value_interpolation\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/split_axis/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"split_value\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/split_axis/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"split_value\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/split_axis/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Element[str] | None\" cannot be assigned to parameter \"node\" of type \"Element[str]\" in function \"read_action_ids\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Event | None\" cannot be assigned to parameter \"event\" of type \"Event\" in function \"_process_event\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Event | None\" cannot be assigned to parameter \"event_press\" of type \"Event\" in function \"_pulse_event\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"None\" cannot be assigned to parameter \"raw\" of type \"bool | float | HatDirection\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportAssignmentType",
+   "message": "Type \"list[ActionProperty]\" is not assignable to declared type \"tuple[ActionProperty, ...]\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportAssignmentType",
+   "message": "Type \"list[InputType]\" is not assignable to declared type \"tuple[InputType, ...]\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"activate_on\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"threshold\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"activate_on\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"threshold\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Function with declared return type \"List[AbstractActionData]\" must return value on all code paths",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/tempo/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"playback_pitch\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"playback_rate\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"playback_volume\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"queue_mode\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"text\" for class \"AbstractActionData\"",
+   "count": 2
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"playback_pitch\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"playback_rate\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"playback_volume\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"queue_mode\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"text\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/text_to_speech/__init__.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "dill/__init__.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "\"_MEIPASS\" is not a known attribute of module \"sys\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/action_analysis.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputType | None\" cannot be assigned to parameter \"behavior\" of type \"InputType\" in function \"_dual_axis_response_curve_analysis\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"_convert_index\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"_device\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"_index_to_input\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"_logical\" for class \"object\"",
+   "count": 3
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"_osc\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"createIndex\" for class \"object\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"dataChanged\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"inputIdentifier\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"refreshInput\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"data\" for class \"type[Device]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"data\" for class \"type[KeyboardManagerModel]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"data\" for class \"type[LogicalDeviceManagementModel]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"data\" for class \"type[OscDeviceManagementModel]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/audio_player.py",
+   "rule": "reportMissingImports",
+   "message": "Import \"miniaudio\" could not be resolved",
+   "count": 1
+  },
+  {
+   "file": "gremlin/auto_mapper.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputItem | None\" cannot be assigned to parameter \"physical_input\" of type \"InputItem\" in function \"_create_new_mapping\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/auto_mapper.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Profile | None\" cannot be assigned to parameter \"profile\" of type \"Profile\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/auto_mapper.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"action_sequences\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/auto_mapper.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"insert_action\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/auto_mapper.py",
+   "rule": "reportOptionalOperand",
+   "message": "Operator \"+\" not supported for \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/base_classes.py",
+   "rule": "reportReturnType",
+   "message": "Type \"bool | float | HatDirection\" is not assignable to return type \"bool\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"(x: Event) -> Event\" cannot be assigned to parameter \"callback\" of type \"CallbackObject | ((Event) -> None)\" in function \"add_callback\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputType | None\" cannot be assigned to parameter \"event_type\" of type \"InputType\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal[N]\" cannot be assigned to parameter \"device_guid\" of type \"UUID\" in function \"add_callback\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"None\" cannot be assigned to parameter \"event\" of type \"Event\" in function \"add_callback\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"UUID | None\" cannot be assigned to parameter \"device_guid\" of type \"UUID\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"bool | None\" cannot be assigned to parameter \"raw\" of type \"bool | float | HatDirection\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"raw\" of type \"bool | float | HatDirection\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode | None\" cannot be assigned to parameter \"identifier\" of type \"int | ScanCode\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | None\" cannot be assigned to parameter \"mode\" of type \"str\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | None\" cannot be assigned to parameter \"mode\" of type \"str\" in function \"add_callback\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"connect\" for class \"MethodType\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"disconnect\" for class \"MethodType\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_active_mode\" for class \"EventHandler\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_previous_mode\" for class \"EventHandler\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \"<\" not supported for types \"float | HatDirection\" and \"float | HatDirection\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \"<\" not supported for types \"float | HatDirection\" and \"float\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \"<=\" not supported for types \"float | HatDirection\" and \"float\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \"<=\" not supported for types \"float\" and \"float | HatDirection\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \">\" not supported for types \"float | HatDirection\" and \"float | HatDirection\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \">\" not supported for types \"float | HatDirection\" and \"float\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOptionalCall",
+   "message": "Object of type \"None\" cannot be called",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"functor\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"get_actions\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"inputs\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"modes\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"scripts\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"settings\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/code_runner.py",
+   "rule": "reportOptionalSubscript",
+   "message": "Object of type \"None\" is not subscriptable",
+   "count": 3
+  },
+  {
+   "file": "gremlin/device_initialization.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Any | object\" cannot be assigned to parameter \"key\" of type \"UUID\" in function \"get\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/device_initialization.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Any | object\" cannot be assigned to parameter \"value\" of type \"UUID\" in function \"from_uuid\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"(data: DeviceSummary, action: DeviceActionType) -> None\" cannot be assigned to parameter \"callback\" of type \"(DeviceSummary) -> None\" in function \"set_device_change_callback\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"GUID\" cannot be assigned to parameter \"device_guid\" of type \"UUID\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputEvent\" cannot be assigned to parameter \"data\" of type \"_JoystickInputData\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputEvent\" cannot be assigned to parameter \"event\" of type \"Event\" in function \"_apply_calibration\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"value\" of type \"int\" in function \"with_default_center_calibration\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"list[(Event) -> None]\" cannot be assigned to parameter \"callbacks\" of type \"list[object]\" in function \"record\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"button_id\" for class \"Event\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"input_index\" for class \"Event\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"is_extended\" for class \"Event\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"is_injected\" for class \"Event\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"scan_code\" for class \"Event\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"known_modes\" for class \"EventHandler*\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "reportIndexIssue",
+   "message": "\"__getitem__\" method not defined on type \"int\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/event_helpers.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode\" cannot be assigned to parameter \"input_id\" of type \"int\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/input_cache.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Button\" cannot be assigned to parameter \"object\" of type \"None\" in function \"append\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/input_cache.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Hat\" cannot be assigned to parameter \"object\" of type \"None\" in function \"append\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/input_cache.py",
+   "rule": "reportReturnType",
+   "message": "Type \"list[None]\" is not assignable to return type \"list[Button]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/input_cache.py",
+   "rule": "reportReturnType",
+   "message": "Type \"list[None]\" is not assignable to return type \"list[Hat]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/macro.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"bool | float | tuple[int, int] | Any\" cannot be assigned to parameter \"is_pressed\" of type \"bool | None\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/macro.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"bool | float | tuple[int, int] | Any\" cannot be assigned to parameter \"value\" of type \"float | HatDirection | None\" in function \"__init__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/macro.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | UUID | Any\" cannot be assigned to parameter \"identifier\" of type \"int | ScanCode\" in function \"__init__\"",
+   "count": 3
+  },
+  {
+   "file": "gremlin/macro.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"is_extended\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/macro.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"scan_code\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/mode_manager.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Profile | None\" cannot be assigned to parameter \"active_profile\" of type \"Profile\" in function \"resolve_start_mode\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/mode_manager.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"modes\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/modules/claim.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"object | tuple[()] | tuple[Unknown] | list[Unknown]\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/modules/claim.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"object\" cannot be assigned to parameter \"key\" of type \"InputType\" in function \"__getitem__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/modules/claim.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/modules/claim.py",
+   "rule": "reportGeneralTypeIssues",
+   "message": "\"object\" is not iterable",
+   "count": 1
+  },
+  {
+   "file": "gremlin/modules/gate.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/modules/ids.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"uuid\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/modules/output.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"axis_id\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/modules/runtime.py",
+   "rule": "reportAssignmentType",
+   "message": "Type \"Signal\" is not assignable to declared type \"(self: Self@QObject, event: QEvent, /) -> bool\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/modules/runtime.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"emit\" for class \"MethodType\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/modules/wiring.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"object\" cannot be assigned to parameter \"input_type\" of type \"InputType\" in function \"input_to_ui_string\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | int\" cannot be assigned to parameter \"ip\" of type \"str\" in function \"add\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc_bulk.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"object\" cannot be assigned to parameter \"model\" of type \"OscDeviceManagementModel\" in function \"start_bulk\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc_bulk.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_bulk\" for class \"OscDeviceManagementModel\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc_bulk.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_bulk_mode\" for class \"OscDeviceManagementModel\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc_bulk.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_last_bulk_addr\" for class \"OscDeviceManagementModel\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc_bulk.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_last_bulk_time\" for class \"OscDeviceManagementModel\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc_persist.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"linear_index\" for class \"type[InputIdentifier]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/plugin_manager.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"library\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Element[str] | None\" cannot be assigned to parameter \"subelement\" of type \"Element[Any]\" in function \"append\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputType | None\" cannot be assigned to parameter \"value\" of type \"InputType\" in function \"to_string\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"UUID | None\" cannot be assigned to parameter \"key\" of type \"UUID\" in function \"__getitem__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"UUID | None\" cannot be assigned to parameter \"key\" of type \"UUID\" in function \"__setitem__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"list[Any | None]\" cannot be assigned to parameter \"iterable\" of type \"Iterable[SupportsRichComparisonT@sorted]\" in function \"sorted\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | None\" cannot be assigned to parameter \"mode_name\" of type \"str\" in function \"find_mode\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 6
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"mode\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \"&\" not supported for types \"int | ScanCode | None\" and \"Literal[N]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \">>\" not supported for types \"int | ScanCode | None\" and \"Literal[N]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"id\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"name\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "reportReturnType",
+   "message": "Type \"VirtualAxisButton | VirtualHatButton | None\" is not assignable to return type \"AbstractVirtualButton\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/sendinput.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"set_direction\" for class \"FixedMouseMotion\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/sendinput.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"set_dx\" for class \"AcceleratedMouseMotion\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/sendinput.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"set_dy\" for class \"AcceleratedMouseMotion\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/spline.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"x\" for class \"ControlPoint\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/spline.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"y\" for class \"ControlPoint\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/spline.py",
+   "rule": "reportReturnType",
+   "message": "Function with declared return type \"float\" must return value on all code paths",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/action_model.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"enumeration_index\" for class \"QObject\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/action_model.py",
+   "rule": "reportCallIssue",
+   "message": "Expected N more positional argument",
+   "count": 14
+  },
+  {
+   "file": "gremlin/ui/action_model.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"enumeration_index\" is not a known attribute of \"None\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/action_model.py",
+   "rule": "reportReturnType",
+   "message": "Type \"None\" is not assignable to return type \"InputType\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/action_model.py",
+   "rule": "reportReturnType",
+   "message": "Type \"int | None\" is not assignable to return type \"int\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/action_model.py",
+   "rule": "reportReturnType",
+   "message": "Type \"str | None\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/auto_map_modules.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputItem | None\" cannot be assigned to parameter \"input_item\" of type \"InputItem\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputType | None\" cannot be assigned to parameter \"input_type\" of type \"InputType\" in function \"get_input_item\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Property\" cannot be assigned to parameter \"mode\" of type \"str\" in function \"get_input_item\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Property\" cannot be assigned to parameter \"start_mode\" of type \"str\" in function \"start\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"UUID | None\" cannot be assigned to parameter \"device_guid\" of type \"UUID\" in function \"get_input_item\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode | None\" cannot be assigned to parameter \"input_id\" of type \"int | ScanCode\" in function \"get_input_item\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"device_guid\" for class \"Property\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"setVisibility\" for class \"QObject\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "reportCallIssue",
+   "message": "Expected N more positional argument",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"action_sequences\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal['QStringList']\" cannot be assigned to parameter \"type\" of type \"type\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"deviceName\" for class \"ModuleClaimedInputModel\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"guid\" for class \"ModuleClaimedInputModel\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"action_sequences\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"remove_item_binding\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/button_map_labels.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Any | None\" cannot be assigned to parameter \"key\" of type \"InputType\" in function \"get\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/button_map_labels.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"inputs\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/button_map_labels.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"modes\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/button_map_options.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal['QVariantMap']\" cannot be assigned to parameter \"type\" of type \"type\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputType | None\" cannot be assigned to parameter \"value\" of type \"InputType\" in function \"to_string\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"UUID | None\" cannot be assigned to parameter \"device_id\" of type \"str | UUID\" in function \"device_info\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"input_name\" for class \"dict[str, str]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"vjoy_device_id\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"vjoy_input_id\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"vjoy_input_type\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportGeneralTypeIssues",
+   "message": "\"int\" is not iterable",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \"-\" not supported for types \"int | ScanCode | None\" and \"Literal[N]\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportOptionalIterable",
+   "message": "Object of type \"None\" cannot be used as iterable value",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"action_label\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"axis_count\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"device_guid\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"drop_inputs\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"get_actions\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"get_input_item\" is not a known attribute of \"None\"",
+   "count": 3
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"value\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportRedeclaration",
+   "message": "Method declaration \"selectedIndex\" is obscured by a declaration of the same name",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "reportReturnType",
+   "message": "Type \"InputItem | None\" is not assignable to return type \"InputItem\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_pack.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/device_pack.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"id\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_pack.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"to_xml\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_pack.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"get\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/device_pack.py",
+   "rule": "reportOptionalSubscript",
+   "message": "Object of type \"None\" is not subscriptable",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal['JPG']\" cannot be assigned to parameter \"format\" of type \"bytes | bytearray | memoryview[int] | None\" in function \"save\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal['PNG']\" cannot be assigned to parameter \"format\" of type \"bytes | bytearray | memoryview[int] | None\" in function \"save\"",
+   "count": 3
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"OptionValue\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | Any | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | dict[Unknown, Unknown] | None\" cannot be assigned to parameter \"friendly\" of type \"dict[Unknown, Unknown]\" in function \"_filter_friendly\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | int | ScanCode | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"grabWindow\" for class \"Object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportCallIssue",
+   "message": "No overloads for \"save\" match the provided arguments",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportGeneralTypeIssues",
+   "message": "\"Property\" is not iterable",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"get\" is not a known attribute of \"None\"",
+   "count": 13
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"unlink\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/input_pairing.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/input_pairing.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"UUID | None\" cannot be assigned to parameter \"key\" of type \"UUID\" in function \"__getitem__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/input_pairing.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | int | ScanCode | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/live_input.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Any | float | HatDirection\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/live_input.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/live_input.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"connect\" for class \"MethodType\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/live_input.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"axis_map\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal['QVariantList']\" cannot be assigned to parameter \"type\" of type \"type\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"logical_input_id\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"logical_input_type\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"axis_mode\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"axis_scaling\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"button_inverted\" for class \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"action_sequences\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"insert_action\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_calibration.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/module_inputs.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"connect\" for class \"MethodType\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "reportIndexIssue",
+   "message": "\"__getitem__\" method not defined on type \"int\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "reportOperatorIssue",
+   "message": "Operator \"-\" not supported for types \"float\" and \"Property\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"get\" is not a known attribute of \"None\"",
+   "count": 3
+  },
+  {
+   "file": "gremlin/ui/module_pairing.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/module_pairing.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | int | ScanCode | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/option.py",
+   "rule": "reportAssignmentType",
+   "message": "Type \"Path\" is not assignable to declared type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/osc_device_model.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputType | None\" cannot be assigned to parameter \"value\" of type \"InputType\" in function \"to_string\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/osc_device_model.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/osc_option.py",
+   "rule": "reportAssignmentType",
+   "message": "Type \"None\" is not assignable to declared type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/osc_option.py",
+   "rule": "reportReturnType",
+   "message": "Type \"str\" is not assignable to return type \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/output_modules.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal['QVariantList']\" cannot be assigned to parameter \"type\" of type \"type\" in function \"__init__\"",
+   "count": 3
+  },
+  {
+   "file": "gremlin/ui/pair_live.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/pair_live.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 6
+  },
+  {
+   "file": "gremlin/ui/pair_live.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"connect\" for class \"MethodType\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"AbstractVirtualButton | None\" cannot be assigned to parameter \"virtual_button\" of type \"AbstractVirtualButton\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Any | None\" cannot be assigned to parameter \"key\" of type \"str\" in function \"__setitem__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Any | None\" cannot be assigned to parameter \"object\" of type \"str\" in function \"append\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"InputType | None\" cannot be assigned to parameter \"value\" of type \"InputType\" in function \"to_string\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal[InputType.JoystickAxis, InputType.JoystickButton, InputType.JoystickHat, InputType.Mouse, InputType.VirtualButton, InputType.Invalid] | None\" cannot be assigned to parameter \"value\" of type \"InputType\" in function \"to_string\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"None\" cannot be assigned to parameter \"index\" of type \"int\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Profile | None\" cannot be assigned to parameter \"profile\" of type \"Profile\" in function \"get_profile_devices\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | int | SequenceIndex\" cannot be assigned to parameter \"index\" of type \"SequenceIndex\" in function \"get_action_container_index\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"tuple[AbstractActionData, str]\" cannot be assigned to parameter \"object\" of type \"tuple[AbstractActionData, None]\" in function \"append\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"container_name\" for class \"int\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"direction\" for class \"AbstractVirtualButton\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"directions\" for class \"AbstractVirtualButton\"",
+   "count": 6
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"enumeration_index\" for class \"QObject\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"index\" for class \"int\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"lower_limit\" for class \"AbstractVirtualButton\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"parent_index\" for class \"int\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"upper_limit\" for class \"AbstractVirtualButton\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"direction\" for class \"AbstractVirtualButton\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"lower_limit\" for class \"AbstractVirtualButton\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"upper_limit\" for class \"AbstractVirtualButton\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportCallIssue",
+   "message": "Expected N more positional argument",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportOptionalCall",
+   "message": "Object of type \"None\" cannot be called",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"modes\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"settings\" is not a known attribute of \"None\"",
+   "count": 8
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"value\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportReturnType",
+   "message": "Type \"AbstractActionData | None\" is not assignable to return type \"AbstractActionData\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "reportReturnType",
+   "message": "Type \"InputType | None\" is not assignable to return type \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"_input_type\" for class \"AbstractVariable\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"input_id\" for class \"AbstractVariable\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"input_type\" for class \"AbstractVariable\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"max_value\" for class \"AbstractVariable\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"min_value\" for class \"AbstractVariable\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"options\" for class \"AbstractVariable\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"valid_types\" for class \"AbstractVariable\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"vjoy_id\" for class \"AbstractVariable\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_input_id\" for class \"AbstractVariable\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_input_type\" for class \"AbstractVariable\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_vjoy_id\" for class \"AbstractVariable\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportCallIssue",
+   "message": "Expected N more positional argument",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportGeneralTypeIssues",
+   "message": "\"int\" is not iterable",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportReturnType",
+   "message": "Type \"Property\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/script.py",
+   "rule": "reportReturnType",
+   "message": "Type \"str | Any | None\" is not assignable to return type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"None\" cannot be assigned to parameter \"prcRect\" of type \"PyRECT\" in function \"TrackPopupMenu\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"PyResourceId\" cannot be assigned to parameter \"className\" of type \"str\" in function \"CreateWindowEx\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"tuple[int | Unknown, Literal[N], Literal[N], Literal[N], Literal[N], Literal[''], Literal[''], Literal[N]]\" cannot be assigned to parameter \"nid\" of type \"PyNOTIFYICONDATA\" in function \"Shell_NotifyIcon\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"tuple[int | Unknown, Literal[N], int, Literal[N], int, Literal['Gremlin-Platforms'], str, Literal[N], str, int]\" cannot be assigned to parameter \"nid\" of type \"PyNOTIFYICONDATA\" in function \"Shell_NotifyIcon\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"tuple[int | Unknown, Literal[N], int, Literal[N], int, Literal['Gremlin-Platforms']]\" cannot be assigned to parameter \"nid\" of type \"PyNOTIFYICONDATA\" in function \"Shell_NotifyIcon\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"tuple[int | Unknown, Literal[N], int, Literal[N], int]\" cannot be assigned to parameter \"nid\" of type \"PyNOTIFYICONDATA\" in function \"Shell_NotifyIcon\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"tuple[int | Unknown, Literal[N]]\" cannot be assigned to parameter \"nid\" of type \"PyNOTIFYICONDATA\" in function \"Shell_NotifyIcon\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"hInstance\" for class \"PyWNDCLASS\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"lpfnWndProc\" for class \"PyWNDCLASS\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"lpszClassName\" for class \"PyWNDCLASS\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportCallIssue",
+   "message": "Expected N positional arguments",
+   "count": 6
+  },
+  {
+   "file": "gremlin/ui/system_tray.py",
+   "rule": "reportReturnType",
+   "message": "Type \"PyGdiHANDLE\" is not assignable to return type \"int\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/tools.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Profile | None\" cannot be assigned to parameter \"profile\" of type \"Profile\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/tools.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Profile | None\" cannot be assigned to parameter \"profile\" of type \"Profile\" in function \"swap_devices\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/tray_memory.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"releaseResources\" for class \"QWindow\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/type_aliases.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str\" cannot be assigned to parameter \"qml_name\" of type \"bytes | bytearray | memoryview[int]\" in function \"qmlRegisterType\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/type_aliases.py",
+   "rule": "reportCallIssue",
+   "message": "No overloads for \"qmlRegisterType\" match the provided arguments",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/ui_scale_option.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/update_model.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Property\" cannot be assigned to parameter \"latest\" of type \"str\" in function \"is_newer\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/update_model.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Property\" cannot be assigned to parameter \"running\" of type \"str\" in function \"should_offer\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/update_model.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Property\" cannot be assigned to parameter \"url\" of type \"str\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/update_model.py",
+   "rule": "reportCallIssue",
+   "message": "No overloads for \"__init__\" match the provided arguments",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/update_model.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"name\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/update_model.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"setup\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/update_model.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"shaN\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/update_model.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"size\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/update_model.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"url\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"bool | None\" cannot be assigned to parameter \"is_pressed\" of type \"bool\" in function \"__init__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"bool | None\" cannot be assigned to parameter \"value\" of type \"bool | float | tuple[int, int]\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"initial_value\" of type \"float\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"new_value\" of type \"float\" in function \"is_significant_change\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"value\" of type \"bool | float | tuple[int, int]\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode\" cannot be assigned to parameter \"button\" of type \"MouseButton\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode\" cannot be assigned to parameter \"input_id\" of type \"int | UUID\" in function \"__init__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/util.py",
+   "rule": "reportGeneralTypeIssues",
+   "message": "\"int\" is not iterable",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/viewer_devices.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/viewer_devices.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"uuid\" for class \"str\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/window_placement.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QObject\" cannot be assigned to parameter \"window\" of type \"QWindow\" in function \"restore_tool\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/window_placement.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QObject\" cannot be assigned to parameter \"window\" of type \"QWindow\" in function \"restore_window\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/window_placement.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QObject\" cannot be assigned to parameter \"window\" of type \"QWindow\" in function \"save_tool\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/window_placement.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QObject\" cannot be assigned to parameter \"window\" of type \"QWindow\" in function \"save_window\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/window_placement.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"primaryScreen\" for class \"QCoreApplication\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/window_placement.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"screenAt\" for class \"QCoreApplication\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/window_placement.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"screens\" for class \"QCoreApplication\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/window_placement.py",
+   "rule": "reportOptionalSubscript",
+   "message": "Object of type \"None\" is not subscriptable",
+   "count": 5
+  },
+  {
+   "file": "gremlin/ui/xbox_device_model.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Any | None\" cannot be assigned to parameter \"value\" of type \"InputType\" in function \"to_string\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/xbox_device_model.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/xbox_device_model.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"input_id\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/xbox_maps.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"value\" is not a known attribute of \"None\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | int | ScanCode | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | ScanCode\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"connect\" for class \"MethodType\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/updater.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | None\" cannot be assigned to parameter \"tag\" of type \"str\" in function \"version_from_tag\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/updater.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"ModuleSpec | None\" cannot be assigned to parameter \"spec\" of type \"ModuleSpec\" in function \"module_from_spec\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"UUID | None\" cannot be assigned to parameter \"script_id\" of type \"UUID\" in function \"get\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | Any | None\" cannot be assigned to parameter \"key\" of type \"str\" in function \"__setitem__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | Any | None\" cannot be assigned to parameter \"name\" of type \"str\" in function \"get\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"label\" for class \"AbstractVariable\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_script_id\" for class \"ModuleType\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"exec_module\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"loader\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportOptionalMemberAccess",
+   "message": "\"modes\" is not a known attribute of \"None\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportReturnType",
+   "message": "Type \"UUID | Any | None\" is not assignable to return type \"UUID\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportReturnType",
+   "message": "Type \"int | float | Any\" is not assignable to return type \"int\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/user_script.py",
+   "rule": "reportReturnType",
+   "message": "Type \"tuple[UUID | Any | None, InputType | Any, int | Any]\" is not assignable to return type \"Identifier\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Any | str | None\" cannot be assigned to parameter of type \"str\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | None\" cannot be assigned to parameter \"args\" of type \"StrPath\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | None\" cannot be assigned to parameter \"args\" of type \"StrPath\" in function \"__new__\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | None\" cannot be assigned to parameter \"value\" of type \"str\" in function \"parse_bool\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/util.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"str | None\" cannot be assigned to parameter \"value\" of type \"str\" in function \"to_enum\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/util.py",
+   "rule": "reportAssignmentType",
+   "message": "Type \"float\" is not assignable to declared type \"int\"",
+   "count": 2
+  },
+  {
+   "file": "gremlin/util.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "\"_MEIPASS\" is not a known attribute of module \"sys\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/util.py",
+   "rule": "reportInvalidTypeForm",
+   "message": "Call expression not allowed in type expression",
+   "count": 1
+  },
+  {
+   "file": "gremlin/util.py",
+   "rule": "reportReturnType",
+   "message": "Type \"tuple[PropertyType | None, bool]\" is not assignable to return type \"tuple[PropertyType, bool]\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/windows_event_hook.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal[MouseButton.Left, MouseButton.Right, MouseButton.Middle, MouseButton.Back, MouseButton.Forward, MouseButton.WheelUp, MouseButton.WheelDown] | None\" cannot be assigned to parameter \"button_id\" of type \"MouseButton\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal['Gremlin.Style']\" cannot be assigned to parameter \"uri\" of type \"bytes | bytearray | memoryview[int]\" in function \"qmlRegisterSingletonType\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal['Style']\" cannot be assigned to parameter \"qmlName\" of type \"bytes | bytearray | memoryview[int]\" in function \"qmlRegisterSingletonType\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"QObject\" cannot be assigned to parameter \"window\" of type \"QWindow\" in function \"__init__\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "\"hardware_profile\" is not a known attribute of module \"gremlin.ui\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "\"wintypes\" is not a known attribute of module \"ctypes\"",
+   "count": 4
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"NativeTextRendering\" for class \"type[QQuickWindow]\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"accentChanged\" for class \"QObject\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"backgroundChanged\" for class \"QObject\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"foregroundChanged\" for class \"QObject\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"lockInfo\" for class \"QLockFile\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot assign to attribute \"_instance_lock\" for class \"JoystickGremlinApp\"",
+   "count": 1
+  },
+  {
+   "file": "joystick_gremlin.py",
+   "rule": "reportCallIssue",
+   "message": "No overloads for \"qmlRegisterSingletonType\" match the provided arguments",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | int | None\" cannot be assigned to parameter \"iid\" of type \"int\" in function \"_error_string\"",
+   "count": 2
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Unknown | int | None\" cannot be assigned to parameter \"key\" of type \"int\" in function \"__getitem__\"",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int | None\" cannot be assigned to parameter \"vid\" of type \"int\" in function \"_error_string\"",
+   "count": 15
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"int\" cannot be assigned to parameter \"key\" of type \"AxisCode\" in function \"get\"",
+   "count": 2
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"AcquireVJD\" for class \"type[VJoyInterface]\"",
+   "count": 3
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"GetOwnerPid\" for class \"type[VJoyInterface]\"",
+   "count": 4
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"GetVJDAxisExist\" for class \"type[VJoyInterface]\"",
+   "count": 2
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"GetVJDAxisMax\" for class \"type[VJoyInterface]\"",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"GetVJDAxisMin\" for class \"type[VJoyInterface]\"",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"GetVJDButtonNumber\" for class \"type[VJoyInterface]\"",
+   "count": 2
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"GetVJDContPovNumber\" for class \"type[VJoyInterface]\"",
+   "count": 3
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"GetVJDDiscPovNumber\" for class \"type[VJoyInterface]\"",
+   "count": 2
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"GetVJDStatus\" for class \"type[VJoyInterface]\"",
+   "count": 5
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"GetvJoyVersion\" for class \"type[VJoyInterface]\"",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"RelinquishVJD\" for class \"type[VJoyInterface]\"",
+   "count": 2
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"ResetVJD\" for class \"type[VJoyInterface]\"",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"SetAxis\" for class \"type[VJoyInterface]\"",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"SetBtn\" for class \"type[VJoyInterface]\"",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"SetContPov\" for class \"type[VJoyInterface]\"",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"SetDiscPov\" for class \"type[VJoyInterface]\"",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"axis_id\" for class \"Hat*\"",
+   "count": 3
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"vJoyEnabled\" for class \"type[VJoyInterface]\"",
+   "count": 1
+  },
+  {
+   "file": "vjoy/vjoy.py",
+   "rule": "reportCallIssue",
+   "message": "No overloads for \"get\" match the provided arguments",
+   "count": 2
+  },
+  {
+   "file": "vjoy/vjoy_interface.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "\"_MEIPASS\" is not a known attribute of module \"sys\"",
+   "count": 1
+  }
+ ],
+ "ruff": [
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `default`",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_read_xml_property`",
+   "count": 1
+  },
+  {
+   "file": "action_plugins/map_to_xbox/__init__.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `index`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `item`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `library`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `original`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `resolve_item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `role`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `self`",
+   "count": 8
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_device_item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_keyboard_item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_logical_item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_osc_item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_patch_description`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_read_item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/action_label.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/auto_mapper.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_source_uuid`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/auto_mapper.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/config.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `_retrieve_value`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/config.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `get`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/config.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `initial_value`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/config.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `value`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/event_handler.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/logical_device.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 5
+  },
+  {
+   "file": "gremlin/osc.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `*args`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `cfg`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `osc_option`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `self`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/osc.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `value`",
+   "count": 3
+  },
+  {
+   "file": "gremlin/osc.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
+  },
+  {
+   "file": "gremlin/osc_bulk.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `self`",
+   "count": 3
+  },
+  {
+   "file": "gremlin/osc_persist.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `self`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/profile.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 3
+  },
+  {
+   "file": "gremlin/ui/action_image_generator.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/auto_map_modules.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `loader`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/auto_map_modules.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/auto_map_modules.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/backend.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `action`",
+   "count": 5
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `dest`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `didx`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `hw`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `item`",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `key`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `kind`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `lab`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `name`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `seq_index`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `shown`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `paneModel`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_control_spec`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_input_item_for`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_shown_for_device`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/binding_catalog.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 5
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 5
+  },
+  {
+   "file": "gremlin/ui/device.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_names.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_pack.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `action`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_pack.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_pack.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `resolve`",
+   "count": 4
+  },
+  {
+   "file": "gremlin/ui/device_pack.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 26
+  },
+  {
+   "file": "gremlin/ui/device_pack.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `binding`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `profile`",
+   "count": 3
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `raw`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `uid`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `chips`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hardware_profile.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 23
+  },
+  {
+   "file": "gremlin/ui/hidhide.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `dev`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hidhide.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `handle`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/hidhide.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `hw`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hidhide.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `deviceAt`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hidhide.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `gameAt`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hidhide.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_open_control`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hidhide.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 45
+  },
+  {
+   "file": "gremlin/ui/hidhide.py",
+   "rule": "F841",
+   "message": "Local variable `CR_BUFFER_SMALL` is assigned to but never used",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hidhide.py",
+   "rule": "F841",
+   "message": "Local variable `DIGCF_PRESENT` is assigned to but never used",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/hidhide.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/highlight_option.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/input_pairing.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `action`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/input_pairing.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `item`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/input_pairing.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_items_for_guid`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/input_pairing.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/input_pairing.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/input_pairing.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/live_debug.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/live_input.py",
+   "rule": "E402",
+   "message": "Module level import not at top of file",
+   "count": 5
+  },
+  {
+   "file": "gremlin/ui/live_input.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/log_option.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/log_option.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `fn`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `guid`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `item`",
+   "count": 6
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `links`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `src_id`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `src_type`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `paneModel`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_add_link`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_input_items`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_item_for`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_next_in_group`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_profile`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_spec`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `fn_at`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `fn_before`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `fn_group`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `fn_into`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `fn`",
+   "count": 15
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 25
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "F841",
+   "message": "Local variable `kept` is assigned to but never used",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/logical_layout.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_calibration.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_calibration.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_inputs.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_inputs.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_input_item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_inputs.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/module_inputs.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `desc`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `dtype`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `initial`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `key`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `name`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `props`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `value`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `data`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 35
+  },
+  {
+   "file": "gremlin/ui/module_model.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_pairing.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_pairing.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_pairing.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/module_pairing.py",
+   "rule": "E402",
+   "message": "Module level import not at top of file",
+   "count": 3
+  },
+  {
+   "file": "gremlin/ui/module_pairing.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 3
+  },
+  {
+   "file": "gremlin/ui/module_pairing.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/option.py",
+   "rule": "E402",
+   "message": "Module level import not at top of file",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/osc_device_model.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_index_to_input`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/osc_device_model.py",
+   "rule": "F401",
+   "message": "`typing.Any` imported but unused",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/osc_device_model.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/osc_option.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/osc_option.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/output_modules.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/output_modules.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/pair_live.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/pair_live.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/profile.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/shell_option.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/shell_option.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/ui_scale_option.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/ui_scale_option.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/util.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `path_or_url`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/viewer_devices.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/viewer_devices.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `listRows`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/viewer_devices.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/viewer_devices.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/vjoy_status.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/window_placement.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 3
+  },
+  {
+   "file": "gremlin/ui/windows_scale_option.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/windows_scale_option.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/xbox_device_model.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/xbox_device_model.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/xbox_maps.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `action`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/xbox_maps.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `item`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `items`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `data`",
+   "count": 2
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `data`",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 5
+  },
+  {
+   "file": "gremlin/ui/xbox_viewer.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "gremlin/util.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 3
+  },
+  {
+   "file": "test/unit/print_export_window_smoke.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_binding_catalog.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `tag`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_binding_catalog.py",
+   "rule": "ANN003",
+   "message": "Missing type annotation for `**kw`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_binding_catalog.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `get_actions`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_binding_catalog.py",
+   "rule": "ANN204",
+   "message": "Missing return type annotation for special method `__init__`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_bound_cards.py",
+   "rule": "E402",
+   "message": "Module level import not at top of file",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_bound_cards.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 3
+  },
+  {
+   "file": "test/unit/test_bound_cards.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `action`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `children`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `name`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `root`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `seq`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `tag`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `where`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN003",
+   "message": "Missing type annotation for `**kw`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_load_helpers`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `add_item_binding`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `get_actions`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `insert_action`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `remove_item_binding`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "ANN204",
+   "message": "Missing return type annotation for special method `__init__`",
+   "count": 3
+  },
+  {
+   "file": "test/unit/test_catalog_actions.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `align`",
+   "count": 6
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `d`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `left`",
+   "count": 6
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `right`",
+   "count": 6
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `total`",
+   "count": 6
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `v`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `width_pct`",
+   "count": 6
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `leaf_w`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `leaf_x`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `num_val`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `row_w`",
+   "count": 2
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `row_x`",
+   "count": 2
+  },
+  {
+   "file": "test/unit/test_catalog_display.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 8
+  },
+  {
+   "file": "test/unit/test_dest_live_guid.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `node`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_dest_live_guid.py",
+   "rule": "E402",
+   "message": "Module level import not at top of file",
+   "count": 2
+  },
+  {
+   "file": "test/unit/test_dest_live_guid.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_hidhide_group.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `inst`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_hidhide_group.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `test_devices_sort_by_name_then_id`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_hidhide_group.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `test_different_usb_parents_stay_apart`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_hidhide_group.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `test_no_parent_does_not_merge_whole_vendor`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_hidhide_group.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `test_nxt_interfaces_share_usb_parent_group`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_hidhide_group.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `test_saved_programs_load_sorted`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_hidhide_group.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `parent`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_hidhide_group.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_hidhide_log.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `caplog`",
+   "count": 2
+  },
+  {
+   "file": "test/unit/test_hidhide_log.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `test_messages_reach_the_system_log`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_hidhide_log.py",
+   "rule": "ANN201",
+   "message": "Missing return type annotation for public function `test_missing_driver_at_start_is_a_warning`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_input_module_gate.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_logical_layout.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `qapp`",
+   "count": 7
+  },
+  {
+   "file": "test/unit/test_logical_layout.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `tmp_path`",
+   "count": 3
+  },
+  {
+   "file": "test/unit/test_logical_layout.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_button_one`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_logical_layout.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_mode_refresh_and_add_key.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
+  },
+  {
+   "file": "test/unit/test_output_view_pads.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `all_hw`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_output_view_pads.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `hw`",
+   "count": 2
+  },
+  {
+   "file": "test/unit/test_output_view_pads.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `meters`",
+   "count": 2
+  },
+  {
+   "file": "test/unit/test_output_view_pads.py",
+   "rule": "ANN001",
+   "message": "Missing type annotation for function argument `on`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_output_view_pads.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `meter_on`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_output_view_pads.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `toggle`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_output_view_pads.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 3
+  },
+  {
+   "file": "test/unit/test_pages_fit.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_pane_draft.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_print_export_window.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
+  },
+  {
+   "file": "test/unit/test_sequence_reorder.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `_sequences`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_user_script.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_window_placement.py",
+   "rule": "ANN202",
+   "message": "Missing return type annotation for private function `availableGeometry`",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_window_placement.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 1
+  },
+  {
+   "file": "test/unit/test_window_placement.py",
+   "rule": "I001",
+   "message": "Import block is un-sorted or un-formatted",
+   "count": 5
+  },
+  {
+   "file": "vigem/ids.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `dev`",
+   "count": 1
+  },
+  {
+   "file": "vigem/ids.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `device_guid`",
+   "count": 1
+  },
+  {
+   "file": "vigem/xbox.py",
+   "rule": "ANN401",
+   "message": "Dynamically typed expressions (typing.Any) are disallowed in `value`",
+   "count": 2
+  }
+ ]
+}

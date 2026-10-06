@@ -402,3 +402,9 @@ and Q12 as written there). Every question answered as recommended:
 The section 8 statements are now the definition of correct for this
 subsystem; where today's code differs (section 10 and the decisions above),
 that is a gap to fix, each starting as a failing test.
+
+**Change (user, 2026-10-06), S39:** an axis-range button sends no release
+without a press: if the axis was already inside the range at Run (no press,
+Q13), leaving the range sends nothing. S39 now reads: "... an axis already
+inside the range at Run gives no press, and leaving it then gives no
+release." [user decision: 06 S39 addition]

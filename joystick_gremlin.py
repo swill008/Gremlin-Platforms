@@ -51,6 +51,7 @@ from PySide6 import (
 
 import dill
 import resources  # noqa: F401
+from gremlin import clock
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
 
@@ -522,7 +523,7 @@ def _terminate_other_gremlin(pids: list[int]) -> None:
             )
         except Exception:
             pass
-    time.sleep(0.4)
+    clock.sleep(0.4)
 
 
 def _confirm_second_instance(

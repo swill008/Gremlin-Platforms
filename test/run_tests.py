@@ -10,6 +10,8 @@
     python test/run_tests.py PATH...         these test files or folders
     python test/run_tests.py --changed       the tests that touch what changed
                                              since the last commit (while working)
+    python test/run_tests.py --random-order  any of the above in random order (the
+                                             seed is printed; --seed N repeats it)
 
 The folders run at the same time in separate pytest runs (test/unit can't
 share a process with the two that need the Gremlin app), and test/unit is
@@ -38,7 +40,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-FOLDERS = ["test/unit", "test/action_interaction", "test/integration"]
+FOLDERS = ["test/unit", "test/action_interaction", "test/integration", "test/journeys"]
 # 8 cores: 6 unit parts and the two other folders. Measured full runs:
 # 4 parts 1:10, 5 parts 0:59, 6 parts 0:54 (then action_interaction is the
 # longest part).
@@ -232,17 +234,30 @@ def plan(targets: list[str], parts: int) -> list[Part]:
     return jobs
 
 
-def _start(part: Part, quick: bool, lines: queue.Queue) -> None:
+def _validate_report(part: Part) -> pathlib.Path:
+    """Each part's own validate report (test/conftest.py writes it): parts
+    running at once don't write into one file."""
+    return pathlib.Path(tempfile.gettempdir()) / f"gremlin-validate-{part.name}.txt"
+
+
+def _start(
+    part: Part, quick: bool, lines: queue.Queue, extra: tuple[str, ...] = ()
+) -> None:
     command = [
         sys.executable, "-m", "pytest", "-v", "-p", "no:cacheprovider",
-        "-o", "console_output_style=count", "--durations=15", *part.targets,
+        "-o", "console_output_style=count", "--durations=15", *extra,
+        *part.targets,
     ]
     if quick:
         command.insert(4, "-x")
     part.process = subprocess.Popen(
         command, cwd=_ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, encoding="utf-8", errors="replace",
-        env=dict(os.environ, PYTHONUNBUFFERED="1"),
+        env=dict(
+            os.environ,
+            PYTHONUNBUFFERED="1",
+            GREMLIN_VALIDATE_REPORT=str(_validate_report(part)),
+        ),
     )
     part.began = part.last_output = part.last_result = time.monotonic()
 
@@ -271,7 +286,9 @@ def _end(process: subprocess.Popen) -> None:
     )
 
 
-def run(parts: list[Part], quick: bool, log) -> tuple[list[tuple[float, str]], float]:  # noqa: ANN001
+def run(
+    parts: list[Part], quick: bool, log, extra: tuple[str, ...] = ()  # noqa: ANN001
+) -> tuple[list[tuple[float, str]], float]:
     start = time.monotonic()
 
     def say(part: Part | None, text: str) -> None:
@@ -285,7 +302,7 @@ def run(parts: list[Part], quick: bool, log) -> tuple[list[tuple[float, str]], f
 
     lines: queue.Queue = queue.Queue()
     for part in parts:
-        _start(part, quick, lines)
+        _start(part, quick, lines, extra)
         what = " ".join(part.targets)
         if len(part.targets) > 3:
             what = f"{len(part.targets)} files"
@@ -351,6 +368,11 @@ def main() -> int:
                         help="stop at the first failure")
     parser.add_argument("--parts", type=int, default=UNIT_PARTS,
                         help=f"parts test/unit is split into (default {UNIT_PARTS})")
+    parser.add_argument("--random-order", action="store_true",
+                        help="run the tests in random order (test/conftest.py "
+                             "shuffles them; the seed is printed)")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="the random order's seed (implies --random-order)")
     args = parser.parse_args()
 
     if args.failed:
@@ -382,11 +404,34 @@ def main() -> int:
         _done_running()
 
 
+def _order_options(args: argparse.Namespace) -> tuple[str, ...]:
+    """The random-order options for every part (all with the same seed, so
+    the run can be repeated): --seed, else GREMLIN_TEST_SEED, else a new
+    one."""
+    if not args.random_order and args.seed is None:
+        return ()
+    seed = args.seed
+    if seed is None:
+        try:
+            seed = int(os.environ.get("GREMLIN_TEST_SEED", ""))
+        except ValueError:
+            import random
+
+            seed = random.randrange(1, 1_000_000)
+    return ("--random-order", f"--random-seed={seed}")
+
+
 def _run_and_report(targets: list[str], args: argparse.Namespace) -> int:
     parts = plan(targets, args.parts)
+    extra = _order_options(args)
     with _LOG.open("w", encoding="utf-8") as log:
         print(f"Log: {_LOG}", flush=True)
-        slow, took = run(parts, args.quick, log)
+        if extra:
+            seed = extra[1].split("=")[1]
+            note = f"Random order, seed {seed} (repeat with --seed {seed})"
+            print(note, flush=True)
+            log.write(note + "\n")
+        slow, took = run(parts, args.quick, log, extra)
         failed = [node for p in parts for node in p.failed]
         if not args.failed or not failed:
             _save(_failed_file(), failed)
@@ -409,6 +454,8 @@ def _run_and_report(targets: list[str], args: argparse.Namespace) -> int:
             out.append("Slowest:")
             slowest = sorted(slow, reverse=True)[:10]
             out += [f"  {s:6.2f}s {what}" for s, what in slowest]
+        out.append("Validate reports:")
+        out += [f"  {p.name:<11} {_validate_report(p)}" for p in parts]
         out.append(f"Log: {_LOG}")
         for line in out:
             print(line, flush=True)

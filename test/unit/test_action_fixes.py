@@ -20,6 +20,9 @@ ACT19, ACT20, ACT21).
   (ACT20).
 - A Run that failed after connecting left the signals connected, so the next
   Run handled every event twice (ACT21).
+
+The macro and timer tests wait for the macro threads or for a later timer,
+not a fixed time (GL-001, AU-119).
 """
 
 from __future__ import annotations
@@ -30,14 +33,18 @@ sys.path.append(".")
 
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
-from PySide6 import QtCore, QtTest
+from PySide6 import QtCore
 
 from gremlin import threads
+
+if TYPE_CHECKING:
+    from gremlin.macro import MacroManager
 
 
 @pytest.fixture(autouse=True)
@@ -146,7 +153,7 @@ def macros(monkeypatch: pytest.MonkeyPatch) -> Iterator[object]:
 
     monkeypatch.setattr(threads, "_live", {})
     manager = MacroManager()
-    manager.default_delay = 0.0
+    monkeypatch.setattr(manager, "default_delay", 0.0)
     manager.start()
     yield manager
     manager.stop()
@@ -163,22 +170,48 @@ def _hold_macro(runs: list) -> object:
     return macro
 
 
-def test_a_hold_macro_released_at_once_stops(macros: object) -> None:
+_LIMIT_S = 10.0  # generous: a busy PC is slow, never wrong
+
+
+def _wait_for(check: Callable[[], bool]) -> bool:
+    end = time.monotonic() + _LIMIT_S
+    while not check():
+        if time.monotonic() > end:
+            return False
+        time.sleep(0.01)
+    return True
+
+
+def _no_macro_running() -> bool:
+    return threads.PREFIX + "macro" not in threads.running()
+
+
+def _run_one_macro(macros: "MacroManager") -> None:
+    """Queues a one-step macro and waits until it ran (wakes the scheduler)."""
+    from gremlin.macro import Macro
+
+    woken: list = []
+    other = Macro()
+    other.add_action(lambda: woken.append(1))
+    macros.queue_macro(other)
+    assert _wait_for(lambda: bool(woken) and _no_macro_running())
+
+
+def test_a_hold_macro_released_at_once_stops(macros: "MacroManager") -> None:
     runs: list = []
     macro = _hold_macro(runs)
     macros.queue_macro(macro)
     macros.terminate_macro(macro)  # released before its thread started
-    deadline = time.monotonic() + 2.0
-    while threads.running() and time.monotonic() < deadline:
-        time.sleep(0.02)
+    # Handled, and it stopped (it used to keep running).
+    assert _wait_for(lambda: macros._queued_macros == [] and _no_macro_running())
     count = len(runs)
-    time.sleep(0.2)
-    assert len(runs) == count  # it stopped (it used to keep running)
+    _run_one_macro(macros)  # the scheduler runs again: it doesn't come back
+    assert len(runs) == count
     assert macros._queued_macros == []  # the stop request went too
 
 
-def test_run_starts_with_no_stale_macros(macros: object) -> None:
-    from gremlin.macro import Macro, MacroEntry
+def test_run_starts_with_no_stale_macros(macros: "MacroManager") -> None:
+    from gremlin.macro import MacroEntry
 
     stale_runs: list = []
     stale = _hold_macro(stale_runs)
@@ -186,15 +219,8 @@ def test_run_starts_with_no_stale_macros(macros: object) -> None:
         macros._queued_macros.append(MacroEntry(stale, True))
     macros.stop()
     macros.start()
-    woken: list = []
-    other = Macro()
-    other.add_action(lambda: woken.append(1))
-    macros.queue_macro(other)  # wakes the scheduler
-    deadline = time.monotonic() + 2.0
-    while not woken and time.monotonic() < deadline:
-        time.sleep(0.02)
-    time.sleep(0.1)
-    assert woken and stale_runs == []  # the stale one didn't run
+    _run_one_macro(macros)  # wakes the scheduler; a stale one would run too
+    assert stale_runs == []  # the stale one didn't run
     macros.terminate_macro(stale)
 
 
@@ -222,18 +248,24 @@ def test_loading_a_profile_keeps_the_search_path_in_order(
 # ACT20 --------------------------------------------------------------------
 
 
+def _run_events_until(check: Callable[[], bool]) -> bool:
+    return _wait_for(lambda: QtCore.QCoreApplication.processEvents() or check())
+
+
 def test_action_timeouts_run_on_the_main_thread() -> None:
     ran_on = []
     t = threads.main_timer(
         "test", 0.01, lambda: ran_on.append(threading.current_thread())
     )
     assert t.is_alive()
-    QtTest.QTest.qWait(100)
+    assert _run_events_until(lambda: bool(ran_on))
     assert ran_on == [threading.main_thread()]
     cancelled = []
     t = threads.main_timer("test", 0.01, lambda: cancelled.append(1))
     t.cancel()
-    QtTest.QTest.qWait(100)
+    later: list = []  # a later timer: the cancelled one would have run first
+    QtCore.QTimer.singleShot(50, lambda: later.append(1))
+    assert _run_events_until(lambda: bool(later))
     assert cancelled == [] and not t.is_alive()
 
 

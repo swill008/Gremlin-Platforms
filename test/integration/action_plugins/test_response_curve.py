@@ -92,6 +92,16 @@ def profile_setup(
     profile_for_test.inputs.setdefault(dill.UUID_LogicalDevice, []).append(input_item)
 
 
+@pytest.fixture(autouse=True)
+def default_response_curve(
+    response_curve_action: response_curve.ResponseCurveData,
+) -> None:
+    """Puts the shared action back to its default curve and deadzone, so a
+    test never sees the curve an earlier test (in any order) left on it."""
+    response_curve_action.curve = spline.PiecewiseLinear()
+    response_curve_action.deadzone = [-1.0, 0.0, 0.0, 1.0]
+
+
 class TestResponseCurve:
     """Tests for response curve action."""
 

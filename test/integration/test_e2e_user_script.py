@@ -124,6 +124,19 @@ class TestUserScript:
     ) -> None:
         input_button_id = 1
         output_button_id = 2
+        # Start from the other state, reached by a change: the button may
+        # already be at either state (at rest, or left by an earlier test),
+        # and writing the same state sends no event for the script to invert,
+        # so the output would not match until one comes. The script inverts
+        # the button.
+        vjoy_control_device.button(index=input_button_id).is_pressed = di_input
+        tester.assert_cached_button_eventually_equals(
+            vjoy_di_device.device_guid.uuid, input_button_id, di_input
+        )
+        vjoy_control_device.button(index=input_button_id).is_pressed = not di_input
+        tester.assert_cached_button_eventually_equals(
+            vjoy_di_device.device_guid.uuid, output_button_id, di_input
+        )
         vjoy_control_device.button(index=input_button_id).is_pressed = di_input
         with subtests.test("input readback"):
             tester.assert_button_eventually_equals(

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from gremlin import (
+    clock,
     common,
     error,
     util,
@@ -172,7 +173,7 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 "default: " + ", ".join(skipped)
             )
 
-        self._last_reload = time.time()
+        self._last_reload = clock.monotonic()
         self._history_view = self._settings_view()
 
     # Settings the user chooses (Options, HidHide, OSC, folders) go in the
@@ -500,7 +501,10 @@ class Configuration(metaclass=common.SingletonMetaclass):
             raise error.GremlinError(f"Invalid name '{name}'.")
 
     def _should_skip_reload(self) -> bool:
-        return self._last_reload is not None and time.time() - self._last_reload < 1.0
+        return (
+            self._last_reload is not None
+            and clock.monotonic() - self._last_reload < 1.0
+        )
 
 
 def _same_program(a: str, b: str) -> bool:

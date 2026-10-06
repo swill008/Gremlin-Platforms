@@ -12,7 +12,7 @@ Built 2026-10-06 from the nine approved subsystem pages in `claude/program-map/`
 
 **Words used.** Severity: data-loss, crash-or-hang, safety, wrong-behaviour, ux, text, cleanup. Status: confirmed-in-code (seen in the code), suspected (likely, not proven), needs-hands-on (only a real screen or PC can show it). A merged entry takes the highest severity and the strongest status of its parts.
 
-**Totals.** 366 source items from 9 pages, merged into 309 entries (GL-001 to GL-309).
+**Totals.** 366 source items from 9 pages, merged into 309 entries (GL-001 to GL-309); GL-310 and GL-311 added by Stage 1.
 
 | Severity | Entries |
 |---|---|
@@ -43,6 +43,8 @@ Built 2026-10-06 from the nine approved subsystem pages in `claude/program-map/`
 | 9. Parked (OSC) | 29 |
 
 ## 1. Stage 1 safety net (tests and what journey tests need first)
+
+**Done 2026-10-06 (Stage 1 commit), except GL-016 (the user's hands-on checks).** GL-001, GL-002 and GL-003 are fixed; GL-004 to GL-025 now have tests (behaviour the spec agrees with is locked in; known gaps are strict xfails named by their GL id, so each fails the suite once fixed until its mark is removed). Plus: CI on every push, random test order, the lint baseline, `gremlin/validate.py` rule checks (report-only), journey tests in `test/journeys/`, `claude/decisions.md`.
 
 Do these before any redesign. GL-002 comes before GL-001. GL-003 is here because CI and journey tests run on a PC without vJoy.
 
@@ -324,6 +326,10 @@ GL-017 locks in today's behaviour first. Closes AU-118 and the shared Merge Axis
 | GL-199 (09-G32) | No message when Windows speech is unavailable | ux | confirmed-in-code | 09 Q13 | gremlin/tts.py:47-58 | One warning in the log and in the action's feedback. |
 | GL-200 (09-G36) | Action images may ignore UI scale and the grey light theme | ux | needs-hands-on | 09 Q16, R14, S75 | gremlin/ui/action_image_generator.py:78-82; qml/ColorInformation.qml:15-18; qml/Style.qml:19-20 | Check off-screen at 200% and light mode; switch to Style values if visibly off. |
 | GL-201 (01-G12, 03-G28, 07-G33, 09-G37) | At 200% UI scale on a small screen, toolbar, Options, Module Setup, Calibration, Button Map, Clear Log, Auto Mapper and Device Pack cut off contents (on hold) | ux | needs-hands-on | 01 S62, S48; 03 S37, S105; 07 S99; 09 S84; AU-56 | qml/Main.qml toolbar; qml/DialogOptions.qml; qml/DialogConfigureModule.qml; qml/DialogCalibration.qml; qml/DialogJoystickButtonMap.qml; Clear Log, Auto Mapper, Device Pack windows | Make those windows fit, scroll or reflow at 200% on small screens when the user takes AU-56 off hold. |
+| GL-310 (Stage 1 finding) | An axis that jumps across its range in one step sends no press or release | wrong-behaviour | confirmed-in-code | 06 S39 | gremlin/code_runner.py VirtualAxisButton.__call__ (~123-138: the release branch overwrites the forced [True, False]) | Send press then release on a jump across the range; test test_stage1_runtime.py::test_an_axis_jumping_across_its_range_presses_and_releases (xfail GL-310). |
+| GL-311 (Stage 1 finding) | A setting changed within about a second of other setting writes on a first run left no History entry | wrong-behaviour | suspected | 08 S16 | gremlin/config.py History grouping; seen by journey J6 | Check against 08 S16 (several changes within about a second make one entry; a first appearance is not a change); fix if an actual change is dropped. |
+| GL-312 (user, 2026-10-06) | An axis already in its range at Run sends a release when it leaves, with no press before | wrong-behaviour | confirmed-in-code | 06 S39 (user decision) | gremlin/code_runner.py VirtualAxisButton | Send no release without a press; add a test next to the GL-310 one. |
+| GL-313 (Stage 1 re-check) | Auto Mapper crashes when a vJoy device is set to be read back as an input | crash-or-hang | confirmed-in-code | 08 Q7, Q9; 06 S9 | gremlin/auto_mapper.py:205-214 (_vjoy_limits uses vjoy_devices()), :243-247 (create_instance returns None) | Build the limits from output_vjoy_devices() and skip with "vJoy N is used as an input" when create_instance returns None; related GL-275. |
 
 ## 7. Text, glossary and help (one batch)
 

@@ -2,6 +2,15 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
+"""Chain: each press runs the next step; a pause longer than the timeout
+starts again from the first.
+
+The "no early timeout" check makes the timeout in the test profile
+comfortably large (2 s) instead of relying on a short wait staying short;
+the "timeout reset" check waits past the profile's own 0.2 s, which a busy
+PC can only make longer (GL-001, AU-119).
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,6 +24,9 @@ from .conftest import (
     EventSpec,
     JoystickGremlinBot,
 )
+from .waits import profile_with
+
+_CHAIN = "650327b0-9876-4d86-bc9e-55bed3adabbb"
 
 
 def test_cycling_wrap_around(
@@ -84,9 +96,14 @@ def test_cycling_wrap_around(
 
 
 def test_no_early_timeout(
-    jgbot: JoystickGremlinBot, profile_dir: Path, subtests: pytest.Subtests
+    jgbot: JoystickGremlinBot,
+    profile_dir: Path,
+    tmp_path: Path,
+    subtests: pytest.Subtests,
 ) -> None:
-    jgbot.load_profile(profile_dir / "chain.xml")
+    jgbot.load_profile(
+        profile_with(profile_dir / "chain.xml", tmp_path, {_CHAIN: {"timeout": "2.0"}})
+    )
 
     with subtests.test("Chain 1"):
         jgbot.press_button(inout.IN_BUTTON_1)
@@ -115,7 +132,8 @@ def test_timeout_reset(
         jgbot.release_button(inout.IN_BUTTON_1)
         assert not jgbot.button(inout.OUT_BUTTON_1)
 
-    # Wait for timeout to expire.
+    # Wait for the 0.2 s timeout to expire (a fixed wait on purpose: a slow
+    # PC only makes it longer).
     jgbot.wait(0.3)
 
     with subtests.test("Chain 1 after timeout"):

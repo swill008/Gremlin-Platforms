@@ -8,6 +8,9 @@ JSON. test_button_map_devices.py runs it in its own process with a fresh
 user folder.
 
     python test/unit/button_map_devices_smoke.py
+
+Waits poll for what is checked with a generous limit; none sleeps a fixed
+time (GL-001).
 """
 
 from __future__ import annotations
@@ -16,7 +19,10 @@ import importlib.util
 import json
 import os
 import sys
+import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, cast
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -91,48 +97,84 @@ def same(a: object, b: object) -> bool:
 def device_change() -> None:
     # What the device thread does after a plug or unplug (on its timer).
     event_handler.EventListener()._run_device_list_update()
-    QtTest.QTest.qWait(600)
+
+
+# Generous: a busy PC is slow, never wrong. A check that something does NOT
+# happen waits the shorter limit for it.
+LIMIT_S = 15.0
+NOT_S = 2.0
+
+
+def wait_for(check: Callable[[], object], limit: float = LIMIT_S) -> object:
+    """Runs the event loop until check() is true (its value), up to limit."""
+    end = time.monotonic() + limit
+    while True:
+        value = check()
+        if value or time.monotonic() > end:
+            return value
+        QtTest.QTest.qWait(25)
+
+
+def ev(obj: QtCore.QObject, code: str) -> object:
+    context = QtQml.qmlContext(obj)
+    assert context is not None
+    value = QtQml.QQmlExpression(context, obj, code).evaluate()
+    return value[0] if isinstance(value, tuple) else value
 
 
 def main() -> None:
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
-    root = app.engine.rootObjects()[0]
+    root = wait_for(lambda: (app.engine.rootObjects() or [None])[0])
+    assert isinstance(root, QtCore.QObject)
     out: dict = {}
 
-    def look(tag: str) -> None:
+    def seen() -> dict:
         win = call(root, "buttonMapWindow")
         ed = call(win, "_ed")
-        out[tag] = {
+        return {
             "chips": count(ed.property("nodes")) if ed is not None else None,
             "connected": win.property("targetConnected"),
             "shown": win.property("mapShown"),
             "editing": win.property("editing"),
         }
 
+    def look(tag: str, want: dict) -> None:
+        """What the window shows once it shows want (or after the limit)."""
+        wait_for(lambda: seen() == want)
+        out[tag] = seen()
+
+    def shown(chips: int, connected: bool, mapped: bool, editing: bool) -> dict:
+        return {"chips": chips, "connected": connected, "shown": mapped,
+                "editing": editing}
+
+    def edit_ready() -> bool:
+        return bool(ev(cast(QtCore.QObject, win),
+                       "editing && _ed() !== null && _ed().seeded && !_baseWanted"))
+
     # Opened from the Home card while the stick is unplugged.
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
     call(root, "openButtonMapForCard", card)
-    QtTest.QTest.qWait(1000)
-    win = call(root, "buttonMapWindow")
-    look("opened-unplugged")
+    win = wait_for(lambda: call(root, "buttonMapWindow"))
+    assert isinstance(win, QtCore.QObject)
+    look("opened-unplugged", shown(5, False, False, False))
     fake.devices.insert(0, stick)
     device_change()
-    look("plugged-in")
+    look("plugged-in", shown(5, True, True, False))
     fake.devices.remove(stick)
     device_change()
-    look("unplugged")
+    look("unplugged", shown(5, False, False, False))
     # Export still draws the map of an unplugged stick.
     target = Path(os.environ["USERPROFILE"]) / "unplugged-export.png"
     call(win, "exportTo", QtCore.QUrl.fromLocalFile(str(target)).toString(), "png")
-    QtTest.QTest.qWait(1500)
-    out["export-while-unplugged"] = target.is_file() and target.stat().st_size > 0
+    out["export-while-unplugged"] = bool(
+        wait_for(lambda: target.is_file() and target.stat().st_size > 0)
+    )
     fake.devices.insert(0, stick)
     device_change()
-    look("plugged-in-again")
+    look("plugged-in-again", shown(5, True, True, False))
 
     # Outputs, Keyboard, Logical Device and OSC show without a stick.
-    model = next(
+    model: Any = next(
         o for o in win.findChildren(QtCore.QObject)
         if o.metaObject().className() == "ViewerDeviceModel"
     )
@@ -150,14 +192,21 @@ def main() -> None:
     # Edit: other devices coming and going leave the editor as it is; an
     # unplugged stick keeps the edit on screen until it ends.
     call(win, "enterEdit")
-    QtTest.QTest.qWait(800)
+    wait_for(edit_ready)
     editor = call(win, "_ed")
     # The editor fills in what the file leaves out (a chip's name, its
     # leader): that is not a change to save.
-    out["unsaved-after-entering-edit"] = call(win, "isDirty")
+    out["unsaved-after-entering-edit"] = bool(
+        wait_for(lambda: call(win, "isDirty"), NOT_S)
+    )
     fake.devices.append(other)
     device_change()
-    out["same-editor-after-other-stick"] = same(call(win, "_ed"), editor)
+    # The other stick is in the window's device list, and the editor stays.
+    other_guid = str(dill.GUID(other.device_guid).uuid)
+    wait_for(lambda: model.available(other_guid, "Other Stick"))
+    out["same-editor-after-other-stick"] = not wait_for(
+        lambda: not same(call(win, "_ed"), editor), NOT_S
+    )
 
     menu = next(
         o for o in win.findChildren(QtCore.QObject)
@@ -169,18 +218,19 @@ def main() -> None:
 
     fake.devices.remove(stick)
     device_change()
-    look("unplugged-mid-edit")
-    out["same-editor-after-unplug"] = same(call(win, "_ed"), editor)
+    look("unplugged-mid-edit", shown(5, False, True, True))
+    out["same-editor-after-unplug"] = not wait_for(
+        lambda: not same(call(win, "_ed"), editor), NOT_S
+    )
     call(win, "discardEdit")
-    QtTest.QTest.qWait(600)
-    look("edit-ended-unplugged")
+    look("edit-ended-unplugged", shown(5, False, False, False))
     fake.devices.insert(0, stick)
     device_change()
-    look("back-after-edit")
+    look("back-after-edit", shown(5, True, True, False))
 
     # A real change is still one.
     call(win, "enterEdit")
-    QtTest.QTest.qWait(800)
+    wait_for(edit_ready)
     move = QtQml.QQmlExpression(
         QtQml.qmlContext(win),
         win,

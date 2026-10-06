@@ -21,11 +21,10 @@ import faulthandler
 import logging
 import tempfile
 import threading
-import time
 
 from PySide6 import QtCore
 
-from gremlin import threads
+from gremlin import clock, threads
 
 OPTION = ("global", "general", "log-when-not-responding")
 THRESHOLD_S = 5.0
@@ -51,7 +50,7 @@ class Watchdog(QtCore.QObject):
     def __init__(self, threshold_s: float = THRESHOLD_S) -> None:
         super().__init__()
         self._threshold = threshold_s
-        self._last_beat = time.monotonic()
+        self._last_beat = clock.monotonic()
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(BEAT_MS)
         self._timer.timeout.connect(self._beat)
@@ -65,7 +64,7 @@ class Watchdog(QtCore.QObject):
     def start(self) -> None:
         if self.running:
             return
-        self._last_beat = time.monotonic()
+        self._last_beat = clock.monotonic()
         self._timer.start()
         self._stop.clear()
         self._thread = threads.start(
@@ -80,13 +79,13 @@ class Watchdog(QtCore.QObject):
             self._thread = None
 
     def _beat(self) -> None:
-        self._last_beat = time.monotonic()
+        self._last_beat = clock.monotonic()
 
     def _watch(self) -> None:
         frozen_since: float | None = None
         while not self._stop.wait(min(1.0, self._threshold / 2)):
             last = self._last_beat
-            silent = time.monotonic() - last
+            silent = clock.monotonic() - last
             if frozen_since is None and silent >= self._threshold:
                 frozen_since = last
                 _log.warning(

@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
+from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -22,6 +24,18 @@ import rig_editor_harness as h  # noqa: E402
 from PySide6 import QtCore, QtTest  # noqa: E402
 
 Key = QtCore.Qt.Key
+# Generous: a busy PC is slow, never wrong.
+_LIMIT_S = 15.0
+
+
+def _until(check: Callable[[], object], limit: float = _LIMIT_S) -> object:
+    """Runs the event loop until check() is true (its value), up to limit."""
+    end = time.monotonic() + limit
+    while True:
+        value = check()
+        if value or time.monotonic() > end:
+            return value
+        QtTest.QTest.qWait(20)
 
 
 def _draw(s: h.Session, tool: str, a: tuple, b: tuple) -> str:
@@ -75,7 +89,8 @@ def main() -> None:
     before = s.state()["histAt"]
     for _ in range(5):
         s.call("nudge", 0.01, 0)
-    s.wait(700)
+    # The run's step goes into the history when the nudges pause.
+    _until(lambda: s.state()["histAt"] > before)
     out["nudge-steps"] = s.state()["histAt"] - before
     for _ in range(3):
         s.call("nudge", 0.01, 0)
@@ -91,13 +106,12 @@ def main() -> None:
 
     # BM19: after clicking a Layers row, the arrow keys nudge what it picked.
     s.js("showLayers", True)
-    s.wait(200)
     name = s.call_on_node("layerName", rect)
+    _until(lambda: s.js("layerRowIndex", name) >= 0)
     s.click_layer(name)
     start = s.node(rect)["fx"]
     QtTest.QTest.keyClick(s.win, Key.Key_Right)
-    s.wait(100)
-    out["layers-then-arrow"] = s.node(rect)["fx"] > start
+    out["layers-then-arrow"] = bool(_until(lambda: s.node(rect)["fx"] > start))
 
     # A right-click on a Layers row picks it, as a left click does, and its
     # menu opens; on a row in a selection, the selection stays.

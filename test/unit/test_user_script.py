@@ -4,10 +4,12 @@
 
 from __future__ import annotations
 
+import itertools
 import logging
 import pathlib
 import time
 import uuid
+from collections.abc import Callable, Iterator
 
 import pytest
 
@@ -20,6 +22,8 @@ from gremlin import (
 )
 from test.unit.conftest import get_fake_device_guid
 
+_LIMIT_S = 10.0  # generous: a busy PC is slow, never wrong
+
 
 @pytest.fixture(scope="module")
 def script_path() -> pathlib.Path:
@@ -27,12 +31,15 @@ def script_path() -> pathlib.Path:
     return pathlib.Path(__file__).resolve().parents[2] / "user_scripts" / "example.py"
 
 
-@pytest.fixture(scope="module")
-def script_for_test(script_path: pathlib.Path) -> user_script.Script:
+@pytest.fixture
+def script_for_test(script_path: pathlib.Path) -> Iterator[user_script.Script]:
+    # Fresh per test: tests change variable values, which must not leak.
     # Mode is retrieved from shared state when loading user plugins.
+    previous = shared_state.current_profile
     shared_state.current_profile = p = profile.Profile()
     p.scripts.add_script(script_path)
-    return p.scripts.scripts[0]
+    yield p.scripts.scripts[0]
+    shared_state.current_profile = previous
 
 
 class TestScript:
@@ -430,20 +437,44 @@ class TestScript:
 
 
 class TestPeriodicRegistry:
+    """The periodic callbacks run until a result is seen, not for a fixed
+    time; the rate is checked from the time they really ran (GL-001,
+    AU-119)."""
+
+    @staticmethod
+    def _run_until(done: Callable[[], bool]) -> float:
+        """Runs the registry until done(), up to the limit; the seconds it ran."""
+        start = time.monotonic()
+        user_script.periodic_registry.start()
+        try:
+            end = start + _LIMIT_S
+            while not done() and time.monotonic() < end:
+                time.sleep(0.01)
+        finally:
+            user_script.periodic_registry.stop()
+        assert done()
+        return time.monotonic() - start
+
     def test_periodic_decorator_injects_vjoy_plugin(self) -> None:
         received = []
+        times: list[float] = []
 
         @user_script.periodic(0.01)
         def print_vjoy(vjoy: object) -> None:
             received.append(vjoy)
+            times.append(time.monotonic())
 
-        user_script.periodic_registry.start()
-        time.sleep(0.1)
-        user_script.periodic_registry.stop()
-        user_script.periodic_registry.clear()
+        try:
+            ran_for = self._run_until(lambda: len(received) >= 10)
+        finally:
+            user_script.periodic_registry.clear()
 
         assert all(v is user_script.VJoyPlugin.vjoy for v in received)
-        assert 9 <= len(received) <= 11
+        assert len(received) <= ran_for / 0.01 + 2  # never faster than 0.01 s
+        # Nor stalled: the typical gap is far under 50 times the interval
+        # (loose, so a slow PC stays well inside it).
+        gaps = sorted(b - a for a, b in itertools.pairwise(times[:10]))
+        assert gaps[len(gaps) // 2] < 0.5
 
     def test_periodic_callback_exception_is_logged_and_does_not_stop_other_callbacks(
         self, caplog: pytest.LogCaptureFixture
@@ -458,18 +489,18 @@ class TestPeriodicRegistry:
         def works() -> None:
             working_calls.append(True)
 
-        with caplog.at_level(logging.ERROR, logger="system"):
-            user_script.periodic_registry.start()
-            time.sleep(0.1)
-            user_script.periodic_registry.stop()
-        user_script.periodic_registry.clear()
+        def logged() -> bool:
+            return any(
+                r.name == "system"
+                and r.getMessage() == "Periodic callback raised an exception: boom"
+                for r in list(caplog.records)
+            )
 
-        assert len(working_calls) > 1
-        assert any(
-            r.name == "system"
-            and r.getMessage() == "Periodic callback raised an exception: boom"
-            for r in caplog.records
-        )
+        try:
+            with caplog.at_level(logging.ERROR, logger="system"):
+                self._run_until(lambda: len(working_calls) > 1 and logged())
+        finally:
+            user_script.periodic_registry.clear()
 
     def test_periodic_reload_replaces_instead_of_duplicating(
         self, tmp_path: pathlib.Path
@@ -490,12 +521,15 @@ class TestPeriodicRegistry:
         script.reload()
         script.reload()
 
-        user_script.periodic_registry.start()
-        time.sleep(0.1)
-        user_script.periodic_registry.stop()
-        user_script.periodic_registry.clear()
+        try:
+            # 1 initial load + 2 reloads: one registration, replaced.
+            registered = user_script.periodic_registry._registry.values()
+            ticks = [cb for _interval, cb in registered if cb.__name__ == "tick"]
+            assert len(ticks) == 1
+            ran_for = self._run_until(lambda: len(script.module.call_log) >= 5)
+        finally:
+            user_script.periodic_registry.clear()
 
-        # 3 registrations (1 initial load + 2 reloads) firing independently
-        # would land around 30 calls in this window; a single, replaced
-        # registration lands around 10.
-        assert 8 <= len(script.module.call_log) <= 12
+        # Three registrations firing independently would run about three
+        # times as often.
+        assert len(script.module.call_log) <= ran_for / 0.01 + 2

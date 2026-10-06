@@ -9,6 +9,9 @@ onto it: a stop() right after start() used to be undone by the starting
 thread (audio player, mouse controller) or lost (keyboard and mouse hooks),
 and the wait for the thread then never ended; and a vJoy keep-alive timer
 firing as the device was released armed a new one that nothing cancelled.
+
+The keep-alive test waits for the timer's results, not a fixed time
+(GL-001, AU-119).
 """
 
 from __future__ import annotations
@@ -48,6 +51,16 @@ def _put_back(running: bool, start: Callable[[], None]) -> Iterator[None]:
             start()
 
 
+def _wait_for(check: Callable[[], bool], seconds: float = 10.0) -> bool:
+    """Polls check() up to seconds (generous: a busy PC is slow)."""
+    end = time.monotonic() + seconds
+    while not check():
+        if time.monotonic() > end:
+            return False
+        time.sleep(0.005)
+    return True
+
+
 def test_a_thread_is_named_and_listed_while_it_runs() -> None:
     release = threading.Event()
     thread = threads.start("sample", release.wait)
@@ -75,8 +88,8 @@ def test_shutdown_asks_each_thread_to_stop_and_waits() -> None:
     threads.start("loop", stop.wait, stop=stop.set)
     threads.timer("timer", 60, lambda: None)
     start = time.monotonic()
-    assert threads.shutdown(timeout=2.0) == []
-    assert time.monotonic() - start < 1.0
+    assert threads.shutdown(timeout=20.0) == []
+    assert time.monotonic() - start < 10.0  # asked, not waited out
 
 
 def test_shutdown_names_a_thread_that_will_not_stop(
@@ -147,14 +160,17 @@ def test_a_released_vjoy_device_arms_no_new_keep_alive() -> None:
     device._last_active = time.time()
     device._keep_alive_lock = threading.Lock()
     device._keep_alive_timer = None
+    name = "Gremlin-Platforms: vJoy 1 keep-alive"
     with (
         mock.patch.object(vjoy.VJoy, "keep_alive_timeout", 0.01),
-        mock.patch.object(vjoy.VJoy, "reset"),
+        mock.patch.object(vjoy.VJoy, "reset") as reset,
         mock.patch.object(vjoy.VJoyInterface, "RelinquishVJD"),
     ):
         device._arm_keep_alive()
-        time.sleep(0.1)  # it fires and re-arms several times
-        assert threads.running() == ["Gremlin-Platforms: vJoy 1 keep-alive"]
+        # It fires and re-arms several times (one timer, or two for a moment
+        # while one hands over to the next).
+        assert _wait_for(lambda: reset.call_count >= 3)
+        assert set(threads.running()) == {name}
         device.invalidate()
-        time.sleep(0.1)
-    assert threads.running() == []
+        # The last one ends and none is armed after it.
+        assert _wait_for(lambda: threads.running() == [])

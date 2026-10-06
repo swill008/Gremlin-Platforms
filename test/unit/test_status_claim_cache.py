@@ -38,7 +38,7 @@ def setup(
     )
     monkeypatch.setattr(module_model, "_load_module_doc", counting_load)
     clock = [100.0]
-    monkeypatch.setattr(module_model.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(module_model.clock, "monotonic", lambda: clock[0])
     model = types.SimpleNamespace(
         _source_claims={},
         _CLAIM_CHECK_S=module_model.ModuleListModel._CLAIM_CHECK_S,

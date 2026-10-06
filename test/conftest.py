@@ -10,7 +10,7 @@ import sys
 import tempfile
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import IO
 
 # Tests never put a window on the user's screen: the Gremlin app some tests
@@ -81,6 +81,79 @@ def pytest_collection_modifyitems(
             "Run each test folder in its own pytest run: "
             "pytest test/unit, pytest test/integration, pytest test/action_interaction."
         )
+    _shuffle(config, items)
+
+
+# | Random test order (off by default): --random-order shuffles with a new
+# | seed, --random-seed=N (or GREMLIN_TEST_SEED=N with --random-order) with
+# | that one. The seed is in the header, so a run can be repeated. Files are
+# | shuffled, then the tests inside each file: a file's fixtures are still
+# | set up once.
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    group = parser.getgroup("gremlin", "Gremlin-Platforms test options")
+    group.addoption(
+        "--random-order",
+        action="store_true",
+        default=False,
+        help="Run the tests in a random order (seed in the header).",
+    )
+    group.addoption(
+        "--random-seed",
+        type=int,
+        default=None,
+        help="Run the tests in the random order of this seed (implies --random-order).",
+    )
+
+
+def _order_seed(config: pytest.Config) -> int | None:
+    """The shuffle seed, or None when the order isn't shuffled."""
+    seed = config.getoption("--random-seed", None)
+    if seed is None and not config.getoption("--random-order", False):
+        return None
+    if seed is None:
+        try:
+            seed = int(os.environ.get("GREMLIN_TEST_SEED", ""))
+        except ValueError:
+            import random
+
+            seed = random.randrange(1, 1_000_000)
+    return int(seed)
+
+
+_ORDER_SEED = pytest.StashKey[int | None]()
+
+
+def _shuffle(config: pytest.Config, items: list[pytest.Item]) -> None:
+    if _ORDER_SEED not in config.stash:
+        config.stash[_ORDER_SEED] = _order_seed(config)
+    seed = config.stash[_ORDER_SEED]
+    if seed is None:
+        return
+    import random
+
+    rng = random.Random(seed)
+    files: dict[str, list[pytest.Item]] = {}
+    for item in items:
+        files.setdefault(str(item.path), []).append(item)
+    order = list(files)
+    rng.shuffle(order)
+    shuffled: list[pytest.Item] = []
+    for name in order:
+        tests = files[name]
+        rng.shuffle(tests)
+        shuffled.extend(tests)
+    items[:] = shuffled
+
+
+def pytest_report_header(config: pytest.Config) -> str | None:
+    if _ORDER_SEED not in config.stash:
+        config.stash[_ORDER_SEED] = _order_seed(config)
+    seed = config.stash[_ORDER_SEED]
+    if seed is None:
+        return None
+    return f"random order: seed {seed} (repeat with --random-seed={seed})"
 
 
 @pytest.fixture(autouse=True)
@@ -119,6 +192,11 @@ class _Stalls:
 
 @pytest.hookimpl(trylast=True)  # after pytest's faulthandler kept the real stderr
 def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers",
+        "validate_off: leave the test out of the validate report (it builds "
+        "broken state on purpose)",
+    )
     try:
         from _pytest.faulthandler import fault_handler_stderr_fd_key
 
@@ -227,3 +305,153 @@ def _no_threads_left_running() -> Iterator[None]:
     left = [thread.name for thread in new if thread.is_alive()]
     if left:
         pytest.fail(f"The test left threads running: {', '.join(left)}")
+
+
+# | Rule checks (gremlin/validate.py), report only: after each test the open
+# | profile is checked, and after a test that ran or stopped a CodeRunner,
+# | what a Run leaves behind. Problems go to a report file
+# | (GREMLIN_VALIDATE_REPORT, else gremlin-validate-report.txt in the temp
+# | folder; each run adds its own block) and a one-line summary ends the run.
+# | A check never fails a test. @pytest.mark.validate_off leaves a test out.
+
+
+class _Validate:
+    run_before = 0
+    last_profile: tuple[int, tuple[str, ...]] | None = None
+    found: dict[str, list[str]] = {}
+
+
+def _run_number() -> int:
+    runner = sys.modules.get("gremlin.code_runner")
+    return int(getattr(runner, "_run_number", 0) or 0) if runner else 0
+
+
+def _validate_report_path() -> pathlib.Path:
+    named = os.environ.get("GREMLIN_VALIDATE_REPORT", "").strip()
+    if named:
+        return pathlib.Path(named)
+    return pathlib.Path(tempfile.gettempdir()) / "gremlin-validate-report.txt"
+
+
+def _note(nodeid: str, problems: list[str]) -> None:
+    if problems:
+        _Validate.found.setdefault(nodeid, []).extend(problems)
+
+
+def _check_profile(item: pytest.Item) -> None:
+    """The open profile, right after the test (before its fixtures put
+    another one back)."""
+    if item.get_closest_marker("validate_off") is not None:
+        return
+    state = sys.modules.get("gremlin.shared_state")
+    current = getattr(state, "current_profile", None) if state else None
+    if current is None:
+        return
+    from gremlin import validate
+
+    found = validate.profile(current)
+    # The same profile with the same problems: named once, at the first test
+    # that left it so.
+    key = (id(current), tuple(found))
+    if key != _Validate.last_profile:
+        _Validate.last_profile = key
+        _note(item.nodeid, found)
+
+
+def _check_run(item: pytest.Item) -> None:
+    """What a Run left behind, after a test that ran or stopped one (its
+    fixtures stopped it by now)."""
+    if _run_number() == _Validate.run_before:
+        return
+    if item.get_closest_marker("validate_off") is not None:
+        return
+    state = sys.modules.get("gremlin.shared_state")
+    if state is not None and state.runtime_active():
+        return  # still running (a Run shared by a class or module of tests)
+    from gremlin import validate
+
+    found = validate.after_stop()
+    if any(validate.code_of(p) == "RUN-THREADS-LEFT" for p in found):
+        # Stop asks the Run's threads to end; give them a moment.
+        import gremlin.threads
+
+        names = {gremlin.threads.PREFIX + n for n in validate.RUN_THREADS}
+        deadline = time.monotonic() + 1.0
+        for thread in threading.enumerate():
+            if thread.name in names and thread is not threading.current_thread():
+                thread.join(max(0.0, deadline - time.monotonic()))
+        found = validate.after_stop()
+    _note(item.nodeid, found)
+
+
+def _guard(item: pytest.Item, check: Callable[[pytest.Item], None]) -> None:
+    try:
+        check(item)
+    except Exception as exc:
+        try:
+            problem = f"VALIDATE-ERROR: the check after the test failed: {exc!r}"
+            _note(item.nodeid, [problem])
+        except Exception:
+            pass
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_setup(item: pytest.Item):  # noqa: ANN201
+    try:
+        _Validate.run_before = _run_number()
+    except Exception:
+        pass
+    yield
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_call(item: pytest.Item):  # noqa: ANN201
+    yield
+    _guard(item, _check_profile)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None):  # noqa: ANN201
+    yield
+    _guard(item, _check_run)
+
+
+def pytest_terminal_summary(
+    terminalreporter: pytest.TerminalReporter, exitstatus: int, config: pytest.Config
+) -> None:
+    try:
+        from collections import Counter
+
+        found = _Validate.found
+        codes = Counter(
+            p.split(":", 1)[0].strip() for problems in found.values() for p in problems
+        )
+        path = _validate_report_path()
+        lines = [
+            f"=== {time.strftime('%Y-%m-%d %H:%M:%S')} pid {os.getpid()}: "
+            f"pytest {' '.join(config.invocation_params.args)}"
+        ]
+        for nodeid, problems in found.items():
+            lines.append(nodeid)
+            lines.extend(f"    {p}" for p in problems)
+        if not found:
+            lines.append("No problems.")
+        try:
+            if path.is_file() and path.stat().st_size > 2_000_000:
+                path.unlink()  # a fresh start instead of a file without end
+        except OSError:
+            pass
+        with path.open("a", encoding="utf-8") as report:
+            report.write("\n".join(lines) + "\n\n")
+        total = sum(codes.values())
+        summary = ", ".join(f"{code} x{n}" for code, n in codes.most_common())
+        terminalreporter.write_line(
+            f"validate (report only): {total} problem(s) in {len(found)} test(s)"
+            + (f" [{summary}]" if summary else "")
+            + f" -> {path}"
+        )
+    except Exception as exc:
+        try:
+            terminalreporter.write_line(f"validate: no report ({exc!r})")
+        except Exception:
+            pass

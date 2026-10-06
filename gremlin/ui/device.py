@@ -18,6 +18,7 @@ from PySide6 import (
 import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import (
+    clock,
     common,
     device_initialization,
     event_handler,
@@ -1239,7 +1240,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
         return tuple(self._state[index][name] for name in self._LIMITS)
 
     def _step(self, index: int, value: str = "") -> None:
-        now = time.monotonic()
+        now = clock.monotonic()
         last = self._last_step
         self._last_step = (index, value, now)
         same = bool(value and last and last[:2] == (index, value))

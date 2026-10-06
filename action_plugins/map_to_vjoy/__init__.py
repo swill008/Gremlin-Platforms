@@ -341,12 +341,14 @@ class MapToVjoyData(AbstractActionData):
     def __init__(self, behavior_type: InputType = InputType.JoystickButton) -> None:
         super().__init__(behavior_type)
 
-        # Select an initially valid vJoy input
-        device = device_initialization.output_vjoy_devices()[0]
-        vjoy_id = device.vjoy_id
+        # Select an initially valid vJoy input. With no vJoy device (a profile
+        # opened on a PC without vJoy) it starts at vJoy 1, input 1, and a
+        # loaded action keeps its own values: the profile opens (05 S104).
+        devices = device_initialization.output_vjoy_devices()
+        vjoy_id = devices[0].vjoy_id if devices else 1
         input_id = 1
-        if behavior_type == InputType.JoystickAxis:
-            input_id = device.axis_map[0].axis_index
+        if behavior_type == InputType.JoystickAxis and devices and devices[0].axis_map:
+            input_id = devices[0].axis_map[0].axis_index
 
         # Model variables
         self.vjoy_device_id = vjoy_id

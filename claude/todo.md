@@ -13,8 +13,10 @@ Stages 0-3 are written out in `claude/system-maps.md` ("The plan").
   entries GL-001..GL-309 in work order; 14 hands-on checks listed at its end.
 - **Change control:** every behaviour change goes through the spec; if it
   alters a statement or decision, tell the user first and update the spec.
-- [ ] **Stage 1 – Safety net**: CI, journey tests, `validate()` rule
-  checks, `claude/decisions.md`.
+- [x] **Stage 1 – Safety net** (2026-10-06): CI (`.github/workflows/ci.yml`),
+  random order, lint baseline (`tools/pyright_baseline.py`), `gremlin/validate.py`
+  (report-only), journey tests (`test/journeys/`), gap-list section 1 tests,
+  `claude/decisions.md`. Left: GL-016 hands-on checks (user).
 - [ ] **System redesigns (Stage 2): waiting for the user's approval.** The plan, the
   decisions to answer (F1-F4, A1-A4, R1-R4) and how we work are in
   `claude/system-maps.md`. Order: Run lifecycle (closes AU-116, AU-117),

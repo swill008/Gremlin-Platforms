@@ -4,13 +4,13 @@
 from __future__ import annotations
 
 import json
-import time
 from pathlib import Path
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import (
+    clock,
     config,
     device_initialization,
     event_handler,
@@ -1497,7 +1497,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def _source_claim(self, row: ModuleRow) -> dict:
         """An input card's claim, re-read only when its module file changed
         (looked at no more than twice a second)."""
-        now = time.monotonic()
+        now = clock.monotonic()
         cached = self._source_claims.get(row.slug)
         if cached is not None and now - cached[0] < self._CLAIM_CHECK_S:
             return cached[2]
