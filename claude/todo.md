@@ -3,17 +3,28 @@
 Work that is known and parked. Each item names its tracker ref (UI issues
 tracker) so the details stay in one place.
 
-## Next up (added 2026-10-03)
+## Next up (updated 2026-10-06)
 
-- [x] **Hidden Cards in the Home menu, no window.** (done 2026-10-03) Remove the Hidden Cards
-  window (`qml/DialogHiddenDevices.qml`) and View → Hidden Cards…
-  (`qml/main_commands.js` `view.hidden`). In the Home right-click menu
-  (`qml/StatusPage.qml`, next to Unhide All Cards), make **Hidden Cards** a
-  submenu that slides out and lists each hidden card by name; clicking one
-  unhides it. Nothing hidden: the submenu shows "No hidden cards" (disabled).
-  Unhide All Cards stays. Update help (`qml/help_topics.js`: Home topics and
-  the "Not on Home" troubleshooting line) and keep the glossary words (Hide
-  Card / Hidden Cards).
+- [ ] **System redesigns: waiting for the user's approval.** The plan, the
+  decisions to answer (F1-F4, A1-A4, R1-R4) and how we work are in
+  `claude/system-maps.md`. Order: Run lifecycle (closes AU-116, AU-117),
+  then module files (rest of AU-64), then actions (AU-118 and the shared
+  Merge Axis split). No code until approved.
+- [ ] **AU-119 – About 20 tests wait a fixed short time** (Tempo, Double
+  Tap, macro, watchdog, window smokes). Change them to wait for the result;
+  test-only.
+- [ ] **AU-27 – Mirrored Copy Button Map takes two undos.** Not verified yet.
+
+## On hold (user's choice)
+
+- **AU-56** – 200% UI scale on a small screen cuts off window contents.
+- **N22** – Inconsistent controls in action editors.
+
+## Done (kept for reference)
+
+- [x] **Hidden Cards in the Home menu, no window** (2026-10-03).
+- [x] **Audits 2 and 3** (2026-10-05/06: 6edbdcd8 .. a1459e22). Every fix
+  traced end to end and re-traced independently; tracker AU-76..AU-115.
 
 ## Button Map (planned 2026-10-04)
 

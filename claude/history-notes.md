@@ -1,5 +1,13 @@
 # Program-wide history (notes and design, 2026-10-05)
 
+**Updated 2026-10-06:** the "Where data lives today" and "Found while
+gathering" parts below describe the code before audits 2 and 3. Since then
+History records a module write only after it succeeds (`text_before` /
+`note_write`), a delete only after it succeeds (`history_modules.deleting`),
+and can no longer stop quit. The plan to hook History into one module-file
+owner instead of each writer is map 1 in `claude/system-maps.md`; that map
+replaces the write-path table below.
+
 Status: built 2026-10-05 with the recommended decisions (the user's go-ahead):
 store 4597e486, recording 20155486, window and Restore 780f16b8. Undo added where an editor had none (Module Setup, Calibration,
 Configuration page). Tracker refs: G-HISTORY (the system), G-LIBLEAK (leaks), and the

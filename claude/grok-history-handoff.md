@@ -1,5 +1,10 @@
 # Gremlin-Platforms: handoff from the Grok project history
 
+> **Archived (historical, as of 2026-09-30).** Kept for background only; much
+> of "Where things stand now" is out of date (UI scaling, branches, HEAD).
+> Current plans: `claude/todo.md` and `claude/system-maps.md`; current
+> issues: the tracker.
+
 Reviewed 2026-09-30. This covers all 11 conversations in Grok project "Joystick Gremlin" (2026-09-12 to 2026-09-30), plus that project's `grok_rules`, `.grok/project_memory.md` and the `Gremlin-Rewrite-Features` design docs.
 All SHAs below are what Grok reported. Grok could not run the Windows app, so "pushed" does not mean "tested".
 

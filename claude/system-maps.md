@@ -2,10 +2,52 @@
 
 Three shared systems behind most repeat bugs. Each: today, problems, one-owner design, migration steps, verification, decisions, size. No code until approved.
 
+Mapped against code at a1459e22 (audit 3). Line numbers drift as code changes: re-check them when a step starts.
+
+## Status
+
+| System | Map | Approved | Built | Open tracker items it closes |
+|---|---|---|---|---|
+| 3. Run lifecycle (do first) | below | not yet | no | AU-116, AU-117 |
+| 1. Module files (second) | below | not yet | no | AU-64 (what is left of it) |
+| 2. Actions (third) | below | not yet | no | AU-118, shared Merge Axis split |
+
+## Decisions (record the user's answer here)
+
+| # | Question | Recommended | User's answer |
+|---|---|---|---|
+| F1 | Device Pack import onto a damaged module file | Refuse; point to Start Fresh | |
+| F2 | Home card positions keyed by device name | Keep by name | |
+| F3 | History entry for Start Fresh | Yes | |
+| F4 | Twin sticks always looked up by id | Yes; log when missing | |
+| A1 | OK on a shared action | Change it for every input using it; "Shared with ..." note | |
+| A2 | Undo / History of a shared action | Restore for every input using it | |
+| A3 | Device Pack failing partway | Undo everything it did | |
+| A4 | Picking a shared action in the pane | Edit a copy until OK | |
+| R1 | Logical Device values at Stop | Back to neutral | |
+| R2 | Release callbacks waiting at Stop | Drop them | |
+| R3 | Mode at the next Run | Start mode, temporary modes cleared | |
+| R4 | Releasing keys scripts send | Only those sent during a Run | |
+
+## How we work (lessons from audits 2 and 3)
+
+Quick patches in one place kept breaking neighbouring paths, so every step of these plans follows this:
+
+1. **Trace first, no code.** For each function: every entry point (QML action, file load, Run, import, Undo, History), every caller (grep, not guessed), the state it reads and writes, and everything downstream (save, reload, Run, History, what the screen refreshes). Write it to a trace note.
+2. **Fix at the shared root.** One owner used by every caller; every caller in the trace is covered or explained. No per-symptom patches.
+3. **Tests drive the real path** (user action -> save -> reload/Run), not a helper alone. Every new test must fail on the old code (check by stashing the source, keeping the test files; never delete the untracked test files).
+4. **Independent re-trace.** A different agent re-traces each fix and checks every caller of every changed function. Gaps it finds are fixed and re-traced the same way.
+5. **Build in a batch, test after.** Parallel agents each own their files; agents never run git write commands. Then one combined check: old-code check, lint vs HEAD (ruff, pyright, qmllint), one full run.
+6. **Full runs re-split the 6 parts each time**, so a test that leaks shared state shows up as an order-dependent failure. Read the error and find the leak; don't rerun until green. Seen so far: patching a method on the shared settings instance (patch the class), deleting a shared singleton (reset it instead), assuming a key name's case.
+7. **Wait for results, not fixed times**, in tests (a fixed short wait fails on a busy PC).
+8. **Behaviour changes go to the user** with a recommendation before coding.
+9. **Safety:** off-screen only (now enforced by `running_offscreen()`: no hooks, no native boxes, no process kills, no HidHide off-screen); temp USERPROFILE and GREMLIN_OFFLINE=1; never the user's data folder (one check script once used it and cleared logs\logs.txt).
+10. **Editing:** use the Edit/Write tools for code with backslashes (shell heredocs mangle `\n`); keep each file's line endings.
+
 ---
 
 # 1. Module files
-## Module file ownership: map for approval (read-only, HEAD a1459e22)
+## Module file ownership
 
 ### 1. Today
 
@@ -142,7 +184,7 @@ Three shared systems behind most repeat bugs. Each: today, problems, one-owner d
 ---
 
 # 2. Actions
-# Map: who owns an action object (read-only)
+## Who owns an action object
 
 ## 1. Today
 
@@ -284,7 +326,7 @@ About 14 files and 45 functions: profile, base_classes, plugin_manager, binding_
 ---
 
 # 3. Run lifecycle
-**Run lifecycle map** (read-only; HEAD a1459e22. The AU tracker isn't in the repo, so AU numbers come from the task list.)
+## What a Run starts and Stop must release
 
 ## 1. Today
 
