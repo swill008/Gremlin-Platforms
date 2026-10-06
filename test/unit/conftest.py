@@ -50,11 +50,19 @@ def _settings_kept() -> Iterator[None]:
     load (Tempo's duration...), would be missing for every later test in the
     same run. Which tests follow depends on how the runner splits them."""
     from gremlin.common import SingletonMetaclass
+    from gremlin.ui.option import MetaConfigOption
 
-    original = SingletonMetaclass._instances.get(gremlin.config.Configuration)
+    # The Options registry the same way: options are registered when modules
+    # load (the Button Map's library entry...), so a test that makes a fresh
+    # one must not leave it behind either.
+    kept = {
+        cls: SingletonMetaclass._instances.get(cls)
+        for cls in (gremlin.config.Configuration, MetaConfigOption)
+    }
     yield
-    if original is not None:
-        SingletonMetaclass._instances[gremlin.config.Configuration] = original
+    for cls, original in kept.items():
+        if original is not None:
+            SingletonMetaclass._instances[cls] = original
 
 
 @pytest.fixture(autouse=True)

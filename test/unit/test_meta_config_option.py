@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from collections.abc import Iterator
 
 sys.path.append(".")
 
@@ -27,9 +28,15 @@ class DummyWidget(BaseMetaConfigOptionWidget):
 
 
 @pytest.fixture
-def option() -> MetaConfigOption:
+def option() -> Iterator[MetaConfigOption]:
+    # A fresh registry for the test; the program's own one (holding every
+    # option registered at start-up) is put back after, or later tests
+    # found their options gone (seen in random order on CI).
+    original = SingletonMetaclass._instances.pop(MetaConfigOption, None)
+    yield MetaConfigOption()
     SingletonMetaclass._instances.pop(MetaConfigOption, None)
-    return MetaConfigOption()
+    if original is not None:
+        SingletonMetaclass._instances[MetaConfigOption] = original
 
 
 def test_basic(option: MetaConfigOption) -> None:
