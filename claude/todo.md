@@ -17,15 +17,60 @@ Stages 0-3 are written out in `claude/system-maps.md` ("The plan").
   random order, lint baseline (`tools/pyright_baseline.py`), `gremlin/validate.py`
   (report-only), journey tests (`test/journeys/`), gap-list section 1 tests,
   `claude/decisions.md`. Left: GL-016 hands-on checks (user).
-- [ ] **System redesigns (Stage 2): waiting for the user's approval.** The plan, the
-  decisions to answer (F1-F4, A1-A4, R1-R4) and how we work are in
-  `claude/system-maps.md`. Order: Run lifecycle (closes AU-116, AU-117),
-  then module files (rest of AU-64), then actions (AU-118 and the shared
-  Merge Axis split). No code until approved.
-- [ ] **AU-119 – About 20 tests wait a fixed short time** (Tempo, Double
-  Tap, macro, watchdog, window smokes). Change them to wait for the result;
-  test-only.
-- [ ] **AU-27 – Mirrored Copy Button Map takes two undos.** Not verified yet.
+- [ ] **NEXT: Stage 2, redesign 1 – Run lifecycle (map 3 in
+  `claude/system-maps.md`)**, approved 2026-10-06; the user said to start
+  it once CI is green. Closes AU-116/GL-047 and AU-117, gap-list section 3.
+  Start with tests that lock in today's Run/Stop behaviour, then
+  `gremlin/run_scope.py` with its guard test (see "How we work").
+  Then module files (map 1), then actions (map 2).
+- [x] **AU-119 / GL-001 – fixed short waits** (Stage 1). Left over: about
+  170 `qWait` calls in the off-screen window smoke scripts
+  (print_export, button_map_*, usability_smoke); fix them as those areas
+  are touched.
+- [ ] **AU-27 – Mirrored Copy Button Map takes two undos.** Not verified yet
+  (hands-on check in the gap list, GL-184).
+
+## CI (state 2026-10-06)
+
+- `.github/workflows/ci.yml` runs on every push: lint baseline
+  (`tools/pyright_baseline.py`) and the full suite in random order via
+  `test/run_tests.py --random-order --parts 2` (seed printed in the log).
+- First run (2026-10-06 16:08) was a false green: the temp
+  USERPROFILE made `poetry run` use an empty environment, and the runner
+  passed parts with no result. Fixed in 9297578c (CI uses the project's
+  Python; the runner fails a part with no summary).
+- Second run: 1 failure, `test_modules_import_alone` counted as stalled on
+  the 4-core runner; fixed in 739ef792 (waits on its processes from the
+  main thread). Third run in progress after 739ef792.
+- On CI: 71 integration tests skip (no vJoy there); the rig golden pixel
+  comparison skips on GitHub.
+- **Open questions for the user:** every push goes to both
+  `Gremlin-Platforms` and `develop`, so CI runs twice and a failure emails
+  twice (could limit CI to one branch). The older "CI Tests" workflow has
+  been failing since 2026-10-04 (left untouched).
+
+## Follow-ups noted during Stage 1 (not yet in the gap list)
+
+- Direct time reads still outside `gremlin.clock`: `action_plugins/chain`
+  (`time.time`, tests patch it), `gremlin/user_script.py` periodic loop
+  (`time.monotonic`), `gremlin/ui/device.py` axis time series (GL-265),
+  `vjoy/vjoy.py` keep-alive.
+- `gremlin/validate.py`: PROFILE-UNUSED-ACTION also fires for new actions
+  open in a pane and for actions kept for Undo (it is a warning only);
+  `after_stop()` can't see Tempo / Double Tap / Smart Toggle Qt timers
+  (comes with run_scope, GL-047).
+- A renamed stick keeps its card order slot but loses its saved card size
+  and stack (keyed by name slug).
+- `import_module_file` now says "That file could not be read." for a JSON
+  file whose top level isn't an object (was "That file is not a module
+  file.").
+- Log noise in tests: "No parameter with key ('global','internal',
+  'twin-device-names')".
+- `test/integration/conftest.py` `_neutral_vjoy` resets the real vJoy
+  device between modules (as the integration tests already drive vJoy;
+  they skip while the user's Gremlin is open).
+- Hands-on checks for the user: the list at the end of
+  `claude/gap-list.md` (GL-016 and others).
 
 ## On hold (user's choice)
 
