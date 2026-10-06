@@ -37,10 +37,10 @@ Mapped against code at a1459e22 (audit 3). Line numbers drift as code changes: r
 | A2 | Undo / History of a shared action | Restore for every input using it | |
 | A3 | Device Pack failing partway | Undo everything it did | |
 | A4 | Picking a shared action in the pane | Edit a copy until OK | |
-| R1 | Logical Device values at Stop | Back to neutral | |
-| R2 | Release callbacks waiting at Stop | Drop them | |
-| R3 | Mode at the next Run | Start mode, temporary modes cleared | |
-| R4 | Releasing keys scripts send | Only those sent during a Run | |
+| R1 | Logical Device values at Stop | Back to neutral | As recommended (2026-10-06, page 06 review) |
+| R2 | Release callbacks waiting at Stop | Drop them | As recommended (2026-10-06, page 06 review) |
+| R3 | Mode at the next Run | Start mode, temporary modes cleared | As recommended (2026-10-06, page 06 review) |
+| R4 | Releasing keys scripts send | Only those sent during a Run | As recommended (2026-10-06, page 06 review) |
 
 ## How we work (lessons from audits 2 and 3)
 

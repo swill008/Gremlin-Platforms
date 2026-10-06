@@ -18,7 +18,7 @@ rule checks in Stage 1 are written from them). See "The plan" in
 | [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device | 122 | 18 | 34 | not yet |
 | [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 93 | 21 | 27 | not yet |
 | [05-actions-editors](05-actions-editors.md) | Action plugins, Configuration page, Keyboard page | 108 | 20 | 22 | not yet |
-| [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device | 85 | 19 | 18 | not yet |
+| [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device | 85 | 19 | 18 | reviewed 2026-10-06 (all as recommended) |
 | [07-button-map](07-button-map.md) | Button Map editor, photos, recovery, print/export | 100 | 19 | 23 | not yet |
 | [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper | 103 | 21 | 30 | not yet |
 | [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (parked), sound, speech, tray, theme, help; leftover files | 89 | 20 | 27 | not yet |

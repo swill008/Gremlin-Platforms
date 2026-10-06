@@ -195,21 +195,21 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 ### Run and Stop
 - S1. It should start the profile with the toolbar **Run** button; while running the button reads **Stop** and uses the accent color. [help: Run and status] [glossary]
 - S2. It should show **Running**, **Stopped** or **Running (Paused)** in the status bar, plus "(unsaved changes)" when the running profile has some. [help: Run and status] [glossary]
-- S3. It should offer **Run Profile** / **Stop Profile** in the tray menu, with a different tray icon while running. [glossary] [code only for the icon]
+- S3. It should offer **Run Profile** / **Stop Profile** in the tray menu, with a different tray icon while running. [glossary] [user confirmed 2026-10-06; was code only for the icon]
 - S4. It should send nothing to vJoy, Xbox or the Logical Device while stopped; stopped means editing only. [help: Run and status] [glossary: Run / Stop]
-- S5. It should run in the mode shown on the toolbar; if that mode is not in the profile, it should use the profile's Startup Mode rule. [help: Modes] [help: Profile Settings] [code only for the fallback]
-- S6. It should save the running mode at Stop so "Last Active" can use it. [help: Profile Settings] [code only for "at Stop"]
+- S5. It should run in the mode shown on the toolbar; if that mode is not in the profile, it should use the profile's Startup Mode rule. [help: Modes] [help: Profile Settings] [user confirmed 2026-10-06; was code only for the fallback]
+- S6. It should save the running mode at Stop so "Last Active" can use it. [help: Profile Settings] [user confirmed 2026-10-06; was code only for "at Stop"]
 - S7. It should use the profile's own Macro Default Delay, or the Options value when the profile sets none. [tracker: B27] [test: test_profile_settings.py::test_macro_delay_follows_options_unless_set]
-- S8. It should set the vJoy Initial Values of axes when the profile starts. [help: Profile Settings] — today only when the axis reads exactly 0 (see Q7). [code only]
+- S8. It should set the vJoy Initial Values of axes when the profile starts, always, through the output module; moving a physical axis then overrides them (Q7). [help: Profile Settings] Today only when the axis reads exactly 0. [user confirmed 2026-10-06; was code only]
 - S9. It should re-send the current physical axis values at Run and at a mode change when those Options are on. [help: Options] [test: test_mode_refresh_and_add_key.py::test_runner_refreshes_axes_on_mode_change_only_while_listening]
-- S10. It should skip a script that fails to load (retrying it once at Run) and log why, and still run the rest. [code only]
+- S10. It should skip a script that fails to load (retrying it once at Run) and log why, and still run the rest. [user confirmed 2026-10-06; was code only]
 - S11. It should skip a broken user plugin instead of failing the Run. [tracker: AU-86] [test: test_audit_runtime.py::test_a_broken_user_plugin_is_skipped]
-- S12. It should show "Could not run the profile: a user plugin is missing." when a script import fails. [code only]
-- S13. It should lock editing (Configuration, Keyboard, OSC, Logical Device; not the output pages) while running, with "Profile running: stop it to edit". [help: Logical Device] [code only for the other pages]
+- S12. It should show "Could not run the profile: a user plugin is missing." when a script import fails. [user confirmed 2026-10-06; was code only]
+- S13. It should lock editing (Configuration, Keyboard, OSC, Logical Device; not the output pages) while running, with "Profile running: stop it to edit". [help: Logical Device] [user confirmed 2026-10-06; was code only for the other pages]
 - S14. It should have the Run flag on only while a profile runs. [tracker: AU-60] [test: test_audit2_coverage.py::test_the_run_flag_is_on_only_while_a_profile_runs]
-- S15. It should Stop before opening another profile or a new one. [code only]
+- S15. It should Stop before opening another profile or a new one. [user confirmed 2026-10-06; was code only]
 - S16. It should Stop, load and Run again when a Load Profile action fires while running. [test: test_audit2_coverage.py::test_load_profile_loads_and_restarts_the_run]
-- S17. It should Stop before quitting, and quitting while running should leave no vJoy device held and no Xbox pad plugged in. [code only] [tracker: H2]
+- S17. It should Stop before quitting, and quitting while running should leave no vJoy device held and no Xbox pad plugged in. [user confirmed 2026-10-06; was code only] [tracker: H2]
 - S18. It should disconnect everything a failed Run connected when Stop is pressed. [tracker: ACT21] [test: test_action_fixes.py::test_stop_disconnects_after_a_failed_run]
 - S19. Stop then Run should start clean: no macro queued in the last Run runs, and a macro of the last Run leaves the new Run alone. [tracker: ACT17] [test: test_action_fixes.py::test_run_starts_with_no_stale_macros] [test: test_audit2_macros.py::test_a_macro_of_the_last_run_leaves_the_new_run_alone]
 
@@ -222,8 +222,8 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S25. It should end the Logical Device relative-axis loop. [test: test_audit3_run_stop.py::test_the_logical_device_relative_loop_ends_with_stop]
 - S26. It should end the vJoy relative-axis loop, also when Run is pressed again at once. [tracker: AU-117] — open gap.
 - S27. It should stop script timers, also a slow one, and the next Run should start its own timer loop. [tracker: AU-34] [test: test_audit_runtime.py::test_a_run_after_a_slow_stop_starts_its_own_loop] [test: test_audit_runtime.py::test_a_periodic_callback_with_no_interval_still_stops]
-- S28. It should stop sounds and speech and empty their queues. [code only]
-- S29. It should release every vJoy device and unplug every Xbox pad. [help: Xbox output module] [code only for vJoy]
+- S28. It should stop sounds and speech and empty their queues. [user confirmed 2026-10-06; was code only]
+- S29. It should release every vJoy device and unplug every Xbox pad. [help: Xbox output module] [user confirmed 2026-10-06; was code only for vJoy]
 - S30. It should never fire a Tempo, Double Tap or Smart Toggle timer after Stop. [tracker: AU-116] — open gap.
 - S31. It should release keys a script pressed. [tracker: AU-117] [user decision: R4 pending] — open gap.
 - S32. It should finish within a bounded time even if a macro step or a driver call is stuck. [tracker: H5] [test: test_audit3_run_stop.py::test_a_step_stuck_in_a_driver_ends_the_other_macros] [test: test_bounded_waits.py::test_a_macro_stops_waiting_for_an_exclusive_one_when_stopped]
@@ -233,16 +233,16 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S34. It should run the running mode's actions, and a child mode should use its parent's actions for inputs it leaves empty. [help: Modes] [glossary: Mode]
 - S35. It should run the other actions of an event, and its release actions, when one action fails. [tracker: AU-16] [test: test_audit_runtime.py::test_one_failing_action_does_not_stop_the_others] [test: test_audit2_coverage.py::test_a_failing_action_still_runs_the_release_actions]
 - S36. It should, while paused, run nothing except actions marked to always run (so Resume still works), and skip script callbacks without an error. [help: Pause and Resume] [tracker: ACT10] [test: test_action_fixes.py::test_while_paused_a_script_callback_does_not_stop_the_rest] [test: action_interaction/test_pause_resume.py::test_pause_resume]
-- S37. It should start each Run un-paused. [code only]
-- S38. It should release a vJoy or Logical Device button pressed in one mode when its physical button is released after the mode changed. [code only]
-- S39. It should treat an axis range as a button: press on entering the range (in the chosen direction), release on leaving, press and release when the axis jumps across it; an axis already inside the range at Run gives no press. [code only]
-- S40. It should treat a set of hat directions as one button. [code only]
+- S37. It should start each Run un-paused. [user confirmed 2026-10-06; was code only]
+- S38. It should release a vJoy or Logical Device button pressed in one mode when its physical button is released after the mode changed. [user confirmed 2026-10-06; was code only]
+- S39. It should treat an axis range as a button: press on entering the range (in the chosen direction), release on leaving, press and release when the axis jumps across it; an axis already inside the range at Run gives no press. [user confirmed 2026-10-06; was code only]
+- S40. It should treat a set of hat directions as one button. [user confirmed 2026-10-06; was code only]
 - S41. It should give a stick plugged in while running its claims (with any device-change setting). [tracker: DEV11]
 - S42. It should follow Options > Device change behavior when a controller is plugged in or removed while running: Reload (Stop and Run), Ignore, Disable (Stop). [help: Run and status]
 - S43. It should let go of a held button or hat of a stick that is unplugged. [test: test_device_reconnect.py::test_held_inputs_are_let_go_on_unplug]
 - S44. It should not release vJoy devices when only a stick (not a vJoy device) is plugged or unplugged. [tracker: DEV5] [test: test_device_scan.py::test_plugging_in_a_stick_does_not_reset_vjoy] [test: test_device_scan.py::test_a_vjoy_change_still_resets_vjoy]
 - S45. It should, with auto-load on, load and Run a program's profile when the program comes to the front, Stop on focus loss unless "Keep running" is on, never switch over unsaved changes (one notice), and Stop rather than run the wrong profile when the program's profile file is missing. [help: Options] [test: test_audit2_saving.py::test_a_missing_auto_load_profile_stops_the_open_one] [test: test_audit_saving.py::test_auto_load_with_a_missing_profile_runs_nothing_else]
-- S46. It should evaluate conditions through the input modules (an unclaimed input reads as neutral), and a condition on a stick plugged in later should work. [code only] [test: test_audit3_run_stop.py::test_a_condition_on_a_stick_plugged_in_later_works]
+- S46. It should evaluate conditions through the input modules (an unclaimed input reads as neutral), and a condition on a stick plugged in later should work. [user confirmed 2026-10-06; was code only] [test: test_audit3_run_stop.py::test_a_condition_on_a_stick_plugged_in_later_works]
 
 ### vJoy output
 - S47. It should send to a vJoy output only when its output module claims it and the vJoy device has it; anything else sends nothing and is logged once per Run. [help: vJoy output modules] [test: test_output_layer.py::test_unclaimed_write_is_blocked_and_logged_once] [test: test_output_layer.py::test_claimed_output_the_driver_lacks_is_refused] [test: test_output_layer.py::test_claimed_write_reaches_the_driver]
@@ -251,19 +251,19 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S50. It should give scripts a `vjoy` object that can use only claimed outputs. [help: Scripts] [test: test_vjoy_writers_use_firewall.py::test_scripts_get_the_firewalled_vjoy]
 - S51. It should never open a vJoy device for a viewer or a Home card; they show values only while the profile holds the device. [test-plan: P2d] [test: test_output_layer.py::test_unopened_device_gives_nothing]
 - S52. It should, when another program holds a vJoy device, show "vJoy N is in use by another program." once per Run, log once, retry every 3 s and carry on by itself when the device is free. [tracker: DEV6] [test: test_device_fixes.py::test_busy_vjoy_is_told_once_and_retried_every_few_seconds] [test: test_device_fixes.py::test_a_new_run_tells_again]
-- S53. It should pick up an output module saved while running within about 1 s. [code only]
-- S54. It should keep an idle vJoy device alive (re-send after 60 s of no writes) while held, and arm no new keep-alive after release. [code only] [test: test_threads.py::test_a_released_vjoy_device_arms_no_new_keep_alive]
-- S55. It should say "vJoy is not installed or not running" / "Install vJoy, then restart Gremlin-Platforms." wherever the vJoy driver is checked. [code only]
+- S53. It should pick up an output module saved while running at once, the same as an input module (Q12); today within about 1 s. [user confirmed 2026-10-06; was code only]
+- S54. It should keep an idle vJoy device alive (re-send after 60 s of no writes) while held, and arm no new keep-alive after release. [user confirmed 2026-10-06; was code only] [test: test_threads.py::test_a_released_vjoy_device_arms_no_new_keep_alive]
+- S55. It should say "vJoy is not installed or not running" / "Install vJoy, then restart Gremlin-Platforms." wherever the vJoy driver is checked. [user confirmed 2026-10-06; was code only]
 
 ### Xbox output
 - S56. It should pass every control of the Xbox 360 pad straight to ViGEm, with nothing to claim; an old claim in a file is ignored. [help: Xbox output module] [user decision: Xbox output has no claims] [test: test_xbox_output_module.py::test_every_control_reaches_the_pad] [test: test_xbox_output_module.py::test_an_old_xbox_claim_in_a_file_is_ignored] [test: test_xbox_output_module.py::test_no_xbox_code_reads_a_claim]
 - S57. It should plug in the pad when a Map to Xbox action first sends while running, and unplug it at Stop. [help: Xbox output module] [help: Xbox does nothing]
 - S58. It should take the pad number from the module name ("Xbox 360 Controller" = pad 1, "Xbox 360 2" = pad 2); one pad for now. [test: test_xbox_output_module.py::test_pad_number_comes_from_the_name] [test-plan: to-do 16]
 - S59. It should rest a trigger at 0 when its button is released; Full axis maps -1..+1 to 0..100%, Upper half maps centre..+1. [help: Map to Xbox] [tracker: DEV7] [test: test_map_to_xbox.py::test_trigger_range]
-- S60. It should never plug in a pad for a viewer. [code only] [test: test_xbox_output_module.py::test_viewer_sees_every_control]
+- S60. It should never plug in a pad for a viewer. [user confirmed 2026-10-06; was code only] [test: test_xbox_output_module.py::test_viewer_sees_every_control]
 - S61. It should never treat a real Xbox controller as Gremlin's pad. [tracker: DEV1]
 - S62. It should never plug in two pads for one pad number when two threads send at once. [tracker: DEV14]
-- S63. It should log a failed Xbox write once and go on. [code only]
+- S63. It should log a failed Xbox write once and go on. [user confirmed 2026-10-06; was code only]
 - S64. It should describe the ViGEmBus state (found with version, not installed, installed but not running, DLL missing) with one wording everywhere. [help: Xbox output module] [tracker: G-XBOXDRV]
 
 ### Macros, keyboard, mouse
@@ -277,7 +277,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S72. It should, with Map to Mouse, click a button (wheel once per press) or move the pointer with the set speeds and direction. [help: Map to Mouse]
 
 ### Sound and speech
-- S73. It should play WAV, MP3 or OGG at the set volume, overlapping sounds as Options says (Sequential, Interrupt, Overlap). [help: Play Sound] [code only for the three names]
+- S73. It should play WAV, MP3 or OGG at the set volume, overlapping sounds as Options says (Sequential, Interrupt, Overlap). [help: Play Sound] [user confirmed 2026-10-06; was code only for the three names]
 - S74. It should open a profile whose Play Sound file is missing; pressing it plays nothing; an unreadable file is logged once. [tracker: ACT11] [test: test_play_sound_missing_file.py::test_pressing_with_a_missing_file_plays_nothing] [test: test_program_fixes.py::test_a_sound_that_cannot_be_decoded_is_logged_once]
 - S75. It should decode sounds off the event thread and free finished sounds. [tracker: APP6] [test: test_program_fixes.py::test_sounds_are_decoded_on_the_playback_thread] [test: test_program_fixes.py::test_finished_sounds_are_let_go]
 - S76. It should speak with the voice set in Options, and Interrupt, Queue Front or Queue Back; volume shown 0-100%. [help: Text to Speech] [tracker: E2]
@@ -285,7 +285,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 ### Logical Device
 - S77. It should be a device inside the program with buttons, axes and hats named by type and number (Button 1, Axis 1, Hat 1); its values are fed by Map to Logical Device and its controls have actions of their own. [help: Logical Device] [glossary: Logical Device]
 - S78. It should add up to 180 controls at once, reuse the lowest free number, and sort names by number (Button 2 before Button 10). [help: Controls, groups, and the menu] [test: test_logical_device.py::test_create_many_caps_at_180] [test: test_logical_device.py::test_index_reuse] [test: test_logical_device.py::test_labels_sorted_naturally]
-- S79. It should let the user rename a control, hide the system name, clear the name, group controls, move and sort them, and treat group names that differ only in capitals or spaces as the same group. [help: Controls, groups, and the menu] [code only for the group-name rule]
+- S79. It should let the user rename a control, hide the system name, clear the name, group controls, move and sort them, and treat group names that differ only in capitals or spaces as the same group. [help: Controls, groups, and the menu] [user confirmed 2026-10-06; was code only for the group-name rule]
 - S80. It should list, in Assign Hardware, claimed physical controls of the same type (keys for buttons, OSC too) and add or remove a Map to Logical Device action in the page's mode; a vJoy used as output is never a source. [help: Assign hardware and actions] [test: test_logical_layout.py::test_named_vjoy_cannot_be_a_source_module]
 - S81. It should send on to Xbox or vJoy only through the control's own actions, never through Assign Hardware. [help: Sending to Xbox or vJoy]
 - S82. It should lock editing while the profile runs. [help: Logical Device]
@@ -371,3 +371,34 @@ Not tested (seen in code, no test found):
 - Device change behaviour Reload/Disable while running; auto-load Stop on focus loss with "Keep running" on.
 - Logical page: pane open when Run starts; `LogicalDeviceAction.create()` side effect; Logical Device condition with an empty device.
 - Concurrent vJoy opens from a macro thread and the main thread.
+
+## 12. Review (user, 2026-10-06)
+
+All [code only] statements in section 8 confirmed (S8 and S53 changed by Q7
+and Q12 as written there). Every question answered as recommended:
+
+| Q | Decision |
+|---|---|
+| Q1 (R1) | Logical Device values go back to neutral at Stop |
+| Q2 (R2) | Release callbacks waiting at Stop are dropped |
+| Q3 (R3) | Next Run uses the toolbar mode, temporary modes cleared |
+| Q4 (R4) | Script keys are released at Stop only if sent during a Run |
+| Q5 | A failed start runs Stop itself, shows one error, status reads Stopped |
+| Q6 | Run asks "Save or discard the open action first?" when an editor is open |
+| Q7 | vJoy Initial Values always written at Run through the output module |
+| Q8 | Sound and speech ignored when no Run is on |
+| Q9 | Keyboard and mouse output going straight to Windows is an accepted, written exception to the layer rule; held keys and buttons tracked in one place |
+| Q10 | The auto-pause on a vJoy error inside an action is removed |
+| Q11 | Paused shows "Running (Paused)"; Stop then Run starts un-paused (kept) |
+| Q12 | Output module changes saved while running apply at once |
+| Q13 | An axis already in range at Run gives no press (kept) |
+| Q14 | A macro's Joystick step passes claimed controls only (kept; say so in Macro help) |
+| Q15 | No hidden Button 1 on an empty Logical Device; say "Add a Logical Device control first" |
+| Q16 | Reads never open a vJoy device; only writes do |
+| Q17 | Map to vJoy relative axis ends with its Run |
+| Q18 | Remove the unused second Logical Device writer (after a grep confirms no user) |
+| Q19 | No Xbox pad outside a Run, ever |
+
+The section 8 statements are now the definition of correct for this
+subsystem; where today's code differs (section 10 and the decisions above),
+that is a gap to fix, each starting as a failing test.
