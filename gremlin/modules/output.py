@@ -33,6 +33,8 @@ _vjoy_names: dict[int, str] = {}
 _xbox_modules: dict[int, registry.Module] = {}
 _vjoy_modules: dict[int, registry.Module] = {}
 _blocked: set[tuple] = set()
+# A failed read of the output modules was logged (until one works again).
+_told_read_failed = False
 
 # A vJoy that failed to open is tried again at most this often (seconds).
 _VJOY_RETRY = 3.0
@@ -45,6 +47,7 @@ _told_busy: set[int] = set()
 
 def _refresh_claims(force: bool = False) -> None:
     global _claims_at, _vjoy_claims, _vjoy_names, _vjoy_modules, _xbox_modules
+    global _told_read_failed
     now = clock.monotonic()
     if not force and now - _claims_at < _CLAIM_TTL:
         return
@@ -56,7 +59,16 @@ def _refresh_claims(force: bool = False) -> None:
         try:
             outputs = registry.outputs()
         except Exception:
-            outputs = []
+            # Keep the last good claims (an empty list blocked every vJoy
+            # output, 06 RB16); said once, tried again after _CLAIM_TTL.
+            if not _told_read_failed:
+                _told_read_failed = True
+                syslog.exception(
+                    "Output modules could not be read; the last ones read are used"
+                )
+            _claims_at = clock.monotonic()
+            return
+        _told_read_failed = False
         for module in outputs:
             if is_xbox_module(module.name):
                 xbox.setdefault(xbox_pad_of(module.name), module)

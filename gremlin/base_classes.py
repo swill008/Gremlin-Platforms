@@ -4,9 +4,10 @@
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import copy
 import logging
-import time
 import uuid
 from abc import (
     ABC,
@@ -24,7 +25,9 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import (
+    clock,
     event_handler,
+    run_scope,
     util,
 )
 from gremlin.error import (
@@ -43,6 +46,8 @@ from gremlin.types import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from gremlin.event_handler import Event
 
 
@@ -542,17 +547,57 @@ class AbstractActionData(ABC):
 T = TypeVar("T", bound="AbstractActionData")
 
 
-# Pulse releases waiting for their timer (main thread only).
+# The input whose actions are being built for a Run (named in the log line
+# about an unfinished action left out).
+_building_for: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "building_for", default=""
+)
+
+
+@contextlib.contextmanager
+def building_for(where: str) -> Iterator[None]:
+    """Functors built meanwhile belong to the input described by where (the
+    Run names it when it leaves an unfinished action out)."""
+    token = _building_for.set(where)
+    try:
+        yield
+    finally:
+        _building_for.reset(token)
+
+
+def is_unfinished(action: AbstractActionData) -> bool:
+    """What a save leaves out (an error in its feedback), or a placeholder
+    with nothing to run (a Reference): Run leaves it out (05 S99, Q3)."""
+    if getattr(action, "functor", None) is None:
+        return True
+    try:
+        return not action.is_valid()
+    except Exception:
+        return True
+
+
+def note_left_out(action: AbstractActionData) -> None:
+    """The one log line for an unfinished action Run leaves out."""
+    where = _building_for.get()
+    logging.getLogger("system").warning(
+        f"not finished: {getattr(action, 'name', type(action).__name__)}"
+        + (f" on {where}" if where else "")
+        + " (left out of the Run)"
+    )
+
+
+# Pulse releases waiting for their timer (run_scope timers that Stop fires
+# at once; read by gremlin.validate).
 _pending_pulses: list = []
 
 
 def flush_pulses() -> None:
-    """Sends the pulse releases still waiting (at Stop, before the outputs
-    are released)."""
+    """Sends the pulse releases still waiting now. Stop does this itself
+    (run_scope fires at_stop="fire" timers); kept for callers not moved yet."""
     while _pending_pulses:
-        release = _pending_pulses.pop(0)
+        pulse = _pending_pulses.pop(0)
         try:
-            release()
+            pulse.fire_now()
         except Exception:
             logging.getLogger("system").exception("A pulse release failed")
 
@@ -574,6 +619,10 @@ class AbstractFunctor(Generic[T], ABC):
         for selector in instance._valid_selectors():
             self.functors[selector] = []
         for action, selector in zip(*instance.get_actions()):
+            # Run leaves out unfinished actions, one log line each (05 Q3).
+            if is_unfinished(action):
+                note_left_out(action)
+                continue
             self.functors[selector].append(action.functor(action))
 
     @abstractmethod
@@ -639,21 +688,17 @@ class AbstractFunctor(Generic[T], ABC):
             self._process_event(functors, event_release, value_release, properties)
 
         # On the main thread (events are handled there) the release comes
-        # 50 ms later from a timer, so the window doesn't stop for it. Stop
-        # sends any still waiting first (flush_pulses): a release after Stop
-        # reopened vJoy.
+        # 50 ms later from a timer the Run owns, so the window doesn't stop
+        # for it. Stop fires any still waiting before the drivers go (a
+        # release after Stop reopened vJoy).
         app = QtCore.QCoreApplication.instance()
         if app is not None and QtCore.QThread.currentThread() is app.thread():
-            _pending_pulses.append(release)
-
-            def later() -> None:
-                if release in _pending_pulses:
-                    _pending_pulses.remove(release)
-                    release()
-
-            QtCore.QTimer.singleShot(50, later)
+            _pending_pulses[:] = [t for t in _pending_pulses if t.is_alive()]
+            _pending_pulses.append(
+                run_scope.timer("pulse release", 0.05, release, at_stop="fire")
+            )
             return
-        time.sleep(0.05)
+        clock.sleep(0.05)
         release()
 
     def _should_execute(self, value: Value) -> bool:

@@ -26,7 +26,7 @@ picture folder and a read-only install folder, the pool of an unplugged
 device (S46), other devices' damaged module files (S75).
 
 Known gaps, written for the spec and marked xfail(strict) until fixed:
-GL-071 (outside changes, 07 Q6), GL-173 (print area and guides, 07 Q1),
+GL-173 (print area and guides, 07 Q1),
 GL-174 (Choose Photo waits for Save, 07 Q2), GL-175 (no module file made by
 a guide change, S29), GL-176 (Delete Device mid-edit, 07 Q7), GL-178 (no
 folder in the install folder, 07 Q13), GL-182 (chips for controls the device
@@ -45,8 +45,9 @@ import uuid
 
 import pytest
 
+from gremlin.modules import store
 from gremlin.types import InputType
-from gremlin.ui import hardware_profile, input_pairing, module_model
+from gremlin.ui import hardware_profile, input_pairing
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "stage1_button_map_smoke.py"
@@ -311,11 +312,6 @@ def test_history_restore_puts_the_file_back(outside: dict) -> None:
     assert restored["file-restored"] is True
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-071: the map does not reload after History Restore"
-)
 def test_the_map_follows_a_history_restore_outside_edit(outside: dict) -> None:
     # 07 Q6: outside Edit, reload.
     assert outside["history-restore"]["shown-follows"] is True
@@ -325,11 +321,6 @@ def test_module_setup_photo_reaches_the_file(outside: dict) -> None:
     assert outside["setup-photo-written"] is True
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-071: Save writes the old photo over Module Setup's without a word",
-)
 def test_save_does_not_write_over_module_setup_photo(outside: dict) -> None:
     # 07 Q6: in Edit, Save warns first (Keep mine / Take theirs); nothing is
     # written over the change until the user chooses.
@@ -343,11 +334,6 @@ def test_pack_import_reaches_the_file(outside: dict) -> None:
     assert 80 in imported["file-ids"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-071: Save writes the old map over a Device Pack import without a word",
-)
 def test_save_does_not_write_over_a_pack_import(outside: dict) -> None:
     saved = outside["pack-save"]
     assert saved["file-ids"] == saved["pack-ids"]
@@ -377,10 +363,10 @@ def maps(
 ) -> pathlib.Path:
     folder = tmp_path / "modules"
     folder.mkdir()
-    monkeypatch.setattr(hardware_profile, "_maps_dir", lambda: folder)
+    monkeypatch.setattr(store, "folder", lambda: folder)
     monkeypatch.setattr(
-        hardware_profile,
-        "resolve_module_slug",
+        store,
+        "slug_for",
         lambda name, guid="": name.lower().replace(" ", "_"),
     )
     return folder
@@ -489,12 +475,12 @@ def test_pool_takes_claims_first_then_what_the_device_reports(
     monkeypatch.setattr(
         hardware_profile, "_profile_input_ids", lambda g: ([9], [9], [9]))
     claim = {"claim": {"buttons": [2], "axes": [], "hats": []}}
-    monkeypatch.setattr(module_model, "_load_module_doc", lambda name, g="": claim)
+    monkeypatch.setattr(store, "read", lambda name, g="": claim)
     rows = hardware_profile.chips_for_guid(guid)
     assert [(r["kind"], r["hwId"]) for r in rows] == [
         ("btn", 2), ("axis", 1), ("axis", 2), ("hat", 1),
     ]
-    monkeypatch.setattr(module_model, "_load_module_doc", lambda name, g="": {})
+    monkeypatch.setattr(store, "read", lambda name, g="": {})
     rows = hardware_profile.chips_for_guid(guid)
     assert [(r["kind"], r["hwId"]) for r in rows] == [
         ("btn", 1), ("btn", 2), ("btn", 3), ("axis", 1), ("axis", 2), ("hat", 1),

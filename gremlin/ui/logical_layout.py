@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Callable
+from typing import Any
 from xml.etree import ElementTree
 
 from PySide6 import QtCore
@@ -16,32 +17,27 @@ from gremlin import device_initialization, error, keyboard, shared_state
 from gremlin.base_classes import AbstractActionData
 from gremlin.error import GremlinError
 from gremlin.logical_device import LogicalDevice
+from gremlin.modules import store
 from gremlin.modules.registry import module_direction
 from gremlin.ui.module_model import (
     KEYBOARD_GUID,
     LOGICAL_GUID,
     OSC_GUID,
-    _load_module_doc,
-    module_exists,
 )
-from gremlin.plugin_manager import PluginManager
 from gremlin.profile import (
+    Draft,
+    DraftOutdated,
     InputItem,
     InputItemBinding,
     VirtualAxisButton,
     VirtualHatButton,
+    bindings_fingerprint,
 )
 from gremlin.signal import signal
 from gremlin.types import AxisMode, DataInsertionMode, InputType
 from gremlin.modules.ids import guid_key
 from gremlin.modules.claim import claim_friendly, claim_ids, key_id, read_claim
-from gremlin.ui.binding_catalog import (
-    _attach_binding,
-    _clone_binding,
-    _drop_shadow,
-    _fingerprint_item,
-    sequences_for_item,
-)
+from gremlin.ui.binding_catalog import sequences_for_item
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -68,9 +64,10 @@ def _assign_input_modules() -> list[dict]:
         key = guid_key(guid) or name.lower()
         if key in seen or key == logical:
             return
-        if not module_exists(name):
+        # By name and id (twin sticks each have their own file, 03 S77).
+        if not store.exists(name, guid):
             return
-        doc = _load_module_doc(name, guid)
+        doc = store.read(name, guid)
         if module_direction(doc, name=name) == "dest" and bus != "vjoy-input":
             return
         seen.add(key)
@@ -192,6 +189,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._redo: list[dict] = []
         self._writing = False
         self._pane_model = None
+        # The pane's copy (gremlin.profile.Draft); _pane_shadow is its input.
+        self._pane_draft: Draft | None = None
         self._pane_shadow: InputItem | None = None
         self._pane_real: InputItem | None = None
         self._pane_seq = -1
@@ -268,7 +267,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._changed()
 
     # An input's actions before and after a change, kept as copies (XML, as
-    # the Configuration page keeps them: Profile.input_snapshot / put_input).
+    # the Configuration page keeps them: Library.snapshot / restore).
     # Live action objects were kept before; the library could drop or hand
     # them out again, and the saved profile then didn't load.
 
@@ -278,7 +277,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
 
     def _snapshot(self, item: InputItem | None) -> dict | None:
         profile = self._profile()
-        return profile.input_snapshot(item) if profile is not None else None
+        return profile.library.snapshot(item) if profile is not None else None
 
     def _play(self, links, reverse: bool) -> None:
         entries = list(reversed(links)) if reverse else list(links)
@@ -288,8 +287,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             if op == "input":
                 if profile is not None:
                     side = entry["before"] if reverse else entry["after"]
-                    guid, kind, number, mode = entry["key"]
-                    profile.put_input(guid, kind, number, mode, side)
+                    profile.library.restore(entry["key"], side)
                 continue
             if reverse and op == "add":
                 self._remove_link(entry)
@@ -308,9 +306,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             profile = self._profile()
             for link in entry["links"]:
                 if link.get("op") == "input" and profile is not None:
-                    guid, kind, number, mode = link["key"]
                     side = link["before"] if reverse else link["after"]
-                    profile.put_input(guid, kind, number, mode, side, check_only=True)
+                    profile.library.restore(link["key"], side, check_only=True)
             self._logical.restore(entry["before"] if reverse else entry["after"])
             self._play(entry["links"], reverse)
         except error.ProfileError as e:
@@ -467,7 +464,10 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             and item.action_sequences[index].behavior == behavior
         ):
             binding = item.action_sequences[index]
-        action = PluginManager().create_instance("Map to Logical Device", behavior)
+        # In the library of the input it goes on (GL-102).
+        action: Any = item.library.create(
+            "Map to Logical Device", behavior, item=item
+        )
         if action is None:
             return None
         action.logical_input_type = logical_type
@@ -533,10 +533,10 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 if child.logical_input_type != logical_type or int(child.logical_input_id) != logical_id:
                     continue
                 root.remove_action(index, selectors[index])
-                profile.library.remove_unused(child)
+                profile.library.release([child])
                 if not root.get_actions()[0]:
                     item.remove_item_binding(binding)
-                    profile.library.remove_unused(root)
+                    profile.library.release([root])
                 return True
         return False
 
@@ -551,13 +551,13 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     root.remove_action(index, selectors[index])
                     profile = self._profile()
                     if profile is not None:
-                        profile.library.remove_unused(child)
+                        profile.library.release([child])
                     break
             if root is not None and not root.get_actions()[0]:
                 item.remove_item_binding(binding)
                 profile = self._profile()
                 if profile is not None:
-                    profile.library.remove_unused(root)
+                    profile.library.release([root])
         return records
 
     def _take_own_items(self, kind: InputType, input_id: int) -> list[dict]:
@@ -822,8 +822,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         def fn():
             before = self._snapshot(real)
             real.remove_item_binding(binding)
-            if binding.root_action is not None:
-                _profile.drop_unused_actions([binding.root_action])
+            _profile.library.release([binding.root_action])
             return [{
                 "op": "input", "key": self._input_key(real),
                 "before": before, "after": self._snapshot(real),
@@ -1300,34 +1299,26 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         profile, item, real = spec
         if seq >= 0 and (real is None or seq >= len(real.action_sequences)):
             return 0
-        shadow = InputItem(profile.library)
-        shadow.device_id = self._logical.device_guid
-        shadow.input_type = item.type
-        shadow.input_id = item.id
-        shadow.mode = self._mode
-        whole = False
-        if new:
-            shadow.add_item_binding()
-        elif seq < 0 and real is not None and real.action_sequences:
-            for binding in real.action_sequences:
-                _clone_binding(binding, shadow)
-            whole = True
-        elif seq < 0:
-            shadow.add_item_binding()
-        else:
-            _clone_binding(real.action_sequences[seq], shadow)
+        draft = profile.library.draft(
+            real,
+            None if seq < 0 else seq,
+            key=(self._logical.device_guid, item.type, item.id, self._mode),
+            blank=new,
+        )
+        shadow = draft.item
         from gremlin.ui.profile import InputItemModel
 
         self._pane_real = real
+        self._pane_draft = draft
         self._pane_shadow = shadow
         self._pane_seq = seq
         self._pane_key = parent_key
-        self._pane_whole = whole
+        self._pane_whole = draft.whole
         self._pane_new = new
-        self._pane_base = _fingerprint_item(shadow)
+        self._pane_base = bindings_fingerprint(shadow.action_sequences)
         self._pane_model = InputItemModel(shadow, 0, self)
         self.paneModelChanged.emit()
-        return len(shadow.action_sequences) if whole else 0
+        return len(shadow.action_sequences) if draft.whole else 0
 
     @QtCore.Slot(result=bool)
     def paneDirty(self) -> bool:
@@ -1338,19 +1329,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             # Every action removed in the pane: OK takes them off the input.
             real = self._pane_real
             return self._pane_whole and bool(real and real.action_sequences)
-        return _fingerprint_item(shadow) != self._pane_base
-
-    def _replace_sequences(self, real: InputItem, shadow: InputItem) -> None:
-        old = list(real.action_sequences)
-        moved = list(shadow.action_sequences)
-        real.action_sequences = []
-        for binding in moved:
-            binding.input_item = real
-            real.action_sequences.append(binding)
-        for binding in old:
-            if binding.root_action is None or binding in moved:
-                continue
-            real.library.remove_unused(binding.root_action)
+        return bindings_fingerprint(shadow.action_sequences) != self._pane_base
 
     def _set_sequences(self, real: InputItem, change: Callable[[], object]) -> int:
         """Runs change (it edits real's actions) as one Undo step; returns
@@ -1369,16 +1348,12 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         value = result[0] if result else 0
         return value if isinstance(value, int) else 0
 
-    def _append_sequence(self, real: InputItem, shadow: InputItem) -> int:
-        binding = shadow.action_sequences[0]
-        self._set_sequences(real, lambda: _attach_binding(real, shadow, -1))
-        return real.action_sequences.index(binding)
-
     @QtCore.Slot(result=int)
     def commitPane(self) -> int:
-        shadow = self._pane_shadow
-        if shadow is None or not self.paneDirty():
+        draft = self._pane_draft
+        if draft is None or not self.paneDirty():
             return self._pane_seq
+        shadow = draft.item
         real = self._pane_real
         if real is None:
             spec = self._spec(self._pane_key)
@@ -1396,27 +1371,36 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._pane_real = real
         if real is None:
             return -1
+        library = real.library
         if self._pane_new:
-            index = self._append_sequence(real, shadow)
-            self._pane_new = False
-            self._pane_seq = index
-            self._pane_whole = False
-            only = index
+            where: int | None = -1
         elif self._pane_whole or self._pane_seq < 0:
-            self._set_sequences(real, lambda: self._replace_sequences(real, shadow))
+            where = None
+        else:
+            where = self._pane_seq
+        try:
+            index = self._set_sequences(
+                real, lambda: library.commit(draft, real, where)
+            )
+        except DraftOutdated:
+            signal.showNotification.emit(
+                "Action Editor",
+                "This input was changed while its action editor was open, so "
+                "OK didn't write over that change. Close the editor and open "
+                "it again.",
+            )
+            return -1
+        if where is None:
             self._pane_seq = -1
             self._pane_whole = True
             only = None
             index = 0
         else:
-            seq = self._pane_seq
-            index = self._set_sequences(
-                real, lambda: _attach_binding(real, shadow, seq)
-            )
+            self._pane_new = False
             self._pane_seq = index
             self._pane_whole = False
             only = index
-        shadow.action_sequences.clear()
+        self._pane_draft = None
         self._show_saved(real, only)
         self._rebuild()
         signal.actionsChanged.emit()
@@ -1430,37 +1414,33 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         profile = self._profile()
         if profile is None or real is None:
             return
-        draft = InputItem(profile.library)
-        draft.device_id = real.device_id
-        draft.input_type = real.input_type
-        draft.input_id = real.input_id
-        draft.mode = real.mode
-        bindings = list(real.action_sequences)
-        if only_index is not None and 0 <= only_index < len(bindings):
-            bindings = [bindings[only_index]]
-        for binding in bindings:
-            _clone_binding(binding, draft)
+        draft = real.library.draft(real, only_index)
         from gremlin.ui.profile import InputItemModel
 
         old = self._pane_model
-        self._pane_shadow = draft
+        self._pane_draft = draft
+        self._pane_shadow = draft.item
         self._pane_real = real
-        self._pane_base = _fingerprint_item(draft)
-        self._pane_model = InputItemModel(draft, 0, self)
+        self._pane_base = bindings_fingerprint(draft.item.action_sequences)
+        self._pane_model = InputItemModel(draft.item, 0, self)
         self.paneModelChanged.emit()
         if old is not None:
             old.deleteLater()
 
+    def _drop_draft(self) -> None:
+        draft, self._pane_draft = self._pane_draft, None
+        self._pane_shadow = None
+        if draft is not None:
+            draft.library.discard(draft)
+
     @QtCore.Slot()
     def discardPane(self) -> None:
-        _drop_shadow(self._pane_shadow)
-        self._pane_shadow = None
+        self._drop_draft()
         self._pane_base = ""
 
     @QtCore.Slot()
     def endPane(self) -> None:
-        _drop_shadow(self._pane_shadow)
-        self._pane_shadow = None
+        self._drop_draft()
         self._pane_real = None
         self._pane_seq = -1
         self._pane_key = ""

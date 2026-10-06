@@ -17,6 +17,7 @@ from PySide6 import QtCore
 
 from gremlin import (
     event_handler,
+    run_scope,
     util,
 )
 from gremlin.base_classes import (
@@ -75,9 +76,16 @@ class LoadProfileFunctor(AbstractFunctor):
         logging.getLogger("system").debug(
             f"Loading profile ... {self.data.profile_filename}"
         )
-        be.loadProfile(self.data.profile_filename)
-        be.activate_gremlin(False)
-        be.activate_gremlin(True)
+        # Not from inside this event: the Run is stopped, the profile opened
+        # and run again once the event is done, and only when it opened. A
+        # Stop before then drops the request (it belongs to this Run).
+        run_scope.timer(
+            "load profile", 0, _run_profile, str(self.data.profile_filename)
+        )
+
+
+def _run_profile(path: str) -> None:
+    backend.Backend().run_profile(path)
 
 
 class LoadProfileModel(ActionModel):

@@ -22,7 +22,7 @@ sys.path.append(".")
 import pytest
 from PySide6 import QtCore
 
-from gremlin import threads
+from gremlin import run_scope, threads
 from gremlin.macro import Macro, MacroManager, PauseAction
 from gremlin.types import InputType
 
@@ -107,7 +107,7 @@ def test_a_macro_of_the_last_run_leaves_the_new_run_alone(
     manager.start()
     # The new Run's exclusive macro.
     monkeypatch.setattr(manager, "_is_executing_exclusive", True)
-    manager._finish_macro(old, manager._run - 1)  # the old one ends late
+    manager._finish_macro(old, run_scope.number() - 1)  # the old one ends late
     assert manager._is_executing_exclusive
 
 

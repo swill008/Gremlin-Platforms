@@ -42,10 +42,10 @@ from gremlin import (  # noqa: E402
     util,
 )
 from gremlin.logical_device import LogicalDevice  # noqa: E402
-from gremlin.modules import module_file  # noqa: E402
+from gremlin.modules import module_file, store  # noqa: E402
 from gremlin.profile import DeviceInfo, Profile  # noqa: E402
 from gremlin.types import InputType  # noqa: E402
-from gremlin.ui import device_pack, hardware_profile  # noqa: E402
+from gremlin.ui import device_pack  # noqa: E402
 
 shot = sys.argv[1] if len(sys.argv) > 1 else ""
 out: dict = {}
@@ -118,7 +118,7 @@ add_logical(profile, uid, 5, 9)
 modules = util.modules_dir()
 modules.mkdir(parents=True, exist_ok=True)
 module_file.write_json(
-    modules / f"{hardware_profile._slug(name)}.json",
+    store.own_path(name),
     {
         "kind": "control.hardware",
         "device": name,

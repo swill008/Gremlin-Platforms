@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
-from typing import Self
+from typing import Any, Self
 
 import dill
 from action_plugins import (
@@ -19,7 +19,6 @@ from action_plugins import (
 )
 from gremlin import (
     device_initialization,
-    plugin_manager,
     profile,
     shared_state,
     types,
@@ -146,7 +145,7 @@ class AutoMapper:
                     if options.overwrite_used_inputs:
                         roots = self._profile.roots_of([item] if item is not None else [])
                         item.action_sequences.clear()
-                        self._profile.drop_unused_actions(roots)
+                        self._profile.library.release(roots)
                         used.discard(target)
                     if item.action_sequences:
                         self._num_retained_bindings += 1
@@ -240,9 +239,14 @@ class AutoMapper:
     def _create_new_mapping(
         self, physical_input: profile.InputItem, vjoy_input: types.VjoyInput
     ) -> None:
-        vjoy_action = plugin_manager.PluginManager().create_instance(
-            map_to_vjoy.MapToVjoyData.name, physical_input.input_type
+        # In the library of the input it goes on (GL-102).
+        vjoy_action: Any = physical_input.library.create(
+            map_to_vjoy.MapToVjoyData.name,
+            physical_input.input_type,
+            item=physical_input,
         )
+        if vjoy_action is None:
+            return
         vjoy_action.vjoy_device_id = vjoy_input.vjoy_id
         vjoy_action.vjoy_input_id = vjoy_input.input_id
         vjoy_action.vjoy_input_type = vjoy_input.input_type

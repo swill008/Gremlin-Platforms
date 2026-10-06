@@ -13,9 +13,8 @@ reaches vJoy: no device is opened again and nothing is written, also
 after the Tempo time has passed.
 
 Spec: 06 S4 (nothing is sent while stopped), S29, S30 (no Tempo, Double
-Tap or Smart Toggle timer fires after Stop); 05 S91; 01 S90, S91. Known
-gap: GL-047 / AU-116 (Tempo's main-thread timer is not cancelled at Stop
-and fires afterwards, opening vJoy again), marked xfail.
+Tap or Smart Toggle timer fires after Stop); 05 S91; 01 S90, S91. Was
+gap GL-047 / AU-116: the timer is now a run_scope timer, cancelled at Stop.
 """
 
 from __future__ import annotations
@@ -111,11 +110,6 @@ def test_a_long_press_works_while_running(run: dict) -> None:
     assert step(run, "running-after-stop") is False
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-047: Tempo timer fires after Stop",
-)
 def test_nothing_fires_after_stop(run: dict) -> None:
     assert step(run, "writes-after-stop") == []
     assert step(run, "opened-after-stop") == 0

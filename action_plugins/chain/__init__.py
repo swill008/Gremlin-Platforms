@@ -118,7 +118,10 @@ class ChainModel(ActionModel):
         if index < 0 or index >= len(self._data.chain_sequences):
             raise GremlinError(f"Index {index} invalid as chain container")
 
-        del self._data.chain_sequences[index]
+        removed = self._data.chain_sequences.pop(index)
+        # Its actions leave the profile unless another input uses them (the
+        # one removal rule, 05 Q12).
+        self.library.release(removed)
         self.changed.emit()
         self._binding_model.sync_data()
 

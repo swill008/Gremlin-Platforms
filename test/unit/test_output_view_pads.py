@@ -1,7 +1,11 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
+import json
 from pathlib import Path
+
+import pytest
+from PySide6 import QtCore
 
 _QML = Path(__file__).resolve().parents[2] / "qml/OutputModuleView.qml"
 
@@ -20,8 +24,6 @@ def test_view_reloads_after_both_name_and_guid_change() -> None:
     assert "onDeviceNameChanged: { loadView();" not in text
     assert "onGuidChanged: reloadView()" in text
     assert "onDeviceNameChanged: reloadView()" in text
-    model = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/module_model.py").read_text(encoding="utf-8")
-    assert "guid_for_module(name, guid)" in model
 
 
 def test_save_toast_click_off_or_two_seconds() -> None:
@@ -97,14 +99,48 @@ def test_button_grid_uses_columns_and_width() -> None:
     assert "Layout.preferredWidth: Style.dp(Math.max(40, _root.buttonWidth))" in text
 
 
-def test_vjoy_view_save_uses_that_devices_module_file() -> None:
-    text = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/module_model.py").read_text(encoding="utf-8")
-    save = text[text.find("def saveViewConfig"): text.find("def catalogConfigJson")]
-    load = text[text.find("def viewConfigJson"): text.find("def saveViewConfig")]
-    assert "module_json_path(name, guid)" in save
-    assert "module_json_path(device_name, guid)" in load
-    rule = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/hardware_profile.py").read_text(encoding="utf-8")
-    body = rule[rule.find("def module_json_path"): rule.find("def module_file_choices")]
-    # The one rule every page uses (a vJoy never opens another vJoy's file:
-    # test_audit3_module_files.test_one_vjoy_never_opens_another_vjoys_file).
-    assert "_active_module_path(" in body
+@pytest.fixture
+def view_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """An empty modules folder of its own; History in the temporary folder."""
+    from gremlin import history, history_modules
+    from gremlin.modules import registry, store
+
+    QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
+    modules = tmp_path / "modules"
+    modules.mkdir()
+    monkeypatch.setattr(store, "folder", lambda: modules)
+    monkeypatch.setattr(registry, "_binding_store", lambda: {})
+    monkeypatch.setattr(history, "folder", lambda: tmp_path / "history")
+    monkeypatch.setattr(history, "_pruned", True)
+    monkeypatch.setattr(history_modules, "_last_pictures", {})
+    registry._cache.clear()
+    return modules
+
+
+def test_vjoy_view_save_uses_that_devices_module_file(view_folder: Path) -> None:
+    from gremlin import device_initialization
+    from gremlin.ui import module_model
+
+    vjoy = str(next(iter(device_initialization.vjoy_devices())).device_guid)
+    stick = next(iter(device_initialization.physical_devices()))
+    stick_file = view_folder / "pjoy_pro.json"
+    stick_file.write_text(json.dumps({
+        "kind": "control.hardware", "device": stick.name, "direction": "source",
+        "boundGuidLocal": str(stick.device_guid),
+    }), encoding="utf-8")
+    stick_before = stick_file.read_bytes()
+    model = module_model.ModuleListModel()
+    # The view is saved into that vJoy's own module file (by name and id)
+    # and read back from it.
+    assert model.saveViewConfig("vJoy 1", vjoy, json.dumps({"showPads": False}))
+    saved = json.loads((view_folder / "vjoy_1.json").read_text(encoding="utf-8"))
+    assert saved["view"]["showPads"] is False
+    assert json.loads(model.viewConfigJson("vJoy 1", vjoy))["showPads"] is False
+    # An id that is not this vJoy's (a stale one) never reaches another
+    # device's file: the same file, the stick's untouched.
+    stale = str(stick.device_guid)
+    assert model.saveViewConfig("vJoy 1", stale, json.dumps({"buttonColumns": 3}))
+    saved = json.loads((view_folder / "vjoy_1.json").read_text(encoding="utf-8"))
+    assert saved["view"]["buttonColumns"] == 3
+    assert json.loads(model.viewConfigJson("vJoy 1", stale))["buttonColumns"] == 3
+    assert stick_file.read_bytes() == stick_before

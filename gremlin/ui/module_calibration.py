@@ -18,11 +18,16 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 @ta.QmlElement
 class CalibrationModuleModel(QtCore.QAbstractListModel):
+    """One row per connected stick. A row is picked by its "key": the file's
+    slug for the first stick on a file, "slug@id" for another stick on the
+    same file (03 S100, S110), so each one can be shown and saved."""
+
     countChanged = QtCore.Signal()
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"slug"),
+        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"key"),
     }
 
     def __init__(self, parent: ta.OQO = None) -> None:
@@ -54,6 +59,8 @@ class CalibrationModuleModel(QtCore.QAbstractListModel):
             return row["name"]
         if key == "slug":
             return row["slug"]
+        if key == "key":
+            return row["key"]
         return None
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
@@ -65,8 +72,9 @@ class CalibrationModuleModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, result=int)
     def indexOfSlug(self, slug: str) -> int:
+        """The row picked by a key (a card's slug picks the first stick)."""
         want = str(slug or "").strip().lower()
         for i, row in enumerate(self._rows):
-            if row["slug"] == want:
+            if row["key"].lower() == want:
                 return i
         return -1

@@ -253,6 +253,19 @@ Item {
             }
         }
 
+        // An action other inputs use too: OK changes it for all of them.
+        Label {
+            visible: text !== ""
+            text: _root.action ? _root.action.sharedWith : ""
+            wrapMode: Text.WordWrap
+            color: Style.warn
+            font.pixelSize: Style.dp(12)
+
+            Layout.fillWidth: true
+            Layout.leftMargin: _headerIcon.x
+            Layout.bottomMargin: Style.dp(6)
+        }
+
         RowLayout {
             id: _action
 

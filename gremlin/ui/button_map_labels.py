@@ -19,7 +19,7 @@ import uuid
 
 from gremlin.modules import wiring
 from gremlin.types import InputType
-from gremlin.ui.input_pairing import _walk_actions
+from gremlin.ui.input_pairing import walk_actions
 
 # Label prefix per input type: "btn:5", "axis:1", "hat:1" as the chips use.
 _KINDS = {
@@ -114,7 +114,7 @@ def _has_actions(item: object) -> bool:
         root = getattr(seq, "root_action", None)
         if root is None:
             continue
-        if any(getattr(a, "tag", "") != "root" for a in _walk_actions(root)):
+        if any(getattr(a, "tag", "") != "root" for a in walk_actions(root)):
             return True
     return False
 
@@ -126,7 +126,7 @@ def _texts_for_item(item: object, prefer_description: bool) -> list[str]:
         root = getattr(seq, "root_action", None)
         if root is None:
             continue
-        for action in _walk_actions(root):
+        for action in walk_actions(root):
             text = action_text(action)
             if not text:
                 continue

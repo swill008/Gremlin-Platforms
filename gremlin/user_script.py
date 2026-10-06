@@ -34,8 +34,8 @@ import gremlin.keyboard
 from gremlin import (
     error,
     event_handler,
+    run_scope,
     shared_state,
-    threads,
     util,
 )
 from gremlin.logical_device import LogicalDevice
@@ -121,9 +121,10 @@ class PeriodicRegistry:
         self._thread: threading.Thread | None = None
         self._queue = []
         self._plugins = []
-        # Each Run has its own loop: one still finishing a slow callback
+        # Each start has its own loop: one still finishing a slow callback
         # after Stop ends by itself and never runs the new Run's callbacks.
-        self._generation = 0
+        # It ends with its Run too (run_scope's number, the one Run counter).
+        self._loop: object | None = None
 
     def start(self) -> None:
         """Starts the event loop."""
@@ -132,11 +133,12 @@ class PeriodicRegistry:
             return
 
         self._running = True
-        self._generation += 1
-        self._thread = threads.start(
+        loop = object()
+        self._loop = loop
+        self._thread = run_scope.loop(
             "user script timers",
             self._thread_loop,
-            self._generation,
+            loop,
             stop=self._ask_to_stop,
         )
 
@@ -191,8 +193,9 @@ class PeriodicRegistry:
                 callback = plugin.install(callback, partial_fn)
         return callback
 
-    def _thread_loop(self, generation: int) -> None:
-        """Main execution loop run in a separate thread."""
+    def _thread_loop(self, run: int, loop: object = None) -> None:
+        """Main execution loop run in a separate thread (run: its Run's
+        number, loop: this start's own token)."""
         # Setup plugins to use
         self._plugins = [JoystickPlugin(), VJoyPlugin(), KeyboardPlugin()]
         callback_interval = {}
@@ -211,7 +214,7 @@ class PeriodicRegistry:
         queue = self._queue
 
         def current() -> bool:
-            return self._running and self._generation == generation
+            return self._running and self._loop is loop and run_scope.alive(run)
 
         while current():
             # Capture the current timestamp for reuse in the sleep down below.
@@ -239,6 +242,16 @@ class PeriodicRegistry:
 
 callback_registry = CallbackRegistry()
 periodic_registry = PeriodicRegistry()
+
+
+def forget_other_scripts(scripts: list[Script]) -> None:
+    """Script state that belongs to no script of the open profile goes
+    (profile load): script settings of the profile open before, and the
+    callbacks and timers of a Run (CodeRunner ends those at Stop)."""
+    callback_registry.clear()
+    periodic_registry.stop()
+    periodic_registry.clear()
+    Script.variable_registry.keep_only({script.id for script in scripts})
 
 
 class JoystickDecorator:
@@ -388,6 +401,11 @@ class ScriptVariableRegistry:
         self._registry[script.id] = {}
         for variable in script.variables.values():
             self._registry[script.id][variable.name] = variable
+
+    def keep_only(self, script_ids: set[uuid.UUID]) -> None:
+        """Forgets the variables of every script not in script_ids."""
+        for script_id in [k for k in self._registry if k not in script_ids]:
+            del self._registry[script_id]
 
     def remove_script(self, script: Script) -> None:
         """Removes the specified script's variables.

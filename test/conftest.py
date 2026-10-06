@@ -322,8 +322,8 @@ class _Validate:
 
 
 def _run_number() -> int:
-    runner = sys.modules.get("gremlin.code_runner")
-    return int(getattr(runner, "_run_number", 0) or 0) if runner else 0
+    scope = sys.modules.get("gremlin.run_scope")
+    return int(scope.number()) if scope else 0
 
 
 def _validate_report_path() -> pathlib.Path:

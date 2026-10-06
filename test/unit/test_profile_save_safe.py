@@ -45,15 +45,16 @@ def test_a_failed_save_leaves_the_old_profile_whole(
     profile.to_xml(path)
     before = path.read_bytes()
     profile.modes.add_mode("Combat")
-    real = pathlib.Path.write_text
+    # The writer encodes the text and writes bytes (module_file.write_bytes).
+    real = pathlib.Path.write_bytes
 
     def crash(self: pathlib.Path, *args: object, **kwargs: object) -> int:
         if self.name.endswith(".tmp"):
-            real(self, "<profile half-writ", encoding="utf-8")
+            real(self, b"<profile half-writ")
             raise RuntimeError("power cut")
         return real(self, *args, **kwargs)
 
-    monkeypatch.setattr(pathlib.Path, "write_text", crash)
+    monkeypatch.setattr(pathlib.Path, "write_bytes", crash)
     with pytest.raises(RuntimeError):
         profile.to_xml(path)
     assert path.read_bytes() == before

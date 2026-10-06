@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import logging
-import threading
 from typing import (
     TYPE_CHECKING,
     List,
@@ -20,7 +18,7 @@ from gremlin import (
     event_handler,
     event_helpers,
     mode_manager,
-    threads,
+    run_scope,
     util,
 )
 from gremlin.base_classes import (
@@ -128,82 +126,85 @@ class MapToLogicalDeviceFunctor(AbstractFunctor):
         )
 
     def _start_loop(self) -> None:
-        """Starts the relative axis loop, once the previous one has ended."""
-        if isinstance(self.thread, threading.Thread):
-            # Waits briefly for the old loop (it is ending); one that doesn't
-            # end is logged instead of freezing the main thread.
-            self.thread.join(timeout=1.0)
-            if self.thread.is_alive():
-                self._report_stuck_loop()
-                return
-        from gremlin import code_runner
+        """Starts the relative axis loop for this Run.
 
+        A loop still ending (released and moved again at once) is not
+        waited for on the main thread: it is no longer the current one and
+        ends at its next step (06 RB20).
+        """
+        token = object()
+        self._loop_token = token
         # Set here, not in the thread: a second event before the thread
-        # starts would otherwise join it, on the main thread.
+        # starts must not start another.
         self.thread_running = True
-        self.thread = threads.start(
+        self.thread = run_scope.loop(
             "logical device relative axis",
             self.relative_axis_thread,
-            code_runner.run_number(),
+            token,
             stop=self._ask_to_stop,
-        )
-
-    def _report_stuck_loop(self) -> None:
-        from gremlin.log_once import log_once
-
-        log_once(
-            "system",
-            ("relative axis still running", id(self)),
-            logging.WARNING,
-            "The relative axis loop did not end within 1 s; not started again.",
         )
 
     def _ask_to_stop(self) -> None:
         """Ends the relative axis loop after its current step."""
         self.thread_running = False
 
-    def relative_axis_thread(self, run: int | None = None) -> None:
-        """Moves the logical axis each step; ends with Stop (run: the Run it
-        belongs to, None: no Run to follow)."""
-        from gremlin import code_runner
+    def _current(self, run: int, token: object) -> bool:
+        """This loop still runs: its Run goes on (06 Q17), it wasn't asked
+        to stop and no newer loop replaced it."""
+        return (
+            self.thread_running
+            and getattr(self, "_loop_token", None) is token
+            and run_scope.alive(run)
+        )
 
+    def _end(self, token: object, should_stop: bool = False) -> None:
+        """This loop ends; the flags are left alone if a newer one runs."""
+        if getattr(self, "_loop_token", None) is token:
+            self.thread_running = False
+            if should_stop:
+                self.should_stop_thread = True
+
+    def relative_axis_thread(self, run: int, token: object = None) -> None:
+        """Moves the logical axis each step; ends with its Run (run: the
+        Run's number, token: this loop's own)."""
         input = self._logical[
             LogicalDevice.Input.Identifier(
                 self.data.logical_input_type, self.data.logical_input_id
             )
         ]
-        self.axis_value = input.value
-        while self.thread_running:
-            # Stop (or Stop and Run again) ends it: it used to go on sending
-            # into the next Run.
-            if run is not None and code_runner.run_number() != run:
-                self.thread_running = False
-                return
+        # This loop's own value: a loop still ending must not change the one
+        # that replaced it (self.axis_value is set only while current).
+        value = input.value
+        self.axis_value = value
+        # Stop (or Stop and Run again) ends it: it used to go on sending
+        # into the next Run.
+        while self._current(run, token):
             # If the value was changed from what we set it to in the last
             # iteration, terminate the thread
-            change = input.value - self.axis_value
+            change = input.value - value
             if abs(change) > 0.0001:
-                self.thread_running = False
-                self.should_stop_thread = True
+                self._end(token, should_stop=True)
                 return
 
-            self.axis_value = util.clamp(
-                self.axis_value + self.axis_delta_value, -1.0, 1.0
-            )
-            input.update(self.axis_value)
+            value = util.clamp(value + self.axis_delta_value, -1.0, 1.0)
+            # Stop may have come during this step: nothing after it.
+            if not self._current(run, token):
+                return
+            self.axis_value = value
+            input.update(value)
             self._event_listener.joystick_event.emit(
                 event_handler.Event(
                     event_type=input.type,
                     identifier=input.id,
                     device_guid=self._logical.device_guid,
                     mode=mode_manager.ModeManager().current.name,
-                    value=self.axis_value,
-                    raw_value=self.axis_value,
+                    value=value,
+                    raw_value=value,
                 )
             )
 
             if self.should_stop_thread and self.thread_last_update + 1.0 < clock.now():
-                self.thread_running = False
+                self._end(token)
             clock.sleep(self.THREAD_SLEEP_DURATION_S)
 
 

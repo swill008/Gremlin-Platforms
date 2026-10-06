@@ -171,17 +171,54 @@ class ModeManager(QtCore.QObject):
     def __init__(self) -> None:
         QtCore.QObject.__init__(self)
 
-        self._mode_stack = [Mode("Invalid", None)]
+        self._stack = [Mode("Invalid", None)]
+        # The current mode, published whole: read from the listener, macro
+        # and script threads while the main thread changes the stack.
+        self._current = self._stack[-1]
         self._config = Configuration()
 
     @property
+    def _mode_stack(self) -> list[Mode]:
+        return self._stack
+
+    @_mode_stack.setter
+    def _mode_stack(self, stack: list[Mode]) -> None:
+        self._stack = stack
+        if stack:
+            self._current = stack[-1]
+
+    def _publish(self) -> None:
+        """The top of the stack becomes the current mode (after an in-place
+        change of the stack)."""
+        if self._stack:
+            self._current = self._stack[-1]
+
+    @property
     def current(self) -> Mode:
-        return self._mode_stack[-1]
+        """The current mode; safe to read from any thread."""
+        return self._current
 
     def reset(self) -> None:
+        """The open profile's start mode on a fresh stack (profile load)."""
         self._mode_stack = [
             Mode(resolve_start_mode(shared_state.current_profile), None)
         ]
+
+    def start_run(self, name: str) -> None:
+        """A Run starts in mode name (the toolbar mode) on a fresh stack: no
+        mode history or temporary mode of an earlier Run (06 Q3, R3)."""
+        self._mode_stack = [Mode(name, None)]
+        self._update_mode()
+
+    def end_run(self) -> None:
+        """At Stop: temporary modes end with the Run, and the mode history
+        with them; the mode under them stays shown (06 Q3, R3)."""
+        before = self.current.name
+        kept = [mode for mode in self._mode_stack if not mode.is_temporary]
+        name = kept[-1].name if kept else before
+        self._mode_stack = [Mode(name, None)]
+        if name != before:
+            self.mode_changed.emit(name)
 
     def _exists(self, mode: Mode) -> bool:
         return mode in self._mode_stack
@@ -282,6 +319,7 @@ class ModeManager(QtCore.QObject):
             self._mode_stack[-2],
             self._mode_stack[-1],
         )
+        self._publish()
         self._update_mode()
 
     def unwind(self) -> None:
@@ -290,6 +328,7 @@ class ModeManager(QtCore.QObject):
 
         # Remove top mode in stack
         self._mode_stack.pop()
+        self._publish()
         self._update_mode()
 
     def switch_to(self, mode: Mode) -> None:
@@ -307,39 +346,41 @@ class ModeManager(QtCore.QObject):
                 f"Mode '{mode.name}' is not in the profile: the mode was not changed.",
             )
             return
+        # Built aside and swapped in whole: a reader never sees it half done.
+        stack = list(self._mode_stack)
         # Detect cycle in the mode stack and resolve it
-        if self._exists(mode):
+        if mode in stack:
             resolution_mode = Configuration().value(
                 "action", "change-mode", "resolution-mode"
             )
-            idx = self._mode_stack.index(mode)
+            idx = stack.index(mode)
 
             if not mode.is_temporary:
                 if resolution_mode == "Oldest":
-                    self._mode_stack = self._mode_stack[:idx]
+                    stack = stack[:idx]
                 elif resolution_mode == "Newest":
-                    self._mode_stack = self._mode_stack[idx + 1 :]
+                    stack = stack[idx + 1 :]
             # Special handling if the loop is caused by a temporary mode
             else:
                 if resolution_mode == "Oldest":
-                    self._mode_stack = self._mode_stack[:idx]
+                    stack = stack[:idx]
                 if resolution_mode == "Newest":
                     # 1. Find the index corresponding to the first non-temporary
                     #    mode entry in the stack before the idx mode
                     idx2 = idx
-                    while idx2 > 0 and self._mode_stack[idx2].is_temporary:
+                    while idx2 > 0 and stack[idx2].is_temporary:
                         idx2 -= 1
-                    assert not self._mode_stack[idx2].is_temporary
+                    assert not stack[idx2].is_temporary
                     # 2. Create new stack that no longer contains the old
                     #    temporary mode instance but retains all previous
                     #    modes until the first non-temporary entry
-                    self._mode_stack = [m for m in self._mode_stack[idx2:] if m != mode]
+                    stack = [m for m in stack[idx2:] if m != mode]
                     # 3. Fix inconsistent stack entry transitions
-                    for a, b in zip(self._mode_stack[:-1], self._mode_stack[1:]):
+                    for a, b in zip(stack[:-1], stack[1:]):
                         if a.name != b.previous:
                             b.previous = a.name
 
-        self._mode_stack.append(mode)
+        self._mode_stack = [*stack, mode]
         self._update_mode()
 
     def temporary(self, mode: Mode) -> None:

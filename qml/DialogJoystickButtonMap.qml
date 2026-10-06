@@ -46,9 +46,35 @@ ApplicationWindow {
 
     property string leaveKind: ""
     property string targetName: ""
+    // The map's parts of the module file (map and photo) as this window last
+    // read or wrote them: another window may change the file meanwhile
+    // (History Restore, Device Pack, Module Setup's photo; 07 Q6).
+    property string _fileParts: ""
+    // A Save that asked Keep mine / Take theirs: its report flag, and
+    // whether a leave (close, switch...) waits for it.
+    property bool _conflictReport: true
+    property bool _leaveAfterSave: false
+    property bool _conflictAsking: false
+
+    function filePartsNow() {
+        return targetName.length ? _fileWatch.mapParts(targetName, targetGuid) : ""
+    }
+
+    // This window's own change of the file (a photo change during Edit) is
+    // not a change made elsewhere; one made elsewhere before it still is.
+    function ownFileChange(change) {
+        var unchanged = filePartsNow() === _fileParts
+        var result = change()
+        if (unchanged)
+            _fileParts = filePartsNow()
+        return result
+    }
 
     function askLeave(kind) {
         leaveKind = kind
+        // (A Save's Keep mine / Take theirs question, if open, is replaced.)
+        _conflictAsking = false
+        _leaveAfterSave = false
         _saveGate.detail = "Editor changes are not saved. Leave without saving and this work will be lost."
         _saveGate.ask()
     }
@@ -165,6 +191,7 @@ ApplicationWindow {
 
     ViewerDeviceModel { id: _devices }
     HardwareProfile { id: _hw }
+    ModuleFileWatch { id: _fileWatch }
     ButtonMapOptions {
         id: _opts
         onChanged: _buttonMap.applyOptionsToEditor()
@@ -351,7 +378,9 @@ ApplicationWindow {
     }
 
 
-    function loadLive() {
+    // followChange: the file changed elsewhere and the map follows it (not
+    // an opening: a kept photo is left alone, it may be another window's).
+    function loadLive(followChange) {
         if (_hw.setDeviceGuid)
             _hw.setDeviceGuid(targetGuid)
         // A photo kept by an editing session that never finished (the
@@ -359,9 +388,12 @@ ApplicationWindow {
         // saved photo goes back before the map is read. Not while unsaved
         // edits wait to be offered: Restore and Not now keep the new photo
         // with them, Discard puts the saved one back (putPhotoBack).
-        if (!editing && targetName.length && !_hw.loadRecovery(targetName).length
+        if (!followChange && !editing && targetName.length && !_hw.loadRecovery(targetName).length
                 && _hw.restorePhoto(targetName))
             _photoStamp = Date.now()
+        if (followChange)
+            _photoStamp = Date.now()
+        _fileParts = filePartsNow()
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
         if (!doc || !doc.nodes) {
@@ -430,9 +462,24 @@ ApplicationWindow {
         })
     }
 
-    function saveEdit(report) {
+    // keepMine: write over a change made elsewhere since this edit started
+    // (the user chose Keep mine).
+    function saveEdit(report, keepMine) {
         if (report === undefined)
             report = true
+        // Changed elsewhere since this edit started: ask before writing over
+        // it (07 Q6); nothing is written until the user chooses.
+        if (!keepMine && targetName.length && filePartsNow() !== _fileParts) {
+            saveOk = false
+            _conflictReport = report
+            _conflictAsking = true
+            _saveGate.choose("Module File Changed",
+                "The module file changed since you started editing (another window saved it).\n\n"
+                + "Keep mine writes your edits over that change. Take theirs drops your edits "
+                + "and shows the file as it is now.",
+                "Keep mine", "Take theirs")
+            return false
+        }
         var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
         // A name or text still being typed (Ctrl+S) is saved with the rest.
         if (ed && ed.renameId)
@@ -481,6 +528,7 @@ ApplicationWindow {
         liveNodes = JSON.parse(JSON.stringify(nodes))
         liveImage = image
         livePhoto = photoBag()
+        _fileParts = filePartsNow()
         // Saved: later changes are compared with what was just saved.
         editBase = JSON.stringify(nodes)
         _baseWanted = false
@@ -705,6 +753,23 @@ ApplicationWindow {
         })
     }
 
+    // Take theirs: this edit goes and the file shows as it is now. The
+    // edit's own photo change goes back too, unless the other window changed
+    // the photo (its photo stays).
+    function takeTheirs() {
+        var theirPhoto = false
+        try {
+            theirPhoto = JSON.parse(filePartsNow() || "{}").image
+                         !== JSON.parse(_fileParts || "{}").image
+        } catch (e) {
+            theirPhoto = true
+        }
+        if (theirPhoto)
+            _hw.dropPhotoStash(targetName)
+        discardEdit()
+        loadLive(true)
+    }
+
     function cancelEdit() {
         if (isDirty()) {
             askLeave("cancel")
@@ -727,9 +792,18 @@ ApplicationWindow {
     }
 
     function confirmLeaveSave() {
+        _leaveAfterSave = true
         saveEdit()
+        // The file changed elsewhere: Keep mine saves and then leaves.
+        if (_conflictAsking)
+            return
+        _leaveAfterSave = false
         if (!saveOk)
             return
+        finishLeave()
+    }
+
+    function finishLeave() {
         if (leaveKind === "close") {
             editing = false
             _allowClose = true
@@ -908,11 +982,54 @@ ApplicationWindow {
         _failNotice.titleText = title
     }
 
+    // Leave questions (Save / Discard / Cancel), and Save's question when
+    // the module file changed elsewhere during the edit (07 Q6): Keep mine
+    // / Take theirs / Cancel.
     DismissibleDialog {
         id: _saveGate
         onSaveChosen: _buttonMap.confirmLeaveSave()
-        onDiscardChosen: _buttonMap.confirmLeaveDiscard()
-        onCancelled: _buttonMap.pendingDevice = ""
+        onConfirmed: {
+            if (!_buttonMap._conflictAsking)
+                return
+            var leave = _buttonMap._leaveAfterSave
+            _buttonMap._conflictAsking = false
+            _buttonMap._leaveAfterSave = false
+            _buttonMap.saveEdit(_buttonMap._conflictReport, true)
+            if (leave && _buttonMap.saveOk)
+                _buttonMap.finishLeave()
+        }
+        onDiscardChosen: {
+            if (!_buttonMap._conflictAsking) {
+                _buttonMap.confirmLeaveDiscard()
+                return
+            }
+            var leave = _buttonMap._leaveAfterSave
+            _buttonMap._conflictAsking = false
+            _buttonMap._leaveAfterSave = false
+            _buttonMap.takeTheirs()
+            if (leave)
+                _buttonMap.finishLeave()
+        }
+        onCancelled: {
+            _buttonMap._conflictAsking = false
+            _buttonMap._leaveAfterSave = false
+            _buttonMap.pendingDevice = ""
+        }
+    }
+
+    // Outside Edit the map follows its module file when another window
+    // changes it (History Restore, Device Pack, Module Setup; 07 Q6).
+    Timer {
+        interval: 1000
+        repeat: true
+        running: _buttonMap.visible && !_buttonMap.editing && _buttonMap.targetName.length > 0
+        onTriggered: {
+            if (_buttonMap.loadedDevice !== _buttonMap.targetName)
+                return
+            if (_buttonMap.filePartsNow() === _buttonMap._fileParts)
+                return
+            _buttonMap.loadLive(true)
+        }
     }
 
     Dialog {
@@ -1805,7 +1922,7 @@ ApplicationWindow {
         onAccepted: {
             // Cancel can put the current photo back.
             _hw.stashPhoto(targetName)
-            var rel = _hw.copyImage(selectedFile, targetName)
+            var rel = ownFileChange(function() { return _hw.copyImage(selectedFile, targetName) })
             if (rel.length) {
                 _photoStamp = Date.now()
                 applyImage(rel)
@@ -2902,7 +3019,7 @@ ApplicationWindow {
                         _hw.stashPhoto(targetName)
                         if (!_hw.clearImage(targetName)) {
                             // It may have stopped part way: put the photo back.
-                            _hw.restorePhoto(targetName)
+                            ownFileChange(function() { return _hw.restorePhoto(targetName) })
                             tellFailure("Clear Photo Failed",
                                 "The photo file could not be removed (it may be open in another program).")
                             return

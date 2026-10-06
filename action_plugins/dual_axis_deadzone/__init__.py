@@ -31,7 +31,6 @@ from gremlin.modules import inputs
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
-    DataCreationMode,
     InputType,
     PropertyType,
 )
@@ -131,12 +130,13 @@ class DualAxisDeadzoneModel(ActionModel):
 
     @QtCore.Slot()
     def newDeadzone(self) -> None:
-        action = DualAxisDeadzoneData.create(
-            DataCreationMode.Create, self._binding_model.behavior_type
+        action = self.library.create(
+            DualAxisDeadzoneData.name, self._binding_model.behavior_type, reuse=False
         )
+        if action is None:
+            return
         action.label = "Dual Axis Deadzone"
 
-        self.library.add_action(action)
         # The new one is the one shown (as picking it from the list).
         self._set_deadzone(str(action.id))
 
@@ -192,11 +192,12 @@ class DualAxisDeadzoneModel(ActionModel):
             if self._data.axis2 == identifier:
                 self._data.axis2 = InputIdentifier()
 
-        # Update the library and action entries
-        self._binding_model.append_action(
-            self.library.get_action(util.parse_id_or_uuid(uuid_str)),
-            self.sequence_index,
+        # Put the picked one in its place; a shared one is edited as a copy
+        # until OK (decision A4).
+        picked = self.adopt_action(
+            self.library.get_action(util.parse_id_or_uuid(uuid_str))
         )
+        self._binding_model.append_action(picked, self.sequence_index)
         self._binding_model.remove_action(self.sequence_index)
         self._binding_model.rootActionChanged.emit()
 

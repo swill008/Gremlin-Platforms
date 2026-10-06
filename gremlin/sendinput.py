@@ -7,13 +7,13 @@ from __future__ import annotations
 import ctypes
 import ctypes.wintypes
 import enum
-import logging
+import functools
 import math
 import threading
 import time
 from typing import TYPE_CHECKING
 
-from gremlin import threads
+from gremlin import run_scope, threads
 from gremlin.common import SingletonDecorator
 from gremlin.types import MouseButton
 
@@ -437,32 +437,19 @@ def mouse_relative_motion(dx: int, dy: int) -> None:
     _send_input(_mouse_input(MOUSEEVENTF_MOVE, dx, dy))
 
 
-# Buttons pressed through here and not released yet (Stop lets go of them).
-_held_buttons: list[MouseButton] = []
-_held_buttons_lock = threading.Lock()
-
-
 def _note_button(button: MouseButton, is_pressed: bool) -> None:
-    with _held_buttons_lock:
-        if button in _held_buttons:
-            _held_buttons.remove(button)
-        if is_pressed:
-            _held_buttons.append(button)
-
-
-def release_held_buttons() -> None:
-    """Releases every mouse button still held down, last pressed first."""
-    with _held_buttons_lock:
-        buttons = list(_held_buttons)
-    for button in reversed(buttons):
-        # One failing release must not keep the others (or the rest of Stop)
-        # from running.
-        try:
-            mouse_release(button)
-        except Exception:
-            logging.getLogger("system").exception(
-                "Could not release a held mouse button"
-            )
+    """A button pressed during a Run is held in run_scope (the one list of
+    held keys and buttons) until it is released: by whoever pressed it, by
+    the macro that pressed it ending early, or at Stop."""
+    if is_pressed:
+        run_scope.hold(
+            run_scope.current_owner(),
+            "mouse",
+            button,
+            functools.partial(mouse_release, button),
+        )
+    else:
+        run_scope.let_go(run_scope.current_owner(), "mouse", button)
 
 
 def mouse_press(button: MouseButton) -> None:

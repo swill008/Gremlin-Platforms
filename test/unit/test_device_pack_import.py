@@ -28,12 +28,17 @@ from xml.etree import ElementTree
 import pytest
 
 from gremlin import device_initialization, plugin_manager, shared_state, util
-from gremlin.modules import module_file
+from gremlin.modules import module_file, registry
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
 from gremlin.ui import device_pack, hardware_profile
 
 _OTHER = uuid.UUID("11111111-2222-3333-4444-555555555555")
+
+
+def _own_path(name: str) -> Path:
+    """The device's own-name module file (the fake stick has no binding)."""
+    return util.modules_dir() / f"{registry.plain_slug(name) or 'device'}.json"
 
 
 def _stick() -> tuple[str, uuid.UUID]:
@@ -106,7 +111,7 @@ def pack(tmp_path: Path) -> dict:
     modules = util.modules_dir()
     modules.mkdir(parents=True, exist_ok=True)
     module_file.write_json(
-        modules / f"{hardware_profile._slug(name)}.json",
+        _own_path(name),
         {
             "kind": "control.hardware",
             "device": name,
@@ -237,7 +242,7 @@ def test_missing_logical_inputs_can_be_created(pack: dict) -> None:
 
 def test_undo_import_puts_everything_back(pack: dict) -> None:
     name, uid, profile = pack["name"], pack["uid"], pack["profile"]
-    path = util.modules_dir() / f"{hardware_profile._slug(name)}.json"
+    path = _own_path(name)
     before_file = path.read_bytes()
     before_actions = set(profile.library._actions)
     _import(pack, ["wire:Default", "wire:Combat", "in.catalog", "in.mapview"])
@@ -270,7 +275,7 @@ def test_a_failed_import_leaves_the_last_one_undoable(
 
 def test_map_settings_rows_import_separately(pack: dict) -> None:
     name = pack["name"]
-    path = util.modules_dir() / f"{hardware_profile._slug(name)}.json"
+    path = _own_path(name)
     module_file.write_json(
         path, {"kind": "control.hardware", "device": name, "ui": {"viewPct": 100}}
     )
@@ -284,7 +289,7 @@ def test_map_settings_rows_import_separately(pack: dict) -> None:
 
 
 def test_configuration_appearance_comes_with_the_pack(pack: dict) -> None:
-    path = util.modules_dir() / f"{hardware_profile._slug(pack['name'])}.json"
+    path = _own_path(pack['name'])
     _import(pack, ["in.catalog"])
     assert json.loads(path.read_text(encoding="utf-8"))["catalog"] == {"rowHeight": 40}
 
@@ -453,7 +458,7 @@ def test_a_picture_that_cannot_be_written_puts_everything_back(
     # Audit 2: it stopped the import with an error and left what it wrote.
     _import(pack, ["in.catalog"])
     last = device_pack._last_import
-    path = util.modules_dir() / f"{hardware_profile._slug(pack['name'])}.json"
+    path = _own_path(pack['name'])
     before = path.read_bytes()
 
     def half_written(
@@ -483,7 +488,7 @@ def test_an_output_picture_that_cannot_be_written_is_reported(
     def output_fails(
         slug: str, files: dict, chosen: set, doc: dict, record: list
     ) -> dict:
-        if slug == hardware_profile._slug(pack["name"]):
+        if slug == _own_path(pack["name"]).stem:
             return real(slug, files, chosen, doc, record)
         dest = util.modules_dir() / slug / "half.png"
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -519,3 +524,102 @@ def test_a_damaged_module_file_is_skipped(caplog: pytest.LogCaptureFixture) -> N
         assert isinstance(hardware_profile._known_pack_devices(), list)
     finally:
         path.unlink()
+
+
+# --- module files through the store (map 1; GL-072, GL-073, GL-080) --------
+
+
+def test_an_import_onto_a_damaged_module_file_is_refused(pack: dict) -> None:
+    # 08 Q2 / F1: refused and pointed to Start Fresh, as every other save;
+    # it used to replace the damaged file (a backup kept).
+    path = _own_path(pack["name"])
+    path.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
+    before = path.read_bytes()
+    profile, uid = pack["profile"], pack["uid"]
+    wires = _targets(profile, uid, "Default")
+    last = device_pack._last_import
+    result = _import(pack, ["in.catalog", "wire:Default"])
+    assert not result["ok"]
+    assert "Start Fresh" in result["error"]
+    assert path.read_bytes() == before
+    assert _targets(profile, uid, "Default") == wires
+    assert device_pack._last_import is last
+
+
+def test_a_damaged_output_module_file_is_left_alone(pack: dict) -> None:
+    out = util.modules_dir() / "vjoy_1.json"
+    out.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
+    before = out.read_bytes()
+    try:
+        result = _import(pack, ["in.catalog", "out:vjoy_2.claim"])
+        assert result["ok"], result
+        assert "vJoy 1 was skipped" in result["report"]
+        assert "Start Fresh" in result["report"]
+        assert out.read_bytes() == before
+    finally:
+        out.unlink(missing_ok=True)
+
+
+def test_a_pack_picture_is_written_whole_or_not_at_all(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 08 R3 / S76: a temporary file, then a swap; it was written in place,
+    # so a crash could leave half a picture.
+    import builtins
+    import io
+
+    folder = util.modules_dir() / "safe_pictures"
+    folder.mkdir(parents=True, exist_ok=True)
+    dest = folder / "photo.png"
+    dest.write_bytes(b"old")
+    opened: list[Path] = []
+    real_open = io.open
+
+    def spy(
+        file: object, mode: str = "r", *args: object, **kwargs: object
+    ) -> object:
+        if not isinstance(file, int) and any(c in mode for c in "wax+"):
+            opened.append(Path(str(file)).resolve())
+        return real_open(file, mode, *args, **kwargs)
+
+    monkeypatch.setattr(io, "open", spy)
+    monkeypatch.setattr(builtins, "open", spy)
+    record: list[tuple[Path, bytes | None]] = []
+    doc = {"image": "photo.png", "nodes": []}
+    written = device_pack._write_pictures(
+        "safe_pictures", {"photo.png": b"new"}, {"pic:photo.png"}, doc, record
+    )
+    monkeypatch.undo()
+    assert written == {"photo.png": "photo.png"}
+    assert dest.read_bytes() == b"new"
+    assert dest.resolve() not in opened
+    assert record == [(dest, b"old")]
+
+
+def test_the_clean_up_of_a_failed_import_is_in_history(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # 08 Q12 / F3: the pack's clean-up after a failed write removed a new
+    # file with no History entry.
+    import time
+
+    from gremlin import history
+
+    monkeypatch.setattr(history, "folder", lambda: tmp_path / "history")
+    monkeypatch.setattr(history, "_pruned", True)
+
+    def settle() -> list[dict]:
+        deadline = time.monotonic() + 5
+        while history._writer is not None and time.monotonic() < deadline:
+            time.sleep(0.02)
+        return history.entries()
+
+    path = util.modules_dir() / "cleanup_stick.json"
+    module_file.write_json(
+        path, {"kind": "control.hardware", "device": "Cleanup Stick"}
+    )
+    settle()
+    device_pack._put_back([(path, None)])
+    assert not path.exists()
+    titles = [entry["title"] for entry in settle()]
+    assert "Deleted the module file of Cleanup Stick" in titles

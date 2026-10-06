@@ -90,9 +90,18 @@ def timer(
     return t
 
 
+# Main-thread timers still waiting (listed by running(), cancelled by
+# shutdown()); they are Qt timers, not threads.
+_main_timers: set[MainTimer] = set()
+
+
 class MainTimer:
     """A one-shot timer whose function runs on the main thread (the Qt event
-    loop), with the same cancel() / is_alive() as threading.Timer."""
+    loop), with the same cancel() / is_alive() as threading.Timer.
+
+    Listed while it waits, like a thread, so shutdown() cancels it and a
+    check can name it.
+    """
 
     def __init__(
         self, name: str, seconds: float, function: Callable[..., Any], args: tuple
@@ -100,12 +109,23 @@ class MainTimer:
         from PySide6 import QtCore
 
         self.name = PREFIX + name
+        self._function = function
+        self._args = args
         self._timer = QtCore.QTimer()
         self._timer.setSingleShot(True)
-        self._timer.timeout.connect(lambda: function(*args))
+        self._timer.timeout.connect(self._fire)
+        with _LOCK:
+            _main_timers.add(self)
         self._timer.start(max(0, round(seconds * 1000)))
 
+    def _fire(self) -> None:
+        with _LOCK:
+            _main_timers.discard(self)
+        self._function(*self._args)
+
     def cancel(self) -> None:
+        with _LOCK:
+            _main_timers.discard(self)
         self._timer.stop()
 
     def is_alive(self) -> bool:
@@ -127,9 +147,12 @@ def main_timer(
 
 
 def running() -> list[str]:
-    """The names of the program's threads that are still running."""
+    """The names of the program's threads (and main-thread timers) that are
+    still running."""
     with _LOCK:
-        return sorted(t.name for t in _live if t.is_alive())
+        names = [t.name for t in _live if t.is_alive()]
+        names += [t.name for t in _main_timers if t.is_alive()]
+    return sorted(names)
 
 
 def shutdown(timeout: float = 2.0) -> list[str]:
@@ -139,6 +162,16 @@ def shutdown(timeout: float = 2.0) -> list[str]:
     """
     with _LOCK:
         threads = list(_live.items())
+        main_timers = list(_main_timers)
+    # A Qt timer is stopped only from the thread it lives on.
+    if threading.current_thread() is threading.main_thread():
+        for main_timer_ in main_timers:
+            try:
+                main_timer_.cancel()
+            except Exception:
+                logging.getLogger("system").exception(
+                    f"Could not cancel {main_timer_.name}"
+                )
     for thread, stop in threads:
         if stop is None:
             continue

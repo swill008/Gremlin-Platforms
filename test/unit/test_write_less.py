@@ -166,26 +166,37 @@ def test_repeating_errors_are_logged_once(caplog: pytest.LogCaptureFixture) -> N
 def test_calibration_save_all_writes_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from gremlin.modules import calibration
+    from gremlin.modules import calibration, module_file
 
     path = tmp_path / "stick.json"
     path.write_text("{}", encoding="utf-8")
     monkeypatch.setattr(
         calibration, "module_for_slug", lambda slug: {"slug": slug, "path": path},
     )
-    writes: list[Path] = []
-    real_write: Callable[..., int] = Path.write_text
+    saves: list[Path] = []
+    real_save: Callable[..., None] = module_file.write_bytes
 
-    def counting(self: Path, *args: object, **kwargs: object) -> int:
-        writes.append(self)
-        return real_write(self, *args, **kwargs)
+    def counting_save(target: Path, data: bytes) -> None:
+        saves.append(Path(target))
+        real_save(target, data)
 
-    monkeypatch.setattr(Path, "write_text", counting)
+    disk: list[Path] = []
+    real_disk: Callable[..., int] = Path.write_bytes
+
+    def counting_disk(self: Path, *args: object, **kwargs: object) -> int:
+        disk.append(self)
+        return real_disk(self, *args, **kwargs)
+
+    monkeypatch.setattr(module_file, "write_bytes", counting_save)
+    monkeypatch.setattr(Path, "write_bytes", counting_disk)
     axes = {0: (0, 10, 20, 30, True), 1: (1, 2, 3, 4, False)}
     assert calibration.write_axes("stick", axes)
-    # One write; it goes to a temporary file that then replaces the real one
-    # (module_file.write_text), so a crash can't leave half a file.
-    assert writes == [path.with_name(path.name + ".tmp")]
+    # One save of the file, through the store's one writer
+    # (module_file.write_bytes) ...
+    assert saves == [path]
+    # ... to a temporary file that then replaces the real one, so a crash
+    # can't leave half a file.
+    assert disk == [path.with_name(path.name + ".tmp")]
     saved = json.loads(path.read_text(encoding="utf-8"))["calibration"]
     assert saved == {"0": [0, 10, 20, 30, True], "1": [1, 2, 3, 4, False]}
 

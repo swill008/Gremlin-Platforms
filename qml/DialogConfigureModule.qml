@@ -113,14 +113,48 @@ ApplicationWindow {
     Component.onCompleted: {
         if (_hw.setDeviceGuid)
             _hw.setDeviceGuid(deviceGuid)
+        // A picture imported in a session that never finished (the program
+        // closed first) was never saved: the saved one goes back. Only with
+        // this window's own safety copy (the Button Map keeps its own).
+        if (_hw.restorePhotoFor)
+            _hw.restorePhotoFor(deviceName, "setup")
         _driver.loadDevice(deviceGuid, deviceName)
         claimDirty = false
         _win.photoUrl = _hw.profilePhotoUrl(deviceName)
     }
 
+    // Import Image changes the photo files at once; the starting photo is
+    // kept so Cancel can put it back, as in the Button Map (03 Q2, 07 Q5).
+    // TODO(batch1): the "setup" owner slots (stashPhotoFor, restorePhotoFor,
+    // dropPhotoStashFor) are asked of hardware_profile.py; until then the
+    // Button Map's safety copy is shared.
+    function stashPhoto() {
+        if (_hw.stashPhotoFor)
+            _hw.stashPhotoFor(deviceName, "setup")
+        else
+            _hw.stashPhoto(deviceName)
+    }
+
+    function dropPhotoStash() {
+        if (_hw.dropPhotoStashFor)
+            _hw.dropPhotoStashFor(deviceName, "setup")
+        else
+            _hw.dropPhotoStash(deviceName)
+    }
+
+    function putPhotoBack() {
+        var back = _hw.restorePhotoFor ? _hw.restorePhotoFor(deviceName, "setup")
+                                       : _hw.restorePhoto(deviceName)
+        if (!back)
+            return
+        var url = _hw.profilePhotoUrl(deviceName)
+        photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
+    }
+
     function commitModule() {
-        if (_win.photoUrl && _win.photoUrl.length)
-            _hw.keepPhoto(deviceName, _win.photoUrl)
+        // The photo Import Image put in the device's folder is named by this
+        // save: one write, and the library got its copy once, at Import
+        // Image (03 Q3).
         if (!_driver.saveClaim(deviceName, direction)) {
             _saveGate.announce(false, _driver.saveBlockedReason()
                                || "Not written. It is still only on this screen.")
@@ -128,6 +162,8 @@ ApplicationWindow {
                 backend.noteSave("The module file was not written.")
             return false
         }
+        // Saved: the photo this session started with is no longer needed.
+        dropPhotoStash()
         var profilePath = backend ? backend.profilePath() : ""
         // A profile save would leave out unfinished actions without asking:
         // keep the profile unsaved and say so; the main window's Save asks.
@@ -186,7 +222,7 @@ ApplicationWindow {
         _importNotice.failed = moduleFileError
         _importNotice.titleText = moduleFileError ? "Import Failed" : "Imported"
         _importNotice.messageText = message
-        _importNotice.canUndo = !moduleFileError && moduleModel && moduleModel.importCanUndo()
+        _importNotice.canUndo = !moduleFileError && moduleModel && moduleModel.importCanUndo(deviceGuid, deviceName)
         _importNotice.open()
     }
 
@@ -221,6 +257,8 @@ ApplicationWindow {
                 src = selectedFiles[0].toString ? selectedFiles[0].toString() : ("" + selectedFiles[0])
             if (!src || !src.length)
                 src = currentFile && currentFile.toString ? currentFile.toString() : currentFile
+            // The starting photo is kept first (once per session).
+            _win.stashPhoto()
             var rel = _hw.copyImage(src, deviceName)
             var url = rel.length ? _hw.imageUrl(rel) : ""
             if (!url.length)
@@ -516,8 +554,12 @@ ApplicationWindow {
                             moduleFileMessage = moduleModel.deleteModuleFile(deviceGuid, deviceName)
                             moduleFileError = moduleFileMessage.length > 0
                             refreshModuleFileLabel()
-                            if (!moduleFileMessage.length)
+                            if (!moduleFileMessage.length) {
+                                // The file and its pictures are gone: a kept
+                                // starting photo must not come back later.
+                                dropPhotoStash()
                                 reloadModuleControls()
+                            }
                         }, null, true)
                 }
             }
@@ -599,7 +641,7 @@ ApplicationWindow {
                     onClicked: {
                         if (!moduleModel)
                             return
-                        var message = moduleModel.undoLastImport()
+                        var message = moduleModel.undoLastImport(deviceGuid, deviceName)
                         var ok = message.indexOf("Undone") === 0
                         _importNotice.failed = !ok
                         _importNotice.titleText = ok ? "Undone" : "Undo Failed"
@@ -616,7 +658,7 @@ ApplicationWindow {
                     highlighted: true
                     onClicked: {
                         if (moduleModel && _importNotice.titleText === "Imported")
-                            moduleModel.dropImportUndo()
+                            moduleModel.dropImportUndo(deviceGuid, deviceName)
                         _importNotice.close()
                     }
                 }
@@ -639,6 +681,7 @@ ApplicationWindow {
         }
         onDiscardChosen: {
             claimDirty = false
+            _win.putPhotoBack()
             if (saveIntent === "close") {
                 allowClose = true
                 _win.close()

@@ -286,11 +286,12 @@ def test_stop_disconnects_after_a_failed_run() -> None:
         _connected=True,  # start() connected, then failed before running
         _running=False,
         _listen_to_mode_changes=lambda on: None,
+        _listen_to_config=lambda on: None,
         event_handler=SimpleNamespace(process_event="handler", clear=lambda: None),
     )
-    # The rest of stop() stops the program's subsystems: stand-ins here.
-    others = ["user_script", "OscRuntime", "macro", "sendinput", "audio_player",
-              "tts", "output"]
+    # Stop's first stage (run_scope CUT_INPUT) is the runner's _cut_input;
+    # the other stages stop the program's subsystems.
+    others = ["shared_state"]
     with (
         mock.patch.object(
             code_runner.event_handler, "EventListener", return_value=listener
@@ -298,6 +299,6 @@ def test_stop_disconnects_after_a_failed_run() -> None:
         mock.patch.object(code_runner, "InputModuleRuntime", return_value=bus),
         mock.patch.multiple(code_runner, **{name: mock.DEFAULT for name in others}),
     ):
-        code_runner.CodeRunner.stop(runner)
+        code_runner.CodeRunner._cut_input(runner)
     assert disconnected == ["handler"] * 3
     assert runner._connected is False and listener.gremlin_active is False

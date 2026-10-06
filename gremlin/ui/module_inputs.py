@@ -11,9 +11,8 @@ from gremlin.config import Configuration
 from gremlin.input_cache import DeviceDatabase
 from gremlin.signal import signal
 from gremlin.ui.device import _description_from_item, _generate_action_sequence_descriptor
-from gremlin.ui.module_model import _load_module_doc
 from gremlin.modules.claim import claim_friendly, claim_ids, read_claim, type_of
-from gremlin.modules import hardware
+from gremlin.modules import hardware, store
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -144,7 +143,8 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
     def reload(self) -> None:
         self.beginResetModel()
         self._rows = []
-        doc = _load_module_doc(self._device_name) if self._device_name else {}
+        # By the device's id too: twins share a name (decision F4).
+        doc = store.read(self._device_name, self._guid) if self._device_name else {}
         if not doc:
             self.endResetModel()
             self.countChanged.emit()

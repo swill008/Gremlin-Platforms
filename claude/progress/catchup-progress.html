@@ -1,0 +1,134 @@
+<title>Gremlin Catch-up Progress</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: instrument-panel dashboard — overall gauge, then phases as tracks, then agents and log. */
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --fg:#17202a; --muted:#5b6876; --line:#dde3e9;
+  --accent:#d98a14; --done:#2f8a57; --now:#d98a14; --todo:#b9c3cd; --bad:#c2412d;
+  --track:#e7ecf0;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161c; --panel:#18202a; --fg:#e6ebf0; --muted:#94a2b1; --line:#2a3542;
+  --accent:#f0a634; --done:#5cc48a; --now:#f0a634; --todo:#4a5868; --bad:#f07a63; --track:#222c37; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161c; --panel:#18202a; --fg:#e6ebf0; --muted:#94a2b1; --line:#2a3542;
+  --accent:#f0a634; --done:#5cc48a; --now:#f0a634; --todo:#4a5868; --bad:#f07a63; --track:#222c37; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:20px 40px;display:flex;flex-direction:column;gap:18px}
+h1{font-family:var(--display);font-weight:600;font-size:30px;letter-spacing:.01em;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:19px;margin:0 0 10px;letter-spacing:.02em}
+.sub{color:var(--muted);font-size:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.gauge{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.big{font-family:var(--display);font-size:56px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.bar{height:12px;background:var(--track);border-radius:6px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--done);transition:width .4s}
+.bar.now>i{background:var(--now)}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:4px 12px;margin-top:10px;font-size:14px}
+.kv dt{color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:12px;padding-top:2px}
+.kv dd{margin:0;min-width:0}
+.phase{display:grid;grid-template-columns:20px minmax(0,1fr) 120px;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.phase:first-of-type{border-top:0}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--todo)}
+.dot.done{background:var(--done)} .dot.now{background:var(--now);box-shadow:0 0 0 4px color-mix(in srgb,var(--now) 25%,transparent)}
+.pname{font-weight:500}
+.pstate{font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.steps{grid-column:2 / 4;display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.chip.done{color:var(--done);border-color:color-mix(in srgb,var(--done) 45%,transparent)}
+.chip.now{color:var(--now);border-color:var(--now);font-weight:500}
+.chip.bad{color:var(--bad);border-color:var(--bad)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:720px){.grid2{grid-template-columns:1fr}.gauge{grid-template-columns:1fr}.phase{grid-template-columns:20px minmax(0,1fr)}.pstate{grid-column:2;text-align:left}.steps{grid-column:2}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:6px 4px;border-top:1px solid var(--line);vertical-align:top}
+tr:first-child td{border-top:0}
+.tag{font-family:var(--mono);font-size:12px}
+.st-running{color:var(--now)} .st-done{color:var(--done)} .st-waiting{color:var(--muted)} .st-failed{color:var(--bad)}
+.log{font-family:var(--mono);font-size:12.5px;display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto}
+.log div{display:grid;grid-template-columns:56px minmax(0,1fr);gap:8px}
+.log span:first-child{color:var(--muted)}
+.empty{color:var(--muted);font-size:14px}
+.status{font-family:var(--mono);font-size:13px;background:var(--track);border-radius:6px;padding:8px 10px;overflow-x:auto;white-space:nowrap}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Gremlin catch-up progress</h1>
+    <div class="sub" id="updated">Waiting for the first update…</div>
+  </header>
+
+  <section class="panel">
+    <div class="gauge">
+      <div class="big" id="pct">–</div>
+      <div>
+        <div class="bar now" id="overallBar"><i style="width:0%"></i></div>
+        <dl class="kv">
+          <dt>Now</dt><dd id="now">–</dd>
+          <dt>Next</dt><dd id="next">–</dd>
+          <dt>Last test</dt><dd id="test">–</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <div class="status" id="status">[status line appears here]</div>
+
+  <section class="panel">
+    <h2>Road to a clean baseline</h2>
+    <div id="phases"><p class="empty">The phases appear here once Claude posts the first update.</p></div>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>Agents</h2>
+      <div id="agents"><p class="empty">No agents running.</p></div>
+    </section>
+    <section class="panel">
+      <h2>Recent events</h2>
+      <div class="log" id="log"><p class="empty">Nothing yet.</p></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function render(d){
+  if(!d){return}
+  const pct = Math.max(0, Math.min(100, Number(d.overall)||0));
+  $("pct").textContent = pct + "%";
+  $("overallBar").firstElementChild.style.width = pct + "%";
+  $("now").textContent = d.now || "–";
+  $("next").textContent = d.next || "–";
+  $("test").textContent = d.lastTest || "–";
+  $("status").textContent = d.statusLine || "";
+  $("updated").textContent = d.updated ? "Updated " + d.updated : "";
+  const ph = Array.isArray(d.phases) ? d.phases : [];
+  $("phases").innerHTML = ph.length ? ph.map(p => {
+    const st = p.state || "todo";
+    const steps = (p.steps||[]).map(s => `<span class="chip ${esc(s.state||"todo")}">${esc(s.label)}</span>`).join("");
+    const bar = st === "todo" ? "" : `<div class="bar ${st==="now"?"now":""}" style="grid-column:2 / 4;height:8px"><i style="width:${Number(p.pct)||0}%"></i></div>`;
+    return `<div class="phase"><span class="dot ${esc(st)}"></span><span class="pname">${esc(p.name)}</span><span class="pstate">${esc(p.note||"")}</span>${bar}${steps?`<div class="steps">${steps}</div>`:""}</div>`;
+  }).join("") : '<p class="empty">No phases yet.</p>';
+  const ag = Array.isArray(d.agents) ? d.agents : [];
+  $("agents").innerHTML = ag.length ? "<table>" + ag.map(a =>
+    `<tr><td class="tag">${esc(a.name)}</td><td>${esc(a.task)}</td><td class="tag st-${esc(a.state)}">${esc(a.state)}</td></tr>`).join("") + "</table>"
+    : '<p class="empty">No agents running right now.</p>';
+  const lg = Array.isArray(d.log) ? d.log : [];
+  $("log").innerHTML = lg.length ? lg.map(e => `<div><span>${esc(e.t)}</span><span>${esc(e.m)}</span></div>`).join("")
+    : '<p class="empty">Nothing yet.</p>';
+}
+(async () => {
+  try {
+    const db = await window.claude?.use?.("db");
+    if (!db) { $("updated").textContent = "Live updates are not available in this view."; return; }
+    db.doc("progress/now").onSnapshot(s => { if (s.exists) render(s.data()); },
+      () => { $("updated").textContent = "Live updates stopped; reload the page."; });
+  } catch (e) { $("updated").textContent = "Live updates are not available in this view."; }
+})();
+</script>

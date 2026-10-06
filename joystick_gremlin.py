@@ -86,7 +86,9 @@ import gremlin.error
 import gremlin.error_report
 import gremlin.event_handler
 import gremlin.mode_manager
+import gremlin.modules.store
 import gremlin.plugin_manager
+import gremlin.run_scope
 import gremlin.signal
 import gremlin.tts
 import gremlin.types
@@ -238,54 +240,44 @@ def tell_could_not_start(summary: str, details: str) -> None:
     _message_box(text, "Gremlin-Platforms R1", 0x10)
 
 
+# Set once shutdown_cleanup ran: the call after the event loop ends skips it
+# when aboutToQuit already did it (it ran twice, 01 Q11).
+_shutdown_done = False
+
+
 def shutdown_cleanup() -> None:
-    """Stop runtime threads and virtual devices so File/Exit does not leave a
-    process."""
+    """Stop the Run and what runs outside one, so File/Exit does not leave a
+    process. Runs once; stops only what exists (nothing is made just to be
+    stopped). The Run's own Stop (run_scope) ends sound, speech, OSC, keys
+    and timers, so they aren't stopped a second time here."""
+    global _shutdown_done
+    if _shutdown_done:
+        return
+    _shutdown_done = True
     log = logging.getLogger("system")
     try:
-        listener = gremlin.event_handler.EventListener()
-        timer = getattr(listener, "_device_update_timer", None)
-        if timer is not None:
-            try:
-                timer.cancel()
-            except Exception:
-                pass
-            listener._device_update_timer = None
-        listener.terminate()
-        mouse_hook = getattr(listener, "mouse_hook", None)
-        if mouse_hook is not None:
-            try:
-                mouse_hook.stop()
-            except Exception:
-                pass
+        listener = gremlin.event_handler.EventListener.instance
+        if listener is not None:
+            # terminate() cancels the hot-plug timer and stops the hooks.
+            listener.terminate()
     except Exception:
         log.exception("Shutdown: event listener")
     try:
-        backend = gremlin.ui.backend.Backend()
-        if backend.gremlinActive:
+        backend = gremlin.ui.backend.Backend.instance
+        if backend is not None:
             backend.activate_gremlin(False)
-        backend.runner.stop()
-        backend.process_monitor.stop()
+            backend.process_monitor.stop()
+        else:
+            gremlin.run_scope.stop()  # a Run with no window (tests, scripts)
     except Exception:
         log.exception("Shutdown: backend")
     try:
         from gremlin.modules import output
 
+        # The last word: no vJoy device held, no Xbox pad plugged in (S17).
         output.reset_drivers()
     except Exception:
         log.exception("Shutdown: vJoy / Xbox")
-    try:
-        gremlin.audio_player.AudioPlayer().stop()
-    except Exception:
-        pass
-    try:
-        gremlin.tts.TTSManager().stop()
-    except Exception:
-        pass
-    try:
-        gremlin.osc.OscRuntime().stop()
-    except Exception:
-        log.exception("Shutdown: OSC")
 
 
 def _this_process_tree() -> set[int]:
@@ -811,7 +803,7 @@ def register_config_options() -> None:
     # Status layout and the chosen module file must be registered before
     # purge_unused() or the next launch deletes them.
     gremlin.ui.module_model._ensure_display_options()
-    gremlin.ui.hardware_profile._binding_store()
+    gremlin.modules.store.bindings()  # registers the file choices setting
     gremlin.ui.hidhide._ensure_options()
     gremlin.ui.window_placement._ensure()
     gremlin.ui.vjoy_status.register_options()

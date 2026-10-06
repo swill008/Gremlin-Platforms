@@ -23,25 +23,19 @@ from xml.etree import ElementTree
 
 from typing import TYPE_CHECKING
 
-from gremlin import history_modules
 from gremlin.ui.live_debug import trace
+from gremlin.modules import module_file, store
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.registry import is_output_name
-from gremlin.ui.hardware_profile import (
-    _IMAGE_EXT,
-    _asset_ref,
-    _doc_direction,
-    _maps_dir,
-    _match_pack_device,
-    _read_json_dict,
-    _replace_file,
-    _safe_name,
-    _slug,
-    _suggest_pack_name,
-    _target_direction,
-    _unique_archive,
+from gremlin.ui.input_pairing import dest_labels_for_item, parse_guid
+from gremlin.modules.store import (
+    PICTURE_EXT as _IMAGE_EXT,
+    doc_direction as _doc_direction,
+    match_known_device as _match_pack_device,
     member_kind,
-    module_json_path,
+    safe_picture_name as _safe_name,
+    suggest_device_name as _suggest_pack_name,
+    unique_archive as _unique_archive,
 )
 
 if TYPE_CHECKING:
@@ -398,6 +392,22 @@ def _rewrite_images(doc: dict, resolve, used: set[str], files: list[tuple[Path, 
     return packed, pictures
 
 
+def _read_doc(path: Path) -> dict | None:
+    """A module file's content; None when it is missing or damaged (a
+    damaged one is named in the log and skipped, 08 S52)."""
+    return (store.read_path(path) or None) if path.is_file() else None
+
+
+def _pack_key(device_name: str) -> str:
+    """An output's key in a pack that has none in its label (an older
+    pack): the slug of the name it was exported under."""
+    return store.own_slug(device_name)
+
+
+def _target_direction(name: str, guid: str = "") -> str:
+    return store.direction_for(name, guid)
+
+
 def _walk_actions(action, found: dict[int, object]) -> None:
     if action is None or id(action) in found:
         return
@@ -457,10 +467,9 @@ def pack_modes(guid: str) -> list[dict]:
     """The modes in which this device has actions: [{name, count}]."""
     try:
         from gremlin.shared_state import current_profile
-        from gremlin.ui.input_pairing import _guid
     except Exception:
         return []
-    uid = _guid(str(guid or "").strip())
+    uid = parse_guid(guid)
     if current_profile is None or uid is None:
         return []
     counts: dict[str, int] = {}
@@ -478,12 +487,11 @@ def _collect_wires(guid: str, only_modes: list[str] | None = None) -> dict:
         return empty
     try:
         from gremlin.shared_state import current_profile
-        from gremlin.ui.input_pairing import _dest_labels_for_item, _guid
         from gremlin.util import read_action_ids
     except Exception:
         return empty
     profile = current_profile
-    uid = _guid(text)
+    uid = parse_guid(text)
     if profile is None or uid is None:
         return empty
     items = profile.inputs.get(uid, []) or []
@@ -504,7 +512,7 @@ def _collect_wires(guid: str, only_modes: list[str] | None = None) -> dict:
                 continue
             dest = ""
             try:
-                dest = " + ".join(_dest_labels_for_item(item))
+                dest = " + ".join(dest_labels_for_item(item))
             except Exception:
                 dest = ""
             line = _input_word(item) + (f" → {dest}" if dest else "")
@@ -571,9 +579,11 @@ def _collect_wires(guid: str, only_modes: list[str] | None = None) -> dict:
 def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]]) -> tuple[dict, list[dict]] | None:
     match = _match_pack_device(name)
     guid = str(match["guid"]) if match and match.get("guid") else ""
-    slug = _slug(name)
-    path = module_json_path(name, guid)
-    doc = _read_json_dict(path) if path.is_file() else None
+    # The file the output uses (the store's rule), and its slug as the
+    # pack's key; a renamed vJoy's own-name slug could differ (AU-64).
+    path = store.path_for(name, guid)
+    slug = path.stem
+    doc = _read_doc(path)
     if not doc:
         return None
     packed, pictures = _rewrite_images(doc, resolve, used, files)
@@ -589,7 +599,7 @@ def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]
 def _device_path(name: str) -> Path:
     match = _match_pack_device(name)
     guid = str(match["guid"]) if match and match.get("guid") else ""
-    return module_json_path(name, guid)
+    return store.path_for(name, guid)
 
 
 def _pack_label(name: str, guid: str, notes: dict | None) -> dict:
@@ -626,7 +636,7 @@ def assemble(
     if not name:
         return "Choose a device."
     path = _device_path(name)
-    doc = _read_json_dict(path) if path.is_file() else None
+    doc = _read_doc(path)
     if not doc:
         return "This device has no module file yet."
     match = _match_pack_device(name)
@@ -656,7 +666,8 @@ def assemble(
                 "tree": wires["tree"],
             }, indent=2) + "\n")
         for output in outputs:
-            slug = str((output["doc"].get("pack") or {}).get("slug") or _slug(output["name"]))
+            label = output["doc"].get("pack") or {}
+            slug = str(label.get("slug") or _pack_key(output["name"]))
             zf.writestr(f"outputs/{slug}.json", json.dumps(output["doc"], indent=2) + "\n")
         for src, arc in files:
             zf.write(src, arc)
@@ -820,7 +831,7 @@ def describe_zip(path: Path) -> dict | str:
     for output in loaded["outputs"]:
         out_label = output.get("pack") if isinstance(output.get("pack"), dict) else {}
         out_name = str(out_label.get("exportedName") or output.get("device") or "Output").strip()
-        slug = str(out_label.get("slug") or _slug(out_name))
+        slug = str(out_label.get("slug") or _pack_key(out_name))
         out_pictures = []
         out_photo = Path(str(output.get("image") or "")).name
         if out_photo and out_photo in urls:
@@ -1015,7 +1026,7 @@ def _merge_module(
             notes.append("No friendly names were written.")
     if prefix + "calibration" in chosen and isinstance(incoming.get("calibration"), dict):
         stored = base.get("calibration") if isinstance(base.get("calibration"), dict) else {}
-        from gremlin.modules.calibration import _as_tuple
+        from gremlin.modules.calibration import as_tuple
 
         unusable = []
         for key, value in incoming["calibration"].items():
@@ -1027,7 +1038,7 @@ def _merge_module(
                 continue
             # A curve loading would throw away (low not below high, the
             # center outside them) doesn't replace a good one.
-            if _as_tuple(value) is None:
+            if as_tuple(value) is None:
                 unusable.append(f"Axis {number}")
                 continue
             stored[str(number)] = value
@@ -1135,8 +1146,7 @@ def _write_pictures(
     record: list[tuple[Path, bytes | None]] | None = None,
 ) -> dict[str, str]:
     written: dict[str, str] = {}
-    folder = _maps_dir() / slug
-    folder.mkdir(parents=True, exist_ok=True)
+    folder = store.pictures_dir_of(slug)
     wanted = {item[4:] for item in chosen if item.startswith("pic:")}
     used = set()
     photo = Path(str(doc.get("image") or "")).name
@@ -1157,14 +1167,17 @@ def _write_pictures(
             record.append((dest, dest.read_bytes() if dest.is_file() else None))
         if dest.is_file():
             backup = _unique_archive(f"{slug}_{dest.stem}")
-            _replace_file(backup.with_suffix(dest.suffix), dest.read_bytes())
-            trace("SAVE", "Device Pack", "_write_pictures", backup, "ok")
-        dest.write_bytes(data)
+            store.replace(
+                backup.with_suffix(dest.suffix), dest.read_bytes(), "Device Pack"
+            )
+        # A temporary file, then a swap: a crash can't leave half a picture
+        # (08 S76, R3).
+        store.put_picture_at(dest, data)
         trace("SAVE", "Device Pack", "_write_pictures", dest, "ok")
         written[arc] = dest.name
     photo = Path(str(doc.get("image") or "")).name
     if photo in written:
-        doc["image"] = _asset_ref(slug, written[photo])
+        doc["image"] = store.picture_ref(slug, written[photo])
     elif "pic:" + photo not in chosen:
         pass
     else:
@@ -1174,20 +1187,18 @@ def _write_pictures(
             continue
         key = Path(str(node.get("src") or "")).name
         if key in written:
-            node["src"] = _asset_ref(slug, written[key])
+            node["src"] = store.picture_ref(slug, written[key])
     return written
 
 
 def _device_limits(guid: str) -> dict[str, set[int]] | None:
     """The buttons, axes and hats the connected device has (None: not
     connected, so not known)."""
-    from gremlin.ui.hardware_profile import _guid_text, _live_devices
-
     want = str(guid or "").strip().lower()
     if not want:
         return None
-    for dev in _live_devices():
-        if _guid_text(getattr(dev, "device_guid", "")).lower() != want:
+    for dev in store.live_devices():
+        if store.guid_text(getattr(dev, "device_guid", "")).lower() != want:
             continue
         axes_count = int(getattr(dev, "axis_count", 0) or 0)
         axes = {
@@ -1217,7 +1228,7 @@ def _vjoy_moves(outputs: list[dict], targets: dict) -> dict[int, int]:
         label = output.get("pack")
         if not isinstance(label, dict):
             label = {}
-        slug = str(label.get("slug") or _slug(str(output.get("device") or "")))
+        slug = str(label.get("slug") or _pack_key(str(output.get("device") or "")))
         old = _vjoy_number(str(label.get("exportedName") or output.get("device") or ""))
         new = _vjoy_number(str(targets.get(slug) or ""))
         if old and new and old != new:
@@ -1457,13 +1468,12 @@ def _apply_wires(
         from gremlin.profile import DeviceInfo
         from gremlin.shared_state import current_profile
         from gremlin.types import InputType
-        from gremlin.ui.input_pairing import _guid
     except Exception:
         return ["The wires were not written."], None
     profile = current_profile
     if profile is None:
         return ["The wires were not written. No profile is open."], None
-    uid = _guid(target_guid)
+    uid = parse_guid(target_guid)
     if uid is None:
         return ["The wires were not written. This name has no device id."], None
     notes: list[str] = []
@@ -1553,17 +1563,18 @@ def drop_import_undo() -> None:
 
     profile = current_profile
     if profile is not None and wires["profile"] is profile:
-        profile.drop_unused_actions(profile.roots_of(wires["removed"]))
+        profile.library.release(profile.roots_of(wires["removed"]))
 
 
 def _put_back(files: list[tuple[Path, bytes | None]]) -> None:
-    """Puts files back as they were before an import wrote them."""
+    """Puts files back as they were before a failed import wrote them.
+    History records each module file put back or removed (08 Q12, F3)."""
     for path, previous in reversed(files):
         try:
             if previous is None:
-                path.unlink(missing_ok=True)
+                store.delete_path(path, "Device Pack")
             else:
-                _replace_file(path, previous)
+                store.replace(path, previous, "Device Pack", force=True)
         except OSError:
             pass
 
@@ -1577,15 +1588,13 @@ def undo_import() -> dict:
     notes: list[str] = []
     for path, previous in reversed(record["files"]):
         try:
+            # Through the store, as every other put-back: History shows a
+            # removal once it went through; the old bytes go back as they
+            # were, also over a file damaged since.
             if previous is None:
-                if path.is_file():
-                    # Tools > History shows the removal (and keeps the
-                    # file) once it went through.
-                    with history_modules.deleting(path):
-                        path.unlink()
+                store.delete_path(path, "Device Pack")
             else:
-                _replace_file(path, previous)
-            trace("SAVE", "Device Pack", "undo_import", path, "ok")
+                store.replace(path, previous, "Device Pack", force=True)
         except OSError:
             notes.append(f"{path.name} could not be put back.")
     wires = record.get("wires")
@@ -1604,7 +1613,7 @@ def undo_import() -> dict:
                 if id(item) not in added
             ]
             profile.inputs[wires["uid"]] = items + list(wires["removed"])
-            profile.drop_unused_actions(profile.roots_of(wires["added"]))
+            profile.library.release(profile.roots_of(wires["added"]))
             # The full delete (running modes, main window, pages), as Manage
             # Modes does; the profile alone left them on the deleted mode.
             from gremlin.ui.profile import delete_mode
@@ -1645,12 +1654,16 @@ def _write_module(
     backup_name = ""
     if previous is not None:
         backup = _unique_archive(dest.stem)
-        _replace_file(backup, previous)
-        trace("SAVE", "Device Pack", "apply_zip", backup, "ok")
+        store.replace(backup, previous, "Device Pack")
         backup_name = backup.name
     record.append((dest, previous))
-    _replace_file(dest, (json.dumps(merged, indent=2) + "\n").encode("utf-8"))
-    trace("SAVE", "Device Pack", "apply_zip", dest, "ok")
+    try:
+        # A damaged file is refused (decision F1); apply_zip checks first.
+        store.replace(
+            dest, (json.dumps(merged, indent=2) + "\n").encode("utf-8"), "Device Pack"
+        )
+    except module_file.ModuleFileDamaged as damaged:
+        raise OSError(str(damaged)) from damaged
     return backup_name
 
 
@@ -1697,10 +1710,9 @@ def preview_import(path: Path, target_name: str, selection: dict | None) -> dict
     profile_open = False
     try:
         from gremlin.shared_state import current_profile
-        from gremlin.ui.input_pairing import _guid
 
         profile_open = current_profile is not None
-        uid = _guid(guid) if guid else None
+        uid = parse_guid(guid) if guid else None
         if current_profile is not None and uid is not None:
             for item in current_profile.inputs.get(uid, []) or []:
                 mode = str(item.mode or "Default")
@@ -1722,7 +1734,7 @@ def preview_import(path: Path, target_name: str, selection: dict | None) -> dict
     vjoys, xbox = _needs(_retarget_vjoy(plan["actions"], moves))
     for output in loaded["outputs"]:
         label = output.get("pack") if isinstance(output.get("pack"), dict) else {}
-        slug = str(label.get("slug") or _slug(str(output.get("device") or "")))
+        slug = str(label.get("slug") or _pack_key(str(output.get("device") or "")))
         if not any(item.startswith(f"out:{slug}.") for item in chosen):
             continue
         name = str(targets.get(slug) or label.get("exportedName") or "")
@@ -1790,7 +1802,12 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
     )
     if touches_input:
         dest = _device_path(target)
-        existing = _read_json_dict(dest) if dest.is_file() else None
+        damaged = store.damage_of(dest)
+        if damaged:
+            # 08 Q2 / F1: refused, as every other save into a damaged file;
+            # nothing is changed (the wires neither).
+            return {"ok": False, "error": _damaged_text(dest, damaged)}
+        existing = _read_doc(dest)
         merged, merged_notes = _merge_module(
             existing, doc, chosen, "in.", target, guid, limits
         )
@@ -1818,7 +1835,7 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         targets = {}
     for output in loaded["outputs"]:
         out_label = output.get("pack") if isinstance(output.get("pack"), dict) else {}
-        slug = str(out_label.get("slug") or _slug(str(output.get("device") or "")))
+        slug = str(out_label.get("slug") or _pack_key(str(output.get("device") or "")))
         prefix = "out:" + slug + "."
         if not any(item.startswith(prefix) or item == "pic:" + Path(str(output.get("image") or "")).name for item in chosen):
             continue
@@ -1832,7 +1849,13 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         out_match = _match_pack_device(out_name)
         out_guid = str(out_match["guid"]) if out_match and out_match.get("guid") else ""
         dest = _device_path(out_name)
-        existing = _read_json_dict(dest) if dest.is_file() else None
+        if store.damage_of(dest):
+            notes.append(
+                f"{out_name} was skipped because its module file {dest.name} "
+                "is damaged. Choose Start Fresh on its card first."
+            )
+            continue
+        existing = _read_doc(dest)
         merged, merged_notes = _merge_module(existing, output, chosen, prefix, out_name, out_guid)
         start = len(files)
         try:
@@ -1877,6 +1900,14 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
     except Exception:
         pass
     return {"ok": True, "device": target, "report": "\n".join(notes), "canUndo": True}
+
+
+def _damaged_text(path: Path, reason: str) -> str:
+    return (
+        f"Nothing was imported: the module file {path.name} is damaged "
+        f"({reason}). Choose Start Fresh on the device's card first (the "
+        "damaged file is kept)."
+    )
 
 
 def _slug_for_path(path: Path) -> str:

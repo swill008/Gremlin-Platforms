@@ -153,6 +153,10 @@ class AudioPlayer(metaclass=SingletonMetaclass):
             volume: The volume of the playback, the value is in the range
                 [0, 100] with 0 being mute and 100 maximum
         """
+        # No Run on (a late timer after Stop): nothing plays, now or at the
+        # next Run (06 Q8).
+        if not self._is_ready:
+            return
         self._play_list.append((file_name, volume))
 
     def _next_sample(self) -> AudioSample | None:

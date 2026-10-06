@@ -20,7 +20,7 @@ from PySide6 import QtCore
 from gremlin import (
     event_handler,
     fsm,
-    threads,
+    run_scope,
     util,
 )
 from gremlin.base_classes import (
@@ -171,7 +171,7 @@ class TempoFunctor(AbstractFunctor):
     def _start_timer(self, *args: Any) -> None:  # noqa: ANN401
         if self.timer:
             self.timer.cancel()
-        self.timer = threads.main_timer(
+        self.timer = run_scope.timer(
             "tempo", self.data.threshold, self._timeout
         )
 

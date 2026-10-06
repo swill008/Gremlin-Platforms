@@ -39,6 +39,7 @@ from gremlin.error import (
 )
 from gremlin.logical_device import LogicalDevice
 from gremlin.profile import Library
+from gremlin.signal import signal
 from gremlin.types import (
     ActionProperty,
     AxisMode,
@@ -248,6 +249,10 @@ class LogicalDeviceActionModel(AbstractActionModel):
     def _get_input_type(self) -> str:
         return InputType.to_string(self._action.input_type)
 
+    def _get_needs_control(self) -> bool:
+        # Made on an empty Logical Device: no control yet (06 Q15).
+        return cast(macro.LogicalDeviceAction, self._action).input_id is None
+
     def _get_is_pressed(self) -> bool:
         if self._action.input_type == InputType.JoystickButton:
             return self._action.value
@@ -301,6 +306,8 @@ class LogicalDeviceActionModel(AbstractActionModel):
     )
 
     inputType = QtCore.Property(str, fget=_get_input_type, notify=changed)
+
+    needsControl = QtCore.Property(bool, fget=_get_needs_control, notify=changed)
 
     isPressed = QtCore.Property(
         bool, fget=_get_is_pressed, fset=_set_is_pressed, notify=changed
@@ -759,8 +766,14 @@ class MacroModel(ActionModel):
 
     @QtCore.Slot(str)
     def addAction(self, name: str) -> None:
-        self._action_list_model.append(self.action_lookup[name]())
+        step = self.action_lookup[name]()
+        self._action_list_model.append(step)
         self.changed.emit()
+        if isinstance(step, macro.LogicalDeviceAction) and step.input_id is None:
+            # No hidden control is made; the step waits for one (06 Q15).
+            signal.showNotification.emit(
+                "Macro", "Add a Logical Device control first."
+            )
 
     @QtCore.Slot(int)
     def removeAction(self, index: int) -> None:

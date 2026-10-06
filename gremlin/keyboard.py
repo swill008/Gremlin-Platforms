@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import ctypes
+import functools
 import logging
 from ctypes import wintypes
 from typing import Callable
@@ -12,6 +13,7 @@ from typing import Callable
 import win32api
 import win32con
 
+from gremlin import run_scope
 from gremlin.error import KeyboardError
 
 
@@ -217,11 +219,21 @@ def _unicode_to_key(character: str) -> Key | None:
 def send_key_down(key: Key) -> None:
     """Sends the KEYDOWN event for a single key.
 
+    A key sent while a profile runs (a macro, Map to Keyboard, a script) is
+    held in run_scope until it is sent up again; Stop releases it if nothing
+    else did. Keys sent with no Run on are left alone (decision R4).
+
     Args:
         key: the key for which to send the KEYDOWN event
     """
     flags = win32con.KEYEVENTF_EXTENDEDKEY if key.is_extended else 0
     win32api.keybd_event(key.virtual_code, key.scan_code, flags, 0)
+    run_scope.hold(
+        run_scope.current_owner(),
+        "key",
+        (key.scan_code, key.is_extended),
+        functools.partial(send_key_up, key),
+    )
 
 
 def send_key_up(key: Key) -> None:
@@ -233,6 +245,7 @@ def send_key_up(key: Key) -> None:
     flags = win32con.KEYEVENTF_EXTENDEDKEY if key.is_extended else 0
     flags |= win32con.KEYEVENTF_KEYUP
     win32api.keybd_event(key.virtual_code, key.scan_code, flags, 0)
+    run_scope.let_go(run_scope.current_owner(), "key", (key.scan_code, key.is_extended))
 
 
 def key_from_name(name: str) -> Key:

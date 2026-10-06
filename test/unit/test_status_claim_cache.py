@@ -16,6 +16,7 @@ from collections.abc import Callable
 
 import pytest
 
+from gremlin.modules import store
 from gremlin.ui import module_model
 
 
@@ -32,10 +33,8 @@ def setup(
         reads.append(name)
         return real_load(name, guid)
 
-    monkeypatch.setattr(module_model, "_maps_dir", lambda: tmp_path)
-    monkeypatch.setattr(
-        module_model, "resolve_module_slug", lambda name, guid="": "stick"
-    )
+    monkeypatch.setattr(store, "folder", lambda: tmp_path)
+    monkeypatch.setattr(store, "slug_for", lambda name, guid="": "stick")
     monkeypatch.setattr(module_model, "_load_module_doc", counting_load)
     clock = [100.0]
     monkeypatch.setattr(module_model.clock, "monotonic", lambda: clock[0])

@@ -12,6 +12,7 @@ from typing import (
 
 from PySide6 import QtCore
 
+import dill
 import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.error import (
@@ -28,11 +29,33 @@ from gremlin.types import (
 
 if TYPE_CHECKING:
     from gremlin.base_classes import AbstractActionData
+    from gremlin.profile import InputItem
     from gremlin.ui.profile import InputItemBindingModel
 
 
 QML_IMPORT_NAME = "Gremlin.Profile"
 QML_IMPORT_MAJOR_VERSION = 1
+
+
+def input_name(item: InputItem) -> str:
+    """An input as the user knows it: device, control and mode."""
+    from gremlin import common
+    from gremlin.input_monitor import device_name
+
+    guid, kind, ident = item.device_id, item.input_type, item.input_id
+    if guid is None:
+        device = "Unknown device"
+    elif guid == dill.UUID_LogicalDevice:
+        device = "Logical Device"
+    else:
+        device = device_name(guid)
+    control = str(ident)
+    if kind is not None and ident is not None:
+        try:
+            control = common.input_to_ui_string(kind, ident)
+        except Exception:
+            pass
+    return f"{device} {control} ({item.mode})"
 
 
 def _emit_input_item_changed_later(enumeration_index: int) -> None:
@@ -121,6 +144,14 @@ class ActionModel(QtCore.QObject):
     def library(self) -> Library:
         return self._binding_model.input_item_binding.library
 
+    def adopt_action(self, action: AbstractActionData) -> AbstractActionData:
+        """The action as this editor may put it in its input: in a pane, one
+        an input uses (picked, reused or referenced) becomes a copy until OK,
+        which writes it back into the shared one (05 Q1, decisions A1/A4)."""
+        return self.library.adopt(
+            self._binding_model.input_item_binding.input_item, action
+        )
+
     @QtCore.Property(type=InputType, notify=actionChanged)
     def inputType(self) -> InputType:
         return self._binding_model.behavior_type
@@ -147,6 +178,17 @@ class ActionModel(QtCore.QObject):
             {"type": entry.feedback_type.value, "message": entry.message}
             for entry in self._data.user_feedback()
         ]
+
+    def _shared_with(self) -> str:
+        """The note on an action other inputs use too: OK changes it for
+        all of them (05 S62, Q1; decision A1). Empty when not shared."""
+        others = self.library.shared_with(
+            self._data, self._binding_model.input_item_binding.input_item
+        )
+        if not others:
+            return ""
+        names = ", ".join(input_name(other) for other in others)
+        return f"Shared with {names}. OK changes it for every input that uses it."
 
     @QtCore.Property(type=bool, notify=actionChanged)
     def isValid(self) -> bool:
@@ -225,8 +267,12 @@ class ActionModel(QtCore.QObject):
             action_name: name of the action to add
             selector: name of the container into which to add the action
         """
-        action = PluginManager().create_instance(
-            action_name, InputType.to_enum(self._action_behavior())
+        # Into the edited input's library; Merge Axis reuses one an input
+        # uses, which the pane then edits as a copy until OK (A4).
+        action = self.library.create(
+            action_name,
+            InputType.to_enum(self._action_behavior()),
+            item=self._binding_model.input_item_binding.input_item,
         )
         if action:
             self._data.insert_action(action, selector)
@@ -369,6 +415,8 @@ class ActionModel(QtCore.QObject):
                 self._binding_model.move_action(source_sidx, target_sidx, container)
         except GremlinError:
             signal.reloadUi.emit()
+
+    sharedWith = QtCore.Property(str, fget=_shared_with, notify=actionChanged)
 
     actionLabel = QtCore.Property(
         str, fget=_get_action_label, fset=_set_action_label, notify=actionChanged

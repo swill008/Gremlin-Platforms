@@ -25,6 +25,7 @@ from gremlin import (
     error,
     event_handler,
     mode_manager,
+    run_scope,
     sendinput,
     threads,
     util,
@@ -49,25 +50,14 @@ from gremlin.types import (
 
 MacroEntry = collections.namedtuple("MacroEntry", ["macro", "state"])
 
-# Keys a macro pressed and hasn't released yet: Stop lets go of them (they
-# used to stay down after Stop when it came between a press and its release).
-_held_keys: dict[tuple[int, bool], Key] = {}
-_held_keys_lock = Lock()
-
 # How long a step waits for another macro's step to finish sending.
 _STEP_LOCK_TIMEOUT = 2.0
 
 
-def release_held_keys() -> None:
-    """Sends a key up for every key a macro still holds, last pressed first."""
-    with _held_keys_lock:
-        keys = list(_held_keys.values())
-        _held_keys.clear()
-    for key in reversed(keys):
-        try:
-            send_key_up(key)
-        except Exception:
-            logging.getLogger("system").exception("Could not release a held key")
+def _mode_name() -> str:
+    """The current mode's name, for the events a macro step sends (read
+    from a macro thread; ModeManager publishes it safely, 04 R9)."""
+    return mode_manager.ModeManager().current.name
 
 
 class MacroManager(metaclass=SingletonMetaclass):
@@ -91,9 +81,6 @@ class MacroManager(metaclass=SingletonMetaclass):
         self._preemptive_condition = Condition()
         self._is_running = False
         self._schedule_event = Event()
-        # Each Run has its own number: a macro of an earlier Run that is
-        # still finishing leaves this Run's state alone and stops its steps.
-        self._run = 0
         # Set at Stop: a Pause or a repeat delay ends at once.
         self._stopped = Event()
         # Held while a step sends its output: Stop waits for a step in
@@ -105,7 +92,6 @@ class MacroManager(metaclass=SingletonMetaclass):
 
     def start(self) -> None:
         """Starts the scheduler."""
-        self._run += 1
         self._stopped.clear()
         self._scheduled_macro = {}
         self._executing_macro = {}
@@ -128,9 +114,10 @@ class MacroManager(metaclass=SingletonMetaclass):
         self._schedule_event.set()
 
     def stop(self) -> None:
-        """Stops the scheduler."""
+        """Stops the scheduler (Stop's END_WORK stage). Keys and mouse
+        buttons still held are released after it, by run_scope's
+        RELEASE_HELD stage."""
         self._is_running = False
-        self._run += 1
         self._stopped.set()
         with self._queued_macros_lock:
             self._queued_macros = []
@@ -147,20 +134,15 @@ class MacroManager(metaclass=SingletonMetaclass):
             with self._executing_macro_lock:
                 for key in self._executing_macro:
                     self._executing_macro[key] = False
-        self._release_held()
+        self._wait_for_step_in_flight()
 
-    def _release_held(self) -> None:
-        """Lets go of the keys and mouse buttons still held (a macro stopped
-        between press and release, a release macro dropped from the queue,
-        a Map to Mouse button held at Stop)."""
+    def _wait_for_step_in_flight(self) -> None:
+        """Returns once no step is sending output: the releases that come
+        after Stop must not be followed by a step's late press. No step
+        starts afterwards (the Run is over)."""
         # Bounded: a step stuck in a driver must not freeze Stop.
-        locked = self._step_lock.acquire(timeout=1.0)
-        try:
-            release_held_keys()
-            sendinput.release_held_buttons()
-        finally:
-            if locked:
-                self._step_lock.release()
+        if self._step_lock.acquire(timeout=1.0):
+            self._step_lock.release()
 
     def queue_macro(self, macro: Macro) -> None:
         """Queues a macro in the schedule taking the repeat type into account.
@@ -265,7 +247,7 @@ class MacroManager(metaclass=SingletonMetaclass):
                 "macro",
                 self._execute_macro,
                 macro,
-                self._run,
+                run_scope.number(),
                 stop=functools.partial(self._ask_macro_to_stop, macro),
             )
         else:
@@ -286,7 +268,7 @@ class MacroManager(metaclass=SingletonMetaclass):
     def _going(self, macro: Macro, run: int, own_flag: bool = True) -> bool:
         """False once Stop came (or a later Run started), or (own_flag) this
         macro was told to stop."""
-        if not self._is_running or run != self._run:
+        if not self._is_running or not run_scope.alive(run):
             return False
         return not own_flag or self._executing_macro.get(macro.id, True)
 
@@ -348,16 +330,25 @@ class MacroManager(metaclass=SingletonMetaclass):
         Args:
             macro: the macro object to be executed
         """
+        finished = False
         try:
-            self._run_steps(macro, run)
+            # What its steps press belongs to this macro (run_scope).
+            with run_scope.owning(macro):
+                finished = self._run_steps(macro, run)
         except Exception:
             # A failing step ends this macro only; the clean-up below lets
             # every other macro (and this one again) run.
             logging.getLogger("system").exception("A macro step failed")
         finally:
+            if not finished and run_scope.alive(run):
+                # Ended early while its Run goes on (released, toggled off,
+                # a step failed): what it still holds goes up now, not at
+                # Stop (05 S100, 06 S70). At Stop, Stop releases it.
+                run_scope.release_owner(macro)
             self._finish_macro(macro, run)
 
-    def _run_steps(self, macro: Macro, run: int) -> None:
+    def _run_steps(self, macro: Macro, run: int) -> bool:
+        """Plays the macro; False when it ended before its last step."""
         # Handle macros with a repeat mode
         if macro.repeat is not None:
             delay = macro.repeat.delay
@@ -369,7 +360,7 @@ class MacroManager(metaclass=SingletonMetaclass):
                     macro.id, False
                 ):
                     if not self._steps(macro, run):
-                        return
+                        return False
                     count += 1
                     self.sleep(delay)
 
@@ -381,18 +372,18 @@ class MacroManager(metaclass=SingletonMetaclass):
                 first = True
                 while first or self._executing_macro.get(macro.id, False):
                     if not self._steps(macro, run, own_flag=not first):
-                        return
+                        return False
                     first = False
                     self.sleep(delay)
+            return True
 
         # Handle simple one shot macros: they stop with Stop too.
-        else:
-            self._steps(macro, run)
+        return self._steps(macro, run)
 
     def _finish_macro(self, macro: Macro, run: int) -> None:
         # A macro of an earlier Run leaves this Run's state alone (it used to
         # clear the exclusive flags of the new Run's macros).
-        if run != self._run:
+        if not run_scope.alive(run):
             return
         # Remove macro from active set, notify manager, and remove any potential
         # callbacks.
@@ -601,7 +592,7 @@ class JoystickAction(AbstractAction):
                 event_type=self.input_type,
                 device_guid=self.device_guid,
                 identifier=self.input_id,
-                mode=mode_manager.ModeManager().current.name,
+                mode=_mode_name(),
                 value=self.value,
             )
         elif self.input_type == InputType.JoystickButton:
@@ -609,7 +600,7 @@ class JoystickAction(AbstractAction):
                 event_type=self.input_type,
                 device_guid=self.device_guid,
                 identifier=self.input_id,
-                mode=mode_manager.ModeManager().current.name,
+                mode=_mode_name(),
                 is_pressed=self.value,
             )
         elif self.input_type == InputType.JoystickHat:
@@ -617,7 +608,7 @@ class JoystickAction(AbstractAction):
                 event_type=self.input_type,
                 device_guid=self.device_guid,
                 identifier=self.input_id,
-                mode=mode_manager.ModeManager().current.name,
+                mode=_mode_name(),
                 value=self.value,
             )
 
@@ -704,16 +695,20 @@ class KeyAction(AbstractAction):
         if self.key is None:
             return
 
-        ident = (self.key.scan_code, self.key.is_extended)
+        key = self.key
+        ident = (key.scan_code, key.is_extended)
         if self.is_pressed:
-            send_key_down(self.key)
-            with _held_keys_lock:
-                _held_keys.pop(ident, None)  # to the end: released first
-                _held_keys[ident] = self.key
+            send_key_down(key)
+            # Held by the macro playing it (run_scope, the one list of held
+            # keys and buttons): released when that macro ends early, or at
+            # Stop. keyboard.send_key_down notes it too; noting it here as
+            # well keeps the release going through this module.
+            run_scope.hold(
+                run_scope.current_owner(), "key", ident, lambda: send_key_up(key)
+            )
         else:
-            send_key_up(self.key)
-            with _held_keys_lock:
-                _held_keys.pop(ident, None)
+            send_key_up(key)
+            run_scope.let_go(run_scope.current_owner(), "key", ident)
 
     def to_xml(self) -> ElementTree.Element:
         node = self._create_node(self.tag)
@@ -746,7 +741,7 @@ class LogicalDeviceAction(AbstractAction):
     def __init__(
         self,
         input_type: InputType,
-        input_id: int,
+        input_id: int | None,
         value: bool | float | tuple[int, int],
         axis_mode: AxisMode = AxisMode.Absolute,
     ) -> None:
@@ -754,7 +749,8 @@ class LogicalDeviceAction(AbstractAction):
 
         Args:
             input_type: type of input being generated
-            input_id: id of the input being generated
+            input_id: id of the input being generated (None: no control
+                chosen yet)
             value: the value of the generated input
             axis_mode: if an axis is used, how to interpret the value
         """
@@ -767,12 +763,18 @@ class LogicalDeviceAction(AbstractAction):
 
     @classmethod
     def create(cls) -> LogicalDeviceAction:
-        if len(LogicalDevice().inputs_of_type()) == 0:
-            LogicalDevice().create(InputType.JoystickButton)
-        first_input = LogicalDevice().inputs_of_type()[0]
+        """A step on the first Logical Device control; with none there, a
+        step with no control (input_id None, not valid) that the editor asks
+        to fill in. It never creates a control itself (06 Q15)."""
+        inputs = LogicalDevice().inputs_of_type()
+        if not inputs:
+            return LogicalDeviceAction(InputType.JoystickButton, None, False)
+        first_input = inputs[0]
         return LogicalDeviceAction(first_input.type, first_input.id, first_input._value)
 
     def __call__(self) -> None:
+        if self.input_id is None:
+            return  # no control chosen
         ld = LogicalDevice()[
             LogicalDevice.Input.Identifier(self.input_type, self.input_id)
         ]
@@ -784,7 +786,8 @@ class LogicalDeviceAction(AbstractAction):
                 if self.axis_mode == AxisMode.Absolute:
                     ld.update(self.value)
                 elif self.axis_mode == AxisMode.Relative:
-                    ld.update(max(-1.0, min(1.0, ld.value + self.value)))
+                    # One step: no other writer between the read and write.
+                    ld.nudge(self.value)
                 value = ld.value
             case InputType.JoystickButton:
                 ld.update(self.value)
@@ -851,7 +854,7 @@ class LogicalDeviceAction(AbstractAction):
             self.value = util.read_property(node, "value", PropertyType.HatDirection)
 
     def is_valid(self) -> bool:
-        return True
+        return self.input_id is not None
 
 
 class MouseButtonAction(AbstractAction):

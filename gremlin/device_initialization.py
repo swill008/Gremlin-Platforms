@@ -44,11 +44,10 @@ def _file_bound_guid(device_name: str) -> str:
     """The device id the module file named after device_name is bound to."""
     import json
 
-    from gremlin.modules.registry import plain_slug
-    from gremlin.util import modules_dir
+    from gremlin.modules import store
 
     try:
-        path = modules_dir() / f"{plain_slug(device_name)}.json"
+        path = store.own_path(device_name)
         doc = json.loads(path.read_text(encoding="utf-8"))
         return str(doc.get("boundGuidLocal") or "").strip("{}").upper()
     except Exception:

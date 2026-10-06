@@ -93,6 +93,12 @@ commit, the program thread and layer rules, off-screen/safety rules.
 integration tests skip while it is open (run them at the end with it
 closed); full runs load the PC for ~3 min each.
 
+**Progress page (user, 2026-10-06):** https://claude.ai/artifact/NQJw6xzumYopoJn5NXJxqR
+(source `claude/progress/catchup-progress.html`; its data is one db document
+`progress/now`, written with the ArtifactData tool). Update it at every step
+(agents started/finished, test runs, commits, batch changes) and start each
+message to the user with its one-line status.
+
 **Status:** CI baseline green (run 37521378227 on 0e790f73). Batch 1
 restarted 2026-10-06 with the 7-agent split above.
 

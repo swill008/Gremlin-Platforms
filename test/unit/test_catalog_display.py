@@ -266,7 +266,9 @@ def test_photo_lookup_does_not_copy_another_device() -> None:
     body = registry[start:end]
     assert "_write_bindings" not in body
     assert "for folder in _maps_dir().iterdir()" not in text
-    assert "def _guid_for_this_device" in text
+    # Which file and picture folder a device uses is the module store's
+    # (store.slug_for / store.pictures_dir, GL-067); the guard test
+    # test_module_store_only keeps callers from building module paths.
     copy = text[text.find("def copyImage"): text.find("def clearImage")]
-    assert "folder = _maps_dir() / slug" in copy
+    assert copy
     assert "self._file_for(name)" not in copy

@@ -27,6 +27,7 @@ from PySide6 import QtCore
 
 from gremlin import device_initialization, history, util
 from gremlin.modules import calibration, registry
+from gremlin.modules import store as module_store
 from gremlin.modules.ids import guid_key, stored_guid_key
 from gremlin.types import InputType
 from gremlin.ui import hardware_profile, module_model
@@ -58,8 +59,8 @@ def folder(tmp_path: Path) -> Iterator[Path]:
     for old in path.glob("*.json"):
         shutil.move(str(old), str(aside / old.name))
     before = {p.name for p in path.iterdir()}
-    bindings = hardware_profile._binding_store()
-    hardware_profile._write_bindings({})
+    bindings = module_store.bindings()
+    module_store.set_bindings({})
     order = module_model._order_slugs()
     hidden = module_model._hidden_slugs()
     yield path
@@ -72,7 +73,7 @@ def folder(tmp_path: Path) -> Iterator[Path]:
             extra.unlink(missing_ok=True)
     for old in aside.iterdir():
         shutil.move(str(old), str(path / old.name))
-    hardware_profile._write_bindings(bindings)
+    module_store.set_bindings(bindings)
     module_model._set_order(order)
     module_model._set_hidden(hidden)
 
@@ -182,9 +183,9 @@ def test_delete_device_removes_a_renamed_sticks_file(folder: Path) -> None:
 
 def test_a_file_another_stick_uses_is_not_deleted(folder: Path) -> None:
     guid = _renamed(folder)
-    data = hardware_profile._binding_store()
+    data = module_store.bindings()
     data["{11111111-2222-3333-4444-555555555555}"] = "old_name"
-    hardware_profile._write_bindings(data)
+    module_store.set_bindings(data)
     assert hardware_profile.delete_module_file("pJoy Pro", guid) == (
         "Another stick is using this file."
     )
@@ -226,14 +227,14 @@ def test_twins_that_both_saved_into_one_file_each_get_their_own(
     )
     first = next(g for g, n in names.items() if n == "pJoy Pro")
     second = next(g for g, n in names.items() if n == "pJoy Pro (2)")
-    hardware_profile._write_bindings(
+    module_store.set_bindings(
         {stored_guid_key(first): "pjoy_pro", stored_guid_key(second): "pjoy_pro"}
     )
     assert registry.resolve_module_slug(names[first], first) == "pjoy_pro"
     # Old: pjoy_pro too (both twins one file).
     assert registry.resolve_module_slug(names[second], second) == "pjoy_pro_2"
     assert (
-        hardware_profile.module_json_path(names[second], second).name
+        module_store.path_for(names[second], second).name
         == "pjoy_pro_2.json"
     )
 
@@ -257,7 +258,7 @@ def test_plain_file_bound_to_the_second_twin_stays_the_first_ones(
             "claim": _CLAIM,
         },
     )
-    hardware_profile._write_bindings({stored_guid_key(second): "pjoy_pro"})
+    module_store.set_bindings({stored_guid_key(second): "pjoy_pro"})
     # Old: both resolved to pjoy_pro.
     assert registry.resolve_module_slug("pJoy Pro (2)", second) == "pjoy_pro_2"
     assert registry.resolve_module_slug("pJoy Pro", plain) == "pjoy_pro"
@@ -350,19 +351,19 @@ def test_device_pack_and_output_view_use_the_one_rule(folder: Path) -> None:
         "chosen",
         {"device": "Some Other", "direction": "source", "claim": _CLAIM},
     )
-    hardware_profile._write_bindings({stored_guid_key(guid): "chosen"})
+    module_store.set_bindings({stored_guid_key(guid): "chosen"})
     assert registry.resolve_module_slug("pJoy Pro", guid) == "chosen"
     # Old: pjoy_pro.json (its own fallback rule).
-    assert hardware_profile.module_json_path("pJoy Pro", guid).name == "chosen.json"
+    assert module_store.path_for("pJoy Pro", guid).name == "chosen.json"
 
 
 def test_one_vjoy_never_opens_another_vjoys_file(folder: Path) -> None:
     vjoy = next(iter(device_initialization.vjoy_devices()))
     guid = str(vjoy.device_guid)
     _write(folder, "vjoy_2", {"device": "vJoy 2", "direction": "dest", "claim": _CLAIM})
-    hardware_profile._write_bindings({stored_guid_key(guid): "vjoy_2"})
+    module_store.set_bindings({stored_guid_key(guid): "vjoy_2"})
     assert registry.resolve_module_slug("vJoy 1", guid) == "vjoy_1"
-    assert hardware_profile.module_json_path("vJoy 1", guid).name == "vjoy_1.json"
+    assert module_store.path_for("vJoy 1", guid).name == "vjoy_1.json"
 
 
 def test_a_vjoy_with_no_id_does_not_open_a_file_bound_to_another_device(
@@ -383,10 +384,10 @@ def test_a_vjoy_with_no_id_does_not_open_a_file_bound_to_another_device(
             "claim": _CLAIM,
         },
     )
-    hardware_profile._write_bindings({"name:vjoy_1": "throttle_out"})
+    module_store.set_bindings({"name:vjoy_1": "throttle_out"})
     # Old: throttle_out.json (no id, so the file's binding wasn't checked).
     # A Device Pack never has a vJoy's id: it reports "vJoy Device".
-    assert hardware_profile.module_json_path("vJoy 1", "").name == "vjoy_1.json"
+    assert module_store.path_for("vJoy 1", "").name == "vjoy_1.json"
     assert device_pack._device_path("vJoy 1").name == "vjoy_1.json"
     assert registry._guid_for_name("vJoy 1") == stored_guid_key(vjoy.device_guid)
     # Its own file bound to it is still found.
@@ -486,7 +487,7 @@ def test_a_file_chosen_for_a_stick_does_not_take_another_sticks_place(
             "claim": _CLAIM,
         },
     )
-    hardware_profile.bind_module_file("pJoy Pro", guid, "stick_a")
+    module_store.bind("pJoy Pro", guid, "stick_a")
     assert registry.resolve_module_slug("pJoy Pro", guid) == "stick_a"
     model = module_model.ModuleListModel()
     others = [r.slug for r in model._rows if r.slug != "pjoy_pro"]
@@ -542,8 +543,9 @@ def test_a_delete_module_file_that_failed_is_no_history_entry(
 
     monkeypatch.setattr(pathlib.Path, "unlink", unlink)
     try:
-        with pytest.raises(PermissionError):
-            hardware_profile.delete_module_file("pJoy Pro", guid)
+        message = hardware_profile.delete_module_file("pJoy Pro", guid)
+        # Said, not raised (the store reports a delete that failed).
+        assert message.startswith("The module file could not be deleted.")
     finally:
         monkeypatch.setattr(pathlib.Path, "unlink", real)
     assert locked.is_file()

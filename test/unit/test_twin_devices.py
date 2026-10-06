@@ -157,18 +157,23 @@ def _module(slug: str, name: str, guid: str, buttons: list[int]) -> None:
 
 @pytest.fixture
 def bindings() -> Iterator[None]:
-    from gremlin.ui import hardware_profile
+    from gremlin.modules import registry
 
-    before = hardware_profile._binding_store()
+    before = registry._binding_store()
     yield
-    hardware_profile._write_bindings(before)
+    _set_bindings(before)
+
+
+def _set_bindings(data: dict[str, str]) -> None:
+    Configuration().set(
+        "global", "internal", "module-file-bindings", json.dumps(data)
+    )
 
 
 def test_an_old_shared_choice_doesnt_hand_a_twin_the_other_twins_file(
     twins: list, bindings: None
 ) -> None:
     from gremlin.modules import registry
-    from gremlin.ui import hardware_profile
 
     first, second = _first_guid(), _twin_guid()
     _module("pjoy_pro", "pJoy Pro", first, [1])
@@ -176,7 +181,7 @@ def test_an_old_shared_choice_doesnt_hand_a_twin_the_other_twins_file(
     # Both ids chose pjoy_pro before twins had names of their own.
     from gremlin.modules.ids import stored_guid_key
 
-    hardware_profile._write_bindings({
+    _set_bindings({
         stored_guid_key(first): "pjoy_pro", stored_guid_key(second): "pjoy_pro"
     })
     name = _names()[second]
@@ -198,3 +203,38 @@ def test_the_button_map_of_the_second_twin_opens_its_own_file(twins: list) -> No
     assert hw._file_for("pJoy Pro (2)").name == "pjoy_pro_2.json"
     hw.deleteLater()
 
+
+
+def test_a_restored_module_file_is_the_one_its_device_uses_again(
+    bindings: None,
+) -> None:
+    """08 Q14 (GL-081): History Restore wrote the file by its stored name
+    only; a device that used it (Delete File had cleared the choice) went on
+    using its own-name file. Restore binds it again, as Module Setup's Undo
+    of an import does (S85)."""
+    from gremlin.modules import registry
+    from gremlin.ui import history_model
+
+    device_initialization._joystick_devices.clear()
+    device_initialization.joystick_devices_initialization()
+    guid = _first_guid()
+    _module("pjoy_pro", "pJoy Pro", guid, [1])
+    doc = {
+        "device": "pJoy Pro", "direction": "source", "boundGuidLocal": guid,
+        "boundName": "pJoy Pro",
+        "claim": {"buttons": [5], "axes": [], "hats": [], "keys": []},
+    }
+    restored = modules_dir() / "my_setup.json"
+    try:
+        assert registry.resolve_module_slug("pJoy Pro", guid) == "pjoy_pro"
+        ok, _message = history_model._restore_module(
+            {"subject": {"fileName": "my_setup.json", "device": "pJoy Pro"}},
+            {"text": json.dumps(doc, indent=2), "pictures": []},
+        )
+        assert ok
+        written = json.loads(restored.read_text(encoding="utf-8"))
+        assert written["claim"]["buttons"] == [5]
+        assert registry.resolve_module_slug("pJoy Pro", guid) == "my_setup"
+    finally:
+        restored.unlink(missing_ok=True)
+        (modules_dir() / "pjoy_pro.json").unlink(missing_ok=True)

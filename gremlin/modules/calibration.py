@@ -12,7 +12,7 @@ from typing import Any
 
 from gremlin.config import Configuration
 from gremlin.device_initialization import physical_devices
-from gremlin.modules import module_file, registry
+from gremlin.modules import registry, store
 from gremlin.modules.ids import guid_key
 
 _DEFAULT = (-32768, 0, 0, 32767, True)
@@ -47,19 +47,26 @@ def _as_tuple(raw: object) -> tuple[int, int, int, int, bool] | None:
     return values
 
 
+def as_tuple(raw: object) -> tuple[int, int, int, int, bool] | None:
+    """A stored curve as a tuple; None when it is not a usable curve (the
+    Device Pack checks a pack's calibration this way)."""
+    return _as_tuple(raw)
+
+
 def _load(path: Path) -> dict:
     return registry.read_doc(path) or {}
 
 
 def _source_modules() -> list[dict]:
-    """The input modules of connected sticks, each as Module Setup and Run
-    find it (registry.for_device: by the device it is bound to, else, when
-    the stick has a new id, by its name). A stick found by name is marked
-    "rebind": saving its calibration records its new id."""
-    physical = {guid_key(dev.device_guid): dev for dev in physical_devices()}
-    modules = [m for m in registry.inputs() if m.slug not in _SKIP_SLUGS]
-    found: dict[str, tuple[Any, bool]] = {}
-    for key, device in physical.items():
+    """The input modules of connected sticks, one row per stick (by device
+    id), each as Module Setup and Run find it (registry.for_device: by the
+    device it is bound to, else, when the stick has a new id, by its name).
+    A stick found by name is marked "rebind": saving its calibration records
+    its new id. Two sticks on one file are both listed, each by its own name
+    (the second used to be left out); "key" tells them apart."""
+    found: list[tuple[Any, Any, bool]] = []
+    for device in physical_devices():
+        key = guid_key(device.device_guid)
         try:
             module = registry.for_device(device.name, str(device.device_guid))
         except Exception:
@@ -69,33 +76,43 @@ def _source_modules() -> list[dict]:
         # id used to be shown and saved instead).
         if module is None or module.is_output or module.slug in _SKIP_SLUGS:
             continue
-        if module.slug in found:
-            continue
-        found[module.slug] = (device, guid_key(module.bound_guid) != key)
+        found.append((device, module, guid_key(module.bound_guid) != key))
+    per_file: dict[str, int] = {}
+    for _device, module, _rebind in found:
+        per_file[module.slug] = per_file.get(module.slug, 0) + 1
     rows = []
-    for module in modules:
-        if module.slug not in found:
-            continue
-        device, rebind = found[module.slug]
+    for device, module, rebind in found:
+        shared = per_file[module.slug] > 1
         rows.append(
             {
-                "name": module.name or device.name,
+                "name": device.name if shared else (module.name or device.name),
                 "slug": module.slug,
                 "guid": str(device.device_guid),
                 "path": module.path,
                 "rebind": rebind,
             }
         )
-    rows.sort(key=lambda row: row["name"].lower())
+    rows.sort(key=lambda row: (row["name"].lower(), row["guid"]))
+    # The first stick on a file is picked by the file's slug (cards open
+    # Calibration that way); another one on the same file by "slug@id".
+    seen: set[str] = set()
+    for row in rows:
+        row["key"] = row["slug"] if row["slug"] not in seen else (
+            f"{row['slug']}@{guid_key(row['guid'])}"
+        )
+        seen.add(row["slug"])
     return rows
 
 
 def module_for_slug(slug: str) -> dict | None:
+    """The row picked by its key: the file's slug, or "slug@id" for a second
+    stick on the same file."""
     want = str(slug or "").strip().lower()
     if not want:
         return None
-    for row in _source_modules():
-        if row["slug"] == want:
+    rows = _source_modules()
+    for row in rows:
+        if row["key"].lower() == want:
             return row
     return None
 
@@ -158,25 +175,20 @@ def write_axes(slug: str, axes: dict[int, AxisData]) -> bool:
     row = module_for_slug(slug)
     if row is None or not axes:
         return False
+
+    def change(doc: dict) -> None:
+        calibration = dict(doc.get("calibration") or {})
+        for axis_id, curve in curves.items():
+            calibration[axis_id] = list(curve)
+        doc["calibration"] = calibration
+        if row.get("rebind"):
+            # Found by name: the stick's id changed. Record it, as Module
+            # Setup does on save, so the next session finds it directly.
+            doc["boundGuidLocal"] = row["guid"]
+
     try:
-        doc = module_file.load_for_update(row["path"])
-    except module_file.ModuleFileDamaged as damaged:
-        registry.trace("READ", "Calibration", "write_axis", row["path"], "damaged")
-        module_file.report_refused(damaged)
-        return False
-    registry.trace("READ", "Calibration", "write_axis", row["path"], "ok")
-    calibration = dict(doc.get("calibration") or {})
-    for axis_id, curve in curves.items():
-        calibration[axis_id] = list(curve)
-    doc["calibration"] = calibration
-    if row.get("rebind"):
-        # Found by name: the stick's id changed. Record it, as Module Setup
-        # does on save, so the next session finds it directly.
-        doc["boundGuidLocal"] = row["guid"]
-    try:
-        module_file.write_json(row["path"], doc)
+        # Through the store: a damaged file is refused (and said) and left
+        # untouched; the write is atomic and one History entry.
+        return store.update_path(row["path"], change, "Calibration")
     except OSError:
-        registry.trace("SAVE", "Calibration", "write_axis", row["path"], "error")
         return False
-    registry.trace("SAVE", "Calibration", "write_axis", row["path"], "ok")
-    return True

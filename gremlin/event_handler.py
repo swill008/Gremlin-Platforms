@@ -48,6 +48,12 @@ if TYPE_CHECKING:
     from gremlin.code_runner import CallbackObject
 
 
+# The mode of an event the hardware listener sends: the listener (the input
+# layer) doesn't know the modes; EventHandler.process_event stamps the
+# current mode on the main thread (GL-065).
+NO_MODE = ""
+
+
 class Event:
     """Represents a single event captured by the system.
 
@@ -206,7 +212,7 @@ class Event:
             event_type=InputType.Keyboard,
             identifier=(key.scan_code, key.is_extended),
             device_guid=dill.UUID_Keyboard,
-            mode=mode_manager.ModeManager().current.name,
+            mode=NO_MODE,
         )
 
 
@@ -237,7 +243,6 @@ class EventListener(QtCore.QObject):
 
         # Calibration function for each axis of all devices
         self._calibrations = {}
-        self._modes = mode_manager.ModeManager()
 
         # Joystick device change update timeout timer
         self._device_update_timer = None
@@ -327,7 +332,7 @@ class EventListener(QtCore.QObject):
                     event_type=InputType.JoystickAxis,
                     device_guid=event.device_guid.uuid,
                     identifier=event.input_index,
-                    mode=self._modes.current.name,
+                    mode=NO_MODE,
                     value=calibrated_value,
                     raw_value=event.value,
                 )
@@ -342,7 +347,7 @@ class EventListener(QtCore.QObject):
                     event_type=InputType.JoystickButton,
                     device_guid=event.device_guid.uuid,
                     identifier=event.input_index,
-                    mode=self._modes.current.name,
+                    mode=NO_MODE,
                     is_pressed=event.value == 1,
                 )
             )
@@ -357,7 +362,7 @@ class EventListener(QtCore.QObject):
                     event_type=InputType.JoystickHat,
                     device_guid=event.device_guid.uuid,
                     identifier=event.input_index,
-                    mode=self._modes.current.name,
+                    mode=NO_MODE,
                     value=direction,
                 )
             )
@@ -426,7 +431,7 @@ class EventListener(QtCore.QObject):
         if wrapper is None or not hasattr(wrapper, "let_go"):
             return
         buttons, hats = wrapper.let_go()
-        mode = self._modes.current.name
+        mode = NO_MODE
         for index in buttons:
             self.joystick_event.emit(
                 Event(
@@ -480,7 +485,7 @@ class EventListener(QtCore.QObject):
                     event_type=InputType.Keyboard,
                     device_guid=dill.UUID_Keyboard,
                     identifier=(key_id.scan_code, key_id.is_extended),
-                    mode=self._modes.current.name,
+                    mode=NO_MODE,
                     is_pressed=is_pressed,
                 )
             )
@@ -507,7 +512,7 @@ class EventListener(QtCore.QObject):
                     event_type=InputType.Mouse,
                     device_guid=dill.GUID_Keyboard,
                     identifier=event.button_id,
-                    mode=self._modes.current.name,
+                    mode=NO_MODE,
                     is_pressed=event.is_pressed,
                 )
             )
@@ -680,6 +685,10 @@ class EventHandler(QtCore.QObject):
         Args:
             event: the event to process
         """
+        # The listener leaves the mode to the layer above it: the mode is the
+        # one current when the event is handled, read on the main thread.
+        if not event.mode:
+            event.mode = mode_manager.ModeManager().current.name
         # Process callbacks defined via actions or scripts.
         callbacks = self._matching_callbacks(event)
         # Input Monitor (Live Log Reader): read-only, one check when off.

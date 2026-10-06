@@ -649,9 +649,7 @@ ApplicationWindow {
             offerButtonMapLeaveThenQuit()
             return
         }
-        if (backend && backend.gremlinActive) {
-            backend.toggleActiveState()
-        }
+        // Quitting stops a running profile once, in shutdown_cleanup.
         Qt.quit()
     }
 

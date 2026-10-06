@@ -26,6 +26,7 @@ import logging
 import os
 import re
 import sys
+import time
 import types
 import uuid
 from collections.abc import Iterator
@@ -161,6 +162,7 @@ def load_profile(
         profile=types.SimpleNamespace(has_unsaved_changes=lambda: False),
         loadProfile=lambda path: calls.append(("load", path)),
         activate_gremlin=lambda on: calls.append(("active", on)),
+        run_profile=lambda path: calls.append(("run", path)),
     )
     monkeypatch.setattr(backend, "Backend", lambda: fake)
     monkeypatch.setattr(shared_state, "current_profile", Profile())
@@ -191,8 +193,25 @@ def test_load_profile_loads_and_restarts_the_run(
     target = tmp_path / "other.xml"
     target.write_text("<profile/>")
     functor.data.profile_filename = str(target)  # type: ignore[attr-defined]
-    _press(functor)
-    assert calls == [("load", str(target)), ("active", False), ("active", True)]
+    # GL-057: not from inside the event. Pressing hands the load to a Run
+    # timer; once Qt events run, Backend.run_profile stops, opens the
+    # profile and runs it again (its own tests are in test_audit3_run_stop).
+    from gremlin import run_scope
+
+    run_scope.stop()
+    run_scope._reset_for_tests()
+    run_scope.begin()
+    try:
+        _press(functor)
+        assert calls == []
+        end = time.monotonic() + 2.0
+        while not calls and time.monotonic() < end:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(0.01)
+        assert calls == [("run", str(target))]
+    finally:
+        run_scope.stop()
+        run_scope._reset_for_tests()
 
 
 def test_load_profile_waits_over_unsaved_changes(
@@ -311,7 +330,7 @@ def test_undo_of_a_module_import_binds_the_devices_again(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, no_history: None
 ) -> None:
     from gremlin import util
-    from gremlin.ui import hardware_profile
+    from gremlin.modules import store
 
     modules = tmp_path / "modules"
     modules.mkdir()
@@ -324,21 +343,25 @@ def test_undo_of_a_module_import_binds_the_devices_again(
         ),
         encoding="utf-8",
     )
-    before = hardware_profile._binding_store()
+    before = store.bindings()
     bound = {"name:stick_a": "shared_keys", "name:keyboard": "old_keys"}
-    hardware_profile._write_bindings(bound)
-    monkeypatch.setattr(hardware_profile, "_import_undo", None)
+    store.set_bindings(bound)
+    monkeypatch.setattr(store, "_file_import_undo", {})
     try:
-        note = hardware_profile.import_module_file("Keyboard", "", str(chosen))
-        assert note.startswith("Imported into keyboard.json"), note
-        assert (modules / "keyboard.json").is_file()
-        # The import unbinds the chosen file's device and the keyboard.
-        assert hardware_profile._binding_store() == {}
-        assert hardware_profile.undo_last_import().startswith("Undone.")
+        note = store.import_file("Keyboard", "", str(chosen))
+        # 03 Q13 (decision): the import goes into the file the device uses,
+        # not a new one named after it.
+        assert note.startswith("Imported into old_keys.json"), note
+        assert (modules / "old_keys.json").is_file()
         assert not (modules / "keyboard.json").exists()
-        assert hardware_profile._binding_store() == bound
+        # The chosen file's device is unbound; the keyboard keeps its file.
+        assert store.bindings() == {"name:keyboard": "old_keys"}
+        undone = store.undo_file_import("Keyboard", "", "Configure Module")
+        assert undone.startswith("Undone."), undone
+        assert not (modules / "old_keys.json").exists()
+        assert store.bindings() == bound
     finally:
-        hardware_profile._write_bindings(before)
+        store.set_bindings(before)
 
 
 # --- Output View ------------------------------------------------------------------

@@ -6,15 +6,13 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 from gremlin import device_initialization, event_handler, shared_state
-from gremlin.modules import registry
+from gremlin.modules import registry, store
 from gremlin.modules import wiring
 from gremlin.modules.ids import guid_key
 from gremlin.signal import signal
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
 from gremlin.ui import input_pairing as pairing
-from gremlin.ui.module_model import _load_module_doc, module_exists
-from gremlin.ui.hardware_profile import _slug
 from gremlin.modules.claim import (
     claim_allows,
     claim_friendly,
@@ -28,15 +26,16 @@ QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
 
-def _source_claim(device_name: str) -> dict:
-    doc = _load_module_doc(device_name)
+def _source_claim(device_name: str, guid: str = "") -> dict:
+    # By the device's id too: twins share a name (decision F4).
+    doc = store.read(device_name, guid)
     if not doc:
         return empty_claim()
     return read_claim(doc)
 
 
-def _source_title(device_name: str, fallback: str) -> str:
-    doc = _load_module_doc(device_name)
+def _source_title(device_name: str, fallback: str, guid: str = "") -> str:
+    doc = store.read(device_name, guid)
     raw = str((doc or {}).get("device") or "").strip()
     return raw or str(fallback or device_name).strip()
 
@@ -44,12 +43,13 @@ def _source_title(device_name: str, fallback: str) -> str:
 def _dest_for_vjoy(vjoy_id: int) -> dict:
     name = f"vJoy {int(vjoy_id)}"
     module = registry.output_for_vjoy(int(vjoy_id))
-    doc = module.doc if module else _load_module_doc(name)
+    guid = pairing._vjoy_guid(int(vjoy_id))
+    doc = module.doc if module else store.read(name, guid)
     claim = read_claim(doc) if doc else empty_claim()
     return {
         "name": str((doc or {}).get("device") or name).strip() or name,
-        "slug": _slug(name),
-        "guid": pairing._vjoy_guid(int(vjoy_id)),
+        "slug": store.card_key(name),
+        "guid": guid,
         "claim": claim,
         "exists": bool(doc),
     }
@@ -71,7 +71,7 @@ def _src_label(input_type: InputType, hid: int, claim: dict) -> str:
 
 
 def _module_pair_rows(guid: str, device_name: str, input_type: InputType) -> list[dict]:
-    src_claim = _source_claim(device_name)
+    src_claim = _source_claim(device_name, guid)
     allowed = set(claim_ids(src_claim, kind_of(input_type)))
     if not allowed:
         return []
@@ -178,7 +178,7 @@ class ModulePairDeviceModel(QtCore.QAbstractListModel):
                 seen.add(key)
                 roster.append((guid, name))
         for guid, raw_name in roster:
-            if not module_exists(raw_name):
+            if not store.exists(raw_name, guid):
                 continue
             items = pairing._items_for_guid(guid)
             dest_ids = sorted(
@@ -199,7 +199,7 @@ class ModulePairDeviceModel(QtCore.QAbstractListModel):
             self._rows.append(
                 {
                     "guid": guid,
-                    "name": _source_title(raw_name, raw_name),
+                    "name": _source_title(raw_name, raw_name, guid),
                     "deviceName": raw_name,
                     "pairLabel": ", ".join(d["name"] for d in dests),
                     "mapped": True,

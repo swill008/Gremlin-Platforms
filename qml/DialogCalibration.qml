@@ -188,7 +188,8 @@ ApplicationWindow {
 
                 model: _modules
                 textRole: "name"
-                valueRole: "slug"
+                // Each stick by its own key: two on one file are two entries.
+                valueRole: "key"
                 implicitContentWidthPolicy: ComboBox.WidestText
                 onActivated: _calibrationDialog.chooseModule(currentValue)
                 onCurrentValueChanged: {

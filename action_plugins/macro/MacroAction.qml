@@ -367,6 +367,11 @@ Item {
                 label: "Logical device"
 
                 actionItem: RowLayout {
+                    Label {
+                        visible: modelData.needsControl
+                        text: "Add a Logical Device control first."
+                    }
+
                     LogicalDeviceSelector {
                         // The ordering is important, swapping it will result in the
                         // wrong item being displayed.

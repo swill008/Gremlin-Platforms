@@ -5,10 +5,10 @@
 
 from __future__ import annotations
 
-from gremlin.modules import module_file, output, registry
+from gremlin.modules import output, registry, store
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.ids import guid_key
-from gremlin.modules.registry import plain_slug, resolve_module_slug, trace
+from gremlin.modules.registry import trace
 
 
 def _norm_guid(value: object) -> str:
@@ -44,11 +44,11 @@ def _same_device(left: dict, right: dict) -> bool:
 def _choose_input(group: list[dict]) -> dict:
     """Keep the file the input module is bound to. Do not delete the others."""
     for row in group:
-        wanted = resolve_module_slug(row["name"], row.get("guid") or "")
+        wanted = store.slug_for(row["name"], row.get("guid") or "")
         if wanted and wanted == row["slug"]:
             return row
     for row in group:
-        if row["slug"] == (plain_slug(row["name"]) or "device"):
+        if row["slug"] == store.own_slug(row["name"]):
             return row
     return group[0]
 
@@ -97,7 +97,6 @@ def output_modules() -> list[dict]:
 def merge_claim_into_output(dest: dict, claim: dict) -> dict:
     """Write the input-module selection onto the output module so they match."""
     path = dest.get("path")
-    doc = dest.get("doc") if isinstance(dest.get("doc"), dict) else {}
     current = dest.get("claim") or {}
     buttons = sorted(
         {int(x) for x in (current.get("buttons") or [])}
@@ -123,23 +122,23 @@ def merge_claim_into_output(dest: dict, claim: dict) -> dict:
     if path is None:
         dest["claim"] = merged
         return merged
+    written: dict = {}
+
+    def change(doc: dict) -> None:
+        doc["claim"] = merged
+        written.clear()
+        written.update(doc)
+
     try:
         # The file as it is now (not the copy read earlier), so nothing saved
-        # since is overwritten; a damaged file is left alone.
-        doc = module_file.load_for_update(path)
-    except module_file.ModuleFileDamaged as damaged:
-        trace("SAVE", "Auto Mapper", "merge_claim_into_output", path, "damaged")
-        module_file.report_refused(damaged)
-        dest["claim"] = merged
-        return merged
-    doc["claim"] = merged
-    try:
-        module_file.write_json(path, doc)
+        # since is overwritten; a damaged file is refused and left alone.
+        saved = store.update_path(path, change, "Auto Mapper")
     except OSError:
-        trace("SAVE", "Auto Mapper", "merge_claim_into_output", path, "error")
+        saved = False
+    if not saved:
+        trace("SAVE", "Auto Mapper", "merge_claim_into_output", path, "not written")
         dest["claim"] = merged
         return merged
-    trace("SAVE", "Auto Mapper", "merge_claim_into_output", path, "ok")
-    dest["doc"] = doc
+    dest["doc"] = written
     dest["claim"] = merged
     return merged

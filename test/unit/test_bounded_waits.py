@@ -8,8 +8,8 @@
   the macros (or it) are stopped.
 - A sound waited for in sequential playback stops being waited for when
   the player stops (a cancelled sound may never say it is done).
-- A new relative axis loop waits at most 1 s for the old one; one that
-  doesn't end is logged instead of freezing the main thread.
+- A new relative axis loop doesn't wait for the old one (it ends with its
+  Run or when a newer loop replaced it), so the main thread never freezes.
 - A device scan that is still busy after a while is reported instead of
   waited for forever.
 - With windows_event_hook.enabled off (tests), no keyboard or mouse hook is
@@ -71,25 +71,24 @@ def test_a_sound_is_not_waited_for_once_the_player_stops() -> None:
         ("map_to_logical_device", "MapToLogicalDeviceFunctor"),
     ],
 )
-def test_a_relative_axis_loop_that_does_not_end_is_logged_not_waited_for(
-    plugin: str, functor_name: str, caplog: pytest.LogCaptureFixture
+def test_a_new_relative_axis_loop_does_not_wait_for_the_old_one(
+    plugin: str, functor_name: str
 ) -> None:
     import importlib
-
-    from gremlin import log_once
 
     module = importlib.import_module(f"action_plugins.{plugin}")
     functor = object.__new__(getattr(module, functor_name))
     stuck = threading.Event()
-    functor.thread = threads.start("old loop", stuck.wait, stop=stuck.set)
+    old = threads.start("old loop", stuck.wait, stop=stuck.set)
+    functor.thread = old
     functor.thread_running = False
-    log_once.reset()
+    functor.relative_axis_thread = lambda run, token=None: None
     start = time.monotonic()
-    functor._start_loop()
-    assert time.monotonic() - start < 2.0
-    assert "did not end within 1 s" in caplog.text
-    assert threads.running() == ["Gremlin-Platforms: old loop"]  # none started
+    functor._start_loop()  # the old one is not joined (06 RB20, GL-061)
+    assert time.monotonic() - start < 0.5
+    assert functor.thread is not old
     stuck.set()
+    functor.thread.join(timeout=2.0)
 
 
 def test_a_busy_device_scan_is_reported_not_waited_for(

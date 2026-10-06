@@ -39,10 +39,12 @@ spec.loader.exec_module(fake_hardware)
 fake_hardware.install()
 import gremlin.ui.update_model as um
 um.UpdateModel.startup = lambda self, *a, **k: None
-from gremlin.ui import module_model
+from gremlin.modules import store
 undo_answers = []
-module_model.import_can_undo = lambda: True
-module_model.undo_last_import = lambda: undo_answers.pop(0)
+# Module Setup asks the store (by device and window) whether an import can
+# be undone and to undo it.
+store.can_undo_file_import = lambda *a, **k: True
+store.undo_file_import = lambda *a, **k: undo_answers.pop(0)
 import joystick_gremlin
 from PySide6 import QtQml, QtQuick, QtTest
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])

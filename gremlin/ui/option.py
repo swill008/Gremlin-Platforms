@@ -718,7 +718,7 @@ class TTSVoiceSelectionModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidg
         QtCore.QAbstractListModel.__init__(self, parent)
         BaseMetaConfigOptionWidget.__init__(self)
 
-        TTSManager().start()
+        TTSManager().prepare_engine()
         self._voices = [voice.name() for voice in TTSManager().available_voices()]
         self._config = gremlin.config.Configuration()
         self._cfg_key = ["action", "text-to-speech", "voice"]

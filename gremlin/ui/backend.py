@@ -30,6 +30,7 @@ from gremlin import (
     process_monitor,
     profile,
     shared_state,
+    user_script,
     util,
 )
 from gremlin.logical_device import LogicalDevice
@@ -254,10 +255,7 @@ class Backend(QtCore.QObject):
         self.joystick_change_monitor = device_helpers.JoystickInputSignificant()
         mm = mode_manager.ModeManager()
         mm.mode_changed.connect(self._on_mode_changed)
-        self.profileChanged.connect(mm.reset)
-        self.profileChanged.connect(
-            lambda: self.ui_state.setCurrentMode(mm.current.name)
-        )
+        # One handler, in order: the open profile first, then its modes.
         self.profileChanged.connect(self._profile_change_handler)
         self.process_monitor.process_changed.connect(self._active_process_changed_cb)
         event_handler.EventHandler().is_active.connect(
@@ -297,7 +295,13 @@ class Backend(QtCore.QObject):
             return
 
     def _profile_change_handler(self) -> None:
+        # The open profile is set first: the start mode is worked out from
+        # it, not from the profile open before (04 S52, GL-053).
         shared_state.current_profile = self.profile
+        user_script.forget_other_scripts(self.profile.scripts.scripts)
+        mm = mode_manager.ModeManager()
+        mm.reset()
+        self.ui_state.setCurrentMode(mm.current.name)
         self.windowTitleChanged.emit()
         signal.reloadUi.emit()
         signal.profileChanged.emit()
@@ -418,14 +422,39 @@ class Backend(QtCore.QObject):
         self.activate_gremlin(not self.runner.is_running())
 
     def activate_gremlin(self, activate: bool) -> None:
-        if activate:
-            shared_state.set_suspend_input_highlighting(True)
-            self.runner.start(self.profile, self.ui_state.currentMode)
-        else:
-            self.runner.stop()
-            if self.config.value("ui", "general", "input-highlighting"):
+        """Run (True) or Stop (False). A Run that fails stops itself and
+        shows its one error (CodeRunner.start); the status then reads
+        Stopped (06 Q5)."""
+        try:
+            if activate:
+                shared_state.set_suspend_input_highlighting(True)
+                try:
+                    self.runner.start(self.profile, self.ui_state.currentMode)
+                except Exception:
+                    # Logged and shown by the runner, which has stopped.
+                    pass
+            else:
+                self.runner.stop()
+        finally:
+            if not self.runner.is_running() and self.config.value(
+                "ui", "general", "input-highlighting"
+            ):
                 shared_state.set_suspend_input_highlighting(False)
-        self.activityChanged.emit()
+            self.activityChanged.emit()
+
+    def run_profile(self, fpath: str) -> bool:
+        """Stop, open the profile at fpath and Run it (a Load Profile
+        action, handed over after its event). Runs again only when the
+        profile opened; False when it didn't."""
+        local_path = to_local_path(fpath)
+        loaded = self._load_profile(str(local_path))
+        if loaded:
+            self._record_profile_use(local_path)
+        self.profileChanged.emit()
+        signal.reloadCurrentInputItem.emit()
+        if loaded:
+            self.activate_gremlin(True)
+        return loaded
 
     def minimize(self) -> None:
         root_window = self.engine.rootObjects()[0]
@@ -653,6 +682,11 @@ class Backend(QtCore.QObject):
             sys.path.insert(0, profile_folder)
         self.profile = new_profile
         persist_log(f"Persist profile load path={fpath}")
+        # What opened but won't run as saved (actions of an unknown type,
+        # GL-105): said once, at load.
+        for warning in getattr(new_profile, "load_warnings", []) or []:
+            logging.getLogger("system").warning(warning)
+            signal.showNotification.emit("Open Profile", warning)
         if profile_was_converted:
             self.profile.to_xml(Path(fpath))
 

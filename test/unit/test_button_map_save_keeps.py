@@ -18,16 +18,16 @@ import pathlib
 
 import pytest
 
-from gremlin.modules import module_file
+from gremlin.modules import module_file, store
 from gremlin.ui import hardware_profile
 
 
 @pytest.fixture
 def maps(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.Path:
-    monkeypatch.setattr(hardware_profile, "_maps_dir", lambda: tmp_path)
+    monkeypatch.setattr(store, "folder", lambda: tmp_path)
     monkeypatch.setattr(
-        hardware_profile,
-        "resolve_module_slug",
+        store,
+        "slug_for",
         lambda name, guid="": name.lower().replace(" ", "_"),
     )
     return tmp_path
@@ -83,11 +83,12 @@ def test_cancel_puts_the_photo_back_through_the_module_file_writer(
     )
     _stash(maps, "stick_r", "stick_r/photo.png")
     writes = []
-    real = module_file.write_json
+    # Every module file write goes through the store to the atomic writer.
+    real = module_file.write_bytes
     monkeypatch.setattr(
         module_file,
-        "write_json",
-        lambda p, doc, **kw: (writes.append(p), real(p, doc, **kw)),
+        "write_bytes",
+        lambda p, data: (writes.append(p), real(p, data)),
     )
     assert hardware_profile.HardwareProfile().restorePhoto("Stick R")
     assert writes == [path]

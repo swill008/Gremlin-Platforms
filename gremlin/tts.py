@@ -43,9 +43,20 @@ class TTSManager(metaclass=SingletonMetaclass):
         self._engine: QTextToSpeech | None = None
         self._queue: deque[TTSRequest] = deque()
         self._current_request: TTSRequest | None = None
+        # True between start() and stop() (a Run): speech asked for with no
+        # Run on (a late timer after Stop) is ignored (06 Q8). The engine
+        # itself stays for the program's life (Options lists its voices).
+        self._running = False
 
     def start(self) -> None:
-        """Initialise the engine and wire signals.  Safe to call repeatedly."""
+        """A Run starts: speech is taken from now until stop(). Safe to
+        call repeatedly."""
+        self._running = True
+        self.prepare_engine()
+
+    def prepare_engine(self) -> None:
+        """Initialise the engine and wire signals (no Run needed: Options
+        lists the voices). Safe to call repeatedly."""
         if self._engine is not None:
             return
         self._engine = QTextToSpeech("winrt")
@@ -59,6 +70,7 @@ class TTSManager(metaclass=SingletonMetaclass):
 
     def stop(self) -> None:
         """Clear the queue and stop any ongoing speech."""
+        self._running = False
         self._queue.clear()
         if self._engine is not None:
             self._engine.stop()
@@ -66,6 +78,8 @@ class TTSManager(metaclass=SingletonMetaclass):
     def enqueue(self, request: TTSRequest, mode: TTSQueueMode) -> None:
         """Add *request* to the queue according to *mode* and start speaking
         if the engine is currently idle."""
+        if not self._running:
+            return
         force_speak = False
         match mode:
             case TTSQueueMode.QueueBack:

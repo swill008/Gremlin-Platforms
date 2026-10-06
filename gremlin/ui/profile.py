@@ -475,7 +475,8 @@ class InputItemBindingModel(QtCore.QObject):
             self.get_action_container_index(action_index), action_index.container_name
         )
         if drop_unused:
-            self._input_item_binding.library.remove_unused(removed, recursive=True)
+            # The one removal rule, in this input's own library.
+            self._input_item_binding.library.release([removed])
 
         if perform_sync:
             self._create_action_models()
@@ -627,8 +628,7 @@ class InputItemBindingModel(QtCore.QObject):
             children, selectors = root_action.get_actions()
             for i in range(len(children) - 1, -1, -1):
                 root_action.remove_action(i, selectors[i])
-            for child in children:
-                self._input_item_binding.library.remove_unused(child, recursive=True)
+            self._input_item_binding.library.release(children)
 
             # Tree topology changed, so the model cache needs rebuilding
             self._create_action_models()
@@ -698,10 +698,11 @@ class InputItemModel(QtCore.QAbstractListModel):
             self.beginRemoveRows(QtCore.QModelIndex(), index, index)
             self._input_item.remove_item_binding(binding.input_item_binding)
             self.endRemoveRows()
-            profile = shared_state.current_profile
-            root = binding.input_item_binding.root_action
-            if profile is not None and root is not None:
-                profile.drop_unused_actions([root])
+            # The one removal rule, in this input's own library (not the
+            # open profile's: a pane's draft input shares the profile's).
+            self._input_item.library.release(
+                [binding.input_item_binding.root_action]
+            )
             signal.inputItemChanged.emit(self._enumeration_index)
         except ValueError:
             pass

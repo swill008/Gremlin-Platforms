@@ -25,7 +25,7 @@ from __future__ import annotations
 import sys
 import uuid
 from collections import Counter
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -124,7 +124,7 @@ def profile(p: Profile) -> list[str]:
       parent link disagrees, two modes of one name, or a blank name
       (04 S27, S39-S42; gap 04 #13).
     - PROFILE-UNUSED-ACTION (warning): a library action no input uses and
-      no open pane draft holds (Library._copied_from, pick_list). Deleted and
+      no open pane draft holds (Library.draft_held). Deleted and
       replaced actions stay in memory for Undo (04 S14, S75).
     - PROFILE-LOGICAL-MISSING: a used action (Map to Logical Device, a
       Logical Device condition) names a Logical Device input that doesn't
@@ -239,20 +239,6 @@ def _check_inputs(
                 pending.extend(_children(action))
 
 
-def _reachable(start: Iterable[Any]) -> set[uuid.UUID]:
-    found: set[uuid.UUID] = set()
-    pending = list(start)
-    steps = 0
-    while pending and steps < _LIMIT:
-        steps += 1
-        action = pending.pop()
-        if action is None or action.id in found:
-            continue
-        found.add(action.id)
-        pending.extend(_children(action))
-    return found
-
-
 def _check_library(p: Profile, out: list[str], used: dict[uuid.UUID, Any]) -> None:
     library = p.library
     actions: dict[uuid.UUID, Any] = dict(library._actions)
@@ -266,8 +252,7 @@ def _check_library(p: Profile, out: list[str], used: dict[uuid.UUID, Any]) -> No
                     f"{_name(child) if child is not None else 'an empty slot'}, "
                     "which isn't in the library"
                 )
-    drafts = [actions[a] for a in library._copied_from if a in actions]
-    in_drafts = _reachable(drafts)
+    in_drafts = library.draft_held()
     for aid, action in actions.items():
         if aid not in used and aid not in in_drafts:
             out.append(
@@ -336,9 +321,9 @@ def _bindings_registered() -> bool:
 
 
 def _check_modules(out: list[str]) -> None:
-    from gremlin.modules import registry
+    from gremlin.modules import registry, store
 
-    folder = registry._folder()
+    folder = store.folder()
     if folder.is_dir():
         for path in sorted(folder.glob("*.json")):
             if not path.is_file():
@@ -348,9 +333,9 @@ def _check_modules(out: list[str]) -> None:
     if not _bindings_registered():
         return
     out += _guarded("modules shared files", _check_shared_files)
-    for key, value in sorted(registry._binding_store().items()):
-        slug = registry.plain_slug(value)
-        if not slug or not (folder / f"{slug}.json").is_file():
+    for key, value in sorted(store.bindings().items()):
+        slug = store.own_slug(value) if str(value or "").strip() else ""
+        if not slug or not store.path_of(slug).is_file():
             out.append(
                 f"MODULES-BINDING-MISSING: the saved choice for {key} names "
                 f"'{value}', which isn't in the modules folder"
@@ -359,7 +344,7 @@ def _check_modules(out: list[str]) -> None:
 
 def _check_shared_files(out: list[str]) -> None:
     from gremlin import device_initialization
-    from gremlin.modules import registry
+    from gremlin.modules import store
 
     users: dict[str, list[str]] = {}
     devices = [
@@ -371,7 +356,7 @@ def _check_shared_files(out: list[str]) -> None:
     ]
     for name, dev in devices:
         guid = str(getattr(dev, "device_guid", "") or "")
-        slug = registry.resolve_module_slug(name, guid)
+        slug = store.slug_for(name, guid)
         users.setdefault(slug, []).append(f"{name} ({guid})")
     for slug, names in sorted(users.items()):
         if len(names) > 1:
@@ -386,16 +371,20 @@ def _check_shared_files(out: list[str]) -> None:
 def after_stop() -> list[str]:
     """Problems a stopped Run left behind (spec 06 S17-S29).
 
-    - RUN-HELD-KEYS: keys a macro or Map to Keyboard still holds (S21).
+    - RUN-HELD-KEYS: keys a macro, Map to Keyboard or a script still holds
+      (S21, S31).
     - RUN-HELD-BUTTONS: mouse buttons still held (S22).
     - RUN-PENDING-PULSES: pulse releases still waiting (S24).
+    - RUN-TIMERS-LEFT: a timer a Run started (Tempo, Double Tap, Smart
+      Toggle) can still fire (S30).
+    - RUN-OPEN: run_scope still counts a Run as on, or Stop is half done.
+    - RUN-MODE-TEMPORARY: a temporary mode outlived the Run (Q3, R3).
     - RUN-ACTIVE: the runtime still counts as running (S1, S4).
     - RUN-MACRO-RUNNING: the macro manager still runs (S20).
     - RUN-VJOY-HELD: a vJoy device is still held (S17, S29).
     - RUN-XBOX-PLUGGED: an Xbox pad is still plugged in (S17, S29).
     - RUN-THREADS-LEFT: a thread a Run starts is still running (S25, S27).
-      Tempo, Double Tap and Smart Toggle timers made on the main thread are
-      Qt timers, not listed here (GL-047).
+      Main-thread timers are listed too (gremlin.threads).
 
     Only modules already loaded are looked at: one that isn't loaded holds
     nothing, and nothing is created to be checked.
@@ -414,24 +403,51 @@ def _singleton(cls: type) -> Any | None:  # noqa: ANN401
 
 
 def _check_after_stop(out: list[str]) -> None:
+    # What a Run holds is run_scope's (map 3); the older per-module lists are
+    # read too while they exist.
+    keys: list[object] = []
+    buttons: list[object] = []
+    pulses = 0
+    scope = _loaded("gremlin.run_scope")
+    if scope is not None:
+        if scope.running() or scope.stopping():
+            out.append("RUN-OPEN: a Run is still on or its Stop is not done")
+        for kind, ident in scope.held():
+            (keys if kind == "key" else buttons).append(ident)
+        timers = scope.pending_timers()
+        stale = [t for t in timers if not scope.alive(t.run)]
+        pulses += len([t for t in stale if t.at_stop == "fire"])
+        others = sorted({t.name for t in stale if t.at_stop != "fire"})
+        if others:
+            out.append(f"RUN-TIMERS-LEFT: can still fire: {', '.join(others)}")
     macro = _loaded("gremlin.macro")
     if macro is not None:
-        held = list(getattr(macro, "_held_keys", {}) or {})
-        if held:
-            out.append(f"RUN-HELD-KEYS: {len(held)} key(s) still held: {held}")
+        keys += [k for k in (getattr(macro, "_held_keys", {}) or {}) if k not in keys]
         manager = _singleton(macro.MacroManager)
         if manager is not None and getattr(manager, "_is_running", False):
             out.append("RUN-MACRO-RUNNING: the macro manager still runs")
     sendinput = _loaded("gremlin.sendinput")
     if sendinput is not None:
-        buttons = list(getattr(sendinput, "_held_buttons", []) or [])
-        if buttons:
-            out.append(f"RUN-HELD-BUTTONS: mouse button(s) still held: {buttons}")
+        old_buttons = list(getattr(sendinput, "_held_buttons", []) or [])
+        buttons += [b for b in old_buttons if b not in buttons]
+    if keys:
+        out.append(f"RUN-HELD-KEYS: {len(keys)} key(s) still held: {keys}")
+    if buttons:
+        out.append(f"RUN-HELD-BUTTONS: mouse button(s) still held: {buttons}")
     base = _loaded("gremlin.base_classes")
     if base is not None:
-        pulses = len(getattr(base, "_pending_pulses", []) or [])
-        if pulses:
-            out.append(f"RUN-PENDING-PULSES: {pulses} pulse release(s) still waiting")
+        pulses += len(getattr(base, "_pending_pulses", []) or [])
+    if pulses:
+        out.append(f"RUN-PENDING-PULSES: {pulses} pulse release(s) still waiting")
+    modes = _loaded("gremlin.mode_manager")
+    if modes is not None:
+        manager = modes.ModeManager.instance
+        stack = list(getattr(manager, "_mode_stack", []) or []) if manager else []
+        temporary = [m.name for m in stack if getattr(m, "is_temporary", False)]
+        if temporary:
+            out.append(
+                f"RUN-MODE-TEMPORARY: temporary mode(s) still on: {temporary}"
+            )
     state = _loaded("gremlin.shared_state")
     if state is not None and state.runtime_active():
         out.append("RUN-ACTIVE: the runtime still counts as running")

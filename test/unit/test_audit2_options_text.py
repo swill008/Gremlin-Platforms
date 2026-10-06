@@ -160,7 +160,7 @@ def test_home_cards_keep_an_unplugged_stick_in_its_place(
         device_initialization, "physical_devices", lambda: list(plugged)
     )
     monkeypatch.setattr(device_initialization, "vjoy_devices", lambda: [])
-    monkeypatch.setattr(module_model, "module_exists", lambda _name: False)
+    monkeypatch.setattr(module_model, "module_exists", lambda _name, _guid="": False)
     monkeypatch.setattr(module_model, "_show_stubs", lambda: True)
     monkeypatch.setattr(module_model, "apply_bound_targets", lambda _rows: None)
     monkeypatch.setattr(module_model.ModuleListModel, "_stacks", lambda _self: [])

@@ -27,7 +27,9 @@ from gremlin.base_classes import (
     UserFeedback,
     Value,
 )
+from gremlin.logical_device import LogicalDevice
 from gremlin.profile import Library
+from gremlin.signal import signal
 from gremlin.tree import TreeNode
 from gremlin.types import (
     ActionProperty,
@@ -142,6 +144,15 @@ class ConditionModel(ActionModel):
         }
 
         condition_type = ConditionType(condition)
+        if (
+            condition_type == ConditionType.LogicalDevice
+            and not LogicalDevice().inputs_of_type()
+        ):
+            # Nothing to compare with: no hidden control is made (06 Q15).
+            signal.showNotification.emit(
+                "Condition", "Add a Logical Device control first."
+            )
+            return
         if condition_type in condition_lookup:
             cond = condition_lookup[condition_type](self)
             # If the condition is a CurrentInput one set the input type

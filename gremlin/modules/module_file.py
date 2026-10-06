@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from pathlib import Path
 
 from gremlin.error import GremlinError
@@ -61,23 +60,17 @@ def load_for_update(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def write_text(
-    path: Path, text: str, encoding: str = "utf-8", newline: str | None = None
-) -> None:
+def write_bytes(path: Path, data: bytes) -> None:
     """Writes the whole file safely: a temporary file, then a swap. A crash
-    mid-write leaves the old file whole. Also used for profiles (with a BOM
-    and their line ends kept: encoding "utf-8-sig", newline "")."""
+    mid-write leaves the old file whole. No History here: module files are
+    written through gremlin.modules.store, the one place History is hooked."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Tools > History: a module file's save is kept (other files are not).
-    from gremlin import history_modules
-
-    old = history_modules.text_before(path)
     temporary = path.with_name(path.name + ".tmp")
     try:
-        temporary.write_text(text, encoding=encoding, newline=newline)
+        temporary.write_bytes(data)
     except OSError:
-        # The new text couldn't be written (a full disk): the file stays as
+        # The new data couldn't be written (a full disk): the file stays as
         # it was. Writing it directly would only cut it short.
         try:
             temporary.unlink()
@@ -91,13 +84,40 @@ def write_text(
         # indexer) has the file open: write it directly instead. The
         # temporary copy goes too.
         try:
-            path.write_text(text, encoding=encoding, newline=newline)
+            path.write_bytes(data)
         finally:
             try:
                 temporary.unlink()
             except OSError:
                 pass
-    history_modules.note_write(path, text, old)
+
+
+def encode(text: str, encoding: str = "utf-8", newline: str | None = None) -> bytes:
+    """text as a text file is written: newline None turns line ends into
+    the system's, "" keeps them as they are, anything else uses it."""
+    if newline is None:
+        text = text.replace("\r\n", "\n").replace("\n", os.linesep)
+    elif newline:
+        text = text.replace("\r\n", "\n").replace("\n", newline)
+    return text.encode(encoding)
+
+
+def write_text(
+    path: Path, text: str, encoding: str = "utf-8", newline: str | None = None
+) -> None:
+    """write_bytes for text. Also used for profiles and settings (with a BOM
+    and their line ends kept: encoding "utf-8-sig", newline ""). A module
+    file goes through the module file store, so History keeps it; program
+    code writes module files with the store itself."""
+    data = encode(text, encoding, newline)
+    from gremlin import history_modules
+
+    if history_modules.is_module_file(Path(path)):
+        from gremlin.modules import store
+
+        store.write_file(Path(path), data)
+        return
+    write_bytes(path, data)
 
 
 def write_json(path: Path, doc: dict, indent: int = 2) -> None:
@@ -106,11 +126,11 @@ def write_json(path: Path, doc: dict, indent: int = 2) -> None:
 
 def start_fresh(path: Path) -> Path:
     """Moves a damaged module file aside as <name>.json.bad-<date> (nothing
-    is deleted) so the device can be set up again. Returns the copy's path."""
-    path = Path(path)
-    copy = path.with_name(f"{path.name}.bad-{time.strftime('%Y%m%d-%H%M%S')}")
-    os.replace(path, copy)
-    return copy
+    is deleted) so the device can be set up again, with a History entry.
+    Returns the copy's path. New callers use store.move_aside."""
+    from gremlin.modules import store
+
+    return store.move_aside_path(Path(path))
 
 
 def refused_message(error: ModuleFileDamaged) -> str:

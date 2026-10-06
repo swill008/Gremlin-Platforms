@@ -6,17 +6,21 @@ from __future__ import annotations
 
 import logging
 import os
-import uuid
-import xml.etree.ElementTree as ElementTree
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import error, shared_state
-from gremlin.base_classes import AbstractActionData
 from gremlin.modules import wiring
 from gremlin.modules.claim import type_of
-from gremlin.profile import InputItem, InputItemBinding, Library
+from gremlin.profile import (
+    Draft,
+    DraftOutdated,
+    InputItem,
+    InputItemBinding,
+    binding_fingerprint,
+    bindings_fingerprint,
+)
 from gremlin.signal import signal
 from gremlin.ui.module_inputs import ModuleClaimedInputModel
 
@@ -34,123 +38,17 @@ _WRAPPERS = {
     "reference",
 }
 
-def _remap_ids(node: ElementTree.Element, id_map: dict[uuid.UUID, uuid.UUID]) -> None:
-    Library.remap_ids(node, id_map)
-
-
-def _clone_action(
-    action: AbstractActionData | None,
-    library: Library,
-    id_map: dict[uuid.UUID, uuid.UUID],
-) -> AbstractActionData | None:
-    """Copy one action tree into the library under new ids. Unfinished
-    actions too: pane edits must not reach the real input before OK."""
-    return library.clone_action(action, id_map, draft=True)
-
-
-def _clone_binding(binding: InputItemBinding, shadow: InputItem) -> InputItemBinding:
-    id_map: dict[uuid.UUID, uuid.UUID] = {}
-    _clone_action(binding.root_action, shadow.library, id_map)
-    node = binding.to_xml()
-    _remap_ids(node, id_map)
-    copy = InputItemBinding(shadow)
-    copy.from_xml(node)
-    shadow.action_sequences.append(copy)
-    return copy
-
-
-def _shadow_item(source: InputItem) -> InputItem:
-    shadow = InputItem(source.library)
-    shadow.device_id = source.device_id
-    shadow.input_type = source.input_type
-    shadow.input_id = source.input_id
-    shadow.mode = source.mode
-    return shadow
-
-
-def _drop_shadow(shadow: InputItem | None) -> None:
-    """Delete a draft tree that was never written onto the real control."""
-    if shadow is None:
-        return
-    roots = [
-        binding.root_action
-        for binding in shadow.action_sequences
-        if binding.root_action is not None
-    ]
-    shadow.action_sequences.clear()
-    for root in roots:
-        shadow.library.remove_unused(root)
-
-
 def _fingerprint_item(item: InputItem) -> str:
-    return "\n--\n".join(_fingerprint(binding) for binding in item.action_sequences)
-
-
-def _unwritable_state(action) -> str:
-    """The fields of an action to_xml can't write yet, as text."""
-
-    def plain(value: object) -> object:
-        if hasattr(value, "device_guid") and hasattr(value, "input_id"):
-            return tuple(
-                getattr(value, name) for name in ("device_guid", "input_type", "input_id")
-            )
-        if hasattr(value, "tag") and hasattr(value, "id"):
-            return str(getattr(value, "id"))
-        if isinstance(value, (list, tuple)):
-            return [plain(entry) for entry in value]
-        return value
-
-    try:
-        fields = sorted(vars(action).items())
-    except TypeError:
-        return ""
-    return repr([(name, plain(value)) for name, value in fields])
+    return bindings_fingerprint(item.action_sequences)
 
 
 def _fingerprint(binding: InputItemBinding) -> str:
-    chunks: list[str] = []
-
-    def walk(action) -> None:
-        if action is None:
-            return
-        # Unfinished ones too: the pane edits a copy, so an edit to one (a
-        # first axis picked) must make OK write it.
-        node = action.to_xml(True)
-        if node is not None:
-            chunks.append(ElementTree.tostring(node, encoding="unicode"))
-        else:
-            chunks.append(f"{getattr(action, 'tag', '')}:{_unwritable_state(action)}")
-        for child in action.get_actions()[0] or []:
-            walk(child)
-
-    walk(binding.root_action)
-    node = binding.to_xml()
-    if node is not None:
-        chunks.append(ElementTree.tostring(node, encoding="unicode"))
-    return "\n".join(chunks)
+    return binding_fingerprint(binding)
 
 
 def _or(value: int | str | None, default: int) -> int | str:
     """value, or default when it is None (0 is a real index)."""
     return default if value is None else value
-
-
-def _attach_binding(real: InputItem, shadow: InputItem, sequence_index: int) -> int:
-    """Move the draft binding onto the real control. Returns its index."""
-    binding = shadow.action_sequences[0]
-    binding.input_item = real
-    if sequence_index < 0:
-        real.action_sequences.append(binding)
-        return len(real.action_sequences) - 1
-    old = real.action_sequences[sequence_index]
-    real.action_sequences[sequence_index] = binding
-    if (
-        old is not binding
-        and old.root_action is not None
-        and old.root_action is not binding.root_action
-    ):
-        real.library.remove_unused(old.root_action)
-    return sequence_index
 
 
 _TYPE_LABELS = {
@@ -377,6 +275,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self.paneModelChanged.connect(self.undoChanged)
         self._claimed.countChanged.connect(self.reload)
         self._pane_model = None
+        # The pane's copy (gremlin.profile.Draft); _pane_shadow is its input.
+        self._pane_draft: Draft | None = None
         self._pane_shadow: InputItem | None = None
         self._pane_real: InputItem | None = None
         self._pane_seq = -1
@@ -936,8 +836,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             before = self._snapshot(want)
             binding = sequences[seq]
             item.remove_item_binding(binding)
-            if binding.root_action is not None:
-                profile.drop_unused_actions([binding.root_action])
+            profile.library.release([binding.root_action])
             self._step(want, before)
             signal.inputItemChanged.emit(want)
             signal.reloadCurrentInputItem.emit()
@@ -963,7 +862,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         if spec is None:
             return None
         profile, _guid, _kind, _hw, _mode, item = spec
-        return profile.input_snapshot(item)
+        return profile.library.snapshot(item)
 
     def _step(
         self, device_index: int, before: dict | None, key: tuple | None = None
@@ -972,7 +871,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         if spec is None:
             return
         profile, guid, kind, hw, mode, item = spec
-        after = profile.input_snapshot(item)
+        after = profile.library.snapshot(item)
         if before == after:
             return
         self._undo.append({
@@ -1027,9 +926,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         profile = shared_state.current_profile
         if profile is None:
             return False
-        guid, kind, hw, mode = step["key"]
         try:
-            profile.put_input(guid, kind, hw, mode, step[side])
+            profile.library.restore(step["key"], step[side])
         except error.ProfileError as e:
             logging.getLogger("system").warning(f"Undo step not played: {e}")
             signal.showNotification.emit("Undo", "That change couldn't be put back.")
@@ -1103,36 +1001,23 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         if model is not None:
             model.deleteLater()
 
-    def _retarget_draft(self, real: InputItem, only_index: int | None = None) -> None:
-        """Keep editing a copy of the actions OK just wrote."""
-        draft = _shadow_item(real)
-        bindings = real.action_sequences
-        if only_index is not None and 0 <= only_index < len(bindings):
-            bindings = [bindings[only_index]]
-        for binding in bindings:
-            _clone_binding(binding, draft)
-        self._pane_shadow = draft
-        self._pane_real = real
-        self._pane_base = _fingerprint_item(draft)
+    def _show_draft(self, draft: Draft) -> None:
+        """Make this draft the pane's (a new pane model on its input)."""
         from gremlin.ui.profile import InputItemModel
 
+        self._pane_draft = draft
+        self._pane_shadow = draft.item
+        self._pane_base = _fingerprint_item(draft.item)
         old = self._pane_model
-        self._pane_model = InputItemModel(draft, self._pane_hid, self)
+        self._pane_model = InputItemModel(draft.item, self._pane_hid, self)
         self.paneModelChanged.emit()
         if old is not None:
             old.deleteLater()
 
-    def _replace_sequences(self, real: InputItem, shadow: InputItem) -> None:
-        old = list(real.action_sequences)
-        moved = list(shadow.action_sequences)
-        real.action_sequences = []
-        for binding in moved:
-            binding.input_item = real
-            real.action_sequences.append(binding)
-        for binding in old:
-            if binding.root_action is None or binding in moved:
-                continue
-            real.library.remove_unused(binding.root_action)
+    def _retarget_draft(self, real: InputItem, only_index: int | None = None) -> None:
+        """Keep editing a copy of the actions OK just wrote."""
+        self._pane_real = real
+        self._show_draft(real.library.draft(real, only_index))
 
     @QtCore.Slot(int, int, result=int)
     def beginPane(self, device_index: int, sequence_index: int) -> int:
@@ -1145,32 +1030,16 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         seq = int(sequence_index)
         if seq >= 0 and (real is None or seq >= len(real.action_sequences)):
             return 0
-        shadow = InputItem(profile.library)
-        shadow.device_id = guid
-        shadow.input_type = kind
-        shadow.input_id = hw
-        shadow.mode = mode
-        whole = False
-        if seq < 0 and real is not None and real.action_sequences:
-            for binding in real.action_sequences:
-                _clone_binding(binding, shadow)
-            whole = True
-        elif seq < 0:
-            shadow.add_item_binding()
-        else:
-            _clone_binding(real.action_sequences[seq], shadow)
-        from gremlin.ui.profile import InputItemModel
-
+        draft = profile.library.draft(
+            real, None if seq < 0 else seq, key=(guid, kind, hw, mode)
+        )
         self._pane_real = real
-        self._pane_shadow = shadow
         self._pane_seq = seq
         self._pane_hid = int(device_index)
         self._pane_input = (guid, kind, hw, mode)
-        self._pane_whole = whole
-        self._pane_base = _fingerprint_item(shadow)
-        self._pane_model = InputItemModel(shadow, int(device_index), self)
-        self.paneModelChanged.emit()
-        return len(shadow.action_sequences) if whole else 0
+        self._pane_whole = draft.whole
+        self._show_draft(draft)
+        return len(draft.item.action_sequences) if draft.whole else 0
 
     @QtCore.Slot(result=bool)
     def paneDirty(self) -> bool:
@@ -1185,9 +1054,11 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(result=int)
     def commitPane(self) -> int:
-        """Write the draft onto the real control. Returns the child index."""
-        shadow = self._pane_shadow
-        if shadow is None or not self.paneDirty():
+        """Write the draft onto the real control (Library.commit: an action
+        other inputs share changes for all of them). Returns the child
+        index, or -1 when nothing could be written."""
+        draft = self._pane_draft
+        if draft is None or not self.paneDirty():
             return self._pane_seq
         key = self._pane_input
         before = self._snapshot(self._pane_hid, key)
@@ -1201,14 +1072,25 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             self._pane_real = real
         if real is None:
             return -1
-        if self._pane_whole or self._pane_seq < 0:
-            self._replace_sequences(real, shadow)
+        whole = self._pane_whole or self._pane_seq < 0
+        try:
+            index = real.library.commit(draft, real, None if whole else self._pane_seq)
+        except DraftOutdated:
+            # History Restore, Auto Mapper or a Device Pack import changed
+            # this input after the pane opened: OK would write over it.
+            signal.showNotification.emit(
+                "Action Editor",
+                "This input was changed while its action editor was open, so "
+                "OK didn't write over that change. Close the editor and open "
+                "it again.",
+            )
+            return -1
+        if whole:
             self._pane_seq = -1
             self._pane_whole = True
             self._retarget_draft(real, None)
             index = 0
         else:
-            index = _attach_binding(real, shadow, self._pane_seq)
             self._pane_seq = index
             self._pane_whole = False
             self._retarget_draft(real, index)
@@ -1216,18 +1098,22 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         signal.inputItemChanged.emit(self._pane_hid)
         return index
 
+    def _drop_draft(self) -> None:
+        draft, self._pane_draft = self._pane_draft, None
+        self._pane_shadow = None
+        if draft is not None:
+            draft.library.discard(draft)
+
     @QtCore.Slot()
     def discardPane(self) -> None:
         """Drop the open draft. A child already written by OK stays."""
-        _drop_shadow(self._pane_shadow)
-        self._pane_shadow = None
+        self._drop_draft()
         self._pane_base = ""
 
     @QtCore.Slot()
     def endPane(self) -> None:
         """Close the draft. An uncommitted draft is deleted. An OK'd child stays."""
-        _drop_shadow(self._pane_shadow)
-        self._pane_shadow = None
+        self._drop_draft()
         self._pane_real = None
         self._pane_seq = -1
         self._pane_hid = -1

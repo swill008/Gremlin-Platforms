@@ -84,17 +84,15 @@ def test_an_unplugged_xbox_pad_is_not_the_xbox_output(setup: Any) -> None:  # no
 def test_save_writes_to_the_bound_file(
     setup: Any, monkeypatch: pytest.MonkeyPatch  # noqa: ANN401
 ) -> None:
-    from gremlin.ui import module_model
+    from gremlin.modules import store
 
     guid = _pjoy_guid()
-    monkeypatch.setattr(
-        module_model, "resolve_module_slug", lambda name, guid="": "renamed_stick"
-    )
+    monkeypatch.setattr(store, "slug_for", lambda name, guid="": "renamed_stick")
     from gremlin.ui.hardware_profile import _clear_device_binding
 
     setup.loadDevice(guid, "pJoy Pro")
     setup.setClaimed(0, True)
-    folder = Path(module_model._maps_dir())
+    folder = store.folder()
     try:
         assert setup.saveClaim("pJoy Pro", "source")
         assert (folder / "renamed_stick.json").is_file()
@@ -104,15 +102,14 @@ def test_save_writes_to_the_bound_file(
 
 
 def test_an_input_module_stays_an_input_module(setup: Any) -> None:  # noqa: ANN401
-    from gremlin.ui import module_model
+    from gremlin.modules import store
 
     guid = _pjoy_guid()
     setup.loadDevice(guid, "pJoy Pro")
     setup.setClaimed(0, True)
     assert setup.saveClaim("pJoy Pro", "source")
     assert setup.saveClaim("pJoy Pro", "dest")  # the Output menu on an input
-    slug = module_model.resolve_module_slug("pJoy Pro", guid)
-    path = Path(module_model._maps_dir()) / f"{slug}.json"
+    path = store.path_for("pJoy Pro", guid)
     try:
         assert json.loads(path.read_text(encoding="utf-8"))["direction"] == "source"
     finally:
@@ -160,11 +157,10 @@ def test_runtime_uses_the_module_setup_file_for_a_stick(
 
 def test_a_stick_marked_as_an_output_is_repaired_by_saving(setup: Any) -> None:  # noqa: ANN401
     # The old Output menu bug left input sticks' files marked "dest".
-    from gremlin.ui import module_model
+    from gremlin.modules import store
 
     guid = _pjoy_guid()
-    slug = module_model.resolve_module_slug("pJoy Pro", guid)
-    path = Path(module_model._maps_dir()) / f"{slug}.json"
+    path = store.path_for("pJoy Pro", guid)
     path.write_text(json.dumps({
         "device": "pJoy Pro", "direction": "dest", "boundGuidLocal": guid,
         "claim": {"buttons": [1], "axes": [], "hats": []},
@@ -180,12 +176,11 @@ def test_a_stick_marked_as_an_output_is_repaired_by_saving(setup: Any) -> None: 
 def test_module_setup_run_and_calibration_use_the_same_file() -> None:
     # A stick with an old file bound to it and a file of its own name: Module
     # Setup used one, Run and Calibration the other (ticks did nothing).
-    from gremlin.modules import calibration, runtime
+    from gremlin.modules import calibration, runtime, store
     from gremlin.modules.ids import guid_key
-    from gremlin.ui import module_model
 
     guid = _pjoy_guid()
-    folder = Path(module_model._maps_dir())
+    folder = store.folder()
     files = {
         "old_name": ("Old Name", guid, [1, 2, 3]),
         "pjoy_pro": ("pJoy Pro", "", [9]),
@@ -196,7 +191,7 @@ def test_module_setup_run_and_calibration_use_the_same_file() -> None:
             "claim": {"buttons": buttons, "axes": [1], "hats": [], "keys": []},
         }), encoding="utf-8")
     try:
-        setup = module_model.resolve_module_slug("pJoy Pro", guid)
+        setup = store.slug_for("pJoy Pro", guid)
         gate = runtime.InputModuleRuntime()
         gate.reload()
         assert gate._claims[guid_key(guid)]["buttons"] == files[setup][2]
@@ -206,3 +201,58 @@ def test_module_setup_run_and_calibration_use_the_same_file() -> None:
         for slug in files:
             (folder / f"{slug}.json").unlink(missing_ok=True)
 
+
+
+def test_calibration_window_picks_the_second_stick_on_a_shared_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # GL-088 (03 S100, S110): two sticks on one file are two entries in the
+    # Calibration window's drop-down, each picked (and saved) by its own key.
+    # The drop-down used the file's slug, so the second could not be picked.
+    import uuid
+
+    from gremlin.modules import store
+    from gremlin.modules.ids import guid_key
+    from gremlin.ui.module_calibration import CalibrationModuleModel
+
+    path = tmp_path / "stick.json"
+    path.write_text(json.dumps({"device": "Stick"}), encoding="utf-8")
+    one, two = uuid.uuid4(), uuid.uuid4()
+    module = registry.Module(
+        slug="stick", path=path, doc={}, name="Stick", bound_guid=str(one),
+        bound_name="Stick A", direction="source", claim={},
+    )
+    devices = [
+        types.SimpleNamespace(name="Stick A", device_guid=one),
+        types.SimpleNamespace(name="Stick B", device_guid=two),
+    ]
+    monkeypatch.setattr(calibration, "physical_devices", lambda: devices)
+    monkeypatch.setattr(registry, "for_device", lambda *a, **k: module)
+    monkeypatch.setattr(
+        store, "_write", lambda p, data, text=None: Path(p).write_bytes(data)
+    )
+    model = CalibrationModuleModel()
+    try:
+        roles = {bytes(v).decode(): k for k, v in model.roleNames().items()}
+        assert "key" in roles
+        entries = {
+            model.data(model.index(i, 0), roles["name"]):
+                model.data(model.index(i, 0), roles["key"])
+            for i in range(model.rowCount())
+        }
+        assert set(entries) == {"Stick A", "Stick B"}
+        # A card opens Calibration by the file's slug: the first stick.
+        assert entries["Stick A"] == "stick"
+        assert entries["Stick B"] == f"stick@{guid_key(two)}"
+        assert model.indexOfSlug("stick") != model.indexOfSlug(entries["Stick B"])
+        assert model.indexOfSlug(entries["Stick B"]) >= 0
+        # The second stick's key saves to the shared file, recording its id.
+        assert calibration.write_axis(entries["Stick B"], 1, (-100, -5, 5, 100, True))
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        assert doc["calibration"]["1"] == [-100, -5, 5, 100, True]
+        assert doc["boundGuidLocal"] == str(two)
+    finally:
+        model.deleteLater()
+    # The window's drop-down picks rows by that key.
+    qml = (Path(__file__).resolve().parents[2] / "qml" / "DialogCalibration.qml")
+    assert 'valueRole: "key"' in qml.read_text(encoding="utf-8")

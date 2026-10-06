@@ -11,20 +11,23 @@ from abc import (
     ABCMeta,
     abstractmethod,
 )
+from typing import Any
 
 import dill
 from gremlin import (
     audio_player,
     base_classes,
+    common,
     device_initialization,
     error,
     event_handler,
     event_helpers,
     fsm,
-    input_cache,
+    logical_device,
     macro,
     mode_manager,
     profile,
+    run_scope,
     sendinput,
     shared_state,
     signal,
@@ -202,7 +205,11 @@ class CallbackObject:
                 time.sleep(0.01)
 
     def _physical_event_setup(self) -> None:
-        self._functor = self._binding.root_action.functor(self._binding.root_action)
+        root = self._binding.root_action
+        # Unfinished actions are left out of the Run (05 Q3); base_classes
+        # logs one line each, naming this input.
+        with base_classes.building_for(_where(self._binding.input_item)):
+            self._functor = root.functor(root)
 
     def _virtual_event_setup(self) -> None:
         if self._binding.input_item.mode is None:
@@ -277,24 +284,44 @@ class CallbackObject:
         return [value]
 
 
-# Changes at every Run and every Stop. A loop an action starts notes it and
-# ends once it changes: the loop's functor belongs to one Run, and it used to
-# go on into the next one (runtime_active() alone is True again by then).
-_run_number = 0
-
-
 def run_number() -> int:
-    """The current Run's number (a different one after Stop)."""
-    return _run_number
+    """The current Run's number (a different one after Stop). The one Run
+    number is run_scope's; this forwards to it."""
+    return run_scope.number()
 
 
-def _next_run_number() -> None:
-    global _run_number
-    _run_number += 1
+def __getattr__(name: str) -> object:
+    # TODO(batch1): test/conftest.py reads code_runner._run_number to tell
+    # whether a test ran or stopped a Run; it should read run_scope.number().
+    if name == "_run_number":
+        return run_scope.number()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _where(item: Any) -> str:  # noqa: ANN401
+    """"<device> <control> (<mode>)" for an input, for the log."""
+    device = str(item.device_id)
+    try:
+        for dev in device_initialization.joystick_devices():
+            if dev.device_guid.uuid == item.device_id:
+                device = dev.name
+                break
+    except Exception:
+        pass
+    try:
+        control = common.input_to_ui_string(item.input_type, item.input_id)
+    except Exception:
+        control = f"{getattr(item.input_type, 'name', item.input_type)} {item.input_id}"
+    return f"{device} {control} ({item.mode})"
 
 
 class CodeRunner:
-    """Runs the actual profile code."""
+    """Runs the actual profile code.
+
+    What a Run starts is registered with run_scope, and Stop is
+    run_scope.stop(): the same fixed stages from the Stop button, a failed
+    start and quitting (map 3).
+    """
 
     def __init__(self) -> None:
         self.event_handler = event_handler.EventHandler()
@@ -305,19 +332,51 @@ class CodeRunner:
         self._profile = None
         self._running = False
         self._mode_listening = False
+        self._connected = False
+        self._config_listening = False
+        self._sys_path: list[str] | None = None
 
     def is_running(self) -> bool:
         return self._running
 
     def start(self, profile: profile.Profile, start_mode: str) -> None:
-        _next_run_number()
+        """Runs the profile in start_mode (the toolbar mode).
+
+        A start that fails partway runs Stop itself, shows one error and
+        leaves the runner stopped (06 Q5); the error is raised again for the
+        caller, except a missing user plugin, which is only shown.
+        """
+        # A Run never stopped (a failed start, Run pressed twice) ends first:
+        # its signals would otherwise be connected twice.
+        self.stop()
+        run_scope.begin()
+        # Registered before anything starts: a start that fails partway is
+        # undone by the same Stop.
+        self._register_stop()
         self._profile = profile
+        try:
+            self._start(profile, start_mode)
+        except ImportError as e:
+            logging.getLogger("system").exception("Gremlin start failed")
+            self.stop()
+            signal.display_error(
+                "Could not run the profile: a user plugin is missing.", str(e)
+            )
+        except Exception as e:
+            logging.getLogger("system").exception("Gremlin start failed")
+            self.stop()
+            signal.display_error(
+                "Could not run the profile.", str(e) or type(e).__name__
+            )
+            raise
+
+    def _start(self, running: profile.Profile, start_mode: str) -> None:
         self._reset_state()
 
-        settings = self._profile.settings
-        names = self._profile.modes.mode_names()
+        settings = running.settings
+        names = running.modes.mode_names()
         if str(start_mode or "") not in names:
-            start_mode = mode_manager.resolve_start_mode(self._profile)
+            start_mode = mode_manager.resolve_start_mode(running)
 
         # The profile's own delay, or Options > Action > Macro when it has none.
         macro.MacroManager().default_delay = settings.effective_macro_delay()
@@ -325,83 +384,97 @@ class CodeRunner:
         # Each run reads the output modules fresh and logs blocked outputs anew.
         output.refresh()
         output.clear_blocked_log()
+        # Output modules saved while running apply at once (06 Q12).
+        self._listen_to_config(True)
         # Repeating problems may be logged once again in this run.
         from gremlin import log_once
 
         log_once.reset()
 
-        try:
-            self._setup_user_scripts()
+        self._setup_user_scripts()
 
-            for mode_name in self._profile.modes.mode_names():
-                self.event_handler.add_callback(0, mode_name, None, lambda x: x)
+        for mode_name in running.modes.mode_names():
+            self.event_handler.add_callback(0, mode_name, None, lambda x: x)
 
-            callback_count = 0
-            for dev_id, modes in user_script.callback_registry.registry.items():
-                for mode, events in modes.items():
-                    for event, callback_list in events.items():
-                        for callback in callback_list.values():
-                            self.event_handler.add_callback(
-                                dev_id, mode, event, callback
-                            )
-                            callback_count += 1
+        callback_count = 0
+        for dev_id, modes in user_script.callback_registry.registry.items():
+            for mode, events in modes.items():
+                for event, callback_list in events.items():
+                    for callback in callback_list.values():
+                        self.event_handler.add_callback(dev_id, mode, event, callback)
+                        callback_count += 1
 
-            sequence_count = self._setup_profile()
-            # Status, not a problem: Info, so it is not in a Warning log.
-            syslog.info(
-                "Gremlin start: %s UI sequences, %s script callbacks, mode=%s",
-                sequence_count,
-                callback_count,
-                start_mode,
-            )
+        sequence_count = self._setup_profile()
+        # Status, not a problem: Info, so it is not in a Warning log.
+        syslog.info(
+            "Gremlin start: %s UI sequences, %s script callbacks, mode=%s",
+            sequence_count,
+            callback_count,
+            start_mode,
+        )
 
-            self.event_handler.build_event_lookup(self._profile.modes.mode_list())
+        self.event_handler.build_event_lookup(running.modes.mode_list())
 
-            evt_listener = event_handler.EventListener()
-            module_bus = InputModuleRuntime()
-            module_bus.reload()
-            # Joystick and keyboard events both come through the input
-            # modules: only claimed inputs reach the profile.
-            # Noted before connecting: stop() disconnects whenever this is
-            # set, also after a start() that failed later on (they stayed
-            # connected, and the next Run handled every event twice).
-            self._connected = True
-            module_bus.event.connect(self.event_handler.process_event)
-            module_bus.key_event.connect(self.event_handler.process_event)
-            evt_listener.virtual_event.connect(self.event_handler.process_event)
-            evt_listener.gremlin_active = True
+        evt_listener = event_handler.EventListener()
+        module_bus = InputModuleRuntime()
+        module_bus.reload()
+        # Joystick and keyboard events both come through the input
+        # modules: only claimed inputs reach the profile.
+        # Noted before connecting: Stop disconnects whenever this is set.
+        self._connected = True
+        module_bus.event.connect(self.event_handler.process_event)
+        module_bus.key_event.connect(self.event_handler.process_event)
+        evt_listener.virtual_event.connect(self.event_handler.process_event)
+        evt_listener.gremlin_active = True
 
-            user_script.periodic_registry.start()
-            macro.MacroManager().start()
-            audio_player.AudioPlayer().start()
-            tts.TTSManager().start()
+        user_script.periodic_registry.start()
+        macro.MacroManager().start()
+        audio_player.AudioPlayer().start()
+        tts.TTSManager().start()
 
-            # Listening before the first switch and after the other listeners
-            # (connected when they were made), as when the mode manager did it.
-            self._listen_to_mode_changes(True)
-            mode_manager.ModeManager().switch_to(
-                mode_manager.Mode(start_mode, "Default")
-            )
-            self.event_handler.resume()
-            self._running = True
-            shared_state.set_runtime_active(True)
+        # The toolbar mode, on a fresh mode stack (06 Q3, decision R3).
+        mode_manager.ModeManager().start_run(start_mode)
+        # Mode changes refresh the axes from here on (after the other
+        # listeners, connected when they were made). The start itself is not
+        # one: the axes are sent once, after the Initial Values (06 S8).
+        self._listen_to_mode_changes(True)
+        self.event_handler.resume()
+        self._running = True
+        shared_state.set_runtime_active(True)
 
-            sendinput.MouseController().start()
-            OscRuntime().start()
-            self._refresh_axes()
-        except ImportError as e:
-            signal.display_error(
-                "Could not run the profile: a user plugin is missing.", str(e)
-            )
-        except Exception:
-            syslog.exception("Gremlin start failed")
-            raise
+        sendinput.MouseController().start()
+        OscRuntime().start()
+        self._refresh_axes()
 
     def stop(self) -> None:
-        # First: the action loops of this Run end at their next step.
-        _next_run_number()
+        """Ends the Run: run_scope runs the Stop stages. Safe to call twice."""
+        run_scope.stop()
+        self._running = False
+
+    def _register_stop(self) -> None:
+        """What Stop does for this Run, stage by stage (map 3).
+
+        The parts are looked up when Stop runs, not now.
+        """
+        on = run_scope.on_stop
+        stage = run_scope.Stage
+        on(stage.CUT_INPUT, "input off", self._cut_input)
+        on(stage.CANCEL, "release actions", self._drop_release_actions)
+        on(stage.CANCEL, "script state", self._end_scripts)
+        on(stage.CANCEL, "OSC", lambda: OscRuntime().stop())
+        on(stage.FIRE_PENDING, "pulse releases", self._flush_pulses)
+        on(stage.END_WORK, "macros", lambda: macro.MacroManager().stop())
+        on(stage.END_WORK, "mouse motion", lambda: sendinput.MouseController().stop())
+        on(stage.NEUTRAL, "Logical Device", self._logical_device_neutral)
+        on(stage.NEUTRAL, "modes", lambda: mode_manager.ModeManager().end_run())
+        on(stage.NEUTRAL, "sound", lambda: audio_player.AudioPlayer().stop())
+        on(stage.NEUTRAL, "speech", lambda: tts.TTSManager().stop())
+        on(stage.DRIVERS, "drivers", lambda: output.reset_drivers())
+
+    def _cut_input(self) -> None:
         self._listen_to_mode_changes(False)
-        if getattr(self, "_connected", False):
+        self._listen_to_config(False)
+        if self._connected:
             evt_lst = event_handler.EventListener()
             bus = InputModuleRuntime()
             for sig in (bus.event, bus.key_event, evt_lst.virtual_event):
@@ -418,24 +491,36 @@ class CodeRunner:
             mode_manager.flush_last_modes()
         self._running = False
         shared_state.set_runtime_active(False)
-
-        user_script.callback_registry.clear()
         self.event_handler.clear()
 
+    def _drop_release_actions(self) -> None:
+        # Release actions waiting at Stop are dropped (decision R2): the held
+        # outputs are released and the drivers reset anyway.
+        event_helpers.ButtonReleaseActions().reset()
+
+    def _end_scripts(self) -> None:
+        # Script callbacks and timers end with the Run; sys.path is put back
+        # (the script folders were added for this Run only).
+        user_script.callback_registry.clear()
         user_script.periodic_registry.stop()
         user_script.periodic_registry.clear()
+        if self._sys_path is not None:
+            sys.path = self._sys_path
+            self._sys_path = None
 
-        OscRuntime().stop()
-        # Pulse releases still waiting go out now, while the outputs are open.
-        base_classes.flush_pulses()
-        # Ends the macros, then lets go of the keys and mouse buttons still
-        # held (also a flushed release that only queued a macro).
-        macro.MacroManager().stop()
-        sendinput.MouseController().stop()
-        audio_player.AudioPlayer().stop()
-        tts.TTSManager().stop()
+    def _flush_pulses(self) -> None:
+        # TODO(batch1): pulse releases become run_scope timers with
+        # at_stop="fire" (base_classes); until then they are flushed here.
+        flush = getattr(base_classes, "flush_pulses", None)
+        if callable(flush):
+            flush()
 
-        output.reset_drivers()
+    def _logical_device_neutral(self) -> None:
+        # Decision R1: the next Run starts from rest (06 S85).
+        device = logical_device.LogicalDevice()
+        reset_values = getattr(device, "reset_values", None)
+        if callable(reset_values):
+            reset_values()
 
     def _reset_state(self) -> None:
         self.event_handler._active_mode = self._profile.modes.first_mode
@@ -453,31 +538,41 @@ class CodeRunner:
             mm.mode_changed.disconnect(self._refresh_on_mode_change)
         self._mode_listening = on
 
+    def _listen_to_config(self, on: bool) -> None:
+        if on == self._config_listening:
+            return
+        changed = signal.signal.configChanged
+        if on:
+            changed.connect(self._refresh_outputs)
+        else:
+            try:
+                changed.disconnect(self._refresh_outputs)
+            except (TypeError, RuntimeError):
+                pass
+        self._config_listening = on
+
+    def _refresh_outputs(self) -> None:
+        # A module file saved while running: its claims count from now on.
+        output.refresh()
+
     def _refresh_on_mode_change(self, _mode: str) -> None:
         if Configuration().value("global", "general", "refresh-axis-on-mode-change"):
             RefreshPhysicalInputs.refresh_axes()
 
     def _refresh_axes(self) -> None:
-        vjoy_state = {}
-        for vjoy_dev in device_initialization.vjoy_devices():
-            vjoy_state[vjoy_dev.vjoy_id] = {}
-            cache_dev = input_cache.Joystick()[vjoy_dev.device_guid.uuid]
-            for entry in vjoy_dev.axis_map:
-                if entry.axis_index == 0:
-                    continue
-                vjoy_state[vjoy_dev.vjoy_id][entry.axis_index] = cache_dev.axis(
-                    entry.axis_index
-                ).value
+        # vJoy Initial Values first, always, through the output module (06
+        # S8, Q7); the physical axes sent after them then override them.
+        for vid, data in self._profile.settings.vjoy_initial_values.items():
+            for aid, value in data.items():
+                output.write_vjoy_axis_linear(vid, aid, value)
 
         if Configuration().value("global", "general", "refresh-axis-on-activation"):
             RefreshPhysicalInputs.refresh_axes()
 
-        for vid, data in self._profile.settings.vjoy_initial_values.items():
-            for aid, value in data.items():
-                if value != 0.0 and vjoy_state.get(vid, {}).get(aid) == 0.0:
-                    output.write_vjoy_axis_linear(vid, aid, value)
-
     def _setup_user_scripts(self) -> None:
+        # Put back at Stop: a script folder belongs to this Run only (GL-062).
+        if self._sys_path is None:
+            self._sys_path = list(sys.path)
         system_paths = [os.path.normcase(os.path.abspath(p)) for p in sys.path]
 
         syslog = logging.getLogger("system")

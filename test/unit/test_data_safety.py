@@ -19,6 +19,7 @@ import types
 import pytest
 
 from gremlin import profile
+from gremlin.modules import registry, store
 from gremlin.ui import hardware_profile
 
 
@@ -52,12 +53,12 @@ def test_unfinished_actions_are_named_with_their_first_error() -> None:
 def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.Path:
     maps = tmp_path / "modules"
     maps.mkdir()
-    monkeypatch.setattr(hardware_profile, "_maps_dir", lambda: maps)
+    monkeypatch.setattr(store, "folder", lambda: maps)
     deleted = tmp_path / "deleted devices"
-    monkeypatch.setattr(hardware_profile, "_deleted_dir", lambda: deleted)
-    monkeypatch.setattr(hardware_profile, "_users_of_slug", lambda slug: set())
-    monkeypatch.setattr(hardware_profile, "_binding_store", lambda: {})
-    monkeypatch.setattr(hardware_profile, "_guid_for_name", lambda name: "")
+    monkeypatch.setattr(store, "deleted_dir", lambda: deleted)
+    monkeypatch.setattr(store, "users_of", lambda slug: set())
+    monkeypatch.setattr(store, "bindings", lambda: {})
+    monkeypatch.setattr(registry, "guid_for_name", lambda name: "")
     return maps
 
 
@@ -75,7 +76,7 @@ def test_no_copy_means_no_delete(
     modules: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     (modules / "stick_r.json").write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(hardware_profile, "_keep_deleted_copy", lambda path: None)
+    monkeypatch.setattr(store, "keep_deleted_copy", lambda path: None)
     message = hardware_profile.delete_module_file("Stick R", "")
     assert "not deleted" in message
     assert (modules / "stick_r.json").exists()
@@ -140,3 +141,81 @@ def test_hat_switch_keeps_the_shared_directions() -> None:
     assert data.direction["North"] == ["n"]
     assert data.direction["North-East"] == []
     assert data.actions_dropped_by(4) == 0
+
+
+# --- 04 Q7 (GL-105): an action type this program doesn't have ----------------
+
+def test_a_profile_with_an_unknown_action_type_opens_and_keeps_it(
+    tmp_path: pathlib.Path, qapp: object
+) -> None:
+    import uuid
+    from xml.etree import ElementTree
+
+    from gremlin import plugin_manager, shared_state
+    from gremlin.types import InputType
+
+    stick = uuid.UUID("abababab-cdcd-efef-0101-232323232323")
+    made = profile.Profile()
+    before, shared_state.current_profile = shared_state.current_profile, made
+    try:
+        item = made.get_input_item(
+            stick, InputType.JoystickButton, 1, "Default", create_if_missing=True
+        )
+        root = item.add_item_binding().root_action
+        chain = plugin_manager.PluginManager().create_instance(
+            "Smart Toggle", InputType.JoystickButton
+        )
+        note = plugin_manager.PluginManager().create_instance(
+            "Description", InputType.JoystickButton
+        )
+        note.description = "inside"
+        chain.insert_action(note, "children")
+        root.insert_action(chain, "children")
+        path = tmp_path / "unknown.xml"
+        made.to_xml(path)
+    finally:
+        shared_state.current_profile = before
+    # The Smart Toggle plugin is gone here: its type is unknown.
+    text = path.read_text(encoding="utf-8-sig")
+    text = text.replace('type="smart-toggle"', 'type="gone-plugin"')
+    path.write_text(text, encoding="utf-8")
+
+    p = profile.Profile()
+    p.from_xml(path)  # used to raise "Unknown type 'gone-plugin'"
+    assert any("gone-plugin" in w for w in p.load_warnings)
+    item = p.get_input_item(stick, InputType.JoystickButton, 1, "Default")
+    assert item is not None
+    odd = item.action_sequences[0].root_action.get_actions()[0][0]
+    assert odd.tag == "gone-plugin" and odd.id == chain.id
+    assert note.id in p.library.in_use()  # what it holds stays
+
+    out = tmp_path / "saved.xml"
+    p.to_xml(out)
+    saved = ElementTree.parse(out).getroot()
+    kept = saved.find(f"./library/action[@id='{chain.id}']")
+    assert kept is not None and kept.get("type") == "gone-plugin"
+    assert str(note.id) in [e.text for e in kept.iter("action-id")]
+    assert saved.find(f"./library/action[@id='{note.id}']") is not None
+
+    # The editor shows a note for it (nothing to edit).
+    from gremlin.ui.profile import InputItemBindingModel, InputItemModel
+
+    shared_state.current_profile = p
+    try:
+        owner = InputItemModel(item, 0, None)
+        binding = InputItemBindingModel(item.action_sequences[0], owner)
+        notes = [
+            m.note
+            for m in binding._action_models.values()
+            if m.action_data is odd
+        ]
+        assert notes and "gone-plugin" in notes[0]
+        assert any(
+            m.qmlPath.endswith("UnknownAction.qml")
+            for m in binding._action_models.values()
+            if m.action_data is odd
+        )
+        binding.deleteLater()
+        owner.deleteLater()
+    finally:
+        shared_state.current_profile = before

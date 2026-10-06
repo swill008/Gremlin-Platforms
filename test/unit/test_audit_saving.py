@@ -28,14 +28,15 @@ def test_a_failed_safe_write_leaves_the_file_whole(
 ) -> None:
     path = tmp_path / "x.json"
     path.write_text('{"old": 1}', encoding="utf-8")
-    real = Path.write_text
+    real = Path.write_bytes
 
-    def full_disk(self: Path, text: str, *args: object, **kwargs: object) -> int:
+    # The safe writer writes bytes to a temporary file first (GL-068).
+    def full_disk(self: Path, data: bytes) -> int:
         if self.name.endswith(".tmp"):
             raise OSError(errno.ENOSPC, "disk full")
-        return real(self, text, *args, **kwargs)  # type: ignore[arg-type]
+        return real(self, data)
 
-    monkeypatch.setattr(Path, "write_text", full_disk)
+    monkeypatch.setattr(Path, "write_bytes", full_disk)
     with pytest.raises(OSError):
         module_file.write_text(path, '{"new": 2}')
     assert path.read_text(encoding="utf-8") == '{"old": 1}'

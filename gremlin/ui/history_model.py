@@ -218,7 +218,7 @@ def _changed_everywhere() -> None:
 
 def _restore_input(entry: dict, side: dict | None) -> tuple[bool, str]:
     from gremlin.types import InputType
-    from gremlin.ui.input_pairing import _guid
+    from gremlin.ui.input_pairing import parse_guid
 
     profile = shared_state.current_profile
     subject = entry.get("subject") or {}
@@ -226,7 +226,7 @@ def _restore_input(entry: dict, side: dict | None) -> tuple[bool, str]:
         return False, "No profile is open."
     if not _same_file(profile.fpath, subject.get("profile")):
         return False, f"Open {subject.get('profileName') or 'that profile'} first."
-    uid = _guid(str(subject.get("deviceId") or ""))
+    uid = parse_guid(str(subject.get("deviceId") or ""))
     if uid is None:
         return False, "That device isn't known."
     kind = InputType.to_enum(str(subject.get("inputType")))
@@ -260,28 +260,33 @@ def _restore_profile(entry: dict, side: dict | None, which: str) -> tuple[bool, 
 
 
 def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
-    from gremlin import history_modules
-    from gremlin.modules import module_file
-    from gremlin.util import modules_dir
+    from gremlin.modules import store
 
     if not side or side.get("text") is None:
         return False, "There is no file to put back."
     subject = entry.get("subject") or {}
     # Into the modules folder of today (the folder may have moved since).
     name = str(subject.get("fileName") or Path(str(subject.get("file") or "")).name)
-    path = modules_dir() / name
+    path = store.path_of(Path(name).stem)
+    text = str(side["text"])
     missing = []
     for picture in side.get("pictures") or []:
         ref = str(picture.get("ref") or "")
         # "qml/maps/..." is in the modules folder, as the Button Map finds it.
-        dest = history_modules.picture_path(ref)
+        kept = history.kept_file(str(picture.get("keptFile") or ""))
         try:
-            put = history.restore_file(str(picture.get("keptFile") or ""), dest)
+            if kept is None:
+                raise FileNotFoundError(ref)
+            store.put_picture_at(store.picture_path(ref), kept)
         except OSError:
-            put = False
-        if not put:
             missing.append(ref)
-    module_file.write_text(path, side["text"])
+    try:
+        # Exactly that version, also over a damaged file (one way to mend
+        # it); History keeps the restore as a new entry.
+        store.write_text(path, text, "History")
+    except OSError as exc:
+        return False, f"{path.name} could not be put back. {exc}"
+    _bind_restored(path, text)
     _changed_everywhere()
     if missing:
         return True, (
@@ -289,6 +294,25 @@ def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
             f"kept): {', '.join(missing)}."
         )
     return True, f"Put back {path.name}."
+
+
+def _bind_restored(path: Path, text: str) -> None:
+    """The device the restored file is for uses it again (08 Q14): a Delete
+    File, a rename or another file chosen since may have moved it to another
+    file. As Module Setup's Undo of an import binds the device again (S85)."""
+    from gremlin.modules import store
+
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return
+    if not isinstance(doc, dict):
+        return
+    device = " ".join(str(doc.get("boundName") or doc.get("device") or "").split())
+    guid = str(doc.get("boundGuidLocal") or "").strip()
+    if not device or store.slug_for(device, guid) == path.stem:
+        return
+    store.bind(device, guid, path.stem)
 
 
 def _restore_settings(side: dict | None) -> tuple[bool, str]:

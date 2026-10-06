@@ -170,11 +170,6 @@ def _fail_once(target: mock.MagicMock) -> None:
     target.side_effect = maybe_fail
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-054: a failed start stays connected; Run again doubles"
-)
 def test_a_failed_start_then_run_again_handles_each_event_once(
     wired: SimpleNamespace,
 ) -> None:
@@ -188,11 +183,6 @@ def test_a_failed_start_then_run_again_handles_each_event_once(
     assert wired.handled == ["press"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-054: a start failing late leaves the runner Running"
-)
 def test_a_start_failing_late_leaves_the_runner_stopped(
     wired: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -208,11 +198,6 @@ def test_a_start_failing_late_leaves_the_runner_stopped(
     assert wired.handled == []  # nothing connected is left
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-054: a failed Run shows no error and no Stopped status"
-)
 def test_a_failed_run_shows_one_error_and_reads_stopped(
     wired: SimpleNamespace,
 ) -> None:
@@ -303,7 +288,7 @@ def test_start_reads_outputs_then_connects_then_runs(
         "InputModuleRuntime.reload",
         "InputModuleRuntime.event.connect",
         "macro.MacroManager.start",
-        "mode_manager.ModeManager.switch_to",
+        "mode_manager.ModeManager.start_run",  # the toolbar mode, fresh stack
         "event_handler.resume",  # every Run starts un-paused (S37)
         "shared_state.set_runtime_active",
         "sendinput.MouseController.start",
@@ -323,17 +308,26 @@ def test_stop_disconnects_first_and_releases_the_drivers_last(
     calls.reset_mock()
     run.stop()
     names = _names(calls)
+    # The map's Stop stages (run_scope.Stage), in order.
     order = [
+        # CUT_INPUT
         "InputModuleRuntime.event.disconnect",  # no new events
         "flush_last_modes",  # S6: the running mode is kept for Last Active
         "shared_state.set_runtime_active",
+        # CANCEL
+        "user_script.callback_registry.clear",
         "user_script.periodic_registry.stop",
         "OscRuntime.stop",
+        # FIRE_PENDING
         "base_classes.flush_pulses",  # S24: before the drivers go
-        "macro.MacroManager.stop",  # S20/S21: macros end, keys let go
+        # END_WORK
+        "macro.MacroManager.stop",  # S20: macros end
         "sendinput.MouseController.stop",  # S22/S23
+        # NEUTRAL
+        "mode_manager.ModeManager.end_run",  # R3: temporary modes end
         "audio_player.AudioPlayer.stop",  # S28
         "tts.TTSManager.stop",
+        # DRIVERS
         "output.reset_drivers",  # S29
     ]
     positions = [_index(names, n) for n in order]
@@ -389,11 +383,6 @@ def test_a_tempo_timer_fires_while_running(
         functor.timer.cancel()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-047: Tempo timers still fire after Stop",
-)
 def test_a_tempo_timer_never_fires_after_stop(
     runner: code_runner.CodeRunner,
     monkeypatch: pytest.MonkeyPatch,
@@ -459,11 +448,6 @@ def test_in_the_same_mode_the_action_releases_the_button_itself(
     assert ("release", 1, 4) not in sent  # no second, doubled release
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-051: release callbacks survive Stop",
-)
 def test_release_callbacks_waiting_at_stop_are_dropped(
     runner: code_runner.CodeRunner,
     monkeypatch: pytest.MonkeyPatch,
@@ -617,9 +601,13 @@ def initial_values(
             code_runner,
             "device_initialization",
             SimpleNamespace(vjoy_devices=lambda: [vjoy]),
+            raising=False,  # the runner no longer reads the vJoy axis back
         )
         monkeypatch.setattr(
-            code_runner, "input_cache", SimpleNamespace(Joystick=lambda: cache)
+            code_runner,
+            "input_cache",
+            SimpleNamespace(Joystick=lambda: cache),
+            raising=False,
         )
         monkeypatch.setattr(code_runner, "RefreshPhysicalInputs", calls.physical)
         monkeypatch.setattr(
@@ -651,11 +639,6 @@ def test_an_initial_value_is_written_at_run_through_the_output_module(
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-056: Initial Values only written when the axis reads 0"
-)
 def test_an_initial_value_is_written_whatever_the_axis_reads(
     initial_values: Callable[[float], mock.MagicMock],
 ) -> None:
@@ -665,11 +648,6 @@ def test_an_initial_value_is_written_whatever_the_axis_reads(
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-056: Initial Values written after the physical refresh"
-)
 def test_the_physical_refresh_comes_after_the_initial_values(
     initial_values: Callable[[float], mock.MagicMock],
 ) -> None:
@@ -848,11 +826,6 @@ def test_stop_cancels_the_sounds_and_empties_the_queue(sounds: SimpleNamespace) 
     assert sounds.player._play_list == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-058: a sound queued after Stop plays",
-)
 def test_a_sound_queued_with_no_run_never_plays(
     sounds: SimpleNamespace, tmp_path: Path
 ) -> None:
@@ -992,11 +965,6 @@ def test_stop_ends_speech_and_empties_its_queue(speech: SimpleNamespace) -> None
     assert [t for t, _v in engine.said] == ["one"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-058: speech asked for after Stop is spoken",
-)
 def test_speech_asked_for_with_no_run_is_ignored(speech: SimpleNamespace) -> None:
     speech.manager.start()  # a Run ...
     speech.manager.stop()  # ... and Stop: the engine stays

@@ -117,6 +117,34 @@ def _device_name(guid: str) -> str:
     return hardware
 
 
+# Public doors (GL-093). They call the underscore names, which stay for now.
+
+
+def parse_guid(value: object) -> uuid.UUID | None:
+    """A device id as a UUID (None when it isn't one)."""
+    return _guid(value)
+
+
+def walk_actions(action: object) -> list:
+    """The action and every action inside it."""
+    return _walk_actions(action)
+
+
+def dest_labels_for_item(item: object) -> list[str]:
+    """Short labels of the outputs an input drives."""
+    return _dest_labels_for_item(item)
+
+
+def items_for_guid(guid: str) -> list:
+    """The open profile's inputs of a device."""
+    return list(_items_for_guid(guid))
+
+
+def device_name(guid: str) -> str:
+    """A device's name by its id (the id when unknown)."""
+    return _device_name(guid)
+
+
 def device_label(guid: str) -> str:
     """Name to show for a device. DILL only knows hardware, so the built-in
     devices are named here; _device_name stays for module file lookups."""

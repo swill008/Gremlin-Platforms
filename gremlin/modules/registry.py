@@ -294,9 +294,10 @@ _cache: dict[Path, tuple[tuple[int, int], Module | None]] = {}
 
 
 def _folder() -> Path:
-    from gremlin.util import modules_dir
+    # The store owns where module files are (one place to point elsewhere).
+    from gremlin.modules import store
 
-    return Path(modules_dir())
+    return store.folder()
 
 
 def read_doc(path: Path) -> dict | None:
@@ -394,10 +395,47 @@ def output_for_vjoy(vjoy_id: int) -> Module | None:
     return None
 
 
-def for_device(device_name: str, guid: str = "") -> Module | None:
-    """The module file a device uses: its saved binding, else its own name."""
-    path = _folder() / f"{resolve_module_slug(device_name, guid)}.json"
+def find_path(path: Path) -> Module | None:
+    """The module read from this file (None: missing or damaged)."""
+    path = Path(path)
     for module in modules():
         if module.path == path:
             return module
     return None
+
+
+def for_device(device_name: str, guid: str = "") -> Module | None:
+    """The module file a device uses (store.path_for: the one rule, a stale
+    id filtered out first)."""
+    from gremlin.modules import store
+
+    return find_path(store.path_for(device_name, guid))
+
+
+# Public doors for the module file store and other callers (the underscore
+# names stay for this module's own use).
+
+
+def guid_for_name(device_name: str) -> str:
+    """The id of the connected device with this name ("" when none)."""
+    return _guid_for_name(device_name)
+
+
+def binding_store() -> dict[str, str]:
+    """The saved module file choices: device id or name:<slug> -> slug."""
+    return _binding_store()
+
+
+def name_key(device_name: str) -> str:
+    """The file choice key of a device name ("name:<slug>")."""
+    return _name_key(device_name)
+
+
+def connected_names() -> dict[str, set[str]]:
+    """Each connected device's name (casefolded) -> the ids that have it."""
+    return _connected_names()
+
+
+def folder() -> Path:
+    """The modules folder (the store's)."""
+    return _folder()

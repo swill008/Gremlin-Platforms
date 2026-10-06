@@ -12,7 +12,7 @@ import threading
 import time
 from typing import Any
 
-from gremlin import threads
+from gremlin import clock, threads
 from gremlin.common import SingletonMetaclass
 from gremlin.error import (
     VJoyBusyError,
@@ -908,6 +908,13 @@ class VJoyProxy:
     """Manages the usage of vJoy and allows shared access all callbacks."""
 
     vjoy_devices = {}
+    # The device list is read and changed from the main thread, the event
+    # thread and the relative axis loops (06 RB10): each look-up, open and
+    # reset is made under this lock, and the dict is replaced, never changed
+    # in place, so readers can go through it unlocked. Bounded: a driver
+    # call that hangs must not freeze the threads waiting behind it.
+    _lock = threading.Lock()
+    _LOCK_TIMEOUT_S = 2.0
 
     def __getitem__(self, index: int) -> VJoy:
         """Returns the requested vJoy instance accessor.
@@ -922,39 +929,57 @@ class VJoyProxy:
             VJoy instance corresponding to the given id.
         """
         for attempt in range(1, 4):
-            if index in VJoyProxy.vjoy_devices:
-                return VJoyProxy.vjoy_devices[index]
-
-            if not isinstance(index, int):
-                raise VJoyError("Integer ID for vjoy device ID expected")
-
+            if not VJoyProxy._lock.acquire(timeout=VJoyProxy._LOCK_TIMEOUT_S):
+                raise VJoyConcurrencyError(
+                    f"vJoy {index}: another thread did not finish opening it"
+                )
             try:
-                device = VJoy(index)
-            except VJoyConcurrencyError:
-                logging.getLogger("system").info(
-                    f"Attempted concurrent instantiation {attempt} for vJoy "
-                    f"{index=}, retrying..."
-                )
-                time.sleep(0.05)
-                continue
-            except VJoyBusyError:
-                raise
-            except VJoyError as e:
-                logging.getLogger("system").error(
-                    f"Failed accessing vJoy id={index}, error is: {e}"
-                )
-                raise e
-            else:
-                VJoyProxy.vjoy_devices[index] = device
-                return device
+                if index in VJoyProxy.vjoy_devices:
+                    return VJoyProxy.vjoy_devices[index]
+
+                if not isinstance(index, int):
+                    raise VJoyError("Integer ID for vjoy device ID expected")
+
+                try:
+                    device = VJoy(index)
+                except VJoyConcurrencyError:
+                    logging.getLogger("system").info(
+                        f"Attempted concurrent instantiation {attempt} for vJoy "
+                        f"{index=}, retrying..."
+                    )
+                except VJoyBusyError:
+                    raise
+                except VJoyError as e:
+                    logging.getLogger("system").error(
+                        f"Failed accessing vJoy id={index}, error is: {e}"
+                    )
+                    raise e
+                else:
+                    # A new dict, not a change to the old one: a thread
+                    # going through the list it read is not disturbed.
+                    VJoyProxy.vjoy_devices = {
+                        **VJoyProxy.vjoy_devices, index: device
+                    }
+                    return device
+            finally:
+                VJoyProxy._lock.release()
+            # Not under the lock: other threads go on meanwhile.
+            clock.sleep(0.05)
         raise VJoyConcurrencyError(f"Failed to resolve concurrent vJoy {index} access")
 
     @classmethod
     def reset(cls) -> None:
         """Relinquishes control over all held VJoy devices."""
-        for device in VJoyProxy.vjoy_devices.values():
+        locked = VJoyProxy._lock.acquire(timeout=VJoyProxy._LOCK_TIMEOUT_S)
+        try:
+            # A new dict: a thread that read the old one keeps a whole list.
+            devices = list(VJoyProxy.vjoy_devices.values())
+            VJoyProxy.vjoy_devices = {}
+        finally:
+            if locked:
+                VJoyProxy._lock.release()
+        for device in devices:
             device.invalidate()
-        VJoyProxy.vjoy_devices = {}
 
 
 def deadzone(

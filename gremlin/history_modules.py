@@ -3,9 +3,11 @@
 
 """History of module files: each save or delete of a device's module file.
 
-The module file writers (module_file.write_text, and the import and Device
-Pack replace) tell note_write() what they wrote; deletes go through
-deleting() (delete_before() before, note_delete() after). An entry keeps
+Only the module file store (gremlin.modules.store) calls these: its writes
+call before_change() first (the pictures the file names are kept before
+anything replaces them) and note_write() after; its deletes and Start Fresh
+go through deleting() (delete_before() before, note_delete() after). An
+entry keeps
 the file as it was and as it became, and the pictures it uses (kept once
 each by content), so it can be put back. A change to the Button Map's view
 only (zoom, pan, grid, guides, print area) isn't kept: it changes all the
@@ -54,9 +56,9 @@ _last_pictures: dict[str, list[dict]] = {}
 
 
 def _modules() -> Path:
-    from gremlin import util
+    from gremlin.modules import store
 
-    return util.modules_dir().resolve()
+    return store.folder().resolve()
 
 
 def is_module_file(path: Path) -> bool:
@@ -92,6 +94,18 @@ def text_before(path: Path) -> str | None:
     return _read(path)
 
 
+def before_change(path: Path) -> None:
+    """Called before a module file or one of its pictures changes: the
+    pictures the file names now are kept as the next save's "before" (once
+    per file; later saves know them from the save before). The first save
+    of a session read them after the write, so a picture replaced under the
+    same name was kept as its own "before" (08 S8, GL-082)."""
+    path = Path(path)
+    if str(path) in _last_pictures or not is_module_file(path) or not path.is_file():
+        return
+    _last_pictures[str(path)] = _keep_pictures(_doc(_read(path)))
+
+
 def note_write(path: Path, text: str, old: str | None) -> None:
     """A module file was written with text (old: text_before() it). Called
     after the write: a write that failed is no History entry."""
@@ -118,29 +132,37 @@ def delete_before(path: Path) -> dict | None:
 _NOW = object()
 
 
-def note_delete(path: Path, before: dict | None | object = _NOW) -> None:
-    """A module file was deleted (before: delete_before() it). Called after
-    the delete: a delete that failed is no History entry."""
+def note_delete(
+    path: Path, before: dict | None | object = _NOW, moved_to: Path | None = None
+) -> None:
+    """A module file was deleted (before: delete_before() it), or moved
+    aside by Start Fresh (moved_to: where it went). Called after the
+    delete: a delete that failed is no History entry."""
     path = Path(path)
     if before is _NOW:
         before = delete_before(path)
     if not isinstance(before, dict):
         return
     old, pictures = before.get("text"), list(before.get("pictures") or [])
-    history.later(lambda: _record(path, old, None, "delete", pictures))
+    _last_pictures.pop(str(path), None)
+    history.later(lambda: _record(path, old, None, "delete", pictures, moved_to))
 
 
 @contextmanager
-def deleting(path: Path) -> Iterator[None]:
+def deleting(path: Path, moved_to: Path | None = None) -> Iterator[None]:
     """Around a module file's delete: History records it once the delete
     went through (a locked file that stays is no "Deleted" entry)::
 
         with history_modules.deleting(path):
             path.unlink()
+
+    moved_to: Start Fresh moves the file there instead (kept, not deleted).
     """
     before = delete_before(path)
     yield
-    note_delete(path, before)
+    if Path(path).exists():
+        return  # the delete or move did not go through
+    note_delete(path, before, moved_to)
 
 
 def _picture_refs(doc: dict | None) -> list[str]:
@@ -158,9 +180,9 @@ def _picture_refs(doc: dict | None) -> list[str]:
 def picture_path(ref: str) -> Path:
     """Where a picture the file names is ("qml/maps/..." as the Button Map
     finds it: in the modules folder)."""
-    from gremlin.ui.hardware_profile import _module_relative
+    from gremlin.modules import store
 
-    return _modules() / _module_relative(str(ref))
+    return store.picture_path(str(ref))
 
 
 def _keep_pictures(doc: dict | None) -> list[dict]:
@@ -185,6 +207,7 @@ def _record(
     new_text: str | None,
     kind: str,
     old_pictures: list[dict] | None = None,
+    moved_to: Path | None = None,
 ) -> None:
     old, new = _doc(old_text), _doc(new_text)
     changed = _changed_keys(old, new)
@@ -192,7 +215,13 @@ def _record(
         return  # the Button Map's view only
     # Spaces as typed in the file ("EVO OT L  ") don't reach the title.
     device = " ".join(str((new or old or {}).get("device") or path.stem).split())
-    if kind == "delete":
+    if kind == "delete" and moved_to is not None:
+        title = (
+            f"Started fresh: the damaged module file of {device} was kept "
+            f"as {Path(moved_to).name}"
+        )
+        area = "modules"
+    elif kind == "delete":
         title = f"Deleted the module file of {device}"
         area = "modules"
     else:
@@ -219,15 +248,18 @@ def _record(
         else None
     )
     _last_pictures[str(path)] = after["pictures"] if after else []
+    subject = {
+        "device": device,
+        "file": str(path),
+        "fileName": path.name,
+        "parts": sorted(changed),
+    }
+    if moved_to is not None:
+        subject["movedTo"] = str(moved_to)
     history.write_now(
         area,
         title,
-        {
-            "device": device,
-            "file": str(path),
-            "fileName": path.name,
-            "parts": sorted(changed),
-        },
+        subject,
         before if old_text is not None else None,
         after,
         kind=kind,

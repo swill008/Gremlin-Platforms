@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import collections
 import re
+import threading
 from typing import cast
 
 import dill
@@ -18,6 +19,10 @@ from gremlin.types import (
     HatDirection,
     InputType,
 )
+
+# Values are written from the main thread, the relative axis loop and macro
+# threads (06 RB11): each change is made under this lock.
+_VALUE_LOCK = threading.Lock()
 
 
 def _same_group(first: str, second: str) -> bool:
@@ -65,7 +70,24 @@ class LogicalDevice(metaclass=SingletonMetaclass):
             self.hide_system = False
 
         def update(self, value: float | bool | HatDirection) -> None:
-            self._value = value
+            with _VALUE_LOCK:
+                self._value = value
+
+        def nudge(self, delta: float) -> float:
+            """Moves an axis value by delta, kept in -1..1, in one step (no
+            other writer in between); returns the new value."""
+            with _VALUE_LOCK:
+                moved = float(cast(float, self._value) or 0.0) + delta
+                self._value = max(-1.0, min(1.0, moved))
+                return self._value
+
+        def to_neutral(self) -> None:
+            """Back to rest: axis 0, button up, hat centre."""
+            with _VALUE_LOCK:
+                self._value = self._neutral()
+
+        def _neutral(self) -> float | bool | HatDirection | None:
+            return None
 
         @property
         def label(self) -> str:
@@ -126,6 +148,9 @@ class LogicalDevice(metaclass=SingletonMetaclass):
             super().__init__(label, id)
             self._value = 0.0
 
+        def _neutral(self) -> float:
+            return 0.0
+
         def _input_type(self) -> InputType:
             return InputType.JoystickAxis
 
@@ -138,6 +163,9 @@ class LogicalDevice(metaclass=SingletonMetaclass):
             super().__init__(label, id)
             self._value = False
 
+        def _neutral(self) -> bool:
+            return False
+
         def _input_type(self) -> InputType:
             return InputType.JoystickButton
 
@@ -149,6 +177,9 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         def __init__(self, label: str, id: int) -> None:
             super().__init__(label, id)
             self._value = HatDirection.Center
+
+        def _neutral(self) -> HatDirection:
+            return HatDirection.Center
 
         def _input_type(self) -> InputType:
             return InputType.JoystickHat
@@ -233,6 +264,12 @@ class LogicalDevice(metaclass=SingletonMetaclass):
         if new_input.identifier not in self._order:
             self._order.append(new_input.identifier)
         return new_input
+
+    def reset_values(self) -> None:
+        """Every input back to neutral (axis 0, button up, hat centre): at
+        Stop, so the next Run starts from rest (decision R1, 06 S85)."""
+        for item in list(self._inputs.values()):
+            item.to_neutral()
 
     def reset(self) -> None:
         """Resets the IO system to contain no entries."""

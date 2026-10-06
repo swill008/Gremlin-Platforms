@@ -15,6 +15,7 @@ import pathlib
 
 import pytest
 
+from gremlin.modules import store
 from gremlin.ui import hardware_profile
 
 
@@ -22,9 +23,9 @@ from gremlin.ui import hardware_profile
 def profile(
     monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> hardware_profile.HardwareProfile:
-    monkeypatch.setattr(hardware_profile, "_maps_dir", lambda: tmp_path)
+    monkeypatch.setattr(store, "folder", lambda: tmp_path)
     monkeypatch.setattr(
-        hardware_profile, "resolve_module_slug", lambda name, guid="": "test_stick"
+        store, "slug_for", lambda name, guid="": "test_stick"
     )
     return hardware_profile.HardwareProfile()
 

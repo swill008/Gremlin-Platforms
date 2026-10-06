@@ -20,11 +20,7 @@ from gremlin import (
     util,
 )
 from gremlin.common import SingletonMetaclass
-from gremlin.types import (
-    ActionProperty,
-    DataCreationMode,
-    InputType,
-)
+from gremlin.types import InputType
 
 if TYPE_CHECKING:
     from gremlin.base_classes import AbstractActionData
@@ -135,25 +131,23 @@ class PluginManager(metaclass=SingletonMetaclass):
     def create_instance(
         self, name: str, input_type: InputType
     ) -> AbstractActionData | None:
-        """Creates an action instance which is stored in the library.
+        """Creates an action in the open profile's library.
+
+        The library is the one owner that adds actions (Library.create);
+        an editor creates through the library of the input it edits. This
+        is kept for callers without an input at hand (scripts, tools).
 
         Args:
             name: Name of the action to create an instance of.
             input_type: Input type associated with the new instance.
 
         Returns:
-            Newly created action instance.
+            Newly created action instance, None when it can't be created.
         """
-        cls = self.get_class(name)
-        if not cls.can_create():
-            return None
-        else:
-            creation_mode = DataCreationMode.Create
-            if ActionProperty.ReuseByDefault in cls.properties:
-                creation_mode = DataCreationMode.Reuse
-            instance = cls.create(creation_mode, input_type)
-            shared_state.current_profile.library.add_action(instance)
-            return instance
+        profile = shared_state.current_profile
+        if profile is None:
+            raise error.GremlinError("No profile is open to add the action to.")
+        return profile.library.create(name, input_type)
 
     def _create_type_action_map(self) -> None:
         """Creates a lookup table from input types to available actions."""

@@ -750,10 +750,13 @@ class LogicalDeviceCondition(AbstractCondition):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
 
-        logical_input = LogicalDevice().inputs_of_type()[0]
-        self._states = [self.State(logical_input.type, logical_input.id)]
         self._condition_type = ConditionType.LogicalDevice
-        self._create_comparator(self._states[0].input_type)
+        # An empty Logical Device leaves it with no control (from_xml sets
+        # one); the editor asks for a control first (06 Q15).
+        controls = LogicalDevice().inputs_of_type()
+        if controls:
+            self._states = [self.State(controls[0].type, controls[0].id)]
+            self._create_comparator(self._states[0].input_type)
 
     def from_xml(self, node: ElementTree.Element) -> None:
         self._comparator_from_xml(node)

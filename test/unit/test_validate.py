@@ -30,19 +30,18 @@ import pytest
 from PySide6 import QtCore
 
 from gremlin import (
-    base_classes,
     code_runner,
     device_initialization,
     macro,
     plugin_manager,
-    sendinput,
+    run_scope,
     shared_state,
     threads,
     validate,
 )
 from gremlin.common import SingletonMetaclass
 from gremlin.logical_device import LogicalDevice
-from gremlin.modules import registry
+from gremlin.modules import registry, store
 from gremlin.profile import InputItem, InputItemBinding, Profile
 from gremlin.tree import TreeNode
 from gremlin.types import InputType
@@ -278,6 +277,7 @@ def modules_folder(
     bindings: dict[str, str] = {}
     sticks: list[types.SimpleNamespace] = []
     monkeypatch.setattr(registry, "_folder", lambda: folder)
+    monkeypatch.setattr(store, "folder", lambda: folder)
     monkeypatch.setattr(registry, "_binding_store", lambda: dict(bindings))
     monkeypatch.setattr(validate, "_bindings_registered", lambda: True)
     monkeypatch.setattr(device_initialization, "physical_devices", lambda: list(sticks))
@@ -342,7 +342,7 @@ def test_the_modules_check_never_raises(
     def broken() -> Path:
         raise OSError("no folder")
 
-    monkeypatch.setattr(registry, "_folder", broken)
+    monkeypatch.setattr(store, "folder", broken)
     assert _codes(validate.modules()) == {"VALIDATE-ERROR"}
 
 
@@ -354,14 +354,26 @@ def test_nothing_left_is_no_problem() -> None:
 
 
 def test_held_keys_buttons_and_pulses(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(macro, "_held_keys", {(30, False): object()})
-    monkeypatch.setattr(sendinput, "_held_buttons", ["left"])
-    monkeypatch.setattr(base_classes, "_pending_pulses", [lambda: None])
-    assert _codes(validate.after_stop()) == {
-        "RUN-HELD-KEYS",
-        "RUN-HELD-BUTTONS",
-        "RUN-PENDING-PULSES",
-    }
+    # What a Run holds is run_scope's (map 3): a key, a mouse button and a
+    # pulse's release (a timer that fires at Stop) a Stop left behind.
+    run_scope.stop()
+    run_scope._reset_for_tests()
+    run = run_scope.begin()
+    try:
+        run_scope.hold(None, "key", (30, False), lambda: None)
+        run_scope.hold(None, "mouse", "left", lambda: None)
+        run_scope.timer("pulse", 60, lambda: None, at_stop="fire")
+        # A Stop that ended the Run but let go of nothing.
+        monkeypatch.setattr(run_scope, "_running", False)
+        monkeypatch.setattr(run_scope, "_number", run + 1)
+        assert _codes(validate.after_stop()) == {
+            "RUN-HELD-KEYS",
+            "RUN-HELD-BUTTONS",
+            "RUN-PENDING-PULSES",
+        }
+    finally:
+        monkeypatch.undo()
+        run_scope._reset_for_tests()
 
 
 def test_runtime_and_macro_manager_still_running(

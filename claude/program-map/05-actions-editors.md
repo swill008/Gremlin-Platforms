@@ -321,7 +321,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S66** Save should ask before leaving out unfinished actions (Save without them / Cancel). [test-plan: SAFE-1]
 - **S67** A profile naming a missing child action should open (no hang); the missing child is dropped on save. [tracker: ACT1] [test: test_profile_missing_child_action.py] [test: test_audit3_actions_undo.py::test_a_save_drops_a_child_missing_from_the_library]
 - **S68** A Play Sound or Load Profile whose file is missing should not stop the profile opening; the action is kept, warns, and does nothing when pressed. [tracker: ACT11, AU-14] [test: test_play_sound_missing_file.py]
-- **S69** A profile with an action type this program doesn't have should fail to open with a message naming the type, and the open profile stays. [user confirmed 2026-10-06; was code only] [tracker: ACT15 for the "stays" part]
+- **S69** A profile with an action type this program doesn't have should open; the unknown action is kept unchanged (saved back as it was, does nothing at Run, its editor shows a note) and the program warns, naming the type. [changed 2026-10-06 to follow decision 04 Q7 (open and keep), which wins over the earlier wording "fail to open"] [tracker: ACT15]
 - **S70** Response Curve Symmetric should be saved. [tracker: ACT13]
 - **S71** Changing a mode's name should update Change Mode actions that name it. [tracker: AU-20]
 

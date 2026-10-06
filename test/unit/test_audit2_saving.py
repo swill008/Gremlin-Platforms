@@ -32,7 +32,8 @@ import pytest
 
 from gremlin import config, history, history_modules, util
 from gremlin.modules import module_file
-from gremlin.ui import backend, hardware_profile, history_model, update_model
+from gremlin.modules import store as module_store
+from gremlin.ui import backend, history_model, update_model
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -115,6 +116,24 @@ def test_restore_writes_into_the_modules_folder_of_today(
     assert not old.exists()
 
 
+def _lock_the_file(m: pytest.MonkeyPatch) -> None:
+    """The file is locked: the swap is refused and so is the direct write the
+    safe writer falls back to (GL-068). The temporary copy can be written."""
+
+    def refuse(*_args: object, **_kwargs: object) -> None:
+        raise OSError("locked")
+
+    real = Path.write_bytes
+
+    def write_bytes(self: Path, data: bytes) -> int:
+        if self.name.endswith(".tmp"):
+            return real(self, data)
+        raise OSError("locked")
+
+    m.setattr(module_file.os, "replace", refuse)
+    m.setattr(Path, "write_bytes", write_bytes)
+
+
 def test_a_save_that_failed_is_no_history_entry(
     store: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -124,12 +143,8 @@ def test_a_save_that_failed_is_no_history_entry(
     module_file.write_json(path, {"device": "Locked Stick"})
     count = len(_settle())
 
-    def refuse(*_args: object, **_kwargs: object) -> None:
-        raise OSError("locked")
-
     with monkeypatch.context() as m, pytest.raises(OSError):
-        m.setattr(module_file.os, "replace", refuse)
-        m.setattr(Path, "write_text", refuse)
+        _lock_the_file(m)
         module_file.write_text(path, '{"device": "Locked Stick", "x": 1}')
     assert len(_settle()) == count
     # The temporary copy goes too when the direct write fails.
@@ -145,14 +160,11 @@ def test_an_import_write_that_failed_is_no_history_entry(
     module_file.write_json(path, {"device": "Import Stick"})
     count = len(_settle())
 
-    def refuse(*_args: object) -> None:
-        raise OSError("locked")
-
     with monkeypatch.context() as m, pytest.raises(OSError):
-        m.setattr(hardware_profile.os, "replace", refuse)
-        hardware_profile._replace_file(path, b'{"device": "Import Stick", "x": 1}')
+        _lock_the_file(m)
+        module_store.replace(path, b'{"device": "Import Stick", "x": 1}', force=True)
     assert len(_settle()) == count
-    hardware_profile._replace_file(path, b'{"device": "Import Stick", "x": 1}')
+    module_store.replace(path, b'{"device": "Import Stick", "x": 1}', force=True)
     assert len(_settle()) == count + 1
 
 
@@ -243,3 +255,58 @@ def test_error_reports_keep_non_english_text(tmp_path: Path) -> None:
     assert b"LEFT []" in done.stdout, done.stdout + done.stderr
     text = (tmp_path / "qt.log").read_text(encoding="utf-8")
     assert "Путь C:/Игры 日本語" in text
+
+
+# --- 05 S34 (GL-104): saving with the action pane open -----------------------
+
+
+def test_a_save_with_the_pane_open_leaves_the_draft_alone(tmp_path: Path) -> None:
+    import uuid
+
+    from gremlin import plugin_manager, shared_state
+    from gremlin.profile import Profile
+    from gremlin.types import InputType
+    from gremlin.ui.binding_catalog import BindingCatalogModel
+
+    stick = uuid.UUID("12121212-3434-5656-7878-909090909090")
+    profile = Profile()
+    before, shared_state.current_profile = shared_state.current_profile, profile
+    try:
+        item = profile.get_input_item(
+            stick, InputType.JoystickAxis, 1, "Default", create_if_missing=True
+        )
+        root = item.add_item_binding().root_action
+        manager = plugin_manager.PluginManager()
+        root.insert_action(
+            manager.create_instance("Merge Axis", InputType.JoystickAxis), "children"
+        )  # unfinished: no axes yet
+        note = manager.create_instance("Description", InputType.JoystickAxis)
+        note.description = "on the input"
+        root.insert_action(note, "children")
+
+        model = BindingCatalogModel()
+        model._control_spec = lambda _i: (
+            profile, stick, InputType.JoystickAxis, 1, "Default",
+            profile.get_input_item(stick, InputType.JoystickAxis, 1, "Default"),
+        )
+        model.beginPane(0, 0)
+        pane_root = model._pane_shadow.action_sequences[0].root_action
+        pane_root.get_actions()[0][1].description = "in the pane"
+
+        profile.to_xml(tmp_path / "while_open.xml")  # File > Save
+        kids = pane_root.get_actions()[0]
+        assert [a.tag for a in kids] == ["merge-axis", "description"]
+        assert all(profile.library.has_action(a.id) for a in kids)
+        assert "in the pane" not in (tmp_path / "while_open.xml").read_text(
+            encoding="utf-8"
+        )
+
+        assert model.commitPane() == 0  # OK after the save still writes
+        model.endPane()
+        item = profile.get_input_item(stick, InputType.JoystickAxis, 1, "Default")
+        assert item is not None
+        tags = [a.tag for a in item.action_sequences[0].root_action.get_actions()[0]]
+        assert tags == ["merge-axis", "description"]
+        model.deleteLater()
+    finally:
+        shared_state.current_profile = before

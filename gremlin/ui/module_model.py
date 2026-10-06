@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from PySide6 import QtCore
 
@@ -21,7 +20,7 @@ from gremlin.types import InputType, PropertyType
 from gremlin import keyboard as gremlin_keyboard
 from gremlin.ui.live_debug import trace
 from gremlin.modules.ids import guid_key
-from gremlin.modules import ids, module_file
+from gremlin.modules import ids, store
 from gremlin.modules.claim import (
     claim_allows,
     claim_friendly,
@@ -30,26 +29,17 @@ from gremlin.modules.claim import (
     kind_of,
     read_claim,
 )
-from gremlin.modules.registry import is_output_name, read_doc, resolve_module_slug
+from gremlin.modules.registry import is_output_name, read_doc
 from gremlin.modules.registry import modules as registry_modules
 from gremlin.ui.hardware_profile import (
     HardwareProfile,
-    _maps_dir,
-    _slug,
     bind_module_file,
     delete_module_file,
     delete_device,
     delete_preview,
-    foreign_module_file,
-    guid_for_module,
-    import_module_file,
-    import_can_undo,
-    drop_import_undo,
-    undo_last_import,
     imported_folder_url,
     maps_folder_url,
     module_file_choices,
-    module_json_path,
     persist_log,
 )
 from gremlin.modules import hardware
@@ -62,6 +52,9 @@ KEYBOARD_GUID = str(ids.KEYBOARD).upper()
 OSC_GUID = str(ids.OSC).upper()
 XBOX_GUID = str(ids.XBOX).upper()
 LOGICAL_GUID = str(ids.LOGICAL_DEVICE).upper()
+
+# The window Module Setup's imports (and their Undo) belong to.
+_IMPORT_WINDOW = "Configure Module"
 
 _CFG_SECTION = "display"
 _CFG_GROUP = "status"
@@ -324,7 +317,7 @@ def _renamed_into_order(order: list[str], rows: list, hidden: set[str]) -> list[
         if row.direction != "source" or row.tab != "physical" or row.slug in out:
             continue
         try:
-            old = resolve_module_slug(row.raw_name or row.name, row.guid)
+            old = store.slug_for(row.raw_name or row.name, row.guid)
         except Exception:
             continue
         if old == row.slug or old not in out or old in showing or old in hidden:
@@ -376,10 +369,11 @@ def _show_stubs() -> bool:
 
 
 def _load_module_doc(device_name: str, guid: str = "") -> dict:
-    slug = resolve_module_slug(device_name, guid)
-    path = _maps_dir() / f"{slug}.json"
+    """The device's module file, from the store ({} when missing or
+    damaged). Pass the device's id: twins share a name (decision F4)."""
+    path = store.path_for(device_name, guid)
     if not path.is_file():
-        _plog("load miss", name=device_name, guid=guid, slug=slug, path=str(path))
+        _plog("load miss", name=device_name, guid=guid, path=str(path))
         return {}
     # One reader for every module file: a damaged one (not UTF-8 too) reads
     # as {} here; it used to stop Home, the Run lists and the card polling.
@@ -488,8 +482,7 @@ _DEFAULT_VIEW = {
 
 def _module_damage(device_name: str, guid: str = "") -> str:
     """Why the device's module file can't be read ("" when it is fine)."""
-    slug = resolve_module_slug(device_name, guid)
-    return module_file.damage_reason(_maps_dir() / f"{slug}.json")
+    return store.damage(device_name, guid)
 
 
 def _device_connected(guid: str) -> bool:
@@ -501,9 +494,9 @@ def _device_connected(guid: str) -> bool:
         return False
 
 
-def module_exists(device_name: str) -> bool:
-    path = _maps_dir() / f"{resolve_module_slug(device_name)}.json"
-    return path.is_file()
+def module_exists(device_name: str, guid: str = "") -> bool:
+    """The device has a module file (pass its id: twins share a name)."""
+    return store.exists(device_name, guid)
 
 
 class ModuleRow:
@@ -567,6 +560,54 @@ class CardSizes(QtCore.QObject):
     @QtCore.Slot()
     def resetAll(self) -> None:
         reset_all_card_sizes()
+
+
+# The keys the Button Map writes as its map (its "ui" block is saved on its
+# own and is not part of an edit).
+_MAP_KEYS = ("image", "imageWidth", "imageHeight", "photo", "nodes")
+
+
+def map_parts(device_name: str, guid: str = "") -> str:
+    """The map parts of the device's module file (map and photo) as one
+    string: it changes when another window changes them (07 Q6). "" when
+    the file is missing or damaged."""
+    if not device_name:
+        return ""
+    doc = store.read(device_name, guid)
+    if not doc:
+        return ""
+    return json.dumps({key: doc.get(key) for key in _MAP_KEYS}, sort_keys=True)
+
+
+@ta.QmlElement
+class ModuleFileWatch(QtCore.QObject):
+    """Lets the Button Map see that its module file was changed elsewhere
+    (History Restore, Device Pack, Module Setup): outside Edit it reloads,
+    in Edit its Save asks Keep mine / Take theirs (07 Q6, GL-071)."""
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        # path -> ((mtime_ns, size), parts): polled once a second, read only
+        # when the file changed.
+        self._seen: dict[str, tuple[tuple[int, int], str]] = {}
+
+    @QtCore.Slot(str, str, result=str)
+    def mapParts(self, device_name: str, guid: str) -> str:
+        if not device_name:
+            return ""
+        path = store.path_for(device_name, guid)
+        try:
+            stat = path.stat()
+        except OSError:
+            self._seen.pop(str(path), None)
+            return ""
+        stamp = (stat.st_mtime_ns, stat.st_size)
+        cached = self._seen.get(str(path))
+        if cached is not None and cached[0] == stamp:
+            return cached[1]
+        parts = map_parts(device_name, guid)
+        self._seen[str(path)] = (stamp, parts)
+        return parts
 
 
 @ta.QmlElement
@@ -746,7 +787,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def viewConfigJson(self, device_name: str, guid: str) -> str:
         doc: dict = {}
         if device_name:
-            path = module_json_path(device_name, guid)
+            path = store.path_for(device_name, guid)
             if path.is_file():
                 loaded = read_doc(path)
                 doc = loaded or {}
@@ -772,27 +813,23 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         if not isinstance(incoming, dict):
             return False
-        path = module_json_path(name, guid)
-        try:
-            doc = module_file.load_for_update(path)
-        except module_file.ModuleFileDamaged as damaged:
-            trace("READ", "Output Configuration", "saveViewConfig", path, "damaged")
-            module_file.report_refused(damaged)
-            return False
-        trace("READ", "Output Configuration", "saveViewConfig", path, "ok")
-        view = dict(_DEFAULT_VIEW)
-        view["meters"] = list(_DEFAULT_VIEW["meters"])
-        raw = doc.get("view")
-        if isinstance(raw, dict):
-            view.update(raw)
-        view.update(incoming)
-        doc["view"] = view
-        doc.setdefault("kind", "control.hardware")
-        doc.setdefault("device", name)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path = store.path_for(name, guid)
+
+        def change(doc: dict) -> None:
+            view = dict(_DEFAULT_VIEW)
+            view["meters"] = list(_DEFAULT_VIEW["meters"])
+            raw = doc.get("view")
+            if isinstance(raw, dict):
+                view.update(raw)
+            view.update(incoming)
+            doc["view"] = view
+            doc.setdefault("kind", "control.hardware")
+            doc.setdefault("device", name)
+
         _plog("save view", name=name, path=str(path))
         try:
-            module_file.write_json(path, doc)
+            if not store.update_path(path, change, "Output Configuration"):
+                return False
             written = json.loads(path.read_text(encoding="utf-8"))
             trace("SAVE", "Output Configuration", "saveViewConfig", path, "ok")
         except (OSError, json.JSONDecodeError) as exc:
@@ -813,8 +850,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=str)
     def catalogConfigJson(self, device_name: str, guid: str) -> str:
-        path = module_json_path(device_name, guid_for_module(device_name, guid)) if device_name else None
-        doc = _load_module_doc(device_name, guid_for_module(device_name, guid)) if device_name else {}
+        path = store.path_for(device_name, guid) if device_name else None
+        doc = _load_module_doc(device_name, guid) if device_name else {}
         if path is not None:
             trace(
                 "READ",
@@ -872,26 +909,22 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         if not isinstance(incoming, dict):
             return False
-        path = _maps_dir() / f"{resolve_module_slug(name, guid_for_module(name, guid))}.json"
-        try:
-            doc = module_file.load_for_update(path)
-        except module_file.ModuleFileDamaged as damaged:
-            trace("READ", "Input Configuration", "saveCatalogConfig", path, "damaged")
-            module_file.report_refused(damaged)
-            return False
-        trace("READ", "Input Configuration", "saveCatalogConfig", path, "ok")
-        catalog = dict(_DEFAULT_CATALOG)
-        raw = doc.get("catalog")
-        if isinstance(raw, dict):
-            catalog.update(raw)
-        catalog.update(incoming)
-        doc["catalog"] = catalog
-        doc.setdefault("kind", "control.hardware")
-        doc.setdefault("device", name)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path = store.path_for(name, guid)
+
+        def change(doc: dict) -> None:
+            catalog = dict(_DEFAULT_CATALOG)
+            raw = doc.get("catalog")
+            if isinstance(raw, dict):
+                catalog.update(raw)
+            catalog.update(incoming)
+            doc["catalog"] = catalog
+            doc.setdefault("kind", "control.hardware")
+            doc.setdefault("device", name)
+
         _plog("save catalog", name=name, path=str(path))
         try:
-            module_file.write_json(path, doc)
+            if not store.update_path(path, change, "Input Configuration"):
+                return False
             written = json.loads(path.read_text(encoding="utf-8"))
             trace("SAVE", "Input Configuration", "saveCatalogConfig", path, "ok")
         except (OSError, json.JSONDecodeError) as exc:
@@ -1299,8 +1332,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
         return {}
 
     @QtCore.Slot(str, result=int)
-    def claimedCount(self, device_name: str) -> int:
-        doc = _load_module_doc(device_name)
+    @QtCore.Slot(str, str, result=int)
+    def claimedCount(self, device_name: str, guid: str = "") -> int:
+        doc = _load_module_doc(device_name, guid)
         if not doc:
             return 0
         claim = read_claim(doc)
@@ -1339,12 +1373,13 @@ class ModuleListModel(QtCore.QAbstractListModel):
         roles = roles + [QtCore.Qt.ItemDataRole.UserRole + 15]
         for idx, row in enumerate(self._rows):
             name = row.raw_name or row.name
-            row.photo = self._hw.profilePhotoUrl(name)
-            saved = module_exists(name)
+            row.photo = self._photo(name, row.guid)
+            # By the card's device id: twins share a name (decision F4).
+            saved = module_exists(name, row.guid)
             row.is_module = saved
             row.is_stub = not saved
             if saved:
-                doc = _load_module_doc(name)
+                doc = _load_module_doc(name, row.guid)
                 claim = read_claim(doc)
                 row.buttons = len(claim["buttons"])
                 row.axes = len(claim["axes"])
@@ -1371,11 +1406,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
         share a name but not a file."""
         if not device_name:
             return ""
-        return module_json_path(device_name, guid).stem
+        return store.path_for(device_name, guid).stem
 
     @QtCore.Slot(str, str, result=str)
     def foreignModuleFile(self, guid: str, device_name: str) -> str:
-        return foreign_module_file(device_name, guid)
+        return store.foreign_file(device_name, guid)
 
     @QtCore.Slot(result=str)
     def mapsFolderUrl(self) -> str:
@@ -1391,27 +1426,34 @@ class ModuleListModel(QtCore.QAbstractListModel):
         old file: it was looked for under the new name)."""
         if not device_name:
             return False
-        return module_json_path(device_name, guid).is_file()
+        return store.path_for(device_name, guid).is_file()
 
     @QtCore.Slot(str, str, str, str, result=str)
     def importModuleFile(self, guid: str, device_name: str, file_name: str, direction: str) -> str:
-        message = import_module_file(device_name, guid, file_name, direction)
+        # Into the file the device uses; its Undo is tied to this device
+        # and Module Setup (store, 03 S59).
+        message = store.import_file(device_name, guid, file_name, direction, _IMPORT_WINDOW)
         if str(message).startswith("Imported "):
             signal.configChanged.emit()
             self._refresh_inplace()
         return message
 
     @QtCore.Slot(result=bool)
-    def importCanUndo(self) -> bool:
-        return import_can_undo()
+    @QtCore.Slot(str, str, result=bool)
+    def importCanUndo(self, guid: str = "", device_name: str = "") -> bool:
+        """The last import can be undone here: it was made for this device
+        in Module Setup (with no device named: any)."""
+        return store.can_undo_file_import(device_name, guid, _IMPORT_WINDOW)
 
     @QtCore.Slot()
-    def dropImportUndo(self) -> None:
-        drop_import_undo()
+    @QtCore.Slot(str, str)
+    def dropImportUndo(self, guid: str = "", device_name: str = "") -> None:
+        store.drop_file_import_undo(device_name, guid, _IMPORT_WINDOW)
 
     @QtCore.Slot(result=str)
-    def undoLastImport(self) -> str:
-        message = undo_last_import()
+    @QtCore.Slot(str, str, result=str)
+    def undoLastImport(self, guid: str = "", device_name: str = "") -> str:
+        message = store.undo_file_import(device_name, guid, _IMPORT_WINDOW)
         if str(message).startswith("Undone"):
             signal.configChanged.emit()
             self._refresh_inplace()
@@ -1429,7 +1471,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         except json.JSONDecodeError:
             return raw
         if data.get("ok"):
-            slug = _slug(device_name)
+            slug = store.card_key(device_name)
             if data.get("stub"):
                 _remember_stub(slug)
             self.clearCardSettings(slug)
@@ -1448,16 +1490,15 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def startFresh(self, device_name: str, guid: str) -> str:
         """Moves a damaged module file aside (kept as .bad-<date>) so the
         device can be set up again. Returns where the copy is, or ""."""
-        slug = resolve_module_slug(device_name, guid)
-        path = _maps_dir() / f"{slug}.json"
-        if not module_file.damage_reason(path):
-            return ""
         try:
-            copy = module_file.start_fresh(path)
+            # The file the device uses (stale id filtered); recorded in
+            # History (decision F3).
+            copy = store.move_aside(device_name, guid)
         except OSError as e:
-            _plog("start fresh failed", path=str(path), error=e)
+            _plog("start fresh failed", name=device_name, error=e)
             return ""
-        trace("SAVE", "Home", "startFresh", copy, "ok")
+        if copy is None:
+            return ""
         signal.configChanged.emit()
         self._reload()
         return str(copy)
@@ -1502,7 +1543,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if cached is not None and now - cached[0] < self._CLAIM_CHECK_S:
             return cached[2]
         name = row.raw_name or row.name
-        path = _maps_dir() / f"{resolve_module_slug(name, row.guid)}.json"
+        path = store.path_for(name, row.guid)
         try:
             stat = path.stat()
             stamp: tuple[int, int] | None = (stat.st_mtime_ns, stat.st_size)
@@ -1570,6 +1611,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
             kind, hid = changed
             self._set_last(row, kind, hid, claim)
 
+    def _photo(self, device_name: str, guid: str) -> str:
+        """A card's photo, from the file of that device (by its id: twins
+        share a name, decision F4)."""
+        self._hw.setDeviceGuid(guid)
+        return self._hw.profilePhotoUrl(device_name)
+
     def _reload(self) -> None:
         self._dest_targets = {}
         self._source_claims = {}
@@ -1582,11 +1629,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
         for dev in device_initialization.physical_devices():
             name = dev.name
-            slug = _slug(name)
+            slug = store.card_key(name)
             if slug in hidden:
                 hidden_names[slug] = name
                 continue
-            saved = module_exists(name)
+            saved = module_exists(name, str(dev.device_guid))
             if not _show_unconfigured(slug, saved, show_stubs):
                 continue
             row = ModuleRow()
@@ -1599,7 +1646,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.bus = "DirectInput"
             row.vid = f"{dev.vendor_id:04X}"
             row.pid = f"{dev.product_id:04X}"
-            row.photo = self._hw.profilePhotoUrl(name)
+            row.photo = self._photo(name, str(dev.device_guid))
             if saved:
                 doc = _load_module_doc(name, str(dev.device_guid))
                 claim = read_claim(doc)
@@ -1625,7 +1672,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             if slug in hidden:
                 hidden_names[slug] = name
                 return
-            saved = module_exists(name)
+            saved = module_exists(name, guid)
             if not _show_unconfigured(slug, saved, show_stubs) and direction == "source":
                 return
             row = ModuleRow()
@@ -1639,7 +1686,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.is_module = saved
             row.is_stub = not saved
             row.status = "Virtual" if direction == "dest" else ("Connected" if saved else "Stub")
-            row.photo = self._hw.profilePhotoUrl(name)
+            row.photo = self._photo(name, guid)
             if saved:
                 row.damaged = _module_damage(name, guid)
                 if row.damaged:
@@ -1657,7 +1704,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
         for vdev in device_initialization.vjoy_devices():
             name = f"vJoy {vdev.vjoy_id}"
-            slug = _slug(name)
+            slug = store.card_key(name)
             if slug in hidden:
                 hidden_names[slug] = name
                 continue
@@ -1672,11 +1719,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.status = "Virtual"
             if vjoy_in_use_elsewhere(vdev.vjoy_id):
                 row.status = "In use by another program"
-            row.is_stub = not module_exists(name)
+            row.is_stub = not module_exists(name, str(vdev.device_guid))
             row.is_module = not row.is_stub
-            row.photo = self._hw.profilePhotoUrl(name)
+            row.photo = self._photo(name, str(vdev.device_guid))
             if not row.photo:
-                row.photo = self._hw.profilePhotoUrl("vJoy")
+                row.photo = self._photo("vJoy", "")
             if row.is_module:
                 claim = read_claim(_load_module_doc(name, str(vdev.device_guid)))
                 row.buttons = len(claim["buttons"]) or int(vdev.button_count)
@@ -1690,8 +1737,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
         extra("xbox", "Xbox 360 Controller", XBOX_GUID, "xbox", "XInput", "dest")
 
-        logical = Path(_maps_dir() / "logical_device.json")
-        if logical.is_file() or module_exists("Logical Device"):
+        if module_exists("Logical Device", LOGICAL_GUID):
             extra("logical", "Logical Device", LOGICAL_GUID, "logical", "Logical", "source")
 
         if not self._focus and rows:
@@ -2078,12 +2124,12 @@ class DriverInputModel(QtCore.QAbstractListModel):
             devices = list(device_initialization.joystick_devices())
         except Exception:
             devices = []
-        want = _slug(self._device_name)
+        want = store.card_key(self._device_name)
         ev = guid_key(event.device_guid)
         for dev in devices:
             if guid_key(dev.device_guid) != ev:
                 continue
-            if _slug(dev.name) == want or dev.name == self._device_name:
+            if store.card_key(dev.name) == want or dev.name == self._device_name:
                 self._guid = str(dev.device_guid)
                 return True
         return False
@@ -2240,17 +2286,11 @@ class DriverInputModel(QtCore.QAbstractListModel):
             _plog("save claim refused", name=device_name, reason=self._not_connected)
             return False
         name = device_name or self._device_name
-        # The file Module Setup opened (the device's bound file), not one
-        # named after the device: a device whose name changed kept its file.
-        slug = resolve_module_slug(name, self._guid)
-        path = _maps_dir() / f"{slug}.json"
-        try:
-            doc = module_file.load_for_update(path)
-        except module_file.ModuleFileDamaged as damaged:
-            trace("READ", "Configure Module", "saveClaim", path, "damaged")
-            module_file.report_refused(damaged)
-            return False
-        trace("READ", "Configure Module", "saveClaim", path, "ok")
+        # The file Module Setup opened (the device's bound file, from the
+        # store: the stale-id filter as Delete and the Device Pack use), not
+        # one named after the device: a device whose name changed kept its file.
+        path = store.path_for(name, self._guid)
+        slug = path.stem
         buttons = [int(r["hwId"]) for r in self._rows if r["kind"] == "button" and r["claimed"]]
         axes = [int(r["hwId"]) for r in self._rows if r["kind"] == "axis" and r["claimed"]]
         hats = [int(r["hwId"]) for r in self._rows if r["kind"] == "hat" and r["claimed"]]
@@ -2259,41 +2299,44 @@ class DriverInputModel(QtCore.QAbstractListModel):
         for r in self._rows:
             if r["claimed"] and r.get("friendly"):
                 friendly[f"{r['kind']}:{int(r['hwId'])}"] = str(r["friendly"])
-        doc["kind"] = "control.hardware"
-        doc["device"] = name
-        if is_output_name(name):
-            doc["direction"] = "dest"
-        elif self._guid and _device_connected(self._guid):
-            # A physical stick is an input (a file the old Output menu
-            # marked "dest" blocked every input; saving here repairs it).
-            doc["direction"] = "source"
-        elif doc.get("direction") not in ("source", "dest"):
-            doc["direction"] = direction or "source"
-        if self._guid:
-            doc["boundName"] = name
-            # GUID stays local-only; stored for this machine bind, not exported.
-            doc["boundGuidLocal"] = self._guid
-        doc["claim"] = {
-            "buttons": buttons,
-            "axes": axes,
-            "hats": hats,
-            "keys": keys,
-            "friendly": friendly,
-        }
-        if self._is_keyboard() and not keys:
-            doc["claim"]["keysChosen"] = True
-        doc.setdefault("space", "world")
-        doc.setdefault("pageW", 32000)
-        doc.setdefault("pageH", 18000)
-        doc.setdefault("photoWell", 0.75)
-        doc.setdefault("nodes", [])
-        folder = _maps_dir() / slug
-        if folder.is_dir():
-            photos = sorted(p for p in folder.glob("photo.*") if p.is_file())
-            if photos:
-                doc["image"] = f"{slug}/{photos[-1].name}"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        text = json.dumps(doc, indent=2) + "\n"
+
+        def change(doc: dict) -> None:
+            doc["kind"] = "control.hardware"
+            doc["device"] = name
+            if is_output_name(name):
+                doc["direction"] = "dest"
+            elif self._guid and _device_connected(self._guid):
+                # A physical stick is an input (a file the old Output menu
+                # marked "dest" blocked every input; saving here repairs it).
+                doc["direction"] = "source"
+            elif doc.get("direction") not in ("source", "dest"):
+                doc["direction"] = direction or "source"
+            if self._guid:
+                doc["boundName"] = name
+                # GUID stays local-only; stored for this machine bind, not exported.
+                doc["boundGuidLocal"] = self._guid
+            doc["claim"] = {
+                "buttons": buttons,
+                "axes": axes,
+                "hats": hats,
+                "keys": keys,
+                "friendly": friendly,
+            }
+            if self._is_keyboard() and not keys:
+                doc["claim"]["keysChosen"] = True
+            doc.setdefault("space", "world")
+            doc.setdefault("pageW", 32000)
+            doc.setdefault("pageH", 18000)
+            doc.setdefault("photoWell", 0.75)
+            doc.setdefault("nodes", [])
+            # The photo in the device's folder (Import Image put it there):
+            # named here, so a Save is one write and one History entry.
+            pictures = store.pictures_dir_of(slug)
+            if pictures.is_dir():
+                photos = sorted(p for p in pictures.glob("photo.*") if p.is_file())
+                if photos:
+                    doc["image"] = store.picture_ref(slug, photos[-1].name)
+
         _plog(
             "save claim",
             name=name,
@@ -2306,7 +2349,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
             friendly=list(friendly),
         )
         try:
-            module_file.write_text(path, text)
+            if not store.update_path(path, change, "Configure Module"):
+                return False
             written = json.loads(path.read_text(encoding="utf-8"))
             trace("SAVE", "Configure Module", "saveClaim", path, "ok")
         except (OSError, json.JSONDecodeError) as exc:

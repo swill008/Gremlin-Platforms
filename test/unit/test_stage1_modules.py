@@ -14,7 +14,7 @@ and the registry from several threads: 03 7.13, 7.14).
 
 Tests that pass lock in today's behaviour where it matches the spec. Known
 gaps are strict xfails named by their gap-list id, so each flips when it is
-fixed: GL-038, GL-043, GL-069, GL-077, GL-078, GL-080, GL-089, GL-138,
+fixed: GL-038, GL-043, GL-138,
 GL-139, GL-140, GL-142, GL-143, GL-146, GL-147, GL-245. GL-141 (suspected)
 does not happen on the History Restore path: that is locked in instead.
 """
@@ -45,7 +45,7 @@ from gremlin import (
     threads,
     util,
 )
-from gremlin.modules import module_file, output, registry
+from gremlin.modules import module_file, output, registry, store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
 from gremlin.ui import device_pack, hardware_profile, history_model, module_model
@@ -106,8 +106,8 @@ def folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     for old in list(path.iterdir()):
         shutil.move(str(old), str(aside / old.name))
     before = set(path.rglob("*"))
-    bindings = hardware_profile._binding_store()
-    hardware_profile._write_bindings({})
+    bindings = store.bindings()
+    store.set_bindings({})
     module_model._ensure_display_options()
     cfg = config.Configuration()
     display = {
@@ -116,7 +116,7 @@ def folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     }
     deleted = tmp_path / "deleted devices"
     monkeypatch.setattr(util, "deleted_devices_dir", lambda: deleted)
-    monkeypatch.setattr(hardware_profile, "_import_undo", None)
+    monkeypatch.setattr(store, "_file_import_undo", {})
     monkeypatch.setattr(device_pack, "_last_import", None)
     monkeypatch.setattr(shared_state, "current_profile", None)
     yield path
@@ -130,7 +130,7 @@ def folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
             extra.unlink(missing_ok=True)
     for old in aside.iterdir():
         shutil.move(str(old), str(path / old.name))
-    hardware_profile._write_bindings(bindings)
+    store.set_bindings(bindings)
     for key, value in display.items():
         cfg.set(module_model._CFG_SECTION, module_model._CFG_GROUP, key, value)
 
@@ -358,7 +358,7 @@ def _stick_with_photo(folder: Path) -> None:
     write_module(folder, "pjoy_pro", stick_doc(image="pjoy_pro/photo.jpg"))
     (folder / "pjoy_pro").mkdir()
     (folder / "pjoy_pro" / "photo.jpg").write_bytes(b"\xff\xd8\xff\xd9")
-    hardware_profile.bind_module_file("pJoy Pro", stick_guid(), "pjoy_pro")
+    store.bind("pJoy Pro", stick_guid(), "pjoy_pro")
 
 
 def test_delete_device_removes_the_devices_actions_file_and_card_layout(
@@ -379,7 +379,7 @@ def test_delete_device_removes_the_devices_actions_file_and_card_layout(
     assert mapped(profile, _OTHER) == {("Default", 3)}
     assert not (folder / "pjoy_pro.json").exists()
     assert not (folder / "pjoy_pro").exists()
-    assert "pjoy_pro" not in hardware_profile._binding_store().values()
+    assert "pjoy_pro" not in store.bindings().values()
     assert model.cardWidth("pjoy_pro") == 0
     assert model.pileMembers("keyboard") == ["keyboard"]
     # S96: still plugged in, so it keeps a card without a module.
@@ -426,11 +426,6 @@ def test_delete_device_on_a_vjoy_keeps_its_output_module_file(folder: Path) -> N
     assert result["keepModule"] and result["keptFile"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-069: Delete Device without Save a copy keeps no copy"
-)
 def test_delete_device_without_save_a_copy_still_keeps_the_file(
     folder: Path, tmp_path: Path
 ) -> None:
@@ -552,11 +547,6 @@ def test_import_refusals_change_nothing(
     assert not model.importCanUndo()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-077: import into a renamed stick writes a new file"
-)
 def test_import_into_a_renamed_stick_goes_into_the_file_it_uses(
     folder: Path, tmp_path: Path
 ) -> None:
@@ -572,11 +562,6 @@ def test_import_into_a_renamed_stick_goes_into_the_file_it_uses(
     assert claim["buttons"] == [1, 2, 3]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-078: Module Setup's Import Image has no Cancel put-back"
-)
 def test_module_setup_cancel_puts_the_old_picture_back(tmp_path: Path) -> None:
     # Q2: Import Image works like the Button Map: Module Setup, off-screen in
     # the running program, imports a picture, then Cancel and Discard; the
@@ -593,11 +578,6 @@ def test_module_setup_cancel_puts_the_old_picture_back(tmp_path: Path) -> None:
     assert out["setup-reopened-photo"] == "photo.png"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-089: every Save Module adds a photo copy to the library"
-)
 def test_save_module_with_the_same_photo_adds_nothing_to_the_library(
     folder: Path,
 ) -> None:
@@ -640,11 +620,6 @@ def test_start_fresh_moves_the_damaged_file_aside(folder: Path) -> None:
     assert path.is_file()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-080: Start Fresh makes no History entry",
-)
 def test_start_fresh_is_a_history_entry(folder: Path) -> None:
     _damaged_stick(folder)
     model = module_model.ModuleListModel()
@@ -1018,3 +993,128 @@ def test_output_claims_and_modules_from_several_threads(
         thread.join(30.0)
     assert not [t for t in started if t.is_alive()]
     assert errors == []
+
+
+# --- Batch 1: the module file store (map 1, gap list section 4) ---------------
+
+
+def test_a_failed_output_read_keeps_the_last_claims(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # GL-083 (06 RB16, S47): a read that fails keeps the claims read before;
+    # it used to give no claims, so every vJoy output was blocked.
+    good = {1: {"buttons": [1]}}
+    monkeypatch.setattr(output, "_vjoy_claims", dict(good))
+    monkeypatch.setattr(output, "_claims_at", 0.0)
+    monkeypatch.setattr(output, "_told_read_failed", False)
+
+    def broken() -> list:
+        raise OSError("modules folder unreadable")
+
+    monkeypatch.setattr(registry, "outputs", broken)
+    output.refresh()
+    assert output._vjoy_claims == good
+
+
+def test_a_module_save_reaches_the_output_claims_at_once(
+    folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # GL-084 (03 S36, 06 S53): every module file write re-reads the claims.
+    calls: list[int] = []
+    monkeypatch.setattr(output, "refresh", lambda: calls.append(1))
+    path = write_module(folder, "vjoy_1", vjoy_doc())
+    assert store.update_path(path, lambda doc: doc.update(note=1), "test")
+    assert calls
+
+
+def test_import_undo_belongs_to_its_device_and_window(
+    folder: Path, tmp_path: Path
+) -> None:
+    # GL-087 (03 S59): another device's or window's Undo is not this one's.
+    source = _source_file(
+        tmp_path,
+        "keys.json",
+        {"kind": "control.hardware", "device": "Keys", "claim": {"keys": [5]}},
+    )
+    message = store.import_file("Keyboard", "", source, "source", "Configure Module")
+    assert message.startswith("Imported "), message
+    assert store.can_undo_file_import("Keyboard", "", "Configure Module")
+    assert not store.can_undo_file_import("pJoy Pro", stick_guid(), "Configure Module")
+    assert not store.can_undo_file_import("Keyboard", "", "Device Pack")
+    assert store.undo_file_import("pJoy Pro", stick_guid(), "Configure Module") == (
+        "Undo failed. There is nothing to undo."
+    )
+    assert (folder / "keyboard.json").is_file()
+    undone = store.undo_file_import("Keyboard", "", "Configure Module")
+    assert undone.startswith("Undone.")
+    assert not (folder / "keyboard.json").exists()
+
+
+def test_a_missing_picture_is_not_another_devices(folder: Path) -> None:
+    # GL-085 (07 S11): a picture is found only where its reference says.
+    (folder / "library").mkdir()
+    (folder / "library" / "photo.jpg").write_bytes(b"someone else's")
+    assert store.find_picture("pjoy_pro/photo.jpg") is None
+    hw = hardware_profile.HardwareProfile()
+    assert hw._resolve_existing("pjoy_pro/photo.jpg") is None
+
+
+def test_a_damaged_file_keeps_its_photo_on_import_image(
+    folder: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # GL-070 (03 S64): Import Image on a damaged module file touches no photo.
+    monkeypatch.setattr(module_file, "report_refused", lambda error: None)
+    _damaged_stick(folder)
+    (folder / "pjoy_pro").mkdir()
+    old = folder / "pjoy_pro" / "photo.png"
+    old.write_bytes(b"old")
+    new = tmp_path / "new.jpg"
+    new.write_bytes(b"new")
+    hw = hardware_profile.HardwareProfile()
+    hw.setDeviceGuid(stick_guid())
+    assert hw.copyImage(new.as_uri(), "pJoy Pro") == ""
+    assert old.read_bytes() == b"old"
+    assert not (folder / "pjoy_pro" / "photo.jpg").exists()
+
+
+def test_a_refused_button_map_save_copies_no_picture(
+    folder: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # GL-079 (07 S12): the damage check comes before any picture is copied.
+    monkeypatch.setattr(module_file, "report_refused", lambda error: None)
+    _damaged_stick(folder)
+    picture = tmp_path / "chosen.png"
+    picture.write_bytes(b"picture")
+    hw = hardware_profile.HardwareProfile()
+    hw.setDeviceGuid(stick_guid())
+    payload = {"image": picture.as_uri(), "nodes": []}
+    assert not hw.save("pJoy Pro", json.dumps(payload))
+    pictures = folder / "pjoy_pro"
+    assert not pictures.exists() or not any(pictures.iterdir())
+
+
+def test_delete_device_removes_its_recovery_and_photo_safety_copies(
+    folder: Path,
+) -> None:
+    # GL-094 (07 Q11): nothing of the deleted device is left behind.
+    write_module(folder, "pjoy_pro", stick_doc())
+    recovery = store.recovery_path("pjoy_pro")
+    recovery.parent.mkdir(parents=True)
+    recovery.write_text("{}", encoding="utf-8")
+    stash = store.photo_stash_dir("pjoy_pro")
+    stash.mkdir(parents=True)
+    (stash / "manifest.json").write_text("{}", encoding="utf-8")
+    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid(), False))
+    assert result["ok"], result
+    assert not recovery.exists()
+    assert not stash.exists()
+
+
+def test_the_deleted_devices_folder_is_listed(folder: Path, tmp_path: Path) -> None:
+    # GL-092 (03 S62, S91): the store lists both kinds of copy it keeps.
+    path = write_module(folder, "pjoy_pro", stick_doc())
+    assert store.keep_deleted_copy(path) is not None
+    pack = store.deleted_pack_path("pJoy Pro", "2026-06-OCT_10_00_00")
+    store.write_deleted_pack(pack, b"zip")
+    kinds = sorted(item["kind"] for item in store.deleted_items())
+    assert kinds == ["file", "pack"]

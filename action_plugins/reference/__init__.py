@@ -16,7 +16,9 @@ from PySide6 import QtCore
 
 from gremlin.base_classes import (
     AbstractActionData,
+    AbstractFunctor,
     UserFeedback,
+    Value,
 )
 from gremlin.error import GremlinError
 from gremlin.profile import Library
@@ -31,7 +33,19 @@ from gremlin.ui.action_model import (
 from gremlin.ui.profile import LabelValueSelectionModel
 
 if TYPE_CHECKING:
+    from gremlin.event_handler import Event
     from gremlin.ui.profile import InputItemBindingModel
+
+
+class ReferenceFunctor(AbstractFunctor):
+    """A placeholder does nothing at Run (05 Q3: Run skips unfinished
+    actions), so one left in an input can't make Run fail."""
+
+    @override
+    def __call__(
+        self, event: Event, value: Value, properties: list[ActionProperty] = []
+    ) -> None:
+        pass
 
 
 class ReferenceModel(ActionModel):
@@ -105,25 +119,26 @@ class ReferenceModel(ActionModel):
 
     @QtCore.Slot(str)
     def referenceAction(self, value: str) -> None:
-        self._replace_reference(self.library.get_action(uuid.UUID(value)))
+        # Shared with the inputs that use it; in a pane it is edited as a
+        # copy until OK writes it back into the shared one (A1, A4).
+        self._replace_reference(
+            self.adopt_action(self.library.get_action(uuid.UUID(value)))
+        )
 
     @QtCore.Slot(str)
     def duplicateAction(self, value: str) -> None:
         # Duplicate the action, and every action inside it, under new ids
         # into the library before adding it to the tree.
-        action = self.library.clone_action(self.library.get_action(uuid.UUID(value)))
+        action = self.library.duplicate(self.library.get_action(uuid.UUID(value)))
         if action is None:
             raise GremlinError("Reference: this action can't be duplicated.")
         self._replace_reference(action)
 
     def _replace_reference(self, action: AbstractActionData) -> None:
-        # Replace reference action with the provided action
+        # Replace the placeholder with the action; removing it releases the
+        # placeholder through the library's one removal rule.
         self._binding_model.append_action(action, self.sequence_index)
         self._binding_model.remove_action(self.sequence_index)
-
-        # Delete the reference action itself, unless an input still uses it
-        # (the pane edits a copy until OK; the real input keeps its own).
-        self.library.remove_unused(self._data)
 
     actions = QtCore.Property(
         LabelValueSelectionModel, fget=_get_actions, notify=modelChanged
@@ -138,7 +153,7 @@ class ReferenceData(AbstractActionData):
     tag = "reference"
     icon = "\uf470"
 
-    functor = None
+    functor = ReferenceFunctor
     model = ReferenceModel
 
     properties = (ActionProperty.ActivateDisabled,)

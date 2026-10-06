@@ -23,7 +23,7 @@ Covers these gap-list items (claude/gap-list.md, section 1):
   action, Map to Mouse from a hat, the Load Profile action end to end.
 
 Known gaps are written for the spec behaviour and marked xfail(strict) with
-their GL id: GL-003 (load without vJoy), GL-033, GL-036, GL-039, GL-053,
+their GL id: GL-003 (load without vJoy), GL-033, GL-036, GL-039,
 GL-055, GL-097, GL-164.
 
 Nothing here touches the PC: no tray icon, hook, key or mouse output, no
@@ -35,6 +35,7 @@ from __future__ import annotations
 import ctypes
 import re
 import sys
+import time
 import types
 import uuid
 from collections.abc import Callable, Iterator
@@ -1149,11 +1150,6 @@ def test_load_signal_order_and_the_open_profile(
     assert str(path) in cfg.value("global", "internal", "recent-profiles")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-053: Load works out the start mode from the old profile",
-)
 def test_load_puts_the_toolbar_in_the_new_profiles_startup_mode(
     real_backend: Any, tmp_path: Path  # noqa: ANN401
 ) -> None:
@@ -1163,11 +1159,6 @@ def test_load_puts_the_toolbar_in_the_new_profiles_startup_mode(
     assert real_backend.ui_state.currentMode == "Bravo"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-053: New works out the start mode from the old profile",
-)
 def test_new_puts_the_toolbar_in_default(
     real_backend: Any, tmp_path: Path  # noqa: ANN401
 ) -> None:
@@ -1287,11 +1278,6 @@ def test_swap_onto_a_device_with_bindings_swaps_both_ways(
 # --- GL-017: risky action paths ---------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=TypeError,
-    reason="GL-055: Run builds unfinished actions (a Reference placeholder fails)",
-)
 def test_run_skips_unfinished_actions(
     profile: Profile, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -1335,11 +1321,6 @@ def _pane_root(model: Any) -> Any:  # noqa: ANN401
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-097: Add Action reuses the live Merge Axis inside the pane draft",
-)
 def test_merge_axis_reused_in_the_pane_then_cancel_changes_nothing(
     profile: Profile,
 ) -> None:
@@ -1484,6 +1465,12 @@ def test_load_profile_action_end_to_end(
         real_backend.profile.mark_clean()
 
         functor(press, Value(True), [])
+        # GL-057: not from inside the event; it loads once Qt events run.
+        assert real_backend.profile.fpath is None
+        end = time.monotonic() + 2.0
+        while real_backend.profile.fpath != target and time.monotonic() < end:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(0.01)
         assert real_backend.profile.fpath == target
         assert switches[-2:] == [False, True]  # stopped, then run again
     finally:

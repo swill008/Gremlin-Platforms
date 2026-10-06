@@ -147,11 +147,6 @@ def test_reading_history_while_the_writer_works_keeps_its_work_on_the_writer(
     assert ran_on and ran_on[0].endswith("History")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-082: a save's before pictures are read after the write"
-)
 def test_a_saves_before_picture_is_the_picture_it_had(folder: Path) -> None:
     (folder / "pjoy_pro").mkdir()
     photo = folder / "pjoy_pro" / "photo.png"
@@ -540,11 +535,6 @@ def test_an_import_with_nothing_ticked_is_refused(folder: Path, tmp_path: Path) 
     assert path.read_bytes() == before
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-072: a pack import replaces a damaged module file"
-)
 def test_a_pack_import_onto_a_damaged_module_file_is_refused(
     folder: Path, tmp_path: Path
 ) -> None:

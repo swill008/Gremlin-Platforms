@@ -475,7 +475,8 @@ def _catalog(profile: Profile, hw: int = 1) -> Any:  # noqa: ANN401
     return model
 
 
-def test_after_ok_the_pick_list_shows_a_shared_original(profile: Profile) -> None:
+def test_ok_on_a_shared_action_changes_it_for_both(profile: Profile) -> None:
+    # 05 S62, decision A1: OK writes the edit into the one shared action.
     model = _logical_model()
     merge = _merge()
     row = _row(profile)
@@ -489,12 +490,11 @@ def test_after_ok_the_pick_list_shows_a_shared_original(profile: Profile) -> Non
     _kids(model._pane_shadow)[0].label = "edited"
     model.commitPane()
     model.endPane()
-    now = _kids(row)[0]
-    assert now is not merge and _kids(other)[0] is merge
+    assert _kids(row)[0] is merge and _kids(other)[0] is merge  # still shared
+    assert merge.label == "edited"
 
-    values = _values(_live_editor(row, now).mergeActionList)
-    assert str(now.id) in values
-    assert str(merge.id) in values  # was hidden: axis 4 still uses it
+    values = _values(_live_editor(row, merge).mergeActionList)
+    assert values.count(str(merge.id)) == 1
     model.deleteLater()
 
 
@@ -576,8 +576,8 @@ def test_configuration_pane_reference_cancel_and_pick_list(
     assert _kids(item)[1] is placeholder
     assert profile.library.has_action(placeholder.id)
 
-    # The pane lists its copy, not the original; after OK the original
-    # (still used by axis 4) is listed again.
+    # The pane lists its copy, not the original; OK writes the edit into
+    # the original, which axis 4 still shares (decision A1).
     model.beginPane(0, 0)
     draft = _kids(model._pane_shadow)[2]
     values = _values(_action_model(model, draft).mergeActionList)
@@ -585,11 +585,195 @@ def test_configuration_pane_reference_cancel_and_pick_list(
     draft.label = "edited"
     model.commitPane()
     model.endPane()
-    now = _kids(item)[2]
-    assert now is not merge
-    values = _values(_live_editor(item, now).mergeActionList)
-    assert str(now.id) in values and str(merge.id) in values
+    assert _kids(item)[2] is merge and _kids(other)[0] is merge
+    assert merge.label == "edited"
+    values = _values(_live_editor(item, merge).mergeActionList)
+    assert values.count(str(merge.id)) == 1
     back = _reload(profile, tmp_path)  # loadable, the placeholder left out
     again = _get(back, _STICK, InputType.JoystickAxis, 1, "Default")
     assert [a.tag for a in _kids(again)] == ["map-to-vjoy", "merge-axis"]
+    four = _get(back, _STICK, InputType.JoystickAxis, 4, "Default")
+    assert _kids(four)[0] is _kids(again)[1]  # one action after reload too
     model.deleteLater()
+
+
+# --- Map 2: the profile's Library owns every action object -------------------
+
+
+def _shared_merge(profile: Profile) -> tuple[Any, Any, Any]:  # noqa: ANN401
+    """A Merge Axis shared by stick axes 1 and 4: (merge, axis 1, axis 4)."""
+    merge = _merge()
+    merge.label = "before"
+    one = _get(profile,
+        _STICK, InputType.JoystickAxis, 1, "Default", create_if_missing=True
+    )
+    one.add_item_binding().root_action.insert_action(merge, "children")
+    four = _get(profile,
+        _STICK, InputType.JoystickAxis, 4, "Default", create_if_missing=True
+    )
+    four.add_item_binding().root_action.insert_action(merge, "children")
+    return merge, one, four
+
+
+def test_undo_of_ok_on_a_shared_action_puts_both_back(profile: Profile) -> None:
+    # 08 S40, decision A2: Undo restores the shared action for every input.
+    merge, one, four = _shared_merge(profile)
+    model = _catalog(profile)
+    model.beginPane(0, 0)
+    _kids(model._pane_shadow)[0].label = "after"
+    model.commitPane()
+    model.endPane()
+    assert merge.label == "after" and _kids(four)[0] is merge
+
+    model.undo()
+    assert merge.label == "before"
+    one = _get(profile, _STICK, InputType.JoystickAxis, 1, "Default")
+    assert _kids(one)[0] is merge and _kids(four)[0] is merge
+    model.redo()
+    assert merge.label == "after"
+    model.deleteLater()
+
+
+def test_restore_puts_a_shared_actions_settings_back(profile: Profile) -> None:
+    # History Restore of one input brings the shared action back for both.
+    merge, one, four = _shared_merge(profile)
+    key = (_STICK, InputType.JoystickAxis, 1, "Default")
+    kept = profile.library.snapshot(one)
+    merge.label = "changed since"
+    profile.library.restore(key, kept)
+    assert merge.label == "before"
+    again = _get(profile, _STICK, InputType.JoystickAxis, 1, "Default")
+    assert _kids(again)[0] is merge and _kids(four)[0] is merge
+
+
+def test_a_picked_shared_action_is_a_copy_until_ok(profile: Profile) -> None:
+    # 05 S63, decision A4: Cancel leaves the shared action as it was.
+    merge, one, four = _shared_merge(profile)
+    five = _get(profile,
+        _STICK, InputType.JoystickAxis, 5, "Default", create_if_missing=True
+    )
+    five.add_item_binding()
+    model = _catalog(profile, 5)
+    model.beginPane(0, 0)
+    pane = model._pane_shadow
+    picked = profile.library.adopt(pane, merge)
+    assert picked is not merge
+    pane.action_sequences[0].root_action.insert_action(picked, "children")
+    picked.label = "edited in the pane"
+    model.discardPane()
+    model.endPane()
+    assert merge.label == "before"
+    assert not profile.library.has_action(picked.id)
+
+    model.beginPane(0, 0)
+    pane = model._pane_shadow
+    picked = profile.library.adopt(pane, merge)
+    pane.action_sequences[0].root_action.insert_action(picked, "children")
+    picked.label = "edited in the pane"
+    model.commitPane()
+    model.endPane()
+    five = _get(profile, _STICK, InputType.JoystickAxis, 5, "Default")
+    assert _kids(five)[0] is merge and merge.label == "edited in the pane"
+    assert _kids(one)[0] is merge and _kids(four)[0] is merge
+    model.deleteLater()
+
+
+def test_reuse_in_a_pane_makes_a_copy(profile: Profile) -> None:
+    # Add Action > Merge Axis reuses the shared one, as a copy until OK.
+    merge, _one, _four = _shared_merge(profile)
+    model = _catalog(profile, 5)
+    model.beginPane(0, -1)
+    reused = profile.library.create(
+        "Merge Axis", InputType.JoystickAxis, item=model._pane_shadow
+    )
+    assert reused is not merge and reused is not None
+    assert reused.label == "before"
+    assert profile.library.create("Merge Axis", InputType.JoystickAxis) is merge
+    model.endPane()
+    assert not profile.library.has_action(reused.id)
+    model.deleteLater()
+
+
+def test_ok_after_the_input_changed_under_the_pane_writes_nothing(
+    profile: Profile,
+) -> None:
+    # 05 Q8: History Restore changed the input after the pane opened; OK
+    # must not write over it.
+    item = _get(profile,
+        _STICK, InputType.JoystickAxis, 1, "Default", create_if_missing=True
+    )
+    item.add_item_binding().root_action.insert_action(_vjoy(1), "children")
+    kept = profile.library.snapshot(item)
+    _kids(item)[0].vjoy_input_id = 2
+    model = _catalog(profile)
+    model.beginPane(0, 0)
+    profile.library.restore((_STICK, InputType.JoystickAxis, 1, "Default"), kept)
+    _kids(model._pane_shadow)[0].vjoy_input_id = 3
+    assert model.commitPane() == -1
+    item = _get(profile, _STICK, InputType.JoystickAxis, 1, "Default")
+    assert _kids(item)[0].vjoy_input_id == 1
+    model.endPane()
+    model.deleteLater()
+
+
+def test_a_library_works_out_in_use_from_its_own_profile(profile: Profile) -> None:
+    # 04 R2: a library that isn't the open profile's kept nothing in use.
+    other = Profile()
+    item = other.get_input_item(
+        _STICK, InputType.JoystickButton, 1, "Default", create_if_missing=True
+    )
+    root = item.add_item_binding().root_action
+    assert other.library.has_action(root.id)  # 05 RB1: its own library
+    assert not profile.library.has_action(root.id)
+    other.library.release([root])
+    assert other.library.has_action(root.id)  # an input uses it
+    assert other.library.in_use() == {root.id}
+    assert other.library.users(root) == [item]
+
+
+def test_one_removal_rule_frees_what_only_a_dead_action_held(
+    profile: Profile,
+) -> None:
+    # 04 R4: an action held only by a removed (unused) action goes too; one
+    # an input uses stays, with what is inside it.
+    dead = profile.library.create("Root", InputType.JoystickButton)
+    child = _vjoy(1, InputType.JoystickButton)
+    dead.insert_action(child, "children")
+    profile.library.release([child])
+    assert not profile.library.has_action(child.id)
+    dead.remove_action(0, "children")
+    profile.library.release([dead])
+
+    item = _get(profile,
+        _STICK, InputType.JoystickButton, 1, "Default", create_if_missing=True
+    )
+    root = item.add_item_binding().root_action
+    kept = _vjoy(2, InputType.JoystickButton)
+    root.insert_action(kept, "children")
+    profile.library.release([root])
+    assert profile.library.has_action(root.id)
+    assert profile.library.has_action(kept.id)
+
+
+def test_run_leaves_out_unfinished_actions_with_a_line_each(
+    profile: Profile, caplog: pytest.LogCaptureFixture
+) -> None:
+    # 05 S99, Q3: an OK'd Reference placeholder or an unfinished Merge Axis
+    # doesn't run; the log names the action and the input.
+    from gremlin import base_classes
+
+    item = _get(profile,
+        _STICK, InputType.JoystickAxis, 1, "Default", create_if_missing=True
+    )
+    root = item.add_item_binding().root_action
+    root.insert_action(_create("Reference"), "children")
+    root.insert_action(_create("Merge Axis"), "children")
+    vjoy = _vjoy(1)
+    root.insert_action(vjoy, "children")
+    with base_classes.building_for("Stick Axis 1 (Default)"):
+        functor = root.functor(root)
+    built = [type(f).__name__ for f in functor.functors["children"]]
+    assert built == [vjoy.functor.__name__]
+    lines = [r.getMessage() for r in caplog.records if "not finished" in r.getMessage()]
+    assert len(lines) == 2
+    assert all("on Stick Axis 1 (Default)" in line for line in lines)

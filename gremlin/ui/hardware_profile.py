@@ -19,19 +19,9 @@ from PySide6 import (
 )
 
 import gremlin.ui.type_aliases as ta
-from gremlin.modules import hardware, module_file
+from gremlin.modules import module_file, registry, store
 from gremlin.modules.claim import claim_ids
-from gremlin.modules.ids import stored_guid_key
-from gremlin.modules.registry import (
-    _binding_store,
-    _guid_for_name,
-    _name_key,
-    device_has_name,
-    is_output_name,
-    plain_slug,
-    read_doc,
-    resolve_module_slug,
-)
+from gremlin.modules.registry import is_output_name, read_doc
 from gremlin.signal import signal
 from gremlin.ui.live_debug import trace
 from gremlin.ui.util import to_local_path
@@ -39,7 +29,7 @@ from gremlin.ui.util import to_local_path
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
-_IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+_IMAGE_EXT = store.PICTURE_EXT
 
 
 # Off unless someone is tracing a save. Same idea as the HidHide log switch.
@@ -273,672 +263,83 @@ def _install_root() -> Path:
 
 
 def _maps_dir() -> Path:
-    from gremlin.util import modules_dir
-
-    return modules_dir()
-
-
-def _asset_ref(slug: str, name: str) -> str:
-    """Picture path stored in a device file, relative to the modules folder."""
-    return f"{slug}/{name}"
+    """The modules folder (the module file store's)."""
+    return store.folder()
 
 
-def _module_relative(stored: str) -> str:
-    text = stored.replace("\\", "/").lstrip("/")
-    marker = "qml/maps/"
-    if text.lower().startswith(marker):
-        return text[len(marker):]
-    return text
+# Old names of what the module file store now owns, kept for callers that
+# have not moved to gremlin.modules.store yet (GL-093). New code uses the
+# store.
+_asset_ref = store.picture_ref
+_module_relative = store.module_relative
+_slug = store.own_slug
+guid_for_module = store.guid_filter
+_write_bindings = store.set_bindings
+_binding_store = registry.binding_store
+_clear_device_binding = store.unbind
+_live_devices = store.live_devices
+_guid_text = store.guid_text
+_deleted_dir = store.deleted_dir
+_keep_deleted_copy = store.keep_deleted_copy
+_pack_file_name = store.pack_file_name
+_archive_stamp = store.archive_stamp
+_unique_archive = store.unique_archive
+_doc_direction = store.doc_direction
+_target_direction = store.direction_for
+_known_pack_devices = store.known_devices
+_match_pack_device = store.match_known_device
+_suggest_pack_name = store.suggest_device_name
+_safe_name = store.safe_picture_name
+_read_json_dict = registry.read_doc
+_device_input_ids = store.device_input_ids
+_filter_nodes = store.filter_nodes
+member_kind = store.member_kind
+prepare_imported_doc = store.prepare_imported_doc
+module_json_path = store.path_for
+_active_module_path = store.path_for
+_own_file_shared = store.is_shared
 
 
-
-
-def _slug(device_name: str) -> str:
-    return plain_slug(device_name) or "device"
-
-
-def guid_for_module(device_name: str, guid: str) -> str:
-    """Use guid only when it belongs to device_name. A stale id must not select another module."""
-    given = stored_guid_key(guid)
-    if not given:
-        return ""
-    # Another connected device of that name may own it (twin sticks).
-    owned = _guid_for_name(device_name)
-    if owned and owned != given and not device_has_name(given, device_name):
-        return ""
-    return str(guid)
-
-
-def _write_bindings(data: dict[str, str]) -> None:
-    from gremlin.config import Configuration
-
-    _binding_store()
-    Configuration().set("global", "internal", "module-file-bindings", json.dumps(data))
-
-
-def module_json_path(device_name: str, guid: str = "") -> Path:
-    """The module file for this device: the one Run, Module Setup and the
-    Button Map use (registry.resolve_module_slug). It had a rule of its own,
-    so a Device Pack or the Output View could open a different file. A file
-    of another device (another vJoy's) is never used: the shared rule skips
-    it.
-    """
-    return _active_module_path(device_name, guid)
+def _replace_file(path: Path, data: bytes) -> None:
+    """Writes a whole file through the store (History for a module file).
+    Raises OSError. New code calls store.replace."""
+    store.replace(Path(path), data, force=True)
 
 
 def module_file_choices(device_name: str, guid: str = "") -> list[str]:
     """Files in the import folder. Live module files are not listed."""
     del device_name, guid
-    imported = _maps_dir() / "imported"
-    if not imported.is_dir():
-        return []
-    return [
-        f"imported/{path.stem}"
-        for path in sorted(imported.glob("*.json"))
-        if path.is_file()
-    ]
+    return store.import_choices()
 
 
 def foreign_module_file(device_name: str, guid: str = "") -> str:
-    """A binding that still points this device at some other file."""
-    bound = resolve_module_slug(device_name, guid)
-    own = _slug(device_name)
-    if bound and bound != own:
-        return bound
-    return ""
-
-
-def _hid(node: dict) -> int | None:
-    try:
-        number = int(node.get("hwId"))
-    except (TypeError, ValueError):
-        return None
-    return number if number > 0 else None
-
-
-def _infer_direction(doc: dict, path: Path) -> str:
-    del doc
-    if path.stem.lower().startswith("vjoy"):
-        return "dest"
-    return "source"
-
-
-def member_kind(node: dict, member: dict) -> str:
-    """Kind of one chip in a group: its own kind when saved, otherwise from the
-    group (an axis stack holds axes, any other group buttons)."""
-    own = str(member.get("kind") or "").strip().lower()
-    if own in ("axis", "hat"):
-        return own
-    if own in ("btn", "button"):
-        return "btn"
-    return "axis" if str(node.get("kind") or "") == "axis_stack" else "btn"
-
-
-def _filter_nodes(nodes: list, buttons: set[int], axes: set[int], hats: set[int], keys: set[int]) -> list:
-    kept: list = []
-    for node in nodes:
-        if not isinstance(node, dict):
-            continue
-        kind = str(node.get("kind") or "")
-        if kind in ("stack", "axis_stack"):
-            members = []
-            for member in node.get("members") or []:
-                if not isinstance(member, dict):
-                    continue
-                by_kind = {"axis": axes, "hat": hats}
-                want = by_kind.get(member_kind(node, member), buttons)
-                hid = _hid(member)
-                if hid is not None and hid not in want:
-                    continue
-                members.append(member)
-            if not members:
-                continue
-            copied = dict(node)
-            copied["members"] = members
-            kept.append(copied)
-            continue
-        hid = _hid(node)
-        if kind in ("btn", "button"):
-            if hid in buttons:
-                kept.append(node)
-            continue
-        if kind == "axis":
-            if hid in axes:
-                kept.append(node)
-            continue
-        if kind == "hat":
-            if hid in hats:
-                kept.append(node)
-            continue
-        if kind == "key":
-            if hid in keys:
-                kept.append(node)
-            continue
-        if hid is None:
-            kept.append(node)
-    return kept
-
-
-def _filter_friendly(friendly: dict, buttons: set[int], axes: set[int], hats: set[int], keys: set[int]) -> dict:
-    pools = {"button": buttons, "axis": axes, "hat": hats, "key": keys}
-    out = {}
-    for key, value in friendly.items():
-        kind, _, raw = str(key).partition(":")
-        try:
-            hid = int(raw)
-        except ValueError:
-            continue
-        if hid in pools.get(kind, ()):
-            out[str(key)] = value
-    return out
-
-
-def _left_out_text(labels: list[str]) -> str:
-    if not labels:
-        return ""
-    if len(labels) == 1:
-        return f" {labels[0]} was not copied. This device does not have {labels[0]}."
-    listed = ", ".join(labels[:-1]) + " and " + labels[-1]
-    return f" {listed} were not copied. This device does not have them."
-
-
-def _connected_input_ids(guid: str) -> tuple[set[int], set[int], set[int]] | None:
-    if not str(guid or "").strip():
-        return None
-    try:
-        info = hardware.device_info(guid)
-    except Exception:
-        info = None
-    if info is None:
-        return None
-    buttons, axes, hats = _device_input_ids(guid)
-    return set(buttons), set(axes), set(hats)
-
-
-def prepare_imported_doc(
-    doc: dict,
-    device_name: str,
-    guid: str,
-    direction: str,
-    buttons: set[int],
-    axes: set[int],
-    hats: set[int],
-    *,
-    keep_keys: bool,
-    previous_image: str = "",
-) -> tuple[dict, str]:
-    """Copy a module onto this device. The returned document is the copy."""
-    claim = doc.get("claim") if isinstance(doc.get("claim"), dict) else {}
-    keys = set()
-    if keep_keys:
-        for item in claim.get("keys") or []:
-            try:
-                number = int(item)
-            except (TypeError, ValueError):
-                continue
-            if number > 0:
-                keys.add(number)
-    source_buttons = set(claim_ids(claim, "button"))
-    source_axes = set(claim_ids(claim, "axis"))
-    source_hats = set(claim_ids(claim, "hat"))
-    source_keys = set()
-    for item in claim.get("keys") or []:
-        try:
-            number = int(item)
-        except (TypeError, ValueError):
-            continue
-        if number > 0:
-            source_keys.add(number)
-    kept_buttons = source_buttons & buttons
-    kept_axes = source_axes & axes
-    kept_hats = source_hats & hats
-    kept_keys = source_keys & keys
-    payload = json.loads(json.dumps(doc))
-    payload["kind"] = "control.hardware"
-    payload["device"] = device_name
-    payload["direction"] = "dest" if direction == "dest" else "source"
-    if guid:
-        payload["boundName"] = device_name
-        payload["boundGuidLocal"] = guid
-    else:
-        payload.pop("boundGuidLocal", None)
-        payload.pop("boundName", None)
-    payload["claim"] = {
-        "buttons": sorted(kept_buttons),
-        "axes": sorted(kept_axes),
-        "hats": sorted(kept_hats),
-        "keys": sorted(kept_keys),
-        "friendly": _filter_friendly(
-            claim.get("friendly") if isinstance(claim.get("friendly"), dict) else {},
-            kept_buttons,
-            kept_axes,
-            kept_hats,
-            kept_keys,
-        ),
-    }
-    nodes = payload.get("nodes") if isinstance(payload.get("nodes"), list) else []
-    payload["nodes"] = _filter_nodes(nodes, kept_buttons, kept_axes, kept_hats, kept_keys)
-    calibration = payload.get("calibration")
-    if isinstance(calibration, dict):
-        kept_cal = {}
-        for key, value in calibration.items():
-            try:
-                number = int(key)
-            except (TypeError, ValueError):
-                continue
-            if number in kept_axes:
-                kept_cal[str(int(number))] = value
-        payload["calibration"] = kept_cal
-    view = payload.get("view")
-    if isinstance(view, dict) and isinstance(view.get("meters"), list):
-        meters = []
-        for item in view["meters"]:
-            try:
-                number = int(item)
-            except (TypeError, ValueError):
-                meters.append(item)
-                continue
-            if number == 0 or number in kept_axes:
-                meters.append(item)
-        view = dict(view)
-        view["meters"] = meters
-        payload["view"] = view
-    if previous_image:
-        payload["image"] = previous_image
-    else:
-        payload.pop("image", None)
-    left = []
-    left.extend(f"Button {number}" for number in sorted(source_buttons - kept_buttons))
-    left.extend(f"Axis {number}" for number in sorted(source_axes - kept_axes))
-    left.extend(f"Hat {number}" for number in sorted(source_hats - kept_hats))
-    left.extend(f"Key {number}" for number in sorted(source_keys - kept_keys))
-    return payload, _left_out_text(left)
-
-
-def _resolve_import_source(file_name: str) -> Path | None:
-    raw = str(file_name or "").strip()
-    if not raw:
-        return None
-    if "://" in raw or raw.lower().startswith("file:"):
-        try:
-            src = to_local_path(raw)
-        except Exception:
-            return None
-        return src if src and Path(src).is_file() else None
-    direct = Path(raw)
-    if direct.is_file():
-        return direct
-    rel = raw.replace("\\", "/")
-    if rel.lower().endswith(".json"):
-        rel = rel[:-5]
-    if rel.lower().startswith("imported/"):
-        path = _maps_dir() / "imported" / f"{Path(rel).name}.json"
-        return path if path.is_file() else None
-    path = _maps_dir() / f"{plain_slug(rel)}.json"
-    return path if path.is_file() else None
-
-
-def _archive_stamp(moment: datetime | None = None) -> str:
-    """Year, day, month, then hour, minute, and second. Local time."""
-    moment = moment or datetime.now()
-    month = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")[moment.month - 1]
-    return f"{moment.year:04d}-{moment.day:02d}-{month}_{moment.hour:02d}_{moment.minute:02d}_{moment.second:02d}"
-
-
-def _archive_path(stem: str, stamp: str) -> Path:
-    return _maps_dir() / "imported" / f"{stem}.{stamp}.json"
-
-
-def _replace_file(path: Path, data: bytes) -> None:
-    """Write a temporary file, then replace the live file only if that write finishes."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    # Tools > History, as module_file.write_text does (import, Device Pack).
-    from gremlin import history_modules
-
-    old = history_modules.text_before(path)
-    temporary = path.with_name(path.name + ".tmp")
-    try:
-        temporary.write_bytes(data)
-        os.replace(temporary, path)
-    except OSError:
-        if temporary.exists():
-            try:
-                temporary.unlink()
-            except OSError:
-                pass
-        raise
-    # After the write: a write that failed is no History entry.
-    try:
-        history_modules.note_write(path, data.decode("utf-8"), old)
-    except UnicodeDecodeError:
-        pass
-
-
-def _clear_bindings_to(slug: str) -> None:
-    data = _binding_store()
-    want = plain_slug(slug)
-    keys = [key for key, value in data.items() if plain_slug(value) == want]
-    if not keys:
-        return
-    for key in keys:
-        data.pop(key, None)
-    _write_bindings(data)
-
-
-def _count_phrase(count: int, singular: str, plural: str) -> str:
-    return f"{count} {singular if count == 1 else plural}"
-
-
-def _copied_sentence(buttons: int, axes: int, hats: int, keys: int) -> str:
-    parts = []
-    if buttons:
-        parts.append(_count_phrase(buttons, "button", "buttons"))
-    if axes:
-        parts.append(_count_phrase(axes, "axis", "axes"))
-    if hats:
-        parts.append(_count_phrase(hats, "hat", "hats"))
-    if keys:
-        parts.append(_count_phrase(keys, "key", "keys"))
-    if not parts:
-        return "No buttons, axes, or hats were copied."
-    if len(parts) == 1:
-        return f"Copied {parts[0]}."
-    return "Copied " + ", ".join(parts[:-1]) + ", and " + parts[-1] + "."
-
-
-_import_undo: dict | None = None
-
-
-def import_can_undo() -> bool:
-    return _import_undo is not None
-
-
-def drop_import_undo() -> None:
-    global _import_undo
-    _import_undo = None
-
-
-def undo_last_import() -> str:
-    """Put this device's previous file back. The chosen file is not touched."""
-    global _import_undo
-    record = _import_undo
-    if not record:
-        return "Undo failed. There is nothing to undo."
-    dest = Path(record["dest"])
-    previous = record.get("previous")
-    try:
-        if previous is None:
-            if dest.is_file():
-                from gremlin import history_modules
-
-                # History records the delete once it went through.
-                with history_modules.deleting(dest):
-                    dest.unlink()
-            note = "The new module file was removed."
-        else:
-            _replace_file(dest, previous)
-            note = "The previous module file was put back."
-            trace("SAVE", "Configure Module", "undo_last_import", dest, "ok")
-    except OSError:
-        return "Undo failed. The previous module file could not be put back."
-    # The devices the import unbound from that file are bound again.
-    if record.get("bindings") is not None:
-        _write_bindings(record["bindings"])
-    _import_undo = None
-    return "Undone. " + note
-
-
-def import_module_file(device_name: str, guid: str, file_name: str, direction: str = "source") -> str:
-    """Copy a module file onto this device's own file. Archives happen only after that write."""
-    global _import_undo
-    name = str(device_name or "").strip()
-    if not name:
-        return "That file could not be read."
-    src = _resolve_import_source(file_name)
-    if src is None or not src.is_file():
-        return "That file could not be read."
-    own_slug = _slug(name)
-    dest = _maps_dir() / f"{own_slug}.json"
-    try:
-        if src.resolve() == dest.resolve():
-            return "That file is already this device's file."
-    except OSError:
-        return "That file could not be read."
-    doc = read_doc(src)
-    if doc is None:
-        trace("READ", "Configure Module", "import_module_file", src, "error")
-        return "That file could not be read."
-    trace("READ", "Configure Module", "import_module_file", src, "ok")
-    if not isinstance(doc, dict) or doc.get("kind") != "control.hardware":
-        return "That file is not a module file."
-    target = "dest" if str(direction or "").strip().lower() == "dest" else "source"
-    source_direction = _infer_direction(doc, src)
-    if target == "source" and source_direction == "dest":
-        return "A vJoy file cannot be copied onto a stick."
-    if target == "dest" and source_direction == "source":
-        return "A stick file cannot be copied onto a vJoy."
-    keyboard = name.lower() == "keyboard"
-    if keyboard:
-        limits = (set(), set(), set())
-    else:
-        limits = _connected_input_ids(guid)
-        if limits is None:
-            return "This device is not connected, so the file cannot be checked."
-    buttons, axes, hats = limits
-    previous_image = ""
-    previous_bytes: bytes | None = None
-    if dest.is_file():
-        try:
-            previous_bytes = dest.read_bytes()
-            previous = json.loads(previous_bytes.decode("utf-8"))
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            trace("READ", "Configure Module", "import_module_file", dest, "error")
-            return "The current file could not be read, so it was not replaced."
-        if isinstance(previous, dict):
-            previous_image = str(previous.get("image") or "")
-    payload, left = prepare_imported_doc(
-        doc,
-        name,
-        str(guid or ""),
-        target,
-        buttons,
-        axes,
-        hats,
-        keep_keys=keyboard,
-        previous_image=previous_image,
-    )
-    try:
-        _replace_file(dest, (json.dumps(payload, indent=2) + "\n").encode("utf-8"))
-    except OSError:
-        trace("SAVE", "Configure Module", "import_module_file", dest, "error")
-        return "The module file could not be written."
-    trace("SAVE", "Configure Module", "import_module_file", dest, "ok")
-    claim = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
-    friendly = claim.get("friendly") if isinstance(claim.get("friendly"), dict) else {}
-    stamp = _archive_stamp()
-    lines = [
-        f"Imported into {own_slug}.json.",
-        _copied_sentence(
-            len(claim.get("buttons") or []),
-            len(claim.get("axes") or []),
-            len(claim.get("hats") or []),
-            len(claim.get("keys") or []),
-        ),
-    ]
-    if friendly:
-        lines.append(_count_phrase(len(friendly), "name was copied.", "names were copied."))
-    if left.strip():
-        lines.append(left.strip())
-    else:
-        lines.append("Everything in the file was copied.")
-    if previous_image:
-        lines.append("The picture already on this device was kept.")
-    else:
-        lines.append("No picture was added from the chosen file.")
-    lines.append("Profile wires were not changed.")
-    lines.append("The chosen file was left where it was.")
-    if previous_bytes is not None:
-        backup = _archive_path(own_slug, stamp)
-        try:
-            if backup.exists():
-                raise FileExistsError(backup)
-            _replace_file(backup, previous_bytes)
-            lines.append("The previous file was saved as")
-            lines.append(backup.name.replace("-", "\u2011"))
-        except OSError:
-            lines.append("The previous file could not be saved to imported.")
-    bindings = _binding_store()
-    _clear_bindings_to(src.stem)
-    _clear_device_binding(name, str(guid or ""))
-    _import_undo = {
-        "dest": str(dest),
-        "previous": previous_bytes,
-        "bindings": bindings,
-    }
-    persist_log(f"Persist import file name={name!r} guid={guid!r} src={src} dest={dest}")
-    return "\n".join(lines)
-
-
-def _clear_device_binding(device_name: str, guid: str) -> None:
-    data = _binding_store()
-    key = stored_guid_key(guid) or _guid_for_name(device_name)
-    name_key = _name_key(device_name)
-    changed = False
-    if key and key in data:
-        data.pop(key, None)
-        changed = True
-    if name_key and name_key in data:
-        data.pop(name_key, None)
-        changed = True
-    if changed:
-        _write_bindings(data)
+    """The file the device uses when it isn't the one named after it."""
+    return store.foreign_file(device_name, guid)
 
 
 def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
-    slug = plain_slug(file_name)
-    key = stored_guid_key(guid) or _guid_for_name(device_name)
-    if not slug or not key:
-        return ""
-    data = _binding_store()
-    data[key] = slug
-    name_key = _name_key(device_name)
-    if name_key:
-        data[name_key] = slug
-    _write_bindings(data)
-    persist_log(f"Persist bind file name={device_name!r} guid={guid!r} slug={slug!r}")
+    slug = store.bind(device_name, guid, file_name)
+    if slug:
+        persist_log(f"Persist bind file name={device_name!r} guid={guid!r} slug={slug!r}")
     return slug
 
 
-def _live_devices() -> list:
-    try:
-        from gremlin import device_initialization
-        devices = list(device_initialization.physical_devices() or [])
-        devices.extend(device_initialization.vjoy_devices() or [])
-        return devices
-    except Exception:
-        return []
-
-
-def _other_users(slug: str, device_name: str, guid: str) -> set[str]:
-    """The other devices that use module file slug (binding store ids, and
-    connected devices whose file it is). Name entries are left out: each is
-    saved with its device's id, and a renamed stick's old name entry is the
-    stick itself."""
-    key = stored_guid_key(guid) or _guid_for_name(device_name)
-    users = {user for user in _users_of_slug(slug) if not user.startswith("name:")}
-    return users - ({key} if key else set())
-
-
-def _users_of_slug(slug: str) -> set[str]:
-    users: set[str] = set()
-    for key, value in _binding_store().items():
-        if plain_slug(value) == slug:
-            users.add(key)
-    for dev in _live_devices():
-        guid = stored_guid_key(getattr(dev, "device_guid", ""))
-        name = str(getattr(dev, "name", "") or "")
-        if guid and name and resolve_module_slug(name, guid) == slug:
-            users.add(guid)
-    return users
+# --- Delete File and Delete Device ---------------------------------------------
 
 
 def delete_module_file(device_name: str, guid: str) -> str:
-    """Delete this device's file (the one it opens: a renamed stick's is its
-    old file). Do not delete, or unhook, a file another stick uses."""
-    path = _active_module_path(device_name, guid)
-    slug = path.stem
-    key = stored_guid_key(guid) or _guid_for_name(device_name)
-    name_key = _name_key(device_name)
-    if _other_users(slug, device_name, guid):
-        return "Another stick is using this file."
-    if path.is_file():
-        # The file holds claims, calibration and the Button Map layout: keep
-        # a copy in the deleted devices folder, or do not delete it.
-        kept = _keep_deleted_copy(path)
-        if kept is None:
-            return "Could not keep a copy of the module file, so it was not deleted."
-        from gremlin import history_modules
-
-        # History records the delete once it went through.
-        with history_modules.deleting(path):
-            path.unlink()
-        trace(
-            "SAVE", "Configure Module", "delete_module_file", path,
-            f"removed, copy at {kept}",
-        )
-    data = _binding_store()
-    changed = False
-    if key and plain_slug(str(data.get(key, ""))) == slug:
-        data.pop(key, None)
-        changed = True
-    if name_key and plain_slug(str(data.get(name_key, ""))) == slug:
-        data.pop(name_key, None)
-        changed = True
-    if changed:
-        _write_bindings(data)
-    return ""
-
-
-def _deleted_dir() -> Path:
-    from gremlin.util import deleted_devices_dir
-
-    return deleted_devices_dir()
-
-
-def _keep_deleted_copy(path: Path) -> Path | None:
-    """Copy a module file about to be deleted into the deleted devices folder
-    as "<name> <date time>.json", so it can be imported back. None when the
-    copy could not be made."""
-    try:
-        folder = _deleted_dir()
-        folder.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y-%m-%d %H%M%S")
-        dest = folder / f"{path.stem} {stamp}.json"
-        shutil.copy2(path, dest)
-        return dest
-    except OSError:
-        return None
-
-
-def _pack_file_name(device_name: str) -> str:
-    raw = " ".join(str(device_name or "").split()) or "device"
-    cleaned = []
-    for ch in raw:
-        if ch in '<>:"/\\|?*' or ord(ch) < 32:
-            cleaned.append(" ")
-        else:
-            cleaned.append(ch)
-    name = " ".join("".join(cleaned).split()).strip(" .")
-    return name or "device"
+    """Delete File: deletes this device's file (the one it opens: a renamed
+    stick's is its old file), keeping a copy in the deleted devices folder
+    (03 S62). The pictures stay (03 Q14). Refused when another stick uses
+    the file."""
+    return store.delete(
+        device_name, guid, keep_copy=True, pictures=False, who="Configure Module"
+    )
 
 
 def _deleted_pack_path(device_name: str) -> Path:
-    """One folder per Windows device name. Every pack uses the agreed stamp."""
-    base = _pack_file_name(device_name)
-    folder = _deleted_dir() / base
-    folder.mkdir(parents=True, exist_ok=True)
-    stamp = _archive_stamp()
-    return folder / f"{base}.{stamp}.zip"
+    """Where Delete Device's "Save a copy" writes the pack (03 S91)."""
+    return store.deleted_pack_path(device_name)
 
 
 def _zip_readable(path: Path) -> bool:
@@ -950,21 +351,6 @@ def _zip_readable(path: Path) -> bool:
         return isinstance(doc, dict)
     except Exception:
         return False
-
-
-def _active_module_path(device_name: str, guid: str) -> Path:
-    slug = resolve_module_slug(device_name, guid_for_module(device_name, guid))
-    return _maps_dir() / f"{(slug or _slug(device_name))}.json"
-
-
-
-
-def _own_file_shared(device_name: str, guid: str) -> bool:
-    """True when another stick uses this device's file (the one it opens)."""
-    path = _active_module_path(device_name, guid)
-    if not path.is_file():
-        return False
-    return bool(_other_users(path.stem, device_name, guid))
 
 
 def _device_stays_listed(device_name: str) -> bool:
@@ -990,55 +376,42 @@ def _device_stays_listed(device_name: str) -> bool:
 
 def delete_preview(device_name: str, guid: str) -> str:
     name = " ".join(str(device_name or "").split())
-    path = _active_module_path(name, guid)
+    path = store.path_for(name, guid)
     return json.dumps({
         "name": name,
         "canPack": path.is_file(),
-        "shared": _own_file_shared(name, guid),
-        "foreign": bool(foreign_module_file(name, guid)),
+        "shared": store.is_shared(name, guid),
+        "foreign": bool(store.foreign_file(name, guid)),
         "listed": _device_stays_listed(name),
         "keepModule": is_output_name(name),
     })
 
 
-def _drop_binding_tree(profile, binding) -> None:
-    root = getattr(binding, "root_action", None)
-    if root is None or not profile.library.has_action(getattr(root, "id", None)):
-        return
-    try:
-        profile.library.remove_unused(root, True)
-    except Exception:
-        pass
-
-
 def _drop_inputs(profile, uid) -> None:
-    items = list(profile.inputs.pop(uid, []) or [])
-    for item in items:
-        for binding in list(getattr(item, "action_sequences", None) or []):
-            _drop_binding_tree(profile, binding)
+    """The device's inputs leave the profile, with the actions only they
+    used (the library's one removal rule)."""
+    profile.drop_inputs(uid, list(profile.inputs.get(uid, []) or []))
+    profile.inputs.pop(uid, None)
 
 
 def _prune_empty_inputs(profile) -> None:
-    empty = []
     for key, items in list(profile.inputs.items()):
-        kept = [item for item in items if getattr(item, "action_sequences", None)]
-        if kept:
-            profile.inputs[key] = kept
-        else:
-            empty.append(key)
-    for key in empty:
-        profile.inputs.pop(key, None)
+        empty = [item for item in items if not getattr(item, "action_sequences", None)]
+        if empty:
+            profile.drop_inputs(key, empty)
+        if not profile.inputs.get(key):
+            profile.inputs.pop(key, None)
 
 
 def _save_profile_wires(device_name: str, guid: str) -> str:
     from gremlin.shared_state import current_profile
-    from gremlin.ui.input_pairing import _guid
+    from gremlin.ui.input_pairing import parse_guid
 
     profile = current_profile
     if profile is None:
         return ""
-    text = str(guid or "").strip() or _guid_for_name(device_name)
-    uid = _guid(text)
+    text = str(guid or "").strip() or registry.guid_for_name(device_name)
+    uid = parse_guid(text)
     if uid is not None:
         _drop_inputs(profile, uid)
     _prune_empty_inputs(profile)
@@ -1057,47 +430,11 @@ def _save_profile_wires(device_name: str, guid: str) -> str:
     return ""
 
 
-def _clear_device_binding_keys(device_name: str, guid: str) -> None:
-    data = _binding_store()
-    key = stored_guid_key(guid) or _guid_for_name(device_name)
-    name_key = _name_key(device_name)
-    changed = False
-    if key and key in data:
-        data.pop(key, None)
-        changed = True
-    if name_key and name_key in data:
-        data.pop(name_key, None)
-        changed = True
-    if changed:
-        _write_bindings(data)
-
-
-def _delete_own_module_files(slug: str) -> str:
-    """Delete module file slug, its picture folder and old picture files."""
-    try:
-        path = _maps_dir() / f"{slug}.json"
-        if path.is_file():
-            from gremlin import history_modules
-
-            # History records the delete once it went through.
-            with history_modules.deleting(path):
-                path.unlink()
-            trace("SAVE", "Delete Device", "_delete_own_module_files", path, "removed")
-        folder = _maps_dir() / slug
-        if folder.is_dir():
-            shutil.rmtree(folder)
-            trace("SAVE", "Delete Device", "_delete_own_module_files", folder, "removed")
-        for extra in _maps_dir().glob(f"{slug}_photo.*"):
-            if extra.is_file():
-                extra.unlink()
-                trace("SAVE", "Delete Device", "_delete_own_module_files", extra, "removed")
-    except OSError as exc:
-        return str(exc)
-    return ""
-
-
 def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
-    """Archive this device when asked, then remove its live module and wires."""
+    """Delete Device: the pack first when asked, then the device's wires, its
+    module file (a copy always kept in the deleted devices folder, 03 Q5),
+    its pictures, recovery copy and photo safety copies (07 Q11) and its
+    file choices. An output module file, or one another stick uses, stays."""
     from gremlin.shared_state import current_profile
 
     name = " ".join(str(device_name or "").split())
@@ -1105,7 +442,7 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
         return json.dumps({"ok": False, "error": "Choose a device."})
     pack_path = ""
     if save_copy:
-        if not _active_module_path(name, guid).is_file():
+        if not store.exists(name, guid):
             return json.dumps({
                 "ok": False,
                 "error": "This device has no module file, so a pack cannot be saved.",
@@ -1118,7 +455,7 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
         data, _info = built
         dest = _deleted_pack_path(name)
         try:
-            dest.write_bytes(data)
+            store.write_deleted_pack(dest, data)
         except OSError as exc:
             trace("SAVE", "Delete Device", "delete_device", dest, "error")
             return json.dumps({"ok": False, "error": f"The pack could not be written. {exc}"})
@@ -1142,20 +479,19 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
                 pass
         return json.dumps({"ok": False, "error": wire_error})
     # The device's file is the one it opens (a renamed stick's old file),
-    # found before the bindings to it are cleared.
-    own_path = _active_module_path(name, guid)
-    shared = _own_file_shared(name, guid)
+    # found before its file choices are cleared.
+    own_path = store.path_for(name, guid)
+    shared = store.is_shared(name, guid)
     protected = is_output_name(name)
     file_error = ""
     if not shared and not protected:
-        file_error = _delete_own_module_files(own_path.stem)
-    _clear_device_binding_keys(name, guid)
+        file_error = store.delete(
+            name, guid, keep_copy=True, pictures=True, who="Delete Device"
+        )
+    store.unbind(name, guid)
     own_left = own_path.is_file()
     profile = current_profile
-    if profile is None:
-        saved = True
-    else:
-        saved = bool(getattr(profile, "fpath", None))
+    saved = True if profile is None else bool(getattr(profile, "fpath", None))
     if file_error and own_left:
         return json.dumps({
             "ok": False,
@@ -1179,11 +515,11 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
 
 
 def maps_folder_url() -> str:
-    return _maps_dir().as_uri()
+    return store.folder().as_uri()
 
 
 def imported_folder_url() -> str:
-    path = _maps_dir() / "imported"
+    path = store.imported_dir()
     path.mkdir(parents=True, exist_ok=True)
     return path.as_uri()
 
@@ -1196,49 +532,8 @@ def _stock_photo_l() -> Path:
     return _install_root() / "qml" / "images" / "vkb_gladiator_evo_l.jpg"
 
 
-def _safe_name(name: str, fallback: str = "image.jpg") -> str:
-    raw = Path(name or "").name
-    if not raw:
-        return fallback
-    keep = []
-    for ch in raw:
-        if ch.isalnum() or ch in "._-":
-            keep.append(ch)
-        else:
-            keep.append("_")
-    out = "".join(keep).strip("._") or fallback
-    if Path(out).suffix.lower() not in _IMAGE_EXT:
-        out = out + Path(fallback).suffix
-    return out
-
-
-def _guid_text(value: object) -> str:
-    raw = getattr(value, "uuid", value)
-    text = str(raw or "").strip()
-    if text.lower() in ("", "none"):
-        return ""
-    return text
-
-
 def _collapsed_name(value: str) -> str:
     return " ".join(str(value or "").split()).lower()
-
-
-def _doc_direction(doc: dict, exported_name: str) -> str:
-    label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
-    named = str(doc.get("device") or label.get("exportedName") or exported_name or "")
-    if is_output_name(named):
-        return "dest"
-    raw = str(doc.get("direction") or "").strip().lower()
-    if raw in ("source", "dest"):
-        return raw
-    return "dest" if is_output_name(exported_name) else "source"
-
-
-def _read_json_dict(path: Path) -> dict | None:
-    # A damaged file (bad text or not UTF-8) is skipped and named; it used
-    # to stop the whole Device Pack window.
-    return read_doc(path)
 
 
 def _claim_summary(doc: dict) -> dict:
@@ -1255,100 +550,6 @@ def _claim_summary(doc: dict) -> dict:
     }
 
 
-def _known_pack_devices() -> list[dict]:
-    """Connected devices, devices this profile has seen, and saved module files."""
-    rows: dict[str, dict] = {}
-
-    def touch(name: str, guid: str = "", connected: bool = False) -> None:
-        label = " ".join(str(name or "").split())
-        key = label.lower()
-        if not key:
-            return
-        # The file the device opens (a renamed stick's old file).
-        path = _active_module_path(label, guid)
-        row = rows.get(key)
-        if row is None:
-            rows[key] = {
-                "name": label,
-                "guid": guid,
-                "connected": bool(connected),
-                "hasFile": path.is_file(),
-                "fileName": path.name,
-            }
-            return
-        if guid and not row["guid"]:
-            row["guid"] = guid
-        if connected:
-            row["connected"] = True
-        if path.is_file():
-            row["hasFile"] = True
-
-    for dev in _live_devices():
-        touch(
-            str(getattr(dev, "name", "") or ""),
-            _guid_text(getattr(dev, "device_guid", "")),
-            True,
-        )
-    try:
-        from gremlin.shared_state import current_profile
-        profile = current_profile
-        if profile is not None:
-            for info in profile.device_database.devices.values():
-                touch(str(info.name or ""), _guid_text(info.device_uuid), False)
-    except Exception:
-        pass
-    for path in sorted(_maps_dir().glob("*.json")):
-        doc = _read_json_dict(path)
-        if not doc or doc.get("kind") != "control.hardware":
-            continue
-        touch(str(doc.get("device") or "").strip() or path.stem, "", False)
-    return sorted(rows.values(), key=lambda row: row["name"].lower())
-
-
-def _match_pack_device(name: str) -> dict | None:
-    want = _collapsed_name(name)
-    if not want:
-        return None
-    for row in _known_pack_devices():
-        if _collapsed_name(row["name"]) == want:
-            return row
-    return None
-
-
-def _suggest_pack_name(exported: str, devices: list[dict] | None = None) -> str:
-    want = _collapsed_name(exported)
-    if not want:
-        return ""
-    hits = [
-        row["name"]
-        for row in (devices if devices is not None else _known_pack_devices())
-        if _collapsed_name(row["name"]) == want
-    ]
-    if len(hits) == 1:
-        return hits[0]
-    return ""
-
-
-def _target_direction(name: str, guid: str = "") -> str:
-    if is_output_name(name):
-        return "dest"
-    path = _active_module_path(name, guid)
-    doc = _read_json_dict(path) if path.is_file() else None
-    if doc and str(doc.get("direction") or "").strip().lower() == "dest":
-        return "dest"
-    return "source"
-
-
-def _unique_archive(stem: str) -> Path:
-    stamp = _archive_stamp()
-    path = _archive_path(stem, stamp)
-    number = 2
-    while path.exists():
-        path = _maps_dir() / "imported" / f"{stem}.{stamp}_{number}.json"
-        number += 1
-    return path
-
-
 def _export_dir() -> Path:
     from gremlin.util import export_dir
 
@@ -1356,50 +557,7 @@ def _export_dir() -> Path:
 
 
 def _outside_maps(path: Path) -> bool:
-    try:
-        path.resolve().relative_to(_maps_dir().resolve())
-    except ValueError:
-        return True
-    return False
-
-
-def _device_input_ids(guid: str) -> tuple[list[int], list[int], list[int]]:
-    buttons: list[int] = []
-    axes: list[int] = []
-    hats: list[int] = []
-    try:
-        info = hardware.device_info(guid)
-    except Exception:
-        info = None
-    if info is None:
-        return buttons, axes, hats
-    try:
-        button_count = int(getattr(info, "button_count", 0) or 0)
-    except (TypeError, ValueError):
-        button_count = 0
-    buttons = list(range(1, button_count + 1))
-    try:
-        hat_count = int(getattr(info, "hat_count", 0) or 0)
-    except (TypeError, ValueError):
-        hat_count = 0
-    hats = list(range(1, hat_count + 1))
-    for entry in getattr(info, "axis_map", None) or []:
-        index = getattr(entry, "axis_index", None)
-        if index is None and isinstance(entry, dict):
-            index = entry.get("axis_index")
-        try:
-            number = int(index)
-        except (TypeError, ValueError):
-            continue
-        if number > 0:
-            axes.append(number)
-    if not axes:
-        try:
-            axis_count = int(getattr(info, "axis_count", 0) or 0)
-        except (TypeError, ValueError):
-            axis_count = 0
-        axes = list(range(1, axis_count + 1))
-    return buttons, sorted(set(axes)), hats
+    return not store.is_inside(path)
 
 
 def _profile_input_ids(guid: str) -> tuple[list[int], list[int], list[int]]:
@@ -1409,7 +567,7 @@ def _profile_input_ids(guid: str) -> tuple[list[int], list[int], list[int]]:
     buttons: list[int] = []
     axes: list[int] = []
     hats: list[int] = []
-    for item in pairing._items_for_guid(guid):
+    for item in pairing.items_for_guid(guid):
         try:
             number = int(item.input_id)
         except (TypeError, ValueError):
@@ -1439,7 +597,7 @@ def _output_labels(item) -> str:
         seen.add(label)
         labels.append(label)
 
-    for text in pairing._dest_labels_for_item(item):
+    for text in pairing.dest_labels_for_item(item):
         add(text)
     if item is None:
         return ""
@@ -1447,7 +605,7 @@ def _output_labels(item) -> str:
         root = getattr(seq, "root_action", None)
         if root is None:
             continue
-        for action in pairing._walk_actions(root):
+        for action in pairing.walk_actions(root):
             tag = str(getattr(action, "tag", "") or "")
             if tag in ("", "root", "map-to-vjoy", "map-to-xbox"):
                 continue
@@ -1464,7 +622,7 @@ def _label_for(guid: str, kind: str, hw_id: int) -> str:
         "hat": InputType.JoystickHat,
     }.get(kind, InputType.JoystickButton)
     labels: list[str] = []
-    for item in pairing._items_for_guid(guid):
+    for item in pairing.items_for_guid(guid):
         try:
             number = int(item.input_id)
         except (TypeError, ValueError):
@@ -1483,11 +641,10 @@ def chips_for_guid(guid: str) -> list[dict]:
     if not text:
         return []
     from gremlin.ui import input_pairing as pairing
-    from gremlin.ui.module_model import _load_module_doc
 
-    name = pairing._device_name(text)
-    doc = _load_module_doc(name, text) if name else {}
-    claim = doc.get("claim") if isinstance(doc, dict) and isinstance(doc.get("claim"), dict) else {}
+    name = pairing.device_name(text)
+    doc = store.read(name, text) if name else {}
+    claim = doc.get("claim") if isinstance(doc.get("claim"), dict) else {}
     reported = _device_input_ids(text)
     stored = _profile_input_ids(text)
     groups = (
@@ -1735,95 +892,60 @@ class HardwareProfile(QtCore.QObject):
         while dest.exists():
             dest = folder / f"pasted_{n}.png"
             n += 1
-        if not image.save(str(dest), "PNG"):
+        data = QtCore.QByteArray()
+        buffer = QtCore.QBuffer(data)
+        buffer.open(QtCore.QIODevice.OpenModeFlag.WriteOnly)
+        saved = image.save(buffer, "PNG")
+        buffer.close()
+        if not saved:
             return ""
-        self._into_library(dest)
+        try:
+            store.put_picture_at(dest, bytes(data.data()))
+            store.into_library(dest)
+        except OSError:
+            return ""
         self.imageChanged.emit()
-        return _asset_ref(folder.name, dest.name)
-
-    def _guid_for_this_device(self, device_name: str) -> str:
-        # The object remembers one device. Do not use that id for a different name.
-        guid = stored_guid_key(self._device_guid)
-        if not guid:
-            return ""
-        # Any connected device of that name with that id (the second of two
-        # twin sticks has its own id: it used to get the first one's file).
-        if not device_has_name(guid, device_name):
-            return ""
-        return str(self._device_guid)
+        return store.picture_ref(folder.name, dest.name)
 
     def _module_slug(self, device_name: str) -> str:
-        """The device's module file (slug) by the shared rule: the Button Map
-        document, its pictures, its photo and the photo's safety copy all
-        use it. The photo used the device's name, so a renamed stick's photo
-        went where its Button Map never looked."""
-        guid = self._guid_for_this_device(device_name)
-        return resolve_module_slug(device_name, guid) or _slug(device_name)
+        """The device's module file (slug) by the store's one rule, with the
+        id this object was given (a stale id is filtered out there): the
+        Button Map document, its pictures, its photo and the photo's safety
+        copy all use it."""
+        return store.slug_for(device_name, self._device_guid)
 
     def _file_for(self, device_name: str) -> Path:
-        return _maps_dir() / f"{self._module_slug(device_name)}.json"
+        return store.path_of(self._module_slug(device_name))
 
     def _profile_dir(self, device_name: str) -> Path:
-        path = _maps_dir() / self._module_slug(device_name)
+        path = store.pictures_dir_of(self._module_slug(device_name))
         path.mkdir(parents=True, exist_ok=True)
         return path
-
-    def _library_dir(self) -> Path:
-        path = _maps_dir() / "library"
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def _copy_file(self, src: Path, dest: Path) -> Path:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        if dest.resolve() != src.resolve():
-            shutil.copy2(src, dest)
-        return dest
 
     def _into_library(self, src: Path) -> Path:
-        dest = self._library_dir() / _safe_name(src.name, src.name)
-        n = 1
-        stem, ext = dest.stem, dest.suffix
-        while dest.exists() and dest.resolve() != src.resolve():
-            dest = self._library_dir() / f"{stem}_{n}{ext}"
-            n += 1
-        return self._copy_file(src, dest)
+        return store.into_library(src)
 
     def _resolve_existing(self, stored: str) -> Path | None:
+        """The file of a stored picture: in the modules folder (only where
+        the reference says, 07 S11), or one of the program's own pictures
+        (qml/images). None when it is missing."""
+        found = store.find_picture(stored)
+        if found is not None:
+            return found
         s = (stored or "").strip().replace("\\", "/")
-        if not s:
+        if not s or s.startswith("file:") or Path(s).is_absolute():
             return None
-        if s.startswith("file:"):
-            try:
-                p = to_local_path(s)
-            except Exception:
-                return None
-            return p if p.is_file() else None
-        p = Path(s)
-        if not p.is_absolute():
-            rel = _module_relative(s)
-            in_modules = _maps_dir() / rel
-            if in_modules.is_file():
-                return in_modules
-            p = _install_root() / s
-        if p.is_file():
-            return p
-        name = Path(s).name
-        for cand in (
-            _maps_dir() / name,
-            _maps_dir() / "overlays" / name,
-            _maps_dir() / "library" / name,
-            _stock_photo(),
-        ):
-            if cand.is_file() and (name in cand.name or cand == _stock_photo()):
-                if cand == _stock_photo() and "vkb_gladiator_rig" not in s and name != cand.name:
-                    continue
-                return cand
+        installed = _install_root() / s
+        if installed.is_file():
+            return installed
         stock = _stock_photo()
         if "vkb_gladiator_rig" in s and stock.is_file():
             return stock
         return None
 
     def _pack_assets(self, device_name: str, payload: dict) -> dict:
+        """Copies the photo and the map's pictures into the device's folder
+        (atomic, through the store) and points the document at them."""
         folder = self._profile_dir(device_name)
         slug = folder.name
         image = str(payload.get("image") or "")
@@ -1833,8 +955,8 @@ class HardwareProfile(QtCore.QObject):
             payload["image"] = "qml/images/vkb_gladiator_rig.jpg"
         else:
             dest = folder / f"photo{ext}"
-            self._copy_file(src, dest)
-            payload["image"] = _asset_ref(slug, dest.name)
+            self._put(src, dest)
+            payload["image"] = store.picture_ref(slug, dest.name)
         for node in payload.get("nodes") or []:
             if not isinstance(node, dict):
                 continue
@@ -1844,16 +966,24 @@ class HardwareProfile(QtCore.QObject):
             ov = self._resolve_existing(rel)
             if not ov or not ov.is_file():
                 continue
-            dest = folder / _safe_name(ov.name, "overlay.png")
+            dest = folder / store.safe_picture_name(ov.name, "overlay.png")
             if dest.exists() and dest.resolve() != ov.resolve():
                 n = 1
                 while dest.exists() and dest.resolve() != ov.resolve():
                     dest = folder / f"{dest.stem}_{n}{dest.suffix}"
                     n += 1
-            self._copy_file(ov, dest)
-            node["src"] = _asset_ref(slug, dest.name)
+            self._put(ov, dest)
+            node["src"] = store.picture_ref(slug, dest.name)
             node.pop("srcUrl", None)
         return payload
+
+    @staticmethod
+    def _put(src: Path, dest: Path) -> Path:
+        """A picture copied into a device folder (nothing when it is already
+        that file)."""
+        if dest.resolve() != src.resolve():
+            store.put_picture_at(dest, src)
+        return dest
 
     @QtCore.Slot(result=str)
     def exportFolderUrl(self) -> str:
@@ -1861,7 +991,7 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def defaultExportUrl(self, device_name: str) -> str:
-        path = _export_dir() / f"{_slug(device_name)}_map.zip"
+        path = _export_dir() / f"{store.own_slug(device_name)}_map.zip"
         return path.as_uri()
 
     @QtCore.Slot(result=str)
@@ -2059,7 +1189,7 @@ class HardwareProfile(QtCore.QObject):
         key = hashlib.sha1(
             f"{source}|{stamp}|{bright:.3f}|{contrast:.3f}|{grey:.3f}".encode()
         ).hexdigest()[:16]
-        folder = _maps_dir() / "cache"
+        folder = store.folder() / "cache"
         target = folder / f"photo-{key}.png"
         if not target.is_file():
             try:
@@ -2087,14 +1217,11 @@ class HardwareProfile(QtCore.QObject):
         if device_name:
             own = self._file_for(device_name).stem
         rows = []
-        for path in sorted(_maps_dir().glob("*.json")):
+        for path in store.module_files():
             if path.stem == own:
                 continue
-            try:
-                doc = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                continue
-            if not isinstance(doc, dict) or not doc.get("nodes"):
+            doc = store.read_path(path)
+            if not doc.get("nodes"):
                 continue
             name = str(doc.get("device") or path.stem)
             rows.append({"name": name, "slug": path.stem})
@@ -2107,17 +1234,13 @@ class HardwareProfile(QtCore.QObject):
         "" when there is none."""
         if not slug or any(c in slug for c in ("/", "\\", ":")):
             return ""
-        try:
-            doc = json.loads((_maps_dir() / f"{slug}.json").read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return ""
-        nodes = doc.get("nodes") if isinstance(doc, dict) else None
+        nodes = store.read_path(store.path_of(slug)).get("nodes")
         return json.dumps(nodes) if isinstance(nodes, list) and nodes else ""
 
     # --- layout templates (File > Templates) ----------------------------------
 
     def _templates_dir(self) -> Path:
-        return _maps_dir() / "templates"
+        return store.folder() / "templates"
 
     def _template_file(self, name: str) -> Path | None:
         stem = _template_stem(name)
@@ -2243,7 +1366,7 @@ class HardwareProfile(QtCore.QObject):
     # --- recovery copies (autosave) ------------------------------------------
 
     def _recovery_file(self, device_name: str) -> Path:
-        return _maps_dir() / "recovery" / f"{self._module_slug(device_name)}.json"
+        return store.recovery_path(self._module_slug(device_name))
 
     @QtCore.Slot(str, str, result=bool)
     def saveRecovery(self, device_name: str, payload: str) -> bool:
@@ -2297,14 +1420,10 @@ class HardwareProfile(QtCore.QObject):
         self._path = str(path)
         self.pathChanged.emit()
         if path.is_file():
-            try:
-                self._text = path.read_text(encoding="utf-8")
-                trace("READ", "Button Map", "load", path, "ok")
-            except (OSError, ValueError):
-                # Not UTF-8 (damaged): shown empty; saving into it is
-                # refused (module_file.load_for_update).
-                self._text = ""
-                trace("READ", "Button Map", "load", path, "damaged")
+            text = store.read_text(path)
+            # Not UTF-8 (damaged): shown empty; saving into it is refused.
+            self._text = text if text is not None else ""
+            trace("READ", "Button Map", "load", path, "ok" if text is not None else "damaged")
         else:
             self._text = ""
             trace("READ", "Button Map", "load", path, "missing")
@@ -2314,6 +1433,12 @@ class HardwareProfile(QtCore.QObject):
         self.documentChanged.emit()
         return self._text
 
+    def _after_save(self, path: Path) -> None:
+        self._path = str(path)
+        self._text = store.read_text(path) or ""
+        self.pathChanged.emit()
+        self.documentChanged.emit()
+
     @QtCore.Slot(str, str, result=bool)
     def save(self, device_name: str, json_text: str) -> bool:
         name = device_name or self._device_name
@@ -2321,6 +1446,8 @@ class HardwareProfile(QtCore.QObject):
         try:
             payload = json.loads(json_text)
         except json.JSONDecodeError:
+            return False
+        if not isinstance(payload, dict):
             return False
         payload["kind"] = "control.hardware"
         payload["device"] = name
@@ -2330,25 +1457,22 @@ class HardwareProfile(QtCore.QObject):
         payload["pageH"] = 18000
         payload["photoWell"] = 0.75
         payload["photo"] = _photo_pose(payload.get("photo"))
-        payload = self._pack_assets(name, payload)
-        try:
-            existing = module_file.load_for_update(path)
-        except module_file.ModuleFileDamaged as damaged:
-            # Its claims, layout and calibration would be lost: refuse.
-            trace("SAVE", "Button Map", "save", path, "damaged")
-            module_file.report_refused(damaged)
+
+        def change(doc: dict) -> None:
+            # Runs only once the file is known not to be damaged: a refused
+            # save copies no photo or picture (07 S12, GL-079).
+            packed = self._pack_assets(name, payload)
+            # The Button Map writes its own keys; everything else in the
+            # file (claims, names, calibration, Appearance...) stays.
+            for key, value in doc.items():
+                packed.setdefault(key, value)
+            if is_output_name(name):
+                packed["direction"] = "dest"
+            doc.clear()
+            doc.update(packed)
+
+        if not store.update_path(path, change, "Button Map"):
             return False
-        if existing:
-            if isinstance(existing, dict):
-                # The Button Map writes its own keys; everything else in the
-                # file (claims, names, calibration, Appearance...) stays.
-                for key, value in existing.items():
-                    if key not in payload:
-                        payload[key] = value
-        if is_output_name(name):
-            payload["direction"] = "dest"
-        module_file.write_json(path, payload)
-        trace("SAVE", "Button Map", "save", path, "ok")
         kept = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
         persist_log(
             f"Persist map save name={name!r} guid={self._device_guid!r} path={path} "
@@ -2356,10 +1480,7 @@ class HardwareProfile(QtCore.QObject):
             f"claimButtons={len(kept.get('buttons') or [])} "
             f"claimAxes={len(kept.get('axes') or [])}"
         )
-        self._path = str(path)
-        self._text = path.read_text(encoding="utf-8")
-        self.pathChanged.emit()
-        self.documentChanged.emit()
+        self._after_save(path)
         self.imageChanged.emit()
         return True
 
@@ -2374,19 +1495,14 @@ class HardwareProfile(QtCore.QObject):
             return False
         if not path.is_file():
             return self.save(name, json_text)
-        try:
-            payload = module_file.load_for_update(path)
-        except module_file.ModuleFileDamaged as damaged:
-            module_file.report_refused(damaged)
+
+        def change(doc: dict) -> None:
+            doc["ui"] = incoming.get("ui", doc.get("ui") or {})
+
+        if not store.update_path(path, change, "Button Map"):
             return False
-        payload["ui"] = incoming.get("ui", payload.get("ui") or {})
-        module_file.write_json(path, payload)
-        trace("SAVE", "Button Map", "saveUi", path, "ok")
         persist_log(f"Persist map ui name={name!r} guid={self._device_guid!r} path={path}")
-        self._path = str(path)
-        self._text = path.read_text(encoding="utf-8")
-        self.pathChanged.emit()
-        self.documentChanged.emit()
+        self._after_save(path)
         return True
 
     @QtCore.Slot(str, str, result=str)
@@ -2397,15 +1513,19 @@ class HardwareProfile(QtCore.QObject):
         ext = src.suffix.lower() or ".png"
         if ext not in _IMAGE_EXT:
             ext = ".png"
-        self._into_library(src)
-        dest = self._profile_dir(device_name) / _safe_name(src.stem + ext, src.name)
+        folder = self._profile_dir(device_name)
+        dest = folder / store.safe_picture_name(src.stem + ext, src.name)
         n = 1
         while dest.exists() and dest.resolve() != src.resolve():
-            dest = self._profile_dir(device_name) / f"{src.stem}_{n}{ext}"
+            dest = folder / f"{src.stem}_{n}{ext}"
             n += 1
-        self._copy_file(src, dest)
+        try:
+            store.into_library(src)
+            self._put(src, dest)
+        except OSError:
+            return ""
         self.imageChanged.emit()
-        return _asset_ref(self._profile_dir(device_name).name, dest.name)
+        return store.picture_ref(folder.name, dest.name)
 
     def _local_image(self, source_url: str) -> Path | None:
         raw = str(source_url or "").strip().split("?")[0].split("#")[0]
@@ -2427,6 +1547,10 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=str)
     def copyImage(self, source_url: str, device_name: str) -> str:
+        """Makes a picture the device's photo: photo.<ext> in its folder, and
+        the module file's "image". A damaged module file is refused before
+        any photo file is touched (03 S64, GL-070). The device's own photo
+        again changes nothing: no library copy, no write (03 Q3, GL-089)."""
         src = self._local_image(source_url)
         if src is None:
             return ""
@@ -2435,35 +1559,46 @@ class HardwareProfile(QtCore.QObject):
             ext = ".jpg"
         name = device_name or self._device_name
         slug = self._module_slug(name)
-        self._into_library(src)
-        folder = _maps_dir() / slug
-        folder.mkdir(parents=True, exist_ok=True)
+        path = store.path_of(slug)
+        reason = store.damage_of(path)
+        if reason:
+            trace("SAVE", "Button Map", "copyImage", path, "damaged")
+            module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
+            return ""
+        folder = store.pictures_dir_of(slug)
         dest = folder / f"photo{ext}"
-        for old in folder.glob("photo.*"):
-            if old.resolve() != dest.resolve():
-                try:
-                    old.unlink()
-                except OSError:
-                    pass
-        try:
-            self._copy_file(src, dest)
-        except OSError:
-            dest = folder / f"photo_{src.stem}{ext}"
-            self._copy_file(src, dest)
-        trace("SAVE", "Button Map", "copyImage", dest, "ok")
-        rel = _asset_ref(slug, dest.name)
-        # Record the picture on the file the Button Map opens.
-        path = _maps_dir() / f"{slug}.json"
-        if path.is_file():
+        same = dest.is_file() and dest.resolve() == src.resolve()
+        if not same:
             try:
-                loaded = module_file.load_for_update(path)
-            except module_file.ModuleFileDamaged as damaged:
-                module_file.report_refused(damaged)
-                loaded = None
-            if loaded is not None:
-                loaded["image"] = rel
-                module_file.write_json(path, loaded)
-                trace("SAVE", "Button Map", "copyImage", path, "ok")
+                store.into_library(src)
+                store.put_picture_at(dest, src)
+            except OSError:
+                dest = folder / f"photo_{src.stem}{ext}"
+                try:
+                    store.put_picture_at(dest, src)
+                except OSError:
+                    return ""
+            others = [
+                p
+                for p in folder.glob("photo.*")
+                if p.is_file() and p.resolve() != dest.resolve()
+            ]
+            try:
+                store.remove_picture_files(others)
+            except OSError:
+                pass
+            trace("SAVE", "Button Map", "copyImage", dest, "ok")
+        rel = store.picture_ref(slug, dest.name)
+        # Record the picture on the file the Button Map opens.
+        if path.is_file():
+
+            def change(doc: dict) -> bool:
+                if doc.get("image") == rel:
+                    return False  # nothing changed: no write
+                doc["image"] = rel
+                return True
+
+            store.update_path(path, change, "Button Map")
         persist_log(f"Persist photo name={name!r} guid={self._device_guid!r} path={path} image={rel!r}")
         self._path = str(path)
         self.pathChanged.emit()
@@ -2474,56 +1609,34 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, result=bool)
     def clearImage(self, device_name: str) -> bool:
         name = device_name or self._device_name
-        slug = self._module_slug(name)
-        folder = _maps_dir() / slug
-        for p in folder.glob("photo.*"):
-            try:
-                p.unlink()
-                trace("SAVE", "Button Map", "clearImage", p, "removed")
-            except OSError:
-                return False
-        for ext in _IMAGE_EXT:
-            p = _maps_dir() / f"{slug}_photo{ext}"
-            if p.is_file():
-                try:
-                    p.unlink()
-                    trace("SAVE", "Button Map", "clearImage", p, "removed")
-                except OSError:
-                    return False
+        if not store.remove_pictures(name, self._device_guid):
+            return False
         self.imageChanged.emit()
         return True
 
     # Photo safety copy for one Button Map editing session. Choose
-    # background… and Clear image change the photo files at once; Cancel
+    # background... and Clear image change the photo files at once; Cancel
     # puts the session's starting photo (files and the module file's
     # "image") back, Save drops the copy.
 
     def _photo_files(self, slug: str) -> list[Path]:
-        folder = _maps_dir() / slug
-        files = []
-        if folder.is_dir():
-            # photo.<ext>, and copyImage's fallback photo_<name>.<ext>.
-            files = [
-                p
-                for pattern in ("photo.*", "photo_*")
-                for p in folder.glob(pattern)
-                if p.is_file()
-            ]
-        for ext in _IMAGE_EXT:
-            legacy = _maps_dir() / f"{slug}_photo{ext}"
-            if legacy.is_file():
-                files.append(legacy)
-        return files
+        return store.photo_files(slug)
 
     @staticmethod
-    def _stash_dir(slug: str) -> Path:
-        return _maps_dir() / "cache" / "photo-stash" / slug
+    def _stash_dir(slug: str, owner: str = "") -> Path:
+        return store.photo_stash_dir(slug, owner)
 
     @QtCore.Slot(str)
     def stashPhoto(self, device_name: str) -> None:
         """Keep the current photo before this session first changes it."""
+        self.stashPhotoFor(device_name, "")
+
+    @QtCore.Slot(str, str)
+    def stashPhotoFor(self, device_name: str, owner: str) -> None:
+        """stashPhoto for one window's session (owner: "" the Button Map,
+        "setup" Module Setup), so two windows don't share one safety copy."""
         slug = self._module_slug(device_name or self._device_name)
-        stash = self._stash_dir(slug)
+        stash = self._stash_dir(slug, owner)
         if (stash / "manifest.json").is_file():
             return  # This session's starting photo is already kept.
         try:
@@ -2532,8 +1645,8 @@ class HardwareProfile(QtCore.QObject):
             for i, p in enumerate(self._photo_files(slug)):
                 kept = stash / f"{i}{p.suffix}"
                 shutil.copy2(p, kept)
-                files.append({"kept": kept.name, "to": str(p.relative_to(_maps_dir()))})
-            loaded = read_doc(_maps_dir() / f"{slug}.json")
+                files.append({"kept": kept.name, "to": str(p.relative_to(store.folder()))})
+            loaded = read_doc(store.path_of(slug))
             image = loaded.get("image") if loaded is not None else None
             (stash / "manifest.json").write_text(
                 json.dumps({"files": files, "image": image}), encoding="utf-8"
@@ -2544,34 +1657,34 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, result=bool)
     def restorePhoto(self, device_name: str) -> bool:
         """Put the session's starting photo back. False when none was kept."""
+        return self.restorePhotoFor(device_name, "")
+
+    @QtCore.Slot(str, str, result=bool)
+    def restorePhotoFor(self, device_name: str, owner: str) -> bool:
+        """restorePhoto for one window's session (see stashPhotoFor)."""
         slug = self._module_slug(device_name or self._device_name)
-        stash = self._stash_dir(slug)
+        stash = self._stash_dir(slug, owner)
         manifest = stash / "manifest.json"
         if not manifest.is_file():
             return False
         try:
             kept = json.loads(manifest.read_text(encoding="utf-8"))
-            for p in self._photo_files(slug):
-                p.unlink()
+            store.remove_picture_files(self._photo_files(slug))
             for entry in kept.get("files", []):
-                dest = _maps_dir() / entry["to"]
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(stash / entry["kept"], dest)
-            doc_path = _maps_dir() / f"{slug}.json"
+                store.put_picture_at(store.folder() / entry["to"], stash / entry["kept"])
+            doc_path = store.path_of(slug)
             if doc_path.is_file():
-                # As copyImage: a damaged file is left alone (and said), and
-                # the write replaces the file whole.
-                try:
-                    loaded = module_file.load_for_update(doc_path)
-                except module_file.ModuleFileDamaged as damaged:
-                    module_file.report_refused(damaged)
-                    loaded = None
-                if loaded is not None:
+                # As copyImage: a damaged file is left alone (and said).
+
+                def change(doc: dict) -> bool:
+                    before = doc.get("image")
                     if kept.get("image") is None:
-                        loaded.pop("image", None)
+                        doc.pop("image", None)
                     else:
-                        loaded["image"] = kept["image"]
-                    module_file.write_json(doc_path, loaded)
+                        doc["image"] = kept["image"]
+                    return doc.get("image") != before
+
+                store.update_path(doc_path, change, "Button Map")
         except (OSError, json.JSONDecodeError, KeyError):
             persist_log(f"Persist photo restore failed slug={slug!r}")
             return False
@@ -2583,14 +1696,22 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, result=bool)
     def hasPhotoStash(self, device_name: str) -> bool:
         """True while a photo change of this editing session isn't saved."""
+        return self.hasPhotoStashFor(device_name, "")
+
+    @QtCore.Slot(str, str, result=bool)
+    def hasPhotoStashFor(self, device_name: str, owner: str) -> bool:
         slug = self._module_slug(device_name or self._device_name)
-        return (self._stash_dir(slug) / "manifest.json").is_file()
+        return (self._stash_dir(slug, owner) / "manifest.json").is_file()
 
     @QtCore.Slot(str)
     def dropPhotoStash(self, device_name: str) -> None:
         """The session was saved: its starting photo is no longer needed."""
+        self.dropPhotoStashFor(device_name, "")
+
+    @QtCore.Slot(str, str)
+    def dropPhotoStashFor(self, device_name: str, owner: str) -> None:
         slug = self._module_slug(device_name or self._device_name)
-        shutil.rmtree(self._stash_dir(slug), ignore_errors=True)
+        shutil.rmtree(self._stash_dir(slug, owner), ignore_errors=True)
 
     @QtCore.Slot(result=str)
     def imagesFolderUrl(self) -> str:
@@ -2611,10 +1732,15 @@ class HardwareProfile(QtCore.QObject):
         return ""
 
     @QtCore.Slot(str, result=str)
-    def profilePhotoUrl(self, device_name: str) -> str:
+    @QtCore.Slot(str, str, result=str)
+    def profilePhotoUrl(self, device_name: str, guid: str | None = None) -> str:
+        """The device's photo; with guid, for the device with that id (it
+        becomes this object's device)."""
+        if guid is not None:
+            self.setDeviceGuid(guid)
         # The folder of the file the Button Map opens (a renamed stick's
         # old file). The stock photos below go by the device's own name.
-        own = _maps_dir() / self._module_slug(device_name)
+        own = store.pictures_dir_of(self._module_slug(device_name))
         for p in sorted(own.glob("photo.*")):
             if p.is_file():
                 return p.as_uri() + f"?t={int(p.stat().st_mtime_ns)}"
@@ -2624,9 +1750,10 @@ class HardwareProfile(QtCore.QObject):
         except json.JSONDecodeError:
             doc = {}
         found = self._resolve_existing(str(doc.get("image") or ""))
+        own_name = store.own_slug(device_name)
         if found and found.is_file():
             # Never reuse the EVO R grip shot for a different module.
-            if found == _stock_photo() and _slug(device_name) != "vkb_evo_r":
+            if found == _stock_photo() and own_name != "vkb_evo_r":
                 return ""
             try:
                 # A picture saved for another device lives in that device's folder.
@@ -2636,14 +1763,14 @@ class HardwareProfile(QtCore.QObject):
                 found = None
             if found is not None:
                 return found.as_uri() + f"?t={int(found.stat().st_mtime_ns)}"
-        if _slug(device_name) == "vkb_evo_r":
+        if own_name == "vkb_evo_r":
             stock = _stock_photo()
             return stock.as_uri() if stock.is_file() else ""
-        if _slug(device_name) == "vkb_evo_l":
+        if own_name == "vkb_evo_l":
             stock = _stock_photo_l()
             if stock.is_file():
                 return stock.as_uri()
-            packed = _maps_dir() / "vkb_evo_l" / "photo.jpg"
+            packed = store.pictures_dir_of("vkb_evo_l") / "photo.jpg"
             return packed.as_uri() if packed.is_file() else ""
         return ""
 
