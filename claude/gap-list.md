@@ -76,14 +76,14 @@ Do these before any redesign. GL-002 comes before GL-001. GL-003 is here because
 
 ## 2. Urgent standalone fixes (data-loss, crash-or-hang, safety; not covered by a redesign)
 
-Each starts as a failing test, except GL-041 (hands-on check first). GL-029 is a question for the user before any code.
+Each starts as a failing test, except GL-041 (hands-on check first). GL-029 was approved by the user (2026-10-06).
 
 | ID(s) | Title | Severity | Status | Spec / tracker | Files | Fix |
 |---|---|---|---|---|---|---|
 | GL-026 (01-Q6) | A settings file that can't be written fails silently | data-loss | confirmed-in-code | 01 S38, 01 Q6 | gremlin/deferred_write.py:95-105 | One notice per session: "Settings could not be saved: <reason>" (never stopping a quit or install). |
 | GL-027 (04-G6) | Deleting a mode (and its bindings) cannot be undone | data-loss | confirmed-in-code | 04 Q6, S46 | gremlin/ui/profile.py:857 (delete_mode); qml/DialogManageModes.qml | Make at least Delete Mode undoable (Add/Rename/Inherits optional). |
 | GL-028 (04-G8) | Bindings in a mode missing from the mode list load silently and never show | data-loss | suspected | 04 Q8 | gremlin/profile.py:1235-1246 | On load move them into a "Recovered" mode, or warn and list them. |
-| GL-029 (04-G14) | No recovery copy of unsaved profile edits after a crash | data-loss | confirmed-in-code | 04 Q14 | gremlin/profile.py; gremlin/ui/backend.py | Ask the user whether profiles should get a recovery copy like Button Map Autosave; build only on a yes. |
+| GL-029 (04-G14) | No recovery copy of unsaved profile edits after a crash | data-loss | confirmed-in-code | 04 Q14 | gremlin/profile.py; gremlin/ui/backend.py | User said yes (2026-10-06, 04 Q14 / S94): build a profile recovery copy like Button Map Autosave (about every minute while unsaved; Restore / Discard / Not now on next open). |
 | GL-030 (08-G4) | Exported pack and deleted-device pack zips are written in place | data-loss | confirmed-in-code | 08 R4, S49, S86 | gremlin/ui/hardware_profile.py:1943 (exportPack), :1121 (delete_device pack) | Write zips to a temp file and swap; read the export back as the deleted-device pack is. |
 | GL-031 (08-G28) | Undo Import overwrites file edits made after the import without asking | data-loss | confirmed-in-code | 08 Q5, S80 | gremlin/ui/device_pack.py:1578-1589 | If a file changed since the import, ask before putting it back. |
 | GL-032 (08-G29) | Undo Import deletes created Logical Device inputs even if they now have actions | data-loss | confirmed-in-code | 08 Q21, S80 | gremlin/ui/device_pack.py:1620-1622 | Keep a created Logical input that now has actions, and say so. |

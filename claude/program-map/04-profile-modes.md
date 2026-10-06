@@ -380,3 +380,11 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.
+
+**Change (user, 2026-10-06), Q14:** yes, profiles get a recovery copy. While
+a profile has unsaved changes, a recovery copy is kept about every minute;
+on the next open of that profile (or at start after a crash) the program
+offers Restore / Discard / Not now, the same as the Button Map's Autosave.
+Save, Discard and a clean close remove the copy. This adds statement S94:
+"It should keep a recovery copy of unsaved profile edits and offer it after
+a crash" [user decision: 04 Q14].
