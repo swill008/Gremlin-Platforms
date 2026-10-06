@@ -604,6 +604,9 @@ class EventHandler(QtCore.QObject):
         """Move callbacks registered for a mode onto its new name."""
         if old_name == new_name:
             return
+        if old_name in self.known_modes:
+            self.known_modes.discard(old_name)
+            self.known_modes.add(new_name)
         for device_cb in self.callbacks.values():
             if old_name not in device_cb:
                 continue
@@ -617,6 +620,7 @@ class EventHandler(QtCore.QObject):
 
     def drop_mode(self, name: str) -> None:
         """Remove callbacks registered for a deleted mode."""
+        self.known_modes.discard(name)
         for device_cb in self.callbacks.values():
             device_cb.pop(name, None)
 

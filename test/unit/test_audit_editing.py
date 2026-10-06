@@ -106,13 +106,19 @@ def test_ok_after_a_mode_change_stays_on_its_input_and_undoes(
     assert _outs(_input(profile)) == [1, 2]
 
 
-def test_a_mode_change_forgets_the_steps(catalog: tuple[Any, Profile, dict]) -> None:
+def test_steps_follow_a_mode_rename_and_go_with_a_deleted_mode(
+    catalog: tuple[Any, Profile, dict],
+) -> None:
     model, profile, _shown = catalog
     before = model._snapshot(0)
     _input(profile).remove_item_binding(_input(profile).action_sequences[0])
     model._step(0, before)
     assert model.canUndo
-    signal.modesChanged.emit()
+    signal.modesChanged.emit()  # a mode added: the steps stay
+    assert model.canUndo
+    signal.modeRenamed.emit("Default", "Main")
+    assert model._undo[0]["key"][3] == "Main"
+    signal.modeDeleted.emit("Main")
     assert not model.canUndo
 
 

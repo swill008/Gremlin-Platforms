@@ -883,6 +883,7 @@ class ModeHierarchyModel(QtCore.QObject):
 
             ModeManager().rename_mode(old_name, new_name)
             self._follow_editor(old_name, new_name)
+            signal.modeRenamed.emit(old_name, new_name)
             self.modesChanged.emit()
             signal.modesChanged.emit()
 
@@ -900,6 +901,7 @@ class ModeHierarchyModel(QtCore.QObject):
 
         ModeManager().drop_mode(name)
         self._follow_editor(name, self.current_modes.first_mode)
+        signal.modeDeleted.emit(name)
         self.modesChanged.emit()
         signal.modesChanged.emit()
 

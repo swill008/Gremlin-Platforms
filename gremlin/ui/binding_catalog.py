@@ -353,6 +353,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     paneModelChanged = QtCore.Signal()
     parkEmptyChanged = QtCore.Signal()
     undoChanged = QtCore.Signal()
+    # The pane's mode was deleted: the page closes it.
+    paneLost = QtCore.Signal()
 
     # Undo steps kept: each OK or Delete, with the input before and after.
     UNDO_STEPS = 50
@@ -368,10 +370,12 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._undo: list[dict] = []
         self._redo: list[dict] = []
         signal.profileChanged.connect(self.reload)
-        # Another profile (or one changed under the page), or modes renamed
-        # or deleted (steps name their mode): no steps.
+        # Another profile (or one changed under the page): no steps. A mode
+        # renamed or deleted: the steps and the open pane follow (adding a
+        # mode used to clear every step).
         signal.profileChanged.connect(self._forget_steps)
-        signal.modesChanged.connect(self._forget_steps)
+        signal.modeRenamed.connect(self._on_mode_renamed)
+        signal.modeDeleted.connect(self._on_mode_deleted)
         # Undo waits while an action is open in the pane.
         self.paneModelChanged.connect(self.undoChanged)
         self._claimed.countChanged.connect(self.reload)
@@ -906,7 +910,12 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         seq = int(sequence_index)
         if want < 0 or seq < 0:
             return False
-        if self._pane_shadow is not None and want == self._pane_hid:
+        shown = str(getattr(self._claimed, "_mode", None) or "Default")
+        if (
+            self._pane_shadow is not None
+            and want == self._pane_hid
+            and self._get_pane_mode() == shown
+        ):
             return False
         profile = shared_state.current_profile
         dev = getattr(self._claimed, "_device", None)
@@ -976,6 +985,39 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         del self._undo[: -self.UNDO_STEPS]
         self._redo.clear()
         self.undoChanged.emit()
+
+    def _on_mode_renamed(self, old: str, new: str) -> None:
+        for step in self._undo + self._redo:
+            guid, kind, hw, mode = step["key"]
+            if mode == old:
+                step["key"] = (guid, kind, hw, new)
+        if self._pane_input is not None and self._pane_input[3] == old:
+            guid, kind, hw, _mode = self._pane_input
+            self._pane_input = (guid, kind, hw, new)
+            if self._pane_shadow is not None:
+                self._pane_shadow.mode = new
+            self.paneModelChanged.emit()
+
+    def _on_mode_deleted(self, name: str) -> None:
+        before = len(self._undo) + len(self._redo)
+        self._undo = [s for s in self._undo if s["key"][3] != name]
+        self._redo = [s for s in self._redo if s["key"][3] != name]
+        if len(self._undo) + len(self._redo) != before:
+            self.undoChanged.emit()
+        if self._pane_input is not None and self._pane_input[3] == name:
+            # OK would write into a mode that is gone.
+            self.endPane()
+            self.paneLost.emit()
+            signal.showNotification.emit(
+                "Action Editor Closed",
+                f"The mode {name} was deleted, so its action editor closed.",
+            )
+
+    def _get_pane_mode(self) -> str:
+        return str(self._pane_input[3]) if self._pane_input is not None else ""
+
+    # The mode the open pane edits (the page names it when it differs).
+    paneMode = QtCore.Property(str, fget=_get_pane_mode, notify=paneModelChanged)
 
     @QtCore.Slot()
     def _forget_steps(self) -> None:

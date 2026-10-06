@@ -258,6 +258,11 @@ Item {
     }
 
     LogicalLayoutModel { id: _layout }
+    // Its mode was deleted (the model said so and closed the draft).
+    Connections {
+        target: _layout
+        function onPaneLost() { _root.closePaneNow() }
+    }
     WindowPlacement { id: _place }
 
     Component.onCompleted: {

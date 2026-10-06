@@ -37,7 +37,7 @@ from gremlin.types import (
     InputType,
     ScanCode,
 )
-from gremlin.user_script import Script
+from gremlin.user_script import ModeVariable, Script
 from gremlin.util import (
     clamp,
     create_subelement_node,
@@ -970,6 +970,9 @@ class Profile:
         """Replaces an input's actions with a snapshot (None: no actions).
         The snapshot is read first: one that can't be read changes nothing."""
         if snapshot:
+            if not self.modes.mode_exists(mode):
+                # An Undo or History entry from a mode deleted since.
+                raise error.ProfileError(f"The mode '{mode}' isn't in the profile.")
             _check_snapshot(snapshot)
         current = [
             item
@@ -1514,9 +1517,16 @@ class ModeHierarchy:
             lambda a: old_name in (getattr(a, "_target_modes", None) or [])
         ):
             change: Any = action
-            change._target_modes = [
+            # In place: a running Cycle holds this list.
+            change._target_modes[:] = [
                 new_name if mode == old_name else mode for mode in change._target_modes
             ]
+        # Script settings that name the mode (it was left on the old name,
+        # the script stopped running and the setting was dropped on save).
+        for script in self._profile.scripts.scripts:
+            for variable in script.variables.values():
+                if isinstance(variable, ModeVariable) and variable.value == old_name:
+                    variable.value = new_name
 
         if self._profile.settings.startup_mode == old_name:
             self._profile.settings.startup_mode = new_name

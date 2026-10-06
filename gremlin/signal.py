@@ -31,6 +31,9 @@ class Signal(QtCore.QObject):
     setInputIndex = QtCore.Signal(int)
 
     modesChanged = QtCore.Signal()
+    # A mode renamed (old, new) or deleted (name): what names a mode follows.
+    modeRenamed = QtCore.Signal(str, str)
+    modeDeleted = QtCore.Signal(str)
 
     profileChanged = QtCore.Signal()
 

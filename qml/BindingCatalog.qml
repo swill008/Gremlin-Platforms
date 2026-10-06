@@ -162,6 +162,11 @@ Item {
     property string _colorTarget: "parent"
     property string toastText: "Display Options Saved"
 
+    // Its mode was deleted (the model said so and closed the draft).
+    Connections {
+        target: _catalog
+        function onPaneLost() { _root.closeAdvancedPane() }
+    }
     BindingCatalogModel {
         id: _catalog
         guid: device ? device.guid : ""
@@ -947,7 +952,10 @@ Item {
     }
 
     function requestPane(hid, seq) {
-        if (paneHid === hid && paneSeq === seq && paneHid >= 0)
+        // The same control in another mode opens (the pane stayed on the
+        // old mode's input).
+        if (paneHid === hid && paneSeq === seq && paneHid >= 0
+                && (!uiState || _catalog.paneMode === uiState.currentMode))
             return
         if (paneHid >= 0 && _catalog.paneDirty()) {
             panePending = { "hid": hid, "seq": seq, "close": false }
@@ -1547,7 +1555,8 @@ Item {
                                 // Not for the control open in the pane: it is
                                 // edited there (OK would bring it back).
                                 visible: isLeaf && !lv.catalogLocked
-                                         && deviceIndex !== _root.paneHid
+                                         && !(deviceIndex === _root.paneHid
+                                              && _catalog.paneMode === (uiState ? uiState.currentMode : _catalog.paneMode))
                                 text: "Delete"
                                 implicitWidth: Style.dp(70)
                                 implicitHeight: Style.dp(28)
@@ -1680,7 +1689,11 @@ Item {
 
                 RowLayout {
                     Label {
-                        text: _root.paneName.length ? _root.paneName : "Action Editor"
+                        // Names the mode when it isn't the one shown.
+                        text: (_root.paneName.length ? _root.paneName : "Action Editor")
+                              + (uiState && _catalog.paneMode.length
+                                 && _catalog.paneMode !== uiState.currentMode
+                                 ? " (in " + _catalog.paneMode + ")" : "")
                         color: Style.fg
                         font.bold: true
                         font.pixelSize: Style.dp(16)

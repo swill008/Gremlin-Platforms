@@ -168,6 +168,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
     groupsChanged = QtCore.Signal()
     selectionChanged = QtCore.Signal()
     paneModelChanged = QtCore.Signal()
+    # The pane's mode was deleted: the page closes it.
+    paneLost = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -193,7 +195,35 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._pane_new = False
         signal.logicalDeviceModified.connect(self._on_external)
         signal.profileChanged.connect(self._on_profile)
+        signal.modeRenamed.connect(self._on_mode_renamed)
+        signal.modeDeleted.connect(self._on_mode_deleted)
         self._rebuild()
+
+    def _on_mode_renamed(self, old: str, new: str) -> None:
+        # Steps and the open pane follow the new name.
+        for entry in self._undo + self._redo:
+            for link in entry["links"]:
+                if link.get("op") == "input" and link["key"][3] == old:
+                    guid, kind, number, _mode = link["key"]
+                    link["key"] = (guid, kind, number, new)
+                elif link.get("mode") == old:
+                    link["mode"] = new
+        if self._pane_shadow is not None and self._pane_shadow.mode == old:
+            self._pane_shadow.mode = new
+
+    def _on_mode_deleted(self, name: str) -> None:
+        # Steps could bring inputs back into the deleted mode.
+        if self._undo or self._redo:
+            self._undo.clear()
+            self._redo.clear()
+            self.revisionChanged.emit()
+        if self._pane_shadow is not None and self._pane_shadow.mode == name:
+            self.endPane()
+            self.paneLost.emit()
+            signal.showNotification.emit(
+                "Action Editor Closed",
+                f"The mode {name} was deleted, so its action editor closed.",
+            )
 
     def _on_profile(self) -> None:
         # Another profile: the steps belong to the old one.
@@ -1261,11 +1291,12 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             if spec is None:
                 return -1
             profile, item, _real = spec
+            # The pane's own mode (the toolbar may show another by now).
             real = profile.get_input_item(
                 self._logical.device_guid,
                 item.type,
                 item.id,
-                self._mode,
+                str(shadow.mode or self._mode),
                 create_if_missing=True,
             )
             self._pane_real = real
