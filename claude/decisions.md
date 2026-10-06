@@ -292,3 +292,8 @@ only when OSC is picked up.
 | ID | Date | Decision | Why / rules out | Spec refs |
 |---|---|---|---|---|
 | D-06-S39-NORELEASE | 2026-10-06 | An axis-range button sends no release without a press (axis already in range at Run, then leaves: nothing sent) | A release with no press is a stray key-up for key or macro targets | 06 S39, Q13 |
+| D-03-STALEID-ONE | 2026-10-06 | One stale-id rule everywhere: the id of a stick that isn't connected is kept, so the Button Map opens that stick's own module file (as Delete File and Device Pack do). | Rules out name-only lookups mixing twins (user, batch 1) | 03 S2, S9; decision F4 |
+| D-05-DRAFT-OUTDATED | 2026-10-06 | OK in an action editor refuses, with a note, when the input was changed elsewhere (History Restore, Auto Mapper, Device Pack) while the editor was open. Those tools also close the editor first, asking if it has changes (batch 2). | Rules out silently overwriting a newer change (user, batch 1) | 05 Q8 |
+| D-06-STOP-MODE | 2026-10-06 | After Stop the toolbar shows the last non-temporary mode; temporary modes end with Stop; the next Run starts in the toolbar mode. | (recommended; user, batch 1) | 06 R3; 04 S52, S53 |
+| D-05-S69-Q7 | 2026-10-06 | 05 S69 reworded to follow decision 04 Q7: a profile with an unknown action type opens, the action is kept unchanged and a warning names the type. | The decision wins over the older statement | 05 S69; 04 Q7 |
+| D-09-TTS-ENGINE | 2026-10-06 | The speech engine lives for the whole program (Options lists its voices); only its queue belongs to a Run. | GL-066 decided, no code change | 09; 06 G17 |
