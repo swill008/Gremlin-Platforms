@@ -8,6 +8,23 @@ This file provides guidance for AI agents working on the JoystickGremlin codebas
 
 
 
+## Mandatory: change control (user, 2026-10-06)
+
+The program's intended behaviour is the approved spec in `claude/program-map/`
+(section 8 statements plus the section 12 decisions on each page; the
+decision wins where they disagree). The plan and working rules are in
+`claude/system-maps.md`.
+
+- Read the spec page(s) before changing behaviour.
+- A change that would add, change, remove or contradict a spec statement or
+  decision goes to the user first; the spec is updated with their answer
+  before any code.
+- Code that differs from the spec is a gap to fix (failing test first), not a
+  spec change.
+- Every commit touching `gremlin/`, `qml/`, `action_plugins/`, `dill/`,
+  `vigem/` or `joystick_gremlin.py` carries `Spec: <page> <S/Q refs>` or
+  `Spec: none (no behaviour change)`; `test/unit/test_spec_line.py` checks it.
+
 ## Mandatory: test before you push
 
 This sandbox cannot launch the Qt app. That is not a reason to skip tests.
