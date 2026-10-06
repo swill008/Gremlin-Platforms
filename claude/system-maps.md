@@ -15,6 +15,8 @@ Mapped against code at a1459e22 (audit 3). Line numbers drift as code changes: r
 
 **Stage 1 – Safety net** (done 2026-10-06; GL-016 hands-on checks left to the user): CI on every push (full suite in random order, lint, no new pyright errors against the baseline); about 10 journey tests written from the spec; `validate()` rule checks after save, load and Stop (report-only at first); `claude/decisions.md` decision record.
 
+**One-time catch-up (agreed 2026-10-06), replacing the step-by-step Stage 2 below until a baseline exists:** all open gap-list fixes in three parallel batches, each with a batch test plan and a full local test, no push or CI until the end; then a full test plan, tests, one push, CI. Details in `claude/todo.md` ("ONE-TIME CATCH-UP"). After it, Stages 2 and 3 below apply as written for everything new.
+
 **Stage 2 – Redesigns, one at a time** (Run lifecycle, module files, actions; maps below): tests that lock in today's behaviour first, then the new owner with its guard test, the giant files' code moved into it, its rule checks switched from report to fail. Every bug starts as a failing test.
 
 **Stage 3 – Ongoing**: small changes, merged only when journeys, rule checks and guard tests pass; a release checklist with the user's hands-on check; audits become "run the checks, add a journey".

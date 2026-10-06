@@ -3,6 +3,51 @@
 Work that is known and parked. Each item names its tracker ref (UI issues
 tracker) so the details stay in one place.
 
+## ONE-TIME CATCH-UP (agreed with the user 2026-10-06) — read this first
+
+A short-term exception to "How we work" in `claude/system-maps.md`, to get
+a clean baseline fast. **When it ends, the proper process applies again in
+full** (trace first, independent re-trace, a test that fails on the old
+code for each fix, small batches, push + CI per batch).
+
+**Scope:** fix the open gap-list entries (`claude/gap-list.md`) that are
+bugs. No new features: GL-029 (profile recovery copy) and the parked OSC
+items (section 9) are deferred.
+
+**Each batch:**
+1. Fix in parallel: agents each own separate files; if a fix breaks
+   something it is fixed at once, in that batch.
+2. At the end of the batch: a short batch test plan (what was fixed, how
+   each fix is checked, from the spec) appended to
+   `claude/catchup-test-plan.md`.
+3. Full LOCAL test: whole suite in random order + lint baseline + the
+   batch plan's checks; fix anything that fails before the batch closes.
+4. Commit locally (Spec: lines as usual). **No push, no CI** during the
+   catch-up.
+5. Update the gap list (done marks) and the tracker's GL entries.
+
+**Batches:** 1 = the three redesigns in parallel (Run lifecycle, module
+files, actions; maps in `claude/system-maps.md`); 2 = urgent fixes +
+behaviour/UX by subsystem (~8 agents); 3 = text, glossary, help and
+clean-up (~3 agents).
+
+**At the end:** one full test plan for the code base (from the batch plans
+and the spec) → write the missing tests → full local run (with the user's
+Gremlin closed, so the integration/vJoy tests run) → fix → push everything
+once → CI → fix → **that is the baseline; back to the proper process.**
+
+**Still in force throughout:** change control (a fix that would change the
+spec goes to the user first, `.claude/CLAUDE.md`), the Spec: line on every
+commit, the program thread and layer rules, off-screen/safety rules.
+
+**User notes:** the user may use their own Gremlin during the catch-up;
+integration tests skip while it is open (run them at the end with it
+closed); full runs load the PC for ~3 min each.
+
+**Status:** CI baseline fixes pushed up to 0e790f73 (hang-watch heartbeat
+and enum race); that CI run's result was pending when the catch-up was
+agreed. Catch-up not started yet (next: batch 1).
+
 ## Next up (updated 2026-10-06)
 
 Stages 0-3 are written out in `claude/system-maps.md` ("The plan").
