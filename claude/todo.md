@@ -26,10 +26,57 @@ items (section 9) are deferred.
    catch-up.
 5. Update the gap list (done marks) and the tracker's GL entries.
 
-**Batches:** 1 = the three redesigns in parallel (Run lifecycle, module
-files, actions; maps in `claude/system-maps.md`); 2 = urgent fixes +
-behaviour/UX by subsystem (~8 agents); 3 = text, glossary, help and
-clean-up (~3 agents).
+**How the agents are split (user, 2026-10-06; replaces the first
+3-agent start of batch 1):** as many agents as is useful, about 8–10 at
+once at most on the user's PC. Split **contract-first**: in each redesign
+one agent owns the new owner module and writes its interface first
+(signatures and docstrings, from the map in `claude/system-maps.md`);
+the other agents move the callers onto it, each in its own files. No two
+agents edit the same file. A change needed in a file someone else owns
+goes to the lead (the main session), which passes it on. Shared files
+(`test/conftest.py`, `claude/*`) stay with the lead.
+
+**Batches:**
+- **Batch 1 – the three redesigns, 7 agents** (gap list sections 3–5):
+  - R1 Run owner: `gremlin/run_scope.py` (new), `joystick_gremlin.py`,
+    `gremlin/code_runner.py`, `event_handler.py`, `mode_manager.py`,
+    `device_initialization.py`, `user_script.py`, `macro.py`,
+    `validate.py`; tests `test_audit3_run_stop`, `test_bounded_waits`,
+    `test_stage1_runtime`, `test/journeys/test_j10_tempo_stop`.
+  - R2 Run callers: `gremlin/audio_player.py`, `tts.py`, `keyboard.py`,
+    `sendinput.py`, `plugin_manager.py`, and the plugins that hold timers
+    (`action_plugins/tempo`, `double_tap`, `smart_toggle`, `chain`).
+  - M1 Module store owner: `gremlin/modules/store.py` (new),
+    `modules/module_file.py`, `modules/registry.py`,
+    `gremlin/history_modules.py`; tests `test_module_store_only` (new
+    guard test), `test_audit3_module_files`, `test_stage1_modules`.
+  - M2 Module pages: `gremlin/ui/module_model.py`, `module_inputs.py`,
+    `module_pairing.py`, `hardware_profile.py`,
+    `gremlin/modules/calibration.py`, `qml/DialogConfigureModule.qml`,
+    `qml/DialogJoystickButtonMap.qml`.
+  - M3 Device Pack / History / Auto Map: `gremlin/ui/device_pack.py`,
+    `ui/history_model.py`, `ui/binding_catalog.py`, `ui/logical_layout.py`,
+    `gremlin/modules/auto_map.py`, `auto_mapper.py`, `logical_device.py`;
+    tests `test_device_pack_import`, `device_pack_window_smoke`,
+    `test_twin_devices`.
+  - A1 Action Library owner: `gremlin/profile.py`, `base_classes.py`,
+    `gremlin/ui/profile.py`, `gremlin/unknown_action.py` (new),
+    `qml/UnknownAction.qml` (new); tests `test_audit3_actions_undo`,
+    `test_audit2_saving`, `test_data_safety`.
+  - A2 Action editors: `gremlin/ui/action_model.py` and the other
+    plugins (`condition`, `dual_axis_deadzone`, `map_to_logical_device`,
+    `map_to_vjoy`, `merge_axis`, `reference`, …); tests
+    `test_action_editor_fixes`, `test_action_fixes`.
+  - Files not listed: ask the lead first.
+- **Batch 2 – urgent fixes + behaviour/UX, 9–10 agents** (sections 2 and
+  6): one agent per subsystem page, two for the largest; Device Pack
+  all-or-nothing (GL-099/GL-109, A3) is here.
+- **Batch 3 – text, glossary, help, clean-up, about 4 agents** (sections
+  7 and 8).
+
+The stopped first try at batch 1 (3 agents, partial) is saved as a patch
+for reference only: session scratchpad `batch1_partial/tracked.diff` plus
+`untracked/` (may be gone in a later session; not needed).
 
 **At the end:** one full test plan for the code base (from the batch plans
 and the spec) → write the missing tests → full local run (with the user's
@@ -44,9 +91,8 @@ commit, the program thread and layer rules, off-screen/safety rules.
 integration tests skip while it is open (run them at the end with it
 closed); full runs load the PC for ~3 min each.
 
-**Status:** CI baseline fixes pushed up to 0e790f73 (hang-watch heartbeat
-and enum race); that CI run's result was pending when the catch-up was
-agreed. Catch-up not started yet (next: batch 1).
+**Status:** CI baseline green (run 37521378227 on 0e790f73). Batch 1
+restarted 2026-10-06 with the 7-agent split above.
 
 ## Next up (updated 2026-10-06)
 
