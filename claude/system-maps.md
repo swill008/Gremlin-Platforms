@@ -4,6 +4,19 @@ Three shared systems behind most repeat bugs. Each: today, problems, one-owner d
 
 Mapped against code at a1459e22 (audit 3). Line numbers drift as code changes: re-check them when a step starts.
 
+## The plan (stages, agreed 2026-10-06)
+
+**Stage 0 – Know the program (in progress).**
+1. *Program map*: one page per subsystem in `claude/program-map/` (what it owns, entry points, data, threads, callers, where it breaks the layer or single-owner rules). Read-only; no code changes.
+2. *Behaviour spec*: in the same pages, "It should ..." statements gathered from help, glossary, test plan, tracker and code; unclear or contradictory ones are questions for the user. The user reviews each subsystem's list; confirmed statements are the definition of correct.
+3. *Gap list*: where the code differs from the spec, or nothing owns something. Replaces open-ended audits.
+
+**Stage 1 – Safety net** (before any redesign): CI on every push (full suite in random order, lint, no new pyright errors against the baseline); about 10 journey tests written from the spec; `validate()` rule checks after save, load and Stop (report-only at first); `claude/decisions.md` decision record.
+
+**Stage 2 – Redesigns, one at a time** (Run lifecycle, module files, actions; maps below): tests that lock in today's behaviour first, then the new owner with its guard test, the giant files' code moved into it, its rule checks switched from report to fail. Every bug starts as a failing test.
+
+**Stage 3 – Ongoing**: small changes, merged only when journeys, rule checks and guard tests pass; a release checklist with the user's hands-on check; audits become "run the checks, add a journey".
+
 ## Status
 
 | System | Map | Approved | Built | Open tracker items it closes |

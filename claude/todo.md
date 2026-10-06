@@ -5,7 +5,14 @@ tracker) so the details stay in one place.
 
 ## Next up (updated 2026-10-06)
 
-- [ ] **System redesigns: waiting for the user's approval.** The plan, the
+Stages 0-3 are written out in `claude/system-maps.md` ("The plan").
+
+- [ ] **Stage 0 – Program map and behaviour spec** (in progress):
+  `claude/program-map/`, one page per subsystem; then the user reviews
+  each page's "It should ..." list and questions; then the gap list.
+- [ ] **Stage 1 – Safety net**: CI, journey tests, `validate()` rule
+  checks, `claude/decisions.md`.
+- [ ] **System redesigns (Stage 2): waiting for the user's approval.** The plan, the
   decisions to answer (F1-F4, A1-A4, R1-R4) and how we work are in
   `claude/system-maps.md`. Order: Run lifecycle (closes AU-116, AU-117),
   then module files (rest of AU-64), then actions (AU-118 and the shared
