@@ -235,28 +235,28 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 
 ### A. Which actions exist and which are offered
 
-- **S1** It should load every built-in action plugin at start; a broken built-in plugin is a bug and stops start-up. [code only]
+- **S1** It should load every built-in action plugin at start; a broken built-in plugin is a bug and stops start-up. [user confirmed 2026-10-06; was code only]
 - **S2** It should skip (and log) a user plugin that fails to load, instead of stopping the program. [tracker: AU-35] [test: test_audit2_startup_devices.py]
-- **S3** It should refuse a user plugin whose tag, name or QML type clashes with a built-in or earlier plugin, or whose input types aren't axis/button/hat/key. [code only] [test: test_audit3_startup.py::test_a_user_plugin_cant_replace_a_built_in_qml_element]
+- **S3** It should refuse a user plugin whose tag, name or QML type clashes with a built-in or earlier plugin, or whose input types aren't axis/button/hat/key. [user confirmed 2026-10-06; was code only] [test: test_audit3_startup.py::test_a_user_plugin_cant_replace_a_built_in_qml_element]
 - **S4** Add Action should list only actions that suit the input's behaviour (axis, button, hat, key). [help: Choosing an action]
-- **S5** A key, and an axis or hat treated as a button, should be offered the button actions. [code only] (`InputItemBindingModel._get_behavior` maps Keyboard to "button")
+- **S5** A key, and an axis or hat treated as a button, should be offered the button actions. [user confirmed 2026-10-06; was code only] (`InputItemBindingModel._get_behavior` maps Keyboard to "button")
 - **S6** Add Action should follow the order and hiding set in Options > Actions > Add Action Menu; Root is never listed. [help: Choosing an action] [test: test_option_list_saving.py::test_action_order_move_is_saved]
-- **S7** A new plugin found at start should be added to that list (shown), and a plugin no longer present should leave it. [code only] (`update_action_priorities`)
-- **S8** The action's right-click menu should offer the first three actions of that order as quick adds and the rest under Map to / Axis and Hat / Logic and Timing / Other, matching the Options list. [code only] (`ActionNode.qml:287-317`, `action_kinds.js`)
-- **S9** Map to vJoy should be offered only when at least one vJoy device can be an output. [code only]
+- **S7** A new plugin found at start should be added to that list (shown), and a plugin no longer present should leave it. [user confirmed 2026-10-06; was code only] (`update_action_priorities`)
+- **S8** The action's right-click menu should offer the first three actions of that order as quick adds and the rest under Map to / Axis and Hat / Logic and Timing / Other, matching the Options list. [user confirmed 2026-10-06; was code only] (`ActionNode.qml:287-317`, `action_kinds.js`)
+- **S9** Map to vJoy should be offered only when at least one vJoy device can be an output. [user confirmed 2026-10-06; was code only]
 - **S10** Text to Speech should be offered for buttons and keys. [test-plan: AE-09b asks] (see Q7)
 - **S11** Every action should have a Help topic. [test-plan: HELP-B] [test: test_help_guide.py]
 
 ### B. Configuration page list
 
 - **S12** It should list the claimed inputs of one device, each with its actions, in the mode shown on the toolbar. [help: Adding actions] [glossary: Claim]
-- **S13** With no claimed inputs it should say so and point to Module Setup; when filters hide everything it should say "No inputs match the current filters." with Clear Filters. [code only]
+- **S13** With no claimed inputs it should say so and point to Module Setup; when filters hide everything it should say "No inputs match the current filters." with Clear Filters. [user confirmed 2026-10-06; was code only]
 - **S14** An input with no actions should show **No actions**. [glossary] [test-plan: GLOSSARY-2]
 - **S15** "Move inputs with no actions to the end" should list them together under a **No actions** heading. [help: Adding actions] (today the heading reads "Unmapped": G5)
 - **S16** Each child row should name the action type and where it goes (vJoy output label, keys, mouse button or "Motion", profile/program/sound file name, mode). [tracker: B5/B6 via BUGS-1] [test: test_catalog_actions.py::test_summarize_covers_every_plugin_tag]
 - **S17** Containers (Chain, Tempo, Condition, Double Tap, Smart Toggle, Description, Reference) should show the actions inside them; an empty container shows as an empty sequence. [test: test_catalog_actions.py::test_wrapper_with_child_shows_the_child] [test: test_catalog_actions.py::test_wrapper_without_child_is_an_empty_sequence]
 - **S18** The Type filter should offer All, Map to vJoy, keyboard, mouse, Xbox, Macro, Change Mode, Other, No actions; the Output filter lists the destinations in use. [test-plan: IC-01]
-- **S19** Rows should show live LEDs/bars when Appearance turns them on, but never while editing is locked. [code only]
+- **S19** Rows should show live LEDs/bars when Appearance turns them on, but never while editing is locked. [user confirmed 2026-10-06; was code only]
 
 ### C. The action pane (draft, OK, Cancel)
 
@@ -264,7 +264,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S21** Edits in the pane should not change the input until OK. [test: test_pane_draft.py::test_draft_does_not_change_the_parent_until_ok]
 - **S22** OK should write the pane's actions onto the input, keep the profile unsaved until File > Save, and keep the pane open on a fresh copy unless "Close pane after OK" is ticked. [help: Adding actions] [test-plan: IC-11]
 - **S23** "Close pane after OK" and the pane width should be remembered between sessions. [test-plan: IC-09..13]
-- **S24** OK with nothing changed should do nothing (no Undo step). [code only] (`commitPane` checks `paneDirty`)
+- **S24** OK with nothing changed should do nothing (no Undo step). [user confirmed 2026-10-06; was code only] (`commitPane` checks `paneDirty`)
 - **S25** Removing every action in the pane then OK should clear the input, as an Undo step. [tracker: AU-30] [test: test_audit_editing.py::test_removing_every_action_in_the_pane_then_ok_clears_the_input]
 - **S26** Closing the pane (X), opening another input, leaving the page, Load, New or Quit with unsaved pane changes should ask Save / Discard / Cancel; Cancel keeps the edit, Discard drops it. [help: Adding actions] [test-plan: IC-09] [test-plan: F-05]
 - **S27** Discard (or X with no changes) should leave the profile exactly as before the pane opened, unfinished actions included. [test: test_audit3_actions_undo.py::test_cancel_leaves_an_unfinished_merge_axis_as_it_was] [tracker: AU-110]
@@ -272,7 +272,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S29** Renaming the pane's mode should keep the pane on the renamed mode; deleting it should close the pane and say "The mode X was deleted, so its action editor closed." [test-plan: AUDIT2-C-MODES] [test: test_audit_editing.py::test_steps_follow_a_mode_rename_and_go_with_a_deleted_mode]
 - **S30** Loading another profile should close an open pane. [test-plan: F-05]
 - **S31** The list's Delete should be hidden and refused for the input open in the pane. [tracker: AU-28, AU-29] [test: test_audit_editing.py::test_the_list_delete_waits_while_the_pane_edits_that_input]
-- **S32** While the profile runs, editing should be locked (pane contents greyed, Undo/Redo off). [help: Adding actions] [code only for the pane opening at all: Q11]
+- **S32** While the profile runs, editing should be locked (pane contents greyed, Undo/Redo off). [help: Adding actions] [user confirmed 2026-10-06; was code only for the pane opening at all: Q11]
 - **S33** A draft should never make the profile look unsaved. [tracker: G-LIBLEAK] [test: test_profile_unused_actions.py::test_an_open_draft_is_not_unsaved_work]
 - **S34** Saving with the pane open should leave the draft untouched and write only actions inputs use. [user decision: map 2 verification list] (not tested: G9)
 
@@ -290,11 +290,11 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 
 - **S42** Each action should have a label field; a blank label stays blank after save and reload. [test: test_action_xml_round_trip.py::test_blank_action_label_stays_blank]
 - **S43** The binding's free text is the **Note** (root action label); it shows on the input's row. [glossary: Note]
-- **S44** Button actions that allow it should have press/release switches; both off shows "Off: never runs". [tracker: WORKFLOW-HANDS-ON] [code only for the save]
+- **S44** Button actions that allow it should have press/release switches; both off shows "Off: never runs". [tracker: WORKFLOW-HANDS-ON] [user confirmed 2026-10-06; was code only for the save]
 - **S45** An action with a problem should show a warning or error icon with the reason on hover; an error means Save will leave it out and asks first ("Save without them"). [test-plan: SAFE-1] [test: test_action_warnings.py]
 - **S46** Changing "Treat as" should ask first when the binding has actions, and remove them on yes. [tracker: A8] [test: test_input_item_binding_model.py::test_behavior_switch_clears_children]
 - **S47** Deleting an action in an editor should remove it and its children from the profile unless another input uses it; moving it keeps it. [tracker: ACT16] [test: test_action_editor_fixes.py::test_a_deleted_action_leaves_the_library] [test: test_action_editor_fixes.py::test_a_moved_action_stays_in_the_library]
-- **S48** Removing a binding with actions should ask first. [code only] (`InputItemBindingConfigurationHeader.qml:161-172`)
+- **S48** Removing a binding with actions should ask first. [user confirmed 2026-10-06; was code only] (`InputItemBindingConfigurationHeader.qml:161-172`)
 - **S49** Hat as Buttons 8 way -> 4 way should ask before dropping a direction that has actions. [test-plan: SAFE-3-HANDS-ON]
 - **S50** Changing the Response Curve type should keep the points and Symmetric. [tracker: ACT14] [test-plan: CRASH-AND-LOSS-FIXES]
 - **S51** Editors should state units and ranges (sec, px/s, %, Times, counted from 1). [tracker: ACT23] [test: test_action_editor_fixes.py::test_editors_say_their_units_and_count_from_one]
@@ -321,7 +321,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S66** Save should ask before leaving out unfinished actions (Save without them / Cancel). [test-plan: SAFE-1]
 - **S67** A profile naming a missing child action should open (no hang); the missing child is dropped on save. [tracker: ACT1] [test: test_profile_missing_child_action.py] [test: test_audit3_actions_undo.py::test_a_save_drops_a_child_missing_from_the_library]
 - **S68** A Play Sound or Load Profile whose file is missing should not stop the profile opening; the action is kept, warns, and does nothing when pressed. [tracker: ACT11, AU-14] [test: test_play_sound_missing_file.py]
-- **S69** A profile with an action type this program doesn't have should fail to open with a message naming the type, and the open profile stays. [code only] [tracker: ACT15 for the "stays" part]
+- **S69** A profile with an action type this program doesn't have should fail to open with a message naming the type, and the open profile stays. [user confirmed 2026-10-06; was code only] [tracker: ACT15 for the "stays" part]
 - **S70** Response Curve Symmetric should be saved. [tracker: ACT13]
 - **S71** Changing a mode's name should update Change Mode actions that name it. [tracker: AU-20]
 
@@ -329,19 +329,19 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 
 - **S72** It should list each added key once, with the actions of the mode shown. [tracker: AU-32] [test: test_mode_refresh_and_add_key.py::test_a_key_in_two_modes_is_listed_once_with_the_shown_modes_actions]
 - **S73** Add Key should add the pressed key to the mode being viewed and select it. [test: test_mode_refresh_and_add_key.py::test_add_key_goes_into_the_given_mode]
-- **S74** A selected key should show its actions in the editor, where actions can be added. [code only] (see Q4: a new key has no binding to add to)
+- **S74** A selected key should show its actions in the editor, where actions can be added. [user confirmed 2026-10-06; was code only] (see Q4: a new key has no binding to add to)
 - **S75** Delete should ask, remove only this mode's actions for that key, and show only on keys that have actions in this mode (or none in any mode). [tracker: AU-31, AU-90, AU-100] [test: test_audit2_keyboard_calibration.py::test_a_key_only_in_another_mode_is_not_in_this_one]
 - **S76** Deleting the last key should let the editor go of it. [test: test_audit2_keyboard_calibration.py::test_deleting_the_last_key_lets_the_editor_go_of_it]
-- **S77** Rename should give the key an input name saved in the profile. [code only]
-- **S78** Keyboard page edits should take effect at once (no OK, no Undo). [code only] (doubtful: Q5)
+- **S77** Rename should give the key an input name saved in the profile. [user confirmed 2026-10-06; was code only]
+- **S78** Keyboard page edits should take effect at once (no OK, no Undo). [user confirmed 2026-10-06; was code only] (doubtful: Q5)
 - **S79** Only keys the Keyboard module claims should fire; once a keyboard choice is saved, unclaimed keys do nothing. [help: A key binding does not fire] [tracker: AU-23]
 
 ### I. At Run: each action
 
-- **S80** Each binding should run its actions in order; a value changed by Response Curve (and Split Axis) is what later actions see. [help: Response Curve] [code only for Split Axis: Q10]
+- **S80** Each binding should run its actions in order; a value changed by Response Curve (and Split Axis) is what later actions see. [help: Response Curve] [user confirmed 2026-10-06; was code only for Split Axis: Q10]
 - **S81** One failing action should not stop the other actions or release handling for that input. [tracker: AU-16]
 - **S82** Map to vJoy should write only claimed outputs; an unclaimed one is blocked and logged once per Run. [test-plan: P2b] [help: Map to vJoy]
-- **S83** Map to vJoy Relative should move the axis while the input is off-centre, at Speed; it stops when someone else changes that axis or the input rests for 1 s. [help: Map to vJoy] [code only for the stop rules]
+- **S83** Map to vJoy Relative should move the axis while the input is off-centre, at Speed; it stops when someone else changes that axis or the input rests for 1 s. [help: Map to vJoy] [user confirmed 2026-10-06; was code only for the stop rules]
 - **S84** Map to Xbox: buttons/keys/hats on a trigger give full when pressed and 0 when released; a hat moves a stick in its direction. [tracker: DEV7]
 - **S85** Map to Keyboard should hold the keys while the input is held, modifiers first, and release them on release. [help: Map to Keyboard] [test: action_interaction/test_map_to_keyboard.py]
 - **S86** Map to Mouse wheel should send once per press. [help: Map to Mouse]
@@ -353,23 +353,23 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S92** A macro should stop with Stop (every step checks; Pause and repeat delay end at once); an empty macro does nothing. [test-plan: AUDIT2-D-MACROS] [tracker: ACT8]
 - **S93** Change Mode to a mode the running profile doesn't have should be ignored and logged once; Cycle's first press moves; empty Switch/Cycle/Temporary do nothing. [tracker: ACT2, ACT3, ACT9]
 - **S94** Load Profile should not load over unsaved changes, and should say why. [tracker: AU-15]
-- **S95** Pause should stop all actions except Pause and Resume itself (it always runs). [help: Pause and Resume] [code only for "itself"]
+- **S95** Pause should stop all actions except Pause and Resume itself (it always runs). [help: Pause and Resume] [user confirmed 2026-10-06; was code only for "itself"]
 - **S96** Play Sound should queue the file and play it at the volume; overlapping sounds follow Options > Actions > Play Sound. [help: Play Sound] [tracker: APP6]
 - **S97** Run Command should start the program with your own permissions; arguments split on spaces with quotes kept together. [help: Run Command]
 - **S98** Description should do nothing when the input fires. [help: Description]
-- **S99** Run should not run unfinished actions. [code only: today it does, RB19, Q3]
+- **S99** Run should not run unfinished actions. [user confirmed 2026-10-06; was code only: today it does, RB19, Q3]
 - **S100** Keys and buttons held by Map to Keyboard, Map to Mouse and macros should be released at Stop. [tracker: AU-111] (macro stuck-driver case still open: AU-117)
-- **S101** Edits made while stopped take effect at the next Run; nothing is edited while running. [code only]
+- **S101** Edits made while stopped take effect at the next Run; nothing is edited while running. [user confirmed 2026-10-06; was code only]
 
 ### J. Edge cases
 
 - **S102** Empty: an input with no actions shows No actions and runs nothing. [glossary]
-- **S103** Missing driver: Map to Xbox without ViGEmBus shows a warning but stays in the profile. [code only] (`map_to_xbox` user_feedback is a Warning on purpose)
-- **S104** Missing driver: a profile with Map to vJoy should open on a PC without vJoy and keep those actions. [code only] (today it can't: RB20, Q2)
-- **S105** Unplugged: actions of an unplugged stick stay in the profile; Merge/Deadzone axes of an unplugged stick read centred. [test-plan: P3c] [code only for "stay"]
+- **S103** Missing driver: Map to Xbox without ViGEmBus shows a warning but stays in the profile. [user confirmed 2026-10-06; was code only] (`map_to_xbox` user_feedback is a Warning on purpose)
+- **S104** Missing driver: a profile with Map to vJoy should open on a PC without vJoy and keep those actions. [user confirmed 2026-10-06; was code only] (today it can't: RB20, Q2)
+- **S105** Unplugged: actions of an unplugged stick stay in the profile; Merge/Deadzone axes of an unplugged stick read centred. [test-plan: P3c] [user confirmed 2026-10-06; was code only for "stay"]
 - **S106** Renamed / twin: actions are keyed by device id, so a renamed or second identical stick keeps its own actions. [test-plan: TWIN-DEVICES]
 - **S107** Damaged: a profile with a broken action reference opens; a Undo step that can't be read is kept and reported. [tracker: ACT1] [test-plan: AUDIT2-B-UNDO]
-- **S108** Crash: OK'd edits not saved are lost on a crash (no recovery copy for profiles). [code only]
+- **S108** Crash: OK'd edits not saved are lost on a crash (no recovery copy for profiles). [user confirmed 2026-10-06; was code only]
 
 ## 9. Questions for the user
 
@@ -469,3 +469,34 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - Map to Mouse motion from a hat; Map to Logical Device relative loop; Load Profile action end to end; Play Sound / TTS at Run (only unit-level).
 - Right-click menu quick adds and drag-and-drop of actions and bindings (QML only, no test).
 - Every editor QML opening without warnings is checked by hand only (test-plan AE-BTN/AE-AXIS), not by a test.
+
+## 12. Review (user, 2026-10-06)
+
+All [code only] statements in section 8 confirmed, except that S78 and S80
+are replaced by Q5 and Q10 below. Every question answered as recommended:
+
+| Q | Decision |
+|---|---|
+| Q1 | OK on a shared action changes it for every input using it; a shared action is edited as a copy until OK (map 2 A1 (a), A4), including Add Action -> Merge Axis "Reuse" |
+| Q2 | Every built-in action plugin is always loaded; can_create() only decides what Add Action offers (hands-on check on a PC without vJoy first) |
+| Q3 | Run skips unfinished actions and logs one line each |
+| Q4 | Check by hand that a new key can get its first action; if not, show one empty binding |
+| Q5 | The Keyboard page uses the same pane as the Configuration page (draft, OK, Undo); until then, ask before removing an action (replaces S78) |
+| Q6 | "No actions", "1 action" / "N actions", Title Case type names from the plugins; glossary test covers binding_catalog.py |
+| Q7 | Text to Speech lists Keyboard as an input type; close test-plan S-34 |
+| Q8 | History Restore, Auto Mapper and Device Pack import close the pane first (asking if it has changes) |
+| Q9 | Axis Delta uses the value shaped by earlier actions and treats 0 as a value |
+| Q10 | Split Axis's change stays inside its two lists; actions after it see the input's value (replaces S80's Split Axis part) |
+| Q11 | While running, the pane opens read-only with "Stop to edit" and no OK |
+| Q12 | Chain's removed sequence releases its actions through the one removal rule |
+| Q13 | The Load Profile action hands its request to the Run lifecycle owner, done after the event |
+| Q14 | New Dual Axis Deadzones are numbered like Merge Axis |
+| Q15 | The input name becomes a field of InputItem; the import-time patches in action_label.py go |
+| Q16 | Keyboard/mouse output: accepted exception (as page 06 Q9); XboxTarget moves to the output module |
+| Q17 | A macro Joystick step goes through the input module's claims like a real event (matches page 06 Q14) |
+| Q18 | Remove the unused code listed in Q18 in one clean-up commit |
+| Q19 | Chain moves to gremlin.clock; the UI rate limit stays |
+| Q20 | Catalog Delete asks (as the code does); test-plan IC-06 marked superseded |
+
+The section 8 statements (with the replacements above) are now the
+definition of correct for this subsystem.

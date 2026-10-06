@@ -33,10 +33,10 @@ Mapped against code at a1459e22 (audit 3). Line numbers drift as code changes: r
 | F2 | Home card positions keyed by device name | Keep by name | |
 | F3 | History entry for Start Fresh | Yes | |
 | F4 | Twin sticks always looked up by id | Yes; log when missing | |
-| A1 | OK on a shared action | Change it for every input using it; "Shared with ..." note | |
+| A1 | OK on a shared action | Change it for every input using it; "Shared with ..." note | As recommended (2026-10-06, page 05 review) |
 | A2 | Undo / History of a shared action | Restore for every input using it | |
 | A3 | Device Pack failing partway | Undo everything it did | |
-| A4 | Picking a shared action in the pane | Edit a copy until OK | |
+| A4 | Picking a shared action in the pane | Edit a copy until OK | As recommended, incl. Merge Axis Reuse (2026-10-06, page 05 review) |
 | R1 | Logical Device values at Stop | Back to neutral | As recommended (2026-10-06, page 06 review) |
 | R2 | Release callbacks waiting at Stop | Drop them | As recommended (2026-10-06, page 06 review) |
 | R3 | Mode at the next Run | Start mode, temporary modes cleared | As recommended (2026-10-06, page 06 review) |
