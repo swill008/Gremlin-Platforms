@@ -73,11 +73,16 @@ jobs:
       - name: Tests in random order
         if: (success() || failure()) && steps.install.outcome == 'success'
         run: |
+          # The project's Python, found before USERPROFILE changes: poetry keeps
+          # its environments under the user profile, so with the temp profile
+          # "poetry run" made an empty environment and no test ran.
+          py="$(poetry env info --executable)"
+          "$py" -c "import pytest, PySide6" || exit 1
           home="$RUNNER_TEMP/home"
           mkdir -p "$home"
           export USERPROFILE="$(cygpath -w "$home")"
-          # The runner has 4 cores: 2 unit parts plus the two other folders.
-          poetry run python test/run_tests.py --random-order --parts 2
+          # The runner has 4 cores: 2 unit parts plus the other folders.
+          "$py" test/run_tests.py --random-order --parts 2
 
       - name: Keep the test log
         if: failure()

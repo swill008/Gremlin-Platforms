@@ -460,9 +460,13 @@ def _run_and_report(targets: list[str], args: argparse.Namespace) -> int:
         for line in out:
             print(line, flush=True)
             log.write(line + "\n")
+    # A part that never reached pytest's summary (pytest missing, a crash)
+    # is a failure too: CI once passed with no test run at all.
     ok = not failed and all(
         " failed" not in p.summary and "STOPPED" not in p.summary
-        and " error" not in p.summary for p in parts
+        and " error" not in p.summary
+        and re.search(r"\d+ (passed|skipped|xfailed|deselected)", p.summary)
+        for p in parts
     )
     return 0 if ok else 1
 
