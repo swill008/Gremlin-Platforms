@@ -8,7 +8,7 @@ Mapped against code at a1459e22 (audit 3). Line numbers drift as code changes: r
 
 **Change control (user, 2026-10-06).** Every change to behaviour or the program goes through this plan and the spec in `claude/program-map/`. If a change would alter the spec (a statement or a decision), alert the user first and update the spec with their answer before coding. Functions may change as features are added or removed, but only through this route.
 
-**Stage 0 – Know the program.** Map and spec done and approved 2026-10-06 (`claude/program-map/`, all decisions as recommended); the gap list is next.
+**Stage 0 – Know the program.** Map and spec done and approved 2026-10-06 (`claude/program-map/`, all decisions as recommended); gap list done (`claude/gap-list.md`, 309 entries in work order). Next: Stage 1.
 1. *Program map*: one page per subsystem in `claude/program-map/` (what it owns, entry points, data, threads, callers, where it breaks the layer or single-owner rules). Read-only; no code changes.
 2. *Behaviour spec*: in the same pages, "It should ..." statements gathered from help, glossary, test plan, tracker and code; unclear or contradictory ones are questions for the user. The user reviews each subsystem's list; confirmed statements are the definition of correct.
 3. *Gap list*: where the code differs from the spec, or nothing owns something. Replaces open-ended audits.

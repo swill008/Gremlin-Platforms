@@ -9,9 +9,8 @@ Stages 0-3 are written out in `claude/system-maps.md` ("The plan").
 
 - [x] **Stage 0 – Program map and behaviour spec** (2026-10-06):
   `claude/program-map/`, approved (all decisions as recommended).
-- [ ] **Stage 0 – Gap list**: where the code differs from the approved
-  spec or nothing owns something, gathered from section 10 of each page
-  and the decisions; ordered; each fixed starting as a failing test.
+- [x] **Stage 0 – Gap list** (2026-10-06): `claude/gap-list.md`, 309
+  entries GL-001..GL-309 in work order; 14 hands-on checks listed at its end.
 - **Change control:** every behaviour change goes through the spec; if it
   alters a statement or decision, tell the user first and update the spec.
 - [ ] **Stage 1 – Safety net**: CI, journey tests, `validate()` rule
