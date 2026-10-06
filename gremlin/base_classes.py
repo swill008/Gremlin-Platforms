@@ -258,7 +258,18 @@ class AbstractActionData(ABC):
             )
             return None
 
-        node = self._to_xml()
+        if keep_invalid:
+            # An unfinished action may not be writable yet (Merge Axis with
+            # no axes, a Reference placeholder): it is left out, as a save
+            # leaves it out.
+            try:
+                node = self._to_xml()
+            except Exception:
+                return None
+            if node is None or not node.tag:
+                return None
+        else:
+            node = self._to_xml()
         if node is not None:
             node.append(
                 util.create_property_node(

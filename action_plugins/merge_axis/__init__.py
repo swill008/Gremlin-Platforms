@@ -201,7 +201,7 @@ class MergeAxisModel(ActionModel):
     @QtCore.Property(LabelValueSelectionModel, notify=modelChanged)
     def mergeActionList(self) -> LabelValueSelectionModel:
         merge_actions = sorted(
-            self.library.actions_by_type(MergeAxisData),
+            self.library.actions_in_use_by_type(MergeAxisData),
             key=lambda x: x.label,
         )
 
@@ -423,7 +423,7 @@ class MergeAxisData(AbstractActionData):
         cls, mode: DataCreationMode, behavior_type: InputType
     ) -> AbstractActionData:
         if mode == DataCreationMode.Reuse:
-            all_actions = shared_state.current_profile.library.actions_by_type(
+            all_actions = shared_state.current_profile.library.actions_in_use_by_type(
                 PluginManager().get_class(MergeAxisData.name)
             )
             if len(all_actions) == 0:

@@ -4,13 +4,14 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import Callable
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import device_initialization, keyboard, shared_state
+from gremlin import device_initialization, error, keyboard, shared_state
 from gremlin.base_classes import AbstractActionData
 from gremlin.error import GremlinError
 from gremlin.logical_device import LogicalDevice
@@ -230,24 +231,29 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._redo.clear()
         self._changed()
 
+    # An input's actions before and after a change, kept as copies (XML, as
+    # the Configuration page keeps them: Profile.input_snapshot / put_input).
+    # Live action objects were kept before; the library could drop or hand
+    # them out again, and the saved profile then didn't load.
+
+    @staticmethod
+    def _input_key(item: InputItem) -> tuple:
+        return (item.device_id, item.input_type, item.input_id, item.mode)
+
+    def _snapshot(self, item: InputItem | None) -> dict | None:
+        profile = self._profile()
+        return profile.input_snapshot(item) if profile is not None else None
+
     def _play(self, links, reverse: bool) -> None:
         entries = list(reversed(links)) if reverse else list(links)
+        profile = self._profile()
         for entry in entries:
             op = entry.get("op")
-            if op == "set-seqs":
-                # OK on an action edited in the pane: its actions before / after.
-                item = entry["item"]
-                sequences = list(entry["before"] if reverse else entry["after"])
-                for binding in sequences:
-                    binding.input_item = item
-                item.action_sequences = sequences
-                continue
-            if op == "drop-item":
-                self._restore_item(entry["item"])
-                continue
-            if op in ("add-seq", "drop-seq"):
-                # Undo of an add and redo of a delete take the sequence out.
-                self._play_sequence(entry, remove=(op == "add-seq") == reverse)
+            if op == "input":
+                if profile is not None:
+                    side = entry["before"] if reverse else entry["after"]
+                    guid, kind, number, mode = entry["key"]
+                    profile.put_input(guid, kind, number, mode, side)
                 continue
             if reverse and op == "add":
                 self._remove_link(entry)
@@ -258,26 +264,26 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             elif not reverse and op == "remove":
                 self._remove_link(entry)
 
-    def _play_sequence(self, entry: dict, remove: bool) -> None:
-        item = entry["item"]
-        binding = entry["binding"]
-        if remove:
-            item.remove_item_binding(binding)
-            return
-        if binding in item.action_sequences:
-            return
-        binding.input_item = item
-        index = min(int(entry["index"]), len(item.action_sequences))
-        item.action_sequences.insert(index, binding)
+    def _replay(self, entry: dict, reverse: bool) -> bool:
+        """Plays a step; False when it couldn't be (a damaged copy)."""
+        try:
+            self._logical.restore(entry["before"] if reverse else entry["after"])
+            self._play(entry["links"], reverse)
+        except error.ProfileError as e:
+            logging.getLogger("system").warning(f"Undo step not played: {e}")
+            signal.showNotification.emit("Undo", "That change couldn't be put back.")
+            return False
+        return True
 
     @QtCore.Slot()
     def undo(self) -> None:
         if not self._undo:
             return
         entry = self._undo.pop()
-        self._logical.restore(entry["before"])
-        self._play(entry["links"], True)
-        self._redo.append(entry)
+        if self._replay(entry, True):
+            self._redo.append(entry)
+        else:
+            self._undo.append(entry)
         self._changed()
 
     @QtCore.Slot()
@@ -285,9 +291,10 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         if not self._redo:
             return
         entry = self._redo.pop()
-        self._logical.restore(entry["after"])
-        self._play(entry["links"], False)
-        self._undo.append(entry)
+        if self._replay(entry, False):
+            self._undo.append(entry)
+        else:
+            self._redo.append(entry)
         self._changed()
 
     def _input_items(self):
@@ -437,23 +444,19 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         items = list(profile.inputs.get(guid, []))
         kept = []
         taken = []
+        doomed = []
         for item in items:
             if item.input_type == kind and item.input_id == input_id:
-                taken.append({"op": "drop-item", "item": item})
-            else:
-                kept.append(item)
-        if guid in profile.inputs or taken:
-            profile.inputs[guid] = kept
+                # Undo puts its copy back; Redo takes it out again (it used
+                # to put it back both ways, and a new row inherited it).
+                taken.append({
+                    "op": "input", "key": self._input_key(item),
+                    "before": self._snapshot(item), "after": None,
+                })
+                doomed.append(item)
+        if doomed:
+            profile.drop_inputs(guid, doomed)
         return taken
-
-    def _restore_item(self, item: InputItem) -> None:
-        profile = self._profile()
-        if profile is None or item is None:
-            return
-        guid = item.device_id
-        bucket = profile.inputs.setdefault(guid, [])
-        if item not in bucket:
-            bucket.append(item)
 
     def _device_name(self, guid) -> str:
         if guid == keyboard_guid():
@@ -693,8 +696,14 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         binding = real.action_sequences[index]
 
         def fn():
+            before = self._snapshot(real)
             real.remove_item_binding(binding)
-            return [{"op": "drop-seq", "item": real, "binding": binding, "index": index}]
+            if binding.root_action is not None:
+                _profile.drop_unused_actions([binding.root_action])
+            return [{
+                "op": "input", "key": self._input_key(real),
+                "before": before, "after": self._snapshot(real),
+            }]
 
         self._apply(fn)
         return True
@@ -1208,12 +1217,16 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         return _fingerprint_item(shadow) != self._pane_base
 
     def _replace_sequences(self, real: InputItem, shadow: InputItem) -> None:
-        # The replaced actions stay in the library for Undo; a save writes
-        # only the ones inputs use.
+        old = list(real.action_sequences)
+        moved = list(shadow.action_sequences)
         real.action_sequences = []
-        for binding in list(shadow.action_sequences):
+        for binding in moved:
             binding.input_item = real
             real.action_sequences.append(binding)
+        for binding in old:
+            if binding.root_action is None or binding in moved:
+                continue
+            real.library.remove_unused(binding.root_action)
 
     def _set_sequences(self, real: InputItem, change: Callable[[], object]) -> int:
         """Runs change (it edits real's actions) as one Undo step; returns
@@ -1221,11 +1234,11 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         result: list[object] = []
 
         def fn() -> list[dict]:
-            before = list(real.action_sequences)
+            before = self._snapshot(real)
             result.append(change())
             return [{
-                "op": "set-seqs", "item": real, "before": before,
-                "after": list(real.action_sequences),
+                "op": "input", "key": self._input_key(real),
+                "before": before, "after": self._snapshot(real),
             }]
 
         self._apply(fn)
@@ -1234,12 +1247,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
 
     def _append_sequence(self, real: InputItem, shadow: InputItem) -> int:
         binding = shadow.action_sequences[0]
-
-        def fn():
-            index = _attach_binding(real, shadow, -1)
-            return [{"op": "add-seq", "item": real, "binding": binding, "index": index}]
-
-        self._apply(fn)
+        self._set_sequences(real, lambda: _attach_binding(real, shadow, -1))
         return real.action_sequences.index(binding)
 
     @QtCore.Slot(result=int)
@@ -1278,7 +1286,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         else:
             seq = self._pane_seq
             index = self._set_sequences(
-                real, lambda: _attach_binding(real, shadow, seq, drop_old=False)
+                real, lambda: _attach_binding(real, shadow, seq)
             )
             self._pane_seq = index
             self._pane_whole = False

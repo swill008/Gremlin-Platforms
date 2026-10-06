@@ -142,7 +142,7 @@ class DualAxisDeadzoneModel(ActionModel):
     @QtCore.Property(LabelValueSelectionModel, notify=modelChanged)
     def deadzoneActionList(self) -> LabelValueSelectionModel:
         deadzone_actions = sorted(
-            self.library.actions_by_type(DualAxisDeadzoneData),
+            self.library.actions_in_use_by_type(DualAxisDeadzoneData),
             key=lambda x: x.label,
         )
 

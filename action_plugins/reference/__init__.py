@@ -90,8 +90,16 @@ class ReferenceModel(ActionModel):
                 return False
             return True
 
-        # Grab library and get all actions that fit with the given input modality
-        actions = self.library.actions_by_predicate(selector)
+        # Grab library and get all actions that fit with the given input
+        # modality, that an input uses (not deleted or replaced ones).
+        from gremlin import shared_state
+
+        profile = shared_state.current_profile
+        used = profile.actions_in_use() if profile is not None else None
+        actions = [
+            a for a in self.library.actions_by_predicate(selector)
+            if used is None or a.id in used
+        ]
         return LabelValueSelectionModel(
             [a.action_label for a in actions],
             [str(a.id) for a in actions],

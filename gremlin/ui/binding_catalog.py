@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import uuid
 import xml.etree.ElementTree as ElementTree
@@ -11,7 +12,7 @@ import xml.etree.ElementTree as ElementTree
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import shared_state
+from gremlin import error, shared_state
 from gremlin.modules import wiring
 from gremlin.modules.claim import type_of
 from gremlin.profile import InputItem, InputItemBinding
@@ -137,12 +138,8 @@ def _or(value: int | str | None, default: int) -> int | str:
     return default if value is None else value
 
 
-def _attach_binding(
-    real: InputItem, shadow: InputItem, sequence_index: int, drop_old: bool = True
-) -> int:
-    """Move the draft binding onto the real control. Returns its index.
-    drop_old=False keeps the replaced action in the library (an Undo step
-    that holds it puts it back)."""
+def _attach_binding(real: InputItem, shadow: InputItem, sequence_index: int) -> int:
+    """Move the draft binding onto the real control. Returns its index."""
     binding = shadow.action_sequences[0]
     binding.input_item = real
     if sequence_index < 0:
@@ -151,8 +148,7 @@ def _attach_binding(
     old = real.action_sequences[sequence_index]
     real.action_sequences[sequence_index] = binding
     if (
-        drop_old
-        and old is not binding
+        old is not binding
         and old.root_action is not None
         and old.root_action is not binding.root_action
     ):
@@ -988,31 +984,41 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             self._redo.clear()
             self.undoChanged.emit()
 
-    def _play(self, step: dict, side: str) -> None:
+    def _play(self, step: dict, side: str) -> bool:
         profile = shared_state.current_profile
         if profile is None:
-            return
+            return False
         guid, kind, hw, mode = step["key"]
-        profile.put_input(guid, kind, hw, mode, step[side])
+        try:
+            profile.put_input(guid, kind, hw, mode, step[side])
+        except error.ProfileError as e:
+            logging.getLogger("system").warning(f"Undo step not played: {e}")
+            signal.showNotification.emit("Undo", "That change couldn't be put back.")
+            return False
         signal.inputItemChanged.emit(step["hid"])
         signal.reloadCurrentInputItem.emit()
         self.reload()
         self.undoChanged.emit()
+        return True
 
     @QtCore.Slot()
     def undo(self) -> None:
         # Not while an action is open in the pane: it is edited there.
         if self._undo and self._pane_shadow is None:
             step = self._undo.pop()
-            self._redo.append(step)
-            self._play(step, "before")
+            if self._play(step, "before"):
+                self._redo.append(step)
+            else:
+                self._undo.append(step)  # kept, not lost
 
     @QtCore.Slot()
     def redo(self) -> None:
         if self._redo and self._pane_shadow is None:
             step = self._redo.pop()
-            self._undo.append(step)
-            self._play(step, "after")
+            if self._play(step, "after"):
+                self._undo.append(step)
+            else:
+                self._redo.append(step)
 
     def _can_undo(self) -> bool:
         return bool(self._undo) and self._pane_shadow is None

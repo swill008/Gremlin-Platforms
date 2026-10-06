@@ -335,12 +335,18 @@ def test_new_action_is_appended_on_ok_and_undoable(qapp) -> None:
         assert real().action_sequences[0] is existing
         model.endPane()
         model.undo()
-        assert real().action_sequences == [existing]
+        # Undo puts back a copy (the same actions, by id).
+        assert _roots(real()) == [existing.root_action.id]
         model.redo()
         assert len(real().action_sequences) == 2
         model.deleteLater()
     finally:
         shared_state.current_profile = None
+
+
+def _roots(item: object) -> list:
+    """The input's actions, by id (Undo puts back copies)."""
+    return [b.root_action.id for b in item.action_sequences]
 
 
 def test_delete_one_action_and_undo_puts_it_back(qapp) -> None:
@@ -359,12 +365,13 @@ def test_delete_one_action_and_undo_puts_it_back(qapp) -> None:
         second = item.add_item_binding()
         third = item.add_item_binding()
         model = LogicalLayoutModel()
+        ids = [b.root_action.id for b in (first, second, third)]
         assert model.deleteAction("parent:button:1", 1)
-        assert real().action_sequences == [first, third]
+        assert _roots(real()) == [ids[0], ids[2]]
         model.undo()
-        assert real().action_sequences == [first, second, third]
+        assert _roots(real()) == ids
         model.redo()
-        assert real().action_sequences == [first, third]
+        assert _roots(real()) == [ids[0], ids[2]]
         assert not model.deleteAction("parent:button:1", 5)
         model.deleteLater()
     finally:

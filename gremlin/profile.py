@@ -559,6 +559,19 @@ class Library:
                 for i in reversed(to_remove):
                     action.remove_action(i, selector)
 
+    def actions_in_use_by_type(self, action_type: type) -> list[AbstractActionData]:
+        """Actions of that type that an input of the open profile uses (the
+        library also holds deleted and replaced ones until the next save,
+        which Reuse and the pick lists must not hand back)."""
+        from gremlin import shared_state
+
+        found = self.actions_by_type(action_type)
+        profile = shared_state.current_profile
+        if profile is None or profile.library is not self:
+            return found
+        used = profile.actions_in_use()
+        return [action for action in found if action.id in used]
+
     def to_xml(self, used: set[uuid.UUID] | None = None) -> ElementTree.Element:
         """Returns an XML node encoding the content of this library.
 
@@ -879,11 +892,20 @@ class Profile:
         ]
 
     def add_inputs(
-        self, device_id: uuid.UUID, input_xml: list[str], action_xml: list[str]
+        self,
+        device_id: uuid.UUID,
+        input_xml: list[str],
+        action_xml: list[str],
+        remap: bool = True,
     ) -> list[InputItem]:
         """Adds inputs, and the actions they use, given as XML (a Device
-        Pack, a History entry, an Undo step)."""
-        action_xml, input_xml = remap_action_ids(action_xml, input_xml, self.library)
+        Pack, a History entry, an Undo step). remap=False: the caller made
+        sure no id clashes (put_input), so ids, and references to actions
+        already in the library, are kept."""
+        if remap:
+            action_xml, input_xml = remap_action_ids(
+                action_xml, input_xml, self.library
+            )
         if action_xml:
             root = ElementTree.Element("profile")
             library = ElementTree.SubElement(root, "library")
@@ -915,12 +937,25 @@ class Profile:
                 continue
             seen[action.id] = action
             pending.extend(action.get_actions()[0])
+        written = {}
+        for action in seen.values():
+            node = action.to_xml(True)
+            if node is not None:
+                written[action.id] = node
+        # An action that couldn't be written is left out of the actions that
+        # hold it too, or the snapshot couldn't be read back.
+        left_out = {str(aid) for aid in seen if aid not in written}
+        if left_out:
+            for node in written.values():
+                for parent in list(node.iter()):
+                    for entry in list(parent.findall("action-id")):
+                        if (entry.text or "").strip() in left_out:
+                            parent.remove(entry)
         return {
             "input": ElementTree.tostring(item.to_xml(), encoding="unicode"),
             "actions": [
                 ElementTree.tostring(node, encoding="unicode")
-                for node in (action.to_xml(True) for action in seen.values())
-                if node is not None
+                for node in written.values()
             ],
         }
 
@@ -944,8 +979,25 @@ class Profile:
             and item.mode == mode
         ]
         self.drop_inputs(device_id, current)
-        if snapshot:
-            self.add_inputs(device_id, [snapshot["input"]], list(snapshot["actions"]))
+        if not snapshot:
+            return
+        # The same profile: an action another input still uses (a shared
+        # Merge Axis) is that action, not a new copy; an unused one left in
+        # the library gives way to the copy.
+        used = self.actions_in_use()
+        blocks = []
+        for block in snapshot["actions"]:
+            try:
+                aid = uuid.UUID(str(ElementTree.fromstring(block).get("id")))
+            except ValueError:
+                blocks.append(block)
+                continue
+            if self.library.has_action(aid):
+                if aid in used:
+                    continue
+                self.library.delete_action(aid)
+            blocks.append(block)
+        self.add_inputs(device_id, [snapshot["input"]], blocks, remap=False)
 
     def drop_inputs(self, device_id: uuid.UUID, doomed: Iterable[InputItem]) -> None:
         """Removes these inputs of a device and the actions only they used."""
@@ -1288,11 +1340,14 @@ def _check_snapshot(snapshot: dict) -> None:
     trial = Library()
     root = ElementTree.Element("profile")
     library = ElementTree.SubElement(root, "library")
-    for block in snapshot.get("actions") or []:
-        library.append(ElementTree.fromstring(block))
-    trial.from_xml(root)
-    item = InputItem(trial)
-    item.from_xml(ElementTree.fromstring(snapshot["input"]))
+    try:
+        for block in snapshot.get("actions") or []:
+            library.append(ElementTree.fromstring(block))
+        trial.from_xml(root)
+        item = InputItem(trial)
+        item.from_xml(ElementTree.fromstring(snapshot["input"]))
+    except ElementTree.ParseError as e:
+        raise error.ProfileError(f"The kept copy of the input can't be read: {e}")
 
 
 class ModeHierarchy:
