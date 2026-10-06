@@ -15,6 +15,7 @@ from abc import (
 import dill
 from gremlin import (
     audio_player,
+    base_classes,
     device_initialization,
     error,
     event_handler,
@@ -406,6 +407,8 @@ class CodeRunner:
         user_script.periodic_registry.clear()
 
         OscRuntime().stop()
+        # Pulse releases still waiting go out now, while the outputs are open.
+        base_classes.flush_pulses()
         macro.MacroManager().stop()
         sendinput.MouseController().stop()
         audio_player.AudioPlayer().stop()

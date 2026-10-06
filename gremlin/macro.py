@@ -7,7 +7,6 @@ from __future__ import annotations
 import collections
 import functools
 import logging
-import time
 import uuid
 from abc import (
     ABC,
@@ -72,11 +71,18 @@ class MacroManager(metaclass=SingletonMetaclass):
         self._preemptive_condition = Condition()
         self._is_running = False
         self._schedule_event = Event()
+        # Each Run has its own number: a macro of an earlier Run that is
+        # still finishing leaves this Run's state alone and stops its steps.
+        self._run = 0
+        # Set at Stop: a Pause or a repeat delay ends at once.
+        self._stopped = Event()
 
         self._run_scheduler_thread = None
 
     def start(self) -> None:
         """Starts the scheduler."""
+        self._run += 1
+        self._stopped.clear()
         self._scheduled_macro = {}
         self._executing_macro = {}
         # Macros queued before the last Stop don't run now.
@@ -100,6 +106,8 @@ class MacroManager(metaclass=SingletonMetaclass):
     def stop(self) -> None:
         """Stops the scheduler."""
         self._is_running = False
+        self._run += 1
+        self._stopped.set()
         with self._queued_macros_lock:
             self._queued_macros = []
         if (
@@ -219,6 +227,7 @@ class MacroManager(metaclass=SingletonMetaclass):
                 "macro",
                 self._execute_macro,
                 macro,
+                self._run,
                 stop=functools.partial(self._ask_macro_to_stop, macro),
             )
         else:
@@ -232,12 +241,27 @@ class MacroManager(metaclass=SingletonMetaclass):
             if macro.id in self._executing_macro:
                 self._executing_macro[macro.id] = False
 
-    def _wait_while_paused(self, macro: Macro) -> None:
-        """Blocks the calling thread while a different macro is executing preemptively
-        and exclusively.
+    def sleep(self, seconds: float) -> None:
+        """A macro's Pause or repeat delay: ends at once on Stop."""
+        self._stopped.wait(max(0.0, seconds))
+
+    def _going(self, macro: Macro, run: int, own_flag: bool = True) -> bool:
+        """False once Stop came (or a later Run started), or (own_flag) this
+        macro was told to stop."""
+        if not self._is_running or run != self._run:
+            return False
+        return not own_flag or self._executing_macro.get(macro.id, True)
+
+    def _wait_while_paused(
+        self, macro: Macro, run: int, own_flag: bool = True
+    ) -> bool:
+        """Blocks the calling thread while a different macro is executing
+        preemptively and exclusively. False when the macro must stop instead
+        (it used to return and run its next step anyway).
 
         Args:
             macro: the macro whose thread is calling this method
+            run: the Run it belongs to
         """
         # In short waits, so a stop (of the macros or of this macro) ends it.
         with self._preemptive_condition:
@@ -245,12 +269,21 @@ class MacroManager(metaclass=SingletonMetaclass):
                 lambda: not self._is_executing_preemptive or macro.is_preempting,
                 timeout=0.5,
             ):
-                if not self._is_running or not self._executing_macro.get(
-                    macro.id, True
-                ):
-                    return
+                if not self._going(macro, run, own_flag):
+                    return False
+        return self._going(macro, run, own_flag)
 
-    def _execute_macro(self, macro: Macro) -> None:
+    def _steps(self, macro: Macro, run: int, own_flag: bool = True) -> bool:
+        """Runs one round of the macro's steps; False when it was stopped.
+        own_flag=False: only Stop ends it (a Hold macro's first round runs
+        even when the release came first)."""
+        for action in macro.sequence:
+            if not self._wait_while_paused(macro, run, own_flag):
+                return False
+            action()
+        return True
+
+    def _execute_macro(self, macro: Macro, run: int) -> None:
         """Executes a given macro in a separate thread.
 
         This method will run all provided actions and once they all have been executed
@@ -261,15 +294,15 @@ class MacroManager(metaclass=SingletonMetaclass):
             macro: the macro object to be executed
         """
         try:
-            self._run_steps(macro)
+            self._run_steps(macro, run)
         except Exception:
             # A failing step ends this macro only; the clean-up below lets
             # every other macro (and this one again) run.
             logging.getLogger("system").exception("A macro step failed")
         finally:
-            self._finish_macro(macro)
+            self._finish_macro(macro, run)
 
-    def _run_steps(self, macro: Macro) -> None:
+    def _run_steps(self, macro: Macro, run: int) -> None:
         # Handle macros with a repeat mode
         if macro.repeat is not None:
             delay = macro.repeat.delay
@@ -277,12 +310,13 @@ class MacroManager(metaclass=SingletonMetaclass):
             # Handle count repeat mode
             if isinstance(macro.repeat, CountRepeat):
                 count = 0
-                while count < macro.repeat.count and self._executing_macro[macro.id]:
-                    for action in macro.sequence:
-                        self._wait_while_paused(macro)
-                        action()
+                while count < macro.repeat.count and self._executing_macro.get(
+                    macro.id, False
+                ):
+                    if not self._steps(macro, run):
+                        return
                     count += 1
-                    time.sleep(delay)
+                    self.sleep(delay)
 
             # Handle continuous repeat modes
             elif type(macro.repeat) in [HoldRepeat, ToggleRepeat]:
@@ -291,19 +325,20 @@ class MacroManager(metaclass=SingletonMetaclass):
                 # that, as before, each round checks first.
                 first = True
                 while first or self._executing_macro.get(macro.id, False):
+                    if not self._steps(macro, run, own_flag=not first):
+                        return
                     first = False
-                    for action in macro.sequence:
-                        self._wait_while_paused(macro)
-                        action()
-                    time.sleep(delay)
+                    self.sleep(delay)
 
-        # Handle simple one shot macros.
+        # Handle simple one shot macros: they stop with Stop too.
         else:
-            for action in macro.sequence:
-                self._wait_while_paused(macro)
-                action()
+            self._steps(macro, run)
 
-    def _finish_macro(self, macro: Macro) -> None:
+    def _finish_macro(self, macro: Macro, run: int) -> None:
+        # A macro of an earlier Run leaves this Run's state alone (it used to
+        # clear the exclusive flags of the new Run's macros).
+        if run != self._run:
+            return
         # Remove macro from active set, notify manager, and remove any potential
         # callbacks.
         self._scheduled_macro.pop(macro.id, None)
@@ -871,7 +906,8 @@ class PauseAction(AbstractAction):
         return PauseAction(0.0)
 
     def __call__(self) -> None:
-        time.sleep(self.duration)
+        # Ends at once on Stop.
+        MacroManager().sleep(self.duration)
 
     def to_xml(self) -> ElementTree.Element:
         node = self._create_node(self.tag)

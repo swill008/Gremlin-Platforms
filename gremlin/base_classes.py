@@ -532,6 +532,21 @@ class AbstractActionData(ABC):
 T = TypeVar("T", bound="AbstractActionData")
 
 
+# Pulse releases waiting for their timer (main thread only).
+_pending_pulses: list = []
+
+
+def flush_pulses() -> None:
+    """Sends the pulse releases still waiting (at Stop, before the outputs
+    are released)."""
+    while _pending_pulses:
+        release = _pending_pulses.pop(0)
+        try:
+            release()
+        except Exception:
+            logging.getLogger("system").exception("A pulse release failed")
+
+
 class AbstractFunctor(Generic[T], ABC):
     """Abstract base class defining the interface for functor like classes."""
 
@@ -614,10 +629,19 @@ class AbstractFunctor(Generic[T], ABC):
             self._process_event(functors, event_release, value_release, properties)
 
         # On the main thread (events are handled there) the release comes
-        # 50 ms later from a timer, so the window doesn't stop for it.
+        # 50 ms later from a timer, so the window doesn't stop for it. Stop
+        # sends any still waiting first (flush_pulses): a release after Stop
+        # reopened vJoy.
         app = QtCore.QCoreApplication.instance()
         if app is not None and QtCore.QThread.currentThread() is app.thread():
-            QtCore.QTimer.singleShot(50, release)
+            _pending_pulses.append(release)
+
+            def later() -> None:
+                if release in _pending_pulses:
+                    _pending_pulses.remove(release)
+                    release()
+
+            QtCore.QTimer.singleShot(50, later)
             return
         time.sleep(0.05)
         release()

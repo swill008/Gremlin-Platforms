@@ -47,8 +47,10 @@ def test_a_macro_stops_waiting_for_an_exclusive_one_when_stopped() -> None:
     manager._is_executing_preemptive = True  # another macro runs exclusively
     manager._is_running = False  # the macros were stopped
     manager._executing_macro = {}
+    manager._run = 0
     start = time.monotonic()
-    manager._wait_while_paused(SimpleNamespace(id=1, is_preempting=False))
+    # False: the macro stops instead of running its next step.
+    assert not manager._wait_while_paused(SimpleNamespace(id=1, is_preempting=False), 0)
     assert time.monotonic() - start < 2.0
 
 
