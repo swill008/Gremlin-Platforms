@@ -39,34 +39,36 @@ goes to the lead (the main session), which passes it on. Shared files
 **Batches:**
 - **Batch 1 – the three redesigns, 7 agents** (gap list sections 3–5):
   - R1 Run owner: `gremlin/run_scope.py` (new), `joystick_gremlin.py`,
-    `gremlin/code_runner.py`, `event_handler.py`, `mode_manager.py`,
-    `device_initialization.py`, `user_script.py`, `macro.py`,
-    `validate.py`; tests `test_audit3_run_stop`, `test_bounded_waits`,
-    `test_stage1_runtime`, `test/journeys/test_j10_tempo_stop`.
-  - R2 Run callers: `gremlin/audio_player.py`, `tts.py`, `keyboard.py`,
-    `sendinput.py`, `plugin_manager.py`, and the plugins that hold timers
-    (`action_plugins/tempo`, `double_tap`, `smart_toggle`, `chain`).
+    `gremlin/code_runner.py`, `event_handler.py`, `event_helpers.py`,
+    `mode_manager.py`, `device_initialization.py`, `user_script.py`,
+    `threads.py`, `validate.py`, `gremlin/ui/backend.py`, `qml/Main.qml`,
+    `action_plugins/load_profile`; tests `test_audit3_run_stop`,
+    `test_bounded_waits`, `test_stage1_runtime`, `test/journeys/`.
+  - R2 Run callers: `gremlin/macro.py`, `keyboard.py`, `sendinput.py`,
+    `audio_player.py`, `tts.py`, `logical_device.py`, `vjoy/vjoy.py`, and
+    the plugins `tempo`, `double_tap`, `smart_toggle`, `chain`,
+    `map_to_vjoy`, `map_to_logical_device`, `map_to_mouse`,
+    `map_to_keyboard`.
   - M1 Module store owner: `gremlin/modules/store.py` (new),
-    `modules/module_file.py`, `modules/registry.py`,
-    `gremlin/history_modules.py`; tests `test_module_store_only` (new
-    guard test), `test_audit3_module_files`, `test_stage1_modules`.
+    `gremlin/ui/hardware_profile.py`, `gremlin/modules/*` (not
+    `calibration.py`, `auto_map.py`), `gremlin/history_modules.py`,
+    `gremlin/ui/button_map_labels.py`; tests `test_module_store_only`
+    (new guard test), `test_audit3_module_files`, `test_stage1_modules`.
   - M2 Module pages: `gremlin/ui/module_model.py`, `module_inputs.py`,
-    `module_pairing.py`, `hardware_profile.py`,
-    `gremlin/modules/calibration.py`, `qml/DialogConfigureModule.qml`,
-    `qml/DialogJoystickButtonMap.qml`.
+    `module_pairing.py`, `gremlin/modules/calibration.py`,
+    `qml/DialogConfigureModule.qml`, `qml/DialogJoystickButtonMap.qml`.
   - M3 Device Pack / History / Auto Map: `gremlin/ui/device_pack.py`,
-    `ui/history_model.py`, `ui/binding_catalog.py`, `ui/logical_layout.py`,
-    `gremlin/modules/auto_map.py`, `auto_mapper.py`, `logical_device.py`;
-    tests `test_device_pack_import`, `device_pack_window_smoke`,
-    `test_twin_devices`.
+    `history_model.py`, `logical_layout.py`, `gremlin/modules/auto_map.py`,
+    `gremlin/auto_mapper.py`; tests `test_device_pack_import`,
+    `device_pack_window_smoke`, `test_twin_devices`.
   - A1 Action Library owner: `gremlin/profile.py`, `base_classes.py`,
-    `gremlin/ui/profile.py`, `gremlin/unknown_action.py` (new),
-    `qml/UnknownAction.qml` (new); tests `test_audit3_actions_undo`,
+    `plugin_manager.py`, `gremlin/ui/profile.py`, `ui/binding_catalog.py`,
+    `gremlin/unknown_action.py` (new), `qml/UnknownAction.qml` (new),
+    `qml/InputConfiguration.qml`; tests `test_audit3_actions_undo`,
     `test_audit2_saving`, `test_data_safety`.
-  - A2 Action editors: `gremlin/ui/action_model.py` and the other
-    plugins (`condition`, `dual_axis_deadzone`, `map_to_logical_device`,
-    `map_to_vjoy`, `merge_axis`, `reference`, …); tests
-    `test_action_editor_fixes`, `test_action_fixes`.
+  - A2 Action editors: `gremlin/ui/action_model.py` and the plugins not
+    listed above (`merge_axis`, `dual_axis_deadzone`, `reference`,
+    `condition`, …); tests `test_action_editor_fixes`, `test_action_fixes`.
   - Files not listed: ask the lead first.
 - **Batch 2 – urgent fixes + behaviour/UX, 9–10 agents** (sections 2 and
   6): one agent per subsystem page, two for the largest; Device Pack
