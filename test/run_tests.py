@@ -16,7 +16,8 @@
 The folders run at the same time in separate pytest runs (test/unit can't
 share a process with the two that need the Gremlin app), and test/unit is
 split into parts, balanced by how long each file took last time (chosen
-unit files and --failed tests too: a heavy file test by test). Every
+unit files and --failed tests too: a heavy file test by test; a file with
+no time of its own here takes its time from test/test_times.json). Every
 line shows the time since the start, which part it is from and how many
 tests of all are done. A part that prints nothing for a while says which
 test it is in; a part that runs longer than LIMIT_S is stopped. At the end:
@@ -52,12 +53,20 @@ LIMIT_S = int(os.environ.get("GREMLIN_TEST_PART_LIMIT", "600"))
 QUIET_S = 15  # say which test a part is in after this long without output
 
 _ROOT = pathlib.Path(__file__).parents[1]
-_STATE = pathlib.Path(tempfile.gettempdir()) / "gremlin-test-runs"
+# GREMLIN_TEST_STATE moves the times and last-failed lists: CI keeps them
+# in its cache, so each run is balanced by the last run's times.
+_RUNS = pathlib.Path(tempfile.gettempdir()) / "gremlin-test-runs"
+_STATE = pathlib.Path(os.environ.get("GREMLIN_TEST_STATE") or _RUNS)
+# Times of every file from a CI run (tools/ci_test_times.py writes it): the
+# split for a file this PC has no time for yet, and for CI's first run.
+_SEED_TIMES = _ROOT / "test" / "test_times.json"
 _LOG = pathlib.Path(tempfile.gettempdir()) / "gremlin-test-run.log"
 _COUNT = re.compile(r"\[\s*(\d+)/(\d+)\]\s*$")
 _RESULT = re.compile(r"^(\S+::\S+) (PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS)")
 _SUMMARY = re.compile(r"=+ (.* in [\d.]+s.*) =+$")
 _SLOW = re.compile(r"^(\d+\.\d+)s (call|setup|teardown)\s+(\S+)")
+# pytest found the tests: start-up and collection are no test's time.
+_COLLECTED = re.compile(r"^(collecting \.\.\. )?collected \d+ item")
 
 
 @dataclass
@@ -86,22 +95,31 @@ def _clock(start: float) -> str:
     return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
 
-def _load(name: str, default: Any) -> Any:  # noqa: ANN401
+def _read(path: pathlib.Path, default: Any) -> Any:  # noqa: ANN401
     try:
-        return json.loads((_STATE / name).read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return default
 
 
+def _write(path: pathlib.Path, value: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=1), encoding="utf-8")
+
+
+def _load(name: str, default: Any) -> Any:  # noqa: ANN401
+    return _read(_STATE / name, default)
+
+
 def _save(name: str, value: object) -> None:
-    _STATE.mkdir(exist_ok=True)
-    (_STATE / name).write_text(json.dumps(value, indent=1), encoding="utf-8")
+    _write(_STATE / name, value)
 
 
 # One run at a time on this PC: two (from two checkouts or sessions) slow
 # each other down several times over, fail tests on timing and spoil the
-# times the parts are balanced by. A run that finds another going waits.
-_RUNNING = _STATE / "running.json"
+# times the parts are balanced by. A run that finds another going waits
+# (whatever GREMLIN_TEST_STATE says).
+_RUNNING = _RUNS / "running.json"
 _WAIT_S = 900
 
 
@@ -124,7 +142,7 @@ def _wait_for_other_run() -> None:
     start = time.monotonic()
     said = 0.0
     while True:
-        other = _load("running.json", {})
+        other = _read(_RUNNING, {})
         pid = int(other.get("pid") or 0)
         if not pid or pid == os.getpid() or not _alive(pid):
             break
@@ -137,15 +155,25 @@ def _wait_for_other_run() -> None:
             print(f"Waiting for another test run to finish (pid {pid}, "
                   f"{other.get('root', '?')}), {int(waited)} s...", flush=True)
         time.sleep(2)
-    _save("running.json", {"pid": os.getpid(), "root": str(_ROOT)})
+    _write(_RUNNING, {"pid": os.getpid(), "root": str(_ROOT)})
 
 
 def _done_running() -> None:
-    if int(_load("running.json", {}).get("pid") or 0) == os.getpid():
+    if int(_read(_RUNNING, {}).get("pid") or 0) == os.getpid():
         try:
             _RUNNING.unlink()
         except OSError:
             pass
+
+
+def _known_times() -> dict[str, float]:
+    """Each file's time: this PC's last run, else the times kept in the
+    repository."""
+    try:
+        seed = json.loads(_SEED_TIMES.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        seed = {}
+    return {**seed, **_load("file-times.json", {})}
 
 
 def _failed_file() -> str:
@@ -213,7 +241,7 @@ def plan(targets: list[str], parts: int) -> list[Part]:
     for target in targets:
         by_folder.setdefault(_folder_of(target), []).append(target)
     jobs = []
-    times = _load("file-times.json", {})
+    times = _known_times()
     for folder, chosen in by_folder.items():
         short = folder.split("/")[-1]
         if folder == "test/unit" and parts > 1:
@@ -337,6 +365,8 @@ def run(
             say(part, f"=== {part.summary} ({part.took:.0f} s)")
             continue
         part.last_output = time.monotonic()
+        if _COLLECTED.match(line):
+            part.last_result = part.last_output
         if m := _COUNT.search(line):
             part.done, part.total = int(m.group(1)), int(m.group(2))
         if m := _RESULT.match(line):
