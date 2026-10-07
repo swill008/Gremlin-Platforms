@@ -51,5 +51,13 @@ Every piece of work, not only big batches:
    name `lead`. When agents start, give the user the commands to watch them:
    `Get-Content .agent-logs\<AGENT>.log -Wait -Tail 50` per agent and
    `Get-Content .agent-logs\all.log -Wait -Tail 80` for all of them.
-4. **Agents.** Use several agents where the work splits into separate files
-   (contract first, one owner per file); put rules 2–3 in every agent's prompt.
+4. **Agents: parallel by default (user 2026-10-07).** Before starting any
+   task, and again whenever new work appears mid-task (several CI failures,
+   several findings), split it into independent pieces and give each its own
+   agent, running at the same time, whenever that finishes sooner. Contract
+   first, one owner per file; the lead keeps shared files and routes
+   cross-file needs. Use one agent only when the pieces depend on each other
+   or share the same files, and say why in one line. Don't hand a second,
+   unrelated problem to an agent busy with the first: start another agent.
+   Stay within about 8–10 agents at once on the user's PC. Put rules 2–3 in
+   every agent's prompt.
