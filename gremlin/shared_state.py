@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import threading
 from typing import TYPE_CHECKING
 
 from gremlin import threads
@@ -18,12 +19,15 @@ parts of the program.
 This is ugly but the only sane way to do this at the moment.
 """
 
-# Flag indicating whether or not input highlighting should be
-# prevented even if it is enabled by the user
-_suspend_input_highlighting = False
+# Who holds input highlighting off (Run, Listen, macro Record, Calibration,
+# OSC Add). It is suspended while any of them does (03 S114, 09 S33).
+_highlight_holders: set[str] = set()
 
-# Timer used to disable input highlighting with a delay
-_suspend_timer = None
+# Delayed releases still waiting, by holder (Listen lets go after 2 s).
+_release_timers: dict[str, threading.Timer] = {}
+
+# Guards the two above: a delayed release runs on a timer thread.
+_highlight_lock = threading.Lock()
 
 # True while a profile is running (Gremlin toggled on)
 _runtime_active = False
@@ -37,31 +41,60 @@ def suspend_input_highlighting() -> bool:
 
     :return True if input's are not automatically selected, False otherwise
     """
-    return _suspend_input_highlighting
+    return bool(_highlight_holders)
+
+
+def input_highlighting_holders() -> set[str]:
+    """Who holds input highlighting off right now."""
+    with _highlight_lock:
+        return set(_highlight_holders)
+
+
+def _cancel_release(holder: str) -> None:
+    timer = _release_timers.pop(holder, None)
+    if timer is not None:
+        timer.cancel()
+
+
+def hold_input_highlighting(holder: str) -> None:
+    """Suspends input highlighting until holder releases it (a pending
+    delayed release by the same holder is cancelled)."""
+    with _highlight_lock:
+        _cancel_release(holder)
+        _highlight_holders.add(holder)
+
+
+def release_input_highlighting(holder: str, delay: float = 0) -> None:
+    """Lets go of holder's hold, after delay seconds when given; highlighting
+    returns only when no one else holds it."""
+    with _highlight_lock:
+        _cancel_release(holder)
+        if delay <= 0 or holder not in _highlight_holders:
+            _highlight_holders.discard(holder)
+            return
+        timer: threading.Timer | None = None
+
+        def release() -> None:
+            with _highlight_lock:
+                # Not if a newer hold or release replaced this one.
+                if _release_timers.get(holder) is timer:
+                    del _release_timers[holder]
+                    _highlight_holders.discard(holder)
+
+        timer = threads.timer("input highlighting", delay, release)
+        _release_timers[holder] = timer
 
 
 def set_suspend_input_highlighting(value: bool) -> None:
-    """Sets the input highlighting behavior.
-
-    Args:
-        value: if True disables automatic selection of used inputs, if False
-            inputs will automatically be selected upon use
-    """
-    global _suspend_input_highlighting, _suspend_timer
-    if _suspend_timer is not None:
-        _suspend_timer.cancel()
-    _suspend_input_highlighting = value
-
-
-def set_suspend_input_highlighting_delayed() -> None:
-    """Disables input highlighting with a delay."""
-    global _suspend_timer
-    if _suspend_timer is not None:
-        _suspend_timer.cancel()
-
-    _suspend_timer = threads.timer(
-        "input highlighting", 2, set_suspend_input_highlighting, False
-    )
+    """Clears every hold (and pending release), then holds highlighting off
+    under "set" if value. For tests putting the state back; the program
+    holds and releases by name."""
+    with _highlight_lock:
+        for holder in list(_release_timers):
+            _cancel_release(holder)
+        _highlight_holders.clear()
+        if value:
+            _highlight_holders.add("set")
 
 
 def runtime_active() -> bool:

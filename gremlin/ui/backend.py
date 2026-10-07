@@ -213,10 +213,14 @@ def _same_file(a: str | Path | None, b: str | Path | None) -> bool:
         return False
 
 
-def _sync_highlight_pause(runner: code_runner.CodeRunner, holders: set[str]) -> None:
-    """Highlighting is paused while running or while a window holds it
-    (Calibration, OSC Add); Stop alone turned it back on (03 S114)."""
-    shared_state.set_suspend_input_highlighting(runner.is_running() or bool(holders))
+def _sync_run_highlight_hold(runner: code_runner.CodeRunner) -> None:
+    """Run holds input highlighting off while it runs; Stop lets go of only
+    its own hold, so Calibration, OSC Add, Listen or Record still hold
+    theirs (03 S114)."""
+    if runner.is_running():
+        shared_state.hold_input_highlighting("run")
+    else:
+        shared_state.release_input_highlighting("run")
 
 
 @common.SingletonDecorator
@@ -255,8 +259,6 @@ class Backend(QtCore.QObject):
         self._action_state = {}
         # Auto-load target held back by unsaved edits (said once).
         self._autoload_held: str | None = None
-        # Windows holding input highlighting paused (OSC Add, Calibration).
-        self._highlight_holders: set[str] = set()
         self.runner = code_runner.CodeRunner()
         self.ui_state = UIState(self)
         self.process_monitor = process_monitor.ProcessMonitor()
@@ -466,7 +468,7 @@ class Backend(QtCore.QObject):
         Stopped (06 Q5)."""
         try:
             if activate:
-                shared_state.set_suspend_input_highlighting(True)
+                shared_state.hold_input_highlighting("run")
                 try:
                     self.runner.start(self.profile, self.ui_state.currentMode)
                 except Exception:
@@ -475,7 +477,7 @@ class Backend(QtCore.QObject):
             else:
                 self.runner.stop()
         finally:
-            _sync_highlight_pause(self.runner, self._highlight_holders)
+            _sync_run_highlight_hold(self.runner)
             self.activityChanged.emit()
 
     def run_profile(self, fpath: str) -> bool:
@@ -550,14 +552,13 @@ class Backend(QtCore.QObject):
 
     @QtCore.Slot(str)
     def pauseInputHighlighting(self, holder: str) -> None:
-        """Pauses input highlighting until every holder has resumed it."""
-        self._highlight_holders.add(holder)
-        _sync_highlight_pause(self.runner, self._highlight_holders)
+        """Pauses input highlighting until every holder has resumed it
+        (the holds are kept in shared_state, with Run, Listen and Record)."""
+        shared_state.hold_input_highlighting(holder)
 
     @QtCore.Slot(str)
     def resumeInputHighlighting(self, holder: str) -> None:
-        self._highlight_holders.discard(holder)
-        _sync_highlight_pause(self.runner, self._highlight_holders)
+        shared_state.release_input_highlighting(holder)
 
     @QtCore.Slot(str, int, result=bool)
     def isActionExpanded(self, uuid_str: str, index: int) -> bool:

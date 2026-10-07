@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import itertools
 import logging
 import threading
 import time
@@ -46,6 +47,13 @@ from gremlin.types import (
 QML_IMPORT_NAME = "Gremlin.Util"
 QML_IMPORT_MAJOR_VERSION = 1
 
+# Listen lets go of input highlighting this long after it ends, so the press
+# that ended it doesn't highlight that input.
+LISTEN_RELEASE_DELAY = 2.0
+
+# Numbers the holders of input highlighting (each Listen, each recorder).
+_holder_ids = itertools.count(1)
+
 
 @ta.QmlElement
 class InputListenerModel(QtCore.QObject):
@@ -79,6 +87,8 @@ class InputListenerModel(QtCore.QObject):
         self._inputs: list[event_handler.Event] = []
         # Flag indicating whether the listener is active or not.
         self._is_enabled = False
+        # Its name in the input highlighting holds (03 S114, 09 S33).
+        self._highlight_holder = f"listen-{next(_holder_ids)}"
 
     def _connect_listeners(self) -> None:
         # Start listening to user inputs.
@@ -196,7 +206,7 @@ class InputListenerModel(QtCore.QObject):
 
         # Ensure input highlighting is turned off, even if input request
         # dialogs are spawned in quick succession.
-        shared_state.set_suspend_input_highlighting(True)
+        shared_state.hold_input_highlighting(self._highlight_holder)
 
         match event.event_type:
             case InputType.JoystickButton:
@@ -284,7 +294,7 @@ class InputListenerModel(QtCore.QObject):
         if is_enabled != self._is_enabled:
             self._is_enabled = is_enabled
             if self._is_enabled:
-                shared_state.set_suspend_input_highlighting(self._is_enabled)
+                shared_state.hold_input_highlighting(self._highlight_holder)
                 self._inputs = []
                 self._connect_listeners()
             else:
@@ -292,7 +302,9 @@ class InputListenerModel(QtCore.QObject):
                 # the shared mouse hook) all the same.
                 self._cancel_abort()
                 self._disconnect_listeners()
-                shared_state.set_suspend_input_highlighting_delayed()
+                shared_state.release_input_highlighting(
+                    self._highlight_holder, LISTEN_RELEASE_DELAY
+                )
             self.enabledChanged.emit(self._is_enabled)
 
     def _get_multiple_inputs(self) -> bool:
@@ -361,6 +373,8 @@ class MacroRecorder:
         ] = {}
         self._is_recording: bool = False
         self._config = Configuration()
+        # Its name in the input highlighting holds (03 S114, 09 S33).
+        self._highlight_holder = f"record-{next(_holder_ids)}"
 
     @property
     def is_recording(self) -> bool:
@@ -381,7 +395,7 @@ class MacroRecorder:
         self._last_recordings = {}
         self._axis_recordings = {}
         self._is_recording = True
-        shared_state.set_suspend_input_highlighting(True)
+        shared_state.hold_input_highlighting(self._highlight_holder)
 
         # Hookup required event listeners.
         el = event_handler.EventListener()
@@ -416,7 +430,7 @@ class MacroRecorder:
                 pass
         if InputType.Mouse in self._valid_event_types:
             windows_event_hook.MouseHook().release()
-        shared_state.set_suspend_input_highlighting(False)
+        shared_state.release_input_highlighting(self._highlight_holder)
         self._is_recording = False
 
     def _queue_event_recording(self, event: event_handler.Event) -> None:
