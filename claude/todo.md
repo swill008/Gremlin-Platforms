@@ -1,298 +1,180 @@
 # To do
 
-Work that is known and parked. Each item names its tracker ref (UI issues
-tracker) so the details stay in one place.
+What is open, in one list. Each item is done through the normal process
+(`claude/system-maps.md` "How we work"; spec first, `.claude/CLAUDE.md`
+change control and working standard). "Add to the to-do" means recording an
+item here only; nothing else changes until the work starts.
 
-## ONE-TIME CATCH-UP — FINISHED 2026-10-07 (baseline reached)
+Details for many items live in `claude/gap-list.md` (GL ids) and the spec
+pages in `claude/program-map/`. Finished work is under "Done" at the end;
+older text is in git history.
 
-**Done:** batches 1–3 (238 GL items) and the final phase (full test plan in
-`claude/final-test-plan/`, ~250 new tests, fixes). Pushed a7fdaf0b..d01ecaf6;
-CI green (run 37557433600); release 1.0.25 built from it. **The proper
-process in `claude/system-maps.md` ("How we work") applies again in full
-from now on.** Carried to the proper process: GL-254 (viewing a key creates
-an empty input), GL-257 (action_kinds.js table), GL-260 (Condition data/UI),
-GL-270 read-on-load (BM41), GL-274 (library Remove unused), GL-029, OSC,
-N22, AU-56; idea: output module refuses writes with no Run; open question:
-CI runs on both branches.
+## Next up
 
-### History of the catch-up (agreed with the user 2026-10-06)
+1. **Limit the UI scale to 175 %** (user, 2026-10-07; replaces AU-56 /
+   GL-201). 175 % is the highest scale the window tests confirm keeps every
+   control in view; 200 % cuts contents off on small screens. When done
+   (spec first): spec 09 S81 (slider 70–175 %) and S84 (replaced), the AU-56
+   notes on spec pages 01/03/07/09, GL-201 and the tracker marked replaced,
+   a decision row; code `gremlin/ui/ui_scale_option.py` SCALE_MAX 200 → 175
+   (a saved 180–200 is read as 175 through the existing clamp);
+   test_main_window_fits and test_tool_windows_fit check 175 instead of
+   200; a test that a saved 200 becomes 175 and the slider stops at 175.
 
-A short-term exception to "How we work" in `claude/system-maps.md`, to get
-a clean baseline fast. **When it ends, the proper process applies again in
-full** (trace first, independent re-trace, a test that fails on the old
-code for each fix, small batches, push + CI per batch).
+## Open questions for the user
 
-**Scope:** fix the open gap-list entries (`claude/gap-list.md`) that are
-bugs. No new features: GL-029 (profile recovery copy) and the parked OSC
-items (section 9) are deferred.
+2. **CI on one branch only?** Every push goes to `Gremlin-Platforms` and
+   `develop`, so CI runs twice and a failure emails twice; `develop` failed
+   twice only because the runner is slow (see item 16).
+3. **Big Button Map exports:** encode the image off the main thread so the
+   window doesn't freeze? Seen on CI (develop run 37607816152): Print &
+   Export tests stalled > 30 s in `hardware_profile._save_image`.
+4. **Old "CI Tests" workflow** has been failing since 2026-10-04 (left
+   untouched). Remove it?
 
-**Each batch:**
-1. Fix in parallel: agents each own separate files; if a fix breaks
-   something it is fixed at once, in that batch.
-2. At the end of the batch: a short batch test plan (what was fixed, how
-   each fix is checked, from the spec) appended to
-   `claude/catchup-test-plan.md`.
-3. Full LOCAL test: whole suite in random order + lint baseline + the
-   batch plan's checks; fix anything that fails before the batch closes.
-4. Commit locally (Spec: lines as usual). **No push, no CI** during the
-   catch-up.
-5. Update the gap list (done marks) and the tracker's GL entries.
+## Hands-on checks (user)
 
-**How the agents are split (user, 2026-10-06; replaces the first
-3-agent start of batch 1):** as many agents as is useful, about 8–10 at
-once at most on the user's PC. Split **contract-first**: in each redesign
-one agent owns the new owner module and writes its interface first
-(signatures and docstrings, from the map in `claude/system-maps.md`);
-the other agents move the callers onto it, each in its own files. No two
-agents edit the same file. A change needed in a file someone else owns
-goes to the lead (the main session), which passes it on. Shared files
-(`test/conftest.py`, `claude/*`) stay with the lead.
+5. **Try 1.0.25 by hand:** `claude/catchup-test-plan.md` (batch checks),
+   `claude/final-test-plan/` (per spec page), and the list at the end of
+   `claude/gap-list.md` (GL-016 and others).
 
-**Batches:**
-- **Batch 1 – the three redesigns, 7 agents** (gap list sections 3–5):
-  - R1 Run owner: `gremlin/run_scope.py` (new), `joystick_gremlin.py`,
-    `gremlin/code_runner.py`, `event_handler.py`, `event_helpers.py`,
-    `mode_manager.py`, `device_initialization.py`, `user_script.py`,
-    `threads.py`, `validate.py`, `gremlin/ui/backend.py`, `qml/Main.qml`,
-    `action_plugins/load_profile`; tests `test_audit3_run_stop`,
-    `test_bounded_waits`, `test_stage1_runtime`, `test/journeys/`.
-  - R2 Run callers: `gremlin/macro.py`, `keyboard.py`, `sendinput.py`,
-    `audio_player.py`, `tts.py`, `logical_device.py`, `vjoy/vjoy.py`, and
-    the plugins `tempo`, `double_tap`, `smart_toggle`, `chain`,
-    `map_to_vjoy`, `map_to_logical_device`, `map_to_mouse`,
-    `map_to_keyboard`.
-  - M1 Module store owner: `gremlin/modules/store.py` (new),
-    `gremlin/ui/hardware_profile.py`, `gremlin/modules/*` (not
-    `calibration.py`, `auto_map.py`), `gremlin/history_modules.py`,
-    `gremlin/ui/button_map_labels.py`; tests `test_module_store_only`
-    (new guard test), `test_audit3_module_files`, `test_stage1_modules`.
-  - M2 Module pages: `gremlin/ui/module_model.py`, `module_inputs.py`,
-    `module_pairing.py`, `gremlin/modules/calibration.py`,
-    `qml/DialogConfigureModule.qml`, `qml/DialogJoystickButtonMap.qml`.
-  - M3 Device Pack / History / Auto Map: `gremlin/ui/device_pack.py`,
-    `history_model.py`, `logical_layout.py`, `gremlin/modules/auto_map.py`,
-    `gremlin/auto_mapper.py`; tests `test_device_pack_import`,
-    `device_pack_window_smoke`, `test_twin_devices`.
-  - A1 Action Library owner: `gremlin/profile.py`, `base_classes.py`,
-    `plugin_manager.py`, `gremlin/ui/profile.py`, `ui/binding_catalog.py`,
-    `gremlin/unknown_action.py` (new), `qml/UnknownAction.qml` (new),
-    `qml/InputConfiguration.qml`; tests `test_audit3_actions_undo`,
-    `test_audit2_saving`, `test_data_safety`.
-  - A2 Action editors: `gremlin/ui/action_model.py` and the plugins not
-    listed above (`merge_axis`, `dual_axis_deadzone`, `reference`,
-    `condition`, …); tests `test_action_editor_fixes`, `test_action_fixes`.
-  - Files not listed: ask the lead first.
-- **Batch 2 – urgent fixes + behaviour/UX, 9 agents** (sections 2 and 6,
-  plus GL-074, GL-098 rest, GL-099, GL-106, GL-109 from batch 1). File
-  owners, contracts and rules: `claude/catchup-batch2-rules.md` (B1 shell,
-  B2a input events, B2b devices/HidHide, B3 modules/Home, B4 profiles/modes,
-  B5a action pane/locking, B5b action logic/speech, B6 Button Map, B7
-  History/Device Pack/Auto Mapper). Left out: GL-029, 168, 185, 186, 201.
-- **Batch 3 – text, glossary, help, clean-up, 6 agents** (sections 7 and 8,
-  plus GL-040 script time limit (D-04-Q13-TIMELIMIT) and dropping EVO R part
-  names from hover text (D-07-RB10-NOEVOR)). File owners and rules:
-  `claude/catchup-batch3-rules.md` (C1 help/glossary/docs, C2 shell/settings/
-  scripts, C3a modules/Home, C3b devices/input, C4 actions, C5 Button Map/
-  History/Device Pack/Auto Mapper).
+## Improvement ideas (2026-10-07; each goes through the spec first)
 
-The stopped first try at batch 1 (3 agents, partial) is saved as a patch
-for reference only: session scratchpad `batch1_partial/tracked.diff` plus
-`untracked/` (may be gone in a later session; not needed).
+Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
-**At the end:** one full test plan for the code base (from the batch plans
-and the spec) → write the missing tests → full local run (with the user's
-Gremlin closed, so the integration/vJoy tests run) → fix → push everything
-once → CI → fix → **that is the baseline; back to the proper process.**
+6. Problems panel: show validate() findings in the app (unused actions,
+   missing Logical controls, damaged module files, two inputs on one vJoy
+   output) with Go to.
+7. Profile recovery copy after a crash (GL-029, approved, deferred).
+8. Test panel without the game: press a binding on screen, see what
+   vJoy/Xbox gets.
+9. Find in profile: every use of a key, vJoy output, mode or action.
+10. Copy a mode or an input's bindings from another profile.
+11. Save diagnostics: one local zip of logs, settings, device list.
+12. Rule checks (validate) from report to fail (Stage 2 leftover).
+13. Startup time: load rarely used pages on first open; a startup-time test.
+14. What's new in Check for Updates (release notes before updating).
+15. Coverage report; fill the riskiest gaps.
+16. Faster CI: cache the venv and compiled QML (with item 2).
+17. Keep shrinking hardware_profile.py, module_model.py, binding_catalog.py.
+18. Screenshot tests at several UI scales (70–175 %).
 
-**Still in force throughout:** change control (a fix that would change the
-spec goes to the user first, `.claude/CLAUDE.md`), the Spec: line on every
-commit, the program thread and layer rules, off-screen/safety rules.
+## Carried-over fixes (one at a time, spec first)
 
-**User notes:** the user may use their own Gremlin during the catch-up;
-integration tests skip while it is open (run them at the end with it
-closed); full runs load the PC for ~3 min each.
+19. **GL-254** Viewing a key on the Keyboard page creates an empty input
+    (needs a detached draft input in ui/profile.py + Library).
+20. **GL-257** `qml/action_kinds.js` keeps its own action-type table.
+21. **GL-260** Condition editor: data and UI (QObject) mixed — a redesign.
+22. Idea: `output.write_vjoy` / `write_xbox` refuse writes when no Run is
+    on (today it holds only because every sender stops at Stop).
+23. A renamed stick keeps its card order slot but loses its saved card size
+    and stack (keyed by name slug).
+24. About 170 fixed `qWait` calls left in the off-screen window smoke
+    scripts (print_export, button_map_*, usability_smoke); fix as those
+    areas are touched (AU-119 leftover).
+25. Calibration's axis graph (`gremlin/ui/device.py` ~862, 881) still reads
+    `time.time()`, not `gremlin.clock` (GL-265 leftover).
 
-**Progress page for all work (user, 2026-10-07):** keep https://claude.ai/artifact/NQJw6xzumYopoJn5NXJxqR (Artifact tool + ArtifactData `progress/now`) current for every piece of work, not only the catch-up, and show results such as screenshots as artifacts.
+## Planned features (need the user's decisions)
 
-**Live agent output (user, 2026-10-07):** every agent pipes every shell
-command through `tools/agent_log.py <AGENT>` (`PYTHONUNBUFFERED=1 <command>
-2>&1 | python tools/agent_log.py B1`, pytest -v so each test is a line); output goes to `.agent-logs/<AGENT>.log` and,
-prefixed, to `.agent-logs/all.log` (not in git). When agents start, open one
-Terminal tab per agent with `Get-Content .agent-logs\<AGENT>.log -Wait -Tail 50`
-plus one for `all.log`. Put the pipe rule in every agent's rules/prompt. If
-the app can't type into tabs (missing terminal-shell-integration script), give
-the user the commands to run.
+26. **BM41 – A bigger page for the Button Map.** The page (32000 x 18000
+    page units, `worldPageW/H` in `qml/VkbRigEditor.qml`; `pageW/pageH`
+    saved by `gremlin/ui/hardware_profile.py`, one `PAGE_SIZE` since batch 3)
+    grows so there is more room around the photo; the photo frame (inner
+    page 24000 x 13500, `innerPad*`) keeps its size, centred. Every
+    position is a fraction of the page (`fx`, `fy`, `rig_coords.js`), so all
+    of them change meaning. To do:
+    - New page size (16:9 kept) and paddings; `photoWell` follows.
+    - Zoom-in limit from 8x to about 10x (the page and photo look ~23%
+      smaller at the same zoom).
+    - Rulers 0-100 over the new page; grid sizes keep their page units.
+    - No built-in maps or stock photos ship (07 Q12); convert only the
+      layouts the tests use, and redo the golden images and layout tests.
+    - Exports: the print area and Scale unaffected; a whole-page export
+      just has more margin.
+    - Open questions: (1) 30% per side (about 70% more area, recommended)
+      or 30% more area (about 14% per side)? (2) The user's own maps: the
+      program converts maps with the old page size as they load
+      (recommended), the user re-places them, or a one-time conversion of
+      their files (only with their go-ahead, on a backup).
+27. **GL-270** Read the page size back on load (comes with BM41).
+28. **GL-274** Picture library "Remove unused" button (D-07-GL274-LATER:
+    design what "unused" means first).
+29. **GL-186** New draw shapes: Plus, Radial ring, Named Card.
 
-**Progress page (user, 2026-10-06):** https://claude.ai/artifact/NQJw6xzumYopoJn5NXJxqR
-(source `claude/progress/catchup-progress.html`; its data is one db document
-`progress/now`, written with the ArtifactData tool). Update it at every step
-(agents started/finished, test runs, commits, batch changes) and start each
-message to the user with its one-line status.
+## Test housekeeping
 
-**Status:** CI baseline green (run 37521378227 on 0e790f73). Batch 1
-restarted 2026-10-06 with the 7-agent split above. **Batch 1 done: d68f4d88** (58 GL items; run 2016 passed). **Batch 2 done: 31861922** (112 GL items; run 2215 passed). **Batch 3 done: ae635492** (68 GL items + 5 part; run 2339 passed). **Final phase started 2026-10-07:** 9 agents P01–P09, one per spec page, rules in `claude/final-phase-rules.md`; each writes `claude/final-test-plan/<page>.md` and `test/unit/test_final_<page>.py` (bugs found become strict xfails, fixed afterwards). Then: full run with the user's Gremlin closed, push once, CI.
+30. Find the test that leaves a different EventListener instance in place
+    than the one InputModuleRuntime connected to (seed 572578; partner
+    test_twin_devices::test_each_twin_has_its_own_card creates the
+    runtime). The live-map test in test_final_07 now connects the runtime
+    to the current listener itself.
+31. Log noise in tests: "No parameter with key ('global','internal',
+    'twin-device-names')".
 
-## Test isolation follow-up (2026-10-07)
+## On hold / parked (user's choice)
 
-- CI (develop run 37607816152): Print & Export window tests stalled >30 s while `hardware_profile._save_image` encoded a large export PNG on the main thread (slow runner). Same code green on the other branch. Consider encoding exports off the main thread (also keeps the window responsive for big exports) — improvement, ask the user.
+32. **N22** – Inconsistent controls in action editors (on hold).
+33. **OSC** (parked 2026-10-02: leave OSC alone for now):
+    - **B15 – Default ports clash and disagree.** The program listens on
+      8000 when nothing is set (`gremlin/osc.py` `DEFAULT_PORT`), Options
+      shows 8001 (`gremlin/ui/osc_option.py` `OscInputHostModel.port_default`),
+      and output also defaults to 8000 (`DEFAULT_OUTPUT_PORT`). Suggested:
+      input 8000, output 9000 (the usual OSC convention), one constant used
+      everywhere.
+    - **B16 – OSC Add has controls that do nothing.** "Change" is saved as
+      Axis; "message vs data" and "Trigger on message" with its delay are
+      never passed on (`qml/OscAddDialog.qml`, `qml/OscDevice.qml` only
+      sends the address and Button/Axis). The backend has no per-input
+      settings for these; auto-release and its delay exist only as global
+      options. Choose: build per-input support, or hide the controls until
+      it exists.
+    - **B17 – OSC import promises change and encoder types.** Import turns
+      C and E suffixes into plain axes (`gremlin/ui/osc_device_model.py`
+      `_parse_import_line`), while `qml/OscImportDialog.qml` says otherwise.
+      Goes with B16: real types, or fix the text.
 
-- Some unit test leaves a different EventListener instance in place than the one InputModuleRuntime connected to when it was first made (found via test_final_07 live-map test with seed 572578, partner test in the first part: test_twin_devices::test_each_twin_has_its_own_card creates the runtime). The live-map test now connects the runtime to the current listener itself; the test that swaps the listener is not yet found.
+## Notes kept for reference
 
-## Improvement ideas (2026-10-07, to come back to; each goes through the spec first)
+- `test/integration/conftest.py` `_neutral_vjoy` resets the real vJoy device
+  between modules (the integration tests already drive vJoy; they skip while
+  the user's Gremlin is open). On CI 71 integration tests skip (no vJoy) and
+  the rig golden pixel comparison skips.
+- `gremlin/validate.py` PROFILE-UNUSED-ACTION also fires for new actions open
+  in a pane and for actions kept for Undo (a warning only; matters for
+  item 12).
+- `import_module_file` says "That file could not be read." for a JSON file
+  whose top level isn't an object.
 
-Suggested order: 8 → 1 → 2 → 9/12 → rest.
+## Done
 
-For users:
-1. Problems panel: show validate() findings in the app (unused actions, missing Logical controls, damaged module files, two inputs on one vJoy output) with Go to.
-2. Profile recovery copy (GL-029, approved, deferred).
-3. Test panel without the game: press a binding on screen, see what vJoy/Xbox gets.
-4. Find in profile: every use of a key, vJoy output, mode or action.
-5. Copy a mode or an input's bindings from another profile.
-6. Save diagnostics: one local zip of logs, settings, device list.
-7. What's new in Check for Updates (release notes before updating).
-
-For quality and speed:
-8. Rule checks (validate) from report to fail (Stage 2 leftover).
-9. Startup time: load rarely used pages on first open; a startup-time test.
-10. Coverage report; fill the riskiest gaps.
-11. Keep shrinking hardware_profile.py, module_model.py, binding_catalog.py.
-12. CI on one branch, cache the venv and compiled QML (faster, no double emails).
-13. Screenshot tests at several UI scales (70–175 %).
-14. ~~Signed installer~~ — won't fix (user, 2026-10-07): unsigned builds stay; SmartScreen note stays in the release text.
-
-## Next up (updated 2026-10-07)
-
-- [ ] **Limit the UI scale to 175 % (user, 2026-10-07; replaces AU-56 / GL-201).** 175 % is the highest scale the window tests confirm keeps every control in view; 200 % cuts contents off on small screens. When done (spec first): spec 09 S81 (slider 70–175 %) and S84 (replaced), AU-56 notes on spec pages 01/03/07/09, GL-201 and the tracker marked replaced, a decision row; code `gremlin/ui/ui_scale_option.py` SCALE_MAX 200 → 175 (a saved 180–200 is read as 175 through the existing clamp); test_main_window_fits and test_tool_windows_fit check 175 instead of 200; a test that a saved 200 becomes 175 and the slider stops at 175.
-
-Stages 0-3 are written out in `claude/system-maps.md` ("The plan").
-
-- [x] **Stage 0 – Program map and behaviour spec** (2026-10-06):
-  `claude/program-map/`, approved (all decisions as recommended).
-- [x] **Stage 0 – Gap list** (2026-10-06): `claude/gap-list.md`, 309
-  entries GL-001..GL-309 in work order; 14 hands-on checks listed at its end.
-- **Change control:** every behaviour change goes through the spec; if it
-  alters a statement or decision, tell the user first and update the spec.
-- [x] **Stage 1 – Safety net** (2026-10-06): CI (`.github/workflows/ci.yml`),
-  random order, lint baseline (`tools/pyright_baseline.py`), `gremlin/validate.py`
-  (report-only), journey tests (`test/journeys/`), gap-list section 1 tests,
-  `claude/decisions.md`. Left: GL-016 hands-on checks (user).
-- [ ] **NEXT: Stage 2, redesign 1 – Run lifecycle (map 3 in
-  `claude/system-maps.md`)**, approved 2026-10-06; the user said to start
-  it once CI is green. Closes AU-116/GL-047 and AU-117, gap-list section 3.
-  Start with tests that lock in today's Run/Stop behaviour, then
-  `gremlin/run_scope.py` with its guard test (see "How we work").
-  Then module files (map 1), then actions (map 2).
-- [x] **AU-119 / GL-001 – fixed short waits** (Stage 1). Left over: about
-  170 `qWait` calls in the off-screen window smoke scripts
-  (print_export, button_map_*, usability_smoke); fix them as those areas
-  are touched.
-- [ ] **AU-27 – Mirrored Copy Button Map takes two undos.** Not verified yet
-  (hands-on check in the gap list, GL-184).
-
-## CI (state 2026-10-06)
-
-- `.github/workflows/ci.yml` runs on every push: lint baseline
-  (`tools/pyright_baseline.py`) and the full suite in random order via
-  `test/run_tests.py --random-order --parts 2` (seed printed in the log).
-- First run (2026-10-06 16:08) was a false green: the temp
-  USERPROFILE made `poetry run` use an empty environment, and the runner
-  passed parts with no result. Fixed in 9297578c (CI uses the project's
-  Python; the runner fails a part with no summary).
-- Second run: 1 failure, `test_modules_import_alone` counted as stalled on
-  the 4-core runner; fixed in 739ef792 (waits on its processes from the
-  main thread). Third run in progress after 739ef792.
-- On CI: 71 integration tests skip (no vJoy there); the rig golden pixel
-  comparison skips on GitHub.
-- **Open questions for the user:** every push goes to both
-  `Gremlin-Platforms` and `develop`, so CI runs twice and a failure emails
-  twice (could limit CI to one branch). The older "CI Tests" workflow has
-  been failing since 2026-10-04 (left untouched).
-
-## Follow-ups noted during Stage 1 (not yet in the gap list)
-
-- Direct time reads still outside `gremlin.clock`: `action_plugins/chain`
-  (`time.time`, tests patch it), `gremlin/user_script.py` periodic loop
-  (`time.monotonic`), `gremlin/ui/device.py` axis time series (GL-265),
-  `vjoy/vjoy.py` keep-alive.
-- `gremlin/validate.py`: PROFILE-UNUSED-ACTION also fires for new actions
-  open in a pane and for actions kept for Undo (it is a warning only);
-  `after_stop()` can't see Tempo / Double Tap / Smart Toggle Qt timers
-  (comes with run_scope, GL-047).
-- A renamed stick keeps its card order slot but loses its saved card size
-  and stack (keyed by name slug).
-- `import_module_file` now says "That file could not be read." for a JSON
-  file whose top level isn't an object (was "That file is not a module
-  file.").
-- Log noise in tests: "No parameter with key ('global','internal',
-  'twin-device-names')".
-- `test/integration/conftest.py` `_neutral_vjoy` resets the real vJoy
-  device between modules (as the integration tests already drive vJoy;
-  they skip while the user's Gremlin is open).
-- Hands-on checks for the user: the list at the end of
-  `claude/gap-list.md` (GL-016 and others).
-
-## On hold (user's choice)
-
-- ~~**AU-56** – 200% UI scale on a small screen cuts off window contents.~~ To be replaced by limiting the UI scale to 175 % (to-do under "Next up", user 2026-10-07).
-- **N22** – Inconsistent controls in action editors.
-
-## Done (kept for reference)
-
+- [x] **History Before/After highlights the deltas** (2026-10-07, f505f776;
+  spec 08 S104, D-08-HISTORY-DIFF, D-08-HISTORY-SELECT). CI green.
+- [x] **Signed installer** — won't fix (D-REL-UNSIGNED, 2026-10-07).
+- [x] **AU-56** (200 % cuts contents off) — to be replaced by item 1.
+- [x] **One-time catch-up** (2026-10-06/07): Stages 0–1, batches 1–3 (238
+  GL items) and the final phase (full test plan in `claude/final-test-plan/`,
+  ~250 new tests, fixes). Baseline: CI green (run 37557433600), release
+  1.0.25. Batch plans and checks: `claude/catchup-test-plan.md`; rules:
+  `claude/catchup-batch2-rules.md`, `claude/catchup-batch3-rules.md`,
+  `claude/final-phase-rules.md`, `claude/final-fix-rules.md`; commits
+  d68f4d88 (batch 1), 31861922 (batch 2), ae635492 (batch 3), a7fdaf0b
+  (final phase). Included: Stage 2 Run lifecycle (run_scope), module files
+  (store) and actions (Library); AU-27 / GL-184 (mirrored copy one undo);
+  direct time reads in Chain, the script loop and the vJoy keep-alive.
+- [x] **Stage 0** – program map, spec and gap list (2026-10-06).
+- [x] **Stage 1** – safety net: CI, random order, lint baseline, validate
+  (report-only), journeys, decisions.md (2026-10-06).
+- [x] **G-HISTORY** – History across the whole program (2026-10-05:
+  4597e486, 20155486, 780f16b8); notes in `claude/history-notes.md`.
+- [x] **G-LIBLEAK** – Unused actions written to the profile (2026-10-05:
+  b4539968).
 - [x] **Hidden Cards in the Home menu, no window** (2026-10-03).
-- [x] **Audits 2 and 3** (2026-10-05/06: 6edbdcd8 .. a1459e22). Every fix
-  traced end to end and re-traced independently; tracker AU-76..AU-115.
+- [x] **Audits 2 and 3** (2026-10-05/06: 6edbdcd8 .. a1459e22); tracker
+  AU-76..AU-115.
 
-## Button Map (planned 2026-10-04)
+## Working standard (pointer)
 
-- [ ] **BM41 – A bigger page for the Button Map.** The page (32000 x 18000
-  page units, `worldPageW/H` in `qml/VkbRigEditor.qml`; `pageW/pageH` saved
-  by `gremlin/ui/hardware_profile.py`) grows so there is more room around
-  the photo; the photo frame (inner page 24000 x 13500, `innerPad*`) keeps
-  its size, centred. Every position is a fraction of the page (`fx`, `fy`,
-  `rig_coords.js`), so all of them change meaning. Backward compatibility
-  is not a concern (not released). To do:
-  - New page size (16:9 kept) and paddings; `photoWell` follows.
-  - Zoom-in limit from 8x to about 10x (the page and photo look ~23%
-    smaller at the same zoom).
-  - Rulers 0-100 over the new page; grid sizes keep their page units.
-  - No built-in maps or stock photos ship (07 Q12); convert only the
-    layouts the tests use, and redo the golden images and layout tests.
-  - Exports: the print area and Scale unaffected; a whole-page export just
-    has more margin.
-  - Open questions: (1) 30% per side (about 70% more area, recommended) or
-    30% more area (about 14% per side)? (2) The user's own maps: the
-    program converts maps with the old page size as they load
-    (recommended), the user re-places them, or a one-time conversion of
-    their files (only with their go-ahead, on a backup).
-
-## Program-wide history (planned 2026-10-05)
-
-- [x] **G-HISTORY – History across the whole program.** (built 2026-10-05: 4597e486, 20155486, 780f16b8; Undo added where it was missing: Module Setup, Calibration, Configuration page) A shared history
-  in its own files (per area: input modules, output modules, action
-  editor, Button Map) that the program reads and writes, so earlier
-  versions can be seen and restored, also after a restart. To be fleshed
-  out with the user first: notes and open questions in
-  `claude/history-notes.md`.
-- [x] **G-LIBLEAK – Unused actions written to the profile.** (fixed 2026-10-05: b4539968) Some edit
-  paths drop an action's link without removing the action, and saving
-  writes every action, so the file grows (the user's profile: 1,172
-  actions, 408 used). Under discussion: fix each leak, and skip unused
-  actions when writing the file (kept in memory so Undo still works).
-
-## OSC (parked 2026-10-02: leave OSC alone for now)
-
-- [ ] **B15 – Default ports clash and disagree.** The program listens on 8000
-  when nothing is set (`gremlin/osc.py` `DEFAULT_PORT`), Options shows 8001
-  (`gremlin/ui/osc_option.py` `OscInputHostModel.port_default`), and output
-  also defaults to 8000 (`DEFAULT_OUTPUT_PORT`). Suggested: input 8000,
-  output 9000 (the usual OSC convention), one constant used everywhere.
-- [ ] **B16 – OSC Add has controls that do nothing.** "Change" is saved as
-  Axis; "message vs data" and "Trigger on message" with its delay are never
-  passed on (`qml/OscAddDialog.qml`, `qml/OscDevice.qml` only sends the
-  address and Button/Axis). The backend has no per-input settings for these;
-  auto-release and its delay exist only as global options. Choose: build
-  per-input support, or hide the controls until it exists.
-- [ ] **B17 – OSC import promises change and encoder types.** Import turns
-  C and E suffixes into plain axes (`gremlin/ui/osc_device_model.py`
-  `_parse_import_line`), while `qml/OscImportDialog.qml` says otherwise.
-  Goes with B16: real types, or fix the text.
+Status line, progress page (https://claude.ai/artifact/NQJw6xzumYopoJn5NXJxqR),
+live agent logs (`tools/agent_log.py`, `.agent-logs/all.log`) and several
+agents where work splits: see `.claude/CLAUDE.md` "Working standard".
