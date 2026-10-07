@@ -21,11 +21,27 @@ older text is in git history.
    test_main_window_fits and test_tool_windows_fit check 175 instead of
    200; a test that a saved 200 becomes 175 and the slider stops at 175.
 
-## Hands-on checks (user)
+## Hands-on checks
 
-5. **Try 1.0.25 by hand:** `claude/catchup-test-plan.md` (batch checks),
-   `claude/final-test-plan/` (per spec page), and the list at the end of
-   `claude/gap-list.md` (GL-016 and others).
+5. **Program-run part done 2026-10-07** (e50c4ed8, results in
+   `claude/hands-on-results/`, page https://claude.ai/artifact/XDkvyR895esB8smH439BWD):
+   247 rows, 194 pass, 20 fail, 6 blocked, 27 need a person. Left:
+   - **5a. Fix the 15 clear gaps** (program differs from spec), spec first
+     per row: 05 S105 page jumps device on unplug; 05 S83 vJoy Relative never
+     moves; 04 S80 Swap Bindings buttons off-window; 02 Q6 Device
+     Information deviceType has no getter; 03 S101 Calibration wrong stick;
+     03 S114 highlight on after Run/Stop; 03 S40 Module Setup switch dropped;
+     01 S71 New asks order; 07 S73 chips not refreshed; 05 S44 "Off" label
+     late; 03 S78 no counts without module file; 08 Diagnostic logs not in
+     History; 04 Q19 / GL-153 unsaved check slow; 06 S54 keep-alive ~120 s;
+     09 Q16 / GL-200 action images unscaled.
+   - **5b. User decisions:** GL-122 throttle centre at Run (dill sends no
+     starting values); held vJoy buttons stay pressed after Stop/quit
+     (06 S17); 05 S105 vs 02 S28 (unplugged axis centre or last value);
+     07 S80 template export text; 08 S97 note; 01 S44 OSC host (parked).
+   - **5c. Person-only checks:** the "Needs a person" sections of each results
+     file (real sticks, sound, native dialogs, network/update, fresh exe).
+   - **5d.** Catch-up plan rows for pages other than 02/06 were not run.
 
 ## Improvement ideas (2026-10-07; each goes through the spec first)
 
