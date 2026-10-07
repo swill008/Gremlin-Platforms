@@ -220,10 +220,13 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
     return dev
 
 
-def _arm_keep_alive(vjoy_id: int, after: object = None) -> None:
-    """Checks the held vJoy every _KEEP_ALIVE_S (06 S54). One timer per
-    device: armed when it is opened (after=None, none armed yet) or by its
-    own check (after=that check's token, still the current one).
+def _arm_keep_alive(
+    vjoy_id: int, after: object = None, seconds: float | None = None
+) -> None:
+    """Checks the held vJoy _KEEP_ALIVE_S after its last write (06 S54), or
+    after seconds. One timer per device: armed when it is opened (after=None,
+    none armed yet) or by its own check (after=that check's token, still the
+    current one).
 
     It is a Run timer (run_scope.timer, main thread): Stop cancels it with
     the rest of the Run, so it never outlives the Run that holds the device
@@ -248,7 +251,11 @@ def _arm_keep_alive(vjoy_id: int, after: object = None) -> None:
             return
         token = object()
         timer = run_scope.timer(
-            f"vJoy {vid} keep-alive", _KEEP_ALIVE_S, _keep_alive_check, vid, token
+            f"vJoy {vid} keep-alive",
+            _KEEP_ALIVE_S if seconds is None else seconds,
+            _keep_alive_check,
+            vid,
+            token,
         )
         _keep_alive[vid] = (token, timer)
 
@@ -287,7 +294,9 @@ def _keep_alive_door() -> _KeepAliveDoor | None:
 
 def _keep_alive_check(vjoy_id: int, token: object) -> None:
     """Resets a held vJoy that had no write for _KEEP_ALIVE_S, then checks
-    again later. A released device arms no new check."""
+    again _KEEP_ALIVE_S after its last write (a fixed period from the open
+    re-sent it only after up to twice that). A released device arms no new
+    check."""
     vid = int(vjoy_id)
     dev = _opened_vjoy(vid)
     if dev is None:
@@ -296,13 +305,18 @@ def _keep_alive_check(vjoy_id: int, token: object) -> None:
             if current is not None and current[0] is token:
                 del _keep_alive[vid]
         return
+    wait = _KEEP_ALIVE_S
     try:
-        if clock.monotonic() - float(dev.last_active) >= _KEEP_ALIVE_S:
+        idle = clock.monotonic() - float(dev.last_active)
+        if idle >= _KEEP_ALIVE_S:
             dev.reset()
+        else:
+            # Never less than a little: a clock going back can't spin it.
+            wait = max(_KEEP_ALIVE_S - idle, min(_KEEP_ALIVE_S, 1.0))
     except Exception:
         syslog.exception(f"vJoy {vid} keep-alive failed")
     # Released (reset_vjoy) while this check ran: no new timer.
-    _arm_keep_alive(vid, after=token)
+    _arm_keep_alive(vid, after=token, seconds=wait)
 
 
 def _stop_keep_alive() -> None:
@@ -486,6 +500,19 @@ def vjoy_owned(vjoy_id: int) -> bool:
         return dev is not None and bool(dev.is_owned())
     except Exception:
         return False
+
+
+def vjoy_lost(vjoy_id: int) -> bool:
+    """True when Gremlin opened this vJoy device and no longer owns it
+    (another program took it). A device not opened yet is not lost: the
+    next write opens it (05 S83)."""
+    dev = _opened_vjoy(vjoy_id)
+    if dev is None:
+        return False
+    try:
+        return not bool(dev.is_owned())
+    except Exception:
+        return True
 
 
 def vjoy_state(

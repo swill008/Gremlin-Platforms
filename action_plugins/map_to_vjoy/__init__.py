@@ -126,8 +126,9 @@ class MapToVjoyFunctor(RelativeAxisLoop, AbstractFunctor):
         )
 
     def _relative_ok(self) -> bool:
-        # The vJoy device is no longer valid.
-        return bool(output.vjoy_owned(self.data.vjoy_device_id))
+        # Gremlin held the vJoy device and lost it. One not opened yet is
+        # fine: the loop's first write opens it (05 S83).
+        return not output.vjoy_lost(self.data.vjoy_device_id)
 
 
 class MapToVjoyModel(ActionModel):

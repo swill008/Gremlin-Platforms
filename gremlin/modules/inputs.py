@@ -7,7 +7,8 @@
 Actions and scripts that read the current value of some other input (Merge
 Axis, Dual Axis Deadzone, the Condition action, the script "joy" and
 "keyboard" objects) read it here. An input its input module does not claim
-reads as neutral: axis centred, button released, hat centred, key up.
+reads as neutral: axis centred, button released, hat centred, key up. An
+unplugged stick's axes read centred too (its buttons and hats were let go).
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 import dill
-from gremlin import input_cache, keyboard
+from gremlin import device_initialization, input_cache, keyboard
 from gremlin.types import HatDirection, InputType
 
 
@@ -25,8 +26,25 @@ def _allows(device_guid: object, input_type: InputType, identifier: object) -> b
     return InputModuleRuntime().allows(device_guid, input_type, identifier)
 
 
+def _unplugged(device_guid: object) -> bool:
+    """A stick read before that is not in the device list now. Its cache
+    keeps the last values (02 S28); only a stick the cache holds can be one
+    (the logical device never is)."""
+    if not isinstance(
+        input_cache.Joystick.devices.get(device_guid), input_cache.JoystickWrapper
+    ):
+        return False
+    return all(
+        dev.device_guid.uuid != device_guid
+        for dev in device_initialization.joystick_devices()
+    )
+
+
 def axis_value(device_guid: Any, axis_id: int) -> float:  # noqa: ANN401
+    """An unplugged stick's axis reads centred (05 S105, D-05-UNPLUG-CENTRE)."""
     if not _allows(device_guid, InputType.JoystickAxis, axis_id):
+        return 0.0
+    if _unplugged(device_guid):
         return 0.0
     return float(input_cache.Joystick()[device_guid].axis(axis_id).value)
 

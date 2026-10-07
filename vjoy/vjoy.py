@@ -213,6 +213,11 @@ class VJoyStateCache(metaclass=SingletonMetaclass):
         self._init_vjoy_if_needed(vjoy_id)
         self._cache[vjoy_id][InputType.JoystickHat][index] = direction
 
+    def forget(self, vjoy_id: int) -> None:
+        """The device was let go of at rest: nothing it held comes back
+        when it is acquired again (06 S17)."""
+        self._cache.pop(vjoy_id, None)
+
     def _init_vjoy_if_needed(self, vjoy_id: int) -> None:
         if vjoy_id not in self._cache:
             self._cache[vjoy_id] = {
@@ -808,13 +813,42 @@ class VJoy:
         """When the device was last written (clock.monotonic)."""
         return self._last_active
 
+    def rest(self) -> None:
+        """Puts the device at rest: every button up, every hat centred, every
+        axis centred (06 S17). Unlike reset (the keep-alive), nothing held is
+        written back, and the state cache forgets it, so the next acquisition
+        starts from rest as well."""
+        if not self.vjoy_id:
+            return
+        controls: list[tuple[str, dict, str, object]] = [
+            ("button", self._button, "is_pressed", False),
+            ("hat", self._hat, "direction", HatDirection.Center),
+            ("axis", self._axis, "value", 0.0),
+        ]
+        for kind, items, attr, value in controls:
+            for index, control in items.items():
+                try:
+                    setattr(control, attr, value)
+                except VJoyError as e:
+                    logging.getLogger("system").warning(
+                        f"vJoy {self.vjoy_id}: {kind} {index} not put at rest: {e}"
+                    )
+        VJoyStateCache().forget(self.vjoy_id)
+
     def invalidate(self) -> None:
-        """Releases the vJoy device (its keep-alive belongs to the output
-        module, which stops it first)."""
+        """Releases the vJoy device at rest (its keep-alive belongs to the
+        output module, which stops it first)."""
         if self.vjoy_id:
-            self.reset()
-            VJoyInterface.RelinquishVJD(self.vjoy_id)
-            self.vjoy_id = None
+            try:
+                self.rest()
+            except Exception:
+                # The other devices are still released (VJoyProxy.reset).
+                logging.getLogger("system").exception(
+                    f"vJoy {self.vjoy_id} could not be put at rest"
+                )
+            finally:
+                VJoyInterface.RelinquishVJD(self.vjoy_id)
+                self.vjoy_id = None
 
     def _init_axes(self) -> dict[int, Axis]:
         """Retrieves all axes present on the vJoy device and creates their
