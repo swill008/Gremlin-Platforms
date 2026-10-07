@@ -298,6 +298,8 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S105** After Create 1:1 Actions the Auto Mapper keeps the ticked modules ticked and selected, so Create again works on the same modules (what is shown is what Create uses). [user decision 2026-10-07: D-08-AUTOMAP-KEEP]
 - **S106** Device Pack should open on the first device that can be exported; a device whose module file can't be read stays in the list marked "(file damaged)". [user decision 2026-10-07: D-08-PACK-START]
 - **S107** Device Pack Export should be written in the background: the window stays usable, shows it is busy, Export is disabled until it is done (one at a time), and the result is reported when done (failures name the file, folder and reason). The device photo preview loads in the background at preview size. [user decision 2026-10-07: D-08-PACK-BG]
+- **S108** The Auto Mapper's Select Mode should start on the toolbar's mode (the mode being edited), and its result should name the mode the actions went into ("Made 36 actions in Default"); when that is not the toolbar's mode it adds "The toolbar shows <mode>: switch to <chosen mode> to see them." [user decision 2026-10-07: D-08-AUTOMAP-MODE]
+- **S109** When Create makes nothing for a control, the result should give the true reason: vJoy outputs another input already uses in that mode are listed as skipped ("Skipped vJoy 1 buttons 1-8: already used by another input in this mode"), not counted as inputs that kept their actions; when every output is skipped because the output module claims none, the result names the output module and points to "Also claim the matching outputs". [user decision 2026-10-07: D-08-AUTOMAP-REASON]
 
 ## 9. Questions for the user
 
