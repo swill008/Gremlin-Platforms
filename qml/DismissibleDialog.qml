@@ -122,6 +122,46 @@ Popup {
         open()
     }
 
+    // A question bigger than the window it opens in (a small tool window)
+    // would be cut off, its buttons out of reach: the window grows to show
+    // it whole while it is open, and goes back after if left that size.
+    property var _grown: null
+
+    function _fitWindow() {
+        var host = _body.Window.window
+        if (!host || !visible)
+            return
+        var room = Style.dp(20)
+        var wantWidth = Style.fitWidth(implicitWidth + room, _body.Screen)
+        var wantHeight = Style.fitHeight(implicitHeight + room, _body.Screen)
+        if (host.width >= wantWidth && host.height >= wantHeight)
+            return
+        if (!_grown)
+            _grown = { host: host, width: host.width, height: host.height }
+        if (host.width < wantWidth)
+            host.width = wantWidth
+        if (host.height < wantHeight)
+            host.height = wantHeight
+        _grown.setWidth = host.width
+        _grown.setHeight = host.height
+    }
+
+    function _restoreWindow() {
+        var g = _grown
+        _grown = null
+        if (!g || !g.host)
+            return
+        // Not if the person resized it meanwhile.
+        if (g.host.width === g.setWidth && g.host.height === g.setHeight) {
+            g.host.width = g.width
+            g.host.height = g.height
+        }
+    }
+
+    onAboutToShow: Qt.callLater(_fitWindow)
+    onImplicitHeightChanged: if (visible) Qt.callLater(_fitWindow)
+    onImplicitWidthChanged: if (visible) Qt.callLater(_fitWindow)
+
     parent: Overlay.overlay
     anchors.centerIn: parent
     modal: true
@@ -130,6 +170,7 @@ Popup {
     padding: Style.dp(16)
 
     onClosed: {
+        _restoreWindow()
         var choice = _choice
         var mode = _mode
         var ok = _resultOk
@@ -152,6 +193,8 @@ Popup {
     }
 
     contentItem: ColumnLayout {
+        id: _body
+
         spacing: Style.dp(12)
 
         Label {

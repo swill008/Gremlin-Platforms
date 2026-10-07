@@ -26,6 +26,7 @@ ApplicationWindow {
 
     title: "Swap Devices"
 
+    // Esc and Return don't close the window (a stick can send them).
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
@@ -160,5 +161,13 @@ ApplicationWindow {
     // Asks before Swap Bindings moves every binding.
     DismissibleDialog {
         id: _swapGate
+
+        // Esc answers Cancel, which changes nothing (inside the question:
+        // the window's own shortcuts don't reach past it).
+        Shortcut {
+            sequence: "Esc"
+            enabled: _swapGate.opened
+            onActivated: _swapGate.close()
+        }
     }
 }

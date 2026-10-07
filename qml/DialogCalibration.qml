@@ -74,8 +74,14 @@ ApplicationWindow {
         if (!next.length || next === shownSlug)
             return
         // A device that isn't in the list (not connected) waits for it.
+        // With nothing shown yet it is the one shown ("not connected", the
+        // drop-down blank), not the first stick in the list.
         if (_moduleSelection.count > 0 && _moduleSelection.indexOfValue(next) < 0) {
             waitingSlug = next
+            if (!shownSlug.length) {
+                shownSlug = next
+                _moduleSelection.currentIndex = -1
+            }
             return
         }
         waitingSlug = ""
@@ -92,6 +98,13 @@ ApplicationWindow {
         }
         shownSlug = next
         syncSelection()
+    }
+
+    // Nothing shown and no device asked for (by a card, or waited for):
+    // the drop-down's first device is shown.
+    function mayPickFirst() {
+        return !shownSlug.length && !waitingSlug.length
+            && !(initialSlug.length && !_ready)
     }
 
     // The drop-down names the device whose axes are shown.
@@ -149,15 +162,16 @@ ApplicationWindow {
         id: _modules
         // Sticks came or went: the drop-down keeps naming the device shown
         // (blank while its stick is unplugged; its axes and unsaved work stay).
+        // The device a card asked for connected: it is shown (asking first
+        // when another one has unsaved work).
         onModelReset: Qt.callLater(function() {
-            if (_calibrationDialog.waitingSlug.length
-                    && _moduleSelection.indexOfValue(_calibrationDialog.waitingSlug) >= 0
-                    && _moduleSelection.indexOfValue(_calibrationDialog.shownSlug) < 0) {
-                var slug = _calibrationDialog.waitingSlug
+            var slug = _calibrationDialog.waitingSlug
+            if (slug.length && _moduleSelection.indexOfValue(slug) >= 0) {
                 _calibrationDialog.waitingSlug = ""
-                _calibrationDialog.shownSlug = ""
-                _calibrationDialog.chooseModule(slug)
-                return
+                if (slug !== _calibrationDialog.shownSlug) {
+                    _calibrationDialog.chooseModule(slug)
+                    return
+                }
             }
             var index = _moduleSelection.indexOfValue(_calibrationDialog.shownSlug)
             if (index >= 0)
@@ -193,17 +207,21 @@ ApplicationWindow {
                 implicitContentWidthPolicy: ComboBox.WidestText
                 onActivated: _calibrationDialog.chooseModule(currentValue)
                 onCurrentValueChanged: {
-                    if (!_calibrationDialog.shownSlug.length && currentValue)
+                    if (_calibrationDialog.mayPickFirst() && currentValue)
                         _calibrationDialog.shownSlug = String(currentValue)
                 }
                 // The list can finish loading after a card preselected a device.
+                // A device shown or waited for that isn't in it is kept, not
+                // swapped for the first one.
                 onCountChanged: {
                     if (count === 0)
                         return
                     if (indexOfValue(_calibrationDialog.shownSlug) >= 0)
                         _calibrationDialog.syncSelection()
-                    else if (currentValue)
+                    else if (_calibrationDialog.mayPickFirst() && currentValue)
                         _calibrationDialog.shownSlug = String(currentValue)
+                    else if (_calibrationDialog.shownSlug.length)
+                        currentIndex = -1
                 }
             }
 

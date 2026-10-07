@@ -184,6 +184,7 @@ class DeviceListModel(QtCore.QAbstractListModel):
     """Model containing basic information about all connected devices."""
 
     selectedIndexChanged = QtCore.Signal()
+    deviceTypeChanged = QtCore.Signal()
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
@@ -293,8 +294,11 @@ class DeviceListModel(QtCore.QAbstractListModel):
         Args:
             types: the type of devices to list
         """
+        if types == self._device_types:
+            return
         self._device_types = types
         self._reload_devices()
+        self.deviceTypeChanged.emit()
 
     @QtCore.Property(int, notify=selectedIndexChanged)
     def selectedIndex(self) -> int:
@@ -305,7 +309,14 @@ class DeviceListModel(QtCore.QAbstractListModel):
         if 0 <= index < len(self._devices) and index != self._selected_index:
             self._selected_index = index
 
-    deviceType = QtCore.Property(str, fset=_change_device_type)
+    def _get_device_type(self) -> str:
+        return self._device_types
+
+    # A getter too: QML drops a value set on a property it can't read.
+    deviceType = QtCore.Property(
+        str, fget=_get_device_type, fset=_change_device_type,
+        notify=deviceTypeChanged,
+    )
 
 
 @ta.QmlElement
