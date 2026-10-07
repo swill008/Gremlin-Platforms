@@ -361,6 +361,8 @@ Duplicated logic
 - S129 Every menu path the guide names should exist, every action should have a topic, and removed features should not be mentioned. [test-plan: HELP-C, HELP-CATCH-UP] [test: test_help_guide.py::test_menu_paths_in_the_guide_exist, ::test_every_action_plugin_has_a_topic, ::test_removed_or_wrong_things_are_not_in_the_help]
 - S130 About should show the build's version and this repository. [test-plan: HELP-C] [test: test_help_guide.py::test_about_shows_the_build_version]
 - S131 Escape should close Help, About and Check for Updates. Windows a stick is used in ignore Escape. [tracker: UI6] [user decision: C19 left as is]
+- **S132** Help → Save Diagnostics… (also a button on the Debug tab) should save one zip, through a Save dialog that starts on the Desktop: the program's logs, its settings, the device list (names, ids, kinds, connected), and the program and Windows versions. The open profile is left out unless a box in the dialog is ticked. The user's name in folder paths is replaced by `<user>`. When done it says where the zip went; a failure names the file, folder and reason (as 07 Q19). [user decision 2026-10-07: D-01-DIAG-ZIP]
+- **S133** When Check for Updates finds a newer version, the Update window should show that release's notes from GitHub, formatted and scrollable; when versions were skipped, each release's notes newest first. With no notes or no network it says "Release notes unavailable." and updating still works. [user decision 2026-10-07: D-01-UPDATE-NOTES]
 
 ## 9. Questions for the user
 
