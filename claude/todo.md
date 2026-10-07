@@ -26,6 +26,9 @@ older text is in git history.
 5. **Program-run part done 2026-10-07** (e50c4ed8, results in
    `claude/hands-on-results/`, page https://claude.ai/artifact/XDkvyR895esB8smH439BWD):
    247 rows, 194 pass, 20 fail, 6 blocked, 27 need a person. Left:
+   - **5a, 5b and the 10 smaller findings: DONE 2026-10-07** (commits
+     27d99d8b..93e9a615; decisions b5978ec1, b86b55a5, 7860c829, c58df6f0).
+     Kept below for reference.
    - **5a. Fix the 15 clear gaps** (program differs from spec), spec first
      per row: 05 S105 page jumps device on unplug; 05 S83 vJoy Relative never
      moves; 04 S80 Swap Bindings buttons off-window; 02 Q6 Device
@@ -116,6 +119,20 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     to the current listener itself.
 31. Log noise in tests: "No parameter with key ('global','internal',
     'twin-device-names')".
+34. Order leak: `test_batch2_b7::test_restore_applies_logs_and_ui_scale_at_once`
+    run straight before `test_history_recording::test_settings_the_user_chooses_are_kept`
+    makes the latter see an extra settings entry (pre-existing; a flush in
+    b7's finally did not fix it).
+35. Timing flake: `test/action_interaction/test_double_tap_tempo.py::test_single_tap_long`
+    failed once under the 6-part load, passed 3/3 alone; wait for the result
+    instead of a fixed time (as cc3b49f3 did for the keyboard tests).
+36. Listen / macro Record switch input highlighting directly
+    (`gremlin/ui/util.py` ~199, 287, 295, 384, 419), outside the Backend's
+    holder set (03 S114 fix): stopping Listen with Calibration open could turn
+    highlighting back on. Move them onto the holders.
+37. Person checks from the fixes: your 1,172-action profile no longer
+    stutters while idle (Q19); after a stick is re-plugged, actions read its
+    last value until it moves (D-05-UNPLUG-CENTRE note).
 
 ## On hold / parked (user's choice)
 
