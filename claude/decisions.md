@@ -301,3 +301,18 @@ only when OSC is picked up.
 | D-03-Q8-NOFILE | 2026-10-07 | A Home card for a device with no module file shows the device's own counts; cards with a module file show claimed counts. | Nothing is set up yet without a file (user, batch 2 end) | 03 Q8, S78 |
 | D-01-Q9-REASK | 2026-10-07 | If the other copy can't be closed, the same Yes / No / Cancel box asks again, starting with "The other copy could not be closed."; Yes tries again, No starts without closing it, Cancel ends. | Windows has no No/Cancel-only box (user, batch 2 end) | 01 Q9 |
 | D-07-RB10-NOEVOR | 2026-10-07 | Chip hover text no longer adds VKB EVO R part names on every device; EVO R part names come only from the EVO R template. | Device-specific data used for every device (user, batch 2 end) | 07 RB10, Q10 |
+| D-02-S40-HANDLED | 2026-10-07 | A hardware event runs in the mode current when the main thread handles it (batch 1 GL-065 design); spec 02 S40 / D-02-Q8 reworded. | Keeps the input layer from asking the mode manager; differs only in a press/mode-change race (user, final phase) | 02 S40, Q8 |
+| D-04-ALPHA-CASEFOLD | 2026-10-07 | "Alphabetical" ignores capitals: mode lists and Use Heuristic sort with casefold (alpha, Bravo, Default). | (user, final phase) | 04 S41, S52 |
+| D-05-S43-BOTHROWS | 2026-10-07 | A binding's Note shows on the Configuration list's input row and on the Keyboard page's key row. | (user, final phase) | 05 S43 |
+| D-04-Q13-RUNLIMIT | 2026-10-07 | The script top-level time limit (D-04-Q13-TIMELIMIT) also applies when Run reloads scripts; a script that doesn't finish is marked failed and the rest runs. | Program never freezes at Run (user, final phase) | 04 Q13, S87 |
+| D-03-S41-PRESSES | 2026-10-07 | In Output Module Setup, pressing the vJoy's controls still ticks them and lights the row; spec 03 S41 reworded. | (user, final phase) | 03 S41 |
+| D-03-S71-ALWAYS | 2026-10-07 | Keyboard and OSC cards always show on Home (not only with a module file or show-stubs). | (user, final phase) | 03 S71 |
+| D-03-S102-PERAXIS | 2026-10-07 | One Calibration capture at a time per axis. | (recommended; user, final phase) | 03 S102 |
+| D-09-S51-NEXTSOUND | 2026-10-07 | A playback mode change applies from the next sound the player starts. | (recommended; user, final phase) | 09 S51 |
+| D-04-S86-RELATIVE | 2026-10-07 | A script inside the scripts folder is saved with a path relative to that folder; others keep the full path. | Profiles keep working when the data folder moves (user, final phase) | 04 S86 |
+| D-02-Q6-WORDING | 2026-10-07 | Device Information says "this program's Xbox pad" (glossary D12). | (user, final phase) | 02 Q6 |
+| D-02-GL243-FORGET | 2026-10-07 | A device is forgotten (twin name, alias, HidHide photo and links) when it has no module file and isn't plugged in at a scan; in-memory script objects stay. | (user, final phase) | 02 S13, S15; GL-243 |
+| D-03-GL249-INPUT | 2026-10-07 | The startup device scan (device_initialization) counts as the input side; GL-249 closes with no change. | (user, final phase) | 03 7.2 |
+| D-07-GL269-ALLMODES | 2026-10-07 | Button Map pool search keeps joining every mode's actions. | (user, final phase) | 07 GL-269 |
+| D-07-GL274-LATER | 2026-10-07 | Picture library "Remove unused" is designed after the baseline. | (user, final phase) | 07 Q11, GL-274 |
+| D-09-Q19-SUPERSEDED | 2026-10-07 | D-09-Q19 (remove gremlin/fsm.py) is superseded: fsm.py is used (double_tap, tempo, smart_toggle, hat_buttons, code_runner). | GL-279 correction | 09 Q19 |
