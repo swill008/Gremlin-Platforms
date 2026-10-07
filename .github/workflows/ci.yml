@@ -1,6 +1,6 @@
 # CI: the safety net (stage 1 of the plan in claude/system-maps.md).
 #
-# On every push and pull request, on Windows with Python 3.13:
+# On every push and pull request to Gremlin-Platforms, on Windows with Python 3.13:
 #   1. Lint against the baseline: tools/pyright_baseline.py runs pyright and
 #      ruff and fails on any error not in tools/pyright_baseline.json (the
 #      errors there today are allowed until fixed; fixed ones are listed).
@@ -17,10 +17,12 @@
 name: CI
 
 on:
+  # One branch only: every push also goes to develop, and running CI there
+  # too doubled each run and each failure email (user, 2026-10-07).
   push:
-    branches: ["**"]
+    branches: ["Gremlin-Platforms"]
   pull_request:
-    branches: ["**"]
+    branches: ["Gremlin-Platforms"]
 
 permissions:
   contents: read
