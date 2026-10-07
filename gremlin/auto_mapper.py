@@ -34,6 +34,9 @@ class AutoMapperOptions:
     # Claim the matching outputs on the output module first. Off by default:
     # the user claims outputs; the Auto Mapper maps within what is claimed.
     claim_outputs: bool = False
+    # The toolbar's mode (the one being edited); the result says when the
+    # actions went into another (08 S108). Empty: not known, not said.
+    toolbar_mode: str = ""
 
 
 def _ranges(numbers: list[int]) -> str:
@@ -59,6 +62,8 @@ NOT_SAVED_NOTE = (
     "The new actions are in the open profile and not saved yet. "
     "Use File › Save Profile to keep them, or load the profile again to undo."
 )
+_NOT_CLAIMED = "not claimed by the output module"
+_USED = "already used by another input in this mode"
 
 
 class AutoMapper:
@@ -145,7 +150,7 @@ class AutoMapper:
                         self._skip(dest, kind, "not on the vJoy device", hid)
                         continue
                     if hid not in claimed_out:
-                        self._skip(dest, kind, "not claimed by the output module", hid)
+                        self._skip(dest, kind, _NOT_CLAIMED, hid)
                         continue
                     item = self._profile.get_input_item(
                         guid,
@@ -165,8 +170,10 @@ class AutoMapper:
                     if item.action_sequences:
                         self._num_retained_bindings += 1
                         continue
+                    # S94: not used again; a skip, not an input that kept
+                    # its actions (08 S109).
                     if target in used:
-                        self._num_retained_bindings += 1
+                        self._skip(dest, kind, _USED, hid)
                         continue
                     if not self._create_new_mapping(item, target):
                         self._skip(dest, kind, as_input, hid)
@@ -181,24 +188,42 @@ class AutoMapper:
             if unpaired
             else []
         )
-        if not self._created_mappings and not self._num_retained_bindings:
-            return " ".join(
-                [
-                    "Input module has no selected buttons or axes that this "
-                    "output module can take.",
-                    *self._skipped_report(),
-                    *left_out,
-                    *self._not_saved_note(),
-                ]
-            )
+        nothing = not self._created_mappings and not self._num_retained_bindings
+        if nothing and not self._skipped:
+            first = [
+                "Input module has no selected buttons or axes that this "
+                "output module can take."
+            ]
+        elif nothing and {reason for _n, _k, reason in self._skipped} == {
+            _NOT_CLAIMED
+        }:
+            # Every output skipped as the output module claims none (S109).
+            names = sorted({name for name, _k, _r in self._skipped})
+            first = [
+                f"The output module {' and '.join(names)} claims none of these "
+                "outputs: turn on Also claim the matching outputs on the output "
+                "module, or claim them in its Module Setup."
+            ]
+        else:
+            first = [
+                self._create_mappings_report(options.mode),
+                *self._toolbar_note(options),
+            ]
         return " ".join(
             [
-                self._create_mappings_report(),
+                *first,
                 *self._skipped_report(),
                 *left_out,
                 *self._not_saved_note(),
             ]
         )
+
+    def _toolbar_note(self, options: AutoMapperOptions) -> list[str]:
+        """The new actions are in a mode the toolbar doesn't show (S108)."""
+        toolbar = options.toolbar_mode
+        if not self._created_mappings or not toolbar or toolbar == options.mode:
+            return []
+        return [f"The toolbar shows {toolbar}: switch to {options.mode} to see them."]
 
     def _not_saved_note(self) -> list[str]:
         """The profile changed in memory only (08 S97, D-08-AUTOMAP-NOTE)."""
@@ -305,9 +330,9 @@ class AutoMapper:
         self._created_mappings.append(vjoy_action)
         return True
 
-    def _create_mappings_report(self) -> str:
-        """In glossary words (08 Q8, S103)."""
+    def _create_mappings_report(self, mode: str) -> str:
+        """In glossary words, naming the mode (08 Q8, S103, S108)."""
         return (
-            f"Made {len(self._created_mappings)} actions; "
+            f"Made {len(self._created_mappings)} actions in {mode}; "
             f"{self._num_retained_bindings} inputs kept their actions."
         )

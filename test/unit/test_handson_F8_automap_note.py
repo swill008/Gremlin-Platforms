@@ -38,7 +38,7 @@ def test_the_result_says_the_new_actions_are_not_saved(
         "Default", {"pjoy_pro": True}, {"vjoy_1": True}, overwrite, False, False
     )
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Default", 2)}
-    assert text.startswith("Made 2 actions;"), text
+    assert text.startswith("Made 2 actions in Default;"), text
     assert NOTE in text, text
 
 
@@ -54,5 +54,7 @@ def test_no_note_when_nothing_changed(
     text = AutoMapper(profile).generate_module_mappings(
         ["pjoy_pro"], ["vjoy_1"], AutoMapperOptions()
     )
-    assert text.startswith("Made 0 actions; 1 inputs kept their actions."), text
+    assert text.startswith(
+        "Made 0 actions in Default; 1 inputs kept their actions."
+    ), text
     assert "not saved yet" not in text, text

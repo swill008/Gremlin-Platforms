@@ -54,6 +54,11 @@ ApplicationWindow {
     property var selectedOutputModules: ({})
     // The card it was opened from: its module starts ticked.
     property string initialSlug: ""
+    // The toolbar's mode (the one being edited), and the mode picked here.
+    readonly property string toolbarMode:
+        (typeof uiState !== "undefined" && uiState) ? uiState.currentMode : ""
+    property string chosenMode: toolbarMode
+    onChosenModeChanged: _modeSelector.showChosen()
 
     ColumnLayout {
         anchors.fill: parent
@@ -152,9 +157,23 @@ ApplicationWindow {
             ComboBox {
                 id: _modeSelector
 
-                model: ModeListModel {}
+                model: ModeListModel {
+                    // Rebuilt when the profile changes (Create does): the
+                    // picked mode stays picked.
+                    onModelReset: Qt.callLater(_modeSelector.showChosen)
+                }
 
                 textRole: "name"
+
+                // Starts on the toolbar's mode (08 S108, D-08-AUTOMAP-MODE).
+                function showChosen() {
+                    var index = find(_mapper.chosenMode)
+                    if (index >= 0)
+                        currentIndex = index
+                }
+
+                Component.onCompleted: showChosen()
+                onActivated: _mapper.chosenMode = currentText
 
                 background: Rectangle {
                     implicitWidth: Style.dp(120)
@@ -215,7 +234,8 @@ ApplicationWindow {
                             selectedOutputModules,
                             _overwriteNonEmpty.checked,
                             _repeatDevices.checked,
-                            _claimOutputs.checked
+                            _claimOutputs.checked,
+                            _mapper.toolbarMode
                         )
                         // The ticked modules stay ticked and selected, so
                         // Create again uses them (08 S105, D-08-AUTOMAP-KEEP).
@@ -254,7 +274,7 @@ ApplicationWindow {
 
                 PointerTip {
                     text: "Full guide: Help → User Guide → Tools → Auto Mapper. This tool builds starting 1:1 Map to vJoy actions.\n\n"
-                        + "Mode starts on the default mode; pick another to make actions there.\n\n"
+                        + "Select Mode starts on the toolbar's mode; pick another to make actions there.\n\n"
                         + "This tool does not match devices by name. It uses the order shown in the lists. The first checked input gets an action to the first checked output, the second input to the second output, and so on.\n\n"
                         + "Overwrite used inputs: replaces the actions those controls already have in the selected mode. Leave it off, and those actions stay as they are.\n\n"
                         + "Combine onto selected outputs: This should stay off when each input should have its own output. Turn it on when you check more inputs than outputs.\n\n"

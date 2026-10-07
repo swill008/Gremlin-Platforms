@@ -28,7 +28,7 @@ class Tools(QtCore.QObject):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
 
-    @QtCore.Slot(str, dict, dict, bool, bool, bool, result=str)
+    @QtCore.Slot(str, dict, dict, bool, bool, bool, str, result=str)
     def createMappings(
         self,
         mode: str,
@@ -37,12 +37,15 @@ class Tools(QtCore.QObject):
         overwrite: bool,
         repeat: bool,
         claim_outputs: bool = False,
+        toolbar_mode: str = "",
     ) -> str:
         mapper = auto_mapper.AutoMapper(shared_state.current_profile)
         feedback_string = mapper.generate_module_mappings(
             [slug for (slug, chosen) in source_modules.items() if chosen],
             [slug for (slug, chosen) in dest_modules.items() if chosen],
-            auto_mapper.AutoMapperOptions(mode, repeat, overwrite, claim_outputs),
+            auto_mapper.AutoMapperOptions(
+                mode, repeat, overwrite, claim_outputs, toolbar_mode
+            ),
         )
         signal.signal.profileChanged.emit()
         signal.signal.reloadCurrentInputItem.emit()

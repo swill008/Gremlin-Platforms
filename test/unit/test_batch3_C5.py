@@ -112,8 +112,9 @@ def test_auto_mapper_result_says_actions() -> None:
     mapper = AutoMapper(None)  # type: ignore[arg-type]
     mapper._created_mappings = [object()] * 36  # type: ignore[list-item]
     mapper._num_retained_bindings = 0
-    assert mapper._create_mappings_report() == (
-        "Made 36 actions; 0 inputs kept their actions."
+    # The mode named too (08 S108).
+    assert mapper._create_mappings_report("Default") == (
+        "Made 36 actions in Default; 0 inputs kept their actions."
     )
 
 
