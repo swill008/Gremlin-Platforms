@@ -211,8 +211,10 @@ Button {
             anchors.bottomMargin: _axisActive ? Style.dp(6) : 0
 
             sourceComponent: Image {
+                // Drawn at the UI scale (s), so it is sharp at that size.
                 source: "image://action_summary/" + actionSequenceDescriptor
                     + "?r=" + (uiState ? uiState.themeRevision : 0)
+                    + "&s=" + Style.uiScale
                 asynchronous: false
                 cache: false
                 clip: true
@@ -222,6 +224,9 @@ Button {
 
                 fillMode: Image.Pad
                 horizontalAlignment: Image.AlignLeft
+
+                // A new scale or theme gives a new width.
+                onSourceSizeChanged: delayedUpdate.start()
             }
         }
 

@@ -182,7 +182,9 @@ Rectangle {
         }
 
         Label {
-            visible: isModule
+            // Claimed counts; with no module file, the device's own counts
+            // (D-03-Q8-NOFILE). Keyboard, OSC and Xbox have none to show.
+            visible: isModule || (isStub && tab === "physical")
             text: buttons + (buttons === 1 ? " button  " : " buttons  ")
                   + axes + (axes === 1 ? " axis  " : " axes  ")
                   + hats + (hats === 1 ? " hat" : " hats")

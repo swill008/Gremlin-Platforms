@@ -768,6 +768,8 @@ def register_config_options() -> None:
         "The one-time notice that closing kept the program in the tray was shown.",
         {}, False,
     )
+    # Unexposed: Options shows it through the Diagnostic logs row
+    # (gremlin.ui.log_option); History records it anyway (gremlin.config).
     cfg.register(
         "global", "general", "log-level", PropertyType.String, "Warning",
         "Diagnostic log level written to the user-profile log files.", {}, False,

@@ -249,6 +249,10 @@ class Configuration(metaclass=common.SingletonMetaclass):
     # (module-links: which module's picture each hidden device shows, worked
     # out by the HidHide window itself.)
     _HIDHIDE_PLACES = {"window-width", "window-height", "split-ratio", "module-links"}
+    # Options choices stored unexposed because Options shows them through a
+    # row of their own (Diagnostic logs: log_option's "debug" row), not as a
+    # plain row; History still records them (08 S15).
+    _RECORDED_UNEXPOSED = {("global", "general", "log-level")}
 
     def _view_entry(self, key: tuple[str, str, str], entry: dict) -> str | None:
         """A setting's value as History compares it, or None for one History
@@ -257,7 +261,11 @@ class Configuration(metaclass=common.SingletonMetaclass):
         if group == "internal":
             return None
         hidhide = (section, group) == ("display", "hidhide")
-        if not entry.get("expose") and not hidhide:
+        if (
+            not entry.get("expose")
+            and not hidhide
+            and key not in self._RECORDED_UNEXPOSED
+        ):
             return None
         if hidhide and name in self._HIDHIDE_PLACES:
             return None

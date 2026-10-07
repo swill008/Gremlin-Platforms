@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import collections
 import logging
+import math
 import threading
+import urllib.parse
 
 from PySide6 import (
     QtCore,
@@ -14,8 +16,8 @@ from PySide6 import (
     QtQuick,
 )
 
+from gremlin.ui import ui_scale_option
 from gremlin.ui.util import ColorInformation
-
 
 _XBOX_FACE = {
     "a": ("A", QtGui.QColor("#22C55E")),
@@ -43,6 +45,15 @@ _XBOX_LABELS = {
     "dpad_left": "DL",
     "dpad_right": "DR",
 }
+
+
+def _scale(query: str) -> float:
+    """The UI scale an image id asks for ("r=3&s=175": 1.75); the active UI
+    scale when it names none (09 Q16)."""
+    values = urllib.parse.parse_qs(query).get("s", [])
+    if values:
+        return ui_scale_option.clamp_scale(values[0]) / 100
+    return ui_scale_option.active_scale() / 100
 
 
 class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
@@ -89,7 +100,8 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
                 self._cache.move_to_end(image_id)
                 return self._cache[image_id]
 
-        image = self._render(image_id.split("?", 1)[0])
+        action_string, _, query = image_id.partition("?")
+        image = self._render(action_string, _scale(query))
 
         with self._lock:
             if len(self._cache) >= self._max_cache_size:
@@ -97,7 +109,9 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
             self._cache[image_id] = image
             return image
 
-    def _render(self, action_string: str) -> QtGui.QImage:
+    def _render(self, action_string: str, scale: float = 1.0) -> QtGui.QImage:
+        """The summary drawn at the given UI scale (1.0 = 100 %): laid out
+        at 100 %, then drawn scaled, so text and shapes stay sharp."""
         tokens = action_string.split(":") if action_string else []
 
         picture = QtGui.QPicture()
@@ -147,9 +161,10 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
         finally:
             painter.end()
 
+        width = max(20, x_offset - self._spacing if x_offset > 0 else 0)
         image = QtGui.QImage(
-            max(20, x_offset - self._spacing if x_offset > 0 else 0),
-            self._glyph_height,
+            math.ceil(width * scale),
+            math.ceil(self._glyph_height * scale),
             QtGui.QImage.Format.Format_ARGB32_Premultiplied,
         )
         image.fill(QtCore.Qt.GlobalColor.transparent)
@@ -157,6 +172,7 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
         img_painter = QtGui.QPainter(image)
         img_painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         img_painter.setRenderHint(QtGui.QPainter.RenderHint.TextAntialiasing)
+        img_painter.scale(scale, scale)
         img_painter.drawPicture(0, 0, picture)
         img_painter.end()
 

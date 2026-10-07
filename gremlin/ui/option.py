@@ -51,6 +51,8 @@ _ENTRY_TITLES = {
     "show-stubs": "Show devices without a module",
     "last-keep-after-release": "Keep last value after release",
     "debug": "Diagnostic logs",
+    # The Diagnostic logs level (not a row of its own; recorded for History).
+    "log-level": "Diagnostic logs",
     "log-when-not-responding": "Log When Not Responding",
     # Not shown in Options (the HidHide window has the switch); History
     # names it by the switch's own words.
