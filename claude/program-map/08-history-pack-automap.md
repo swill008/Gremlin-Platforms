@@ -295,6 +295,9 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S102** Esc should not close the Auto Mapper or Device Pack windows (a stick can send Esc). [test-plan: USABILITY-FIXES] [user confirmed 2026-10-06; was code only for Device Pack]
 - **S103** The result line should say what was made in glossary words (actions, not mappings or bindings). [glossary] [test-plan: GLOSSARY-2] (code doesn't: Q8)
 - **S104** Before and After should show what changed: changed lines get a soft tint (red on Before, green on After, from the theme so both themes read well) and a thin bar on the left edge; inside a changed line the changed words get a stronger tint; unchanged lines stay plain. The two sides line up row for row. "Previous change" / "Next change" move both sides together to the previous or next change. [user decision 2026-10-07: D-08-HISTORY-DIFF]
+- **S105** After Create 1:1 Actions the Auto Mapper keeps the ticked modules ticked and selected, so Create again works on the same modules (what is shown is what Create uses). [user decision 2026-10-07: D-08-AUTOMAP-KEEP]
+- **S106** Device Pack should open on the first device that can be exported; a device whose module file can't be read stays in the list marked "(file damaged)". [user decision 2026-10-07: D-08-PACK-START]
+- **S107** Device Pack Export should be written in the background: the window stays usable, shows it is busy, Export is disabled until it is done (one at a time), and the result is reported when done (failures name the file, folder and reason). The device photo preview loads in the background at preview size. [user decision 2026-10-07: D-08-PACK-BG]
 
 ## 9. Questions for the user
 
