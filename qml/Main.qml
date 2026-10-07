@@ -1284,6 +1284,7 @@ ApplicationWindow {
 
             ThemedMenuItem { command: "help.guide" }
             ThemedMenuItem { command: "help.updates" }
+            ThemedMenuItem { command: "help.diagnostics" }
             ThemedMenuItem { command: "help.about" }
         }
     }

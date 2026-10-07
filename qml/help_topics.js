@@ -31,7 +31,7 @@ function topics() {
             + "<li><b>Gremlin-Platforms-R1-X.Y.Z.zip</b>, the portable copy. Unzip it anywhere outside Program Files and run gremlin_platforms.exe.</li>"
             + "</ul>"
             + "<p><b>Help → Check for Updates</b> asks GitHub for the latest release. When Options → General → Startup and Tray → <b>Check for updates</b> is on (the default), it also checks when the program starts and only speaks up when there is a newer version.</p>"
-            + "<p>An installed copy offers <b>Update Now</b>: it downloads the installer, checks it against the SHA-256 checksum GitHub reports, closes the program the usual way (asking about unsaved changes), installs, and starts the new version. <b>Skip This Version</b> stops the startup check from offering that version. A portable copy, or one run from source, only points you to the release page.</p>"
+            + "<p>An installed copy offers <b>Update Now</b>: it downloads the installer, checks it against the SHA-256 checksum GitHub reports, closes the program the usual way (asking about unsaved changes), installs, and starts the new version. <b>Skip This Version</b> stops the startup check from offering that version. The window shows the release notes of the new version and of any versions in between, newest first; without a connection it says \"Release notes unavailable.\" A portable copy, or one run from source, only points you to the release page.</p>"
             + "<p>Updates and uninstalling never touch your profiles, modules or settings; they are kept in your Gremlin Platforms folder (see What is saved where).</p>"),
         topic("Getting Started", "Run and status",
             "<p><b>Run</b> on the toolbar runs the loaded profile; while it runs the button reads <b>Stop</b>. While it is off you are only editing; nothing is sent to vJoy or Xbox. The button uses the accent color while the profile runs.</p>"
@@ -327,7 +327,9 @@ function topics() {
             + "<li>Not on Home: right-click empty space on Home and check <b>Hidden Cards</b>.</li>"
             + "<li>A game sees both the physical stick and vJoy: hide the physical stick with <b>HidHide</b>.</li>"
             + "<li>Bindings belong to a device that was replaced: use <b>Swap Devices</b>.</li>"
-            + "</ul>")
+            + "</ul>"),
+        topic("Troubleshooting", "Save Diagnostics",
+            "<p>Help → <b>Save Diagnostics…</b> (or <b>Save Diagnostics…</b> on the Live Log Reader's Debug tab) saves one zip to send with a problem report: the program's logs, its settings, the device list (names, ids, kinds, connected) and the program and Windows versions. <b>Save…</b> asks where, starting on the Desktop. The open profile is left out unless you tick <b>Include the open profile</b>. Your user name in folder paths is replaced by &lt;user&gt;. When it is done it says where the zip went; if it can't be written it says which file, which folder and why.</p>")
     ]
 }
 

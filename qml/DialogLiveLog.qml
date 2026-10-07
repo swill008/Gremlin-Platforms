@@ -10,6 +10,8 @@ import QtQuick.Layouts
 import Gremlin.Style
 import Gremlin.UI
 
+import "helpers.js" as Helpers
+
 // Debug → Live Log Reader.
 // Config: what the program read and saved this run (logs.txt), for checking
 // how profiles, modules and other files load.
@@ -580,6 +582,12 @@ ApplicationWindow {
                             visible: _debug.session
                             text: qsTr("Save Feed…")
                             onClicked: _saveFeed.open()
+                        }
+                        // The same as Help → Save Diagnostics… (01 S132).
+                        Button {
+                            id: _saveDiagnostics
+                            text: qsTr("Save Diagnostics…")
+                            onClicked: Helpers.createComponent("DialogSaveDiagnostics.qml")
                         }
                     }
                 }

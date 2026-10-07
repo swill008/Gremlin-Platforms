@@ -113,6 +113,9 @@ function commandList() {
               if (updater && updater.state !== "downloading" && updater.state !== "ready")
                   updater.check(true)
           } },
+        { id: "help.diagnostics", text: "Save Diagnostics…", group: "Help",
+          keywords: "zip logs report problem support",
+          run: function() { openTool("DialogSaveDiagnostics.qml") } },
         { id: "help.about", text: "About", group: "Help",
           run: function() { openTool("DialogAbout.qml") } }
     ]

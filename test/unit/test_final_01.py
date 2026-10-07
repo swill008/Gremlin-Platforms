@@ -776,7 +776,9 @@ def test_s65_s66_s67_menus_come_from_the_command_list(main_window: dict) -> None
         "Viewers >", "Device Setup >", "Mapping >", "History", "Options"
     ]
     assert menus["Debug"] == ["Live Log Reader"]
-    assert menus["Help"] == ["User Guide (F1)", "Check for Updates", "About"]
+    assert menus["Help"] == [
+        "User Guide (F1)", "Check for Updates", "Save Diagnostics…", "About"
+    ]
     assert dict(main_window["shortcuts"]) == {
         "file.new": "Ctrl+N", "file.load": "Ctrl+O", "file.save": "Ctrl+S",
         "file.saveAs": "Ctrl+Shift+S", "view.palette": "Ctrl+K",
