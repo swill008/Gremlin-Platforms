@@ -21,16 +21,21 @@ older text is in git history.
    test_main_window_fits and test_tool_windows_fit check 175 instead of
    200; a test that a saved 200 becomes 175 and the slider stops at 175.
 
-## Open questions for the user
+## Answered by the user (2026-10-07) — to do
 
-2. **CI on one branch only?** Every push goes to `Gremlin-Platforms` and
-   `develop`, so CI runs twice and a failure emails twice; `develop` failed
-   twice only because the runner is slow (see item 16).
-3. **Big Button Map exports:** encode the image off the main thread so the
-   window doesn't freeze? Seen on CI (develop run 37607816152): Print &
-   Export tests stalled > 30 s in `hardware_profile._save_image`.
-4. **Old "CI Tests" workflow** has been failing since 2026-10-04 (left
-   untouched). Remove it?
+2. **CI on one branch only** (user: yes). Run `.github/workflows/ci.yml` on
+   pushes to `Gremlin-Platforms` only (not `develop`), so each push runs CI
+   once and a failure emails once. Pairs with item 16 (faster CI).
+3. **Encode big Button Map exports off the main thread** (user: yes). Today
+   `hardware_profile._save_image` encodes the PNG/JPG on the main thread, so
+   a large export freezes the window (seen on CI, develop run
+   37607816152: Print & Export stalled > 30 s). Spec first (07, export),
+   then encode on a worker via `gremlin.threads` with the window showing
+   it's busy; the Print & Export tests wait for the result.
+4. **Remove the old "CI Tests" workflow** (user: yes). It has been failing
+   since 2026-10-04 and is replaced by `ci.yml`; find its file in
+   `.github/workflows/` (python-test.yml or pylint.yml) and check nothing
+   else uses it before removing.
 
 ## Hands-on checks (user)
 
