@@ -294,6 +294,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S101** The lists should follow sticks being plugged in or out, keeping ticks. [user confirmed 2026-10-06; was code only]
 - **S102** Esc should not close the Auto Mapper or Device Pack windows (a stick can send Esc). [test-plan: USABILITY-FIXES] [user confirmed 2026-10-06; was code only for Device Pack]
 - **S103** The result line should say what was made in glossary words (actions, not mappings or bindings). [glossary] [test-plan: GLOSSARY-2] (code doesn't: Q8)
+- **S104** Before and After should show what changed: changed lines get a soft tint (red on Before, green on After, from the theme so both themes read well) and a thin bar on the left edge; inside a changed line the changed words get a stronger tint; unchanged lines stay plain. The two sides line up row for row. "Previous change" / "Next change" move both sides together to the previous or next change. [user decision 2026-10-07: D-08-HISTORY-DIFF]
 
 ## 9. Questions for the user
 

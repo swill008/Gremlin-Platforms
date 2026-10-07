@@ -316,3 +316,4 @@ only when OSC is picked up.
 | D-07-GL269-ALLMODES | 2026-10-07 | Button Map pool search keeps joining every mode's actions. | (user, final phase) | 07 GL-269 |
 | D-07-GL274-LATER | 2026-10-07 | Picture library "Remove unused" is designed after the baseline. | (user, final phase) | 07 Q11, GL-274 |
 | D-09-Q19-SUPERSEDED | 2026-10-07 | D-09-Q19 (remove gremlin/fsm.py) is superseded: fsm.py is used (double_tap, tempo, smart_toggle, hat_buttons, code_runner). | GL-279 correction | 09 Q19 |
+| D-08-HISTORY-DIFF | 2026-10-07 | History Before/After highlights the deltas: changed lines tinted (red Before, green After, theme colours) with a thin left bar, changed words in a stronger tint, sides aligned row for row, and Previous/Next change buttons that move both sides. | Chosen over a white outline (invisible in the light theme, noisy, can't mark words) (user) | 08 S104, S30 |
