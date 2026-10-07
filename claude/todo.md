@@ -157,10 +157,12 @@ For quality and speed:
 10. Coverage report; fill the riskiest gaps.
 11. Keep shrinking hardware_profile.py, module_model.py, binding_catalog.py.
 12. CI on one branch, cache the venv and compiled QML (faster, no double emails).
-13. Screenshot tests at several UI scales (prepares AU-56).
+13. Screenshot tests at several UI scales (70–175 %).
 14. ~~Signed installer~~ — won't fix (user, 2026-10-07): unsigned builds stay; SmartScreen note stays in the release text.
 
-## Next up (updated 2026-10-06)
+## Next up (updated 2026-10-07)
+
+- [ ] **Limit the UI scale to 175 % (user, 2026-10-07; replaces AU-56 / GL-201).** 175 % is the highest scale the window tests confirm keeps every control in view; 200 % cuts contents off on small screens. When done (spec first): spec 09 S81 (slider 70–175 %) and S84 (replaced), AU-56 notes on spec pages 01/03/07/09, GL-201 and the tracker marked replaced, a decision row; code `gremlin/ui/ui_scale_option.py` SCALE_MAX 200 → 175 (a saved 180–200 is read as 175 through the existing clamp); test_main_window_fits and test_tool_windows_fit check 175 instead of 200; a test that a saved 200 becomes 175 and the slider stops at 175.
 
 Stages 0-3 are written out in `claude/system-maps.md` ("The plan").
 
@@ -231,7 +233,7 @@ Stages 0-3 are written out in `claude/system-maps.md` ("The plan").
 
 ## On hold (user's choice)
 
-- **AU-56** – 200% UI scale on a small screen cuts off window contents.
+- ~~**AU-56** – 200% UI scale on a small screen cuts off window contents.~~ To be replaced by limiting the UI scale to 175 % (to-do under "Next up", user 2026-10-07).
 - **N22** – Inconsistent controls in action editors.
 
 ## Done (kept for reference)
