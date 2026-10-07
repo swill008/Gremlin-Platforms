@@ -35,3 +35,9 @@ One possible workaround is to use a tool called [Xidi](https://github.com/samuel
 
 {: .warning }
 Version [Xidi 4.2.0](https://github.com/samuelgr/Xidi/releases/tag/v4.2.0){:target="_blank"} is known to work so you should stick with that.
+
+## My throttle or brakes jump to the middle when I press Run
+
+When you press **Run**, the program knows where an axis is only after that axis has moved since the program started. Until then it treats the axis as centered, so a throttle, brake pedal or slider resting away from the middle is sent to vJoy as center at first. This is because the joystick library reports a position only when something moves.
+
+After pressing **Run**, move each throttle, brake or slider a little; from then on it is sent where it really is. Sticks and rudders that rest at center are not affected. Pressing Run with the game paused, or before taking off, avoids any surprise.

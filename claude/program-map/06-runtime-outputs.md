@@ -201,7 +201,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S6. It should save the running mode at Stop so "Last Active" can use it. [help: Profile Settings] [user confirmed 2026-10-06; was code only for "at Stop"]
 - S7. It should use the profile's own Macro Default Delay, or the Options value when the profile sets none. [tracker: B27] [test: test_profile_settings.py::test_macro_delay_follows_options_unless_set]
 - S8. It should set the vJoy Initial Values of axes when the profile starts, always, through the output module; moving a physical axis then overrides them (Q7). [help: Profile Settings] [user confirmed 2026-10-06; was code only] [changed 2026-10-07: "today" note removed, fixed in batch 1]
-- S9. It should re-send the current physical axis values at Run and at a mode change when those Options are on. [help: Options] [test: test_mode_refresh_and_add_key.py::test_runner_refreshes_axes_on_mode_change_only_while_listening]
+- S9. It should re-send the current physical axis values at Run and at a mode change when those Options are on; an axis not moved since the program started is sent as centre (documented in help; D-02-AXIS-START). [help: Options] [test: test_mode_refresh_and_add_key.py::test_runner_refreshes_axes_on_mode_change_only_while_listening]
 - S10. It should skip a script that fails to load (retrying it once at Run) and log why, and still run the rest. [user confirmed 2026-10-06; was code only]
 - S11. It should skip a broken user plugin instead of failing the Run. [tracker: AU-86] [test: test_audit_runtime.py::test_a_broken_user_plugin_is_skipped]
 - S12. It should show "Could not run the profile: a user plugin is missing." when a script import fails. [user confirmed 2026-10-06; was code only]
