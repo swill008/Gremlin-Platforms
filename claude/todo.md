@@ -112,6 +112,8 @@ commit, the program thread and layer rules, off-screen/safety rules.
 integration tests skip while it is open (run them at the end with it
 closed); full runs load the PC for ~3 min each.
 
+**Progress page for all work (user, 2026-10-07):** keep https://claude.ai/artifact/NQJw6xzumYopoJn5NXJxqR (Artifact tool + ArtifactData `progress/now`) current for every piece of work, not only the catch-up, and show results such as screenshots as artifacts.
+
 **Live agent output (user, 2026-10-07):** every agent pipes every shell
 command through `tools/agent_log.py <AGENT>` (`PYTHONUNBUFFERED=1 <command>
 2>&1 | python tools/agent_log.py B1`, pytest -v so each test is a line); output goes to `.agent-logs/<AGENT>.log` and,
