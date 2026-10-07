@@ -21,22 +21,6 @@ older text is in git history.
    test_main_window_fits and test_tool_windows_fit check 175 instead of
    200; a test that a saved 200 becomes 175 and the slider stops at 175.
 
-## Answered by the user (2026-10-07) — to do
-
-2. **CI on one branch only** (user: yes). Run `.github/workflows/ci.yml` on
-   pushes to `Gremlin-Platforms` only (not `develop`), so each push runs CI
-   once and a failure emails once. Pairs with item 16 (faster CI).
-3. **Encode big Button Map exports off the main thread** (user: yes). Today
-   `hardware_profile._save_image` encodes the PNG/JPG on the main thread, so
-   a large export freezes the window (seen on CI, develop run
-   37607816152: Print & Export stalled > 30 s). Spec first (07, export),
-   then encode on a worker via `gremlin.threads` with the window showing
-   it's busy; the Print & Export tests wait for the result.
-4. **Remove the old "CI Tests" workflow** (user: yes). It has been failing
-   since 2026-10-04 and is replaced by `ci.yml`; find its file in
-   `.github/workflows/` (python-test.yml or pylint.yml) and check nothing
-   else uses it before removing.
-
 ## Hands-on checks (user)
 
 5. **Try 1.0.25 by hand:** `claude/catchup-test-plan.md` (batch checks),
@@ -153,6 +137,14 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
 ## Done
 
+- [x] **Item 2: CI on one branch only** (2026-10-07, c3743f47): `ci.yml`
+  runs on pushes and pull requests to `Gremlin-Platforms` only.
+- [x] **Item 3: Button Map exports in the background** (2026-10-07,
+  8cf783dd; spec 07 S101, D-07-EXPORT-BG): `saveAreaAsync` on a
+  `gremlin.threads` worker, `areaSaved` on the main thread, Export buttons
+  disabled with "Exporting…" while one runs.
+- [x] **Item 4: Old "CI Tests" workflow removed** (2026-10-07, c3743f47:
+  `python-test.yml`).
 - [x] **History Before/After highlights the deltas** (2026-10-07, f505f776;
   spec 08 S104, D-08-HISTORY-DIFF, D-08-HISTORY-SELECT). CI green.
 - [x] **Signed installer** — won't fix (D-REL-UNSIGNED, 2026-10-07).
