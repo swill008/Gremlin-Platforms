@@ -130,6 +130,28 @@ message to the user with its one-line status.
 **Status:** CI baseline green (run 37521378227 on 0e790f73). Batch 1
 restarted 2026-10-06 with the 7-agent split above. **Batch 1 done: d68f4d88** (58 GL items; run 2016 passed). **Batch 2 done: 31861922** (112 GL items; run 2215 passed). **Batch 3 done: ae635492** (68 GL items + 5 part; run 2339 passed). **Final phase started 2026-10-07:** 9 agents P01–P09, one per spec page, rules in `claude/final-phase-rules.md`; each writes `claude/final-test-plan/<page>.md` and `test/unit/test_final_<page>.py` (bugs found become strict xfails, fixed afterwards). Then: full run with the user's Gremlin closed, push once, CI.
 
+## Improvement ideas (2026-10-07, to come back to; each goes through the spec first)
+
+Suggested order: 8 → 1 → 2 → 9/12 → rest.
+
+For users:
+1. Problems panel: show validate() findings in the app (unused actions, missing Logical controls, damaged module files, two inputs on one vJoy output) with Go to.
+2. Profile recovery copy (GL-029, approved, deferred).
+3. Test panel without the game: press a binding on screen, see what vJoy/Xbox gets.
+4. Find in profile: every use of a key, vJoy output, mode or action.
+5. Copy a mode or an input's bindings from another profile.
+6. Save diagnostics: one local zip of logs, settings, device list.
+7. What's new in Check for Updates (release notes before updating).
+
+For quality and speed:
+8. Rule checks (validate) from report to fail (Stage 2 leftover).
+9. Startup time: load rarely used pages on first open; a startup-time test.
+10. Coverage report; fill the riskiest gaps.
+11. Keep shrinking hardware_profile.py, module_model.py, binding_catalog.py.
+12. CI on one branch, cache the venv and compiled QML (faster, no double emails).
+13. Screenshot tests at several UI scales (prepares AU-56).
+14. Signed installer (removes SmartScreen; paid certificate, user's call).
+
 ## Next up (updated 2026-10-06)
 
 Stages 0-3 are written out in `claude/system-maps.md` ("The plan").
