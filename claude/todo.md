@@ -60,7 +60,11 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 10. Copy a mode or an input's bindings from another profile.
 11. Save diagnostics: one local zip of logs, settings, device list.
 12. Rule checks (validate) from report to fail (Stage 2 leftover).
-13. Startup time: load rarely used pages on first open; a startup-time test.
+13. **SHELVED by the user 2026-10-07.** Startup time: load rarely used pages on first open; a startup-time test.
+    Measured before shelving (off-screen, S13; scripts in `.agent-logs/handson/S13/`): window built and drawn
+    ~0.9 s after start-up begins, whole process ~2.0 s (empty profile); the user's 386 KB profile (204 inputs,
+    4 sticks + 3 vJoy) ~0.92 s / ~2.1 s. Removing single parts of Main.qml changed it by less than run-to-run
+    noise. Off-screen skips HidHide and the keyboard/mouse hooks (their real cost not measured).
 14. What's new in Check for Updates (release notes before updating).
 15. Coverage report; fill the riskiest gaps.
 16. Faster CI: cache the venv and compiled QML (with item 2).
