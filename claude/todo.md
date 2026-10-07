@@ -126,7 +126,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 35. Timing flake: `test/action_interaction/test_double_tap_tempo.py::test_single_tap_long`
     failed once under the 6-part load, passed 3/3 alone; wait for the result
     instead of a fixed time (as cc3b49f3 did for the keyboard tests).
-36. Listen / macro Record switch input highlighting directly
+36. **DONE 2026-10-07 (31f05950, CI green 37687912233).** Listen / macro Record switch input highlighting directly
     (`gremlin/ui/util.py` ~199, 287, 295, 384, 419), outside the Backend's
     holder set (03 S114 fix): stopping Listen with Calibration open could turn
     highlighting back on. Move them onto the holders.
