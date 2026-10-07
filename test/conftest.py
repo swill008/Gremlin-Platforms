@@ -11,7 +11,10 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable, Iterator
-from typing import IO
+from typing import IO, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pluggy
 
 # Tests never put a window on the user's screen: the Gremlin app some tests
 # build (pytest-qt's qapp) and every window it opens stay off-screen.
@@ -194,7 +197,7 @@ class _Stalls:
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
-        "validate_off: leave the test out of the validate report (it builds "
+        "validate_off: leave the test out of the rule checks (it builds "
         "broken state on purpose)",
     )
     try:
@@ -326,12 +329,14 @@ def _history_written_before_the_test() -> None:
     history.flush()
 
 
-# | Rule checks (gremlin/validate.py), report only: after each test the open
-# | profile is checked, and after a test that ran or stopped a CodeRunner,
-# | what a Run leaves behind. Problems go to a report file
-# | (GREMLIN_VALIDATE_REPORT, else gremlin-validate-report.txt in the temp
-# | folder; each run adds its own block) and a one-line summary ends the run.
-# | A check never fails a test. @pytest.mark.validate_off leaves a test out.
+# | Rule checks (gremlin/validate.py): after each test the open profile is
+# | checked, and after a test that ran or stopped a CodeRunner, what a Run
+# | leaves behind. A problem that isn't a warning (validate.WARNINGS) fails
+# | the test (D-TEST-RULES-FAIL): the profile check fails the test itself,
+# | the Run check is an error at teardown. Every problem, warnings too, goes
+# | to a report file (GREMLIN_VALIDATE_REPORT, else gremlin-validate-report.txt
+# | in the temp folder; each run adds its own block) and a one-line summary
+# | ends the run. @pytest.mark.validate_off leaves a test out.
 
 
 class _Validate:
@@ -352,20 +357,49 @@ def _validate_report_path() -> pathlib.Path:
     return pathlib.Path(tempfile.gettempdir()) / "gremlin-validate-report.txt"
 
 
-def _note(nodeid: str, problems: list[str]) -> None:
+def _note(nodeid: str, problems: list[str]) -> list[str]:
     if problems:
         _Validate.found.setdefault(nodeid, []).extend(problems)
+    return problems
 
 
-def _check_profile(item: pytest.Item) -> None:
+def _damage(problems: list[str]) -> list[str]:
+    """The problems that fail a test: all but the warnings."""
+    from gremlin import validate
+
+    return [p for p in problems if not validate.is_warning(p)]
+
+
+def _fail_on_damage(
+    outcome: pluggy.Result[None], problems: list[str], when: str
+) -> None:
+    """Fails the test phase (outcome) with the damage among the problems,
+    unless it failed already (its own failure says more)."""
+    damage = _damage(problems)
+    if not damage or outcome.excinfo is not None:
+        return
+    text = "\n".join(f"    {p}" for p in damage)
+    outcome.force_exception(
+        pytest.fail.Exception(
+            f"Rule checks (gremlin/validate.py) found damage {when}:\n{text}\n"
+            "(@pytest.mark.validate_off leaves out a test that builds it on purpose)",
+            pytrace=False,
+        )
+    )
+
+
+def _check_profile(item: pytest.Item) -> list[str]:
     """The open profile, right after the test (before its fixtures put
     another one back)."""
     if item.get_closest_marker("validate_off") is not None:
-        return
+        return []
     state = sys.modules.get("gremlin.shared_state")
     current = getattr(state, "current_profile", None) if state else None
-    if current is None:
-        return
+    profile_module = sys.modules.get("gremlin.profile")
+    if current is None or profile_module is None:
+        return []
+    if not isinstance(current, profile_module.Profile):
+        return []  # a test's stand-in, not a profile to check
     from gremlin import validate
 
     found = validate.profile(current)
@@ -374,19 +408,20 @@ def _check_profile(item: pytest.Item) -> None:
     key = (id(current), tuple(found))
     if key != _Validate.last_profile:
         _Validate.last_profile = key
-        _note(item.nodeid, found)
+        return _note(item.nodeid, found)
+    return []
 
 
-def _check_run(item: pytest.Item) -> None:
+def _check_run(item: pytest.Item) -> list[str]:
     """What a Run left behind, after a test that ran or stopped one (its
     fixtures stopped it by now)."""
     if _run_number() == _Validate.run_before:
-        return
+        return []
     if item.get_closest_marker("validate_off") is not None:
-        return
+        return []
     state = sys.modules.get("gremlin.shared_state")
     if state is not None and state.runtime_active():
-        return  # still running (a Run shared by a class or module of tests)
+        return []  # still running (a Run shared by a class or module of tests)
     from gremlin import validate
 
     found = validate.after_stop()
@@ -400,18 +435,18 @@ def _check_run(item: pytest.Item) -> None:
             if thread.name in names and thread is not threading.current_thread():
                 thread.join(max(0.0, deadline - time.monotonic()))
         found = validate.after_stop()
-    _note(item.nodeid, found)
+    return _note(item.nodeid, found)
 
 
-def _guard(item: pytest.Item, check: Callable[[pytest.Item], None]) -> None:
+def _guard(item: pytest.Item, check: Callable[[pytest.Item], list[str]]) -> list[str]:
     try:
-        check(item)
+        return check(item)
     except Exception as exc:
         try:
             problem = f"VALIDATE-ERROR: the check after the test failed: {exc!r}"
-            _note(item.nodeid, [problem])
+            return _note(item.nodeid, [problem])
         except Exception:
-            pass
+            return []
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -425,14 +460,14 @@ def pytest_runtest_setup(item: pytest.Item):  # noqa: ANN201
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_call(item: pytest.Item):  # noqa: ANN201
-    yield
-    _guard(item, _check_profile)
+    outcome = yield
+    _fail_on_damage(outcome, _guard(item, _check_profile), "in the open profile")
 
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None):  # noqa: ANN201
-    yield
-    _guard(item, _check_run)
+    outcome = yield
+    _fail_on_damage(outcome, _guard(item, _check_run), "after the Run")
 
 
 def pytest_terminal_summary(
@@ -465,7 +500,7 @@ def pytest_terminal_summary(
         total = sum(codes.values())
         summary = ", ".join(f"{code} x{n}" for code, n in codes.most_common())
         terminalreporter.write_line(
-            f"validate (report only): {total} problem(s) in {len(found)} test(s)"
+            f"validate: {total} problem(s) in {len(found)} test(s)"
             + (f" [{summary}]" if summary else "")
             + f" -> {path}"
         )

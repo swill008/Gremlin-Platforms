@@ -593,6 +593,8 @@ def test_s73_the_previous_file_and_an_overwritten_picture_are_kept_in_imported(
     assert (folder / "pjoy_pro" / "photo.png").read_bytes() == b"new photo"
 
 
+# Wires to Logical Device button 7, which is missing and not created (08 S64)
+@pytest.mark.validate_off
 def test_s74_the_profile_changes_in_memory_only(
     folder: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -610,6 +612,8 @@ def test_s74_the_profile_changes_in_memory_only(
     assert target.has_unsaved_changes()
 
 
+# Wires to Logical Device button 7, which is missing and not created (08 S64)
+@pytest.mark.validate_off
 def test_s81_keeping_the_import_ends_undo_and_drops_the_replaced_actions(
     folder: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

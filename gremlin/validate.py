@@ -128,8 +128,9 @@ def profile(p: Profile) -> list[str]:
       replaced actions stay in memory for Undo (04 S14, S75).
     - PROFILE-LOGICAL-MISSING: a used action (Map to Logical Device, a
       Logical Device condition) names a Logical Device input that doesn't
-      exist. Checked against the rows in memory, which belong to the profile
-      loaded last (04 R3).
+      exist in the profile's own rows (Profile.logical_device, 04 S2, R3),
+      not the rows LogicalDevice() shows (another profile's, after another
+      Profile object was made or loaded).
     """
     out: list[str] = []
     modes: set[str] = set()
@@ -139,7 +140,9 @@ def profile(p: Profile) -> list[str]:
         "profile inputs", lambda found: _check_inputs(p, found, modes, used)
     )
     out += _guarded("profile library", lambda found: _check_library(p, found, used))
-    out += _guarded("profile logical", lambda found: _check_logical(found, used))
+    out += _guarded(
+        "profile logical", lambda found: _check_logical(p, found, used)
+    )
     return out
 
 
@@ -274,13 +277,16 @@ def _logical_refs(action: Any) -> list[tuple[Any, Any]]:  # noqa: ANN401
     return refs
 
 
-def _check_logical(out: list[str], used: dict[uuid.UUID, Any]) -> None:
+def _check_logical(p: Profile, out: list[str], used: dict[uuid.UUID, Any]) -> None:
     if not any(_logical_refs(action) for action in used.values()):
         return
     from gremlin.logical_device import LogicalDevice
 
-    # Report only: the Logical Device is not made to be checked.
-    logical = _singleton(LogicalDevice)
+    # The profile's own rows; LogicalDevice() shows the rows bound last.
+    logical = getattr(p, "logical_device", None)
+    if logical is None:
+        # Not made to be checked.
+        logical = _singleton(LogicalDevice)
     if logical is None:
         return
     for action in used.values():
