@@ -291,17 +291,41 @@ def main() -> None:
         pw.grabWindow().save(str(folder / "print-export.png"))
         win.grabWindow().save(str(folder / "map-with-print-area.png"))
 
+    # Every result the background export announces (07 S101).
+    saved: list = []
+    hw = ev("_hw")
+    hw.areaSaved.connect(lambda ok, error: saved.append([ok, error]))
+    buttons = [child(n) for n in ("printExportPdf", "printExportPng", "printExportJpg")]
+    busy_note = child("printExportBusy")
+
+    def busy_state() -> dict:
+        return {
+            "busy": ev("_buttonMap.exportBusy"),
+            "enabled": [b.property("enabled") for b in buttons],
+            "note": [busy_note.property("visible"), busy_note.property("text")],
+            "failure": [ev("_failNotice.visible"), ev("_failNotice.titleText")],
+            "saved": len(saved),
+        }
+
+    def wait_done(count: int) -> None:
+        """Until the export has announced its result (bounded)."""
+        for _ in range(400):
+            QtTest.QTest.qWait(25)
+            if len(saved) >= count and ev("_buttonMap.exportBusy") is False:
+                return
+
     def export(name: str, fmt: str) -> list:
-        """Exports through Print & Export's pipeline and waits for it."""
+        """Exports through Print & Export's pipeline and waits for its
+        result (areaSaved, then not busy)."""
         target = folder / name
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
         size = json.loads(str(ev("JSON.stringify(_buttonMap.exportPixels())")))
+        count = len(saved) + 1
         ev(f"_buttonMap.exportTo({json.dumps(url)}, {json.dumps(fmt)})")
-        for _ in range(200):
-            QtTest.QTest.qWait(50)
-            if ev("_renderer.busy") is False and target.exists():
-                break
-        return [size["w"], size["h"], target.exists()]
+        if "busy-during" not in out:
+            out["busy-during"] = busy_state()
+        wait_done(count)
+        return [size["w"], size["h"], target.exists() and saved[-1][0] is True]
 
     # The whole page, then a print area: the same scale, no paper.
     ev("_buttonMap.setPrint('paper', 'fit')")
@@ -322,6 +346,20 @@ def main() -> None:
     ev("_buttonMap.setPrint('light', false)")
     ev("_buttonMap.setPrint('paper', 'letter')")
     out["pdf"] = export("letter.pdf", "pdf")
+    out["busy-after"] = busy_state()
+    # A folder that is not there: "Export Failed" with the reason, once the
+    # background export has announced it, not before.
+    missing = folder / "not-here" / "x.png"
+    count = len(saved) + 1
+    ev("_buttonMap.exportTo(%s, 'png')"
+       % json.dumps(QtCore.QUrl.fromLocalFile(str(missing)).toString()))
+    out["failed-before"] = busy_state()
+    wait_done(count)
+    QtTest.QTest.qWait(100)
+    out["failed-after"] = busy_state()
+    out["failed-message"] = ev("_failNotice.messageText")
+    out["failed-saved"] = saved[-1] if saved else None
+    ev("_failNotice.close()")
     # The map on screen was never put into export mode.
     out["live-exporting"] = ev("_buttonMap._ed().exporting")
     # Closed (its place kept), then the Button Map opened again: it stays
@@ -338,4 +376,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BaseException:
+        import traceback
+
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)

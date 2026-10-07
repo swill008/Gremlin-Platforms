@@ -156,6 +156,35 @@ def save_area(
     return _save_image(page, path, kind)
 
 
+def _export_in_background(
+    page: QtGui.QImage,
+    width: int,
+    height: int,
+    path: Path,
+    fmt: str,
+    setup: dict,
+    done: Callable[[bool, str], None],
+) -> None:
+    """saveAreaAsync's worker: writes the file, then done(ok, error) with
+    the Q19 text on failure. Touches no window."""
+    try:
+        ok = bool(save_area(page, width, height, path, fmt, setup))
+    except Exception:
+        logging.getLogger("system").exception(f"Export of {path} failed")
+        ok = False
+    error = ""
+    if not ok:
+        try:
+            error = export_failure(path)
+        except Exception:
+            error = f"Export failed. {Path(path).name} could not be written."
+    try:
+        done(ok, error)
+    except RuntimeError:
+        # The Button Map closed while it ran: nobody to tell.
+        pass
+
+
 def _write_problem(path: Path) -> str:
     """Why a file could not be written at path, in a few words."""
     folder = path.parent
@@ -864,6 +893,13 @@ class HardwareProfile(QtCore.QObject):
     recentColoursChanged = QtCore.Signal()
     # The profile's actions or modes changed: chip action labels are stale.
     profileLabelsChanged = QtCore.Signal()
+    # A background export (saveAreaAsync) started or announced its result.
+    exportingChanged = QtCore.Signal()
+    # A background export is done, on the main thread: ok, and the Q19 text
+    # when it failed ("" when it worked).
+    areaSaved = QtCore.Signal(bool, str)
+    # The export worker's result, queued to the main thread.
+    _exportDone = QtCore.Signal(bool, str)
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -873,6 +909,10 @@ class HardwareProfile(QtCore.QObject):
         self._peek_photo = ""
         self._device_guid = ""
         self._export_error = ""
+        self._exporting = False
+        self._exportDone.connect(
+            self._export_done, QtCore.Qt.ConnectionType.QueuedConnection
+        )
         # Counts clipboard changes, so Ctrl+V can tell a picture copied after
         # the last chip copy from an old one.
         self._clipboard_serial = 0
@@ -975,6 +1015,59 @@ class HardwareProfile(QtCore.QObject):
             return True
         self._export_error = export_failure(path)
         return False
+
+    @QtCore.Slot(QtGui.QImage, int, int, str, str, str, result=bool)
+    def saveAreaAsync(
+        self,
+        image: QtGui.QImage,
+        width: int,
+        height: int,
+        url: str,
+        fmt: str,
+        setup_json: str,
+    ) -> bool:
+        """saveArea in the background (07 S101): returns True at once and
+        announces the result with areaSaved(ok, error) on the main thread.
+        Returns False, starting nothing, while an export is running."""
+        if self._exporting:
+            return False
+        from gremlin import threads
+
+        self._exporting = True
+        self._export_error = ""
+        # A copy: the window may draw on its picture again meanwhile.
+        page = QtGui.QImage(image).copy()
+        try:
+            threads.start(
+                "Button Map export",
+                _export_in_background,
+                page,
+                int(width),
+                int(height),
+                to_local_path(url),
+                str(fmt),
+                _setup(setup_json),
+                self._exportDone.emit,
+            )
+        except Exception:
+            logging.getLogger("system").exception("Could not start the export")
+            self._exporting = False
+            return False
+        self.exportingChanged.emit()
+        return True
+
+    @QtCore.Slot(bool, str)
+    def _export_done(self, ok: bool, error: str) -> None:
+        """The worker's result, on the main thread (queued)."""
+        self._export_error = "" if ok else error
+        self._exporting = False
+        self.exportingChanged.emit()
+        self.areaSaved.emit(ok, "" if ok else error)
+
+    @QtCore.Property(bool, notify=exportingChanged)
+    def exporting(self) -> bool:
+        """An export started by saveAreaAsync has not announced its result."""
+        return self._exporting
 
     @QtCore.Slot(result=str)
     def exportError(self) -> str:

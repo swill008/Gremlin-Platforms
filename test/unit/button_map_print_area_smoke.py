@@ -98,12 +98,20 @@ def main() -> None:
 
     target = Path(os.environ["USERPROFILE"]) / "export.png"
 
+    # Exports are written in the background (07 S101): wait for the result.
+    saved: list = []
+    ev("_hw").areaSaved.connect(lambda ok, error: saved.append(ok))
+
     def export() -> list:
         if target.exists():
             target.unlink()
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
+        count = len(saved) + 1
         call(win, "exportTo", url, "png")
-        QtTest.QTest.qWait(1500)
+        for _ in range(400):
+            QtTest.QTest.qWait(25)
+            if len(saved) >= count and ev("_buttonMap.exportBusy") is False:
+                break
         image = QtGui.QImage(str(target))
         return [image.width(), image.height()]
 
@@ -198,4 +206,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BaseException:
+        import traceback
+
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)

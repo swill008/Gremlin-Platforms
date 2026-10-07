@@ -2090,23 +2090,46 @@ ApplicationWindow {
             e.showFindMessage(text)
     }
 
-    // A PNG, JPG or PDF of the print area.
+    // An export is being drawn or written (07 S101): one at a time, so
+    // Print & Export's Export buttons wait for it.
+    property bool _exportDrawing: false
+    property string _exportTarget: ""
+    readonly property bool exportBusy: _exportDrawing || _hw.exporting === true
+
+    // A PNG, JPG or PDF of the print area, written in the background
+    // (07 S101); its result comes with _hw.areaSaved.
     function exportTo(url, format) {
+        if (exportBusy)
+            return
         var px = exportPixels()
         var setup = JSON.stringify(printSetup)
         var target = String(url)
         var job = _renderJob(function(result) {
+            _buttonMap._exportDrawing = false
             if (!result) {
                 console.warn("Button Map export failed: " + target)
                 _buttonMap._say("Export failed. The map could not be drawn.")
-            } else if (!_hw.saveArea(result.image, px.w, px.h, target, format, setup)) {
-                console.warn("Button Map export failed: " + target)
-                // Which file and why (07 Q19), as Template export says.
-                _buttonMap.tellFailure("Export Failed", _hw.exportError() || "Export failed.")
+                return
             }
+            _buttonMap._exportTarget = target
+            if (!_hw.saveAreaAsync(result.image, px.w, px.h, target, format, setup))
+                console.warn("Button Map export not started (one is running): " + target)
         }, px)
-        if (job)
-            _renderer.enqueue(job)
+        if (!job)
+            return
+        _exportDrawing = true
+        _renderer.enqueue(job)
+    }
+
+    Connections {
+        target: _hw
+        function onAreaSaved(ok, error) {
+            if (ok)
+                return
+            console.warn("Button Map export failed: " + _buttonMap._exportTarget)
+            // Which file and why (07 Q19), as Template export says.
+            _buttonMap.tellFailure("Export Failed", error || _hw.exportError() || "Export failed.")
+        }
     }
 
     // Print: the print area, then Windows' printer dialog.

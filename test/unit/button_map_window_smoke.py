@@ -149,6 +149,12 @@ def main() -> None:
         QtTest.QTest.qWait(800)
         target = out / "light-export.png"
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
+        # Written in the background (07 S101): wait for its result
+        # (areaSaved), at most 30 s.
+        saved: list = []
+        hw = QtQml.QQmlExpression(QtQml.qmlContext(win), win, "_hw").evaluate()[0]
+        hw = hw.toVariant() if hasattr(hw, "toVariant") else hw
+        hw.areaSaved.connect(lambda ok, error: saved.append([ok, error]))
         code = (
             "_buttonMap.setPrint('light', true);"
             f" _buttonMap.exportTo('{url}', 'png')"
@@ -157,10 +163,14 @@ def main() -> None:
         expr.evaluate()
         if expr.hasError():
             print(f"ERROR light-export: {expr.error().toString()}", flush=True)
-        for _ in range(100):
+        for _ in range(600):
             QtTest.QTest.qWait(50)
-            if target.exists():
+            if saved:
                 break
+        if not saved:
+            print("ERROR light-export: no result within 30 s", flush=True)
+        elif not saved[0][0]:
+            print(f"ERROR light-export: {saved[0][1]}", flush=True)
         image = QtGui.QImage(str(target))
         if image.isNull():
             print("ERROR light-export: nothing written", flush=True)
@@ -381,4 +391,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BaseException:
+        import traceback
+
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)

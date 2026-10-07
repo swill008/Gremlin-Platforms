@@ -17,6 +17,10 @@ the print area).
   as that part of the whole page's; both screen scales give the same
   picture, and so does a larger scale; Light is a white page; the map on screen is never put into
   export mode.
+- Exports are written in the background (07 S101): while one runs, Export
+  PDF/PNG/JPG are greyed and "Exporting…" shows; the result comes with
+  areaSaved, and a failure ("Export Failed", which file and why, Q19) shows
+  only then.
 """
 
 from __future__ import annotations
@@ -220,3 +224,35 @@ def test_light_is_a_white_page(runs: dict) -> None:
     dark = _image(folder / "area.png")
     assert light.pixelColor(1, 1).lightness() > 240
     assert dark.pixelColor(1, 1).lightness() < 80
+
+
+@pytest.mark.parametrize("scale", _SCALES)
+def test_an_export_runs_in_the_background(runs: dict, scale: str) -> None:
+    result = runs[scale][0]
+    during = result["busy-during"]
+    assert during["busy"] is True
+    assert during["enabled"] == [False, False, False]
+    assert during["note"] == [True, "Exporting…"]
+    assert during["saved"] == 0
+    after = result["busy-after"]
+    assert after["busy"] is False
+    assert after["enabled"] == [True, True, True]
+    assert after["note"][0] is False
+    assert after["failure"][0] is False
+    # full, full-200, area, light, pdf: each announced once.
+    assert after["saved"] == 5
+
+
+@pytest.mark.parametrize("scale", _SCALES)
+def test_a_failed_export_says_why_once_it_is_done(runs: dict, scale: str) -> None:
+    result = runs[scale][0]
+    before = result["failed-before"]
+    assert before["busy"] is True
+    assert before["failure"][0] is False
+    after = result["failed-after"]
+    assert after["busy"] is False
+    assert after["failure"] == [True, "Export Failed"]
+    ok, error = result["failed-saved"]
+    assert ok is False and error
+    assert result["failed-message"] == error
+    assert "x.png" in error

@@ -38,6 +38,8 @@ Window {
     }
 
     readonly property var setup: host ? host.printSetup : ({})
+    // An export is being drawn or written.
+    readonly property bool exportBusy: !!host && host.exportBusy === true
     readonly property bool onPaper: !!setup.paper && setup.paper !== "fit"
     readonly property bool metric: /^a[345]$/.test(String(setup.paper || ""))
     // The paper Freeform (As Drawn) goes back to when it is unticked.
@@ -496,23 +498,39 @@ Window {
                     text: "Print…"
                     onClicked: _win.host.printNow()
                 }
+                // One export at a time (07 S101): written in the
+                // background, the window stays usable meanwhile.
                 Button {
+                    objectName: "printExportPdf"
                     Layout.fillWidth: true
                     text: "Export PDF…"
+                    enabled: !_win.exportBusy
                     onClicked: _win.host.openExportFile("pdf")
                 }
                 RowLayout {
                     Layout.fillWidth: true
                     Button {
+                        objectName: "printExportPng"
                         Layout.fillWidth: true
                         text: "Export PNG…"
+                        enabled: !_win.exportBusy
                         onClicked: _win.host.openExportFile("png")
                     }
                     Button {
+                        objectName: "printExportJpg"
                         Layout.fillWidth: true
                         text: "Export JPG…"
+                        enabled: !_win.exportBusy
                         onClicked: _win.host.openExportFile("jpg")
                     }
+                }
+                Label {
+                    objectName: "printExportBusy"
+                    Layout.fillWidth: true
+                    visible: _win.exportBusy
+                    wrapMode: Text.WordWrap
+                    color: Style.fgMuted
+                    text: "Exporting…"
                 }
                 Button {
                     Layout.fillWidth: true
