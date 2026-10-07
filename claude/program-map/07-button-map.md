@@ -287,6 +287,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - **S98** It should apply Button Map Options to every device and keep them at once; the pane remembers its last group. [help: Button Map Options] [tracker: BM46] [test: test_button_map_options_pane.py::test_a_change_is_kept_and_so_is_the_group]
 - **S99** It should keep the tool rows, tabs, pins, locks and floating panels for next time; Reset Tool Rows puts them back. [help: Overview] [test: test_button_map_tool_row.py::test_rows_and_docks_are_kept_and_reset]
 - **S100** It should list every usable menu command in the Command Palette (Ctrl+K). [help: Overview]
+- **S101** An export (PDF, PNG, JPG) should be written in the background: the window stays responsive while a large picture is encoded and shows that it is busy; when it is done, a failure is reported as in Q19 (file, folder, reason) and a success as before. Only one export runs at a time. [user decision 2026-10-07: D-07-EXPORT-BG]
 
 ## 9. Questions for the user
 
