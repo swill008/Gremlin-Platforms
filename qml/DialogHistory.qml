@@ -273,13 +273,18 @@ ApplicationWindow {
         Layout.fillWidth: true
         Layout.fillHeight: true
         spacing: Style.dp(4)
+        // The heading, a gap, its button; short of room the heading is
+        // shortened (…), never drawn under the button.
         RowLayout {
             Layout.fillWidth: true
+            spacing: Style.dp(8)
             Label {
                 text: _diffSide.side === "before" ? "Before" : "After"
                 color: Style.fg
                 font.bold: true
+                elide: Text.ElideRight
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
             }
             Button {
                 objectName: _diffSide.side === "before" ? "historyRestoreBefore" : "historyRestoreAfter"

@@ -362,7 +362,7 @@ ApplicationWindow {
                         }
                     }
                     Button {
-                        text: qsTr("Copy All Logs")
+                        text: qsTr("Copy All")
                         onClicked: _log.copyAll()
                     }
                 }

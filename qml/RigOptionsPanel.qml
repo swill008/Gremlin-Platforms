@@ -10,9 +10,10 @@ import Gremlin.Style
 
 // Button Map Options as a pane (the Options tool, or Edit > Button Map
 // Options...): the groups down the left, the chosen group's settings on the
-// right in two columns, one line each (a switch, a choice, a number box or
-// a color swatch); each setting's description on its (i). Changes apply and
-// are kept at once. Library lists the saved styles and templates.
+// right in two columns, one row each (a switch, a choice, a number box or
+// a color swatch; a long label goes onto more lines); each setting's
+// description on its (i). Changes apply and are kept at once. Library
+// lists the saved styles and templates.
 Item {
     id: _panel
 
@@ -123,11 +124,14 @@ Item {
                         Layout.preferredWidth: 1
                         spacing: Style.dp(6)
 
+                        // Short of room it goes onto more lines, never cut;
+                        // it and the list or number box share what is left.
                         Label {
                             text: _row.modelData.title
                             color: Style.fg
-                            elide: Text.ElideRight
+                            wrapMode: Text.Wrap
                             Layout.fillWidth: true
+                            Layout.minimumWidth: Math.min(implicitWidth, Style.dp(64))
                         }
                         // The description, on hover.
                         Label {
@@ -154,6 +158,9 @@ Item {
                         ComboBox {
                             visible: _row.modelData.kind === "choice"
                             Layout.preferredWidth: Style.dp(150)
+                            Layout.minimumWidth: Style.dp(90)
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: Style.dp(150)
                             model: _row.modelData.choices
                             currentIndex: Math.max(0, _row.modelData.choices.indexOf(String(_row.value)))
                             onActivated: (i) => _panel.opts.set(_row.modelData.key, _row.modelData.choices[i])
@@ -161,6 +168,9 @@ Item {
                         SpinBox {
                             visible: _row.modelData.kind === "int"
                             Layout.preferredWidth: Style.dp(130)
+                            Layout.minimumWidth: Style.dp(120)
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: Style.dp(130)
                             from: _row.modelData.min
                             to: _row.modelData.max
                             editable: true
@@ -184,6 +194,9 @@ Item {
                         TextField {
                             visible: _row.modelData.kind === "text"
                             Layout.preferredWidth: Style.dp(150)
+                            Layout.minimumWidth: Style.dp(90)
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: Style.dp(150)
                             text: String(_row.value === undefined ? "" : _row.value)
                             onEditingFinished: _panel.opts.set(_row.modelData.key, text)
                         }

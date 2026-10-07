@@ -283,10 +283,13 @@ ApplicationWindow {
         }
 
         Label {
-            // An output can't be pressed: its controls are ticked.
+            // An output can't be pressed: its controls are ticked. A pressed
+            // key is found (or added) and ticked (_on_key).
             text: direction === "dest"
                 ? "Tick the outputs this module may use; clear a check box to let it go. "
                   + "Names and marks are set in the Button Map."
+                : deviceName.toLowerCase() === "keyboard"
+                ? "Press a key to find it and claim it for this module; clear its check box to let it go."
                 : "Press a control on the device to claim it for this module; clear its check box to let it go. "
                   + "Names, marks and 5-way hats are set in the Button Map."
             color: Style.fgMuted

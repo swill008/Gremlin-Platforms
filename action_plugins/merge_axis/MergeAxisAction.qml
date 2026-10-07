@@ -72,14 +72,39 @@ Item {
 
 
         // +-------------------------------------------------------------------
-        // | Merge axis instance selection and management
+        // | Instance, operation and the two axes: labels in the first column.
+        // | Too narrow for a label and a list side by side (the pane at its
+        // | default width, a large UI scale), each list goes under its label.
         // +-------------------------------------------------------------------
-        RowLayout {
+        GridLayout {
+            id: _grid
+
+            // The lists keep at least 250 (LabelValueComboBox).
+            readonly property bool wide: _content.width >= Math.max(
+                _instanceLabel.implicitWidth, _operationLabel.implicitWidth,
+                _firstLabel.implicitWidth, _secondLabel.implicitWidth)
+                + Style.dp(250) + _instanceButtons.implicitWidth
+                + 2 * columnSpacing
+
+            Layout.fillWidth: true
+            columns: 3
+            columnSpacing: Style.dp(8)
+
             Label {
+                id: _instanceLabel
                 text: "Merge axis instance"
+                Layout.row: 0
+                Layout.column: 0
+                Layout.columnSpan: _grid.wide ? 1 : 2
             }
             LabelValueComboBox {
                 id: _action_selection
+
+                Layout.row: _grid.wide ? 0 : 1
+                Layout.column: _grid.wide ? 1 : 0
+                Layout.columnSpan: _grid.wide ? 1 : 3
+                Layout.fillWidth: true
+                Layout.minimumWidth: Style.dp(250)
 
                 model: _root.actionModel
 
@@ -93,6 +118,12 @@ Item {
             }
 
             Row {
+                id: _instanceButtons
+
+                Layout.row: 0
+                Layout.column: 2
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+
                 IconButton {
                     text: bsi.icons.add_new
                     font.pixelSize: Style.dp(24)
@@ -107,16 +138,22 @@ Item {
                     onClicked: () => { _dialog.open() }
                 }
             }
-        }
 
-        LayoutHorizontalSpacer {}
-
-        RowLayout {
             Label {
+                id: _operationLabel
                 text: "Merge operation"
+                Layout.row: _grid.wide ? 1 : 2
+                Layout.column: 0
+                Layout.columnSpan: _grid.wide ? 1 : 3
             }
             LabelValueComboBox {
                 id: _operation_selection
+
+                Layout.row: _grid.wide ? 1 : 3
+                Layout.column: _grid.wide ? 1 : 0
+                Layout.columnSpan: _grid.wide ? 1 : 3
+                Layout.fillWidth: true
+                Layout.minimumWidth: Style.dp(250)
 
                 model: _root.operationModel
 
@@ -128,40 +165,51 @@ Item {
                     _root.action.operation = _root.operationModel.currentValue
                 }
             }
-        }
 
-        // +-------------------------------------------------------------------
-        // | Axis assignments
-        // +-------------------------------------------------------------------
-        RowLayout {
-            // First axis
+            // +---------------------------------------------------------------
+            // | Axis assignments: one line each, the name shortened to fit
+            // +---------------------------------------------------------------
             Label {
+                id: _firstLabel
                 text: "First axis"
                 font.family: Style.uiFont
                 font.weight: 600
+                Layout.row: _grid.wide ? 2 : 4
+                Layout.column: 0
             }
             Label {
                 text: _root.action.firstAxis.label
+                elide: Text.ElideRight
+                Layout.row: _grid.wide ? 2 : 4
+                Layout.column: 1
+                Layout.fillWidth: true
             }
             Compact.RecordButton {
+                Layout.row: _grid.wide ? 2 : 4
+                Layout.column: 2
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 onClicked: () => { _root.action.firstAxis = uiState.currentInput }
             }
 
-            LayoutHorizontalSpacer {
-                Layout.fillWidth: false
-                Layout.preferredWidth: Style.dp(50)
-            }
-
-            // Second axis selection
             Label {
+                id: _secondLabel
                 text: "Second axis"
                 font.family: Style.uiFont
                 font.weight: 600
+                Layout.row: _grid.wide ? 3 : 5
+                Layout.column: 0
             }
             Label {
                 text: _root.action.secondAxis.label
+                elide: Text.ElideRight
+                Layout.row: _grid.wide ? 3 : 5
+                Layout.column: 1
+                Layout.fillWidth: true
             }
             Compact.RecordButton {
+                Layout.row: _grid.wide ? 3 : 5
+                Layout.column: 2
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 onClicked: () => {
                     _root.action.secondAxis = uiState.currentInput
                 }

@@ -70,7 +70,14 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.topMargin: Style.dp(10)
 
-        RunningNote { Layout.leftMargin: Style.dp(12) }
+        // A rename or delete reaches the running profile at once
+        // (ModeManager.rename_mode / drop_mode); the lookup that holds
+        // added modes and parents is built at Run (04 S49).
+        RunningNote {
+            Layout.leftMargin: Style.dp(12)
+            whenApplies: "Renamed and deleted modes change at once; "
+                + "added modes and new parents take effect the next time it starts."
+        }
 
         Label {
             Layout.fillWidth: true

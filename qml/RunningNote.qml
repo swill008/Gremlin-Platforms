@@ -13,13 +13,18 @@ Label {
     // Module Setup: a saved module is used at once, also while running
     // (03 Q1, S36, S108). The other tool windows apply at the next Run (08 S100).
     property bool appliesAtOnce: false
+    // A window where some changes apply at once and others wait says which
+    // (Manage Modes, 04 S49); it replaces the sentence after the first.
+    property string whenApplies: ""
 
     visible: !!(backend && backend.gremlinActive)
     Layout.fillWidth: true
     wrapMode: Text.WordWrap
     color: Style.warn
     font.pixelSize: Style.dp(12)
-    text: appliesAtOnce
-        ? "The profile is running. Saved changes work at once."
-        : "The profile is running. Changes here take effect the next time it starts."
+    text: whenApplies.length
+        ? "The profile is running. " + whenApplies
+        : appliesAtOnce
+            ? "The profile is running. Saved changes work at once."
+            : "The profile is running. Changes here take effect the next time it starts."
 }
