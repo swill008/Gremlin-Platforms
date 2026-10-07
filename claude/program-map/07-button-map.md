@@ -262,7 +262,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - **S77** It should, when copying outside Edit, start Edit from the current map first, so Undo brings the old map back. [tracker: BM9]
 - **S78** It should take back a mirrored copy with one Undo. [tracker: AU-27, open]
 - **S79** It should save a layout as a named template, ask before replacing one of the same name, and refuse an empty layout. [help: File menu and export] [test-plan: BMAP2-6] [user confirmed 2026-10-06; was code only: the replace question, `DialogJoystickButtonMap.qml:2132-2135`] [test: test_button_map_templates.py::test_nothing_to_save]
-- **S80** It should rename, export to a file, import (a taken name gets a number) and delete templates, asking before a delete and saying when rename or export fails. [help: File menu and export] [tracker: C13] [tracker: N12] [test: test_button_map_templates.py::test_export_and_import] [test: test_button_map_templates.py::test_rename_and_delete]
+- **S80** It should rename, export to a file, import (a taken name gets a number) and delete templates, asking before a delete and saying when rename or export fails; a failed template export or rename names the file, the folder and the reason, as in Q19. [user decision 2026-10-07: D-07-TEMPLATE-FAIL] [help: File menu and export] [tracker: C13] [tracker: N12] [test: test_button_map_templates.py::test_export_and_import] [test: test_button_map_templates.py::test_rename_and_delete]
 - **S81** It should keep in a template where its pictures are, not the picture files. [help: File menu and export]
 
 **Print and export**

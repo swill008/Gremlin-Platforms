@@ -209,7 +209,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S14. It should have the Run flag on only while a profile runs. [tracker: AU-60] [test: test_audit2_coverage.py::test_the_run_flag_is_on_only_while_a_profile_runs]
 - S15. It should Stop before opening another profile or a new one. [user confirmed 2026-10-06; was code only]
 - S16. It should Stop, load and Run again when a Load Profile action fires while running. [test: test_audit2_coverage.py::test_load_profile_loads_and_restarts_the_run]
-- S17. It should Stop before quitting, and quitting while running should leave no vJoy device held and no Xbox pad plugged in. [user confirmed 2026-10-06; was code only] [tracker: H2]
+- S17. It should Stop before quitting, and quitting while running should leave no vJoy device held and no Xbox pad plugged in. [user confirmed 2026-10-06; was code only] [tracker: H2] A vJoy device it lets go of (Stop or quit) is left at rest first: every button up, every hat centred, every axis centred; nothing it held stays pressed. [user decision 2026-10-07: D-06-VJOY-REST]
 - S18. It should disconnect everything a failed Run connected when Stop is pressed. [tracker: ACT21] [test: test_action_fixes.py::test_stop_disconnects_after_a_failed_run]
 - S19. Stop then Run should start clean: no macro queued in the last Run runs, and a macro of the last Run leaves the new Run alone. [tracker: ACT17] [test: test_action_fixes.py::test_run_starts_with_no_stale_macros] [test: test_audit2_macros.py::test_a_macro_of_the_last_run_leaves_the_new_run_alone]
 

@@ -366,7 +366,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S102** Empty: an input with no actions shows No actions and runs nothing. [glossary]
 - **S103** Missing driver: Map to Xbox without ViGEmBus shows a warning but stays in the profile. [user confirmed 2026-10-06; was code only] (`map_to_xbox` user_feedback is a Warning on purpose)
 - **S104** Missing driver: a profile with Map to vJoy should open on a PC without vJoy and keep those actions. [user confirmed 2026-10-06; was code only] (today it can't: RB20, Q2)
-- **S105** Unplugged: actions of an unplugged stick stay in the profile; Merge/Deadzone axes of an unplugged stick read centred. [test-plan: P3c] [user confirmed 2026-10-06; was code only for "stay"]
+- **S105** Unplugged: actions of an unplugged stick stay in the profile; Merge/Deadzone axes of an unplugged stick read centred. [test-plan: P3c] [user confirmed 2026-10-06; was code only for "stay"] [user decision 2026-10-07: D-05-UNPLUG-CENTRE: centred wins over 02 S28's "axes stay" for every action read]
 - **S106** Renamed / twin: actions are keyed by device id, so a renamed or second identical stick keeps its own actions. [test-plan: TWIN-DEVICES]
 - **S107** Damaged: a profile with a broken action reference opens; a Undo step that can't be read is kept and reported. [tracker: ACT1] [test-plan: AUDIT2-B-UNDO]
 - **S108** Crash: OK'd edits not saved are lost on a crash (no recovery copy for profiles). [user confirmed 2026-10-06; was code only]
