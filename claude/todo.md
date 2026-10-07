@@ -134,6 +134,8 @@ restarted 2026-10-06 with the 7-agent split above. **Batch 1 done: d68f4d88** (5
 
 ## Test isolation follow-up (2026-10-07)
 
+- CI (develop run 37607816152): Print & Export window tests stalled >30 s while `hardware_profile._save_image` encoded a large export PNG on the main thread (slow runner). Same code green on the other branch. Consider encoding exports off the main thread (also keeps the window responsive for big exports) — improvement, ask the user.
+
 - Some unit test leaves a different EventListener instance in place than the one InputModuleRuntime connected to when it was first made (found via test_final_07 live-map test with seed 572578, partner test in the first part: test_twin_devices::test_each_twin_has_its_own_card creates the runtime). The live-map test now connects the runtime to the current listener itself; the test that swaps the listener is not yet found.
 
 ## Improvement ideas (2026-10-07, to come back to; each goes through the spec first)
