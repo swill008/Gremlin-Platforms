@@ -18,8 +18,9 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     minimumWidth: Style.fitWidth(Style.dp(520), Screen)
     minimumHeight: Style.fitHeight(Style.dp(230), Screen)
-    width: Style.fitWidth(Style.dp(560), Screen)
-    height: Style.fitHeight(Style.dp(250), Screen)
+    width: Style.fitWidth(Style.dp(600), Screen)
+    // Room for the release notes (01 S133); they scroll inside the window.
+    height: Style.fitHeight(Style.dp(460), Screen)
 
     color: Style.background
     U.Universal.theme: Style.theme
@@ -76,10 +77,37 @@ ApplicationWindow {
 
         Label {
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillHeight: !_notesView.visible
             wrapMode: Text.WordWrap
             textFormat: Text.StyledText
             text: _root.message()
+        }
+
+        // The offered release's notes, and those of the versions between,
+        // newest first (01 S133). Raw HTML and pictures are already removed.
+        ScrollView {
+            id: _notesView
+            objectName: "releaseNotesView"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: _root.state_ === "available"
+            clip: true
+
+            TextArea {
+                objectName: "releaseNotes"
+                readOnly: true
+                selectByMouse: true
+                wrapMode: TextEdit.Wrap
+                readonly property string notes: updater ? updater.releaseNotes : ""
+                textFormat: notes ? TextEdit.MarkdownText : TextEdit.PlainText
+                text: notes ? notes
+                    : updater && updater.notesLoading ? qsTr("Getting the release notes…")
+                    : qsTr("Release notes unavailable.")
+                onLinkActivated: (link) => {
+                    if (/^https:\/\//.test(link))
+                        Qt.openUrlExternally(link)
+                }
+            }
         }
 
         Label {
@@ -102,6 +130,7 @@ ApplicationWindow {
             spacing: Style.dp(8)
 
             Button {
+                objectName: "updateNow"
                 text: qsTr("Update Now")
                 visible: _root.state_ === "available" && updater.canInstall
                 highlighted: true

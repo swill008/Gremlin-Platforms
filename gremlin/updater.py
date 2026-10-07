@@ -24,6 +24,13 @@ LATEST_RELEASE_URL = (
     "https://api.github.com/repos/swill008/Gremlin-Platforms/releases/latest"
 )
 RELEASES_PAGE_URL = "https://github.com/swill008/Gremlin-Platforms/releases"
+# Every release with its notes, newest first: one request covers the versions
+# between this copy and the latest.
+RELEASES_LIST_URL = (
+    "https://api.github.com/repos/swill008/Gremlin-Platforms/releases?per_page=30"
+)
+# Longest release note kept (GitHub allows 125000 characters).
+_NOTES_LIMIT = 20000
 
 INSTALLED = "installed"
 PORTABLE = "portable"
@@ -43,6 +50,8 @@ class Release:
     version: str
     page_url: str
     setup: Asset | None
+    # The release notes as GitHub has them (Markdown), or "".
+    notes: str = ""
 
 
 def setup_name(version: str) -> str:
@@ -84,7 +93,68 @@ def parse_release(doc: object) -> Release | None:
             setup = _asset(entry)
             break
     page_url = str(doc.get("html_url") or RELEASES_PAGE_URL)
-    return Release(version, page_url, setup)
+    body = doc.get("body")
+    return Release(version, page_url, setup, body if isinstance(body, str) else "")
+
+
+def safe_notes(body: str) -> str:
+    """Release notes Markdown with nothing that runs or loads: raw HTML
+    (scripts, styles, comments, tags) goes and images become their alt text."""
+    text = str(body or "")[:_NOTES_LIMIT].replace("\r\n", "\n")
+    text = re.sub(r"<!--.*?(?:-->|$)", "", text, flags=re.S)
+    text = re.sub(
+        r"<(script|style|iframe|object|embed)\b.*?(?:</\1\s*>|$)", "", text,
+        flags=re.S | re.I,
+    )
+    text = re.sub(r"</?[A-Za-z][^>]*>", "", text)
+    # ![alt](url) and ![alt][ref]: the picture would be fetched.
+    text = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"!\[([^\]]*)\]\[[^\]]*\]", r"\1", text)
+    return text.strip()
+
+
+def newer_notes(docs: object, running: str, latest: str) -> list[tuple[str, str]]:
+    """(version, notes) of each published release newer than running and no
+    newer than latest, newest first, from a GitHub releases list reply.
+    Drafts and pre-releases are left out, as GitHub's latest release does."""
+    if not isinstance(docs, list):
+        return []
+    found: dict[str, str] = {}
+    for doc in docs:
+        if not isinstance(doc, dict) or doc.get("draft") or doc.get("prerelease"):
+            continue
+        version = util.version_from_tag(str(doc.get("tag_name") or ""))
+        if version is None or not is_newer(version, running):
+            continue
+        if is_newer(version, latest):
+            continue
+        body = doc.get("body")
+        found.setdefault(version, body if isinstance(body, str) else "")
+    return sorted(
+        found.items(), key=lambda item: _version_tuple(item[0]) or (), reverse=True
+    )
+
+
+def notes_markdown(entries: list[tuple[str, str]]) -> str:
+    """One Markdown text: each release under its version heading, in the
+    order given; "" when none of them has notes."""
+    parts = []
+    for version, body in entries:
+        text = safe_notes(body)
+        if text:
+            parts.append(f"# Version {version}\n\n{text}")
+    return "\n\n".join(parts)
+
+
+def notes_url(feed: str) -> str:
+    """The releases list next to a "latest release" feed; "" when the feed
+    is not one (then only the latest release's own notes are shown)."""
+    url = str(feed or "")
+    if url == LATEST_RELEASE_URL:
+        return RELEASES_LIST_URL
+    if url.endswith("/releases/latest") and _allowed_url(url):
+        return url[: -len("/latest")] + "?per_page=30"
+    return ""
 
 
 def _version_tuple(value: str) -> tuple[int, ...] | None:

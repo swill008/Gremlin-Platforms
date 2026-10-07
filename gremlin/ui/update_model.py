@@ -76,6 +76,7 @@ class UpdateModel(QtCore.QObject):
 
     changed = QtCore.Signal()
     progressChanged = QtCore.Signal()
+    notesChanged = QtCore.Signal()
     # A newer release the user should hear about: QML opens the dialog.
     offerUpdate = QtCore.Signal()
     # The verified installer is ready: QML quits through the normal path.
@@ -103,6 +104,14 @@ class UpdateModel(QtCore.QObject):
         # Try Again after a failed update: install as soon as the check
         # finds that version.
         self._retry = False
+        # Release notes of the offered version(s), Markdown (01 S133), and
+        # whether the releases list is still on its way.
+        self._notes = ""
+        self._notes_loading = False
+        # The releases-list request on its way, and the release it is for;
+        # a new check abandons it.
+        self._notes_reply: QtNetwork.QNetworkReply | None = None
+        self._notes_release: updater.Release | None = None
         self._kind = updater.install_kind(
             bool(getattr(sys, "frozen", False)), Path(sys.executable).parent
         )
@@ -150,6 +159,16 @@ class UpdateModel(QtCore.QObject):
             and self._release.setup is not None
         )
 
+    @QtCore.Property(str, notify=notesChanged)
+    def releaseNotes(self) -> str:
+        """The offered release's notes (and those of the versions between),
+        newest first, as safe Markdown; "" when there are none to show."""
+        return self._notes
+
+    @QtCore.Property(bool, notify=notesChanged)
+    def notesLoading(self) -> bool:
+        return self._notes_loading
+
     @QtCore.Property(float, notify=progressChanged)
     def progress(self) -> float:
         if not self._release or not self._release.setup:
@@ -172,6 +191,8 @@ class UpdateModel(QtCore.QObject):
         if self._state in ("checking", "downloading"):
             return
         self._manual = bool(manual)
+        self._abandon_notes()
+        self._set_notes("", False)
         # Tests and off-screen checks set this: nothing goes out.
         if os.environ.get("GREMLIN_OFFLINE"):
             self._fail("Offline: the update check is turned off here.")
@@ -209,10 +230,99 @@ class UpdateModel(QtCore.QObject):
         if updater.should_offer(
             release.version, self.currentVersion, skipped, self._manual
         ):
+            self._fetch_notes(release)
             self._set_state("available")
             self.offerUpdate.emit()
         else:
             self._set_state("upToDate")
+
+    # --- release notes (01 S133) --------------------------------------------
+
+    def _fetch_notes(self, release: updater.Release) -> None:
+        """Show the release's own notes now, then ask GitHub for the list so
+        the versions in between show too. The window never waits on it."""
+        self._set_notes(
+            updater.notes_markdown([(release.version, release.notes)]), False
+        )
+        url = updater.notes_url(
+            updater.feed_url(
+                self._config.value("global", "internal", "update-feed-url")
+            )
+        )
+        self._abandon_notes()
+        # Tests and off-screen checks set this: nothing goes out (older tests
+        # hand the model the check's reply directly).
+        if not url or os.environ.get("GREMLIN_OFFLINE"):
+            return
+        request = _one_off_request(url)
+        request.setRawHeader(b"Accept", b"application/vnd.github+json")
+        request.setRawHeader(b"User-Agent", b"Gremlin-Platforms")
+        request.setTransferTimeout(_CHECK_TIMEOUT_MS)
+        reply = self._network.get(request)
+        self._notes_reply = reply
+        self._notes_release = release
+        # A bound slot, not a lambda: Qt drops the connection when the model
+        # goes, so a late reply never reaches a deleted model.
+        reply.finished.connect(self._on_notes)
+        self._set_notes(self._notes, True)
+
+    def _abandon_notes(self) -> None:
+        """Stop the releases-list request on its way (a new check started);
+        its reply is never read."""
+        reply, self._notes_reply = self._notes_reply, None
+        self._notes_release = None
+        if reply is None:
+            return
+        try:
+            reply.finished.disconnect(self._on_notes)
+        except (RuntimeError, TypeError):
+            pass
+        try:
+            reply.abort()
+            reply.deleteLater()
+        except RuntimeError:
+            pass  # already gone
+
+    @QtCore.Slot()
+    def _on_notes(self) -> None:
+        reply, self._notes_reply = self._notes_reply, None
+        release, self._notes_release = self._notes_release, None
+        if reply is None or release is None:
+            return
+        try:
+            reply.deleteLater()
+            self._read_notes(reply, release)
+        except Exception:
+            # Notes are extra: a bad reply never stops the update.
+            logging.getLogger("system").exception("Update: release notes")
+            self._set_notes(self._notes, False)
+
+    def _read_notes(
+        self, reply: QtNetwork.QNetworkReply, release: updater.Release
+    ) -> None:
+        docs = None
+        if reply.error() == QtNetwork.QNetworkReply.NetworkError.NoError:
+            try:
+                docs = json.loads(bytes(reply.readAll().data()).decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                docs = None
+        else:
+            logging.getLogger("system").info(
+                "Update: no release list: %s", reply.errorString()
+            )
+        entries = updater.newer_notes(
+            docs, util.get_code_version(), release.version
+        )
+        if not any(version == release.version for version, _ in entries):
+            entries.insert(0, (release.version, release.notes))
+        self._set_notes(updater.notes_markdown(entries), False)
+
+    def _set_notes(self, notes: str, loading: bool) -> None:
+        if (notes, loading) == (self._notes, self._notes_loading):
+            return
+        self._notes = notes
+        self._notes_loading = loading
+        self.notesChanged.emit()
 
     def _fail(self, text: str) -> None:
         logging.getLogger("system").warning("Update: %s", text)
