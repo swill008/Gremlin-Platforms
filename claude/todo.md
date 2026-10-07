@@ -158,7 +158,7 @@ For quality and speed:
 11. Keep shrinking hardware_profile.py, module_model.py, binding_catalog.py.
 12. CI on one branch, cache the venv and compiled QML (faster, no double emails).
 13. Screenshot tests at several UI scales (prepares AU-56).
-14. Signed installer (removes SmartScreen; paid certificate, user's call).
+14. ~~Signed installer~~ — won't fix (user, 2026-10-07): unsigned builds stay; SmartScreen note stays in the release text.
 
 ## Next up (updated 2026-10-06)
 
