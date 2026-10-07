@@ -138,7 +138,7 @@ def test_first_time_wording_and_room() -> None:
     assert "Press a control on the device to claim it" in _text(
         "qml/DialogConfigureModule.qml"
     )
-    assert "if (rows[j].hasFile)" in _text("qml/DialogDevicePack.qml")
+    assert "if (rows[j].canExport)" in _text("qml/DialogDevicePack.qml")
     assert "Load a profile first" in _text("qml/DialogSwapDevices.qml")
     info = _text("qml/DialogDeviceInformation.qml")
     assert "Layout.minimumWidth: Style.dp(220)" in info

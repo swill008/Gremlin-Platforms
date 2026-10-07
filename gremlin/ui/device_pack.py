@@ -23,6 +23,7 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from gremlin.ui.live_debug import trace
@@ -684,14 +685,34 @@ def _pack_label(name: str, guid: str, notes: dict | None) -> dict:
     return label
 
 
-def assemble(
+def pack_devices() -> list[dict]:
+    """The Device Pack's device list: store.known_devices() rows, each with
+    damaged (its module file can't be read), canExport (a module file that
+    can be read) and label, the name shown, marked "(file damaged)" when it is
+    (08 S106). The window opens on the first row that can be exported."""
+    rows = store.known_devices()
+    for row in rows:
+        name = str(row.get("name") or "")
+        damaged = False
+        if row.get("hasFile"):
+            path = store.path_for(name, str(row.get("guid") or ""))
+            damaged = bool(store.damage_of(path))
+        row["damaged"] = damaged
+        row["canExport"] = bool(row.get("hasFile")) and not damaged
+        row["label"] = f"{name} (file damaged)" if damaged else name
+    return rows
+
+
+def plan_pack(
     device_name: str,
-    resolve,
+    resolve: Callable[[str], Path | None],
     modes: list[str] | None = None,
     notes: dict | None = None,
-) -> tuple[bytes, dict] | str:
-    """The pack for one device. modes: the modes whose wires go in (None:
-    all of them). notes: {author, note}, shown when the pack is imported."""
+) -> dict | str:
+    """Everything the pack takes from the open profile and the module files,
+    read on the main thread: the documents, the wires and the picture files
+    to copy. build_pack(plan) makes the zip from it on any thread (08 S107).
+    A str when the device can't be exported (none, or damaged: 08 S51, Q19)."""
     name = " ".join(str(device_name or "").split())
     if not name:
         return "Choose a device."
@@ -712,40 +733,131 @@ def assemble(
     packed["device"] = name
     packed["pack"] = _pack_label(name, guid, notes)
     wires = _collect_wires(guid, modes)
-    outputs: list[dict] = []
+    outputs: list[tuple[str, dict]] = []
     for output_name in wires["outputs"]:
         built = _output_doc(output_name, resolve, used, files)
         if built is None:
             continue
-        out_doc, out_pictures = built
-        outputs.append({"doc": out_doc, "pictures": out_pictures, "name": output_name})
-    blob = io.BytesIO()
-    with zipfile.ZipFile(blob, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("map.json", json.dumps(packed, indent=2) + "\n")
-        if wires["modes"]:
-            zf.writestr("wires.json", json.dumps({
-                "modes": wires["modes"],
-                "actions": wires["actions"],
-                "tree": wires["tree"],
-            }, indent=2) + "\n")
-        for output in outputs:
-            label = output["doc"].get("pack") or {}
-            slug = str(label.get("slug") or _pack_key(output["name"]))
-            zf.writestr(f"outputs/{slug}.json", json.dumps(output["doc"], indent=2) + "\n")
-        for src, arc in files:
-            zf.write(src, arc)
-    data = blob.getvalue()
+        out_doc = built[0]
+        label = out_doc.get("pack") or {}
+        slug = str(label.get("slug") or _pack_key(output_name))
+        outputs.append((slug, out_doc))
     photo = ""
     for picture in pictures:
         if not picture.get("onMap"):
             photo = str(resolve(str(doc.get("image") or "")) or "")
             break
-    return data, {
+    return {
         "device": name,
+        "map": packed,
+        "wires": {
+            "modes": wires["modes"],
+            "actions": wires["actions"],
+            "tree": wires["tree"],
+        } if wires["modes"] else None,
+        "outputs": outputs,
+        "files": files,
         "photoPath": photo,
+    }
+
+
+def build_pack(plan: dict) -> tuple[bytes, dict]:
+    """The zip of a plan_pack() plan. Reads only the plan and the picture
+    files, so it may run on a worker thread (08 S107)."""
+    blob = io.BytesIO()
+    with zipfile.ZipFile(blob, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("map.json", json.dumps(plan["map"], indent=2) + "\n")
+        if plan["wires"]:
+            zf.writestr("wires.json", json.dumps(plan["wires"], indent=2) + "\n")
+        for slug, out_doc in plan["outputs"]:
+            zf.writestr(f"outputs/{slug}.json", json.dumps(out_doc, indent=2) + "\n")
+        for src, arc in plan["files"]:
+            zf.write(src, arc)
+    data = blob.getvalue()
+    return data, {
+        "device": plan["device"],
+        "photoPath": plan["photoPath"],
         "bytes": len(data),
         "sizeText": size_text(len(data)),
     }
+
+
+def write_pack(plan: dict, dest: Path) -> dict:
+    """Builds the plan's zip and saves it (save_pack). Runs on the export
+    worker (08 S107): no profile, no window."""
+    try:
+        data, info = build_pack(plan)
+    except OSError as exc:
+        # A picture that went away or can't be read meanwhile.
+        name = Path(str(getattr(exc, "filename", "") or "")).name or "a picture"
+        return {
+            "ok": False,
+            "error": f"Export failed. {name} could not be read: "
+            f"{exc.strerror or exc}.",
+        }
+    return save_pack(data, info, Path(dest))
+
+
+def save_pack(data: bytes, info: dict, dest: Path) -> dict:
+    """Writes a built pack to dest through a temporary file (a failed write
+    never leaves half a zip over an older pack, 08 R4), then reads it back.
+    The result: {ok, path, folderUrl, device, sizeText}, or {ok: False,
+    error} naming the file, the folder and why (Q19)."""
+    from gremlin.ui.hardware_profile import export_failure
+
+    dest = Path(dest)
+    try:
+        store.write_file(dest, data)
+    except Exception:
+        trace("SAVE", "Device Pack", "exportPack", dest, "error")
+        return {
+            "ok": False,
+            "error": export_failure(
+                dest, fallback="the pack could not be written there"
+            ),
+        }
+    if not _zip_readable(dest):
+        trace("SAVE", "Device Pack", "exportPack", dest, "unreadable")
+        return {
+            "ok": False,
+            "error": export_failure(
+                dest, reason="it was written but could not be read back"
+            ),
+        }
+    trace("SAVE", "Device Pack", "exportPack", dest, "ok")
+    return {
+        "ok": True,
+        "path": str(dest),
+        "folderUrl": dest.parent.as_uri(),
+        "device": info["device"],
+        "sizeText": info["sizeText"],
+    }
+
+
+def _zip_readable(path: Path) -> bool:
+    """The pack at path opens and has a map.json that is a document."""
+    try:
+        with zipfile.ZipFile(path, "r") as zf:
+            if "map.json" not in zf.namelist():
+                return False
+            doc = json.loads(zf.read("map.json").decode("utf-8"))
+        return isinstance(doc, dict)
+    except Exception:
+        return False
+
+
+def assemble(
+    device_name: str,
+    resolve,
+    modes: list[str] | None = None,
+    notes: dict | None = None,
+) -> tuple[bytes, dict] | str:
+    """The pack for one device. modes: the modes whose wires go in (None:
+    all of them). notes: {author, note}, shown when the pack is imported."""
+    plan = plan_pack(device_name, resolve, modes, notes)
+    if isinstance(plan, str):
+        return plan
+    return build_pack(plan)
 
 
 def _read_zip(path: Path) -> dict | str:

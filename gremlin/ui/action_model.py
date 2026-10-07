@@ -121,6 +121,29 @@ class ActionModel(QtCore.QObject):
         self._behavior_changed_connection = self._binding_model.behaviorChanged.connect(
             lambda: self.actionChanged.emit()
         )
+        self._report_edits()
+
+    def _report_edits(self) -> None:
+        """Every edit of this action's properties (any plugin's) also tells
+        the program, so summaries of the profile's actions such as the
+        Button Map's chips check again (07 S73)."""
+        meta = self.metaObject()
+        notifies: set[str] = set()
+        # This class's own properties onwards (not QObject's objectName).
+        base = meta
+        while base is not None and base.className() != "ActionModel":
+            base = base.superClass()
+        first = base.propertyOffset() if base is not None else 0
+        for i in range(first, meta.propertyCount()):
+            prop = meta.property(i)
+            if prop.hasNotifySignal():
+                notifies.add(bytes(prop.notifySignal().name().data()).decode())
+        for name in notifies:
+            getattr(self, name).connect(self._action_edited)
+
+    @QtCore.Slot()
+    def _action_edited(self) -> None:
+        signal.actionsChanged.emit()
 
     def dispose(self) -> None:
         """Disconnects from the binding model before being discarded."""
@@ -397,6 +420,7 @@ class ActionModel(QtCore.QObject):
         Args:
             Tuple containing the state of the press and releaes activations
         """
+        before = self._data.activation_mode
         match state:
             case (False, False):
                 self._data.activation_mode = ActionActivationMode.Deactivated
@@ -406,6 +430,9 @@ class ActionModel(QtCore.QObject):
                 self._data.activation_mode = ActionActivationMode.Release
             case (True, True):
                 self._data.activation_mode = ActionActivationMode.Both
+        # The pane's switches and "Off: never runs" read it (05 S44).
+        if self._data.activation_mode != before:
+            self.actionChanged.emit()
 
     def _append_drop_action(
         self, source_sidx: int, target_sidx: int, container: str | None = None

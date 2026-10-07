@@ -66,6 +66,16 @@ ApplicationWindow {
 
     ListModel { id: _deviceModel }
     HardwareProfile { id: _hw }
+    Connections {
+        target: _hw
+        function onPackExported(raw) {
+            var info = _win._parse(raw)
+            _win.status = info.ok
+                    ? ("Wrote " + info.path + (info.sizeText ? " (" + info.sizeText + ")." : "."))
+                    : (info.error || "Export failed.")
+            _win.exportFolder = info.ok ? (info.folderUrl || "") : ""
+        }
+    }
 
     function _parse(raw) {
         try {
@@ -82,11 +92,11 @@ ApplicationWindow {
         for (var i = 0; i < rows.length; ++i)
             _deviceModel.append(rows[i])
         if (_exportDevice.count > 0 && _exportDevice.currentIndex < 0) {
-            // The first device with a module file: one without has nothing to
-            // pack.
+            // The first device that can be exported: one without a module
+            // file, or with a damaged one, has nothing to pack (08 S106).
             var first = 0
             for (var j = 0; j < rows.length; ++j) {
-                if (rows[j].hasFile) {
+                if (rows[j].canExport) {
                     first = j
                     break
                 }
@@ -96,10 +106,34 @@ ApplicationWindow {
         refreshExport()
     }
 
+    // The chosen device's name, from the list's row: currentText is the
+    // label ("(file damaged)") and, when the choice is set from code, still
+    // the one before while currentIndexChanged runs.
+    function exportDeviceName() {
+        var i = _exportDevice.currentIndex
+        if (i < 0 || i >= _deviceModel.count)
+            return ""
+        return _deviceModel.get(i).name || ""
+    }
+
+    // Export in the background (08 S107): the window stays usable, Export is
+    // disabled and "Exporting…" shows until packExported says how it went.
+    function startExport(dest) {
+        if (_hw.packExporting)
+            return
+        var info = _parse(_hw.exportPackAsync(exportDeviceName(), dest, exportOptions()))
+        if (!info.ok) {
+            status = info.error || "Export failed."
+            return
+        }
+        status = ""
+        exportFolder = ""
+    }
+
     function refreshExport() {
         if (mode !== "export")
             return
-        var name = _exportDevice.currentText || ""
+        var name = exportDeviceName()
         exportName = name
         exportPhoto = ""
         exportSize = ""
@@ -376,13 +410,7 @@ ApplicationWindow {
         nameFilters: ["Device packs (*.zip)"]
         currentFolder: _hw.exportFolderUrl()
         onAccepted: {
-            var dest = Helpers.fileDialogUrl(_save)
-            var name = _exportDevice.currentText || ""
-            var info = _parse(_hw.exportPack(name, dest, exportOptions()))
-            status = info.ok
-                    ? ("Wrote " + info.path + (info.sizeText ? " (" + info.sizeText + ")." : "."))
-                    : (info.error || "Export failed.")
-            exportFolder = info.ok ? (info.folderUrl || "") : ""
+            startExport(Helpers.fileDialogUrl(_save))
         }
     }
 
@@ -530,8 +558,9 @@ ApplicationWindow {
                     id: _exportDevice
                     Layout.fillWidth: true
                     model: _deviceModel
-                    textRole: "name"
-                    onActivated: refreshExport()
+                    // The name, marked "(file damaged)" when its module file
+                    // can't be read (08 S106).
+                    textRole: "label"
                     onCurrentIndexChanged: refreshExport()
                 }
                 RowLayout {
@@ -550,10 +579,16 @@ ApplicationWindow {
                         color: Style.bgCard
                         border.color: Style.line
                         radius: Style.dp(6)
+                        // Decoded in the background at preview size: a large
+                        // photo froze the window at each device change (08 S107).
                         Image {
+                            objectName: "packExportPhoto"
                             anchors.fill: parent
                             anchors.margins: Style.dp(16)
                             source: exportPhoto
+                            asynchronous: true
+                            sourceSize.width: Style.dp(560)
+                            sourceSize.height: Style.dp(560)
                             fillMode: Image.PreserveAspectFit
                             visible: exportPhoto.length > 0
                         }
@@ -631,14 +666,17 @@ ApplicationWindow {
                             }
                         }
                         Button {
+                            objectName: "packExportButton"
                             text: "Export…"
                             focusPolicy: Qt.NoFocus
                             font.pixelSize: Style.dp(18)
                             implicitHeight: Style.dp(44)
                             implicitWidth: Style.dp(160)
-                            enabled: (_exportDevice.currentText || "").length > 0 && exportSize.length > 0
+                            // One at a time (08 S107).
+                            enabled: exportName.length > 0 && exportSize.length > 0
+                                     && !_hw.packExporting
                             onClicked: {
-                                var name = _exportDevice.currentText
+                                var name = _win.exportDeviceName()
                                 var folder = _hw.exportFolderUrl()
                                 var hint = _hw.defaultExportUrl(name)
                                 _save.currentFolder = folder
@@ -648,6 +686,14 @@ ApplicationWindow {
                                 }
                                 _save.open()
                             }
+                        }
+                        Label {
+                            objectName: "packExportBusy"
+                            visible: _hw.packExporting
+                            text: "Exporting…"
+                            color: Style.fgMuted
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
                         }
                         Button {
                             objectName: "packShowFolder"
@@ -690,6 +736,9 @@ ApplicationWindow {
                             anchors.fill: parent
                             anchors.margins: Style.dp(8)
                             source: importPhoto
+                            asynchronous: true
+                            sourceSize.width: Style.dp(200)
+                            sourceSize.height: Style.dp(200)
                             fillMode: Image.PreserveAspectFit
                         }
                     }
@@ -936,6 +985,9 @@ ApplicationWindow {
                                                     Layout.preferredHeight: Style.dp(320)
                                                     Layout.maximumWidth: _scroll.availableWidth - Style.dp(56)
                                                     fillMode: Image.PreserveAspectFit
+                                                    asynchronous: true
+                                                    sourceSize.width: Style.dp(480)
+                                                    sourceSize.height: Style.dp(320)
                                                     source: modelData.url || ""
                                                 }
                                                 Label {

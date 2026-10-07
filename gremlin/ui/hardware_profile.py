@@ -185,7 +185,33 @@ def _export_in_background(
         pass
 
 
-def _write_problem(path: Path) -> str:
+def _pack_in_background(
+    write: Callable[[dict, Path], dict],
+    plan: dict,
+    dest: Path,
+    done: Callable[[str], None],
+) -> None:
+    """exportPackAsync's worker: write(plan, dest) builds, writes and reads
+    back the zip; then done(result JSON). Touches no window or profile."""
+    try:
+        result = write(plan, dest)
+    except Exception:
+        logging.getLogger("system").exception(f"Export of {dest} failed")
+        try:
+            error = export_failure(dest, fallback="the pack could not be written there")
+        except Exception:
+            error = f"Export failed. {Path(dest).name} could not be written."
+        result = {"ok": False, "error": error}
+    try:
+        done(json.dumps(result))
+    except RuntimeError:
+        # The Device Pack window closed while it ran: nobody to tell.
+        pass
+
+
+def _write_problem(
+    path: Path, fallback: str = "the picture could not be written there"
+) -> str:
     """Why a file could not be written at path, in a few words."""
     folder = path.parent
     if not str(path) or not folder.is_dir():
@@ -210,17 +236,42 @@ def _write_problem(path: Path) -> str:
             return "the folder is read-only"
         except OSError as exc:
             return str(exc.strerror or exc)
-    return "the picture could not be written there"
+    return fallback
 
 
-def export_failure(path: Path) -> str:
-    """What Print & Export says when an export can't be written: which file
-    and why (07 Q19, as Template export names its file)."""
+def export_failure(
+    path: Path,
+    lead: str = "Export failed.",
+    reason: str = "",
+    fallback: str = "the picture could not be written there",
+) -> str:
+    """What the Button Map says when a file can't be written: which file,
+    which folder and why (07 Q19; templates too, 07 S80)."""
     path = Path(path)
+    why = reason or _write_problem(path, fallback)
+    return f"{lead} {path.name} could not be written to {path.parent}: {why}."
+
+
+def _remove_failure(lead: str, path: Path, exc: OSError) -> str:
+    """A file that could not be removed: which, where and why."""
+    if isinstance(exc, PermissionError):
+        why = "the file is read-only or open in another program"
+    else:
+        why = str(exc.strerror or exc)
+    return f"{lead} {path.name} could not be removed from {path.parent}: {why}."
+
+
+def _missing_template(lead: str, path: Path | None, name: str) -> str:
+    """A template that can't be read (gone or damaged): which, where."""
+    if path is None:
+        return f"{lead} {name} is not a name a template file can have."
     return (
-        f"Export failed. {path.name} could not be written to {path.parent}: "
-        f"{_write_problem(path)}."
+        f"{lead} {path.name} could not be read in {path.parent}: "
+        "it is missing or damaged."
     )
+
+
+_TEMPLATE_FILE_PROBLEM = "the file could not be written there"
 
 
 def _setup(setup_json: str) -> dict:
@@ -811,6 +862,10 @@ def _label_for(guid: str, kind: str, hw_id: int) -> str:
     return " + ".join(labels)
 
 
+# How long the chips wait after an action edit before they read the
+# profile again (07 S73).
+_LABELS_DELAY_MS = 100
+
 # Bumped when the profile, its modes or its actions change: the pool rows'
 # labels come from the profile (07 RB8).
 _profile_generation = 0
@@ -830,6 +885,7 @@ def _hook_profile_generation() -> None:
     signal.profileChanged.connect(_profile_changed)
     signal.modesChanged.connect(_profile_changed)
     signal.actionsChanged.connect(_profile_changed)
+    signal.inputItemChanged.connect(lambda _index: _profile_changed())
 
 
 def chips_key(guid: str) -> str:
@@ -900,6 +956,12 @@ class HardwareProfile(QtCore.QObject):
     areaSaved = QtCore.Signal(bool, str)
     # The export worker's result, queued to the main thread.
     _exportDone = QtCore.Signal(bool, str)
+    # Device Pack: a background export (exportPackAsync) started or ended;
+    # its result as JSON, on the main thread (08 S107).
+    packExportingChanged = QtCore.Signal()
+    packExported = QtCore.Signal(str)
+    # The pack worker's result, queued to the main thread.
+    _packDone = QtCore.Signal(str)
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -909,9 +971,15 @@ class HardwareProfile(QtCore.QObject):
         self._peek_photo = ""
         self._device_guid = ""
         self._export_error = ""
+        # Why the last template rename or export failed (07 S80).
+        self._template_error = ""
         self._exporting = False
         self._exportDone.connect(
             self._export_done, QtCore.Qt.ConnectionType.QueuedConnection
+        )
+        self._pack_exporting = False
+        self._packDone.connect(
+            self._pack_done, QtCore.Qt.ConnectionType.QueuedConnection
         )
         # Counts clipboard changes, so Ctrl+V can tell a picture copied after
         # the last chip copy from an old one.
@@ -923,6 +991,19 @@ class HardwareProfile(QtCore.QObject):
         _hook_profile_generation()
         signal.profileChanged.connect(self.profileLabelsChanged)
         signal.modesChanged.connect(self.profileLabelsChanged)
+        # An action added, removed or edited in the pane: the chips follow
+        # once the edits stop (07 S73), not on every key typed.
+        self._labels_timer = QtCore.QTimer(self)
+        self._labels_timer.setSingleShot(True)
+        self._labels_timer.setInterval(_LABELS_DELAY_MS)
+        self._labels_timer.timeout.connect(self.profileLabelsChanged)
+        signal.actionsChanged.connect(self._actions_edited)
+        signal.inputItemChanged.connect(self._actions_edited)
+
+    @QtCore.Slot()
+    @QtCore.Slot(int)
+    def _actions_edited(self, _index: int = 0) -> None:
+        self._labels_timer.start()
 
     @QtCore.Slot(str, str, bool, bool, result="QVariantMap")
     def actionLabels(
@@ -1290,7 +1371,12 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(result=str)
     def packDevices(self) -> str:
-        return json.dumps({"ok": True, "devices": _known_pack_devices()})
+        """Device Pack's list: each row says whether it can be exported and
+        is marked "(file damaged)" when its module file can't be read
+        (08 S106)."""
+        from gremlin.ui.device_pack import pack_devices
+
+        return json.dumps({"ok": True, "devices": pack_devices()})
 
     @QtCore.Slot(str, result=str)
     def peekPackDevice(self, device_name: str) -> str:
@@ -1359,11 +1445,24 @@ class HardwareProfile(QtCore.QObject):
             return json.dumps({"ok": False, "error": described})
         return json.dumps(described)
 
-    @QtCore.Slot(str, str, str, result=str)
-    def exportPack(self, device_name: str, dest_url: str, options: str) -> str:
-        """options: {"modes": [...] (or absent: all), "author", "note"}."""
-        from gremlin.ui.device_pack import assemble
+    @staticmethod
+    def _pack_dest(dest_url: str) -> Path | str:
+        """Where Export writes the pack (.zip added), or why it can't."""
+        try:
+            dest = to_local_path(dest_url)
+        except Exception:
+            return "Cannot write that path."
+        if not dest or not str(dest).strip() or dest.name in ("", ".zip"):
+            return "Cannot write that path."
+        if dest.suffix.lower() != ".zip":
+            dest = dest.with_suffix(".zip")
+        if not _outside_maps(dest):
+            return "Save the pack outside the module folder."
+        return dest
 
+    @staticmethod
+    def _pack_options(options: str) -> tuple[list[str] | None, dict]:
+        """options: {"modes": [...] (or absent: all), "author", "note"}."""
         try:
             chosen = json.loads(options) if str(options or "").strip() else {}
         except json.JSONDecodeError:
@@ -1371,50 +1470,85 @@ class HardwareProfile(QtCore.QObject):
         if not isinstance(chosen, dict):
             chosen = {}
         modes = chosen.get("modes")
-        built = assemble(
-            device_name,
-            self._resolve_existing,
+        return (
             [str(m) for m in modes] if isinstance(modes, list) else None,
             {"author": chosen.get("author"), "note": chosen.get("note")},
         )
+
+    @QtCore.Slot(str, str, str, result=str)
+    def exportPack(self, device_name: str, dest_url: str, options: str) -> str:
+        """Export on the calling thread (scripts and tests); the window uses
+        exportPackAsync. options: {"modes": [...] (or absent: all),
+        "author", "note"}."""
+        from gremlin.ui.device_pack import assemble, save_pack
+
+        modes, notes = self._pack_options(options)
+        built = assemble(device_name, self._resolve_existing, modes, notes)
         if isinstance(built, str):
             return json.dumps({"ok": False, "error": built})
         data, info = built
+        dest = self._pack_dest(dest_url)
+        if isinstance(dest, str):
+            return json.dumps({"ok": False, "error": dest})
+        return json.dumps(save_pack(data, info, dest))
+
+    @QtCore.Slot(str, str, str, result=str)
+    def exportPackAsync(self, device_name: str, dest_url: str, options: str) -> str:
+        """Export in the background (08 S107, D-08-PACK-BG). What the pack
+        takes from the profile and the module files is read here, on the main
+        thread; the zip is built, written and read back on a program thread,
+        and packExported(result JSON) is announced on the main thread.
+        Returns at once: {ok: True, started: True}; {ok: False, error} when
+        it can't be exported (nothing started); {ok: False, busy: True}
+        while another export runs (one at a time)."""
+        from gremlin import threads
+        from gremlin.ui.device_pack import plan_pack, write_pack
+
+        if self._pack_exporting:
+            return json.dumps({
+                "ok": False,
+                "busy": True,
+                "error": "An export is still being written.",
+            })
+        modes, notes = self._pack_options(options)
+        plan = plan_pack(device_name, self._resolve_existing, modes, notes)
+        if isinstance(plan, str):
+            return json.dumps({"ok": False, "error": plan})
+        dest = self._pack_dest(dest_url)
+        if isinstance(dest, str):
+            return json.dumps({"ok": False, "error": dest})
+        self._pack_exporting = True
         try:
-            dest = to_local_path(dest_url)
+            threads.start(
+                "Device Pack export",
+                _pack_in_background,
+                write_pack,
+                plan,
+                dest,
+                self._packDone.emit,
+            )
         except Exception:
-            return json.dumps({"ok": False, "error": "Cannot write that path."})
-        if not dest or not str(dest).strip() or dest.name in ("", ".zip"):
-            return json.dumps({"ok": False, "error": "Cannot write that path."})
-        if dest.suffix.lower() != ".zip":
-            dest = dest.with_suffix(".zip")
-        if not _outside_maps(dest):
+            logging.getLogger("system").exception("Could not start the export")
+            self._pack_exporting = False
             return json.dumps({
                 "ok": False,
-                "error": "Save the pack outside the module folder.",
+                "error": "Export failed: it could not be started.",
             })
-        # Through a temporary file, so a failed write never leaves half a
-        # zip over an older pack (08 R4); then read back, as Delete Device's
-        # pack is.
-        try:
-            store.write_file(dest, data)
-        except Exception as exc:
-            trace("SAVE", "Device Pack", "exportPack", dest, "error")
-            return json.dumps({"ok": False, "error": str(exc)})
-        if not _zip_readable(dest):
-            trace("SAVE", "Device Pack", "exportPack", dest, "unreadable")
-            return json.dumps({
-                "ok": False,
-                "error": "The pack was written but could not be read back.",
-            })
-        trace("SAVE", "Device Pack", "exportPack", dest, "ok")
-        return json.dumps({
-            "ok": True,
-            "path": str(dest),
-            "folderUrl": dest.parent.as_uri(),
-            "device": info["device"],
-            "sizeText": info["sizeText"],
-        })
+        self.packExportingChanged.emit()
+        return json.dumps({"ok": True, "started": True})
+
+    @QtCore.Slot(str)
+    def _pack_done(self, result: str) -> None:
+        """The pack worker's result, on the main thread (queued)."""
+        self._pack_exporting = False
+        self.packExportingChanged.emit()
+        self.packExported.emit(result)
+
+    @QtCore.Property(bool, notify=packExportingChanged)
+    def packExporting(self) -> bool:
+        """A Device Pack export started by exportPackAsync has not announced
+        its result."""
+        return self._pack_exporting
 
     @QtCore.Slot(str, str, str, result=str)
     def importPack(self, zip_url: str, target_name: str, selection: str) -> str:
@@ -1703,33 +1837,67 @@ class HardwareProfile(QtCore.QObject):
             return False
         return True
 
+    @QtCore.Slot(result=str)
+    def templateError(self) -> str:
+        """Why the last template rename or export failed: file, folder and
+        reason ("" after one that worked, 07 S80)."""
+        return self._template_error
+
     @QtCore.Slot(str, str, result=bool)
     def renameTemplate(self, name: str, new_name: str) -> bool:
+        lead = "Rename failed."
+        self._template_error = ""
         path = self._template_file(name)
         target = self._template_file(new_name)
         doc = _read_template(path) if path else None
-        if doc is None or target is None:
+        if doc is None or path is None:
+            self._template_error = _missing_template(lead, path, name)
+            return False
+        if target is None:
+            self._template_error = _missing_template(lead, None, new_name)
             return False
         if target.is_file() and target != path:
+            self._template_error = export_failure(
+                target, lead, "a template already has that name"
+            )
             return False
         doc["name"] = new_name.strip()
         try:
             target.write_text(json.dumps(doc, indent=1), encoding="utf-8")
-            if target != path:
-                path.unlink()
         except OSError:
+            self._template_error = export_failure(
+                target, lead, fallback=_TEMPLATE_FILE_PROBLEM
+            )
             return False
+        if target != path:
+            try:
+                path.unlink()
+            except OSError as exc:
+                self._template_error = _remove_failure(lead, path, exc)
+                # One template, not two: the new name is taken back.
+                try:
+                    target.unlink()
+                except OSError:
+                    pass
+                return False
         return True
 
     @QtCore.Slot(str, str, result=bool)
     def exportTemplate(self, name: str, url: str) -> bool:
         """Writes a template to a file to share."""
+        lead = "Export failed."
+        self._template_error = ""
         path = self._template_file(name)
         if not path or _read_template(path) is None:
+            self._template_error = _missing_template(lead, path, name)
             return False
+        out = Path(to_local_path(url))
         try:
-            shutil.copyfile(path, to_local_path(url))
+            shutil.copyfile(path, out)
         except OSError:
+            self._template_error = export_failure(
+                out, lead, fallback=_TEMPLATE_FILE_PROBLEM
+            )
             return False
         return True
 

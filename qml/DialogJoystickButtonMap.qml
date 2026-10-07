@@ -2560,9 +2560,7 @@ ApplicationWindow {
                             var to = text.trim()
                             _templatesDlg.renaming = ""
                             if (to.length && to !== from && !_hw.renameTemplate(from, to))
-                                _buttonMap.tellFailure("Rename Failed", "Could not rename "
-                                    + from + " to " + to + ". A template may have that name already,"
-                                    + " or its file could not be written.")
+                                _buttonMap.tellFailure("Rename Failed", _hw.templateError())
                             _buttonMap.refreshTemplates()
                         }
                     }
@@ -2623,8 +2621,7 @@ ApplicationWindow {
         nameFilters: ["Button Map template (*.json)"]
         onAccepted: {
             if (!_hw.exportTemplate(templateName, selectedFile))
-                _buttonMap.tellFailure("Export Failed",
-                    "Could not write " + templateName + " to that file.")
+                _buttonMap.tellFailure("Export Failed", _hw.templateError())
         }
     }
 
