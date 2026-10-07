@@ -45,7 +45,10 @@ FOLDERS = ["test/unit", "test/action_interaction", "test/integration", "test/jou
 # 4 parts 1:10, 5 parts 0:59, 6 parts 0:54 (then action_interaction is the
 # longest part).
 UNIT_PARTS = 6
-LIMIT_S = 600
+# A part still running after this is stopped (a hang the per-test stall
+# watch missed). GREMLIN_TEST_PART_LIMIT (seconds) raises it on a slower
+# machine: CI's 2 unit parts take ~8-11 min on the runner.
+LIMIT_S = int(os.environ.get("GREMLIN_TEST_PART_LIMIT", "600"))
 QUIET_S = 15  # say which test a part is in after this long without output
 
 _ROOT = pathlib.Path(__file__).parents[1]

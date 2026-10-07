@@ -48,6 +48,10 @@ jobs:
       # can pass the hang watch's 10 s (test/hang_trace/stall_watch.py) with no
       # hang. The stall tests set their own limit.
       GREMLIN_TEST_STALL_AFTER: "30"
+      # Each of the 2 unit parts runs ~8-11 min on the runner (10 min stopped
+      # a part that was still passing, run 37686302017). The stall watch above
+      # still catches a hung test.
+      GREMLIN_TEST_PART_LIMIT: "1500"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
