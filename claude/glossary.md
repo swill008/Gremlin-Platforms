@@ -36,6 +36,7 @@ Tracker refs in brackets.
 | Setting a device up again after its module file can't be read | **Start Fresh…** (card menu); the damaged file is kept as a copy | Reset module, Repair |
 | A module file another window saved while the Button Map was being edited | title **Module File Changed**; buttons **Keep Mine** / **Take Theirs** / Cancel | Conflict |
 | Taking back the last Device Pack import / mode delete | **Undo Import** (asks first) / **Undo Delete Mode** | Revert import, Restore mode |
+| A Button Map export (PDF, PNG, JPG) still being written in the background (07 S101) | **Exporting…** (muted note in Print & Export; the Export buttons are disabled meanwhile); a failure is **Export Failed** with the reason (07 Q19) | Saving…, Busy, Please wait, Working… |
 | Where Delete Device and Delete File keep their copies | the **deleted devices** folder (Options › Folders); pack imports keep the old file in the **imported** folder | trash, backup folder |
 
 ## Core terms
