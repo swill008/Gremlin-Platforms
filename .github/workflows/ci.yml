@@ -14,10 +14,10 @@
 # folder. vJoy, ViGEm, HidHide and joysticks aren't on the runner; the tests
 # use the fakes in test/ (fake_hardware.py, fake_input.py).
 #
-# Speed (to-do 16): the Poetry environment is kept in the Actions cache and
-# brought up to date by "poetry install" (no lock file: it still resolves
-# each run), and test/unit is split into 3 parts by the last run's file
-# times (kept in the cache; test/test_times.json before there are any).
+# Speed (to-do 16): test/unit is split into 3 parts by the last run's file
+# times (kept in the Actions cache; test/test_times.json before there are
+# any). A cached Poetry environment was tried and dropped: restoring it took
+# longer (50 s) than installing (28 s), run 37697695524.
 
 name: CI
 
@@ -75,16 +75,6 @@ jobs:
         with:
           poetry-version: "latest"
 
-      # The environment from an earlier run (it names the exact Python it was
-      # made with). "poetry install" below still resolves pyproject.toml and
-      # updates whatever changed, so a kept environment is never stale.
-      - name: Restore the Poetry environment
-        id: venv-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/AppData/Local/pypoetry/Cache/virtualenvs
-          key: venv-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('pyproject.toml') }}
-
       # poetry.lock is not in the repository: poetry resolves pyproject.toml.
       - name: Install dependencies
         id: install
@@ -92,16 +82,6 @@ jobs:
 
       - name: Install the baseline's pyright and ruff versions
         run: poetry run python -m pip install $(poetry run python tools/pyright_baseline.py --pins)
-
-      # Kept straight after the install (not at the end), so a run whose
-      # tests fail still keeps it.
-      - name: Keep the Poetry environment
-        if: steps.venv-cache.outputs.cache-hit != 'true'
-        continue-on-error: true
-        uses: actions/cache/save@v4
-        with:
-          path: ~/AppData/Local/pypoetry/Cache/virtualenvs
-          key: ${{ steps.venv-cache.outputs.cache-primary-key }}
 
       # The last run's file times, so the unit parts end near the same time.
       - name: Restore the test times
