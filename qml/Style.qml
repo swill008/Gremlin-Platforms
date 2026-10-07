@@ -43,7 +43,10 @@ Item {
         info: "#3B82F6", infoText: "#60A5FA", live: "#38BDF8",
         infoFill: "#1E3A5F", infoFillDeep: "#0F2744",
         alert: "#F97316", noteFill: "#8A7A2A", noteLine: "#C4B44A",
-        onLive: "#0B1220"
+        onLive: "#0B1220",
+        diffRemovedBg: "#3A1C20", diffAddedBg: "#17321F",
+        diffRemovedWord: "#7F1D1D", diffAddedWord: "#166534",
+        diffRemovedBar: "#F87171", diffAddedBar: "#4ADE80"
     })
     // Light mode is a grey mode: no white surfaces, cards a little lighter
     // than the window, status colours a step darker to read on grey.
@@ -64,6 +67,9 @@ Item {
         infoFill: "#9CAABE", infoFillDeep: "#A6AFBD",
         alert: "#9A3412", noteFill: "#B8B085", noteLine: "#8A6D05",
         onLive: "#FFFFFF",
+        diffRemovedBg: "#C4A9AB", diffAddedBg: "#A7C2AE",
+        diffRemovedWord: "#D78C8F", diffAddedWord: "#7DBC8E",
+        diffRemovedBar: "#B91C1C", diffAddedBar: "#15803D",
         // Built-in controls, which are white in stock light mode.
         field: "#B8B8BA", popup: "#B2B2B5", item: "#99B6B6B9", scroll: "#9D9DA1",
         bar: "#A0A0A4"
@@ -129,6 +135,14 @@ Item {
     readonly property color noteText: "#1B1B1B"
     // Text on a live (sky blue) fill.
     readonly property color onLive: _scheme.onLive
+    // History's Before/After (08 S104): a changed line's soft tint, its
+    // changed words' stronger tint, and the thin bar on its left edge.
+    readonly property color diffRemovedBg: _scheme.diffRemovedBg
+    readonly property color diffAddedBg: _scheme.diffAddedBg
+    readonly property color diffRemovedWord: _scheme.diffRemovedWord
+    readonly property color diffAddedWord: _scheme.diffAddedWord
+    readonly property color diffRemovedBar: _scheme.diffRemovedBar
+    readonly property color diffAddedBar: _scheme.diffAddedBar
     // Line colours for axis charts; readable on light and dark.
     readonly property var series: [
         "#1f77b4", "#d62728", "#2ca02c", "#ff7f0e",

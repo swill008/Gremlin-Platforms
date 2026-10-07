@@ -112,6 +112,7 @@ ApplicationWindow {
     function pick(entryId) {
         selected = entryId
         shownRevision++
+        diffAt = -1
         message = ""
     }
 
@@ -149,6 +150,153 @@ ApplicationWindow {
             _model.reload()
             if (keep.length)
                 pick(keep)
+        }
+    }
+
+    // 08 S104: the selected change row for row (text_diff.rows) and the
+    // first row of each change block; diffAt is the block last moved to.
+    readonly property var diffRows: shown.diffRows || []
+    readonly property var diffBlocks: shown.diffBlocks || []
+    property int diffAt: -1
+
+    function goToChange(index) {
+        if (index < 0 || index >= diffBlocks.length)
+            return
+        diffAt = index
+        // A couple of rows above it stay in view, for context.
+        var row = Math.max(0, diffBlocks[index] - 2)
+        _beforeList.positionViewAtIndex(row, ListView.Beginning)
+        _afterList.positionViewAtIndex(row, ListView.Beginning)
+    }
+
+    function escaped(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                   .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+    }
+
+    // A changed line as rich text, its changed words on a stronger tint.
+    function markedWords(text, spans, tint) {
+        var out = ""
+        var at = 0
+        for (var i = 0; i < spans.length; ++i) {
+            var start = Math.max(spans[i][0], at)
+            var end = Math.min(spans[i][1], text.length)
+            if (end <= start)
+                continue
+            out += escaped(text.slice(at, start))
+                + "<span style=\"background-color:" + tint + "\">"
+                + escaped(text.slice(start, end)) + "</span>"
+            at = end
+        }
+        out += escaped(text.slice(at))
+        return "<div style=\"white-space:pre-wrap\">" + out + "</div>"
+    }
+
+    // One side's line of a row, as plain or rich text.
+    component RowText: TextEdit {
+        property var row: ({})
+        property string side: "before"
+        readonly property var spans: row[side + "Spans"] || []
+        readonly property string line: row[side] || ""
+        readOnly: true
+        selectByMouse: true
+        wrapMode: TextEdit.Wrap
+        font.family: Style.monoFont
+        font.pixelSize: Style.fontSize
+        color: Style.fg
+        selectionColor: Style.accent
+        selectedTextColor: Style.onColor
+        textFormat: spans.length ? TextEdit.RichText : TextEdit.PlainText
+        text: spans.length
+              ? _root.markedWords(line, spans, side === "before" ? Style.diffRemovedWord : Style.diffAddedWord)
+              : line
+    }
+
+    // One side's rows. A row is as tall as the taller of its two sides, so
+    // the sides line up; scrolling one scrolls the other.
+    component DiffList: JGListView {
+        id: _diffList
+        property string side: "before"
+        property var twin: null
+        // The side's whole text.
+        readonly property string text: _root.shown[side] || ""
+        objectName: "history:" + side
+        anchors.fill: parent
+        anchors.margins: 1
+        model: _root.diffRows
+        onContentYChanged: {
+            if (twin && Math.abs(twin.contentY - contentY) > 0.5)
+                twin.contentY = contentY
+        }
+        delegate: Rectangle {
+            id: _diffRow
+            required property var modelData
+            required property int index
+            readonly property string kind: modelData.kind
+            readonly property bool before: _diffList.side === "before"
+            readonly property bool marked: kind === "changed"
+                || kind === (before ? "removed" : "added")
+            objectName: "historyRow:" + _diffList.side + ":" + index
+            width: ListView.view.width
+            height: Math.max(_mine.implicitHeight, _other.implicitHeight) + Style.dp(2)
+            color: marked ? (before ? Style.diffRemovedBg : Style.diffAddedBg) : Style.clear
+            Rectangle {
+                visible: _diffRow.marked
+                width: Style.dp(3)
+                height: parent.height
+                color: _diffRow.before ? Style.diffRemovedBar : Style.diffAddedBar
+            }
+            RowText {
+                id: _mine
+                row: _diffRow.modelData
+                side: _diffList.side
+                x: Style.dp(8)
+                y: Style.dp(1)
+                width: parent.width - Style.dp(12)
+            }
+            // The other side's line, unseen, for the row's height.
+            RowText {
+                id: _other
+                visible: false
+                row: _diffRow.modelData
+                side: _diffRow.before ? "after" : "before"
+                width: _mine.width
+            }
+        }
+    }
+
+    // A side's heading, its Restore button and its rows.
+    component DiffSide: ColumnLayout {
+        id: _diffSide
+        property string side: "before"
+        default property alias rows: _frame.data
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        spacing: Style.dp(4)
+        RowLayout {
+            Layout.fillWidth: true
+            Label {
+                text: _diffSide.side === "before" ? "Before" : "After"
+                color: Style.fg
+                font.bold: true
+                Layout.fillWidth: true
+            }
+            Button {
+                objectName: _diffSide.side === "before" ? "historyRestoreBefore" : "historyRestoreAfter"
+                text: _diffSide.side === "before" ? "Restore Before" : "Restore After"
+                focusPolicy: Qt.NoFocus
+                enabled: _diffSide.side === "before"
+                         ? _root.shown.canRestoreBefore === true
+                         : _root.shown.canRestoreAfter === true
+                onClicked: _root.restore(_diffSide.side)
+            }
+        }
+        Rectangle {
+            id: _frame
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: Style.bgCard
+            border.color: Style.line
         }
     }
 
@@ -258,80 +406,85 @@ ApplicationWindow {
                 }
             }
 
-            ScrollView {
+            ColumnLayout {
                 id: _detail
                 SplitView.fillWidth: true
-                clip: true
-                ColumnLayout {
-                    width: _detail.availableWidth
+                SplitView.minimumWidth: Style.dp(320)
+                spacing: Style.dp(8)
+                Label {
+                    visible: !_root.selected.length
+                    text: "Pick a change to see it before and after."
+                    color: Style.fgMuted
+                }
+                Label {
+                    visible: _root.selected.length > 0
+                    text: _root.shown.title || ""
+                    color: Style.fg
+                    font.bold: true
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+                RowLayout {
+                    visible: _root.selected.length > 0
+                    Layout.fillWidth: true
                     spacing: Style.dp(8)
                     Label {
-                        visible: !_root.selected.length
-                        text: "Pick a change to see it before and after."
-                        color: Style.fgMuted
-                    }
-                    Label {
-                        visible: _root.selected.length > 0
-                        text: _root.shown.title || ""
-                        color: Style.fg
-                        font.bold: true
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                    }
-                    Label {
-                        visible: _root.selected.length > 0
                         text: (_root.shown.when || "") + " \u00b7 " + (_root.shown.area || "")
                         color: Style.fgMuted
-                    }
-                    Repeater {
-                        model: _root.selected.length ? ["before", "after"] : []
-                        delegate: ColumnLayout {
-                            required property string modelData
-                            Layout.fillWidth: true
-                            spacing: Style.dp(4)
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label {
-                                    text: modelData === "before" ? "Before" : "After"
-                                    color: Style.fg
-                                    font.bold: true
-                                    Layout.fillWidth: true
-                                }
-                                Button {
-                                    objectName: modelData === "before" ? "historyRestoreBefore" : "historyRestoreAfter"
-                                    text: modelData === "before" ? "Restore Before" : "Restore After"
-                                    focusPolicy: Qt.NoFocus
-                                    enabled: modelData === "before"
-                                             ? _root.shown.canRestoreBefore === true
-                                             : _root.shown.canRestoreAfter === true
-                                    onClicked: _root.restore(modelData)
-                                }
-                            }
-                            TextArea {
-                                objectName: "history:" + modelData
-                                Layout.fillWidth: true
-                                readOnly: true
-                                wrapMode: TextEdit.Wrap
-                                font.family: Style.monoFont
-                                text: _root.shown[modelData] || ""
-                            }
-                        }
-                    }
-                    Label {
-                        visible: _root.selected.length > 0 && (_root.shown.note || "").length > 0
-                        text: "Restore: " + (_root.shown.note || "")
-                        color: Style.fgMuted
-                        wrapMode: Text.WordWrap
+                        elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
-                    Label {
-                        objectName: "historyMessage"
-                        visible: _root.message.length > 0
-                        text: _root.message
-                        color: Style.fg
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
+                    // 08 S104: both sides move together to a change.
+                    Button {
+                        objectName: "historyPreviousChange"
+                        text: "Previous Change"
+                        focusPolicy: Qt.NoFocus
+                        enabled: _root.diffAt > 0
+                        onClicked: _root.goToChange(_root.diffAt - 1)
                     }
+                    Button {
+                        objectName: "historyNextChange"
+                        text: "Next Change"
+                        focusPolicy: Qt.NoFocus
+                        enabled: _root.diffAt < _root.diffBlocks.length - 1
+                        onClicked: _root.goToChange(_root.diffAt + 1)
+                    }
+                }
+                RowLayout {
+                    id: _sides
+                    visible: _root.selected.length > 0
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: Style.dp(8)
+                    DiffSide {
+                        side: "before"
+                        Layout.preferredWidth: (_sides.width - _sides.spacing) / 2
+                        DiffList { id: _beforeList; side: "before"; twin: _afterList }
+                    }
+                    DiffSide {
+                        side: "after"
+                        Layout.preferredWidth: (_sides.width - _sides.spacing) / 2
+                        DiffList { id: _afterList; side: "after"; twin: _beforeList }
+                    }
+                }
+                Item {
+                    visible: !_root.selected.length
+                    Layout.fillHeight: true
+                }
+                Label {
+                    visible: _root.selected.length > 0 && (_root.shown.note || "").length > 0
+                    text: "Restore: " + (_root.shown.note || "")
+                    color: Style.fgMuted
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+                Label {
+                    objectName: "historyMessage"
+                    visible: _root.message.length > 0
+                    text: _root.message
+                    color: Style.fg
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
                 }
             }
         }

@@ -23,7 +23,7 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import history, history_profile, shared_state
+from gremlin import history, history_profile, shared_state, text_diff
 from gremlin.ui.option import entry_title
 
 QML_IMPORT_NAME = "Gremlin.UI"
@@ -208,6 +208,8 @@ def describe(entry: dict) -> dict:
             bool(after and after.get("text") is not None),
         )
         note = "Saved at once, with its pictures."
+    # What changed, row for row and word by word (08 S104).
+    diff = text_diff.rows(texts[0], texts[1])
     return {
         "title": _title(entry),
         "when": _when(entry.get("at", 0)),
@@ -218,6 +220,8 @@ def describe(entry: dict) -> dict:
         "canRestoreAfter": can[1],
         "note": note,
         "closesPanes": panes,
+        "diffRows": diff,
+        "diffBlocks": text_diff.blocks(diff),
     }
 
 
@@ -426,9 +430,13 @@ class HistoryModel(QtCore.QAbstractListModel):
     """The entries for the History window, filtered."""
 
     filterChanged = QtCore.Signal()
+    # The change detail() last read: its rows and blocks changed.
+    diffChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
+        self._diff_rows: list[dict] = []
+        self._diff_blocks: list[int] = []
         self._all: list[dict] = []
         self._rows: list[dict] = []
         self._filter: dict = {}
@@ -503,7 +511,12 @@ class HistoryModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, result=str)
     def detail(self, entry_id: str) -> str:
         entry = next((e for e in self._all if e.get("id") == entry_id), None)
-        return json.dumps(describe(entry) if entry else {})
+        shown = describe(entry) if entry else {}
+        # Kept for diffRows / diffBlocks, the same rows as in the text.
+        self._diff_rows = list(shown.get("diffRows") or [])
+        self._diff_blocks = list(shown.get("diffBlocks") or [])
+        self.diffChanged.emit()
+        return json.dumps(shown)
 
     @QtCore.Slot(str, str, result=str)
     def restore(self, entry_id: str, which: str) -> str:
@@ -514,3 +527,14 @@ class HistoryModel(QtCore.QAbstractListModel):
         return json.dumps(self._filter)
 
     filterText = QtCore.Property(str, fget=_filter_text, notify=filterChanged)
+
+    def _rows_of_diff(self) -> list:
+        return self._diff_rows
+
+    def _blocks_of_diff(self) -> list:
+        return self._diff_blocks
+
+    # The change detail() last read, aligned row for row (text_diff.rows),
+    # and the first row of each change block (text_diff.blocks).
+    diffRows = QtCore.Property(list, fget=_rows_of_diff, notify=diffChanged)
+    diffBlocks = QtCore.Property(list, fget=_blocks_of_diff, notify=diffChanged)

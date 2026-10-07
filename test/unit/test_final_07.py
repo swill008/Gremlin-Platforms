@@ -123,11 +123,20 @@ def test_presses_come_only_from_the_input_module_feed(
     )
     monkeypatch.setattr(runtime, "_dest_guids", set())
     monkeypatch.setattr(runtime, "_passthrough", set())
+    # The runtime listens to the listener it found when it was made; an
+    # earlier test can leave another listener in place, so make sure it hears
+    # this one (and only once).
+    listener = EventListener()
+    try:
+        listener.joystick_event.disconnect(runtime._on_hid)
+    except (RuntimeError, TypeError):
+        pass
+    listener.joystick_event.connect(runtime._on_hid)
     live = PairLiveThrottle()
     try:
         live.setProperty("guid", str(guid))
         for number in (2, 3):
-            EventListener().joystick_event.emit(Event(
+            listener.joystick_event.emit(Event(
                 InputType.JoystickButton, number, guid, "Default", is_pressed=True))
         assert live.buttonValue(2) == 1.0
         assert live.buttonValue(3) == 0.0

@@ -132,6 +132,10 @@ message to the user with its one-line status.
 **Status:** CI baseline green (run 37521378227 on 0e790f73). Batch 1
 restarted 2026-10-06 with the 7-agent split above. **Batch 1 done: d68f4d88** (58 GL items; run 2016 passed). **Batch 2 done: 31861922** (112 GL items; run 2215 passed). **Batch 3 done: ae635492** (68 GL items + 5 part; run 2339 passed). **Final phase started 2026-10-07:** 9 agents P01–P09, one per spec page, rules in `claude/final-phase-rules.md`; each writes `claude/final-test-plan/<page>.md` and `test/unit/test_final_<page>.py` (bugs found become strict xfails, fixed afterwards). Then: full run with the user's Gremlin closed, push once, CI.
 
+## Test isolation follow-up (2026-10-07)
+
+- Some unit test leaves a different EventListener instance in place than the one InputModuleRuntime connected to when it was first made (found via test_final_07 live-map test with seed 572578, partner test in the first part: test_twin_devices::test_each_twin_has_its_own_card creates the runtime). The live-map test now connects the runtime to the current listener itself; the test that swaps the listener is not yet found.
+
 ## Improvement ideas (2026-10-07, to come back to; each goes through the spec first)
 
 Suggested order: 8 → 1 → 2 → 9/12 → rest.
