@@ -42,6 +42,10 @@ jobs:
       QT_QPA_FONTDIR: C:/Windows/Fonts
       GREMLIN_OFFLINE: "1"
       PYTHONUTF8: "1"
+      # The runner is slower than a desktop: the main window's first QML load
+      # can pass the hang watch's 10 s (test/hang_trace/stall_watch.py) with no
+      # hang. The stall tests set their own limit.
+      GREMLIN_TEST_STALL_AFTER: "30"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
