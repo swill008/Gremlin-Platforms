@@ -3,7 +3,19 @@
 Work that is known and parked. Each item names its tracker ref (UI issues
 tracker) so the details stay in one place.
 
-## ONE-TIME CATCH-UP (agreed with the user 2026-10-06) — read this first
+## ONE-TIME CATCH-UP — FINISHED 2026-10-07 (baseline reached)
+
+**Done:** batches 1–3 (238 GL items) and the final phase (full test plan in
+`claude/final-test-plan/`, ~250 new tests, fixes). Pushed a7fdaf0b..d01ecaf6;
+CI green (run 37557433600); release 1.0.25 built from it. **The proper
+process in `claude/system-maps.md` ("How we work") applies again in full
+from now on.** Carried to the proper process: GL-254 (viewing a key creates
+an empty input), GL-257 (action_kinds.js table), GL-260 (Condition data/UI),
+GL-270 read-on-load (BM41), GL-274 (library Remove unused), GL-029, OSC,
+N22, AU-56; idea: output module refuses writes with no Run; open question:
+CI runs on both branches.
+
+### History of the catch-up (agreed with the user 2026-10-06)
 
 A short-term exception to "How we work" in `claude/system-maps.md`, to get
 a clean baseline fast. **When it ends, the proper process applies again in
