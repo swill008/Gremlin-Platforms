@@ -28,10 +28,12 @@ ApplicationWindow {
     title: (profileDirty ? "* " : "") + (backend ? backend.windowTitle : "Untitled") + " - Gremlin-Platforms R1"
 
     // Unsaved changes, checked while the window is in front (edits only
-    // happen then) and right after a load or save.
+    // happen then) and right after a load or save. The cheap check: it
+    // rebuilds the profile only after an edit (04 Q19); the questions use
+    // the exact profileContainsUnsavedChanges.
     property bool profileDirty: false
     function refreshProfileDirty() {
-        profileDirty = !!(backend && backend.profileContainsUnsavedChanges)
+        profileDirty = !!(backend && backend.profileLooksUnsaved)
     }
     Timer {
         interval: 1500
@@ -214,6 +216,64 @@ ApplicationWindow {
         uiState.setCurrentRoom("configuration")
         applyDisplayPanel()
         refreshSourceModuleCount()
+    }
+
+    // The device under the open Configuration page can change without a card
+    // click: an unplugged stick moves the page to the first stick left, or to
+    // the Logical Device when none is (UIState, 02 S33). The page then
+    // belongs to that device: title, focused card, direction and panels
+    // (05 S105).
+    Instantiator {
+        id: _cardGuids
+        model: _moduleModel
+        delegate: QtObject {
+            required property string slug
+            required property string guid
+        }
+    }
+
+    function _plainGuid(text) {
+        return String(text || "").toUpperCase().replace(/[{}-]/g, "")
+    }
+
+    function _cardForGuid(guid) {
+        var want = _plainGuid(guid)
+        if (!want.length)
+            return null
+        for (var i = 0; i < _cardGuids.count; i++) {
+            var row = _cardGuids.objectAt(i)
+            if (row && _plainGuid(row.guid) === want)
+                return _moduleModel.cardMap(row.slug)
+        }
+        return null
+    }
+
+    function followShownDevice() {
+        if (!uiState || uiState.currentRoom !== "configuration")
+            return
+        if (uiState.currentTab === "logical") {
+            if (configDirection !== "logical") {
+                _panelReady = false
+                configTitleName = "Logical Device"
+                configDirection = "logical"
+            }
+            return
+        }
+        if (uiState.currentTab !== "physical")
+            return
+        var card = _cardForGuid(uiState.currentDevice)
+        if (!card || !card.slug)
+            return
+        var focused = _moduleModel.focusedCardMap()
+        if (focused && focused.slug === card.slug && configTitleName === moduleFileName(card))
+            return
+        openConfigurationNow(card)
+    }
+
+    Connections {
+        target: uiState
+        function onDeviceChanged() { Qt.callLater(_root.followShownDevice) }
+        function onTabChanged() { Qt.callLater(_root.followShownDevice) }
     }
 
     property var _afterDisplayLeave: null
@@ -538,13 +598,18 @@ ApplicationWindow {
             // Another device: the open window's controls and photo belong to
             // its own device, so close it (it asks about unsaved changes
             // first) and open a fresh one. If it stays open, the user is
-            // answering that question; leave it in front.
+            // answering that question; leave it in front and open the asked
+            // one once it closes (Discard, or Save then OK). Cancel drops
+            // the request (03 S40).
+            _setupRequest = { "from": old, "direction": direction, "card": card }
             old.close()
             if (old.visible) {
+                _dropSetupRequestOnCancel(old)
                 old.raise()
                 old.requestActivate()
                 return
             }
+            _setupRequest = null
             configureWin = null
         }
         var comp = Qt.createComponent("DialogConfigureModule.qml")
@@ -566,15 +631,42 @@ ApplicationWindow {
         win.closing.connect(function(close) {
             if (close && !close.accepted)
                 return
+            var next = (_root._setupRequest && _root._setupRequest.from === win) ? _root._setupRequest : null
+            if (next)
+                _root._setupRequest = null
             Qt.callLater(function() {
                 if (_root.configureWin === win)
                     _root.configureWin = null
                 win.destroy()
+                if (next)
+                    _root.openConfigureModule(next.direction, next.card)
             })
         })
         win.show()
         win.raise()
         win.requestActivate()
+    }
+
+    // Module Setup for another device, asked for while the open one asks
+    // about its unsaved changes: {from, direction, card}.
+    property var _setupRequest: null
+
+    // Cancel on the open window's unsaved-changes question keeps it and
+    // drops the request for the other device.
+    function _dropSetupRequestOnCancel(win) {
+        var parts = win.contentData || win.data || []
+        for (var i = 0; i < parts.length; i++) {
+            var gate = parts[i]
+            if (!gate || !gate.visible || typeof gate.ask !== "function" || !gate.cancelled)
+                continue
+            var drop = function() {
+                gate.cancelled.disconnect(drop)
+                if (_root._setupRequest && _root._setupRequest.from === win)
+                    _root._setupRequest = null
+            }
+            gate.cancelled.connect(drop)
+            return
+        }
     }
 
     // Opens (or brings forward) the card's viewer; it never closes one that
@@ -635,10 +727,12 @@ ApplicationWindow {
 
     // Same as opening a profile: asks only when there is something to lose,
     // and offers Save.
+    // The open panes and drafts ask first, then the profile (01 S71), as
+    // Load and Recent do.
     function requestNewProfile() {
-        guardUnsavedChanges(function() {
-            leaveDisplayThen(function() { backend.newProfile() })
-        }, false)
+        leaveDisplayThen(function() {
+            guardUnsavedChanges(function() { backend.newProfile() }, false)
+        })
     }
 
     function saveCurrentProfile() {
@@ -1453,7 +1547,9 @@ ApplicationWindow {
     DeviceListModel {
         id: _deviceListModel
 
-        deviceType: "physical"
+        // Every device: the bar shows pinned vJoy devices too (DeviceList
+        // hides the vJoy tabs that are not pinned).
+        deviceType: "all"
     }
 
     Device {

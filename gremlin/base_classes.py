@@ -30,6 +30,7 @@ from gremlin import (
     run_scope,
     util,
 )
+from gremlin.edits import EditNoted, note_edit
 from gremlin.error import (
     GremlinError,
     MissingImplementationError,
@@ -110,8 +111,13 @@ class Value:
         self._current = current
 
 
-class AbstractActionData(ABC):
-    """Base class holding the data of all action related data classes."""
+class AbstractActionData(EditNoted, ABC):
+    """Base class holding the data of all action related data classes.
+
+    Setting one of its attributes to another value notes an edit of the
+    profile (EditNoted, 04 Q19); a plugin that changes a list or dict in
+    place calls note_edit() itself.
+    """
 
     # Fields expected to be present in every action plugin. These define
     # information required by the plugin manager as well as UI and behavior
@@ -418,6 +424,7 @@ class AbstractActionData(ABC):
                 anchor += 1
 
         container.insert(anchor, action)
+        note_edit()
 
     def remove_action(self, index: int, selector: str) -> None:
         """Removes the provided action from this action's children.
@@ -431,6 +438,7 @@ class AbstractActionData(ABC):
         container = self._get_container(selector)
         if 0 <= index < len(container):
             del container[index]
+            note_edit()
         else:
             raise GremlinError(
                 f"{self.name}: attempting to remove action with invalid "

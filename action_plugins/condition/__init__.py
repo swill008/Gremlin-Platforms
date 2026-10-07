@@ -27,6 +27,7 @@ from gremlin.base_classes import (
     UserFeedback,
     Value,
 )
+from gremlin.edits import note_edit
 from gremlin.logical_device import LogicalDevice
 from gremlin.profile import Library
 from gremlin.signal import signal
@@ -159,6 +160,7 @@ class ConditionModel(ActionModel):
             if condition_type == ConditionType.CurrentInput:
                 cond.set_input_type(self._data.behavior_type)
             self._data.conditions.append(cond)
+            note_edit()
         self.conditionsChanged.emit()
 
     @QtCore.Slot(str, str)
@@ -196,6 +198,7 @@ class ConditionModel(ActionModel):
             raise error.GremlinError("Attempting to remove a non-existent condition.")
 
         del self._data.conditions[index]
+        note_edit()
         self.conditionsChanged.emit()
 
     @QtCore.Property(list, constant=True)

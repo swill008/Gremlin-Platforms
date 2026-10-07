@@ -32,6 +32,7 @@ from gremlin import (
 )
 from gremlin.common import SingletonMetaclass
 from gremlin.config import Configuration
+from gremlin.edits import EditNoted
 from gremlin.keyboard import (
     Key,
     key_from_code,
@@ -509,7 +510,7 @@ class Macro:
         self._sequence.append(KeyAction(key, is_pressed))
 
 
-class AbstractAction(ABC):
+class AbstractAction(EditNoted, ABC):
     """Base class for all macro action."""
 
     @abstractmethod

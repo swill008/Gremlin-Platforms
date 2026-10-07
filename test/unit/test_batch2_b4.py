@@ -512,6 +512,9 @@ def test_a_removed_script_leaves_no_settings_behind(tmp_path: Path) -> None:
     manager = ScriptManager(Profile())
     manager.add_script(path)
     script = manager.scripts[0]
+    # Adding doesn't wait for the script's code (D-04-Q13-NOWAIT); reading
+    # its variables does.
+    assert script.variables
     assert Script.variable_registry.get(script.id, "speed") is not None
     manager.remove_script(script.path, script.name)
     assert Script.variable_registry.get(script.id, "speed") is None

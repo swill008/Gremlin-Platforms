@@ -22,6 +22,7 @@ from PySide6 import (
 
 from gremlin import util
 from gremlin.base_classes import Value
+from gremlin.edits import EditNoted
 from gremlin.types import (
     HatDirection,
     PropertyType,
@@ -155,7 +156,7 @@ class DirectionComparatorModel(AbstractComparatorModel):
         return self._model
 
 
-class AbstractComparator(metaclass=ABCMeta):
+class AbstractComparator(EditNoted, metaclass=ABCMeta):
     """Base class of all comparators, provides logic and data."""
 
     @abstractmethod

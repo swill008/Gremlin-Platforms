@@ -30,6 +30,7 @@ from gremlin import (
     error,
     plugin_manager,
 )
+from gremlin.edits import EditNoted, edit_count, note_edit
 from gremlin.logical_device import LogicalDevice, LogicalRows
 from gremlin.osc import OscDevice
 from gremlin.tree import TreeNode
@@ -57,7 +58,29 @@ if TYPE_CHECKING:
     from gremlin.base_classes import AbstractActionData
 
 
-class AbstractVirtualButton(metaclass=ABCMeta):
+def _note_signals() -> None:
+    """Edits the program announces count too (an action pane's properties,
+    modes, Logical Device and OSC rows, Options a profile writes)."""
+    from gremlin.signal import signal
+
+    for each in (
+        signal.actionsChanged,
+        signal.inputItemChanged,
+        signal.reloadCurrentInputItem,
+        signal.modesChanged,
+        signal.modeRenamed,
+        signal.modeDeleted,
+        signal.logicalDeviceModified,
+        signal.oscDeviceModified,
+        signal.configChanged,
+    ):
+        each.connect(lambda *_: note_edit())
+
+
+_note_signals()
+
+
+class AbstractVirtualButton(EditNoted, metaclass=ABCMeta):
     """Base class of all virtual buttons."""
 
     def __init__(self) -> None:
@@ -175,7 +198,7 @@ def options_macro_delay() -> float:
         return _OLD_MACRO_DELAY
 
 
-class Settings:
+class Settings(EditNoted):
     """Stores general profile specific settings."""
 
     def __init__(self, parent: Profile) -> None:
@@ -203,6 +226,7 @@ class Settings:
         Args:
             node the node containing the settings data
         """
+        note_edit()
         settings_node = node.find("settings")
         if settings_node is None:
             raise error.ProfileError("Missing settings node in profile.")
@@ -303,6 +327,7 @@ class Settings:
             aid the id of the axis
             value the default value to use with the specified axis
         """
+        note_edit()
         if vid not in self.vjoy_initial_values:
             self.vjoy_initial_values[vid] = {}
         # Kept in -1..1 as a load does (GL-156, 04 S67).
@@ -598,6 +623,7 @@ class Library:
         None when the action can't be created here (no vJoy for Map to
         vJoy).
         """
+        note_edit()
         cls = plugin_manager.PluginManager().get_class(name)
         if not cls.can_create():
             return None
@@ -632,6 +658,7 @@ class Library:
         draft: the copy stands in for the original in that draft (True:
         the legacy mark, TODO(batch1) until every pane uses draft()).
         """
+        note_edit()
         if action is None:
             return None
         if id_map is None:
@@ -773,6 +800,7 @@ class Library:
         nothing uses any more is released. DraftOutdated (nothing written)
         when the input changed since the draft began (05 Q8).
         """
+        note_edit()
         if draft not in self._drafts:
             raise error.GremlinError("That action editor copy is closed.")
         if index is ...:
@@ -862,6 +890,7 @@ class Library:
 
     def discard(self, draft: Draft | None) -> None:
         """Throws a draft away (Cancel, close); nothing it made stays."""
+        note_edit()
         if draft is None:
             return
         if draft in self._drafts:
@@ -897,6 +926,7 @@ class Library:
         """The one removal rule: these actions (and, recursive, everything
         inside them) leave the library unless an input uses them or an open
         draft holds them. A kept action keeps what is inside it."""
+        note_edit()
         keep = self.in_use() | self.draft_held()
         actions = (
             reachable(roots)
@@ -985,6 +1015,7 @@ class Library:
         settings back, so a shared action is restored for every input using
         it (decision A2).
         """
+        note_edit()
         device_id, input_type, input_id, mode = key
         profile = self._profile
         if profile is None:
@@ -1042,6 +1073,7 @@ class Library:
         inputs and the device list are put back as they were, then the
         error goes on. Actions changed in place (not added) are not put
         back: a change does its in-place edits last."""
+        note_edit()
         profile = self._profile
         actions = dict(self._actions)
         drafts = list(self._drafts)
@@ -1051,6 +1083,7 @@ class Library:
             except BaseException:
                 self._actions = actions
                 self._drafts = drafts
+                note_edit()
                 raise
             return
         inputs = {guid: list(items) for guid, items in profile.inputs.items()}
@@ -1078,6 +1111,7 @@ class Library:
             profile.modes.from_xml(modes)
             profile._logical_devices_from_xml(logical)
             profile.device_database.devices = devices
+            note_edit()
             raise
 
     # --- Lookup ---------------------------------------------------------------------
@@ -1085,6 +1119,7 @@ class Library:
     def add_action(self, action: AbstractActionData) -> None:
         """Stores an action made outside create() (a copy, a loaded one).
         TODO(batch1): editors still call this; they move to create()."""
+        note_edit()
         if action.id in self._actions:
             logging.getLogger("system").warning(
                 f"Action with id {action.id} already exists, skipping."
@@ -1099,6 +1134,7 @@ class Library:
         Args:
             key: the key of the action to delete
         """
+        note_edit()
         if key not in self._actions:
             logging.getLogger("system").warning(
                 f"Attempting to remove non-existant action with id {key}."
@@ -1173,6 +1209,7 @@ class Library:
         Args:
             node: XML node containing the library information
         """
+        note_edit()
         parse_later = []
         self.unknown_types = []
 
@@ -1266,12 +1303,14 @@ class Library:
         """An explicit save: unfinished actions leave the actions inputs use.
         Drafts (an open pane) and actions kept for Undo are not touched
         (05 S34). Checking for unsaved work must not call this."""
+        note_edit()
         with self.keeping_drafts_current():
             self._drop_invalid(self._save_scope)
 
     def drop_invalid_actions(self) -> None:
         """Removes unfinished children from every library action, drafts and
         unused ones included. A save uses prune_for_save instead."""
+        note_edit()
         self._drop_invalid(lambda: set(self._actions))
 
     def _drop_invalid(self, scope: Callable[[], set[uuid.UUID]]) -> None:
@@ -1431,6 +1470,8 @@ class Profile:
         self.fpath: Path | None = None
         # The profile as it would be written right after the last load or save.
         self._saved_snapshot: str | None = None
+        # The last unsaved answer and the edit count it was worked out at.
+        self._unsaved_seen: tuple[int, bool] | None = None
         # The Logical Device and OSC rows saved with this profile (04 S2).
         # Owned here, so another Profile object no longer wipes them (GL-074).
         self.logical_device = LogicalRows()
@@ -1454,6 +1495,7 @@ class Profile:
         Args:
             fpath: path to the XML file to parse
         """
+        note_edit()
         # Parse file into an XML document.
         from gremlin.ui.live_debug import trace
         try:
@@ -1498,7 +1540,7 @@ class Profile:
             self._process_input(node)
         self._warn_unlisted_modes()
 
-        self._saved_snapshot = self._xml_text()
+        self._set_saved(self._xml_text())
 
     def _check_startup_mode(self) -> None:
         """A Startup Mode that is neither a mode nor Use Heuristic / Last
@@ -1554,7 +1596,8 @@ class Profile:
         from gremlin.modules import module_file
 
         module_file.write_text(Path(fpath), text, encoding="utf-8-sig", newline="")
-        before, self._saved_snapshot = self._saved_snapshot, text
+        before = self._saved_snapshot
+        self._set_saved(text)
         if before != text:
             # Tools > History: what this save changed (worked out off this thread).
             from gremlin import history_profile
@@ -1702,6 +1745,7 @@ class Profile:
         as before (Library.change). remap=False: the caller made sure no id
         clashes, so ids, and references to actions already in the library,
         are kept."""
+        note_edit()
         if remap:
             action_xml, input_xml = remap_action_ids(
                 action_xml, input_xml, self.library
@@ -1745,6 +1789,7 @@ class Profile:
 
     def drop_inputs(self, device_id: uuid.UUID, doomed: Iterable[InputItem]) -> None:
         """Removes these inputs of a device and the actions only they used."""
+        note_edit()
         gone = {id(item) for item in doomed}
         items = self.inputs.get(device_id, [])
         removed = [item for item in items if id(item) in gone]
@@ -1755,12 +1800,14 @@ class Profile:
     def remember_device(self, device_id: uuid.UUID, name: str) -> None:
         """Records a device's name in the profile's device list (saved with
         it). Library.change puts the list back if the change fails."""
+        note_edit()
         self.device_database.devices[device_id] = DeviceInfo(device_id, name)
 
     def swap_device_inputs(self, first: uuid.UUID, second: uuid.UUID) -> int:
         """Every input of one device moves to the other and back (Swap
         Devices, 04 S77, S78), inputs with no actions too. Returns how many
         moved inputs have actions."""
+        note_edit()
         if first == second:
             raise error.GremlinError("A device can't be swapped with itself.")
         moved = 0
@@ -1790,19 +1837,41 @@ class Profile:
 
         Compares against the profile as it was right after the last load or
         save, not the file on disk: a file saved by an older version (for
-        example without a newer default property) is not an edit.
+        example without a newer default property) is not an edit. Always
+        compares: the questions (Save, Discard, quit) use this.
 
         Returns:
             True if there are unsaved changes, False otherwise
         """
         if self._saved_snapshot is None:
-            return True
-        return self._xml_text() != self._saved_snapshot
+            result = True
+        else:
+            result = self._xml_text() != self._saved_snapshot
+        self._unsaved_seen = (edit_count(), result)
+        return result
+
+    def looks_unsaved(self) -> bool:
+        """has_unsaved_changes for the title's "*" (every 1.5 s): its last
+        answer again while no edit was noted since (04 Q19), so a large
+        profile isn't rebuilt each time."""
+        seen = self._unsaved_seen
+        if seen is not None and seen[0] == edit_count():
+            return seen[1]
+        return self.has_unsaved_changes()
+
+    def note_edit(self) -> None:
+        """Something this profile saves changed where no hook sees it."""
+        note_edit()
 
     def mark_clean(self) -> None:
         """A new, untouched profile has nothing to lose: only edits after
         this count as unsaved changes."""
-        self._saved_snapshot = self._xml_text()
+        self._set_saved(self._xml_text())
+
+    def _set_saved(self, text: str) -> None:
+        """text is the profile as saved now: nothing unsaved."""
+        self._saved_snapshot = text
+        self._unsaved_seen = (edit_count(), False)
 
     def _process_input(self, node: ElementTree.Element) -> None:
         """Processes an InputItem XML node and stores it.
@@ -1818,6 +1887,7 @@ class Profile:
         self.inputs[item.device_id].append(item)
 
     def _logical_devices_from_xml(self, root_node: ElementTree.Element) -> None:
+        note_edit()
         logical = self.logical_device
         logical.reset()
         groups = []
@@ -1878,6 +1948,7 @@ class Profile:
     def _osc_devices_from_xml(self, root_node: ElementTree.Element) -> None:
         # Into this profile's own rows (cleared in place: OscDevice() may be
         # showing them), with the checks OscDevice.create makes.
+        note_edit()
         self._osc_inputs.clear()
         self._osc_by_id.clear()
         for node in root_node.findall("./osc-device/input"):
@@ -1906,7 +1977,7 @@ class Profile:
         return node
 
 
-class InputItem:
+class InputItem(EditNoted):
     """Represents the configuration of a single input in a particular mode."""
 
     def __init__(self, library: Library) -> None:
@@ -1988,6 +2059,7 @@ class InputItem:
         binding.root_action = root_action
         binding.behavior = self.input_type
         self.action_sequences.append(binding)
+        note_edit()
         return binding
 
     def remove_item_binding(self, binding: InputItemBinding) -> None:
@@ -1998,9 +2070,10 @@ class InputItem:
         """
         if binding in self.action_sequences:
             del self.action_sequences[self.action_sequences.index(binding)]
+            note_edit()
 
 
-class InputItemBinding:
+class InputItemBinding(EditNoted):
     """Links together a LibraryItem and it's activation behavior."""
 
     def __init__(self, input_item: InputItem) -> None:
@@ -2219,6 +2292,7 @@ class ModeHierarchy:
         Raises:
             GremlinError: the name is blank or looks like another mode's
         """
+        note_edit()
         if not clean_mode_name(mode_name):
             raise error.GremlinError("A mode needs a name.")
         if self.name_taken(mode_name):
@@ -2245,6 +2319,7 @@ class ModeHierarchy:
         Returns:
             What restore_mode needs to put it back (GL-027, 04 Q6)
         """
+        note_edit()
         if not self.mode_exists(mode_name):
             raise error.GremlinError(
                 f"Attempting to delete a non-existant mode '{mode_name}'."
@@ -2298,6 +2373,7 @@ class ModeHierarchy:
         """Puts back a mode delete_mode removed: the mode under its parent,
         its child modes that are still where the delete moved them, its
         bindings and the Startup Mode. All or nothing (Library.change)."""
+        note_edit()
         name = memo["name"]
         if self.name_taken(name):
             raise error.GremlinError(
@@ -2327,6 +2403,7 @@ class ModeHierarchy:
             old_name: name of the mode to rename
             new_name: new name for the mode
         """
+        note_edit()
         # Don't do anything if the names are the same
         if old_name == new_name:
             return
@@ -2382,6 +2459,7 @@ class ModeHierarchy:
             mode_name: name of the mode to set the parent of
             parent_name: name of the new parent mode
         """
+        note_edit()
         mode_node = self.find_mode(mode_name)
         # None or "": no parent (top level).
         parent_node = (
@@ -2416,6 +2494,7 @@ class ModeHierarchy:
     def from_xml(self, root: ElementTree.Element) -> list[str]:
         """Reads the modes; returns what to warn about (04 Q9): a mode list
         with no modes gets "Default", a name listed twice is kept once."""
+        note_edit()
         warnings: list[str] = []
         # Parse individual nodes
         nodes = {}
@@ -2514,6 +2593,7 @@ class ScriptManager:
         Args:
             path: path to the script's location
         """
+        note_edit()
         self._scripts.append(Script(path, self._default_name(path)))
         self._scripts.sort(key=lambda s: (s.path, s.name))
 
@@ -2524,6 +2604,7 @@ class ScriptManager:
             path: path to the script
             name: name of the script
         """
+        note_edit()
         script = self._find_instance(path, name)
         if script:
             self._scripts.remove(script)
@@ -2538,6 +2619,7 @@ class ScriptManager:
             old_name: current name of the script
             new_name: new name to use for the script
         """
+        note_edit()
         names = [s.name for s in self.scripts if s.path == path]
         if new_name not in names:
             script = self._find_instance(path, old_name)
@@ -2577,6 +2659,7 @@ class ScriptManager:
         raise error.GremlinError(f"Unablle to find a valid default name for {path}")
 
     def from_xml(self, root: ElementTree.Element) -> None:
+        note_edit()
         for node in root.findall("./scripts/script"):
             try:
                 script_instance = Script()

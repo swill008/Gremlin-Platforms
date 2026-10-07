@@ -35,6 +35,7 @@ from gremlin import (
     util,
 )
 from gremlin.base_classes import Value
+from gremlin.edits import EditNoted, note_edit
 from gremlin.input_cache import (
     DeviceDatabase,
     Joystick,
@@ -83,7 +84,7 @@ class AbstractState(metaclass=ABCMeta):
         pass
 
 
-class AbstractCondition(QtCore.QObject):
+class AbstractCondition(EditNoted, QtCore.QObject):
     """Base class of all individual condition representations."""
 
     conditionTypeChanged = QtCore.Signal()
@@ -794,6 +795,7 @@ class LogicalDeviceCondition(AbstractCondition):
             identifier.input_id != self._states[0].input_id
         ):
             self._states[0] = self.State(identifier.input_type, identifier.input_id)
+            note_edit()
             self.logicalInputIdentifierChanged.emit()
             self._create_comparator(self._states[0].input_type)
 

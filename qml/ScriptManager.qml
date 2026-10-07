@@ -124,6 +124,8 @@ Item {
         required property var variables
         // Why the script could not be loaded ("" when it loaded).
         required property string loadError
+        // Its code is still starting (load and add don't wait for it).
+        required property bool starting
 
         JGText {
             Layout.leftMargin: Style.dp(10)
@@ -166,6 +168,15 @@ Item {
             text: "Can't load: " + _item.loadError + ". Fix the script; it is tried again at Run."
             leftPadding: Style.dp(10)
             color: Style.error
+            wrapMode: Text.Wrap
+        }
+
+        JGText {
+            Layout.fillWidth: true
+            visible: _item.starting
+            text: "Starting…"
+            leftPadding: Style.dp(10)
+            color: Style.fgMuted
             wrapMode: Text.Wrap
         }
         }
@@ -215,7 +226,7 @@ Item {
 
         IconButton {
             text: bsi.icons.configure
-            enabled: _item.loadError === ""
+            enabled: _item.loadError === "" && !_item.starting
 
             onClicked: {
                 _config.model = variables

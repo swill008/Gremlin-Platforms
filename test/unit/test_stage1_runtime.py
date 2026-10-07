@@ -217,6 +217,8 @@ def test_a_failed_run_shows_one_error_and_reads_stopped(
         ui_state=SimpleNamespace(currentMode="Default"),
         config=SimpleNamespace(value=lambda *_a: True),
         activityChanged=mock.MagicMock(),
+        # No window is holding highlighting off (Calibration, OSC Add).
+        _highlight_holders=set(),
     )
     highlighting = shared_state.suspend_input_highlighting()
     signal.signal.showError.connect(shown)

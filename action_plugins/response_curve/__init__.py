@@ -29,6 +29,7 @@ from gremlin.base_classes import (
     UserFeedback,
     Value,
 )
+from gremlin.edits import note_edit
 from gremlin.error import (
     GremlinError,
     ProfileError,
@@ -140,6 +141,7 @@ class Deadzone(QtCore.QObject):
         }
         if value != self._data.deadzone[index.value]:
             self._data.deadzone[index.value] = value
+            note_edit()
             lookup[index].emit(value)
 
     low = QtCore.Property(

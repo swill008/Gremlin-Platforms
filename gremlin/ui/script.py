@@ -382,6 +382,7 @@ class ScriptListModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray("name".encode()),
         QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray("variables".encode()),
         QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray("loadError".encode()),
+        QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray("starting".encode()),
     }
 
     data_class_lookup = {
@@ -401,6 +402,16 @@ class ScriptListModel(QtCore.QAbstractListModel):
         super().__init__(parent)
 
         self._script_manager = script_manager
+        # A script loaded or added starts without the program waiting for
+        # it (D-04-Q13-NOWAIT): its row shows it starting, then its settings.
+        user_script.start_notifier.started.connect(self._script_started)
+
+    @QtCore.Slot()
+    def _script_started(self) -> None:
+        if self.rowCount() > 0:
+            self.dataChanged.emit(
+                self.createIndex(0, 0), self.createIndex(self.rowCount() - 1, 0)
+            )
 
     @QtCore.Slot(str)
     def addScript(self, qml_url: str) -> None:
@@ -430,7 +441,7 @@ class ScriptListModel(QtCore.QAbstractListModel):
 
     def data(
         self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
-    ) -> str | list[AbstractVariableModel] | None:
+    ) -> str | bool | list[AbstractVariableModel] | None:
         if role not in self.roles:
             raise GremlinError(f"Invalid role {role} in ScriptListModel")
 
@@ -443,10 +454,12 @@ class ScriptListModel(QtCore.QAbstractListModel):
             case "variables":
                 return [
                     ScriptListModel.data_class_lookup[type(var)](var, self)
-                    for var in script.variables.values()
+                    for var in script.shown_variables.values()
                 ]
             case "loadError":
-                return script.load_error
+                return script.shown_load_error
+            case "starting":
+                return script.starting
             case _:
                 return None
 

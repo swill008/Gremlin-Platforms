@@ -23,6 +23,7 @@ from gremlin.base_classes import (
     UserFeedback,
     Value,
 )
+from gremlin.edits import note_edit
 from gremlin.error import GremlinError
 from gremlin.profile import Library
 from gremlin.types import (
@@ -112,6 +113,7 @@ class ChainModel(ActionModel):
     @QtCore.Slot()
     def addSequence(self) -> None:
         self._data.chain_sequences.append([])
+        note_edit()
         self.changed.emit()
 
     @QtCore.Slot(int)
@@ -120,6 +122,7 @@ class ChainModel(ActionModel):
             raise GremlinError(f"Index {index} invalid as chain container")
 
         removed = self._data.chain_sequences.pop(index)
+        note_edit()
         # Its actions leave the profile unless another input uses them (the
         # one removal rule, 05 Q12).
         self.library.release(removed)

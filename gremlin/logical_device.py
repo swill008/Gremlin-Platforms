@@ -11,6 +11,7 @@ from typing import cast
 
 import dill
 from gremlin.common import SingletonMetaclass
+from gremlin.edits import note_edit
 from gremlin.error import (
     GremlinError,
     MissingImplementationError,
@@ -272,6 +273,7 @@ class LogicalRows:
             input_id: unique id identifying this input
             label: if given will be used as the label of the new input
         """
+        note_edit()
         if label in self.labels_of_type():
             raise GremlinError(f"An input named {label} already exists")
 
@@ -316,6 +318,7 @@ class LogicalRows:
 
     def reset(self) -> None:
         """Resets the IO system to contain no entries."""
+        note_edit()
         self._inputs = {}
         self._label_lookup = {}
         self._groups = []
@@ -328,6 +331,7 @@ class LogicalRows:
             old_label: label of the instance to change the label of
             new_label: new label to use
         """
+        note_edit()
         if old_label == new_label:
             return
 
@@ -347,6 +351,7 @@ class LogicalRows:
         Args:
             identifier_or_label: Identifier or label of the input to delete
         """
+        note_edit()
         input = self[identifier_or_label]
         del self._inputs[input.identifier]
         del self._label_lookup[input.label]
@@ -464,6 +469,7 @@ class LogicalRows:
         return rows
 
     def set_groups(self, names: list[str]) -> None:
+        note_edit()
         self._groups = []
         for name in names:
             text = (name or "").strip()
@@ -479,6 +485,7 @@ class LogicalRows:
         A name that differs from an existing group only in capitals or spacing
         is that group, so a typo in case or spaces cannot make a look-alike.
         """
+        note_edit()
         text = " ".join((name or "").split())
         if not text:
             return text
@@ -496,6 +503,7 @@ class LogicalRows:
         user_label: str = "",
     ) -> list[Input]:
         """Create up to 180 parents. A group name is the folder, not a copy on every row."""
+        note_edit()
         total = max(0, min(180, int(count)))
         folder = self.ensure_group(group)
         made: list[LogicalDevice.Input] = []
@@ -504,6 +512,7 @@ class LogicalRows:
         return made
 
     def set_user_label(self, identifier_or_label: Input.Identifier | str, text: str) -> None:
+        note_edit()
         item = self[identifier_or_label]
         cleaned = (text or "").strip()
         if cleaned == item.system_name:
@@ -513,10 +522,12 @@ class LogicalRows:
             item.hide_system = False
 
     def set_member_group(self, identifier_or_label: Input.Identifier | str, group: str) -> None:
+        note_edit()
         item = self[identifier_or_label]
         item.group = self.ensure_group(group)
 
     def rename_group(self, old_name: str, new_name: str) -> None:
+        note_edit()
         old = (old_name or "").strip()
         new = " ".join((new_name or "").split())
         if not old or old not in self._groups:
@@ -537,6 +548,7 @@ class LogicalRows:
 
     def delete_group(self, name: str) -> None:
         """Remove the folder. The parents stay, in Ungrouped."""
+        note_edit()
         text = (name or "").strip()
         self._groups = [entry for entry in self._groups if entry != text]
         for item in self._inputs.values():
@@ -549,6 +561,7 @@ class LogicalRows:
         group: str,
         before: Input.Identifier | None = None,
     ) -> None:
+        note_edit()
         item = self[identifier_or_label]
         item.group = self.ensure_group(group)
         ident = item.identifier
@@ -559,6 +572,7 @@ class LogicalRows:
             self._order.append(ident)
 
     def move_group_before(self, name: str, before: str | None) -> None:
+        note_edit()
         text = (name or "").strip()
         if text not in self._groups:
             return
@@ -570,6 +584,7 @@ class LogicalRows:
 
     def sort_within(self, key_name: str) -> None:
         """Reorder parents inside each group without mixing buttons, axes, and hats."""
+        note_edit()
         types = (
             InputType.JoystickButton,
             InputType.JoystickAxis,
@@ -597,6 +612,7 @@ class LogicalRows:
         self._order = new_order
 
     def sort_groups(self) -> None:
+        note_edit()
         self._groups.sort(key=_natural_key)
 
     def memento(self) -> dict:
@@ -616,6 +632,7 @@ class LogicalRows:
         }
 
     def restore(self, memo: dict) -> None:
+        note_edit()
         wanted = {
             (entry["type"], int(entry["id"])): entry for entry in memo.get("inputs", [])
         }

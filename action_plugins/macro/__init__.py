@@ -32,6 +32,7 @@ from gremlin.base_classes import (
     Value,
 )
 from gremlin.config import Configuration
+from gremlin.edits import EditNoted, note_edit
 from gremlin.error import (
     GremlinError,
     MissingImplementationError,
@@ -555,7 +556,7 @@ class MacroRepeatModes(enum.Enum):
                 raise GremlinError(f"Invalid macro repeat mode: {value}")
 
 
-class MacroRepeatData:
+class MacroRepeatData(EditNoted):
     def __init__(self, delay: float = 0.1, count: int = 1) -> None:
         self.count = count
         self.delay = delay
@@ -650,6 +651,7 @@ class ActionListModel(QtCore.QAbstractListModel):
         row = len(self._actions)
         self.beginInsertRows(QtCore.QModelIndex(), row, row)
         self._actions.append(action)
+        note_edit()
         self._wrappers.append(self._create_action_model(action))
         self.endInsertRows()
         self.actionAdded.emit()
@@ -664,6 +666,7 @@ class ActionListModel(QtCore.QAbstractListModel):
             return
         self.beginRemoveRows(QtCore.QModelIndex(), index, index)
         del self._actions[index]
+        note_edit()
         del self._wrappers[index]
         self.endRemoveRows()
 
@@ -694,6 +697,7 @@ class ActionListModel(QtCore.QAbstractListModel):
             else destination_index
         )
         self._actions.insert(insert_pos, action)
+        note_edit()
         self._wrappers.insert(insert_pos, wrapper)
         self.endMoveRows()
 

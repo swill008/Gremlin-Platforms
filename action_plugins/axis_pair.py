@@ -13,6 +13,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, cast
 
 from gremlin import util
+from gremlin.edits import EditNoted
 from gremlin.types import InputType
 from gremlin.ui.device import InputIdentifier
 from gremlin.ui.profile import LabelValueSelectionModel
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 
 
 @dataclasses.dataclass
-class AxisRef:
+class AxisRef(EditNoted):
     """An input as action data keeps it: no Qt type in the data."""
 
     device_guid: uuid.UUID | None = None

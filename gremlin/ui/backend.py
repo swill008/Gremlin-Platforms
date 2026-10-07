@@ -213,6 +213,12 @@ def _same_file(a: str | Path | None, b: str | Path | None) -> bool:
         return False
 
 
+def _sync_highlight_pause(runner: code_runner.CodeRunner, holders: set[str]) -> None:
+    """Highlighting is paused while running or while a window holds it
+    (Calibration, OSC Add); Stop alone turned it back on (03 S114)."""
+    shared_state.set_suspend_input_highlighting(runner.is_running() or bool(holders))
+
+
 @common.SingletonDecorator
 class Backend(QtCore.QObject):
     windowTitleChanged = QtCore.Signal()
@@ -469,10 +475,7 @@ class Backend(QtCore.QObject):
             else:
                 self.runner.stop()
         finally:
-            if not self.runner.is_running() and self.config.value(
-                "ui", "general", "input-highlighting"
-            ):
-                shared_state.set_suspend_input_highlighting(False)
+            _sync_highlight_pause(self.runner, self._highlight_holders)
             self.activityChanged.emit()
 
     def run_profile(self, fpath: str) -> bool:
@@ -549,13 +552,12 @@ class Backend(QtCore.QObject):
     def pauseInputHighlighting(self, holder: str) -> None:
         """Pauses input highlighting until every holder has resumed it."""
         self._highlight_holders.add(holder)
-        shared_state.set_suspend_input_highlighting(True)
+        _sync_highlight_pause(self.runner, self._highlight_holders)
 
     @QtCore.Slot(str)
     def resumeInputHighlighting(self, holder: str) -> None:
         self._highlight_holders.discard(holder)
-        if not self._highlight_holders:
-            shared_state.set_suspend_input_highlighting(False)
+        _sync_highlight_pause(self.runner, self._highlight_holders)
 
     @QtCore.Slot(str, int, result=bool)
     def isActionExpanded(self, uuid_str: str, index: int) -> bool:
@@ -696,7 +698,16 @@ class Backend(QtCore.QObject):
 
     @QtCore.Property(bool, notify=propertyChanged)
     def profileContainsUnsavedChanges(self) -> bool:
+        """Exact: what the Save / Discard / Cancel questions ask about."""
         return self.profile.has_unsaved_changes()
+
+    @QtCore.Property(bool, notify=propertyChanged)
+    def profileLooksUnsaved(self) -> bool:
+        """For the title's "*" (checked every 1.5 s): reuses the last answer
+        while no edit was noted, so a large profile isn't rebuilt each time
+        (04 Q19). An edit no hook sees makes the "*" late, never a question
+        skipped: those use profileContainsUnsavedChanges."""
+        return self.profile.looks_unsaved()
 
     @QtCore.Property(type=ScriptListModel, notify=profileChanged)
     def scriptListModel(self) -> ScriptListModel:

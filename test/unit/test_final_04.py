@@ -815,6 +815,9 @@ def test_s87_only_configured_scripts_run_and_each_run_reloads_them(
 
     script = Script(path, "Instance 1")
     scripts_made.append(script)
+    # Adding doesn't wait for the script's code (D-04-Q13-NOWAIT); reading
+    # its load error does.
+    assert script.load_error == ""
     assert count() == 1  # its variables were read when it was added
     runner = types.SimpleNamespace(
         _sys_path=None,

@@ -15,9 +15,11 @@ import logging
 import numbers
 import random
 import string
+import sys
 import threading
 import types
 import uuid
+import weakref
 from abc import (
     ABC,
     abstractmethod,
@@ -30,6 +32,8 @@ from typing import (
 )
 from xml.etree import ElementTree
 
+from PySide6 import QtCore
+
 import dill
 import gremlin.keyboard
 from gremlin import (
@@ -41,6 +45,7 @@ from gremlin import (
     threads,
     util,
 )
+from gremlin.edits import EditNoted, note_edit
 from gremlin.logical_device import LogicalDevice
 from gremlin.modules import inputs, output
 from gremlin.types import (
@@ -73,10 +78,16 @@ def _current_script_id() -> uuid.UUID | None:
     identifier = getattr(_top_level, "script_id", None)
     if identifier is not None:
         return identifier
-    for frame in inspect.stack():
-        identifier = frame.frame.f_locals.get("_script_id", None)
+    # The frames themselves, not inspect.stack(): that reads every frame's
+    # source and resolves the path of every loaded module, seconds in the
+    # program while the main thread runs (a script now starts beside it,
+    # D-04-Q13-NOWAIT).
+    frame = sys._getframe(1)
+    while frame is not None:
+        identifier = frame.f_locals.get("_script_id", None)
         if isinstance(identifier, uuid.UUID):
             return identifier
+        frame = frame.f_back
     return None
 
 
@@ -419,7 +430,11 @@ class ScriptVariableRegistry:
             self._registry[script.id][variable.name] = variable
 
     def keep_only(self, script_ids: set[uuid.UUID]) -> None:
-        """Forgets the variables of every script not in script_ids."""
+        """Forgets the variables of every script not in script_ids (a
+        script of those still starting registers none when it has)."""
+        for script in list(_starting_scripts):
+            if script.id not in script_ids:
+                script._drop_start()
         for script_id in [k for k in self._registry if k not in script_ids]:
             del self._registry[script_id]
 
@@ -429,6 +444,8 @@ class ScriptVariableRegistry:
         Args:
             script: the script to remove variables for
         """
+        # Still starting: it registers none when it has.
+        script._drop_start()
         if script.id in self._registry:
             del self._registry[script.id]
 
@@ -505,41 +522,108 @@ def _register(add: Callable[[], None]) -> None:
         pending.append((_current_script_id(), add))
 
 
+class _TopLevel:
+    """A script's top-level code running on its own thread."""
+
+    def __init__(
+        self,
+        spec: importlib.machinery.ModuleSpec,
+        module: types.ModuleType,
+        name: str,
+        on_done: Callable[[_TopLevel], None] | None = None,
+    ) -> None:
+        self.spec = spec
+        self.module = module
+        self.limit = TOP_LEVEL_TIME_LIMIT
+        self.deadline = clock.monotonic() + self.limit
+        self.done = threading.Event()
+        self.raised: list[BaseException] = []
+        self.pending: list[tuple[uuid.UUID | None, Callable[[], None]]] = []
+        self._on_done = on_done
+        threads.start(f"script {name}", self._run)
+
+    def _run(self) -> None:
+        _top_level.pending = self.pending
+        try:
+            self.spec.loader.exec_module(self.module)
+        except BaseException as e:
+            self.raised.append(e)
+        finally:
+            self.done.set()
+            if self._on_done is not None:
+                self._on_done(self)
+
+    def wait(self) -> None:
+        """Waits for the code until the time limit at most (from its start)."""
+        self.done.wait(max(0.0, self.deadline - clock.monotonic()))
+
+    def finish(self) -> None:
+        """Raises what the code raised, or a GremlinError when it hasn't
+        finished (that thread ends whenever the code does, and the callbacks
+        it registers are dropped); else registers those callbacks."""
+        if not self.done.is_set():
+            raise error.GremlinError(
+                f"Script: Its top-level code did not finish within "
+                f"{self.limit:g} s (it may loop or wait)"
+            )
+        if self.raised:
+            raise self.raised[0]
+        for script_id, add in self.pending:
+            _top_level.script_id = script_id
+            try:
+                add()
+            finally:
+                _top_level.script_id = None
+
+
 def _run_top_level(
     spec: importlib.machinery.ModuleSpec, module: types.ModuleType, name: str
 ) -> None:
     """Runs a script's top-level code on its own thread and waits for it at
     most TOP_LEVEL_TIME_LIMIT seconds, so a script that loops or waits can't
-    freeze the program. Raises what the code raised, or a GremlinError when
-    it didn't finish in time (that thread ends whenever the code does, and
-    the callbacks it registers are dropped)."""
-    done = threading.Event()
-    raised: list[BaseException] = []
-    pending: list[tuple[uuid.UUID | None, Callable[[], None]]] = []
+    freeze the program (Run's reload, D-04-Q13-RUNLIMIT)."""
+    code = _TopLevel(spec, module, name)
+    code.wait()
+    code.finish()
 
-    def run() -> None:
-        _top_level.pending = pending
-        try:
-            spec.loader.exec_module(module)
-        except BaseException as e:
-            raised.append(e)
-        finally:
-            done.set()
 
-    threads.start(f"script {name}", run)
-    if not done.wait(TOP_LEVEL_TIME_LIMIT):
-        raise error.GremlinError(
-            f"Script: Its top-level code did not finish within "
-            f"{TOP_LEVEL_TIME_LIMIT:g} s (it may loop or wait)"
-        )
-    if raised:
-        raise raised[0]
-    for script_id, add in pending:
-        _top_level.script_id = script_id
-        try:
-            add()
-        finally:
-            _top_level.script_id = None
+class _StartNotifier(QtCore.QObject):
+    """Brings a script's start to an end on the main thread (D-04-Q13-NOWAIT)."""
+
+    # From the worker, queued to this object's (the main) thread.
+    codeDone = QtCore.Signal(object, object)
+    # A start began: its time limit is timed on the main thread.
+    limitStart = QtCore.Signal(object, object)
+    # A script finished starting (loaded or failed): the Scripts page shows it.
+    started = QtCore.Signal()
+
+    def __init__(self) -> None:
+        super().__init__()
+        queued = QtCore.Qt.ConnectionType.QueuedConnection
+        self.codeDone.connect(self._code_done, queued)
+        self.limitStart.connect(self._start_limit, queued)
+
+    def _code_done(self, script: Script, code: _TopLevel) -> None:
+        script._end_start(code)
+
+    def _start_limit(self, script: Script, code: _TopLevel) -> None:
+        if not script.starting or script._starting is not code:
+            return
+        timer = QtCore.QTimer(self)
+        timer.setSingleShot(True)
+
+        def limit_passed() -> None:
+            timer.deleteLater()
+            script._end_start(code)
+
+        timer.timeout.connect(limit_passed)
+        timer.start(max(0, round((code.deadline - clock.monotonic()) * 1000)))
+
+
+# Made where this module is first imported: the main thread.
+start_notifier = _StartNotifier()
+# Scripts whose top-level code is still starting.
+_starting_scripts: weakref.WeakSet[Script] = weakref.WeakSet()
 
 
 def _without_layout(node: ElementTree.Element) -> ElementTree.Element:
@@ -554,7 +638,7 @@ def _without_layout(node: ElementTree.Element) -> ElementTree.Element:
     return node
 
 
-class Script:
+class Script(EditNoted):
     """Represents the prototype of a script."""
 
     variable_registry = ScriptVariableRegistry()
@@ -564,21 +648,120 @@ class Script:
         self._id = uuid.uuid4()
         self.path = _resolve_path(path)
         self.name = name
-        self.variables: dict[str, AbstractVariable] = {}
+        self._variables: dict[str, AbstractVariable] = {}
         # Why the script could not be loaded ("" when it loaded). Such a
         # script stays in the profile: its saved settings are written back
         # unchanged, it is tried again at each Run, and the Scripts page
         # shows the reason.
-        self.load_error = ""
+        self._load_error = ""
         self._saved_variables: list[ElementTree.Element] = []
+        # Its top-level code while it is starting (loaded or added): the
+        # program doesn't wait for it (D-04-Q13-NOWAIT). The saved settings
+        # it gets once started, or None.
+        self._starting: _TopLevel | None = None
+        self._starting_node: ElementTree.Element | None = None
+        self._start_lock = threading.Lock()
 
         if self.path.is_file():
             try:
-                self._retrieve_variable_definitions()
+                self._begin_start(None)
             except Exception as e:
                 self._failed(e)
-            else:
-                self.variable_registry.register_script(self)
+
+    # A script that is starting has its settings and its load error once it
+    # has started: reading them waits for that (at most until its time
+    # limit), as Run does. What only shows the script reads starting first.
+
+    @property
+    def variables(self) -> dict[str, AbstractVariable]:
+        self._wait_started()
+        return self._variables
+
+    @variables.setter
+    def variables(self, value: dict[str, AbstractVariable]) -> None:
+        self._variables = value
+
+    @property
+    def load_error(self) -> str:
+        self._wait_started()
+        return self._load_error
+
+    @load_error.setter
+    def load_error(self, value: str) -> None:
+        self._load_error = value
+
+    @property
+    def starting(self) -> bool:
+        """True while its top-level code runs at load or add (it doesn't
+        wait): its settings and load error aren't known yet."""
+        return self._starting is not None
+
+    @property
+    def shown_load_error(self) -> str:
+        """The load error, "" while starting (doesn't wait)."""
+        return "" if self.starting else self._load_error
+
+    @property
+    def shown_variables(self) -> dict[str, AbstractVariable]:
+        """The settings, none while starting (doesn't wait)."""
+        return {} if self.starting else self._variables
+
+    def _begin_start(self, node: ElementTree.Element | None) -> None:
+        """Starts its top-level code without waiting for it; node holds the
+        saved settings it gets once started. Raises when it can't start."""
+        self._drop_start()
+        spec, module = self._new_module()
+        self._starting_node = node
+        with self._start_lock:
+            # Done, it ends its start on the main thread (queued).
+            code = _TopLevel(
+                spec,
+                module,
+                self.name or self.path.name,
+                on_done=lambda done: start_notifier.codeDone.emit(self, done),
+            )
+            self._starting = code
+            _starting_scripts.add(self)
+        # Not done when the limit passes: marked failed then, on the main
+        # thread.
+        start_notifier.limitStart.emit(self, code)
+
+    def _wait_started(self) -> None:
+        code = self._starting
+        if code is None:
+            return
+        code.wait()
+        self._end_start(code)
+
+    def _drop_start(self) -> None:
+        """Forgets a start still running (it is replaced)."""
+        with self._start_lock:
+            self._starting = None
+            _starting_scripts.discard(self)
+
+    def _end_start(self, code: _TopLevel) -> None:
+        """Its start comes to an end: loaded with its saved settings, or
+        failed (an error, or the time limit passed). Once only."""
+        with self._start_lock:
+            if self._starting is not code:
+                return
+            self._starting = None
+            _starting_scripts.discard(self)
+        node, self._starting_node = self._starting_node, None
+        try:
+            code.finish()
+            self._take_module(code.spec, code.module)
+            if node is not None:
+                self._apply_saved(node)
+            Script.variable_registry.register_script(self)
+            self._load_error = ""
+        except BaseException as e:  # what its code raised too (SystemExit)
+            self._failed(e)
+        # What it writes now comes from its settings, not as saved: the
+        # title's "*" checks again (04 Q19); a script that started with
+        # its saved settings writes the same, so nothing shows unsaved.
+        note_edit()
+        start_notifier.started.emit()
 
     @property
     def id(self) -> uuid.UUID:
@@ -619,6 +802,7 @@ class Script:
             variable: Variable to store
         """
         self.variables[name] = variable
+        note_edit()
 
     def get_variable(self, name: str) -> AbstractVariable:
         """Returns the variable stored under the specified name.
@@ -637,16 +821,45 @@ class Script:
             )
         return self.variables[name]
 
-    def from_xml(self, node: ElementTree.Element) -> None:
+    def from_xml(self, node: ElementTree.Element, wait: bool = False) -> None:
         """Initializes the values of this instance based on the node's contents.
+
+        Its top-level code starts without the program waiting for it (profile
+        load, D-04-Q13-NOWAIT); wait=True waits for it (retry at Run).
 
         Args:
             node: XML node containing this instance's configuration
+            wait: wait for the top-level code (up to its time limit)
         """
+        self._drop_start()
         # Remove information of this script in case the ID changes
         Script.variable_registry.remove_script(self)
 
-        lookup = {
+        self._id = util.read_uuid(node, "script", "id")
+        self.path = _resolve_path(util.read_property(node, "path", PropertyType.Path))
+        self.name = util.read_property(node, "name", PropertyType.String)
+        # Kept as saved, so a script that can't load loses nothing on save.
+        self._saved_variables = [copy.deepcopy(v) for v in node.iter("variable")]
+        self._variables = {}
+        self._load_error = ""
+        try:
+            if wait:
+                self._load_from_xml(node)
+            else:
+                self._begin_start(node)
+        except Exception as e:
+            self._failed(e)
+
+    def _load_from_xml(self, node: ElementTree.Element) -> None:
+        # Retrieve variable information from the script and instantiate them
+        self._retrieve_variable_definitions()
+        self._apply_saved(node)
+        # Store script values in the registry
+        Script.variable_registry.register_script(self)
+
+    def _apply_saved(self, node: ElementTree.Element) -> None:
+        """Gives the script's settings the values saved in node."""
+        lookup: dict[str | None, type[AbstractVariable]] = {
             "bool": BoolVariable,
             "float": FloatVariable,
             "int": IntegerVariable,
@@ -658,46 +871,28 @@ class Script:
             "string": StringVariable,
             "vjoy": VirtualInputVariable,
         }
-
-        self._id = util.read_uuid(node, "script", "id")
-        self.path = _resolve_path(util.read_property(node, "path", PropertyType.Path))
-        self.name = util.read_property(node, "name", PropertyType.String)
-        # Kept as saved, so a script that can't load loses nothing on save.
-        self._saved_variables = [copy.deepcopy(v) for v in node.iter("variable")]
-        try:
-            self._load_from_xml(node, lookup)
-        except Exception as e:
-            self._failed(e)
-            return
-        self.load_error = ""
-
-    def _load_from_xml(self, node: ElementTree.Element, lookup: dict) -> None:
-        # Retrieve variable information from the script and instantiate them
-        self._retrieve_variable_definitions()
-
         # Populate variables with data from the XML if they are present
         for entry in node.iter("variable"):
             name = util.read_property(entry, "name", PropertyType.String)
             # Don't parse variables that don't exist anymore, they will be
             # removed upon the next save
-            if name not in self.variables:
+            if name not in self._variables:
                 logging.getLogger("system").warning(
                     f"Script: Unknown variable '{name}' ignored"
                 )
                 continue
             type_name = entry.get("type")
-            if not isinstance(self.variables[name], lookup[type_name]):
+            if not isinstance(self._variables[name], lookup[type_name]):
                 raise error.GremlinError(
                     f"Script: Type mismatch, profile contains '{type_name}' "
-                    + f"while script expects '{self.variables[name]}'"
+                    + f"while script expects '{self._variables[name]}'"
                 )
-            self.variables[name].from_xml(entry)
-
-        # Store script values in the registry
-        Script.variable_registry.register_script(self)
+            self._variables[name].from_xml(entry)
 
     def to_xml(self) -> ElementTree.Element:
         """Returns an XML node representing this instance.
+
+        A script that is starting is written as saved (it doesn't wait).
 
         Returns:
             XML node representing this instance
@@ -710,11 +905,11 @@ class Script:
             ],
         )
         node.set("id", util.safe_format(self._id, uuid.UUID))
-        if self.load_error:
+        if self._load_error or self.starting:
             for saved in self._saved_variables:
                 node.append(_without_layout(copy.deepcopy(saved)))
             return node
-        for entry in self.variables.values():
+        for entry in self._variables.values():
             variable_node = entry.to_xml()
             if variable_node is not None:
                 node.append(variable_node)
@@ -726,16 +921,16 @@ class Script:
         if not self.load_error:
             return True
         node = self.to_xml()
-        self.from_xml(node)
-        return not self.load_error
+        self.from_xml(node, wait=True)
+        return not self._load_error
 
     def _failed(self, error_: BaseException) -> None:
-        self.variables = {}
-        self.load_error = describe_load_error(error_, self.path)
+        self._variables = {}
+        self._load_error = describe_load_error(error_, self.path)
         Script.variable_registry.remove_script(self)
         logging.getLogger("system").warning(
             f"Script '{self.name}' ({self.path}) could not be loaded: "
-            f"{self.load_error}"
+            f"{self._load_error}"
         )
 
     def reload(self) -> bool:
@@ -749,22 +944,14 @@ class Script:
             # Under the same time limit as loading (D-04-Q13-RUNLIMIT).
             _run_top_level(self.spec, self.module, self.name or self.path.name)
         except Exception as e:
-            nodes = (v.to_xml() for v in self.variables.values())
+            nodes = (v.to_xml() for v in self._variables.values())
             self._saved_variables = [n for n in nodes if n is not None]
             self._failed(e)
             return False
         return True
 
-    def _retrieve_variable_definitions(self) -> None:
-        """Returns all variable definitions used in the provided script.
-
-        Args:
-            path: Path to the script file
-
-        Returns:
-            List of variiables used in the script
-        """
-        self.variables = {}
+    def _new_module(self) -> tuple[importlib.machinery.ModuleSpec, types.ModuleType]:
+        """A new module for the script's file (its code not run yet)."""
         if not self.path.is_file():
             raise error.GremlinError(f"Invalid script file '{self.path}'")
 
@@ -775,19 +962,32 @@ class Script:
             raise error.GremlinError(f"Script: Can't read '{self.path}'")
         module = importlib.util.module_from_spec(spec)
         module._script_id = self.id
+        return spec, module
+
+    def _retrieve_variable_definitions(self) -> None:
+        """Runs the script's top-level code, waiting for it up to its time
+        limit, and takes the variables it defines."""
+        self._variables = {}
+        spec, module = self._new_module()
         # Kept only once it has run: a run that is still going after the
         # time limit changes nothing here.
         _run_top_level(spec, module, self.name or self.path.name)
+        self._take_module(spec, module)
+
+    def _take_module(
+        self, spec: importlib.machinery.ModuleSpec, module: types.ModuleType
+    ) -> None:
+        """Keeps the module whose top-level code ran, and its variables."""
         self.spec = spec
         self.module = module
-
-        for key, value in self.module.__dict__.items():
+        self._variables = {}
+        for value in self.module.__dict__.values():
             if isinstance(value, AbstractVariable):
-                if value.name in self.variables:
+                if value.name in self._variables:
                     logging.getLogger("system").error(
                         f"Script: Duplicate label {value.label} present in {self.path}"
                     )
-                self.variables[value.name] = copy.deepcopy(value)
+                self._variables[value.name] = copy.deepcopy(value)
 
     def swap_uuid(self, old_uuid: uuid.UUID, new_uuid: uuid.UUID) -> bool:
         """Swaps occurrences of the old UUID with the new one for this action."""
@@ -798,7 +998,7 @@ class Script:
         return swap_done
 
 
-class AbstractVariable(ABC):
+class AbstractVariable(EditNoted, ABC):
     xml_tag = "abstract"
 
     def __init__(
