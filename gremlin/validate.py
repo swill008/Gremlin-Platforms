@@ -436,7 +436,15 @@ def _check_after_stop(out: list[str]) -> None:
         out.append(f"RUN-HELD-BUTTONS: mouse button(s) still held: {buttons}")
     base = _loaded("gremlin.base_classes")
     if base is not None:
-        pulses += len(getattr(base, "_pending_pulses", []) or [])
+        # The list keeps a release that already ran until the next pulse;
+        # only one still waiting counts.
+        pulses += len(
+            [
+                p
+                for p in getattr(base, "_pending_pulses", []) or []
+                if p.is_alive()
+            ]
+        )
     if pulses:
         out.append(f"RUN-PENDING-PULSES: {pulses} pulse release(s) still waiting")
     modes = _loaded("gremlin.mode_manager")

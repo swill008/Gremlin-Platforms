@@ -137,6 +137,16 @@ Item {
                 enabled: !editorLocked
 
                 selected: model.index === _inputList.currentIndex
+
+                // The key's Note, next to its name (05 S43).
+                editButton: JGText {
+                    visible: text !== ""
+                    text: model.note
+                    font.italic: true
+                    color: Style.medColor
+                    width: Math.min(implicitWidth, (_inputList.width - Style.dp(20)) * 0.45)
+                    elide: Text.ElideRight
+                }
                 onClicked: () => {
                     if (!editorLocked) {
                         pickRow(model.index)

@@ -281,7 +281,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 ### Sound (system level)
 - **S49** Sounds should play only while the profile runs; Stop should cut off playing sounds and drop queued ones. [user confirmed 2026-10-06; was code only] [test: test_bounded_waits.py::test_a_sound_is_not_waited_for_once_the_player_stops]
 - **S50** Sequential plays sounds one after another; Interrupt stops what plays and plays the new one; Overlap plays them together. [help: Play Sound] [Options description]
-- **S51** Changing the playback mode in Options should apply at once. [user confirmed 2026-10-06; was code only] (via `emitConfigChanged`)
+- **S51** Changing the playback mode in Options should apply from the next sound the player starts (sounds already queued behind a playing one keep waiting). [user confirmed 2026-10-06; was code only] (via `emitConfigChanged`) [changed 2026-10-07 to follow decision D-09-S51-NEXTSOUND, which wins over the earlier wording "at once"]
 - **S52** A sound file should be decoded on the playback thread, not the event thread, and freed when it ends. [tracker: APP6] [test-plan: PROGRAM-FIXES] [test: test_program_fixes.py::test_sounds_are_decoded_on_the_playback_thread, ::test_finished_sounds_are_let_go]
 - **S53** A missing file should play nothing and warn once; a damaged or unsupported file should be logged once and not stop other sounds. [tracker: ACT11] [test: test_play_sound_missing_file.py::test_pressing_with_a_missing_file_plays_nothing, ::test_pressing_with_an_unreadable_file_does_not_raise] [test: test_program_fixes.py::test_a_sound_that_cannot_be_decoded_is_logged_once]
 - **S54** Stopping right after starting should end the audio thread. [test: test_threads.py::test_the_audio_player_stopped_right_after_starting_ends]
@@ -351,7 +351,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 - **Q16 (look)** Action summary images are drawn in Python with fixed 9-11 px fonts and Universal colours, so they don't follow UI scale or the grey light theme. Fix with Style values, or leave? Recommendation: check one off-screen at 200 % and light mode first; fix if visibly off.
 - **Q17 (tray)** Tray and Minimize to tray: the old test-plan rows W-04..W-09 still say Close to tray, Activate/Deactivate, Quit. Retire those rows in favour of TRAY-ONE and the glossary words? Recommendation: yes.
 - **Q18 (OSC Options text)** "Listen for OSC packets while a profile is active" and "Must match Companion Target Port": glossary says Running, and Companion is one sender among many. Recommendation: "while the profile runs"; "the port your OSC sender sends to".
-- **Q19 (leftovers)** `gremlin/fsm.py` is used only by its own test. Remove both? Recommendation: yes, after the leftover list is agreed.
+- **Q19 (leftovers)** `gremlin/fsm.py` is used only by its own test. Remove both? Recommendation: yes, after the leftover list is agreed. [superseded 2026-10-07 by D-09-Q19-SUPERSEDED: fsm.py is used (double_tap, tempo, smart_toggle, hat_buttons, code_runner) and stays]
 - **Q20 (leftovers)** The leftover table in section 2 assigns files to pages 01, 05, 07, 08. Confirm or move them. Recommendation: accept, and let those pages' authors confirm.
 
 ## 10. Known gaps
@@ -428,6 +428,8 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | Q | Decision |
 |---|---|
 | All | As recommended in section 9 |
+| S51 | 2026-10-07 (D-09-S51-NEXTSOUND): a playback mode change applies from the next sound the player starts |
+| Q19 | 2026-10-07 (D-09-Q19-SUPERSEDED): fsm.py is used and stays |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

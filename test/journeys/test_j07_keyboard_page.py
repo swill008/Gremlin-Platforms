@@ -11,11 +11,10 @@ presses Run and then F: vJoy button 4 is held while F is held. Stop while
 F is held: Gremlin holds no vJoy device, and F sends nothing while
 stopped.
 
-Spec: 05 S72, S73, S74 with Q4, S78, S79; 06 S1, S4, S29, S33. Known gap:
-GL-164 (a key added with Add Key shows no binding to add an action to:
-Q4 says it should show one empty binding), marked xfail; the journey
-then adds the binding with the editor model's newActionSequence (the slot
-the removed "New Action Sequence" footer used) to go on.
+The action is given in the page's own pane (KeyboardPaneModel, a draft
+that OK writes, 05 Q5): a new key shows one empty binding there (Q4).
+
+Spec: 05 S72, S73, S74 with Q4, Q5, S78, S79; 06 S1, S4, S29, S33.
 """
 
 from __future__ import annotations
@@ -34,6 +33,7 @@ _F = 0x21  # scan code of F
 def story(j: Journey) -> None:
     import dill
     from gremlin.types import InputType
+    from gremlin.ui.binding_catalog import KeyboardPaneModel
     from gremlin.ui.util import InputListenerModel
 
     out = j.out
@@ -80,11 +80,16 @@ def story(j: Journey) -> None:
     keys = j.profile.inputs.get(dill.UUID_Keyboard, [])
     out["listed"] = [item.input_id for item in keys]
 
-    # The editor for F (what the page's InputConfiguration shows).
-    editor = j.backend.getInputItem(ident, state.currentInputIndex)
+    # The editor for F: the Keyboard page's pane, a draft that OK writes.
+    def pane() -> object:
+        for model in j.win.findChildren(KeyboardPaneModel):
+            if model.keyName == "F" and model.paneModel is not None:
+                return model
+        return None
+
+    kb = j.wait_until(pane, "the Keyboard page's pane on F")
+    editor = kb.paneModel
     out["bindings-shown"] = editor.rowCount()
-    if editor.rowCount() == 0:
-        editor.newActionSequence()
     binding = editor.data(editor.index(0, 0), 0x0100 + 1)
     root = binding.rootAction
     out["offered"] = "Map to vJoy" in root.compatibleActions
@@ -92,6 +97,7 @@ def story(j: Journey) -> None:
     vjoy_editor = root.getActions("children")[0]
     vjoy_editor.vjoyDeviceId = 1
     vjoy_editor.vjoyInputId = 4
+    out["ok"] = kb.commitPane() >= 0
 
     _path, _url = j.save_and_reopen("journey7")
     item = j.profile.get_input_item(
@@ -139,15 +145,13 @@ def test_add_key_lists_and_selects_the_pressed_key(run: dict) -> None:
     assert step(run, "listed") == [key]
 
 
-@pytest.mark.xfail(
-    strict=True, raises=AssertionError, reason="GL-164: a new key shows no binding"
-)
 def test_a_new_key_shows_one_empty_binding(run: dict) -> None:
     assert step(run, "bindings-shown") == 1
 
 
 def test_the_key_gets_an_action_that_is_saved(run: dict) -> None:
     assert step(run, "offered") is True
+    assert step(run, "ok") is True
     assert step(run, "reloaded") == [4]
 
 

@@ -914,8 +914,9 @@ Item {
             return
         var next = cur.slice(0, histAt + 1)
         next.push(s)
-        if (next.length > histCap)
-            next = next.slice(next.length - histCap)
+        // histCap is the steps back (S56): the start state is kept on top.
+        if (next.length > histCap + 1)
+            next = next.slice(next.length - histCap - 1)
         hist = next
         histAt = next.length - 1
         historyChanged()

@@ -214,7 +214,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 ### Restore
 
 - **S38** Restore Before and Restore After should ask first, then put that version back, and say what happened under the change. [help: History] [test-plan: HISTORY-C] [test: test_history_window.py::test_restore_before_puts_the_file_back]
-- **S39** A restore should itself be a new History entry. [glossary: Restore] [help: History] (see Q1: only true for module files and settings at once)
+- **S39** A restore of a module file or settings should itself be a new History entry at once; an input restore is recorded at the next Save Profile, and a whole-profile restore is not recorded. [glossary: Restore] [help: History] [changed 2026-10-07 to follow decision Q1, which wins over the earlier wording "A restore should itself be a new History entry"]
 - **S40** An input's actions should go back into the open profile as an unsaved change, only when the entry's profile is the one open; otherwise it says "Open <profile> first." [help: History] [test: test_history_restore.py::test_an_input_goes_back_into_the_open_profile] [test: test_history_restore.py::test_an_input_needs_its_profile_open]
 - **S41** An input restore that can't be read should change nothing (the input is not dropped first). [tracker: AU-02]
 - **S42** An input restore into a mode deleted since should be refused with its reason, nothing changed. [user confirmed 2026-10-06; was code only]
@@ -246,7 +246,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S62** Put this pack on should suggest the device with the pack's name; the text box is what is written to. [tracker: C17]
 - **S63** A stick pack can't go on a vJoy, nor a vJoy pack on a stick. [user confirmed 2026-10-06; was code only]
 - **S64** Before anything changes, a red Replace / Cancel warning should list the pieces, each mode's wire counts here and in the pack, outputs moved to another vJoy, controls the device doesn't have, missing Logical Device inputs (with a ticked "Create" box), driver problems, map pictures left unticked, the imported backup, and that the profile changes on disk only when saved. [help: Module files and Device Pack] [test-plan: G-PACKIMPORT] [test: test_device_pack_import.py::test_the_warning_says_what_is_replaced] [test: test_device_pack_window.py::test_the_warning_says_what_is_replaced]
-- **S65** Each ticked piece should replace what is on this machine. [help: Module files and Device Pack] (code merges checked controls instead: see Q3)
+- **S65** Each ticked piece should be added to what is on this machine: the pack's checked controls are added to the ones already checked, names are written one by one, and map chips replace only chips for the same controls. [help: Module files and Device Pack] [changed 2026-10-07 to follow decision Q3, which wins over the earlier wording "replace what is on this machine"]
 - **S66** Controls the target device doesn't have (when it is connected) should be left out of checks and wires, and said. [help: Module files and Device Pack] [test-plan: G-PACKIMPORT]
 - **S67** Friendly names should be written only for checked controls; a calibration curve that can't be used should not replace a good one. [tracker: AU-113] [user confirmed 2026-10-06; was code only for names]
 - **S68** Each ticked mode should replace the device's wires and actions in that mode; other modes and other devices stay, also after save and reload. [help: Module files and Device Pack] [tracker: G-PACKWIPE] [test: test_device_pack_import.py::test_a_ticked_mode_is_replaced_and_others_stay] [test: test_device_pack_import.py::test_other_devices_keep_their_actions] [test: test_device_pack_import.py::test_adding_actions_keeps_the_ones_already_there]
@@ -259,8 +259,8 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S75** Configuration Appearance, Output View Appearance and where the photo sits should come with the pack. [test-plan: G-PACKIMPORT] [test: test_device_pack_import.py::test_configuration_appearance_comes_with_the_pack] [test: test_device_pack_import.py::test_the_photo_keeps_its_placement]
 - **S76** When a module file or picture can't be written, what was written for it should be put back and nothing replaced, and the previous import stays undoable. [tracker: AU-93] [test: test_device_pack_import.py::test_a_picture_that_cannot_be_written_puts_everything_back] [test: test_device_pack_import.py::test_an_output_picture_that_cannot_be_written_is_reported]
 - **S77** An import that matches or writes nothing should keep the previous Undo Import. [tracker: AU-113] [test: test_device_pack_import.py::test_an_import_that_matches_nothing_keeps_the_last_undo] [test: test_audit3_saving.py::test_an_import_that_wrote_nothing_keeps_undo_import] [test: test_device_pack_window.py::test_a_failed_import_keeps_undo_import]
-- **S78** Import onto a damaged module file replaces it and keeps the old one in imported. [user confirmed 2026-10-06; was code only] (decision F1 pending; recommended: refuse)
-- **S79** A wire import that fails partway should undo everything it did. [user decision: A3 pending, recommended] (code leaves inputs, modes and Logical inputs: see gaps)
+- **S78** Import onto a damaged module file should be refused, pointing to Start Fresh, as every other save does. [user confirmed 2026-10-06; was code only] [changed 2026-10-07 to follow decisions Q2 and D-SYS-F1, which win over the earlier wording "replaces it and keeps the old one in imported"]
+- **S79** A wire import that fails partway should undo everything it did and say so. [user decision: A3 (Q20)] [changed 2026-10-07 to follow decisions Q20 and D-SYS-A3 (pending and gap notes removed)]
 
 ### Undo Import
 
@@ -288,9 +288,9 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S95** With Overwrite used inputs on, it should ask first, then remove every action on those inputs in that mode (macros included) and leave no unused actions behind. [tracker: A13] [test-plan: SAFE-1-HANDS-ON] [test: test_profile_unused_actions.py::test_auto_mapper_overwrite_leaves_nothing_behind]
 - **S96** The Overwrite choice should be remembered between openings. [test-plan: OPTIONS-TRIM]
 - **S97** The new actions should be in memory only; to undo, load the profile again without saving. [user confirmed 2026-10-06; was code only] (dialog text)
-- **S98** Wires of a stick that is not plugged in should not count as using a vJoy output. [test: test_auto_mapper.py::test_get_used_vjoy_inputs_for_disconnected_device_in_profile] (doubtful: Q7)
+- **S98** Every input in the profile, plugged in or not, and nested actions (inside Conditions, Chains, Tempo and the like) should count as using a vJoy output. [test: test_auto_mapper.py::test_get_used_vjoy_inputs_for_disconnected_device_in_profile] [changed 2026-10-07 to follow decision Q7, which wins over the earlier wording "should not count"]
 - **S99** Only vJoy outputs; the Keyboard, OSC and Xbox cards have no Auto Mapper. [help: Auto Mapper] [tracker: AU-68]
-- **S100** While the profile runs, a note should say changes take effect the next time it starts. [test-plan: WORKFLOW-4]
+- **S100** While the profile runs, the Auto Mapper, Device Pack and History windows should show a note that changes take effect the next time it starts. [test-plan: WORKFLOW-4] [changed 2026-10-07 to follow decision Q4 (Device Pack and History show the note too)]
 - **S101** The lists should follow sticks being plugged in or out, keeping ticks. [user confirmed 2026-10-06; was code only]
 - **S102** Esc should not close the Auto Mapper or Device Pack windows (a stick can send Esc). [test-plan: USABILITY-FIXES] [user confirmed 2026-10-06; was code only for Device Pack]
 - **S103** The result line should say what was made in glossary words (actions, not mappings or bindings). [glossary] [test-plan: GLOSSARY-2] (code doesn't: Q8)

@@ -40,6 +40,25 @@ def _vjoy_as_input_ids() -> set[int]:
         return set()
 
 
+def _read_back_vjoy_ids(as_input: set[int]) -> set[str]:
+    """Device ids of the connected vJoys read back as an input. They pass
+    whatever their output module file says (missing, or without its id)."""
+    if not as_input:
+        return set()
+    from gremlin import device_initialization
+
+    try:
+        devices = list(device_initialization.vjoy_devices() or [])
+    except Exception:
+        return set()
+    found = {
+        guid_key(getattr(dev, "device_guid", ""))
+        for dev in devices
+        if getattr(dev, "vjoy_id", -1) in as_input
+    }
+    return {key for key in found if key}
+
+
 def _connected_stick_ids() -> set[str]:
     from gremlin import device_initialization
 
@@ -86,6 +105,7 @@ class InputModuleRuntime(QtCore.QObject):
         passthrough = always_forwarded()
         as_input = _vjoy_as_input_ids()
         connected = _connected_stick_ids()
+        passthrough |= _read_back_vjoy_ids(as_input)
         for module in registry.modules():
             guid = guid_key(module.bound_guid)
             # A connected stick's module is the one registry.for_device finds

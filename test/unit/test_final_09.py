@@ -559,11 +559,6 @@ _FAMILY = re.compile(r"""family\s*[:=]\s*["']([^"']+)["']""")
 _DEFINES_FONTS = {"qml/Style.qml", "qml/BootstrapIcons.qml"}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINAL-09-1: qml/IconCheckBox.qml names the font family "
-    '"bootstrap-icons" itself instead of using Style.iconFont (09 S78)',
-)
 def test_s78_screens_name_no_font_family_themselves() -> None:
     found = {}
     for folder in ("qml", "theme", "action_plugins"):

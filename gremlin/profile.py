@@ -2142,7 +2142,7 @@ class ModeHierarchy:
         roots = [child.value for child in self._hierarchy.children]
         if len(roots) == 0:
             return "Default"
-        return min(roots)
+        return min(roots, key=str.casefold)
 
     def mode_names(self) -> list[str]:
         """Returns a list containing the names of all modes.

@@ -1350,6 +1350,7 @@ Item {
                     required property int indent
                     required property int sequenceIndex
                     required property bool simple
+                    required property string note
                     property var lv: ListView.view
                     readonly property bool isLeaf: rowKind === "leaf"
                     readonly property bool groupStart: rowKind === "group" || rowKind === "unmapped"
@@ -1503,8 +1504,9 @@ Item {
                                 Layout.preferredWidth: rowKind === "leaf" ? lv.childNameW : lv.nameW
                             }
                             Label {
-                                visible: lv.summaryOn || rowKind === "leaf"
-                                text: rowKind === "leaf" ? destLabel : (rowKind === "unmapped-header" ? summary : (rowKind === "unmapped" ? "No actions" : summary))
+                                // The input's Note shows with Show summary off too (05 S43).
+                                visible: lv.summaryOn || rowKind === "leaf" || note !== ""
+                                text: rowKind === "leaf" ? destLabel : (rowKind === "unmapped-header" ? summary : (rowKind === "unmapped" ? "No actions" : (lv.summaryOn ? summary : note)))
                                 color: lv.cMuted
                                 font.pixelSize: lv.sFont
                                 elide: Text.ElideRight

@@ -298,7 +298,7 @@ Every device has a module file that says which of its controls the program may u
 - S38. Tools › Output (Input) Module Setup with a card of the other kind focused should open the first device of the asked kind; an input module is never saved as an output. [tracker: AU-06]
 - S39. The Xbox card should have no Module Setup. [help: Home] [tracker: AU-49]
 - S40. Opening it for another device while it is open should close the first (asking about unsaved changes) and open a fresh one; the same device just comes to the front. [tracker: A1] [code: Main.qml:407-425]
-- S41. For an input module, pressing a control should claim it, light its row and scroll to it; an output module is ticked only. [help: Input modules] [tracker: AU-58] [test-plan: CFGM-02b]
+- S41. For an input module, pressing a control should claim it, light its row and scroll to it; in Output Module Setup, pressing the vJoy's controls ticks them and lights the row. [help: Input modules] [tracker: AU-58] [test-plan: CFGM-02b] [changed 2026-10-07 to follow decision D-03-S41-PRESSES, which wins over the earlier wording "an output module is ticked only"]
 - S42. A friendly name should be saved only for a claimed control. [user confirmed 2026-10-06; was code only: module_model.py:2259-2261]
 - S43. Undo / Redo should step back through ticks, presses that tick, and names, 100 steps, until another device is opened. [help: Input modules] [test: test_module_setup_undo::test_undo_and_redo_checks_and_names, test_steps_are_capped, test_another_device_starts_without_steps]
 - S44. Save Module should write the file the window opened (the device's bound file), record the device id, and bind that file to the device. [tracker: AU-04] [test: test_audit_devices::test_save_writes_to_the_bound_file]
@@ -334,7 +334,7 @@ Every device has a module file that says which of its controls the program may u
 
 ### H. Home cards: what a card shows
 - S70. Home should show one card per physical device, each vJoy device and the Xbox controller. [help: Home]
-- S71. Home should also show cards for Keyboard, OSC, and the Logical Device when it has a module file. [user confirmed 2026-10-06; was code only: module_model.py:1653-1695]
+- S71. Home should always show cards for Keyboard and OSC (not only with a module file or show-stubs on), and a card for the Logical Device when it has a module file. [user confirmed 2026-10-06; was code only: module_model.py:1653-1695] [changed 2026-10-07 to follow decision D-03-S71-ALWAYS]
 - S72. A device with no module file should show "No module" (when Options' show-stubs is on); after Delete Device a device still plugged in keeps a card without a module even with it off. [glossary: Internal words ("device without a module")] [tracker: UI12] [code: module_model.py:153-185]
 - S73. A card should show its photo (not in compact view), name, status · bus, claimed counts in words ("1 hat", "2 hats"), "Driven by: [...]" on output cards only, and "last: ...". [help: Home] [glossary: Driven by] [tracker: AU-57]
 - S74. The last line should show the latest input the input module passed (input cards) or the latest output sent (output cards, only while running), using the friendly name, with the hardware name on hover. [help: Home] [test: test_input_module_gate::test_status_last_hid_only_on_input_cards, test_dest_last_prefers_button_press_then_axis] [user confirmed 2026-10-06; was code only: friendly name and hover]
@@ -373,7 +373,7 @@ Every device has a module file that says which of its controls the program may u
 - S99. Calibration should be stored in the device's input module and applied before any action sees the axis. [help: Calibration]
 - S100. It should list connected sticks that have an input module (not Keyboard, OSC or outputs); with none it says "No connected input module." [code: calibration.py:54-90] [tracker: AU-58]
 - S101. Opened from a card, it should show that device; a device not connected yet is shown when it connects. [help: Calibration] [code: DialogCalibration.qml:69-95, 148-167]
-- S102. Calibrate Center and Calibrate Extrema should capture from the first value read, and only one runs at a time. [tracker: DEV13, N3]
+- S102. Calibrate Center and Calibrate Extrema should capture from the first value read, and only one capture runs at a time per axis (another axis can capture at the same time). [tracker: DEV13, N3] [changed 2026-10-07 to follow decision D-03-S102-PERAXIS]
 - S103. Saving should be refused when low is not below high, or the center is outside them, with the reason. [tracker: DEV13, AU-99] [test: test_audit2_keyboard_calibration::test_a_center_outside_the_range_is_refused_with_the_reason, test_a_curve_loading_would_drop_is_not_written]
 - S104. A hand-edited bad curve in a file should be ignored (the default is used). [tracker: AU-61] [test: test_audit_devices::test_calibration_with_low_above_high_is_not_used]
 - S105. Each axis should have its own Save; Save All writes every unsaved axis in one file write; an axis shows "Not saved" until saved, and back at the saved values it is not unsaved. [help: Calibration] [tracker: C15] [test: test_calibration_unsaved::test_back_at_the_saved_values_is_not_unsaved, test_a_changed_limit_is_unsaved]
@@ -512,6 +512,9 @@ All [code only] statements in section 8 confirmed; S36 now says "at once" (page 
 | Q16 | Key presses are ignored while a text box has focus (check off-screen first) |
 | Q17 | F2 keep card keys by device name; F3 Start Fresh gets a History entry; F4 twins always by id, logged when missing |
 | Q18 | Delete Device is left out of output (vJoy, Xbox) cards |
+| S41 | 2026-10-07 (D-03-S41-PRESSES): in Output Module Setup, presses still tick the control and light the row |
+| S71 | 2026-10-07 (D-03-S71-ALWAYS): Keyboard and OSC cards always show |
+| S102 | 2026-10-07 (D-03-S102-PERAXIS): one Calibration capture at a time per axis |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

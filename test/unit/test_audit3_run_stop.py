@@ -308,10 +308,13 @@ def stuck_key(
     let_go = threading.Event()
 
     def down(key: Key) -> None:
-        if key.name == "b":
+        # Lower case, as in keys: a key read back by scan code earlier in the
+        # process is cached under its Windows name ("B").
+        name = key.name.lower()
+        if name == "b":
             entered.set()
             let_go.wait(5.0)
-        keys.append((key.name, True))
+        keys.append((name, True))
 
     monkeypatch.setattr(macro, "send_key_down", down)
     yield entered, let_go

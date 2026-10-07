@@ -289,7 +289,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 ### E. Editing inside an action
 
 - **S42** Each action should have a label field; a blank label stays blank after save and reload. [test: test_action_xml_round_trip.py::test_blank_action_label_stays_blank]
-- **S43** The binding's free text is the **Note** (root action label); it shows on the input's row. [glossary: Note]
+- **S43** The binding's free text is the **Note** (root action label); it shows on the Configuration list's input row and on the Keyboard page's key row. [glossary: Note] [changed 2026-10-07 to follow decision D-05-S43-BOTHROWS]
 - **S44** Button actions that allow it should have press/release switches; both off shows "Off: never runs". [tracker: WORKFLOW-HANDS-ON] [user confirmed 2026-10-06; was code only for the save]
 - **S45** An action with a problem should show a warning or error icon with the reason on hover; an error means Save will leave it out and asks first ("Save without them"). [test-plan: SAFE-1] [test: test_action_warnings.py]
 - **S46** Changing "Treat as" should ask first when the binding has actions, and remove them on yes. [tracker: A8] [test: test_input_item_binding_model.py::test_behavior_switch_clears_children]
@@ -497,6 +497,7 @@ are replaced by Q5 and Q10 below. Every question answered as recommended:
 | Q18 | Remove the unused code listed in Q18 in one clean-up commit |
 | Q19 | Chain moves to gremlin.clock; the UI rate limit stays |
 | Q20 | Catalog Delete asks (as the code does); test-plan IC-06 marked superseded |
+| S43 | 2026-10-07 (D-05-S43-BOTHROWS): the Note shows on the Configuration list's input row and the Keyboard page's key row |
 
 The section 8 statements (with the replacements above) are now the
 definition of correct for this subsystem.

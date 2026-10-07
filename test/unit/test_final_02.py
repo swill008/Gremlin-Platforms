@@ -532,15 +532,11 @@ def test_s41_the_last_value_of_every_stick_input_is_kept(
     assert button.is_pressed is False
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "FINAL-02-1: the mode is stamped when the main thread handles the event "
-    "(EventHandler.process_event, GL-065), not when it arrives (02 S40, D-02-Q8)"
-))
-def test_s40_an_event_keeps_the_mode_current_when_it_arrives(
+def test_s40_an_event_runs_in_the_mode_current_when_it_is_handled(
     monkeypatch: pytest.MonkeyPatch, event_listener: event_handler.EventListener
 ) -> None:
-    """02 S40 / D-02-Q8: a press that arrives in mode Flight runs in Flight,
-    even when the mode changed before the main thread handles it."""
+    """02 S40 / D-02-S40-HANDLED: a press runs in the mode current when the
+    main thread handles it; the listener leaves the mode unset."""
     mm = mode_manager.ModeManager()
     monkeypatch.setattr(mm, "_mode_stack", [mode_manager.Mode("Flight", None)])
     button = input_cache.Joystick()[_STICK].button(6)
@@ -555,12 +551,13 @@ def test_s40_an_event_keeps_the_mode_current_when_it_arrives(
         event_listener._joystick_event_handler(_input(2, 6, 1))  # arrives
     finally:
         event_listener.joystick_event.disconnect(heard)
+    assert got[0].mode == event_handler.NO_MODE
     # Another event handled first changed the mode.
     monkeypatch.setattr(mm, "_mode_stack", [mode_manager.Mode("Landing", None)])
     handler = event_handler.EventHandler()
     monkeypatch.setattr(handler, "_matching_callbacks", lambda e: [])
     handler.process_event(got[0])
-    assert got[0].mode == "Flight"
+    assert got[0].mode == "Landing"
 
 
 # --- G. Mouse ----------------------------------------------------------------

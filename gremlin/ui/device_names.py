@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 
 from PySide6 import QtCore
 
@@ -115,6 +116,26 @@ def set_alias(key: str, value: str) -> None:
     if text:
         names[key] = text
     _save(names)
+
+
+def forget(gone: Callable[[str], bool]) -> bool:
+    """Drops the alias of every device gone(id) says is forgotten (no
+    module file, not plugged in: D-02-GL243-FORGET); keys that aren't device
+    ids ("keyboard", "xbox") stay. True when one was dropped."""
+    names = _load()
+    kept: dict[str, str] = {}
+    for key, value in names.items():
+        try:
+            uid = str(uuid.UUID(str(key).strip().strip("{}"))).upper()
+        except ValueError:
+            kept[key] = value
+            continue
+        if not gone(uid):
+            kept[key] = value
+    if len(kept) == len(names):
+        return False
+    _save(kept)
+    return True
 
 
 @ta.QmlElement

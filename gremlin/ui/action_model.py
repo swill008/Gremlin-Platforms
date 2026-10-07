@@ -5,10 +5,7 @@
 from __future__ import annotations
 
 import logging
-from typing import (
-    TYPE_CHECKING,
-    cast,
-)
+from typing import TYPE_CHECKING
 
 from PySide6 import QtCore
 
@@ -447,39 +444,3 @@ class ActionModel(QtCore.QObject):
         fset=_set_activate_on_release,
         notify=actionChanged,
     )
-
-
-class ActionPriorityListModel(QtCore.QAbstractListModel):
-    # TODO: Needs to be treated as a normal action property type and then
-    #       rendered in the UI
-
-    roles = {
-        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
-        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"visible"),
-    }
-
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(parent)
-        self._config = Configuration()
-        self._cfg_key = ["action", "general", "action-priorities"]
-
-    def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._config.value(*self._cfg_key))
-
-    def data(
-        self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
-    ) -> int:
-        if role not in self.roles:
-            raise GremlinError("Invalid role encountered")
-
-        data = self._config.value(*self._cfg_key)[index.row()]
-        match cast(str, self.roles.get(role, "")):
-            case "name":
-                return data[0]
-            case "visible":
-                return data[1]
-            case _:
-                raise GremlinError(f"Unknown role name {role}")
-
-    def roleNames(self) -> dict[int, QtCore.QByteArray]:
-        return ActionPriorityListModel.roles

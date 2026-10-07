@@ -175,6 +175,31 @@ def sequences_for_item(item) -> list[tuple[int, str, str]]:
     return out
 
 
+def binding_note(binding: object) -> str:
+    """The binding's Note (its root action's label), "" when none was given
+    (05 S43): a new binding's root keeps the plugin name, "Root"."""
+    root = getattr(binding, "root_action", None)
+    if root is None:
+        return ""
+    text = str(getattr(root, "action_label", "") or "").strip()
+    return "" if text == str(getattr(type(root), "name", "")) else text
+
+
+def item_note(item: object, indices: list[int] | None = None) -> str:
+    """The Notes of an input's bindings (only those in indices, when given),
+    for its row on the Configuration list and the Keyboard page (05 S43,
+    D-05-S43-BOTHROWS)."""
+    sequences = getattr(item, "action_sequences", None) or []
+    notes: list[str] = []
+    for index, seq in enumerate(sequences):
+        if indices is not None and index not in indices:
+            continue
+        note = binding_note(seq)
+        if note and note not in notes:
+            notes.append(note)
+    return ", ".join(notes)
+
+
 def sequence_is_simple(item, index: int) -> bool:
     """True when the sequence is empty or one plain map, with no container."""
     sequences = getattr(item, "action_sequences", None) or []
@@ -271,6 +296,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 10: QtCore.QByteArray(b"indent"),
         QtCore.Qt.ItemDataRole.UserRole + 11: QtCore.QByteArray(b"sequenceIndex"),
         QtCore.Qt.ItemDataRole.UserRole + 12: QtCore.QByteArray(b"simple"),
+        QtCore.Qt.ItemDataRole.UserRole + 13: QtCore.QByteArray(b"note"),
     }
 
     guidChanged = QtCore.Signal()
@@ -492,10 +518,15 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             if not shown:
                 continue
             summary, dests_text = assignment_summary(shown)
+            # The Note shows on the input's row (05 S43).
+            note = item_note(item, [index for index, _lab, _dest in shown])
+            if note:
+                summary = f"{note} · {summary}"
             self._rows.append(
                 {
                     "rowKind": "group",
                     "name": name,
+                    "note": note,
                     "summary": summary,
                     "typeLabel": "",
                     "destLabel": dests_text,
@@ -557,6 +588,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             return None
         row = self._rows[index.row()]
         key = bytes(self.roles.get(role, b"")).decode()
+        if key == "note":
+            return row.get("note", "")
         return row.get(key)
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:

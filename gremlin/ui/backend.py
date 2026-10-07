@@ -267,9 +267,9 @@ class Backend(QtCore.QObject):
         mm.mode_changed.connect(self._on_mode_changed)
         # One handler, in order: the open profile first, then its modes.
         self.profileChanged.connect(self._profile_change_handler)
-        event_handler.EventHandler().is_active.connect(
-            lambda: self.activityChanged.emit()
-        )
+        # Signal to signal: let go of when this Backend is deleted (a lambda
+        # would stay connected and fail on a deleted Backend).
+        event_handler.EventHandler().is_active.connect(self.activityChanged)
         event_handler.EventListener().device_change_event.connect(self._device_change)
         event_handler.EventListener().joystick_event.connect(self._highlight_input)
         signal.uiScaleChanged.connect(self.uiScaleChanged)

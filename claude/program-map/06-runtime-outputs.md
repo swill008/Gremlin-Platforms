@@ -200,7 +200,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S5. It should run in the mode shown on the toolbar; if that mode is not in the profile, it should use the profile's Startup Mode rule. [help: Modes] [help: Profile Settings] [user confirmed 2026-10-06; was code only for the fallback]
 - S6. It should save the running mode at Stop so "Last Active" can use it. [help: Profile Settings] [user confirmed 2026-10-06; was code only for "at Stop"]
 - S7. It should use the profile's own Macro Default Delay, or the Options value when the profile sets none. [tracker: B27] [test: test_profile_settings.py::test_macro_delay_follows_options_unless_set]
-- S8. It should set the vJoy Initial Values of axes when the profile starts, always, through the output module; moving a physical axis then overrides them (Q7). [help: Profile Settings] Today only when the axis reads exactly 0. [user confirmed 2026-10-06; was code only]
+- S8. It should set the vJoy Initial Values of axes when the profile starts, always, through the output module; moving a physical axis then overrides them (Q7). [help: Profile Settings] [user confirmed 2026-10-06; was code only] [changed 2026-10-07: "today" note removed, fixed in batch 1]
 - S9. It should re-send the current physical axis values at Run and at a mode change when those Options are on. [help: Options] [test: test_mode_refresh_and_add_key.py::test_runner_refreshes_axes_on_mode_change_only_while_listening]
 - S10. It should skip a script that fails to load (retrying it once at Run) and log why, and still run the rest. [user confirmed 2026-10-06; was code only]
 - S11. It should skip a broken user plugin instead of failing the Run. [tracker: AU-86] [test: test_audit_runtime.py::test_a_broken_user_plugin_is_skipped]
@@ -220,12 +220,12 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S23. It should stop mouse motion, and the next Run should not move the pointer at the old speed. [test: test_audit3_run_stop.py::test_mouse_motion_of_the_last_run_stops_with_it]
 - S24. It should send pending short-pulse releases before the drivers are released. [tracker: AU-99] [test: test_audit2_macros.py::test_a_pulse_release_waiting_at_stop_is_sent_first]
 - S25. It should end the Logical Device relative-axis loop. [test: test_audit3_run_stop.py::test_the_logical_device_relative_loop_ends_with_stop]
-- S26. It should end the vJoy relative-axis loop, also when Run is pressed again at once. [tracker: AU-117] — open gap.
+- S26. It should end the vJoy relative-axis loop, also when Run is pressed again at once. [tracker: AU-117] [changed 2026-10-07: open-gap note removed, fixed in batch 1]
 - S27. It should stop script timers, also a slow one, and the next Run should start its own timer loop. [tracker: AU-34] [test: test_audit_runtime.py::test_a_run_after_a_slow_stop_starts_its_own_loop] [test: test_audit_runtime.py::test_a_periodic_callback_with_no_interval_still_stops]
 - S28. It should stop sounds and speech and empty their queues. [user confirmed 2026-10-06; was code only]
 - S29. It should release every vJoy device and unplug every Xbox pad. [help: Xbox output module] [user confirmed 2026-10-06; was code only for vJoy]
-- S30. It should never fire a Tempo, Double Tap or Smart Toggle timer after Stop. [tracker: AU-116] — open gap.
-- S31. It should release keys a script pressed. [tracker: AU-117] [user decision: R4 pending] — open gap.
+- S30. It should never fire a Tempo, Double Tap or Smart Toggle timer after Stop. [tracker: AU-116] [changed 2026-10-07: open-gap note removed, fixed in batch 1]
+- S31. It should release keys a script pressed during a Run. [tracker: AU-117] [user decision: R4 (Q4)] [changed 2026-10-07: open-gap note removed, fixed in batch 1]
 - S32. It should finish within a bounded time even if a macro step or a driver call is stuck. [tracker: H5] [test: test_audit3_run_stop.py::test_a_step_stuck_in_a_driver_ends_the_other_macros] [test: test_bounded_waits.py::test_a_macro_stops_waiting_for_an_exclusive_one_when_stopped]
 
 ### Events while running
@@ -251,9 +251,9 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S50. It should give scripts a `vjoy` object that can use only claimed outputs. [help: Scripts] [test: test_vjoy_writers_use_firewall.py::test_scripts_get_the_firewalled_vjoy]
 - S51. It should never open a vJoy device for a viewer or a Home card; they show values only while the profile holds the device. [test-plan: P2d] [test: test_output_layer.py::test_unopened_device_gives_nothing]
 - S52. It should, when another program holds a vJoy device, show "vJoy N is in use by another program." once per Run, log once, retry every 3 s and carry on by itself when the device is free. [tracker: DEV6] [test: test_device_fixes.py::test_busy_vjoy_is_told_once_and_retried_every_few_seconds] [test: test_device_fixes.py::test_a_new_run_tells_again]
-- S53. It should pick up an output module saved while running at once, the same as an input module (Q12); today within about 1 s. [user confirmed 2026-10-06; was code only]
+- S53. It should pick up an output module saved while running at once, the same as an input module (Q12). [user confirmed 2026-10-06; was code only] [changed 2026-10-07: "today" note removed, fixed in batch 1]
 - S54. It should keep an idle vJoy device alive (re-send after 60 s of no writes) while held, and arm no new keep-alive after release. [user confirmed 2026-10-06; was code only] [test: test_batch3_C3a.py keep-alive tests]
-- S55. It should say "vJoy is not installed or not running" / "Install vJoy, then restart Gremlin-Platforms." wherever the vJoy driver is checked. [user confirmed 2026-10-06; was code only]
+- S55. It should say "vJoy is not installed or not running" / "Install vJoy, then restart the program." wherever the vJoy driver is checked. [user confirmed 2026-10-06; was code only] [changed 2026-10-07 to follow decision D-02-Q17 (glossary), which wins over the earlier wording "restart Gremlin-Platforms"]
 
 ### Xbox output
 - S56. It should pass every control of the Xbox 360 pad straight to ViGEm, with nothing to claim; an old claim in a file is ignored. [help: Xbox output module] [user decision: Xbox output has no claims] [test: test_xbox_output_module.py::test_every_control_reaches_the_pad] [test: test_xbox_output_module.py::test_an_old_xbox_claim_in_a_file_is_ignored] [test: test_xbox_output_module.py::test_no_xbox_code_reads_a_claim]
@@ -272,7 +272,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S67. It should run a Hold macro's first round even if released at once, then stop. [tracker: ACT17] [test: test_action_fixes.py::test_a_hold_macro_released_at_once_stops]
 - S68. It should do nothing for an empty macro. [tracker: ACT8] [test: test_crash_and_loss_fixes.py::test_an_empty_macro_does_nothing]
 - S69. It should end only the failing macro when a step fails, and a step stuck in a driver should end the macros waiting behind it after 2 s. [tracker: AU-17] [test: test_audit_runtime.py::test_a_failing_macro_step_blocks_nothing] [test: test_audit3_run_stop.py::test_a_step_stuck_in_a_driver_ends_the_other_macros]
-- S70. It should release a key held by a macro that ended early. [tracker: AU-117] — open gap.
+- S70. It should release a key held by a macro that ended early. [tracker: AU-117] [changed 2026-10-07: open-gap note removed, fixed in batch 1]
 - S71. It should, with Map to Keyboard, hold the keys while the input is held (modifiers first) and release them on release. [help: Map to Keyboard]
 - S72. It should, with Map to Mouse, click a button (wheel once per press) or move the pointer with the set speeds and direction. [help: Map to Mouse]
 
@@ -291,7 +291,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S82. It should lock editing while the profile runs. [help: Logical Device]
 - S83. It should keep up to 50 Undo steps, drop them when another profile loads or a mode is deleted, record no step for a change to nothing, and leave everything as it was when a step can't be played. [tracker: AU-11] [tracker: AU-33] [test: test_audit_editing.py::test_logical_steps_end_with_the_profile] [test: test_audit_editing.py::test_a_logical_change_to_nothing_is_no_step] [test: test_audit3_actions_undo.py::test_logical_undo_with_a_damaged_input_copy_changes_nothing]
 - S84. It should close the action editor with a notice when its mode is deleted, and OK should go to the pane's own mode. [tracker: AU-89] [test: test_audit2_modes.py::test_logical_ok_goes_to_the_panes_own_mode]
-- S85. It should start each Run with its values at neutral. [user decision: R1 pending] — open gap.
+- S85. It should start each Run with its values at neutral. [user decision: R1 (Q1)] [changed 2026-10-07: open-gap note removed, fixed in batch 1]
 
 ## 9. Questions for the user
 

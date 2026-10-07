@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import shutil
 import sys
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 from PySide6 import (
     QtCore,
@@ -31,6 +33,8 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 _IMAGE_EXT = store.PICTURE_EXT
 
+syslog = logging.getLogger("system")
+
 # The Button Map page every position is a fraction of, and the photo frame
 # in its middle (07 S68, Q14): the one place it is written. Save stamps it
 # into the map (VkbRigEditor's world page follows it).
@@ -44,6 +48,17 @@ _persist_log = False
 def persist_log(message: str) -> None:
     if _persist_log:
         print(message, flush=True)
+
+
+def _write_map(path: Path, change: Callable[[dict], object]) -> bool:
+    """store.update_path for the Button Map's slots: a failed write is False
+    (the window says "Not written"), logged once; the old file stays whole
+    (07 S20, S23)."""
+    try:
+        return store.update_path(path, change, "Button Map")
+    except OSError as exc:
+        syslog.warning(f"Button Map not written to {path}: {exc}")
+        return False
 
 
 def _photo_pose(raw) -> dict:
@@ -1754,7 +1769,7 @@ class HardwareProfile(QtCore.QObject):
             doc.clear()
             doc.update(packed)
 
-        if not store.update_path(path, change, "Button Map"):
+        if not _write_map(path, change):
             return False
         kept = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
         persist_log(
@@ -1784,7 +1799,7 @@ class HardwareProfile(QtCore.QObject):
         def change(doc: dict) -> None:
             doc["ui"] = incoming.get("ui", doc.get("ui") or {})
 
-        if not store.update_path(path, change, "Button Map"):
+        if not _write_map(path, change):
             return False
         persist_log(f"Persist map ui name={name!r} guid={self._device_guid!r} path={path}")
         self._after_save(path)

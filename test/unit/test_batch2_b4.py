@@ -589,12 +589,14 @@ def test_binding_edits_refuse_while_running(
     item = _bind(profile, "Default")
     model = InputItemModel(item, 0)
     try:
+        # The binding's own model, as the editor's Delete uses it.
+        binding = model.data(model.index(0, 0), QtCore.Qt.ItemDataRole.UserRole + 1)
         monkeypatch.setattr(binding_catalog, "editing_locked", lambda: True)
-        model.newActionSequence()
+        model.deleteActionSequnce(binding)
         assert len(item.action_sequences) == 1
         monkeypatch.setattr(binding_catalog, "editing_locked", lambda: False)
-        model.newActionSequence()
-        assert len(item.action_sequences) == 2
+        model.deleteActionSequnce(binding)
+        assert len(item.action_sequences) == 0
     finally:
         model.deleteLater()
 

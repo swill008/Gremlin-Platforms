@@ -13,7 +13,7 @@ Read first: `claude/todo.md` ("ONE-TIME CATCH-UP"), your spec page in `claude/pr
 
 ## Live output (user rule)
 Pipe every shell command through the log tool, from the repo root:
-`<command> 2>&1 | C:/Users/Stacie/AppData/Local/pypoetry/Cache/virtualenvs/joystickgremlin-4UY8FelE-py3.13/Scripts/python.exe tools/agent_log.py <your id>`
+`PYTHONUNBUFFERED=1 <command> 2>&1 | C:/Users/Stacie/AppData/Local/pypoetry/Cache/virtualenvs/joystickgremlin-4UY8FelE-py3.13/Scripts/python.exe tools/agent_log.py <your id>` (PYTHONUNBUFFERED=1 makes lines show up live; use pytest -v, not -q, so each test is its own line)
 
 ## Testing and safety
 - Python: C:/Users/Stacie/AppData/Local/pypoetry/Cache/virtualenvs/joystickgremlin-4UY8FelE-py3.13/Scripts/python.exe

@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import time
 from typing import (
     TYPE_CHECKING,
     override,
@@ -14,6 +13,7 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import (
+    clock,
     event_handler,
     util,
 )
@@ -67,14 +67,15 @@ class ChainFunctor(AbstractFunctor["ChainData"]):
             # too, a step held past it was reset to step 0 before its release
             # was sent, and stayed down.
             if self.data.timeout > 0.0:
-                if self.last_execution + self.data.timeout < time.time():
+                now = clock.monotonic()
+                if self.last_execution + self.data.timeout < now:
                     self.current_index = 0
-                self.last_execution = time.time()
+                self.last_execution = now
             self.current_index %= count
             index = self._pressed_index = self.current_index
         else:
             if self.data.timeout > 0.0:
-                self.last_execution = time.time()
+                self.last_execution = clock.monotonic()
             index = pressed if pressed is not None else self.current_index % count
 
         for functor in self.functors.get(str(index), []):

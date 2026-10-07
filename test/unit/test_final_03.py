@@ -555,12 +555,6 @@ def test_s122_vjoy_viewer_lists_wired_devices_and_marks_unclaimed_outputs(
 
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINAL-03-1: a vJoy read back as an input passes only when its output "
-    "module file records the vJoy's device id (runtime.reload skips modules "
-    "with no bound id and a vJoy is not in physical_devices)",
-)
 @pytest.mark.parametrize("case", ["no output module file", "file without its id"])
 def test_s16_a_vjoy_read_back_passes_whatever_its_output_module_file(
     modules: Path, gate: InputModuleRuntime, monkeypatch: pytest.MonkeyPatch, case: str

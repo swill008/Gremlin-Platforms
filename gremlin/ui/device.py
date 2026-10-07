@@ -608,6 +608,7 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
         ),
         QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"description"),
         QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"inMode"),
+        QtCore.Qt.ItemDataRole.UserRole + 7: QtCore.QByteArray(b"note"),
     }
 
     def __init__(self, parent: ta.OQO = None) -> None:
@@ -763,6 +764,11 @@ class KeyboardManagerModel(QtCore.QAbstractListModel):
                 )
             case "description":
                 return _description_from_item(input_item) if input_item else ""
+            case "note":
+                # The key's Note shows on its row (05 S43).
+                from gremlin.ui.binding_catalog import item_note
+
+                return item_note(input_item) if input_item else ""
             case "inMode":
                 # Delete only where it does something: this mode's actions,
                 # or a key with no actions in any mode (Delete removes it).

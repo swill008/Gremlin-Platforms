@@ -384,11 +384,6 @@ def test_s41_modes_are_listed_in_name_order(profile: Profile) -> None:
     assert _listed(model) == ["Default", "Echo", "Mike", "Zulu"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINAL-04-1: the mode list sorts capitals first ('Bravo' before "
-    "'alpha'), not alphabetically (ModeListModel._reset uses sorted())",
-)
 def test_s41_modes_are_listed_alphabetically_whatever_the_capitals(
     profile: Profile,
 ) -> None:
@@ -403,12 +398,6 @@ def test_s41_modes_are_listed_alphabetically_whatever_the_capitals(
     assert _listed(model) == ["alpha", "bravo", "Charlie", "Default"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINAL-04-2: Use Heuristic picks the first parentless mode with "
-    "capitals first ('Default' before 'alpha'), not alphabetically "
-    "(ModeHierarchy.first_mode uses min())",
-)
 def test_s52_use_heuristic_is_alphabetical_whatever_the_capitals(
     profile: Profile,
 ) -> None:

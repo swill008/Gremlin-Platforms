@@ -1,3 +1,5 @@
+**All fixed in the final-phase fix round (see the commit after 5980fde5); questions answered 2026-10-07 (claude/decisions.md).**
+
 # Final phase: bugs found and questions (collected by the lead)
 
 ## Bugs to fix (strict xfails in test/unit/test_final_*.py)

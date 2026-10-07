@@ -101,8 +101,8 @@ integration tests skip while it is open (run them at the end with it
 closed); full runs load the PC for ~3 min each.
 
 **Live agent output (user, 2026-10-07):** every agent pipes every shell
-command through `tools/agent_log.py <AGENT>` (`<command> 2>&1 | python
-tools/agent_log.py B1`); output goes to `.agent-logs/<AGENT>.log` and,
+command through `tools/agent_log.py <AGENT>` (`PYTHONUNBUFFERED=1 <command>
+2>&1 | python tools/agent_log.py B1`, pytest -v so each test is a line); output goes to `.agent-logs/<AGENT>.log` and,
 prefixed, to `.agent-logs/all.log` (not in git). When agents start, open one
 Terminal tab per agent with `Get-Content .agent-logs\<AGENT>.log -Wait -Tail 50`
 plus one for `all.log`. Put the pipe rule in every agent's rules/prompt. If

@@ -58,8 +58,21 @@ def _resolve_path(script_path: Path) -> Path:
     return util.scripts_dir() / script_path
 
 
+def _saved_path(script_path: Path) -> Path:
+    """script_path as the profile saves it: relative to the scripts folder
+    when inside it (D-04-S86-RELATIVE), else the full path."""
+    try:
+        return script_path.relative_to(util.scripts_dir())
+    except ValueError:
+        return script_path
+
+
 def _current_script_id() -> uuid.UUID | None:
     """Returns the id of the Script currently executing, if any."""
+    # A callback its top-level code registered, added after that code ran.
+    identifier = getattr(_top_level, "script_id", None)
+    if identifier is not None:
+        return identifier
     for frame in inspect.stack():
         identifier = frame.frame.f_locals.get("_script_id", None)
         if isinstance(identifier, uuid.UUID):
@@ -473,8 +486,23 @@ def describe_load_error(error_: BaseException, path: Path) -> str:
 
 
 # Seconds a script's top-level code may take when the script is loaded or
-# added (D-04-Q13-TIMELIMIT). Longer, and the script is marked as failed.
+# added (D-04-Q13-TIMELIMIT), and when Run reloads it (D-04-Q13-RUNLIMIT).
+# Longer, and the script is marked as failed.
 TOP_LEVEL_TIME_LIMIT = 5.0
+
+# Set on a thread running a script's top-level code: the callbacks its
+# decorators register, added only once the code finished in time.
+_top_level = threading.local()
+
+
+def _register(add: Callable[[], None]) -> None:
+    """Registers a decorated callback now, or once the top-level code
+    running on this thread has finished in time (never, when it hasn't)."""
+    pending = getattr(_top_level, "pending", None)
+    if pending is None:
+        add()
+    else:
+        pending.append((_current_script_id(), add))
 
 
 def _run_top_level(
@@ -483,11 +511,14 @@ def _run_top_level(
     """Runs a script's top-level code on its own thread and waits for it at
     most TOP_LEVEL_TIME_LIMIT seconds, so a script that loops or waits can't
     freeze the program. Raises what the code raised, or a GremlinError when
-    it didn't finish in time (that thread ends whenever the code does)."""
+    it didn't finish in time (that thread ends whenever the code does, and
+    the callbacks it registers are dropped)."""
     done = threading.Event()
     raised: list[BaseException] = []
+    pending: list[tuple[uuid.UUID | None, Callable[[], None]]] = []
 
     def run() -> None:
+        _top_level.pending = pending
         try:
             spec.loader.exec_module(module)
         except BaseException as e:
@@ -503,6 +534,12 @@ def _run_top_level(
         )
     if raised:
         raise raised[0]
+    for script_id, add in pending:
+        _top_level.script_id = script_id
+        try:
+            add()
+        finally:
+            _top_level.script_id = None
 
 
 def _without_layout(node: ElementTree.Element) -> ElementTree.Element:
@@ -668,7 +705,7 @@ class Script:
         node = util.create_node_from_data(
             "script",
             [
-                ("path", self.path, PropertyType.Path),
+                ("path", _saved_path(self.path), PropertyType.Path),
                 ("name", str(self.name), PropertyType.String),
             ],
         )
@@ -709,7 +746,8 @@ class Script:
         Script.variable_registry.register_script(self)
         self.module._script_id = self.id
         try:
-            self.spec.loader.exec_module(self.module)
+            # Under the same time limit as loading (D-04-Q13-RUNLIMIT).
+            _run_top_level(self.spec, self.module, self.name or self.path.name)
         except Exception as e:
             nodes = (v.to_xml() for v in self.variables.values())
             self._saved_variables = [n for n in nodes if n is not None]
@@ -1426,7 +1464,7 @@ def keyboard(key: str | gremlin.keyboard.Key, mode: str) -> Callable:
             else gremlin.keyboard.key_from_name(key)
         )
         event = event_handler.Event.from_key(resolved_key)
-        callback_registry.add(wrapper_fn, event, mode)
+        _register(lambda: callback_registry.add(wrapper_fn, event, mode))
 
         return wrapper_fn
 
@@ -1446,7 +1484,7 @@ def periodic(interval: float) -> Callable:
         def wrapper_fn(*args: Any, **kwargs: dict) -> None:  # noqa: ANN401
             callback(*args, **kwargs)
 
-        periodic_registry.add(wrapper_fn, interval)
+        _register(lambda: periodic_registry.add(wrapper_fn, interval))
 
         return wrapper_fn
 
@@ -1480,7 +1518,7 @@ def _input_callback(
             device_guid=device_guid,
             mode=mode,
         )
-        callback_registry.add(wrapper_fn, event, mode)
+        _register(lambda: callback_registry.add(wrapper_fn, event, mode))
 
         return wrapper_fn
 

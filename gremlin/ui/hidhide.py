@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui
@@ -279,6 +280,47 @@ def _save_links(rows: dict[str, str]) -> None:
         )
     except Exception as exc:
         _settings_write_failed(exc)
+
+
+def _drop_instances(rows: dict[str, str], instances: set[str]) -> bool:
+    gone = [key for key in rows if key.upper() in instances]
+    for key in gone:
+        rows.pop(key)
+    return bool(gone)
+
+
+def forget_devices(label_gone: Callable[[str], bool]) -> None:
+    """At a device scan: forgets the photo and link of every HidHide entry
+    whose linked device label_gone(name) says is forgotten (no module file,
+    not plugged in: D-02-GL243-FORGET). Only the program's own settings;
+    the HidHide driver is not touched."""
+    links = _load_links()
+    instances = {key.upper() for key, label in links.items() if label_gone(label)}
+    if not instances:
+        return
+    _hh_log(f"forgot photo and link of {sorted(instances)}")
+    photos = _load_photos()
+    _drop_instances(links, instances)
+    _save_links(links)
+    if _drop_instances(photos, instances):
+        _save_photos(photos)
+
+
+def _forget_unlisted_photos(rows: list[dict]) -> None:
+    """A photo of a device that isn't in the full HID list and has no link
+    to a device (so no module file) is forgotten (D-02-GL243-FORGET)."""
+    present = {
+        str(i).upper()
+        for row in rows
+        for i in (row.get("instanceIds") or [row.get("instanceId")])
+        if i
+    }
+    linked = {key.upper() for key in _load_links()}
+    photos = _load_photos()
+    gone = {key.upper() for key in photos} - present - linked
+    if gone and _drop_instances(photos, gone):
+        _hh_log(f"forgot photo of {sorted(gone)}")
+        _save_photos(photos)
 
 
 def _saved_block_list() -> bool | None:
@@ -624,6 +666,9 @@ class HidHideModel(QtCore.QObject):
         except Exception:
             logging.getLogger("system").exception("HidHide device list failed")
             rows = []
+        # Only from the full list: Gaming only leaves plugged-in devices out.
+        if rows and not self._gaming_only:
+            _forget_unlisted_photos(rows)
         built = []
         for row in _enrich_devices(rows):
             item = dict(row)

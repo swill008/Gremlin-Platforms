@@ -7,7 +7,7 @@ import Gremlin.Style
 
 CheckBox {
     font {
-        family: "bootstrap-icons"
+        family: Style.iconFont
         pixelSize: Style.dp(20)
         weight: 800
     }

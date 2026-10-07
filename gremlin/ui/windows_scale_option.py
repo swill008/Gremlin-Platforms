@@ -18,7 +18,7 @@ SECTION = "ui"
 GROUP = "general"
 NAME = "disable-windows-scaling"
 DESCRIPTION = (
-    "Disable Windows display scaling and use the UI scale slider instead. "
+    "Ignore Windows display scaling and use the UI scale slider instead. "
     "Takes effect on the next start."
 )
 

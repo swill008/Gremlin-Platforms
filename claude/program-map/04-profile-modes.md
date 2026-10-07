@@ -134,7 +134,7 @@ Who else changes profile data (not single-owner)
 - Settings writes (`Configuration.set`) are deferred about 1 s by `deferred_write`.
 - `Main.qml:35` Timer, 1.5 s, while the window is active: calls `profileContainsUnsavedChanges`, which rebuilds the whole profile XML on the main thread.
 - Process monitor thread (owned by the process-monitor code) emits `process_changed`; the handler runs on the main thread.
-- Loading a profile and adding a script run the script's top-level Python code on the main thread (`user_script.py:454-456`, `:683`), with no time limit.
+- Loading a profile and adding a script run the script's top-level Python code on the main thread (`user_script.py:454-456`, `:683`), with no time limit. [out of date: since batch 2 (GL-040, D-04-Q13-TIMELIMIT) it runs on a worker thread with a time limit]
 
 ## 7. Rule breaks
 
@@ -210,7 +210,7 @@ Who else changes profile data (not single-owner)
 
 - S39. It should have at least one mode; the last mode can't be deleted (Delete is disabled). [tracker: AU-19] [test: test_audit_profile.py::test_the_last_mode_stays]
 - S40. It should refuse a blank mode name and any name that matches another ignoring capitals and spacing; a mode may change the capitals of its own name. [test-plan: MM-01b] [tracker: B14] [test: test_mode_hierarchy_model.py::test_mode_names_refuse_blank_and_look_alikes]
-- S41. It should list modes alphabetically. [test-plan: MM-01]
+- S41. It should list modes alphabetically, ignoring capitals (alpha, Bravo, Default). [test-plan: MM-01] [changed 2026-10-07 to follow decision D-04-ALPHA-CASEFOLD]
 - S42. It should let a mode inherit from any mode that is not itself or below it; "(none)" makes it top-level. [help: Modes] [user confirmed 2026-10-06; was code only for the allowed list]
 - S43. It should use a parent's actions for every input the child mode leaves empty, through any number of levels. [help: Modes] [glossary: Mode]
 - S44. It should, on rename, move everything that names the mode: inputs, Change Mode targets (also a running Cycle), script mode settings (also of scripts that failed to load), Startup Mode, the stored last mode, the running mode stack and lookup, the toolbar, Configuration and Logical Device panes and Undo steps, the Button Map labels mode. [test-plan: AUDIT-A-PROFILE, AUDIT2-C-MODES, AUDIT3-TRACE] [tracker: AU-20, AU-82, AU-88, AU-112] [test: test_audit2_modes.py] [test: test_audit3_modes.py]
@@ -224,7 +224,7 @@ Who else changes profile data (not single-owner)
 ### Modes at run time
 
 - S51. It should have one Mode on the toolbar: the mode you edit is the mode that runs; while running it shows the running mode. [help: Modes] [help: Run and status] [glossary: D10]
-- S52. It should, when a profile is loaded (Load, New, auto-load, start-up), put the toolbar in the Startup Mode: a named mode as itself; Last Active as the mode it last ran in, if that mode still exists; Use Heuristic (and any fallback) as the alphabetically first mode without a parent. [help: Profile Settings] [test-plan: HELP-BUG] [test: test_modes.py::test_heuristic_is_first_parentless_mode] [test: test_modes.py::test_last_active_deleted_mode_falls_back]
+- S52. It should, when a profile is loaded (Load, New, auto-load, start-up), put the toolbar in the Startup Mode: a named mode as itself; Last Active as the mode it last ran in, if that mode still exists; Use Heuristic (and any fallback) as the alphabetically first mode without a parent, ignoring capitals. [help: Profile Settings] [test-plan: HELP-BUG] [test: test_modes.py::test_heuristic_is_first_parentless_mode] [test: test_modes.py::test_last_active_deleted_mode_falls_back] [changed 2026-10-07 to follow decision D-04-ALPHA-CASEFOLD]
 - S53. It should start Run in the mode shown on the toolbar (not the Startup Mode). [help: Profile Settings] [test-plan: HELP-BUG]
 - S54. It should let the toolbar Mode box switch the running mode while running. [user confirmed 2026-10-06; was code only]
 - S55. It should keep the last mode per profile in memory while running and save it on Stop, quit, or at most hourly. [test-plan: WRITE-LESS] [test: test_write_less.py]
@@ -270,7 +270,7 @@ Who else changes profile data (not single-owner)
 
 - S84. It should add a .py file from the scripts folder as a script instance named "Instance N"; one file may be added more than once under different names. [help: Scripts] [user confirmed 2026-10-06; was code only for naming]
 - S85. It should let a script be renamed (unique per file), configured (its variables), and removed after asking. [help: Scripts] [tracker: C14]
-- S86. It should save scripts and their variable values with the profile; a script path inside the scripts folder may be saved relative. [help: Scripts] [test-plan: INTEG-SCRIPTS]
+- S86. It should save scripts and their variable values with the profile; a script inside the scripts folder is saved with a path relative to that folder; others keep the full path. [help: Scripts] [test-plan: INTEG-SCRIPTS] [changed 2026-10-07 to follow decision D-04-S86-RELATIVE, which wins over the earlier wording "may be saved relative"]
 - S87. It should run only scripts whose required variables are set, reload each script fresh at every Run, and retry a script that failed to load. [test-plan: SCRIPTS-THAT-CANT-LOAD] [user confirmed 2026-10-06; was code only for "required set"]
 - S88. It should keep the saved settings of a script that can't load and write them back unchanged on save. [test: test_user_script_load_errors.py::test_syntax_error_keeps_the_script_and_its_settings]
 - S89. It should give scripts `joy`, `keyboard` and `vjoy` only through the input and output modules: a script's vJoy can use only claimed outputs; unclaimed inputs read neutral. [help: Scripts] [test-plan: P2b, P3c]
@@ -296,7 +296,7 @@ Who else changes profile data (not single-owner)
 - Q10. A Startup Mode in the file that is neither a mode nor Use Heuristic / Last Active (damaged or hand-edited) makes the Startup Mode box fail (`ui/profile.py:1092`, `list.index` raises). Recommend: treat it as Use Heuristic on load.
 - Q11. vJoy Initial Values: help says "set when the profile starts"; code writes a value only when it isn't 0 and the vJoy axis reads exactly 0 at that moment (`code_runner.py:477`). Recommend: always set them at Run.
 - Q12. The vJoy Behavior switch (input/output) acts like a device being plugged in: with Device change behavior Disable it stops a running profile, with Reload it restarts it. Recommend: switching it while running should say "takes effect at the next Run" and not touch the run.
-- Q13. A script's top-level code runs when the profile loads and when it is added, on the main thread; a slow or endless script freezes the program. Recommend: read the variables without running the whole script at load, or run it under a time limit (needs a design).
+- Q13. A script's top-level code runs when the profile loads and when it is added, on the main thread; a slow or endless script freezes the program. Recommend: read the variables without running the whole script at load, or run it under a time limit (needs a design). [decided 2026-10-07: D-04-Q13-TIMELIMIT (top-level code runs on a worker thread with a time limit of about 5 s; a script that doesn't finish is marked failed with a message) and D-04-Q13-RUNLIMIT (the same limit applies when Run reloads scripts; the rest runs)]
 - Q14. The profile has no recovery copy: a crash loses every unsaved edit (the Button Map has Autosave). Recommend: ask whether profiles should get the same recovery copy.
 - Q15. A missing Recent file shows an error and stays in Recent; only the start-up path offers Forget It. Recommend: offer Forget It there too.
 - Q16. `--profile` with a missing file says "The last profile used was opened instead." even when there is no last profile. Recommend: say "A new profile is open" in that case.
@@ -377,6 +377,9 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | Q | Decision |
 |---|---|
 | All | As recommended in section 9 |
+| Q13 | 2026-10-07: D-04-Q13-TIMELIMIT and D-04-Q13-RUNLIMIT (time limit at load, add and Run) |
+| S41, S52 | 2026-10-07: D-04-ALPHA-CASEFOLD (alphabetical ignores capitals) |
+| S86 | 2026-10-07: D-04-S86-RELATIVE |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

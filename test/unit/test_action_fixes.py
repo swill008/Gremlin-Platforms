@@ -109,7 +109,7 @@ def test_chain_held_past_the_timeout_releases_the_pressed_step() -> None:
     functor.last_execution = 0.0
     functor._pressed_index = None
     now = [100.0]
-    with mock.patch.object(chain.time, "time", lambda: now[0]):
+    with mock.patch.object(chain.clock, "monotonic", lambda: now[0]):
         functor(None, SimpleNamespace(current=True), [])
         functor(None, SimpleNamespace(current=False), [])  # step 0 done
         now[0] += 0.5

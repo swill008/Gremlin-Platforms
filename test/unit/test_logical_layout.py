@@ -168,6 +168,7 @@ def test_ok_on_one_sequence_keeps_the_pane_on_that_sequence(qapp) -> None:
     from gremlin.ui.logical_layout import LogicalLayoutModel
 
     profile = Profile()
+    old = shared_state.current_profile
     shared_state.current_profile = profile
     try:
         logical = LogicalDevice()
@@ -192,7 +193,7 @@ def test_ok_on_one_sequence_keeps_the_pane_on_that_sequence(qapp) -> None:
         assert model._pane_whole is False
         model.deleteLater()
     finally:
-        shared_state.current_profile = None
+        shared_state.current_profile = old
 
 
 def test_group_as_moves_every_selected_row(qapp) -> None:
@@ -200,6 +201,7 @@ def test_group_as_moves_every_selected_row(qapp) -> None:
     from gremlin.ui.logical_layout import LogicalLayoutModel
 
     profile = Profile()
+    old = shared_state.current_profile
     shared_state.current_profile = profile
     try:
         logical = LogicalDevice()
@@ -213,7 +215,7 @@ def test_group_as_moves_every_selected_row(qapp) -> None:
         assert logical.group_names() == ["Stick"]
         model.deleteLater()
     finally:
-        shared_state.current_profile = None
+        shared_state.current_profile = old
 
 
 def test_drag_places_a_button_before_after_and_into_a_group(qapp) -> None:
@@ -221,6 +223,7 @@ def test_drag_places_a_button_before_after_and_into_a_group(qapp) -> None:
     from gremlin.ui.logical_layout import LogicalLayoutModel
 
     profile = Profile()
+    old = shared_state.current_profile
     shared_state.current_profile = profile
     try:
         logical = LogicalDevice()
@@ -239,7 +242,7 @@ def test_drag_places_a_button_before_after_and_into_a_group(qapp) -> None:
         assert order == [2, 3, 1]
         model.deleteLater()
     finally:
-        shared_state.current_profile = None
+        shared_state.current_profile = old
 
 
 def test_hide_system_name_shows_only_the_typed_name() -> None:
@@ -283,6 +286,7 @@ def test_add_action_then_cancel_writes_nothing(qapp) -> None:
     from gremlin.ui.logical_layout import LogicalLayoutModel
 
     profile = Profile()
+    old = shared_state.current_profile
     shared_state.current_profile = profile
     try:
         _logical, real = _button_one(profile)
@@ -296,7 +300,7 @@ def test_add_action_then_cancel_writes_nothing(qapp) -> None:
         assert item is None or item.action_sequences == []
         model.deleteLater()
     finally:
-        shared_state.current_profile = None
+        shared_state.current_profile = old
 
 
 def test_new_action_is_appended_on_ok_and_undoable(qapp) -> None:
@@ -304,6 +308,7 @@ def test_new_action_is_appended_on_ok_and_undoable(qapp) -> None:
     from gremlin.ui.logical_layout import LogicalLayoutModel
 
     profile = Profile()
+    old = shared_state.current_profile
     shared_state.current_profile = profile
     try:
         _logical, real = _button_one(profile)
@@ -341,7 +346,7 @@ def test_new_action_is_appended_on_ok_and_undoable(qapp) -> None:
         assert len(real().action_sequences) == 2
         model.deleteLater()
     finally:
-        shared_state.current_profile = None
+        shared_state.current_profile = old
 
 
 def _roots(item: object) -> list:
@@ -354,6 +359,7 @@ def test_delete_one_action_and_undo_puts_it_back(qapp) -> None:
     from gremlin.ui.logical_layout import LogicalLayoutModel
 
     profile = Profile()
+    old = shared_state.current_profile
     shared_state.current_profile = profile
     try:
         _logical, real = _button_one(profile)
@@ -375,7 +381,7 @@ def test_delete_one_action_and_undo_puts_it_back(qapp) -> None:
         assert not model.deleteAction("parent:button:1", 5)
         model.deleteLater()
     finally:
-        shared_state.current_profile = None
+        shared_state.current_profile = old
 
 
 def test_typed_group_name_joins_the_existing_group() -> None:
@@ -408,6 +414,7 @@ def test_delete_removes_every_selected_row_in_one_undo_step(qapp) -> None:
     from gremlin.ui.logical_layout import LogicalLayoutModel
 
     profile = Profile()
+    old = shared_state.current_profile
     shared_state.current_profile = profile
     try:
         logical = LogicalDevice()
@@ -422,4 +429,4 @@ def test_delete_removes_every_selected_row_in_one_undo_step(qapp) -> None:
         assert left == [1, 2, 3]
         model.deleteLater()
     finally:
-        shared_state.current_profile = None
+        shared_state.current_profile = old

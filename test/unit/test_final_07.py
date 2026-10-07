@@ -226,9 +226,6 @@ def test_undo_and_redo_only_while_editing_80_by_default(seen: dict) -> None:
     assert steps["cap"] == 3 and steps["cap-back"] == 80  # type: ignore[index]
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "FINAL-07-1: Undo steps 3 goes back only 2 steps; histCap counts kept "
-    "states (the start is one), not steps back (S56)"))
 def test_undo_goes_back_as_many_steps_as_the_option(seen: dict) -> None:
     # S56: six changes with Undo steps 3: three steps back.
     assert _part(seen, "undo-steps")["undos"] == 3  # type: ignore[index]

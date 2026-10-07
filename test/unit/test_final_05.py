@@ -225,11 +225,6 @@ def test_s15_inputs_with_no_actions_go_together_under_no_actions(
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINAL-05-1: the Note (root action label) is shown on no row: "
-    "the Configuration rows carry no root label (05 S43)",
-)
 def test_s43_the_note_shows_on_the_inputs_row(catalog: tuple[Any, Profile]) -> None:
     model, profile = catalog
     _map(profile, 1, 1)
@@ -557,11 +552,6 @@ def test_s103_map_to_xbox_without_vigem_warns_and_stays_in_the_profile(
     assert "map-to-xbox" in path.read_text(encoding="utf-8")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINAL-05-2: Chain still times out on time.time(), not gremlin.clock "
-    "(05 Q19, D-05-Q19; GL-265 marked done)",
-)
 def test_q19_chain_times_out_on_the_program_clock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -618,11 +608,6 @@ def test_q16_map_to_xbox_takes_its_types_from_the_output_module() -> None:
     assert plugin.XboxTarget is output.XboxTarget
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="FINAL-05-3: unused InputItemModel.newActionSequence and "
-    "ActionPriorityListModel are still there (05 Q18; GL-261 rest, carried)",
-)
 def test_q18_the_unused_editor_code_is_gone() -> None:
     from gremlin.ui import action_model
     from gremlin.ui.profile import InputItemModel

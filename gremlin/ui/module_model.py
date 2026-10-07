@@ -1726,9 +1726,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 hidden_names[slug] = name
                 return
             saved = module_exists(name, guid)
-            shown = _show_unconfigured(slug, saved, show_stubs, kept, released)
-            if not shown and direction == "source":
-                return
+            # Keyboard and OSC always have a card, with or without a module
+            # file (D-03-S71-ALWAYS); this only releases a kept card.
+            _show_unconfigured(slug, saved, show_stubs, kept, released)
             row = ModuleRow()
             row.slug = slug
             row.name = name

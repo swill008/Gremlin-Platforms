@@ -19,7 +19,7 @@ Python
 - `gremlin/watchdog.py` (117): Log When Not Responding (main-loop tick every 250 ms, a watch thread, 5 s limit).
 - `gremlin/updater.py` (165): release parsing, version compare, install kind, SHA-256 check, setup arguments, feed URL rules.
 - `gremlin/ui/update_model.py` (449): `UpdateModel` (`updater` in QML): check, download, verify, install on exit, failed-update note.
-- `gremlin/util.py` (folder part, lines 813-1003 and 1155-1210): `userprofile_path`, `data_folder`, the `*_dir()` helpers, `ensure_data_folders`, `copy_legacy_modules`, `program_folder`, `resource_path`, `restart_command`, version helpers.
+- `gremlin/util.py` (folder part, lines 813-1003 and 1155-1210): `userprofile_path`, `data_folder`, the `*_dir()` helpers, `ensure_data_folders`, `program_folder`, `resource_path`, `restart_command`, version helpers.
 - `gremlin/ui/option.py` (856): Options models (`ConfigSectionModel`, `ConfigGroupModel`, `ConfigEntryModel`), the Options layout `_LAYOUT`, titles (`entry_title`), `MetaConfigOption` registry for custom option widgets, the Add Action Menu list, auto-load list and TTS voice models.
 - `gremlin/ui/log_option.py` (132): Diagnostic logs level (`apply_log_level`, `LogLevelModel`, the shared notifier).
 - `gremlin/ui/ui_scale_option.py` (108), `gremlin/ui/windows_scale_option.py` (68): UI scale and "Ignore Windows display scaling".
@@ -89,7 +89,7 @@ Settings keys this subsystem registers or uses (others register their own; see G
 | Program start (`gremlin_platforms.exe` / `python joystick_gremlin.py`) | module level `joystick_gremlin.py:21-125` | `_windows_scaling_disabled` (reads configuration.json by hand), `setup_userprofile`, module imports in fixed order |
 | | `main()` `:1072` | `_check_second_copy` → `qt_log.install` → `JoystickGremlinApp()` → `app.exec()` → shutdown sequence |
 | App build | `JoystickGremlinApp.__init__` `:867` | `configure_loggers`, `live_debug.start`, `register_config_options`, `apply_log_level`, `hidhide.apply_on_start` (not off-screen), `error_report.install`, `watchdog.apply`, `device_initialization`, `initialize_qt` (Backend, UpdateModel), `PluginManager`, `purge_unused`, `update_action_priorities`, load `Main.qml`, `process_cmd_args`, `updater.startup`, `announce_damaged_settings`, `announce_vjoy_problems`, tray icon |
-| Joystick driver can't start | `__init__` `:911` | loads `MainFailure.qml` (Quit button → `Qt.quit()`) |
+| Joystick driver can't start | `__init__` `:911` | loads `MainFailure.qml` (OK button → `Qt.quit()`) |
 | Start fails anywhere in app build | `main()` `:1084` | `tell_could_not_start` (Windows box), `flush_all`, `threads.shutdown(1.0)`, `os._exit(1)` |
 | Second copy found | `_check_second_copy` `:1048` | `_confirm_second_instance` (Yes/No/Cancel box) → `_terminate_other_gremlin` |
 | `--profile X` / none | `process_cmd_args` `:979` | `backend.loadProfile` or `backend.openLastProfile`; missing → "Profile not found." |
@@ -211,7 +211,7 @@ Duplicated logic
 - S9 Without `--profile` it should open the last profile used. If that fails, it should show a new empty profile and ask Forget It / Keep (Forget It takes it off start-up and Recent; the file stays). [test-plan: STARTUP-MESSAGES] [tracker: APP17]
 - S10 `--enable` should start Run once the profile is loaded; `--start-minimized` should start minimized, and in the tray when Minimize to tray is on. [user confirmed 2026-10-06; was code only]
 - S11 Once the main window is up, the update check, the Settings Reset notice and the vJoy set-up message should each come at most once. [test-plan: SETTINGS-FILE-DAMAGE, STARTUP-MESSAGES]
-- S12 If the joystick driver can't start, it should show the start-up failure page with the reason and a Quit button instead of the main window. [user confirmed 2026-10-06; was code only]
+- S12 If the joystick driver can't start, it should show the start-up failure page with the reason and an OK button (which ends the program) instead of the main window. [user confirmed 2026-10-06; was code only] [changed 2026-10-07 to follow the glossary (button text "OK"), which wins over the earlier wording "Quit"]
 - S13 A broken user plugin should be left out and logged, never stop the start, and never replace a built-in action or QML type. [tracker: AU-35, AU-86] [test: test_audit2_startup_devices.py::test_a_bad_user_plugin_is_left_out_entirely, test_audit3_startup.py::test_a_user_plugin_cant_replace_a_built_in_qml_element]
 
 ### Could not start
@@ -248,7 +248,7 @@ Duplicated logic
 - S38 A settings file that can't be written should not stop a quit or an update install; it is logged. [tracker: AU-96] [test-plan: AUDIT2-F-H-REST]
 
 ### Options window
-- S39 Tools → Options and the toolbar's Options button should open one Options window. Only one can be open, also when opened from the Button Map. [help: Options] [tracker: N5, N16]
+- S39 Tools → Options and the toolbar's Options button should open one Options window. Only one can be open. [help: Options] [changed 2026-10-07 to follow decision 07 Q17 (the Button Map has its own Options pane), which wins over the earlier wording "also when opened from the Button Map"] [tracker: N5, N16]
 - S40 The sidebar should show General, Interface, Actions, Profiles, Home, OSC and Folders. Each group is a card of rows (name, description, control on the right). [test-plan: OPTIONS-LOOK] [help: Options]
 - S41 Every registered setting should show exactly once. One that isn't placed shows under "Other" in its section. `action-priorities` never shows. The Button Map's settings are only in Button Map Options. [glossary: Button Map Options] [test: test_options_layout.py::test_every_setting_shows_once_and_button_map_is_apart]
 - S42 General should hold Startup and Tray, Devices, Diagnostics (Diagnostic logs, Log When Not Responding) and History. Actions should hold the Add Action Menu, Macro, Change Mode, Double Tap, Smart Toggle, Tempo, Axis Delta, Play Sound and Text to Speech. [tracker: AU-71, AU-102] [test: test_options_layout.py::test_history_settings_have_their_own_group, test_audit2_options_text.py::test_action_settings_have_their_own_group]
@@ -354,7 +354,7 @@ Duplicated logic
 - S124 The data folder should default to Gremlin Platforms in the user's profile. Each folder (profiles, modules, scripts, export, logs, history, deleted devices, plugins) can be chosen in Options → Folders and defaults to a folder inside the data folder. [help: Options] [test-plan: Batch 7 OPT-F] [test-plan: AUDIT2-F-H-REST]
 - S125 Changes to the logs folder and the plugins folder should take effect on the next start. [test-plan: OPT-F01..F08 "Plugin dir and logs need a restart"]
 - S126 A chosen folder that can't be made or reached should fall back to the default folder. [user confirmed 2026-10-06; was code only]
-- S127 Device files from the old `qml/maps` folder should be copied once into the modules folder, never over an existing file. [user confirmed 2026-10-06; was code only]
+- S127 (retired) ~~Device files from the old `qml/maps` folder should be copied once into the modules folder, never over an existing file.~~ [changed 2026-10-07 to follow GL-272 (nothing ships in `qml/maps`; `copy_legacy_modules` removed in batch 3)]
 
 ### Help viewer
 - S128 Help → User Guide (F1) should open the guide by section. The Button Map has its own guide (its F1), apart from the main one. [help] [test: test_help_guide.py::test_button_map_help_is_its_own_guide]
@@ -435,7 +435,7 @@ Obvious untested paths
 - The tray in real use: Minimize to tray, the X hiding the window, the one-time balloon (`minimize-to-tray`, `tray-notice-shown`: no test names them), tray Exit, and Exit with Minimize to tray on (K2). Off-screen runs make no tray icon, so tests can't reach these.
 - Closing the main window with a tool window open (K1).
 - `main()`'s restart path (`QProcess.startDetached` after quit); only `restart_command` is tested.
-- Changing the data folder or the logs folder (`data-folder`: no test), `ensure_data_folders`, `copy_legacy_modules`, and the silent fallback.
+- Changing the data folder or the logs folder (`data-folder`: no test), `ensure_data_folders`, and the silent fallback.
 - A settings file that can't be written (K7); `_keep_damaged_file` when the rename itself fails.
 - `threads.main_timer` / `MainTimer` (one indirect reference, no direct test).
 - `UpdateModel.skipVersion` and `openReleasePage` (no test calls them; `should_offer` is tested).

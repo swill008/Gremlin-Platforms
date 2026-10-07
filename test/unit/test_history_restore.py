@@ -114,7 +114,12 @@ def test_a_whole_profile_is_written_as_a_copy(store: Path, tmp_path: Path) -> No
     assert copies[0].read_bytes().startswith(b"\xef\xbb\xbf")
 
 
-def test_a_module_file_and_its_picture_go_back(store: Path) -> None:
+def test_a_module_file_and_its_picture_go_back(
+    store: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Restore says profileChanged; the app (once made) has a mode list
+    # that reads the open profile, as the program always has one.
+    monkeypatch.setattr(shared_state, "current_profile", Profile())
     modules = util.modules_dir()
     (modules / "restore_stick").mkdir(parents=True, exist_ok=True)
     photo = modules / "restore_stick" / "photo.png"

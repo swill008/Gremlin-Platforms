@@ -662,10 +662,15 @@ def test_a_busy_vjoy_card_still_says_in_use_after_a_settings_change(
     assert model.cardMap("vjoy_1")["status"] == "In use by another program"
 
 
-def test_a_damaged_card_turns_back_after_history_restore(folder: Path) -> None:
+def test_a_damaged_card_turns_back_after_history_restore(
+    folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # GL-141 (suspected) on the real path: Restore says profileChanged as
     # well as configChanged, so Home reloads its cards in full, which checks
     # the file again (_refresh_inplace alone would not).
+    # The app (once made) has a mode list that reads the open profile on
+    # profileChanged; the program always has one open.
+    monkeypatch.setattr(shared_state, "current_profile", Profile())
     path = folder / "pjoy_pro.json"
     module_file.write_json(path, stick_doc())
     settle_history()

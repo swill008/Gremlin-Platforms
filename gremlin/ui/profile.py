@@ -727,15 +727,6 @@ class InputItemModel(QtCore.QAbstractListModel):
     def enumeration_index(self) -> int:
         return self._enumeration_index
 
-    @QtCore.Slot()
-    def newActionSequence(self) -> None:
-        if _edit_refused():
-            return
-        self.beginInsertRows(QtCore.QModelIndex(), self.rowCount(), self.rowCount())
-        self._input_item.add_item_binding()
-        self.endInsertRows()
-        signal.inputItemChanged.emit(self._enumeration_index)
-
     @QtCore.Slot(InputItemBindingModel)
     def deleteActionSequnce(self, binding: InputItemBindingModel) -> None:
         if _edit_refused():
@@ -840,10 +831,13 @@ class ModeListModel(QtCore.QAbstractListModel):
         self.beginResetModel()
         self._lookup = {}
         self._names = []
-        for mode in shared_state.current_profile.modes.mode_list():
+        profile = shared_state.current_profile
+        modes = profile.modes.mode_list() if profile is not None else []
+        for mode in modes:
             self._names.append(mode.value)
             self._lookup[mode.value] = mode
-        self._names = sorted(self._names)
+        # Alphabetical as a person reads it: capitals don't sort first.
+        self._names = sorted(self._names, key=lambda n: (n.casefold(), n))
         self.endResetModel()
 
     def rowCount(self, parent: ta.MI = QtCore.QModelIndex()) -> int:

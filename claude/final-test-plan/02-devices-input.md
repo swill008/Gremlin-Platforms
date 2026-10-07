@@ -143,7 +143,7 @@ F02 = `U/test_final_02.py`.
 | B2a (G17) | Hold a bound key, press Ctrl+Alt+Del, Esc back, press the key again | the binding fires on that press |
 | B2a (Q4) | Map key A to send key B; bind key B to something else; Run, press A | the B binding does not fire |
 | B2b | Plug and unplug a stick with the HidHide window open, then closed | the list follows while open; no delay or freeze with it closed |
-| B2b (Q6) | Device Information with a left-out vJoy (discrete hats) and an own Xbox pad plugged in | both listed, marked "left out (see message)" and "Gremlin's Xbox pad" |
+| B2b (Q6) | Device Information with a left-out vJoy (discrete hats) and an own Xbox pad plugged in | both listed, marked "left out (see message)" and "this program's Xbox pad" |
 | B2b | Calibration on a stick whose module claims only some axes | unclaimed axes listed with "(not claimed)" |
 | C3b | Listen for mouse buttons (Keyboard page / Script settings), and macro Record with mouse | each button and the wheel is caught; ending one doesn't cut off the other |
 | C3b | HidHide window with the real driver: control on, Enabled, tick a stick, Allow and Block list | joy.cpl (Test HidHide) hides the stick; the program still sees it |

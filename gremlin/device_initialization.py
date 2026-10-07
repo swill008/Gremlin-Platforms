@@ -9,6 +9,7 @@ import logging
 import re
 import threading
 import uuid
+from collections.abc import Callable
 from typing import cast
 
 import dill
@@ -98,16 +99,22 @@ def _save_twins(stored: dict[str, str]) -> None:
         except Exception:
             logging.getLogger("system").exception("Twin device names not saved")
 
+    _on_main_thread(write)
+
+
+def _on_main_thread(job: Callable[[], None]) -> None:
+    """Runs job now on the main thread; from another thread (the hot-plug
+    timer) it is handed to the main thread."""
     if threading.current_thread() is threading.main_thread():
-        write()
+        job()
         return
     from PySide6 import QtCore
 
     app = QtCore.QCoreApplication.instance()
     if app is None:
-        write()
+        job()
         return
-    QtCore.QTimer.singleShot(0, app, write)
+    QtCore.QTimer.singleShot(0, app, job)
 
 
 def _base_name(twin_name: str) -> str:
@@ -186,7 +193,7 @@ def shown_name(device_guid: object) -> str:
 
 # Device Information marks the devices the program leaves out (02 Q6).
 NOTE_LEFT_OUT = "left out (see message)"
-NOTE_OWN_PAD = "Gremlin's Xbox pad"
+NOTE_OWN_PAD = "this program's Xbox pad"
 
 
 def information_devices() -> list[tuple[dill.DeviceSummary, str]]:
@@ -372,6 +379,90 @@ def _initialize_devices() -> None:
     _joystick_devices = collections.OrderedDict(
         (dev.device_guid.uuid, dev) for dev in sorted_devices
     )
+    _forget_unplugged(devices + own_pads)
+
+
+# --- forgetting devices (02 S13, S15; decision D-02-GL243-FORGET) -----------
+# A device that has no module file and isn't plugged in at a scan is
+# forgotten: its twin name, its alias and its HidHide photo and link. Only
+# the program's own settings change (never the HidHide driver); the input
+# cache's script objects stay.
+
+
+def _has_module_file(name: str, guid: str) -> bool:
+    """True when the device has a module file (read only; True when it
+    can't be told, so nothing is forgotten by mistake)."""
+    from gremlin.modules import store
+
+    try:
+        if name:
+            return store.exists(name, guid)
+        # By id only (an alias of a device whose name isn't known): the
+        # file chosen for it or bound to it, not the "device" fallback.
+        slug = store.slug_for("", guid)
+        return slug != store.own_slug("") and store.path_of(slug).is_file()
+    except Exception:
+        logging.getLogger("system").exception("Module file check failed")
+        return True
+
+
+def _profile_names() -> dict[str, str]:
+    """Device id -> name for the devices the open profile has seen."""
+    try:
+        profile = shared_state.current_profile
+        if profile is None:
+            return {}
+        return {
+            str(info.device_uuid).upper(): str(info.name or "")
+            for info in profile.device_database.devices.values()
+        }
+    except Exception:
+        return {}
+
+
+def _forget_unplugged(seen: list[dill.DeviceSummary]) -> None:
+    present = {_guid_key(dev) for dev in seen}
+    labels = set()
+    for dev in seen:
+        if dev.is_virtual:
+            if dev.vjoy_id > 0:
+                labels.add(f"vJoy {dev.vjoy_id}")
+        elif dev.name:
+            labels.add(dev.name)
+
+    stored = _stored_twins()
+    names = {**_profile_names(), **stored}
+    kept = {
+        key: name for key, name in stored.items()
+        if key in present or _has_module_file(name, key)
+    }
+    if kept != stored:
+        for key in stored.keys() - kept.keys():
+            logging.getLogger("system").info(f"Forgot twin name {stored[key]}")
+        _save_twins(kept)
+
+    def device_gone(uid: str) -> bool:
+        key = uid.upper()
+        return key not in present and not _has_module_file(names.get(key, ""), key)
+
+    def label_gone(label: str) -> bool:
+        return label not in labels and not _has_module_file(label, "")
+
+    def forget_settings() -> None:
+        try:
+            from gremlin.ui import device_names
+
+            device_names.forget(device_gone)
+        except Exception:
+            logging.getLogger("system").exception("Aliases not cleaned up")
+        try:
+            from gremlin.ui import hidhide
+
+            hidhide.forget_devices(label_gone)
+        except Exception:
+            logging.getLogger("system").exception("HidHide photos not cleaned up")
+
+    _on_main_thread(forget_settings)
 
 
 def _note_vjoy_problems(

@@ -21,6 +21,7 @@ sys.path.append(".")
 import collections
 import ctypes
 import json
+import pathlib
 import threading
 import uuid
 from collections.abc import Iterator
@@ -188,16 +189,24 @@ def test_twin_names_from_the_hot_plug_thread_are_written_on_the_main_thread(
 
 
 def test_a_stale_twin_name_is_dropped(
-    monkeypatch: pytest.MonkeyPatch, scan: None
+    monkeypatch: pytest.MonkeyPatch, scan: None, tmp_path: pathlib.Path
 ) -> None:
+    from gremlin.modules import store
+
     first = _key(dill.DILL._dll.devices[0])
     gone = "{00000000-0000-0000-0000-0000000000AA}".strip("{}")
+    # Kept while it has a module file (D-02-GL243-FORGET).
+    monkeypatch.setattr(store, "folder", lambda: tmp_path)
+    (tmp_path / "away_stick_2.json").write_text(
+        '{"device": "Away Stick (2)"}', encoding="utf-8"
+    )
     Configuration().set(
         *di.TWIN_SETTING, {first: "Old Firmware Name (2)", gone: "Away Stick (2)"}
     )
     di.joystick_devices_initialization()
     assert [d.name for d in di.physical_devices()] == ["pJoy Pro"]
-    # The stale entry is gone; a stick that isn't plugged in keeps its own.
+    # The stale entry is gone; a stick that isn't plugged in keeps its own
+    # while it has a module file.
     assert Configuration().value(*di.TWIN_SETTING) == {gone: "Away Stick (2)"}
 
 
@@ -294,7 +303,7 @@ def test_device_information_lists_left_out_vjoy_and_own_xbox_pads(
     model.deleteLater()
     assert ("pJoy Pro", "") in rows
     assert ("vJoy Device", "left out (see message)") in rows
-    assert ("Controller (XBOX 360 For Windows)", "Gremlin's Xbox pad") in rows
+    assert ("Controller (XBOX 360 For Windows)", "this program's Xbox pad") in rows
 
 
 # --- GL-133: a refused HidHide tick is not saved ----------------------------
