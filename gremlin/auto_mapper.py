@@ -54,6 +54,11 @@ def _ranges(numbers: list[int]) -> str:
 
 
 _PLURAL = {"axis": "axes", "button": "buttons", "hat": "hats"}
+# After Create 1:1 Actions changed the open profile (08 S97).
+NOT_SAVED_NOTE = (
+    "The new actions are in the open profile and not saved yet. "
+    "Use File › Save Profile to keep them, or load the profile again to undo."
+)
 
 
 class AutoMapper:
@@ -63,6 +68,8 @@ class AutoMapper:
         self._profile = profile
         self._created_mappings: list[map_to_vjoy.MapToVjoyData] = []
         self._num_retained_bindings = 0
+        # Overwrite removed actions, even where none could be made after.
+        self._removed_actions = False
         self._skipped: dict[tuple[str, str, str], list[int]] = {}
 
     @classmethod
@@ -91,6 +98,7 @@ class AutoMapper:
             return "No output module selected"
         self._created_mappings = []
         self._num_retained_bindings = 0
+        self._removed_actions = False
         self._skipped = {}
         if options.repeat_vjoy_inputs:
             dest_cycle = itertools.cycle(dests)
@@ -149,6 +157,8 @@ class AutoMapper:
                     target = types.VjoyInput(vjoy_id, input_type, int(hid))
                     if options.overwrite_used_inputs:
                         roots = self._profile.roots_of([item] if item is not None else [])
+                        if item is not None and item.action_sequences:
+                            self._removed_actions = True
                         item.action_sequences.clear()
                         self._profile.library.release(roots)
                         used.discard(target)
@@ -178,11 +188,23 @@ class AutoMapper:
                     "output module can take.",
                     *self._skipped_report(),
                     *left_out,
+                    *self._not_saved_note(),
                 ]
             )
         return " ".join(
-            [self._create_mappings_report(), *self._skipped_report(), *left_out]
+            [
+                self._create_mappings_report(),
+                *self._skipped_report(),
+                *left_out,
+                *self._not_saved_note(),
+            ]
         )
+
+    def _not_saved_note(self) -> list[str]:
+        """The profile changed in memory only (08 S97, D-08-AUTOMAP-NOTE)."""
+        if not self._created_mappings and not self._removed_actions:
+            return []
+        return [NOT_SAVED_NOTE]
 
     def _skip(self, dest: dict, kind: str, reason: str, hid: int) -> None:
         key = (str(dest.get("name") or f"vJoy {dest.get('vjoyId')}"), kind, reason)

@@ -14,6 +14,16 @@ Item {
     implicitHeight: _row.implicitHeight
     implicitWidth: Style.dp(380)
 
+    // Saved on leaving the field or Enter, and when Options closes with the
+    // cursor still in a box, like every other Options text box (01 S44).
+    function commit() {
+        if (_combo.editText.trim() !== "" && _combo.editText !== _combo.currentText)
+            _model.setHost(_combo.editText)
+        if (_port.text !== _model.port)
+            _model.setPort(_port.text)
+    }
+    Component.onDestruction: commit()
+
     OscOutputHostModel {
         id: _model
     }

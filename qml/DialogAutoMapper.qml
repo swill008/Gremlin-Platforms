@@ -217,9 +217,8 @@ ApplicationWindow {
                             _repeatDevices.checked,
                             _claimOutputs.checked
                         )
-
-                        selectedInputModules = ({})
-                        selectedOutputModules = ({})
+                        // The ticked modules stay ticked and selected, so
+                        // Create again uses them (08 S105, D-08-AUTOMAP-KEEP).
                     }
                     // The action panes close first, asking when one has
                     // changes, or a later OK would undo these (05 Q8).
