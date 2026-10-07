@@ -38,10 +38,10 @@ def test_single_key(jgbot: JoystickGremlinBot, profile_dir: Path) -> None:
 
     assert not Keyboard().is_pressed("k")
     jgbot.press_button(inout.IN_BUTTON_1)
-    jgbot.wait(0.01)
+    jgbot.wait_until(lambda: Keyboard().is_pressed("k"))
     assert Keyboard().is_pressed("k")
     jgbot.release_button(inout.IN_BUTTON_1)
-    jgbot.wait(0.01)
+    jgbot.wait_until(lambda: not Keyboard().is_pressed("k"))
     assert not Keyboard().is_pressed("k")
 
 
@@ -52,12 +52,13 @@ def test_key_combination(jgbot: JoystickGremlinBot, profile_dir: Path) -> None:
     assert not Keyboard().is_pressed("m")
 
     jgbot.press_button(inout.IN_BUTTON_2)
-    jgbot.wait(0.01)
+    # Modifiers go down first and come up last: wait for the last key.
+    jgbot.wait_until(lambda: Keyboard().is_pressed("m"))
     assert Keyboard().is_pressed("right shift2")
     assert Keyboard().is_pressed("m")
 
     jgbot.release_button(inout.IN_BUTTON_2)
-    jgbot.wait(0.01)
+    jgbot.wait_until(lambda: not Keyboard().is_pressed("right shift2"))
     assert not Keyboard().is_pressed("right shift2")
     assert not Keyboard().is_pressed("m")
 
@@ -68,15 +69,14 @@ def test_sequential(jgbot: JoystickGremlinBot, profile_dir: Path) -> None:
 
     assert not Keyboard().is_pressed("o")
     jgbot.tap_button(inout.IN_BUTTON_3)
-    jgbot.wait(0.01)
-    print(Keyboard()._keyboard_state)
+    jgbot.wait_until(lambda: Keyboard().is_pressed("o"))
     assert Keyboard().is_pressed("o")
     jgbot.tap_button(inout.IN_BUTTON_3)
-    jgbot.wait(0.01)
+    jgbot.wait_until(lambda: not Keyboard().is_pressed("o"))
     assert not Keyboard().is_pressed("o")
     jgbot.tap_button(inout.IN_BUTTON_3)
-    jgbot.wait(0.01)
+    jgbot.wait_until(lambda: Keyboard().is_pressed("o"))
     assert Keyboard().is_pressed("o")
     jgbot.tap_button(inout.IN_BUTTON_3)
-    jgbot.wait(0.01)
+    jgbot.wait_until(lambda: not Keyboard().is_pressed("o"))
     assert not Keyboard().is_pressed("o")

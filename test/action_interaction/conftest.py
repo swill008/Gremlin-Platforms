@@ -8,6 +8,7 @@ import sys
 import threading
 from pathlib import Path
 from typing import (
+    Callable,
     Generator,
     cast,
 )
@@ -243,6 +244,13 @@ class JoystickGremlinBot:
             duration: The duration in seconds to wait.
         """
         self._qtbot.wait(int(duration * 1000))
+
+    def wait_until(self, condition: Callable[[], bool], timeout: float = 5.0) -> None:
+        """Processes events until condition() is true; fails after timeout
+        seconds. For results that arrive from another thread (key presses,
+        vJoy writes), where a fixed wait is too short on a slow machine.
+        """
+        self._qtbot.waitUntil(lambda: bool(condition()), timeout=int(timeout * 1000))
 
     def next_event(self) -> event_handler.Event:
         """Waits for and retrieves the next logged event.
