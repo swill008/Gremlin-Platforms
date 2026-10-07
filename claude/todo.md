@@ -134,6 +134,11 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     (`gremlin/ui/util.py` ~199, 287, 295, 384, 419), outside the Backend's
     holder set (03 S114 fix): stopping Listen with Calibration open could turn
     highlighting back on. Move them onto the holders.
+38. Local-only crash: replaying CI's unit-1 order (seed 394220, CI file set) in ONE pytest process on
+    the user's PC hits "Windows fatal exception: access violation" in
+    `test_device_reconnect.py::test_auto_mapper_keeps_its_ticks` (#724), during pytest-qt event
+    processing. Older than today's Auto Mapper code (same at 870c98dc); CI passes that order; the normal
+    6-part run passes. Likely a real driver on this PC plus an earlier test. Investigate when convenient.
 37. Person checks from the fixes: your 1,172-action profile no longer
     stutters while idle (Q19); after a stick is re-plugged, actions read its
     last value until it moves (D-05-UNPLUG-CENTRE note).

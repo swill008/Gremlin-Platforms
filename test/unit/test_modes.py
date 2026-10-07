@@ -151,6 +151,18 @@ def _profile_with_modes(names: str) -> Profile:
     return p
 
 class TestModeManager:
+    @pytest.fixture(autouse=True)
+    def _restore_mode_manager(self) -> object:
+        """The ModeManager is one for the whole process: the temporary modes
+        and the open profile these tests leave go, or a later test finds
+        them (test_validate saw RUN-MODE-TEMPORARY)."""
+        manager = ModeManager()
+        stack = list(manager._mode_stack)
+        opened = gremlin.shared_state.current_profile
+        yield
+        manager._mode_stack = stack
+        gremlin.shared_state.current_profile = opened
+
     def test_cycling(self) -> None:
         _profile_with_modes("ABCDE")
 

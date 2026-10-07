@@ -101,13 +101,22 @@ def install(vjoy_ids: tuple[int, ...] = (1,)) -> FakeDill:
     """Uses the fake driver and fake vJoy queries from now on.
 
     Two fake joysticks (a "pJoy Pro" and a "vJoy Device"), and the vJoy
-    devices in vjoy_ids, each with 6 axes, 64 buttons and 2 hats.
+    devices in vjoy_ids, each with 6 axes (1, 2, 3, 6, 7, 8), 64 buttons and
+    2 hats.
     """
     fake = FakeDill([raw_device(is_virtual=False), raw_device(is_virtual=True)])
     dill.DILL._dll = fake  # type: ignore[assignment]
     dill.DILL._dill_initialized = False
     ids = set(vjoy_ids)
     vjoy.device_exists = lambda vjoy_id: vjoy_id in ids  # type: ignore[assignment]
+    # The fake vJoy Device's axes (raw_device's axis map: X, Y, Z, RZ, SL0,
+    # SL1), answered where the driver is asked, so vjoy.axis_ids and the
+    # output module see them; never the real driver, which CI doesn't have
+    # and this PC answers for its own vJoy. A test may still set its own.
+    axis_codes = {0x30, 0x31, 0x32, 0x35, 0x36, 0x37}
+    vjoy.VJoyInterface.GetVJDAxisExist = staticmethod(  # type: ignore[attr-defined]
+        lambda vjoy_id, code: int(vjoy_id in ids and code in axis_codes)
+    )
     vjoy.axis_count = lambda vjoy_id: 6  # type: ignore[assignment]
     vjoy.button_count = lambda vjoy_id: 64  # type: ignore[assignment]
     vjoy.hat_count = lambda vjoy_id: 2  # type: ignore[assignment]
