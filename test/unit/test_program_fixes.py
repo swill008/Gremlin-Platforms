@@ -28,6 +28,7 @@ import json
 import os
 import pathlib
 import subprocess
+import threading
 from types import SimpleNamespace
 from unittest import mock
 
@@ -69,6 +70,7 @@ def player(monkeypatch: pytest.MonkeyPatch) -> object:
     p._currently_playing = []
     p._playback_mode = "Overlap"
     p._is_ready = True
+    p._lock = threading.Lock()
     return p
 
 
@@ -78,7 +80,7 @@ def _one_round(player: object, monkeypatch: pytest.MonkeyPatch) -> None:
     def stop(_seconds: float) -> None:
         player._is_ready = False
 
-    monkeypatch.setattr(audio_player.time, "sleep", stop)
+    monkeypatch.setattr(audio_player.clock, "sleep", stop)
     player._is_ready = True
     player._playback()
 

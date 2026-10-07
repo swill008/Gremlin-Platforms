@@ -116,7 +116,7 @@ def test_reuse_offers_only_merge_axes_an_input_uses(profile: Profile) -> None:
 
     old = MergeAxisData.create(DataCreationMode.Create, InputType.JoystickAxis)
     profile.library.add_action(old)  # deleted: nothing uses it any more
-    fresh = MergeAxisData.create(DataCreationMode.Reuse, InputType.JoystickAxis)
+    fresh = profile.library.create(MergeAxisData.name, InputType.JoystickAxis)
     assert fresh is not old
 
 

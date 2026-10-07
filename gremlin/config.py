@@ -11,6 +11,7 @@ import re
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -21,9 +22,51 @@ from gremlin import (
     util,
 )
 from gremlin.types import PropertyType
-from gremlin.ui.live_debug import trace
 
 _config_file_path = os.path.join(util.userprofile_path(), "configuration.json")
+
+
+def _write_file(path: Path, text: str) -> None:
+    """A temporary file, then a swap: a crash mid-write leaves the old file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(text, encoding="utf-8")
+    os.replace(temporary, path)
+
+
+# The settings core imports no UI or module code (01 section 7): the program
+# hands it these at start (use()). Until then (a test, a tool): no activity
+# line, a setting's own name in History titles, and _write_file.
+def _no_trace(
+    _action: str, _window: str, _function: str, _path: object, _result: str
+) -> None:
+    return None
+
+
+def _own_name(name: str, _key: str) -> str:
+    return name
+
+
+_trace: Callable[[str, str, str, object, str], None] = _no_trace
+_title: Callable[[str, str], str] = _own_name
+_write_text: Callable[[Path, str], None] = _write_file
+
+
+def use(
+    trace: Callable[[str, str, str, object, str], None] | None = None,
+    title: Callable[[str, str], str] | None = None,
+    write_text: Callable[[Path, str], None] | None = None,
+) -> None:
+    """Hands the settings core what it needs from the layers above: the
+    activity trace (Live Log Reader), the names Options shows (History
+    titles) and the safe file write the program's other files use."""
+    global _trace, _title, _write_text
+    if trace is not None:
+        _trace = trace
+    if title is not None:
+        _title = title
+    if write_text is not None:
+        _write_text = write_text
 
 
 def _parse_entry(entry: dict) -> dict:
@@ -120,10 +163,8 @@ def settings_history_title(keys: list[str]) -> str:
     """A settings entry's title in Tools > History, by the names Options
     shows ("plugin-directory" -> "Plugins folder", a repeated name with its
     group: "Tempo duration"). Old entries are shown with it too."""
-    from gremlin.ui.option import entry_title
-
     names = dict.fromkeys(
-        entry_title(str(key).rsplit("/", 1)[-1], str(key)) for key in keys
+        _title(str(key).rsplit("/", 1)[-1], str(key)) for key in keys
     )
     return "Changed " + ", ".join(names)
 
@@ -173,7 +214,7 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 json_data = {}
                 result = "damaged"
                 _keep_damaged_file(str(e))
-        trace("READ", "Program Settings", "load", _config_file_path, result)
+        _trace("READ", "Program Settings", "load", _config_file_path, result)
 
         data: dict = {}
         skipped = []
@@ -307,18 +348,16 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 "expose": entry["expose"],
             }
         text = json.JSONEncoder(sort_keys=True, indent=4).encode(json_data)
-        # The same safe write as module files and profiles: a temporary file,
-        # then a swap (a direct write when Windows refuses the swap). It also
-        # makes the folder on the first run.
-        from gremlin.modules import module_file
-
+        # The same safe write as module files and profiles (use()): a
+        # temporary file, then a swap. It also makes the folder on the first
+        # run.
         try:
-            module_file.write_text(Path(path), text)
+            _write_text(Path(path), text)
         except OSError as e:
-            trace("SAVE", "Program Settings", "save", path, "failed")
+            _trace("SAVE", "Program Settings", "save", path, "failed")
             _tell_write_failure(e.strerror or str(e))
             return
-        trace("SAVE", "Program Settings", "save", path, "ok")
+        _trace("SAVE", "Program Settings", "save", path, "ok")
         self._record_history()
 
     def register(

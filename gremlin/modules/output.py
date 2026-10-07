@@ -17,15 +17,23 @@ import re
 import threading
 from typing import Any
 
-from gremlin import clock
+from PySide6 import QtCore
+
+from gremlin import clock, run_scope
 from gremlin.modules import registry
 from gremlin.modules.claim import claim_allows, claim_ids
+
+# Action plugins reach the Xbox output through this module, not the driver
+# package (05 Q16).
+from vigem.xbox import XboxError, XboxTarget  # noqa: F401
 
 syslog = logging.getLogger("system")
 
 # Claims are re-read from the module files at most this often (seconds).
 _CLAIM_TTL = 1.0
 
+# Guards the claim cache and the blocked-log, busy-vJoy and keep-alive state
+# below: writes come from the event, macro and timer threads (GL-245).
 _lock = threading.Lock()
 _claims_at = 0.0
 _vjoy_claims: dict[int, dict] = {}
@@ -40,6 +48,11 @@ _told_read_failed = False
 _VJOY_RETRY = 3.0
 _vjoy_failed_at: dict[int, float] = {}
 _told_busy: set[int] = set()
+
+# A held vJoy with no write for this long is reset so it doesn't time out
+# (06 S54); checked this often, one timer per held device.
+_KEEP_ALIVE_S = 60.0
+_keep_alive: dict[int, tuple[object, run_scope.Timer]] = {}
 
 
 # --- claims -----------------------------------------------------------------
@@ -129,18 +142,26 @@ def xbox_pad_of(name: str) -> int:
 # --- logging ----------------------------------------------------------------
 
 
+def _first_time(key: tuple) -> bool:
+    """True the first time this key is seen since the blocked log was cleared."""
+    with _lock:
+        if key in _blocked:
+            return False
+        _blocked.add(key)
+        return True
+
+
 def _log_once(key: tuple, message: str) -> None:
-    if key in _blocked:
-        return
-    _blocked.add(key)
-    syslog.warning(message)
+    if _first_time(key):
+        syslog.warning(message)
 
 
 def clear_blocked_log() -> None:
     """Allow each blocked output to be logged again (new run)."""
-    _blocked.clear()
-    _vjoy_failed_at.clear()
-    _told_busy.clear()
+    with _lock:
+        _blocked.clear()
+        _vjoy_failed_at.clear()
+        _told_busy.clear()
 
 
 # --- vJoy -------------------------------------------------------------------
@@ -159,7 +180,8 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
     write, so Gremlin carries on by itself once the device is free.
     """
     vid = int(vjoy_id)
-    failed_at = _vjoy_failed_at.get(vid)
+    with _lock:
+        failed_at = _vjoy_failed_at.get(vid)
     if failed_at is not None and clock.monotonic() - failed_at < _VJOY_RETRY:
         return None
     try:
@@ -167,15 +189,18 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
     except Exception as exc:
         from gremlin.error import VJoyBusyError
 
-        _vjoy_failed_at[vid] = clock.monotonic()
+        with _lock:
+            _vjoy_failed_at[vid] = clock.monotonic()
         if isinstance(exc, VJoyBusyError):
             _log_once(
                 ("vjoy-open", vid),
                 f"vJoy {vid} is in use by another program. Its outputs won't "
                 "move until that program lets it go.",
             )
-            if vid not in _told_busy:
+            with _lock:
+                tell = vid not in _told_busy
                 _told_busy.add(vid)
+            if tell:
                 from gremlin.signal import display_error
 
                 display_error(
@@ -185,9 +210,107 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
         else:
             _log_once(("vjoy-open", vid), f"vJoy {vid} unavailable: {exc}")
         return None
-    if _vjoy_failed_at.pop(vid, None) is not None:
+    with _lock:
+        was_failing = _vjoy_failed_at.pop(vid, None) is not None
+    if was_failing:
         syslog.info(f"vJoy {vid} opened")
+    # The keep-alive needs to know when the device was last written.
+    if hasattr(dev, "last_active"):
+        _arm_keep_alive(vid)
     return dev
+
+
+def _arm_keep_alive(vjoy_id: int, after: object = None) -> None:
+    """Checks the held vJoy every _KEEP_ALIVE_S (06 S54). One timer per
+    device: armed when it is opened (after=None, none armed yet) or by its
+    own check (after=that check's token, still the current one).
+
+    It is a Run timer (run_scope.timer, main thread): Stop cancels it with
+    the rest of the Run, so it never outlives the Run that holds the device
+    and is never a thread of its own. A device opened on another thread (a
+    macro, the event thread) has its keep-alive armed on the main thread.
+    """
+    vid = int(vjoy_id)
+    if after is None and threading.current_thread() is not threading.main_thread():
+        door = _keep_alive_door()
+        if door is not None:
+            door.arm.emit(vid)
+            return
+    # Released while the request was on its way: nothing to keep alive.
+    if after is None and _opened_vjoy(vid) is None:
+        return
+    with _lock:
+        current = _keep_alive.get(vid)
+        # One made outside a Run ends when a Run begins: arm a new one then.
+        if after is None and current is not None and current[1].is_alive():
+            return
+        if after is not None and (current is None or current[0] is not after):
+            return
+        token = object()
+        timer = run_scope.timer(
+            f"vJoy {vid} keep-alive", _KEEP_ALIVE_S, _keep_alive_check, vid, token
+        )
+        _keep_alive[vid] = (token, timer)
+
+
+class _KeepAliveDoor(QtCore.QObject):
+    """Passes a keep-alive asked for on another thread to the main thread."""
+
+    arm = QtCore.Signal(int)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.arm.connect(self._arm)
+
+    @QtCore.Slot(int)
+    def _arm(self, vjoy_id: int) -> None:
+        _arm_keep_alive(vjoy_id)
+
+
+_door: _KeepAliveDoor | None = None
+_door_lock = threading.Lock()
+
+
+def _keep_alive_door() -> _KeepAliveDoor | None:
+    """None without a Qt application (no main-thread loop to pass it to)."""
+    global _door
+    app = QtCore.QCoreApplication.instance()
+    if app is None:
+        return None
+    with _door_lock:
+        if _door is None:
+            door = _KeepAliveDoor()
+            door.moveToThread(app.thread())
+            _door = door
+        return _door
+
+
+def _keep_alive_check(vjoy_id: int, token: object) -> None:
+    """Resets a held vJoy that had no write for _KEEP_ALIVE_S, then checks
+    again later. A released device arms no new check."""
+    vid = int(vjoy_id)
+    dev = _opened_vjoy(vid)
+    if dev is None:
+        with _lock:
+            current = _keep_alive.get(vid)
+            if current is not None and current[0] is token:
+                del _keep_alive[vid]
+        return
+    try:
+        if clock.monotonic() - float(dev.last_active) >= _KEEP_ALIVE_S:
+            dev.reset()
+    except Exception:
+        syslog.exception(f"vJoy {vid} keep-alive failed")
+    # Released (reset_vjoy) while this check ran: no new timer.
+    _arm_keep_alive(vid, after=token)
+
+
+def _stop_keep_alive() -> None:
+    with _lock:
+        timers = [timer for _token, timer in _keep_alive.values()]
+        _keep_alive.clear()
+    for timer in timers:
+        timer.cancel()
 
 
 def vjoy_ids() -> list[int]:
@@ -195,6 +318,28 @@ def vjoy_ids() -> list[int]:
     from vjoy import vjoy
 
     return [i for i in range(1, 17) if vjoy.device_exists(i)]
+
+
+def vjoy_axes() -> dict[int, list[int]]:
+    """Each vJoy set up in the driver -> its axis ids, by vJoy number (for
+    Profile Settings). Empty when the driver can't be read."""
+    try:
+        from vjoy import vjoy
+
+        return {vid: sorted(vjoy.axis_ids(vid)) for vid in vjoy_ids()}
+    except Exception:
+        return {}
+
+
+def vjoy_axis_ids(vjoy_id: int) -> set[int]:
+    """The axis ids (1 = X ... 8 = SL1) the vJoy driver gives this device;
+    they can be sparse (1, 2, 6). Empty when the driver can't be read."""
+    try:
+        from vjoy import vjoy
+
+        return set(vjoy.axis_ids(int(vjoy_id)))
+    except Exception:
+        return set()
 
 
 def vjoy_layout(vjoy_id: int) -> tuple[int, int, int]:
@@ -576,7 +721,7 @@ def xbox_error() -> str:
 
 _VIGEM_INSTALL = (
     "Install ViGEmBus 1.22 from the Nefarius releases page, then restart "
-    "Gremlin-Platforms. This program does not download or bundle that installer."
+    "the program. This program does not download or bundle that installer."
 )
 
 
@@ -592,7 +737,7 @@ def xbox_driver_problem() -> tuple[str, str]:
         return (
             "ViGEmBus is installed but not running",
             "Restart Windows, or reinstall ViGEmBus 1.22, then restart "
-            "Gremlin-Platforms.",
+            "the program.",
         )
     return "ViGEmBus is not installed", _VIGEM_INSTALL
 
@@ -604,7 +749,7 @@ def vjoy_driver_problem() -> tuple[str, str]:
         return "", ""
     return (
         "vJoy is not installed or not running",
-        "Install vJoy, then restart Gremlin-Platforms.",
+        "Install vJoy, then restart the program.",
     )
 
 
@@ -613,6 +758,7 @@ def vjoy_driver_problem() -> tuple[str, str]:
 
 def reset_vjoy() -> None:
     """Release every vJoy device Gremlin holds."""
+    _stop_keep_alive()
     try:
         _vjoy_proxy().reset()
     except Exception:

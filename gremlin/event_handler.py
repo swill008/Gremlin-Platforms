@@ -86,6 +86,7 @@ class Event:
         value: float | HatDirection | None = None,
         is_pressed: bool | None = None,
         raw_value: float | bool | HatDirection | None = None,
+        synthetic: bool = False,
     ) -> None:
         """Creates a new Event object.
 
@@ -97,6 +98,9 @@ class Event:
             value: the value of the input
             is_pressed: boolean flag indicating if a button or key is pressed
             raw_value: the raw value of the axis being moved
+            synthetic: made by the program (macro step, refresh axes, Hat
+                as Buttons), not by the hardware; screens that show what the
+                hardware does (Listen, highlighting, Module Setup) ignore it
         """
         self.event_type = event_type
         self.identifier = identifier
@@ -105,6 +109,7 @@ class Event:
         self.is_pressed = is_pressed
         self.value = value
         self.raw_value = raw_value
+        self.synthetic = synthetic
 
     def display_name(self) -> str:
         """Returns the display representation of this event.
@@ -147,6 +152,7 @@ class Event:
             self.value,
             self.is_pressed,
             self.raw_value,
+            self.synthetic,
         )
 
     def __eq__(self, other: object) -> bool:
@@ -543,17 +549,16 @@ class EventListener(QtCore.QObject):
         Returns:
             True to enable the event to propagate up further
         """
-        # Ignore events we created via the macro system
-        if not event.is_injected:
-            self.mouse_event.emit(
-                Event(
-                    event_type=InputType.Mouse,
-                    device_guid=dill.GUID_Keyboard,
-                    identifier=event.button_id,
-                    mode=NO_MODE,
-                    is_pressed=event.is_pressed,
-                )
+        # Same device id as keyboard events (a UUID, not a GUID).
+        self.mouse_event.emit(
+            Event(
+                event_type=InputType.Mouse,
+                device_guid=dill.UUID_Keyboard,
+                identifier=event.button_id,
+                mode=NO_MODE,
+                is_pressed=event.is_pressed,
             )
+        )
 
         # Allow the windows event to propagate further
         return True

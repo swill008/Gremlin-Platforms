@@ -200,7 +200,8 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
                 color: Style.fgMuted
                 font.pixelSize: Style.dp(12)
-                text: "HidHide Enabled means HidHide enforces the device list and the program list. Off means HidHide is installed but HidHide is not hiding anything. Automatically Start turns on both this control and HidHide Enabled each time this program starts. This program does not install HidHide. Click on Get HidHide to download the program."
+                // 02 Q13: control replaces HidHide's own lists; say so.
+                text: "HidHide Enabled makes HidHide enforce both lists; off, it hides nothing. Automatically Start turns on this control and HidHide Enabled at each start. While Gremlin-Platforms controls HidHide, this program replaces HidHide's program list and device list with the ones here: anything added in HidHide's Configuration Client is removed. This program does not install HidHide."
             }
 
             // Why the switches and lists are greyed out, and what turns them on.

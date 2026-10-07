@@ -357,7 +357,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 **Open tracker items for this subsystem**
 
 - AU-118 (open): Device Pack partial failure leaves inputs, modes and Logical inputs; also OK on a shared Merge Axis (action map).
-- AU-64 (open, part): Button Map photo folders and export names still use the device's own-name slug (`device_pack._slug` in the pack label and `_output_doc`), so a renamed or twin stick can differ.
+- AU-64 (open, part): photo folders follow the module file; only the pack export file name still goes by the device's own name, so a renamed or twin stick's pack file name can differ.
 - AU-41 (won't fix): two running copies could lose History entries; the lock file prevents it.
 - Decisions waiting in `system-maps.md`: F1 (pack onto a damaged file), F3 (Start Fresh in History), A2 (History restore of a shared action), A3 (pack failing partway).
 

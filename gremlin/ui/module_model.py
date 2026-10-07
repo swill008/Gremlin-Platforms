@@ -22,16 +22,20 @@ from gremlin.ui.live_debug import trace
 from gremlin.modules.ids import guid_key
 from gremlin.modules import ids, store
 from gremlin.modules.claim import (
-    claim_allows,
     claim_friendly,
-    claim_is_empty,
     key_id,
     kind_of,
     read_claim,
 )
-from gremlin.modules.registry import is_output_name, read_doc
+from gremlin.modules.registry import (
+    is_gremlin_xbox_name,
+    is_output_name,
+    read_doc,
+    vjoy_id_from_name,
+)
 from gremlin.modules.registry import modules as registry_modules
 from gremlin.ui.hardware_profile import (
+    PAGE_SIZE,
     HardwareProfile,
     bind_module_file,
     delete_module_file,
@@ -93,7 +97,7 @@ def _ensure_display_options() -> None:
         _CFG_SHOW_STUBS,
         PropertyType.Bool,
         True,
-        "Show stub cards for detected hardware with no saved module.",
+        "Show a card for each device without a module.",
     )
     _reg(_CFG_ORDER, PropertyType.String, "", "Status card order (comma separated slugs).", expose=False)
     _reg(
@@ -163,19 +167,16 @@ def _remember_stub(slug: str) -> None:
     _set_kept_stubs(kept)
 
 
-def _release_kept_stub(slug: str) -> None:
-    kept = _kept_stubs()
-    if slug not in kept:
-        return
-    kept.discard(slug)
-    _set_kept_stubs(kept)
-
-
-def _show_unconfigured(slug: str, saved: bool, show_stubs: bool) -> bool:
+def _show_unconfigured(
+    slug: str, saved: bool, show_stubs: bool, kept: set[str], released: set[str]
+) -> bool:
+    """Whether a device's card shows. Reads only: a kept card whose device
+    has a module again goes into released, written after the reload."""
     if saved:
-        _release_kept_stub(slug)
+        if slug in kept:
+            released.add(slug)
         return True
-    return show_stubs or slug in _kept_stubs()
+    return show_stubs or slug in kept
 
 
 def _set_hidden(slugs: set[str]) -> None:
@@ -252,12 +253,12 @@ def apply_bound_targets(rows: list) -> None:
             continue
         name = str(getattr(row, "name", "") or "")
         tab = str(getattr(row, "tab", "") or "")
-        if tab == "xbox" or "xbox" in name.lower():
+        if tab == "xbox" or is_gremlin_xbox_name(name):
             xbox_name = name
             continue
-        digits = "".join(ch for ch in name if ch.isdigit())
-        if digits:
-            vjoy_to_name[int(digits)] = name
+        vjoy_id = vjoy_id_from_name(name)
+        if vjoy_id:
+            vjoy_to_name[vjoy_id] = name
     src_bound, dest_bound = collect_bound_names(
         guid_to_name, vjoy_to_name, xbox_name, _profile_wire_maps()
     )
@@ -267,11 +268,11 @@ def apply_bound_targets(rows: list) -> None:
         tab = str(getattr(row, "tab", "") or "")
         if direction == "source":
             names = src_bound.get(guid_key(getattr(row, "guid", "")), [])
-        elif tab == "xbox" or "xbox" in name.lower():
+        elif tab == "xbox" or is_gremlin_xbox_name(name):
             names = dest_bound.get("xbox", [])
         else:
-            digits = "".join(ch for ch in name if ch.isdigit())
-            names = dest_bound.get(f"vjoy:{int(digits)}", []) if digits else []
+            vjoy_id = vjoy_id_from_name(name)
+            names = dest_bound.get(f"vjoy:{vjoy_id}", []) if vjoy_id else []
         # Spaces kept in a module file's name ("EVO OT L  ") don't show.
         row.target = ", ".join(" ".join(str(n).split()) for n in names)
 
@@ -1583,10 +1584,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
             hid = int(getattr(event, "identifier", 0) or 0)
         except (TypeError, ValueError):
             return
-        claim = self._source_claim(row)
-        if not claim_is_empty(claim) and not claim_allows(claim, kind, hid):
-            return
-        self._set_last(row, kind, hid, claim)
+        # The input module already passed it (InputModuleRuntime.event, S74);
+        # the claim here only gives the friendly name.
+        self._set_last(row, kind, hid, self._source_claim(row))
 
     # How often an input card looks at its module file for a newer save.
     _CLAIM_CHECK_S = 0.5
@@ -1681,6 +1681,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
         hidden_names: dict[str, str] = {}
         self._hidden_names = hidden_names
         show_stubs = _show_stubs()
+        kept = _kept_stubs()
+        # Settings to change, written once the cards are built (GL-250).
+        released: set[str] = set()
         rows: list[ModuleRow] = []
 
         for dev in device_initialization.physical_devices():
@@ -1690,7 +1693,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 hidden_names[slug] = name
                 continue
             saved = module_exists(name, str(dev.device_guid))
-            if not _show_unconfigured(slug, saved, show_stubs):
+            if not _show_unconfigured(slug, saved, show_stubs, kept, released):
                 continue
             row = ModuleRow()
             row.slug = slug
@@ -1723,7 +1726,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 hidden_names[slug] = name
                 return
             saved = module_exists(name, guid)
-            if not _show_unconfigured(slug, saved, show_stubs) and direction == "source":
+            shown = _show_unconfigured(slug, saved, show_stubs, kept, released)
+            if not shown and direction == "source":
                 return
             row = ModuleRow()
             row.slug = slug
@@ -1792,14 +1796,17 @@ class ModuleListModel(QtCore.QAbstractListModel):
             rows.sort(key=lambda row: rank.get(row.slug, 1000 + len(rank)))
         visible = [row.slug for row in rows]
         merged = _merged_order(order, visible)
-        if visible and merged != saved_order:
-            _set_order(merged)
 
         apply_bound_targets(rows)
 
         self.beginResetModel()
         self._rows = rows
         self.endResetModel()
+        # Writes after the read, and only for values that changed.
+        if released:
+            _set_kept_stubs(kept - released)
+        if visible and merged != saved_order:
+            _set_order(merged)
         self.focusChanged.emit()
         self.panesChanged.emit()
 
@@ -1917,13 +1924,14 @@ class DriverInputModel(QtCore.QAbstractListModel):
         if self._is_osc():
             self._load_osc(claim)
             return
-        # The Xbox output (no Windows game controller behind it). A real Xbox
-        # pad that is unplugged has its own id and is refused below instead.
-        if info is None and (
-            guid_key(guid) == guid_key(XBOX_GUID)
-            or (not guid and "xbox" in (device_name or "").lower())
-        ):
-            self._load_xbox_dest(claim)
+        # The Xbox output has no claims (S32, S39): nothing to tick. A real
+        # Xbox pad that is unplugged has its own id and is refused below.
+        if info is None and guid_key(guid) == guid_key(XBOX_GUID):
+            self.beginResetModel()
+            self._rows = []
+            self._forget_steps()
+            self.endResetModel()
+            self.changed.emit()
             return
         # A device that isn't plugged in shows no controls: saving would
         # erase its claims and names, so Save is refused until it is back.
@@ -2076,6 +2084,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
     def _on_key(self, event: event_handler.Event) -> None:
         if event is None or not self._is_keyboard():
             return
+        # Hardware only: a key the program sent (macro) is no press (GL-244).
+        if getattr(event, "synthetic", False):
+            return
         if event.is_pressed is False:
             return
         if _typing_in_a_text_box():
@@ -2114,46 +2125,6 @@ class DriverInputModel(QtCore.QAbstractListModel):
             self.changed.emit()
         self.markPressed("key", hid)
 
-    def _load_xbox_dest(self, claim: dict) -> None:
-        labels = [
-            ("button", 1, "A"),
-            ("button", 2, "B"),
-            ("button", 3, "X"),
-            ("button", 4, "Y"),
-            ("button", 5, "LB"),
-            ("button", 6, "RB"),
-            ("button", 7, "Back"),
-            ("button", 8, "Start"),
-            ("button", 9, "LS"),
-            ("button", 10, "RS"),
-            ("axis", 1, "Left stick X"),
-            ("axis", 2, "Left stick Y"),
-            ("axis", 3, "Right stick X"),
-            ("axis", 4, "Right stick Y"),
-            ("axis", 5, "LT"),
-            ("axis", 6, "RT"),
-            ("hat", 1, "D-pad"),
-        ]
-        rows = []
-        buckets = {"button": "buttons", "axis": "axes", "hat": "hats"}
-        for kind, hid, label in labels:
-            key = f"{kind}:{hid}"
-            rows.append(
-                {
-                    "kind": kind,
-                    "hwId": hid,
-                    "label": label,
-                    "claimed": hid in claim.get(buckets[kind], []),
-                    "friendly": claim.get("friendly", {}).get(key, ""),
-                    "lit": False,
-                }
-            )
-        self.beginResetModel()
-        self._rows = rows
-        self._forget_steps()
-        self.endResetModel()
-        self.changed.emit()
-
     def _same_device(self, event: event_handler.Event) -> bool:
         if event is None:
             return False
@@ -2178,6 +2149,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
     def _on_joy(self, event: event_handler.Event) -> None:
         try:
             if event is None or not self._rows:
+                return
+            # Hardware only: program-made events tick nothing (GL-244).
+            if getattr(event, "synthetic", False):
                 return
             if not self._same_device(event):
                 return
@@ -2366,9 +2340,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
             if self._is_keyboard() and not keys:
                 doc["claim"]["keysChosen"] = True
             doc.setdefault("space", "world")
-            doc.setdefault("pageW", 32000)
-            doc.setdefault("pageH", 18000)
-            doc.setdefault("photoWell", 0.75)
+            # The one page size (the Button Map's, GL-270).
+            for key in ("pageW", "pageH", "photoWell"):
+                doc.setdefault(key, PAGE_SIZE[key])
             doc.setdefault("nodes", [])
             # The photo in the device's folder (Import Image put it there):
             # named here, so a Save is one write and one History entry.

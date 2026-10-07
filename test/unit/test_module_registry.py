@@ -77,9 +77,6 @@ def test_scan_classifies_and_finds(folder: Path) -> None:
     assert [m.slug for m in registry.outputs()] == ["vjoy_1"]
     assert [m.slug for m in registry.inputs()] == ["stick"]
     assert registry.outputs()[0].claim["buttons"] == [1, 2]
-    assert registry.find("abcdef01000000000000000000000000").slug == "stick"
-    assert registry.find(name="VJOY 1").slug == "vjoy_1"
-    assert registry.find(name="nothing") is None
     assert registry.output_for_vjoy(1).slug == "vjoy_1"
     assert registry.output_for_vjoy(2) is None
 

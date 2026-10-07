@@ -178,7 +178,10 @@ class InputListenerModel(QtCore.QObject):
         Args:
             event: the input event to process
         """
-        # Ignore events from non-physical devices.
+        # Ignore events from non-physical devices and ones the program made
+        # (macro steps, refresh axes, Hat as Buttons: GL-244).
+        if getattr(event, "synthetic", False):
+            return
         if event.device_guid in (dill.UUID_LogicalDevice, dill.UUID_Virtual):
             return
 
@@ -417,6 +420,10 @@ class MacroRecorder:
         self._is_recording = False
 
     def _queue_event_recording(self, event: event_handler.Event) -> None:
+        # Only what the hardware does: not macro steps, refresh axes or
+        # Hat as Buttons (GL-244).
+        if getattr(event, "synthetic", False):
+            return
         QtCore.QTimer.singleShot(0, lambda: self._record_event(event))
 
     def _record_event(self, event: event_handler.Event) -> None:

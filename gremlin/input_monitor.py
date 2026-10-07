@@ -112,8 +112,8 @@ def _entry(event: Event, callbacks: list[object], paused: bool) -> tuple[str, st
 
 def device_name(guid: uuid.UUID) -> str:
     import dill
-    from gremlin import device_initialization
     from gremlin.osc import OSC_DEVICE_UUID
+    from gremlin.ui import device_names
 
     if guid == dill.UUID_Keyboard:
         return "Keyboard"
@@ -121,10 +121,8 @@ def device_name(guid: uuid.UUID) -> str:
         return "Virtual button"
     if guid == OSC_DEVICE_UUID:
         return "OSC"
-    for dev in device_initialization.joystick_devices():
-        if dev.device_guid.uuid == guid:
-            return dev.name
-    return "Unknown device"
+    # The name every screen shows (alias, twin name, vJoy number).
+    return device_names.shown_name(guid) or "Unknown device"
 
 
 def input_name(event: Event) -> str:

@@ -217,7 +217,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 **Photo**
 - **S39** It should offer the Photo menu only while editing. [help: File menu and export]
 - **S40** It should, on Choose Photo…, copy the picture into the device's folder as its photo and keep the old one so Cancel can put it back. [help: The photo] [tracker: A3] [test-plan: WORKFLOW-4]
-- **S41** It should, on Clear Photo, go back to "the module's picture"; if the file can't be removed, put the photo back and say "Clear Photo Failed". [help: The photo] [tracker: N12] (what "the module's picture" means: Q4)
+- **S41** It should, on Clear Photo, leave no photo (decision Q4: no stock or card photo); if the file can't be removed, put the photo back and say "Clear Photo Failed". [help: The photo] [tracker: N12] [changed 2026-10-06 to follow decision Q4]
 - **S42** It should move, size (25% to 400%), offset and turn the photo with Move Photo and Adjust Photo…; Reset Photo puts the pose back and leaves the look. [help: The photo] [test: test_photo_pose.py::test_defaults_and_clamps]
 - **S43** It should apply Brightness, Contrast, Greyscale and Fade, save them with the layout, show them on the live map and in exports, and step through them with Undo. [help: The photo] [test-plan: BMAP2-11] [test: test_photo_pose.py::test_look_kept_clamped_and_only_when_changed]
 - **S44** It should let the photo be hidden or locked from its Layers row; the flags are saved only when on. [help: The photo] [test: test_photo_pose.py::test_layers_flags_kept_only_when_on]
@@ -343,7 +343,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 
 **Open tracker items for this subsystem**
 - **AU-27** (open): a mirrored Copy Button Map may take two undos; not verified (S78).
-- **AU-64** (open, part): Button Map photo / export / Save slug lookups; mostly done, see G22.
+- **AU-64** (open, part): photo folders follow the module file; only the Device Pack export file name still goes by the device's own name (see G22).
 - **BM41** (planned): bigger page; open questions on size and converting the user's maps (S68, Q14).
 - **SH1** (planned): Draw → Plus shape with snap points.
 - **SH2** (planned): Draw → Radial ring with snap points.

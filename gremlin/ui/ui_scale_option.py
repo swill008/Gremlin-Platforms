@@ -10,6 +10,7 @@ from PySide6 import QtCore
 
 from gremlin.config import Configuration
 from gremlin.signal import signal
+from gremlin.types import PropertyType
 from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
 import gremlin.ui.type_aliases as ta
 
@@ -22,6 +23,19 @@ SCALE_NAME = "ui-scale"
 SCALE_MIN = 70
 SCALE_MAX = 200
 SCALE_DEFAULT = 100
+DESCRIPTION = (
+    "Scale the program UI when Windows scaling is disabled. "
+    "The UI resizes when the slider is released."
+)
+
+
+def register() -> None:
+    """The one definition of the UI scale setting (Options shows it with
+    UiScaleModel). Called at start with the other settings."""
+    Configuration().register(
+        SCALE_SECTION, SCALE_GROUP, SCALE_NAME, PropertyType.Int, SCALE_DEFAULT,
+        DESCRIPTION, {"min": SCALE_MIN, "max": SCALE_MAX}, True,
+    )
 
 
 def clamp_scale(value: object) -> int:
@@ -99,10 +113,5 @@ class UiScaleModel(QtCore.QObject, BaseMetaConfigOptionWidget):
 
 
 MetaConfigOption().register(
-    SCALE_SECTION,
-    SCALE_GROUP,
-    "ui-scale",
-    "Scale the program UI when Windows scaling is disabled. "
-    "The UI resizes when the slider is released.",
-    UiScaleModel,
+    SCALE_SECTION, SCALE_GROUP, SCALE_NAME, DESCRIPTION, UiScaleModel
 )

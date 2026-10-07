@@ -9,6 +9,7 @@ import logging
 import re
 from pathlib import Path
 from typing import (
+    Any,
     cast,
 )
 
@@ -163,6 +164,29 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ("", [("global", "files", "plugin-directory")]),
     ]),
 ]
+
+# Choices shown in other words than they are stored (the stored value never
+# changes, so saved settings keep working): Device change behavior's
+# "Disable" is Stop (glossary Run / Stop; 02 Q2).
+_SHOWN_CHOICES: dict[tuple[str, str, str], dict[str, str]] = {
+    ("global", "general", "device-change-behavior"): {"Disable": "Stop"},
+}
+
+
+def shown_choice(key: tuple[str, str, str], stored: Any) -> Any:  # noqa: ANN401
+    """A Selection setting's stored value as Options shows it."""
+    if not isinstance(stored, str):
+        return stored
+    return _SHOWN_CHOICES.get(key, {}).get(stored, stored)
+
+
+def stored_choice(key: tuple[str, str, str], shown: Any) -> Any:  # noqa: ANN401
+    """The stored value of a Selection setting's choice as Options shows it."""
+    for stored, text in _SHOWN_CHOICES.get(key, {}).items():
+        if shown == text:
+            return stored
+    return shown
+
 
 # Stored values that are not settings to show: the Action list's raw data,
 # and HidHide's Automatically Start (switched in the HidHide window only,
@@ -438,7 +462,7 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
 
     def data(
         self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
-    ) -> str | None:
+    ) -> Any:  # noqa: ANN401  (a value, its text or its properties)
         if (
             not index.isValid()
             or index.row() >= len(self._keys)
@@ -460,10 +484,17 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
                 case "data_type":
                     value = "meta_option"
         elif self._config.exists(section, group, name):
+            key = (section, group, name)
             value = self._config.get(section, group, name, role_name)
             if role_name == "value":
                 if self._config.data_type(section, group, name) == PropertyType.Path:
                     value = str(value)
+                value = shown_choice(key, value)
+            elif role_name == "properties" and key in _SHOWN_CHOICES:
+                value = dict(value)
+                value["valid_options"] = [
+                    shown_choice(key, v) for v in value.get("valid_options", [])
+                ]
             if isinstance(value, PropertyType):
                 value = PropertyType.to_string(value)
         return value
@@ -484,6 +515,7 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
         if self.roles[role] == "value":
             if self._config.data_type(section, group, name) == PropertyType.Path:
                 value = Path(value)
+            value = stored_choice((section, group, name), value)
             self._config.set(section, group, name, value)
             self.dataChanged.emit(index, index, [role])
             signal.configChanged.emit()

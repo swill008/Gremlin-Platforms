@@ -111,6 +111,8 @@ class DirectionalButton:
             mode=event.mode,
             is_pressed=is_pressed,
             raw_value=is_pressed,
+            # Made from the hat, not by the hardware (02 S44).
+            synthetic=True,
         )
         btn_value = Value(is_pressed)
 

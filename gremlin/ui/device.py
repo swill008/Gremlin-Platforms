@@ -85,15 +85,12 @@ def _collect_action_icons(action: AbstractActionData, icons: list[str]) -> None:
         icons.append(")")
 
 
-def _description_from_item(item: InputItem) -> str:
-    if item and len(item.action_sequences) > 0:
-        labels = filter(
-            lambda x: x != "Root",
-            [seq.root_action.action_label for seq in item.action_sequences],
-        )
-        return " / ".join(labels)
-    else:
+def _description_from_item(item: InputItem | None) -> str:
+    """The input's own name (Rename on the input lists, 05 S77): the
+    "description" role of every input list model (GL-258)."""
+    if item is None:
         return ""
+    return str(getattr(item, "action_name", "") or "")
 
 
 @ta.QmlElement
@@ -123,7 +120,10 @@ class InputIdentifier(QtCore.QObject):
             elif self.device_guid == dill.UUID_Keyboard:
                 dev_name = "Keyboard"
             else:
-                dev_name = device_initialization.device_name(self.device_guid)
+                # The one shown name (alias, twin name, vJoy number; GL-124).
+                from gremlin.ui.device_names import shown_name
+
+                dev_name = shown_name(self.device_guid)
             return (
                 f"{dev_name} - "
                 + f"{InputType.to_string(self.input_type).capitalize()} "
@@ -495,194 +495,6 @@ class Device(QtCore.QAbstractListModel):
 
 
 @ta.QmlElement
-class LogicalDeviceManagementModel(QtCore.QAbstractListModel):
-    """Model providing information about the intermedia output device."""
-
-    roles = {
-        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
-        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"label"),
-        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"actionSequenceCount"),
-        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(
-            b"actionSequenceDescriptor"
-        ),
-        QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(
-            b"actionSequenceDisplayMode"
-        ),
-        QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"description"),
-    }
-
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(parent)
-
-        self._logical = LogicalDevice()
-        self._mode: str = "Default"
-
-        signal.profileChanged.connect(self._profile_changed_cb)
-        signal.inputItemChanged.connect(self.refreshInput)
-        signal.logicalDeviceModified.connect(self._full_refresh)
-
-    @QtCore.Slot(str)
-    def createInput(self, type_str: str) -> None:
-        self.beginInsertRows(QtCore.QModelIndex(), self.rowCount(), self.rowCount())
-        self._logical.create(InputType.to_enum(type_str))
-        self.endInsertRows()
-        self.dataChanged.emit(
-            self.createIndex(0, 0), self.createIndex(self.rowCount(), 0)
-        )
-        signal.logicalDeviceModified.emit()
-
-    @QtCore.Slot(str, str)
-    def changeName(self, old_label: str, new_label: str) -> None:
-        try:
-            self._logical.set_label(old_label, new_label)
-            self.dataChanged.emit(
-                self.createIndex(0, 0), self.createIndex(self.rowCount(), 0)
-            )
-            signal.logicalDeviceModified.emit()
-        except GremlinError:
-            # FIXME: Somehow needs to reset the text field to the previous value
-            pass
-
-    @QtCore.Slot(str)
-    def deleteInput(self, label: str) -> None:
-        item_index = self._label_to_index(label)
-        self.beginRemoveRows(QtCore.QModelIndex(), item_index, item_index)
-        self._logical.delete(label)
-        self.endRemoveRows()
-        self.dataChanged.emit(
-            self.createIndex(0, 0), self.createIndex(self.rowCount(), 0)
-        )
-        signal.logicalDeviceModified.emit()
-
-    @QtCore.Slot(str)
-    def setMode(self, mode: str) -> None:
-        self._mode = mode
-        self.dataChanged.emit(
-            self.createIndex(0, 0), self.createIndex(self.rowCount() - 1, 0)
-        )
-
-    @QtCore.Slot(int)
-    def refreshInput(self, index: int) -> None:
-        """Refreshes the input at the given index.
-
-        Args:
-            index: linear index of the input to refresh
-        """
-        self.dataChanged.emit(self.createIndex(index, 0), self.createIndex(index, 0))
-
-    def _full_refresh(self) -> None:
-        self.beginResetModel()
-        self.endResetModel()
-
-    def _get_guid(self) -> str:
-        return str(self._logical.device_guid)
-
-    def _profile_changed_cb(self) -> None:
-        self.beginResetModel()
-        self.endResetModel()
-
-    def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._logical.labels_of_type())
-
-    def data(
-        self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
-    ) -> str | int:
-        if role not in self.roles:
-            return "Unknown"
-
-        input_info = self._index_to_input(index.row())
-        input_item = shared_state.current_profile.get_input_item(
-            self._logical.device_guid, input_info.type, input_info.id, self._mode
-        )
-        match cast(str, self.roles[role]):
-            case "name":
-                return (
-                    f"{InputType.to_string(input_info.type).capitalize()} "
-                    f"{input_info.id} - {input_info.label}"
-                )
-            case "label":
-                return input_info.label
-            case "actionSequenceCount":
-                return len(input_item.action_sequences) if input_item else 0
-            case "actionSequenceDescriptor":
-                return (
-                    _generate_action_sequence_descriptor(input_item)
-                    if input_item
-                    else ""
-                )
-            case "actionSequenceDisplayMode":
-                return Configuration().value(
-                    "global", "general", "action-sequence-information"
-                )
-            case "description":
-                return _description_from_item(input_item) if input_item else ""
-            case _:
-                return ""
-
-    @QtCore.Slot(str, result=list[str])
-    def validLabels(self, type_str: str) -> list[str]:
-        """Returns a list of valid labels for a given input."""
-        type = InputType.to_enum(type_str)
-        if len(self._logical.labels_of_type([type])) == 0:
-            self._logical.create(type)
-        return self._logical.labels_of_type([type])
-
-    @QtCore.Slot(int, result=InputIdentifier)
-    def inputIdentifier(self, index: int) -> InputIdentifier:
-        """Returns the InputIdentifier for input with the specified index.
-
-        Args:
-            index: the index of the input for which to generate the
-                InpuIdentifier instance
-
-        Returns:
-            An InputIdentifier instance referring to the input item with
-            the given index.
-        """
-        if index < 0:
-            return InputIdentifier(parent=self)
-
-        input = self._index_to_input(index)
-        identifier = InputIdentifier(parent=self)
-        identifier.device_guid = self._logical.device_guid
-        identifier.input_type = input.type
-        identifier.input_id = input.id
-
-        return identifier
-
-    def _name(self, identifier: tuple[InputType, int]) -> str:
-        return f"{InputType.to_string(identifier[0]).capitalize()} {identifier[1]:d}"
-
-    def _index_to_input(self, index: int) -> LogicalDevice.Input:
-        """Returns the label corresponding to the provided linear index.
-
-        Args:
-            index: the linear index into the list of inputs
-
-        Returns:
-            The input corresponding to the given index
-        """
-        return self._logical[self._logical.labels_of_type()[index]]
-
-    def _label_to_index(self, label: str) -> int:
-        """Returns the index corresponding to the given label.
-
-        Args:
-            label: name of the input for which to determine the index
-
-        Returns:
-            Index of the given label in the backend data storage
-        """
-        all_labels = self._logical.labels_of_type()
-        return all_labels.index(label)
-
-    def roleNames(self) -> dict[int, QtCore.QByteArray]:
-        return self.roles
-
-    guid = QtCore.Property(str, fget=_get_guid)
-
-
-@ta.QmlElement
 class LogicalDeviceSelectorModel(QtCore.QAbstractListModel):
     inputsChanged = QtCore.Signal()
     selectionChanged = QtCore.Signal()
@@ -1030,6 +842,10 @@ class DeviceAxisSeries(QtCore.QObject):
 
     @QtCore.Slot(event_handler.Event)
     def _event_callback(self, event: event_handler.Event) -> None:
+        # Hardware only: program-made events (refresh axes) are no movement
+        # of the stick (GL-244).
+        if getattr(event, "synthetic", False):
+            return
         if event.device_guid != self._device_uuid:
             return
 
@@ -1562,6 +1378,10 @@ class AxisCalibration(QtCore.QAbstractListModel):
 
     @QtCore.Slot(event_handler.Event)
     def _event_callback(self, event: event_handler.Event) -> None:
+        # Hardware only: program-made events (refresh axes) are no movement
+        # of the stick (GL-244).
+        if getattr(event, "synthetic", False):
+            return
         if event.device_guid != self._device_uuid:
             return
 

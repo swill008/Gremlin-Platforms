@@ -274,7 +274,7 @@ ApplicationWindow {
         anchors.bottomMargin: Style.dp(78)
         spacing: Style.dp(10)
 
-        RunningNote {}
+        RunningNote { appliesAtOnce: true }
 
         Label {
             text: deviceName.length ? deviceName : "Unnamed device"
@@ -549,14 +549,16 @@ ApplicationWindow {
                         return
                     _deleteGate.confirmThen("Delete Module File",
                         "Delete " + moduleFileLabel + "? It holds this device's claimed inputs, calibration and Button Map layout.\n\n"
-                        + "A copy is kept in the deleted devices folder, so you can import it back.",
+                        + "A copy is kept in the deleted devices folder, so you can import it back. "
+                        + "The device's pictures are kept.",
                         "Delete file", function() {
                             moduleFileMessage = moduleModel.deleteModuleFile(deviceGuid, deviceName)
                             moduleFileError = moduleFileMessage.length > 0
                             refreshModuleFileLabel()
                             if (!moduleFileMessage.length) {
-                                // The file and its pictures are gone: a kept
-                                // starting photo must not come back later.
+                                // The file is gone (its pictures stay, 03
+                                // Q14): a kept starting photo must not come
+                                // back later.
                                 dropPhotoStash()
                                 reloadModuleControls()
                             }

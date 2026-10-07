@@ -6,6 +6,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 from gremlin.config import Configuration
+from gremlin.types import PropertyType
 from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
 from gremlin.ui import ui_scale_option
 import gremlin.ui.type_aliases as ta
@@ -16,6 +17,19 @@ QML_IMPORT_MAJOR_VERSION = 1
 SECTION = "ui"
 GROUP = "general"
 NAME = "disable-windows-scaling"
+DESCRIPTION = (
+    "Disable Windows display scaling and use the UI scale slider instead. "
+    "Takes effect on the next start."
+)
+
+
+def register() -> None:
+    """The one definition of this setting (Options shows it with
+    WindowsScaleModel). joystick_gremlin reads the same key from the file
+    before Qt starts, without this module."""
+    Configuration().register(
+        SECTION, GROUP, NAME, PropertyType.Bool, False, DESCRIPTION, {}, True
+    )
 
 
 def saved_disabled() -> bool:
@@ -58,11 +72,4 @@ class WindowsScaleModel(QtCore.QObject, BaseMetaConfigOptionWidget):
         return "file:///" + QtCore.QFile("qml:OptionWindowsScale.qml").fileName()
 
 
-MetaConfigOption().register(
-    SECTION,
-    GROUP,
-    NAME,
-    "Disable Windows display scaling and use the UI scale slider instead. "
-    "Takes effect on the next start.",
-    WindowsScaleModel,
-)
+MetaConfigOption().register(SECTION, GROUP, NAME, DESCRIPTION, WindowsScaleModel)

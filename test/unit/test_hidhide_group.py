@@ -12,7 +12,7 @@ PARENT = r"USB\VID_231D&PID_2234\7&2BDEAFD4&0&4"
 
 
 def test_nxt_interfaces_share_usb_parent_group():
-    from gremlin.ui import hidhide as hh
+    from gremlin import hidhide_driver as hh
     with patch.object(hh, "_container_id", return_value="per-child"), patch.object(
         hh, "_parent_instance", return_value=PARENT
     ):
@@ -22,7 +22,7 @@ def test_nxt_interfaces_share_usb_parent_group():
 
 
 def test_different_usb_parents_stay_apart():
-    from gremlin.ui import hidhide as hh
+    from gremlin import hidhide_driver as hh
     def parent(inst):
         if "PID_0200" in inst:
             return r"USB\VID_231D&PID_AAAA\EVO"
@@ -36,7 +36,7 @@ def test_different_usb_parents_stay_apart():
 
 
 def test_no_parent_does_not_merge_whole_vendor():
-    from gremlin.ui import hidhide as hh
+    from gremlin import hidhide_driver as hh
     with patch.object(hh, "_container_id", return_value=""), patch.object(
         hh, "_parent_instance", return_value=""
     ):

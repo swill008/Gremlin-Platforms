@@ -138,9 +138,18 @@ def _module_text(side: dict | None, parts: list[str]) -> str:
 def _settings_text(side: dict | None) -> str:
     if not side:
         return ""
-    # Each setting by the name Options shows ("Plugins folder").
+    from gremlin.ui.option import shown_choice
+
+    def shown(key: str, value: object) -> object:
+        parts = key.split("/")
+        if len(parts) != 3:
+            return value
+        return shown_choice((parts[0], parts[1], parts[2]), value)
+
+    # Each setting by the name and choice Options shows ("Plugins folder",
+    # "Stop" for a stored "Disable").
     return "\n".join(
-        f"{entry_title(key.rsplit('/', 1)[-1], key)}: {value}"
+        f"{entry_title(key.rsplit('/', 1)[-1], key)}: {shown(key, value)}"
         for key, value in side.items()
     )
 
@@ -273,7 +282,12 @@ def _restore_profile(entry: dict, side: dict | None, which: str) -> tuple[bool, 
         copy = original.with_name(f"{base} {number}{original.suffix}")
         number += 1
     module_file.write_text(copy, text, encoding="utf-8-sig", newline="")
-    return True, f"Written as {copy}. Open it with File > Load Profile."
+    # The copy is the user's: kept until they delete it (as Delete File
+    # copies, 08 Q17; GL-277).
+    return True, (
+        f"Written as {copy}. Open it with File > Load Profile. "
+        "It stays next to the profile until you delete it."
+    )
 
 
 def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:

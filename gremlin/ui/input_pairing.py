@@ -158,6 +158,16 @@ def device_label(guid: str) -> str:
     }
     if uid in builtin:
         return builtin[uid]
+    if uid is not None:
+        # The name every screen shows (alias, twin name, vJoy number).
+        from gremlin.ui import device_names
+
+        try:
+            shown = device_names.shown_name(uid)
+        except Exception:
+            shown = ""
+        if shown:
+            return shown
     return _device_name(guid)
 
 

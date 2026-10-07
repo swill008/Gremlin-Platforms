@@ -38,8 +38,10 @@ ApplicationWindow {
     onClosing: (e) => {
         if (_allowClose || !editing)
             return
-        if (!isDirty())
+        if (!isDirty()) {
+            dropUnusedPictures()
             return
+        }
         e.accepted = false
         askLeave("close")
     }
@@ -130,14 +132,9 @@ ApplicationWindow {
         }
     }
 
-    property string stockImage: {
-        if (/evo l|ot l/i.test(targetName))
-            return "qml/images/vkb_gladiator_evo_l.jpg"
-        if (/gladiator/i.test(targetName))
-            return "qml/images/vkb_gladiator_rig.jpg"
-        // Any other device: its own card photo, or no photo at all.
-        return initialPhoto
-    }
+    // A map that names no photo shows the device's own card photo, or no
+    // photo at all (07 S11; no stock photos ship, 07 Q12).
+    property string fallbackImage: initialPhoto
     property int _nameTick: 0
     property bool editing: false
     // Chips, Properties, Layers and Command Palette open from the tool row at
@@ -279,7 +276,11 @@ ApplicationWindow {
     // photoImageRestored): a copy of it, "clear", or "" for the photo the
     // edit started with.
     function applyImage(rel, source) {
-        storedImage = rel && rel.length ? rel : stockImage
+        // Clear Photo leaves no photo (07 Q4): the card photo the window
+        // opened with was that photo, so it is no fallback any more.
+        if (source === "clear" && !(rel && rel.length))
+            initialPhoto = ""
+        storedImage = rel && rel.length ? rel : fallbackImage
         var url = _hw.imageUrl(storedImage)
         if (_photoStamp > 0 && url.indexOf("file:") === 0)
             url += (url.indexOf("?") < 0 ? "?" : "&") + "t=" + _photoStamp
@@ -302,10 +303,10 @@ ApplicationWindow {
             return
         }
         var rel = ""
+        var cleared = false
         if (source === "clear") {
             _hw.stashPhoto(targetName)
-            if (_hw.clearImage(targetName))
-                rel = stockImage
+            cleared = _hw.clearImage(targetName)
         } else if (!source.length) {
             // The photo this edit started with.
             if (_hw.restorePhoto(targetName))
@@ -314,7 +315,7 @@ ApplicationWindow {
             _hw.stashPhoto(targetName)
             rel = _hw.copyImage(source, targetName)
         }
-        if (rel.length) {
+        if (rel.length || cleared) {
             _photoStamp = Date.now()
             applyImage(rel, source)
         } else if (e) {
@@ -441,7 +442,7 @@ ApplicationWindow {
         }
         liveNodes = JSON.parse(JSON.stringify(doc.nodes))
         hydrateOverlays(liveNodes)
-        liveImage = doc.image && doc.image.length ? doc.image : stockImage
+        liveImage = doc.image && doc.image.length ? doc.image : fallbackImage
         if (doc.ui)
             applyUi(doc.ui)
         applyImage(liveImage)
@@ -485,7 +486,7 @@ ApplicationWindow {
         hydrateOverlays(workNodes)
         workPhoto = photoFromDoc(livePhoto)
         applyPhoto(workPhoto)
-        applyImage(liveImage.length ? liveImage : stockImage)
+        applyImage(liveImage)
         // The print area, print setup and guides as this edit starts:
         // Cancel puts them back (07 Q1).
         noteEditUiBase()
@@ -518,9 +519,9 @@ ApplicationWindow {
             _conflictAsking = true
             _saveGate.choose("Module File Changed",
                 "The module file changed since you started editing (another window saved it).\n\n"
-                + "Keep mine writes your edits over that change. Take theirs drops your edits "
+                + "Keep Mine writes your edits over that change. Take Theirs drops your edits "
                 + "and shows the file as it is now.",
-                "Keep mine", "Take theirs")
+                "Keep Mine", "Take Theirs")
             return false
         }
         var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
@@ -532,15 +533,13 @@ ApplicationWindow {
             nodes = ed.nodes
         else if (workNodes)
             nodes = workNodes
-        var image = storedImage.length ? storedImage : stockImage
+        // The photo as shown: "" after Clear Photo (07 Q4).
+        var image = storedImage
         var doc = {
             kind: "control.hardware",
             device: targetName,
             space: "world",
-            page: 32000,
-            pageW: 32000,
-            pageH: 18000,
-            photoWell: 0.75,
+            // The page size is stamped by Save (hardware_profile.PAGE_SIZE).
             image: image,
             imageWidth: 1348,
             imageHeight: 1380,
@@ -615,8 +614,8 @@ ApplicationWindow {
     function isDirty() {
         if (!editing)
             return false
-        var image = storedImage.length ? storedImage : stockImage
-        var live = liveImage.length ? liveImage : stockImage
+        var image = storedImage
+        var live = liveImage
         // A new photo of the same file type keeps the same file name: the
         // kept copy of the old one says it changed.
         if (targetName.length && _hw.hasPhotoStash(targetName))
@@ -642,7 +641,7 @@ ApplicationWindow {
 
     function recoveryPayload() {
         return JSON.stringify({
-            image: storedImage.length ? storedImage : stockImage,
+            image: storedImage,
             photo: photoBag(),
             nodes: editorNodesNow()
         })
@@ -685,7 +684,7 @@ ApplicationWindow {
         try { doc = JSON.parse(text) } catch (e) { doc = null }
         if (!doc || !doc.nodes)
             return false
-        var live = { image: liveImage.length ? liveImage : stockImage, photo: livePhoto || photoFromDoc(null), nodes: liveNodes }
+        var live = { image: liveImage, photo: livePhoto || photoFromDoc(null), nodes: liveNodes }
         var same = false
         try {
             same = JSON.stringify({ image: doc.image, photo: doc.photo, nodes: doc.nodes }) === JSON.stringify(live)
@@ -785,6 +784,7 @@ ApplicationWindow {
             // Photo files changed in this session go back to how they were.
             if (_hw.restorePhoto(targetName))
                 _photoStamp = Date.now()
+            dropUnusedPictures()
             // So do the print area, print setup and guides (07 Q1).
             restoreEditUi()
         }
@@ -858,8 +858,16 @@ ApplicationWindow {
         finishLeave()
     }
 
+    // An edit ended (saved or cancelled): pictures it added that no map
+    // uses leave the device's folder (07 Q11).
+    function dropUnusedPictures() {
+        if (targetName.length)
+            _hw.removeUnusedPictures(targetName)
+    }
+
     function finishLeave() {
         if (leaveKind === "close") {
+            dropUnusedPictures()
             editing = false
             _allowClose = true
             close()
@@ -871,6 +879,7 @@ ApplicationWindow {
             // Saved: leave Edit (the saved map is what shows).
             discardEdit()
         } else if (leaveKind === "appquit") {
+            dropUnusedPictures()
             _allowClose = true
             close()
             Qt.quit()
@@ -3202,7 +3211,7 @@ ApplicationWindow {
                                 "The photo file could not be removed (it may be open in another program).")
                             return
                         }
-                        applyImage(stockImage, "clear")
+                        applyImage("", "clear")
                         resetPhoto()
                     }
                 }

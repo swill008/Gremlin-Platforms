@@ -39,7 +39,7 @@ ApplicationWindow {
     title: "Device Information"
 
     // The columns need about 1060 wide: on a narrow screen or a large UI
-    // scale the list scrolls sideways (Device GUID was cut off).
+    // scale the list scrolls sideways (Device ID was cut off).
     readonly property real columnsWidth: Style.dp(1060)
 
     Flickable {
@@ -92,7 +92,7 @@ ApplicationWindow {
                     Layout.preferredWidth: Style.dp(100)
                 }
                 HeaderText {
-                    text: "Device GUID"
+                    text: "Device ID"
                     Layout.preferredWidth: Style.dp(320)
                 }
             }

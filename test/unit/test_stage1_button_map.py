@@ -166,6 +166,8 @@ def test_clear_photo_then_cancel_brings_it_back_without_history(flows: dict) -> 
     # S26, S41: an unsaved change; Cancel puts the photo back.
     assert flows["clear-photo-ran"] is True
     assert flows["clear-photo"]["dirty"] is True
+    # 07 Q4 (GL-221): Clear Photo leaves no photo, not the card's.
+    assert flows["clear-photo"]["shown"] == ["", ""]
     assert flows["clear-photo"]["history-before-save"] == 0
     back = flows["clear-photo-cancel"]
     assert back["photo-back"] is True

@@ -15,9 +15,10 @@ from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
+from action_plugins import axis_pair
+from action_plugins.axis_pair import AxisRef, AxisView, is_set
 from gremlin import (
     event_handler,
-    shared_state,
     util,
 )
 from gremlin.base_classes import (
@@ -28,11 +29,9 @@ from gremlin.base_classes import (
 )
 from gremlin.error import GremlinError
 from gremlin.modules import inputs
-from gremlin.plugin_manager import PluginManager
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
-    DataCreationMode,
     InputType,
     PropertyType,
 )
@@ -168,6 +167,7 @@ class MergeAxisModel(ActionModel):
         parent: QtCore.QObject,
     ) -> None:
         super().__init__(data, binding_model, action_index, parent_index, parent)
+        self._axis_views = {1: AxisView(self), 2: AxisView(self)}
 
     def _qml_path_impl(self) -> str:
         return (
@@ -200,22 +200,7 @@ class MergeAxisModel(ActionModel):
 
     @QtCore.Property(LabelValueSelectionModel, notify=modelChanged)
     def mergeActionList(self) -> LabelValueSelectionModel:
-        # The one shown, those in the input being edited (the pane edits
-        # copies; "+" makes one no input uses yet) and those an input uses.
-        merge_actions = sorted(
-            self.library.pick_list(
-                lambda a: isinstance(a, MergeAxisData),
-                self._data,
-                self._binding_model.input_item_binding.input_item,
-            ),
-            key=lambda x: x.label,
-        )
-
-        return LabelValueSelectionModel(
-            [ma.label for ma in merge_actions],
-            [str(ma.id) for ma in merge_actions],
-            parent=self,
-        )
+        return axis_pair.pick_list(self, MergeAxisData)
 
     def _get_label(self) -> str:
         return self._data.label
@@ -234,48 +219,20 @@ class MergeAxisModel(ActionModel):
         return str(self._data.id)
 
     def _set_merge_action(self, uuid_str: str) -> None:
-        """Sets the merge action to be configured..
-
-        Args:
-            uuid_str: string representation of an action UUID
-        """
-        # Do not process selecting the already active action
-        if util.parse_id_or_uuid(uuid_str) == self._data.id:
-            return
-
-        # Remove current input item assignments from the action being
-        # deselected, unless another input still uses it (clearing an axis
-        # would leave it unfinished there, and a save would drop it)
-        item = self._binding_model.input_item_binding.input_item
-        identifier = InputIdentifier(item.device_id, item.input_type, item.input_id)
-
-        if not self.library.used_elsewhere(self._data, item):
-            if self._data.axis_in1 == identifier:
-                self._data.axis_in1 = InputIdentifier()
-            if self._data.axis_in2 == identifier:
-                self._data.axis_in2 = InputIdentifier()
-
-        # Put the picked one in its place; a shared one is edited as a copy
-        # until OK (decision A4).
-        picked = self.adopt_action(
-            self.library.get_action(util.parse_id_or_uuid(uuid_str))
-        )
-        self._binding_model.append_action(picked, self.sequence_index)
-        self._binding_model.remove_action(self.sequence_index)
-        self._binding_model.rootActionChanged.emit()
+        """Shows the merge action with that id (string UUID) here."""
+        axis_pair.switch_instance(self, uuid_str, ("axis_in1", "axis_in2"))
 
     def _get_axis(self, idx: int) -> InputIdentifier:
-        return self._data.axis_in1 if idx == 1 else self._data.axis_in2
+        return self._axis_views[idx].show(
+            self._data.axis_in1 if idx == 1 else self._data.axis_in2
+        )
 
     def _set_axis(self, idx: int, value: InputIdentifier) -> None:
-        if idx == 1:
-            if value != self._data.axis_in1:
-                self._data.axis_in1 = value
-                self.modelChanged.emit()
-        else:
-            if value != self._data.axis_in2:
-                self._data.axis_in2 = value
-                self.modelChanged.emit()
+        # A copy: the page's current input changes after this.
+        name = "axis_in1" if idx == 1 else "axis_in2"
+        if value != getattr(self._data, name):
+            setattr(self._data, name, AxisRef.of(value))
+            self.modelChanged.emit()
 
     def _get_operation(self) -> str:
         return MergeOperation.to_string(self._data.operation).capitalize()
@@ -289,21 +246,10 @@ class MergeAxisModel(ActionModel):
     @QtCore.Slot()
     def newMergeAxis(self) -> None:
         # Always a new one ("+"), added by the library.
-        action = self.library.create(
-            MergeAxisData.name, self._binding_model.behavior_type, reuse=False
-        )
-        if action is None:
-            return
-        taken = {
-            getattr(a, "label", "") for a in self.library.actions_by_type(MergeAxisData)
-        }
-        number = 1
-        while f"Merge Axis {number}" in taken:
-            number += 1
-        action.label = f"Merge Axis {number}"
-
-        # The new one is the one shown (as picking it from the list).
-        self._set_merge_action(str(action.id))
+        action = axis_pair.new_instance(self, MergeAxisData)
+        if action is not None:
+            # The new one is the one shown (as picking it from the list).
+            self._set_merge_action(str(action.id))
 
     label = QtCore.Property(str, fget=_get_label, fset=_set_label, notify=modelChanged)
 
@@ -330,10 +276,6 @@ class MergeAxisModel(ActionModel):
     )
 
 
-def _copy_identifier(source: InputIdentifier) -> InputIdentifier:
-    return InputIdentifier(source.device_guid, source.input_type, source.input_id)
-
-
 class MergeAxisData(AbstractActionData):
     version = 1
     name = "Merge Axis"
@@ -353,8 +295,8 @@ class MergeAxisData(AbstractActionData):
         super().__init__(behavior_type)
 
         self.label = ""
-        self.axis_in1 = InputIdentifier()
-        self.axis_in2 = InputIdentifier()
+        self.axis_in1 = AxisRef()
+        self.axis_in2 = AxisRef()
         self.operation = MergeOperation.Average
 
         self.children = []
@@ -415,7 +357,7 @@ class MergeAxisData(AbstractActionData):
     @override
     def user_feedback(self) -> List[UserFeedback]:
         messages = []
-        if not (self.axis_in1.isValid and self.axis_in2.isValid):
+        if not (is_set(self.axis_in1) and is_set(self.axis_in2)):
             messages.append(
                 UserFeedback(
                     UserFeedback.FeedbackType.Error, "Both axes have to be assigned."
@@ -441,23 +383,9 @@ class MergeAxisData(AbstractActionData):
         copy.activation_mode = self.activation_mode
         copy.label = self.label
         copy.operation = self.operation
-        copy.axis_in1 = _copy_identifier(self.axis_in1)
-        copy.axis_in2 = _copy_identifier(self.axis_in2)
+        copy.axis_in1 = AxisRef.of(self.axis_in1)
+        copy.axis_in2 = AxisRef.of(self.axis_in2)
         return copy
-
-    @classmethod
-    @override
-    def _do_create(
-        cls, mode: DataCreationMode, behavior_type: InputType
-    ) -> AbstractActionData:
-        if mode == DataCreationMode.Reuse:
-            all_actions = shared_state.current_profile.library.actions_in_use_by_type(
-                PluginManager().get_class(MergeAxisData.name)
-            )
-            if len(all_actions) == 0:
-                return MergeAxisData(behavior_type)
-            else:
-                return all_actions[0]
 
     @override
     def _valid_selectors(self) -> list[str]:

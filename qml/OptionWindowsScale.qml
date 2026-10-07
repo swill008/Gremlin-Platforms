@@ -25,7 +25,7 @@ Item {
 
         CheckBox {
             id: _box
-            text: "Disable Windows scaling"
+            text: "Ignore Windows display scaling"
             checked: _model ? _model.disabled : false
             onClicked: {
                 if (!_model)
@@ -35,7 +35,7 @@ Item {
                 if (checked !== _model.runningDisabled)
                     _restartAsk.choose(
                         "Restart Required",
-                        "Windows scaling changes when Gremlin-Platforms starts. "
+                        "Windows display scaling changes when the program starts. "
                         + "Restart now to use the new setting, choose Later to use it "
                         + "at the next start, or Cancel to undo the change.",
                         "Restart",

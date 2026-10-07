@@ -257,7 +257,11 @@ class Backend(QtCore.QObject):
         # Connected before the monitor starts: the program in front at start
         # was missed (GL-129, 02 G21).
         self.process_monitor.process_changed.connect(self._active_process_changed_cb)
-        self.process_monitor.start()
+        # It runs only while auto-load is on (02 Q19).
+        self._sync_process_monitor()
+        signal.configChanged.connect(self._sync_process_monitor)
+        # The Configuration pane's models: the newest few are kept (05 RB18).
+        self._editor_models: list[InputItemModel] = []
         self.joystick_change_monitor = device_helpers.JoystickInputSignificant()
         mm = mode_manager.ModeManager()
         mm.mode_changed.connect(self._on_mode_changed)
@@ -278,6 +282,10 @@ class Backend(QtCore.QObject):
         ):
             return
         if event.device_guid == OSC_DEVICE_UUID:
+            return
+        # Events the program makes (macro steps, refresh axes, Hat as
+        # Buttons) are not the hardware moving (GL-244).
+        if getattr(event, "synthetic", False):
             return
         if not self.joystick_change_monitor.should_process(event):
             return
@@ -365,6 +373,13 @@ class Backend(QtCore.QObject):
     def emitConfigChanged(self) -> None:
         signal.configChanged.emit()
         audio_player.AudioPlayer().refresh()
+
+    def _sync_process_monitor(self) -> None:
+        """Watches the program in front only while auto-load is on."""
+        if self.config.value("profile", "automation", "enable-auto-loading"):
+            self.process_monitor.start()
+        else:
+            self.process_monitor.stop()
 
     def _active_process_changed_cb(self, path: str) -> None:
         if not self.config.value("profile", "automation", "enable-auto-loading"):
@@ -509,9 +524,26 @@ class Backend(QtCore.QObject):
                 self.ui_state.currentMode,
                 True,
             )
-            return InputItemModel(item, enumeration_index, self)
         except error.ProfileError:
-            pass
+            return None
+        if item is None:
+            return None
+        return self._editor_model(item, enumeration_index)
+
+    # The one pane that asks for these shows the newest; it asks twice when
+    # it opens. Older ones were kept for the whole session (05 RB18).
+    _KEPT_EDITOR_MODELS = 4
+
+    def _editor_model(
+        self, item: profile.InputItem, enumeration_index: int
+    ) -> InputItemModel:
+        """A new model for the Configuration pane; the oldest beyond the
+        newest few is freed."""
+        model = InputItemModel(item, enumeration_index, self)
+        self._editor_models.append(model)
+        while len(self._editor_models) > self._KEPT_EDITOR_MODELS:
+            self._editor_models.pop(0).deleteLater()
+        return model
 
     @QtCore.Slot(str)
     def pauseInputHighlighting(self, holder: str) -> None:
@@ -707,7 +739,7 @@ class Backend(QtCore.QObject):
         # A new Profile has its own Logical Device and OSC rows: the open
         # one keeps its own if this fails (GL-074).
         new_profile = profile.Profile()
-        profile_was_converted = new_profile.from_xml(Path(fpath))
+        new_profile.from_xml(Path(fpath))
         profile_folder = os.path.dirname(fpath)
         # Added once, in front; the rest keeps its order (it was made a set,
         # so a script folder's module could hide a library one at random).
@@ -720,8 +752,6 @@ class Backend(QtCore.QObject):
         for warning in getattr(new_profile, "load_warnings", []) or []:
             logging.getLogger("system").warning(warning)
             signal.showNotification.emit("Open Profile", warning)
-        if profile_was_converted:
-            self.profile.to_xml(Path(fpath))
 
     def _load_profile(self, fpath: str, report: bool = True) -> bool:
         """Opens a profile; False if it couldn't. report=False: the reason is

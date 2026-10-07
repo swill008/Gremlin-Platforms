@@ -47,12 +47,17 @@ class ProcessMonitor(QtCore.QObject):
         self._update_thread = None
 
     def start(self) -> None:
-        """Starts monitoring the current process."""
+        """Starts monitoring the current process (it runs only while
+        auto-load is on, 02 Q19)."""
         if not self.running:
             self.running = True
-            self._stop.clear()
+            # Each start has its own stop request: a loop still finishing
+            # after stop() ends by itself and never runs next to a new one.
+            self._stop = threading.Event()
+            # The program in front when it starts is announced, as at start.
+            self._current_pid = -1
             self._update_thread = threads.start(
-                "process monitor", self._update, stop=self._ask_to_stop
+                "process monitor", self._update, self._stop, stop=self._ask_to_stop
             )
 
     def _ask_to_stop(self) -> None:
@@ -61,14 +66,13 @@ class ProcessMonitor(QtCore.QObject):
 
     def stop(self) -> None:
         """Stops monitoring the current process."""
-        self.running = False
-        self._stop.set()
+        self._ask_to_stop()
         if self._update_thread is not None:
             self._update_thread.join(timeout=2.0)
 
-    def _update(self) -> None:
+    def _update(self, stop: threading.Event) -> None:
         """Monitors the active process for changes."""
-        while self.running:
+        while not stop.is_set():
             _, pid = win32process.GetWindowThreadProcessId(
                 win32gui.GetForegroundWindow()
             )
@@ -83,7 +87,7 @@ class ProcessMonitor(QtCore.QObject):
                     self._current_path = path
                     self.process_changed.emit(self.current_path)
 
-            self._stop.wait(1.0)
+            stop.wait(1.0)
 
     def _image_path(self, pid: int) -> str:
         """The program's path, "" when it can't be read."""

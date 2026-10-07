@@ -154,12 +154,15 @@ Item {
     property int tableCol: -1
     property int tableExtra: -1
     property string packWarn: ""
+    // The page and its photo frame as hardware_profile.PAGE_SIZE (07 S68):
+    // the frame is the middle photoWellFraction of the page.
     readonly property real worldPageW: 32000
     readonly property real worldPageH: 18000
-    readonly property real innerPageW: 24000
-    readonly property real innerPageH: 13500
-    readonly property real innerPadX: 0.125
-    readonly property real innerPadY: 0.125
+    readonly property real photoWellFraction: 0.75
+    readonly property real innerPageW: worldPageW * photoWellFraction
+    readonly property real innerPageH: worldPageH * photoWellFraction
+    readonly property real innerPadX: (1 - photoWellFraction) / 2
+    readonly property real innerPadY: (1 - photoWellFraction) / 2
     readonly property real uiRefW: 1600
     readonly property real uiScale: {
         var s = Math.min(width / Math.max(1, worldPageW), height / Math.max(1, worldPageH))
@@ -327,7 +330,6 @@ Item {
     function destOf(kind, hwId) { return RigChips.destOf(kind, hwId) }
     function memberKind(n, mem) { return RigChips.memberKind(n, mem) }
     function leafKind(kind) { return RigChips.leafKind(kind) }
-    function physicalName(kind, hwId) { return RigChips.physicalName(kind, hwId) }
     function hardwareLabel(kind, hwId) { return RigChips.hardwareLabel(kind, hwId) }
     function defaultFriendly(kind, hwId) { return RigChips.defaultFriendly(kind, hwId) }
     function isClearedFriendly(v) { return RigChips.isClearedFriendly(v) }
@@ -1045,45 +1047,6 @@ Item {
         }
         paintLeaders()
     }
-
-    // Physical names from the EVO R lock inventory, shown after the control
-    // in a chip's full name. Never used to tell a typed name apart (07 Q10).
-    readonly property var physNames: ({
-        "btn:1": "Red trigger half",
-        "btn:2": "Red trigger full",
-        "btn:3": "Red head button",
-        "btn:4": "White cap",
-        "btn:5": "Lower grip white",
-        "btn:6": "Head 5-way (right of red) up",
-        "btn:7": "Head 5-way (right of red) right",
-        "btn:8": "Head 5-way (right of red) down",
-        "btn:9": "Head 5-way (right of red) left",
-        "btn:10": "Head 5-way (right of red) center",
-        "btn:11": "Top-right head 5-way up",
-        "btn:12": "Top-right head 5-way right",
-        "btn:13": "Top-right head 5-way down",
-        "btn:14": "Top-right head 5-way left",
-        "btn:15": "Top-right head 5-way center",
-        "btn:16": "Silver wheel 5-way up",
-        "btn:17": "Silver wheel 5-way right",
-        "btn:18": "Silver wheel 5-way down",
-        "btn:19": "Silver wheel 5-way left",
-        "btn:20": "Silver wheel 5-way center",
-        "btn:21": "Grey paddle push",
-        "btn:22": "Grey paddle pull",
-        "btn:23": "En2 right knob up",
-        "btn:24": "En2 right knob down",
-        "btn:25": "En1 left knob up",
-        "btn:26": "En1 left knob down",
-        "btn:27": "Middle base pad",
-        "btn:28": "Left base pad",
-        "btn:29": "Right base pad",
-        "hat:1": "Analog ministick",
-        "axis:1": "Stick X roll",
-        "axis:2": "Stick Y pitch",
-        "axis:3": "Stick Z twist",
-        "axis:4": "Z slider (En1–En2)"
-    })
 
     function ctxTarget() {
         tick

@@ -299,8 +299,8 @@ def test_map_parts_change_with_the_map_and_photo_only(folder: Path) -> None:
 def test_button_map_asks_before_writing_over_a_change_and_follows_one() -> None:
     qml = (_ROOT / "qml" / "DialogJoystickButtonMap.qml").read_text(encoding="utf-8")
     assert "ModuleFileWatch { id: _fileWatch }" in qml
-    # In Edit, Save asks Keep mine / Take theirs (07 Q6).
-    assert '"Keep mine", "Take theirs"' in qml
+    # In Edit, Save asks Keep Mine / Take Theirs (07 Q6; glossary D15).
+    assert '"Keep Mine", "Take Theirs"' in qml
     # Outside Edit, the map follows the file.
     assert "_buttonMap.loadLive(true)" in qml
 

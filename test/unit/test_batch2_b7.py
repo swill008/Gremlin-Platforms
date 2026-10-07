@@ -257,6 +257,9 @@ def test_restore_applies_logs_and_ui_scale_at_once(
 
     monkeypatch.setattr(config, "_config_file_path", str(tmp_path / "c.json"))
     cfg = config.Configuration()
+    # The settings are one shared object: put its entries back afterwards
+    # (a Diagnostic logs level left at Error is applied by the next Live stop).
+    monkeypatch.setattr(cfg, "_data", {k: dict(v) for k, v in cfg._data.items()})
     log_key = ("global", "general", "log-level")
     _register(cfg, log_key, PropertyType.String, "Warning", {})
     scale_key = ("ui", "general", "ui-scale")
@@ -264,7 +267,11 @@ def test_restore_applies_logs_and_ui_scale_at_once(
     system = logging.getLogger("system")
     old_level, old_disabled = system.level, system.disabled
     scaled: list[bool] = []
-    signal.uiScaleChanged.connect(lambda: scaled.append(True))
+
+    def on_scale() -> None:
+        scaled.append(True)
+
+    signal.uiScaleChanged.connect(on_scale)
     try:
         cfg.set("global", "general", "log-level", "Warning")
         log_option.apply_log_level("Warning")
@@ -277,6 +284,7 @@ def test_restore_applies_logs_and_ui_scale_at_once(
         assert scaled
         assert cfg.value("ui", "general", "ui-scale") == 150
     finally:
+        signal.uiScaleChanged.disconnect(on_scale)
         log_option.apply_log_level("Warning")
         system.setLevel(old_level)
         system.disabled = old_disabled

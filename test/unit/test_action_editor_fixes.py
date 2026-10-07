@@ -32,7 +32,7 @@ from PySide6 import QtCore
 from action_plugins.description import DescriptionData
 from action_plugins.root import RootData
 from gremlin.profile import InputItem, InputItemBinding, Profile
-from gremlin.types import DataCreationMode, InputType
+from gremlin.types import InputType
 from gremlin.ui.profile import InputItemBindingModel
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -104,23 +104,6 @@ def test_an_action_only_a_dead_one_holds_leaves_the_library() -> None:
 
 def test_the_broken_profile_remove_action_is_gone() -> None:
     assert not hasattr(Profile, "remove_action")
-
-
-# ACT18 --------------------------------------------------------------------
-
-
-def test_reuse_keeps_the_shared_actions_name() -> None:
-    from action_plugins.merge_axis import MergeAxisData
-
-    shared = MergeAxisData(InputType.JoystickAxis)
-    shared.action_label = "Throttle pair"
-    with mock.patch.object(MergeAxisData, "_do_create", return_value=shared):
-        got = MergeAxisData.create(DataCreationMode.Reuse, InputType.JoystickAxis)
-    assert got is shared and got.action_label == "Throttle pair"
-    fresh = MergeAxisData(InputType.JoystickAxis)
-    with mock.patch.object(MergeAxisData, "_do_create", return_value=fresh):
-        got = MergeAxisData.create(DataCreationMode.Reuse, InputType.JoystickAxis)
-    assert got.action_label == MergeAxisData.name  # a new one gets the default
 
 
 # ACT22 --------------------------------------------------------------------

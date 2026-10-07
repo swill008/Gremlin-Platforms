@@ -209,6 +209,9 @@ def test_settings_the_user_chooses_are_kept(
 
     monkeypatch.setattr(config, "_config_file_path", str(tmp_path / "c.json"))
     cfg = config.Configuration()
+    # The settings are one shared object: put its entries back afterwards
+    # (a registration here has no description).
+    monkeypatch.setattr(cfg, "_data", {k: dict(v) for k, v in cfg._data.items()})
     cfg.register(
         "global",
         "history",
@@ -230,7 +233,7 @@ def test_settings_the_user_chooses_are_kept(
         False,
     )
     cfg.save_now()
-    cfg._history_view = cfg._settings_view()
+    monkeypatch.setattr(cfg, "_history_view", cfg._settings_view(), raising=False)
     cfg.set("global", "history", "keep-days", 30)
     cfg.set("global", "internal", "window-x", 400)
     cfg.save_now()

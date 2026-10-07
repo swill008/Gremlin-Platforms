@@ -24,10 +24,6 @@ Item {
     property var moduleModel: null
     property string claimDeviceName: ""
     property bool isOutput: false
-    property int editingHid: -1
-    property int editingSeq: -1
-    property int quickHid: -1
-    property int quickSeq: -1
     property bool advancedOpen: false
     property bool editorWindowOpen: false
     property int paneHid: -1
@@ -40,8 +36,6 @@ Item {
     property bool closeAfterOk: false
     property bool paneChoiceReady: false
     property var panePending: null
-    property int revealOnceRow: -1
-    property int revealTries: 0
     property bool showPanel: false
     property bool parkEmptyInUnmapped: false
     signal closePanel()
@@ -783,21 +777,6 @@ Item {
         _savedToast.open()
     }
 
-    function openSequence(hid, seq, row) {
-        if (hid < 0 || seq < 0 || editorLocked)
-            return
-        if (_root.editingHid === hid && _root.editingSeq === seq) {
-            closeEditor()
-            return
-        }
-        if (_root.editingHid >= 0)
-            _catalog.refreshOpenRow(_root.editingHid)
-        _root.editingSeq = seq
-        _root.editingHid = hid
-        selectHid(hid)
-        armReveal(row)
-    }
-
     function selectHid(hid) {
         if (!uiState || !device || hid < 0)
             return
@@ -805,37 +784,6 @@ Item {
         if (!ident)
             return
         uiState.setCurrentInput(ident, hid)
-    }
-
-    function bumpReveal() {
-        if (revealOnceRow >= 0)
-            _revealTimer.restart()
-    }
-
-    function armReveal(row) {
-        if (row < 0)
-            return
-        revealOnceRow = row
-        revealTries = 0
-        _revealTimer.restart()
-    }
-
-    Timer {
-        id: _revealTimer
-        interval: 0
-        onTriggered: {
-            var row = revealOnceRow
-            var item = row >= 0 ? _list.itemAtIndex(row) : null
-            var editorOpen = item && _root.editingHid >= 0
-            var editorLaidOut = !item || !item.hostsEditor || item.height >= Style.dp(parentHeight + 80)
-            if (editorOpen && !editorLaidOut && revealTries < 8) {
-                revealTries += 1
-                _revealTimer.restart()
-                return
-            }
-            revealOnceRow = -1
-            revealRow(row)
-        }
     }
 
     function revealRow(row) {
@@ -878,20 +826,7 @@ Item {
             return
         if (_list.currentIndex !== row)
             _list.currentIndex = row
-        if (_root.editingHid === hid)
-            return
         revealRow(row)
-    }
-
-    function closeEditor() {
-        var hid = _root.editingHid
-        var reset = false
-        if (hid >= 0)
-            reset = _catalog.refreshOpenRow(hid)
-        _root.editingHid = -1
-        _root.editingSeq = -1
-        if (reset)
-            revealRow(_catalog.rowForDeviceIndex(hid))
     }
 
     function rowX(total, align, left, right, pct) {
@@ -1056,10 +991,6 @@ Item {
         function onInputItemChanged(itemIndex) {
             if (_root.advancedOpen)
                 return
-            if (_root.editingHid >= 0) {
-                _catalog.noteOpenRow(itemIndex)
-                return
-            }
             _catalog.reload()
         }
         function onAdvancedEditorChanged(open) {
@@ -1307,11 +1238,9 @@ Item {
                 ComboBox {
                     id: _typeBox
                     Layout.preferredWidth: Style.dp(180)
-                    model: ["All types", "Map to vJoy", "Map to keyboard", "Map to mouse", "Map to Xbox", "Macro", "Change mode", "Other", "No actions"]
-                    onActivated: {
-                        var tags = ["all", "vjoy", "keyboard", "mouse", "xbox", "macro", "mode", "other", "unmapped"]
-                        _catalog.typeFilter = tags[currentIndex]
-                    }
+                    // The names come from the action plugins (05 Q6).
+                    model: _catalog.typeFilterNames
+                    onActivated: _catalog.typeFilter = _catalog.typeFilterKeys[currentIndex]
                 }
                 Label { text: "Output"; color: colorMuted }
                 // Every destination in use (vJoy, Xbox, keyboard, ...), with
@@ -1366,7 +1295,6 @@ Item {
                     return 150
                 }
                 model: _catalog
-                property int editingHid: _root.editingHid
                 property bool catalogLocked: _root.editorLocked
                 property bool catalogIsOutput: _root.isOutput
                 property var live: _liveState
@@ -1374,8 +1302,6 @@ Item {
                 property int parentH: Style.dp(_root.parentHeight)
                 property int childH: Style.dp(_root.childHeight)
                 property bool kidsOn: _root.showChildren
-                property int quickHid: _root.quickHid
-                property int quickSeq: _root.quickSeq
                 function openAdvanced(hid) {
                     _root.openAdvancedPane(hid)
                 }
@@ -1408,8 +1334,6 @@ Item {
                 property color cEditor: _root.colorEditor
                 property color cEditorEdge: _root.colorEditorBorder
                 property color cEditorAccent: _root.colorEditorAccent
-
-                function openRow(hid, seq, row) { _root.openSequence(hid, seq, row) }
 
                 delegate: Item {
                     id: _row
@@ -1468,14 +1392,12 @@ Item {
                         return Math.max(Style.dp(40), _root.groupW(width) - gPadL - gPadR)
                     }
                     width: lv.width - Style.dp(12)
-                    readonly property bool isGroup: rowKind === "group" || rowKind === "unmapped"
-                    readonly property bool expanded: isGroup && deviceIndex === lv.editingHid && deviceIndex >= 0
                     readonly property int bodyH: isLeaf ? lv.childH : lv.parentH
                     readonly property bool hideLeaf: isLeaf && !lv.kidsOn
                     height: hideLeaf ? 0 : (topGap + bodyH + bottomGap)
                     visible: !hideLeaf
 
-                    readonly property bool selected: index === lv.currentIndex || expanded
+                    readonly property bool selected: index === lv.currentIndex
                     property int liveStamp: lv.live.stamp
                     property string inputKind: (liveStamp >= 0 && deviceIndex >= 0) ? lv.live.kindAt(deviceIndex) : ""
                     property real liveValue: (liveStamp >= 0 && deviceIndex >= 0) ? lv.live.valueAt(deviceIndex) : 0

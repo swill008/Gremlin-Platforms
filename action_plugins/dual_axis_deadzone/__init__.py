@@ -17,6 +17,8 @@ from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
+from action_plugins import axis_pair
+from action_plugins.axis_pair import AxisRef, AxisView, is_set
 from gremlin import (
     event_handler,
     util,
@@ -115,6 +117,7 @@ class DualAxisDeadzoneModel(ActionModel):
         parent: QtCore.QObject,
     ) -> None:
         super().__init__(data, binding_model, action_index, parent_index, parent)
+        self._axis_views = {1: AxisView(self), 2: AxisView(self)}
 
     def _qml_path_impl(self) -> str:
         return (
@@ -131,84 +134,33 @@ class DualAxisDeadzoneModel(ActionModel):
 
     @QtCore.Slot()
     def newDeadzone(self) -> None:
-        action = self.library.create(
-            DualAxisDeadzoneData.name, self._binding_model.behavior_type, reuse=False
-        )
-        if action is None:
-            return
-        # Numbered like Merge Axis, so each one has its own name (05 Q14).
-        taken = {
-            getattr(a, "label", "")
-            for a in self.library.actions_by_type(DualAxisDeadzoneData)
-        }
-        number = 1
-        while f"Dual Axis Deadzone {number}" in taken:
-            number += 1
-        action.label = f"Dual Axis Deadzone {number}"
-
-        # The new one is the one shown (as picking it from the list).
-        self._set_deadzone(str(action.id))
+        # Always a new one ("+"), numbered like Merge Axis (05 Q14).
+        action = axis_pair.new_instance(self, DualAxisDeadzoneData)
+        if action is not None:
+            # The new one is the one shown (as picking it from the list).
+            self._set_deadzone(str(action.id))
 
     @QtCore.Property(LabelValueSelectionModel, notify=modelChanged)
     def deadzoneActionList(self) -> LabelValueSelectionModel:
-        # The one shown, those in the input being edited (the pane edits
-        # copies; "+" makes one no input uses yet) and those an input uses.
-        deadzone_actions = sorted(
-            self.library.pick_list(
-                lambda a: isinstance(a, DualAxisDeadzoneData),
-                self._data,
-                self._binding_model.input_item_binding.input_item,
-            ),
-            key=lambda x: x.label,
-        )
-
-        return LabelValueSelectionModel(
-            [da.label for da in deadzone_actions],
-            [str(da.id) for da in deadzone_actions],
-            parent=self,
-        )
+        return axis_pair.pick_list(self, DualAxisDeadzoneData)
 
     def _get_axis(self, idx: int) -> InputIdentifier:
-        return self._data.axis1 if idx == 1 else self._data.axis2
+        return self._axis_views[idx].show(
+            self._data.axis1 if idx == 1 else self._data.axis2
+        )
 
     def _set_axis(self, idx: int, value: InputIdentifier) -> None:
-        if idx == 1:
-            if value != self._data.axis1:
-                self._data.axis1 = value
-                self.modelChanged.emit()
-        else:
-            if value != self._data.axis2:
-                self._data.axis2 = value
-                self.modelChanged.emit()
+        # A copy: the page's current input changes after this.
+        name = "axis1" if idx == 1 else "axis2"
+        if value != getattr(self._data, name):
+            setattr(self._data, name, AxisRef.of(value))
+            self.modelChanged.emit()
 
     def _get_deadzone(self) -> str:
         return str(self._data.id)
 
     def _set_deadzone(self, uuid_str: str) -> None:
-        # Don't attempt to set the already set deadzone
-        if util.parse_id_or_uuid(uuid_str) == self._data.id:
-            return
-
-        # Remove current input item assignments from the action being
-        # deselected, unless another input still uses it (clearing an axis
-        # would leave it unfinished there, and a save would drop it)
-        item = self._binding_model.input_item_binding.input_item
-        identifier = InputIdentifier(item.device_id, item.input_type, item.input_id)
-
-        if not self.library.used_elsewhere(self._data, item):
-            if self._data.axis1 == identifier:
-                self._data.axis1 = InputIdentifier()
-            if self._data.axis2 == identifier:
-                self._data.axis2 = InputIdentifier()
-
-        # Put the picked one in its place; a shared one is edited as a copy
-        # until OK (decision A4).
-        picked = self.adopt_action(
-            self.library.get_action(util.parse_id_or_uuid(uuid_str))
-        )
-        self._binding_model.append_action(picked, self.sequence_index)
-        self._binding_model.remove_action(self.sequence_index)
-        self._binding_model.rootActionChanged.emit()
+        axis_pair.switch_instance(self, uuid_str, ("axis1", "axis2"))
 
     @QtCore.Property(float, notify=modelChanged)
     def innerDeadzone(self) -> float:
@@ -283,8 +235,8 @@ class DualAxisDeadzoneData(AbstractActionData):
         self.label = ""
         self.inner_deadzone = 0.0
         self.outer_deadzone = 1.0
-        self.axis1 = InputIdentifier()
-        self.axis2 = InputIdentifier()
+        self.axis1 = AxisRef()
+        self.axis2 = AxisRef()
 
         self.output1_actions = []
         self.output2_actions = []
@@ -357,7 +309,7 @@ class DualAxisDeadzoneData(AbstractActionData):
     @override
     def user_feedback(self) -> list[UserFeedback]:
         messages = []
-        if not (self.axis1.isValid and self.axis2.isValid):
+        if not (is_set(self.axis1) and is_set(self.axis2)):
             messages.append(
                 UserFeedback(
                     UserFeedback.FeedbackType.Error, "Both axes must be assigned."
@@ -402,12 +354,8 @@ class DualAxisDeadzoneData(AbstractActionData):
         copy.label = self.label
         copy.inner_deadzone = self.inner_deadzone
         copy.outer_deadzone = self.outer_deadzone
-        copy.axis1 = InputIdentifier(
-            self.axis1.device_guid, self.axis1.input_type, self.axis1.input_id
-        )
-        copy.axis2 = InputIdentifier(
-            self.axis2.device_guid, self.axis2.input_type, self.axis2.input_id
-        )
+        copy.axis1 = AxisRef.of(self.axis1)
+        copy.axis2 = AxisRef.of(self.axis2)
         return copy
 
     @override

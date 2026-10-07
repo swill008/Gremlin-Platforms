@@ -7,18 +7,18 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     List,
+    cast,
     override,
 )
 from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
+from action_plugins.common import RelativeAxisLoop
 from gremlin import (
-    clock,
     event_handler,
     event_helpers,
     mode_manager,
-    run_scope,
     util,
 )
 from gremlin.base_classes import (
@@ -30,7 +30,6 @@ from gremlin.base_classes import (
 from gremlin.error import GremlinError
 from gremlin.logical_device import LogicalDevice
 from gremlin.profile import Library
-from gremlin.signal import signal
 from gremlin.types import (
     ActionProperty,
     AxisMode,
@@ -47,21 +46,14 @@ if TYPE_CHECKING:
     from gremlin.ui.profile import InputItemBindingModel
 
 
-class MapToLogicalDeviceFunctor(AbstractFunctor):
-    SCALING_MULTIPLIER = 1 / 1000.0
-    THREAD_SLEEP_DURATION_S = 0.01
+class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
+    _loop_name = "logical device relative axis"
 
     def __init__(self, instance: MapToLogicalDeviceData) -> None:
         super().__init__(instance)
         self._logical = LogicalDevice()
         self._event_listener = event_handler.EventListener()
-
-        self.thread_running = False
-        self.should_stop_thread = False
-        self.thread_last_update = clock.now()
-        self.thread = None
-        self.axis_delta_value = 0.0
-        self.axis_value = 0.0
+        self._init_relative()
 
     @override
     def __call__(
@@ -87,13 +79,9 @@ class MapToLogicalDeviceFunctor(AbstractFunctor):
                 input_value = value.current
                 input.update(input_value)
             else:
-                self.should_stop_thread = abs(event.value) < 0.05
-                self.axis_delta_value = value.current * (
-                    self.data.axis_scaling * self.SCALING_MULTIPLIER
+                self._relative_input(
+                    event.value, value.current, self.data.axis_scaling
                 )
-                self.thread_last_update = clock.now()
-                if self.thread_running is False:
-                    self._start_loop()
                 # Don't emit an event in relative mode.
                 return
 
@@ -125,87 +113,30 @@ class MapToLogicalDeviceFunctor(AbstractFunctor):
             )
         )
 
-    def _start_loop(self) -> None:
-        """Starts the relative axis loop for this Run.
-
-        A loop still ending (released and moved again at once) is not
-        waited for on the main thread: it is no longer the current one and
-        ends at its next step (06 RB20).
-        """
-        token = object()
-        self._loop_token = token
-        # Set here, not in the thread: a second event before the thread
-        # starts must not start another.
-        self.thread_running = True
-        self.thread = run_scope.loop(
-            "logical device relative axis",
-            self.relative_axis_thread,
-            token,
-            stop=self._ask_to_stop,
-        )
-
-    def _ask_to_stop(self) -> None:
-        """Ends the relative axis loop after its current step."""
-        self.thread_running = False
-
-    def _current(self, run: int, token: object) -> bool:
-        """This loop still runs: its Run goes on (06 Q17), it wasn't asked
-        to stop and no newer loop replaced it."""
-        return (
-            self.thread_running
-            and getattr(self, "_loop_token", None) is token
-            and run_scope.alive(run)
-        )
-
-    def _end(self, token: object, should_stop: bool = False) -> None:
-        """This loop ends; the flags are left alone if a newer one runs."""
-        if getattr(self, "_loop_token", None) is token:
-            self.thread_running = False
-            if should_stop:
-                self.should_stop_thread = True
-
-    def relative_axis_thread(self, run: int, token: object = None) -> None:
-        """Moves the logical axis each step; ends with its Run (run: the
-        Run's number, token: this loop's own)."""
-        input = self._logical[
+    def _relative_axis(self) -> LogicalDevice.Input:
+        return self._logical[
             LogicalDevice.Input.Identifier(
                 self.data.logical_input_type, self.data.logical_input_id
             )
         ]
-        # This loop's own value: a loop still ending must not change the one
-        # that replaced it (self.axis_value is set only while current).
-        value = input.value
-        self.axis_value = value
-        # Stop (or Stop and Run again) ends it: it used to go on sending
-        # into the next Run.
-        while self._current(run, token):
-            # If the value was changed from what we set it to in the last
-            # iteration, terminate the thread
-            change = input.value - value
-            if abs(change) > 0.0001:
-                self._end(token, should_stop=True)
-                return
 
-            value = util.clamp(value + self.axis_delta_value, -1.0, 1.0)
-            # Stop may have come during this step: nothing after it.
-            if not self._current(run, token):
-                return
-            self.axis_value = value
-            input.update(value)
-            self._event_listener.joystick_event.emit(
-                event_handler.Event(
-                    event_type=input.type,
-                    identifier=input.id,
-                    device_guid=self._logical.device_guid,
-                    mode=mode_manager.ModeManager().current.name,
-                    value=value,
-                    raw_value=value,
-                )
+    def _relative_read(self) -> float:
+        return cast(LogicalDevice.Axis, self._relative_axis()).value
+
+    def _relative_write(self, value: float) -> bool:
+        input = self._relative_axis()
+        input.update(value)
+        self._event_listener.joystick_event.emit(
+            event_handler.Event(
+                event_type=input.type,
+                identifier=input.id,
+                device_guid=self._logical.device_guid,
+                mode=mode_manager.ModeManager().current.name,
+                value=value,
+                raw_value=value,
             )
-
-            if self.should_stop_thread and self.thread_last_update + 1.0 < clock.now():
-                self._end(token)
-            clock.sleep(self.THREAD_SLEEP_DURATION_S)
+        )
+        return True
 
 
 class MapToLogicalDeviceModel(ActionModel):
@@ -223,8 +154,9 @@ class MapToLogicalDeviceModel(ActionModel):
         parent_index: SequenceIndex,
         parent: QtCore.QObject,
     ) -> None:
+        # Opening an editor changes nothing on the Logical Device: no
+        # logicalDeviceModified here (each one rebuilt the Logical page, 05 RB21).
         super().__init__(data, binding_model, action_index, parent_index, parent)
-        signal.logicalDeviceModified.emit()
 
     def _qml_path_impl(self) -> str:
         return (

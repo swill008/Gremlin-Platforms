@@ -309,11 +309,16 @@ ApplicationWindow {
     function warningText(p) {
         var lines = []
         var device = p.device || _saveAs.text
-        lines.push("Import replaces these on " + device + ":")
         var pieces = p.pieces || []
+        var modes = p.modes || []
+        // Checked controls are added, not replaced (08 Q3).
+        if (p.addsChecks)
+            lines.push("Import adds the pack's checked controls to the ones checked on "
+                       + device + "; none are unchecked.")
+        if (pieces.length || modes.length || !p.addsChecks)
+            lines.push("Import replaces these on " + device + ":")
         for (var i = 0; i < pieces.length; ++i)
             lines.push("\u2022 " + pieces[i])
-        var modes = p.modes || []
         for (var m = 0; m < modes.length; ++m) {
             var mode = modes[m]
             lines.push("\u2022 The wires and actions of " + device + " in " + mode.name
@@ -339,7 +344,7 @@ ApplicationWindow {
             lines.push("The previous module file is kept in the imported folder.")
         if (modes.length)
             lines.push("The profile changes on disk only when you save it.")
-        lines.push("Undo Import puts this import back until you import again or close this window.")
+        lines.push("Undo Import puts this import back until you import again, open another pack, or close this window.")
         return lines.join("\n")
     }
 
@@ -357,7 +362,11 @@ ApplicationWindow {
 
     Component.onCompleted: reloadDevices()
     // Closing keeps the last import: Undo Import is no longer offered.
-    onClosing: _hw.keepPackImport()
+    onClosing: {
+        _hw.keepPackImport()
+        // The preview pictures in %TEMP% go with the window.
+        _hw.dropPackPreview()
+    }
 
     FileDialog {
         id: _save
@@ -412,7 +421,8 @@ ApplicationWindow {
     // Undo Import over a file changed since the import asks first.
     DismissibleDialog { id: _undoGate }
 
-    // Import is destructive: it replaces the ticked pieces on this machine.
+    // Import is destructive: it replaces the ticked pieces on this machine
+    // (checked controls are added, 08 Q3).
     Dialog {
         id: _warn
         objectName: "packWarning"

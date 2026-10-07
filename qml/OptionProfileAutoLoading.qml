@@ -21,7 +21,7 @@ Item {
         property var associatedField
 
         nameFilters: ["Profile files (*.xml)"]
-        title: "Select a File"
+        title: "Choose Profile"
         currentFolder: backend.profilesFolderUrl()
 
         onAccepted: () => {
@@ -36,7 +36,7 @@ Item {
         property var associatedField
 
         nameFilters: ["Executable files (*.exe)"]
-        title: "Select an Executable"
+        title: "Choose Program"
 
         onAccepted: () => {
             associatedField.text =
@@ -51,7 +51,7 @@ Item {
         property string selectedValue: ""
         property var associatedField
 
-        title: "Select Executable"
+        title: "Choose Program"
         standardButtons: Dialog.Ok | Dialog.Cancel
         modal: true
 

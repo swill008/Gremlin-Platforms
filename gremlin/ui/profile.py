@@ -16,13 +16,11 @@ from typing import (
 
 from PySide6 import QtCore
 
-import dill
 import gremlin.profile
 import gremlin.ui.type_aliases as ta
 from gremlin import (
     action_analysis,
     common,
-    device_initialization,
     event_handler,
     shared_state,
     swap_devices,
@@ -655,6 +653,13 @@ class InputItemBindingModel(QtCore.QObject):
     )
 
 
+def _stop_listening(model: InputItemBindingModel) -> None:
+    try:
+        signal.inputItemChanged.disconnect(model._check_user_feedback)
+    except (RuntimeError, TypeError):
+        pass
+
+
 @ta.QmlElement
 class InputItemModel(QtCore.QAbstractListModel):
     """QML model class representing an InputItem instance and acting as a
@@ -687,6 +692,36 @@ class InputItemModel(QtCore.QAbstractListModel):
 
         self._input_item = input_item
         self._enumeration_index = enumeration_index
+        # One binding model per action sequence, reused each time a delegate
+        # asks (GL-254, 05 RB18): a new one per data() call was never freed
+        # and each listened to every input change. Children of this model.
+        self._binding_models: dict[
+            int, tuple[gremlin.profile.InputItemBinding, object, InputItemBindingModel]
+        ] = {}
+
+    def _binding_model(
+        self, binding: gremlin.profile.InputItemBinding
+    ) -> InputItemBindingModel:
+        """The model of this action sequence, made once while its root action
+        stays the same."""
+        cached = self._binding_models.get(id(binding))
+        if (
+            cached is not None
+            and cached[0] is binding
+            and cached[1] is binding.root_action
+        ):
+            return cached[2]
+        if cached is not None:
+            # Its root action was replaced: the old model stops listening (a
+            # delegate may still show it until it goes).
+            _stop_listening(cached[2])
+        model = InputItemBindingModel(binding, parent=self)
+        self._binding_models[id(binding)] = (binding, binding.root_action, model)
+        # Sequences no longer on this input let go of their models.
+        here = {id(b) for b in self._input_item.action_sequences}
+        for key in [k for k in self._binding_models if k not in here]:
+            _stop_listening(self._binding_models.pop(key)[2])
+        return model
 
     @property
     def enumeration_index(self) -> int:
@@ -775,9 +810,7 @@ class InputItemModel(QtCore.QAbstractListModel):
     def data(
         self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
     ) -> InputItemBindingModel:
-        return InputItemBindingModel(
-            self._input_item.action_sequences[index.row()], parent=self
-        )
+        return self._binding_model(self._input_item.action_sequences[index.row()])
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return InputItemModel.roles
@@ -1187,6 +1220,22 @@ class StartupModeModel(QtCore.QAbstractListModel):
     )
 
 
+class _VJoyDevice:
+    """A vJoy device as the vJoy output module lists it (GL-253, 04 R13)."""
+
+    def __init__(self, vjoy_id: int, axis_ids: list[int]) -> None:
+        self.vjoy_id = int(vjoy_id)
+        self.axis_ids = list(axis_ids)
+
+
+def _vjoy_devices() -> list[_VJoyDevice]:
+    """Every vJoy device, from the vJoy output module (not the input side's
+    device list)."""
+    from gremlin.modules import output
+
+    return [_VJoyDevice(vid, axes) for vid, axes in sorted(output.vjoy_axes().items())]
+
+
 @ta.QmlElement
 class VJoyInputOrOutputModel(QtCore.QAbstractListModel):
     """Model representign if a vJoy device is treated as input or output
@@ -1201,13 +1250,13 @@ class VJoyInputOrOutputModel(QtCore.QAbstractListModel):
         super().__init__(parent)
 
         self._profile = shared_state.current_profile
-        self._vjoy_devices = device_initialization.vjoy_devices()
+        self._vjoy_devices = _vjoy_devices()
         signal.profileChanged.connect(self._reset)
 
     def _reset(self) -> None:
         self.beginResetModel()
         self._profile = shared_state.current_profile
-        self._vjoy_devices = device_initialization.vjoy_devices()
+        self._vjoy_devices = _vjoy_devices()
         self.endResetModel()
 
     @override
@@ -1306,10 +1355,10 @@ class OutputVJoyListModel(QtCore.QAbstractListModel):
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
 
-    def _output_devices(self) -> list[dill.DeviceSummary]:
+    def _output_devices(self) -> list[_VJoyDevice]:
         return [
             d
-            for d in device_initialization.vjoy_devices()
+            for d in _vjoy_devices()
             if self._profile.settings.vjoy_as_input.get(d.vjoy_id, False) is False
         ]
 
@@ -1323,7 +1372,7 @@ class OutputVJoyInitialValuesModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray("value".encode()),
     }
 
-    def __init__(self, device: dill.DeviceSummary, parent: ta.OQO = None) -> None:
+    def __init__(self, device: _VJoyDevice, parent: ta.OQO = None) -> None:
         super().__init__(parent)
 
         self._device = device
@@ -1337,24 +1386,23 @@ class OutputVJoyInitialValuesModel(QtCore.QAbstractListModel):
 
     @override
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return self._device.axis_count
+        return len(self._device.axis_ids)
 
     @override
     def data(
         self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
     ) -> Any:
-        if not index.isValid() or index.row() >= self._device.axis_count:
+        if not index.isValid() or index.row() >= len(self._device.axis_ids):
             return None
 
         match cast(str, self.roles[role]):
             case "label":
                 return common.input_to_ui_string(
-                    InputType.JoystickAxis,
-                    self._device.axis_map[index.row()].axis_index,
+                    InputType.JoystickAxis, self._device.axis_ids[index.row()]
                 )
             case "value":
                 return self._profile.settings.get_initial_vjoy_axis_value(
-                    self._device.vjoy_id, self._device.axis_map[index.row()].axis_index
+                    self._device.vjoy_id, self._device.axis_ids[index.row()]
                 )
 
     @override
@@ -1364,14 +1412,14 @@ class OutputVJoyInitialValuesModel(QtCore.QAbstractListModel):
         value: Any,
         role: int = QtCore.Qt.ItemDataRole.EditRole,
     ) -> bool:
-        if not index.isValid() or index.row() >= self._device.axis_count:
+        if not index.isValid() or index.row() >= len(self._device.axis_ids):
             return False
 
         match cast(str, self.roles[role]):
             case "value":
                 self._profile.settings.set_initial_vjoy_axis_value(
                     self._device.vjoy_id,
-                    self._device.axis_map[index.row()].axis_index,
+                    self._device.axis_ids[index.row()],
                     value,
                 )
                 return True

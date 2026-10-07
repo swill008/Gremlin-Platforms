@@ -14,13 +14,12 @@ from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
+from action_plugins.common import RelativeAxisLoop
 from gremlin import (
-    clock,
     device_initialization,
     error,
     event_handler,
     event_helpers,
-    run_scope,
     signal,
     util,
 )
@@ -47,22 +46,17 @@ if TYPE_CHECKING:
     from gremlin.ui.profile import InputItemBindingModel
 
 
-class MapToVjoyFunctor(AbstractFunctor):
+class MapToVjoyFunctor(RelativeAxisLoop, AbstractFunctor):
     """Executes a map to vjoy action when called."""
 
-    SCALING_MULTIPLIER = 1 / 1000.0
-    THREAD_SLEEP_DURATION_S = 0.01
+    _loop_name = "vJoy relative axis"
+    _loop_errors = (error.VJoyError,)
 
     def __init__(self, action: MapToVjoyData) -> None:
         super().__init__(action)
 
         self.needs_auto_release = False  # self._check_for_auto_release(action)
-        self.thread_running = False
-        self.should_stop_thread = False
-        self.thread_last_update = clock.now()
-        self.thread = None
-        self.axis_delta_value = 0.0
-        self.axis_value = 0.0
+        self._init_relative()
 
     @override
     def __call__(
@@ -81,13 +75,9 @@ class MapToVjoyFunctor(AbstractFunctor):
                 if self.data.axis_mode == AxisMode.Absolute:
                     output.write_vjoy(vjoy_id, "axis", input_id, value.current)
                 else:
-                    self.should_stop_thread = abs(event.value) < 0.05
-                    self.axis_delta_value = value.current * (
-                        self.data.axis_scaling * self.SCALING_MULTIPLIER
+                    self._relative_input(
+                        event.value, value.current, self.data.axis_scaling
                     )
-                    self.thread_last_update = clock.now()
-                    if self.thread_running is False:
-                        self._start_loop()
 
             elif self.data.vjoy_input_type in [
                 InputType.JoystickButton,
@@ -123,88 +113,21 @@ class MapToVjoyFunctor(AbstractFunctor):
                 f"Failed to execute {self.data.name} action due to vJoy error: {e}.",
             )
 
-    def _start_loop(self) -> None:
-        """Starts the relative axis loop for this Run.
+    def _relative_read(self) -> float:
+        data = self.data
+        return output.vjoy_value(data.vjoy_device_id, "axis", data.vjoy_input_id)
 
-        A loop still ending (released and moved again at once) is not
-        waited for on the main thread: it is no longer the current one and
-        ends at its next step (06 RB20).
-        """
-        token = object()
-        self._loop_token = token
-        # Set here, not in the thread: a second event before the thread
-        # starts must not start another.
-        self.thread_running = True
-        self.thread = run_scope.loop(
-            "vJoy relative axis",
-            self.relative_axis_thread,
-            token,
-            stop=self._ask_to_stop,
+    def _relative_write(self, value: float) -> bool:
+        # Blocked by the output module: nothing to drive.
+        return bool(
+            output.write_vjoy(
+                self.data.vjoy_device_id, "axis", self.data.vjoy_input_id, value
+            )
         )
 
-    def _ask_to_stop(self) -> None:
-        """Ends the relative axis loop after its current step."""
-        self.thread_running = False
-
-    def _current(self, run: int, token: object) -> bool:
-        """This loop still runs: its Run goes on (06 Q17), it wasn't asked
-        to stop and no newer loop replaced it."""
-        return (
-            self.thread_running
-            and getattr(self, "_loop_token", None) is token
-            and run_scope.alive(run)
-        )
-
-    def _end(self, token: object, should_stop: bool = False) -> None:
-        """This loop ends; the flags are left alone if a newer one runs."""
-        if getattr(self, "_loop_token", None) is token:
-            self.thread_running = False
-            if should_stop:
-                self.should_stop_thread = True
-
-    def relative_axis_thread(self, run: int, token: object = None) -> None:
-        """Moves the vJoy axis each step; ends with its Run (run: the Run's
-        number, token: this loop's own)."""
-        vjoy_id = self.data.vjoy_device_id
-        axis_id = self.data.vjoy_input_id
-        # This loop's own value: a loop still ending must not change the one
-        # that replaced it (self.axis_value is set only while current).
-        value = output.vjoy_value(vjoy_id, "axis", axis_id)
-        self.axis_value = value
-        while self._current(run, token):
-            # Abort if the vJoy device is no longer valid
-            if not output.vjoy_owned(vjoy_id):
-                self._end(token)
-                return
-
-            try:
-                # If the vjoy value has was changed from what we set it to
-                # in the last iteration, terminate the thread
-                current = output.vjoy_value(vjoy_id, "axis", axis_id)
-                change = current - value
-                if abs(change) > 0.0001:
-                    self._end(token, should_stop=True)
-                    return
-
-                value = util.clamp(value + self.axis_delta_value, -1.0, 1.0)
-                # Stop may have come during this step: nothing is written
-                # after it (it would open vJoy again).
-                if not self._current(run, token):
-                    return
-                self.axis_value = value
-                # Blocked by the output module: nothing to drive.
-                if not output.write_vjoy(vjoy_id, "axis", axis_id, value):
-                    self._end(token)
-                    return
-
-                if (
-                    self.should_stop_thread
-                    and self.thread_last_update + 1.0 < clock.now()
-                ):
-                    self._end(token)
-                clock.sleep(self.THREAD_SLEEP_DURATION_S)
-            except error.VJoyError:
-                self._end(token)
+    def _relative_ok(self) -> bool:
+        # The vJoy device is no longer valid.
+        return bool(output.vjoy_owned(self.data.vjoy_device_id))
 
 
 class MapToVjoyModel(ActionModel):

@@ -39,16 +39,25 @@ def patched_time() -> Iterator[threading.Semaphore]:
     """Runs the relative axis loops on a clock the test steps itself.
 
     Each sleep() waits for a release() on the yielded semaphore; now() is a
-    counter that moves one step on each call.
+    counter that moves one step on each call. Only the relative axis loops
+    sleep on the stepped clock: the other loops of the Run that sleep on
+    gremlin.clock (the sound loop, script timers) keep real time, or they
+    would take the test's steps.
     """
     time_stepper = threading.Semaphore(value=0)
     time_counter = itertools.count(
         step=map_to_vjoy.MapToVjoyFunctor.THREAD_SLEEP_DURATION_S
     )
+    real_sleep = clock.sleep
+
+    def sleep(seconds: float) -> None:
+        if "relative axis" in threading.current_thread().name:
+            time_stepper.acquire(timeout=2)
+        else:
+            real_sleep(seconds)
+
     with (
-        mock.patch.object(
-            clock, "sleep", side_effect=lambda _: time_stepper.acquire(timeout=2)
-        ),
+        mock.patch.object(clock, "sleep", side_effect=sleep),
         mock.patch.object(clock, "now", side_effect=lambda: next(time_counter)),
     ):
         yield time_stepper

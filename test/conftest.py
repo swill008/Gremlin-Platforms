@@ -299,12 +299,31 @@ def _no_threads_left_running() -> Iterator[None]:
         watch.watch(None)  # a short wait on purpose, not a stall
     deadline = time.monotonic() + 2.0
     for thread in new:
-        thread.join(max(0.0, deadline - time.monotonic()))
+        try:
+            thread.join(max(0.0, deadline - time.monotonic()))
+        except RuntimeError:
+            # Listed but still starting: let it start, then wait as usual.
+            time.sleep(0.05)
+            thread.join(max(0.0, deadline - time.monotonic()))
     if watch is not None and label is not None:
         watch.watch(label)
     left = [thread.name for thread in new if thread.is_alive()]
     if left:
         pytest.fail(f"The test left threads running: {', '.join(left)}")
+
+
+@pytest.fixture(autouse=True)
+def _history_written_before_the_test() -> None:
+    """History work an earlier test left (a writer still busy when its thread
+    check gave up) is written before this test's fixtures point History at
+    their own folder; otherwise it lands in theirs."""
+    history = sys.modules.get("gremlin.history")
+    if history is None:
+        return
+    deadline = time.monotonic() + 5.0
+    while history._writer is not None and time.monotonic() < deadline:
+        time.sleep(0.02)
+    history.flush()
 
 
 # | Rule checks (gremlin/validate.py), report only: after each test the open

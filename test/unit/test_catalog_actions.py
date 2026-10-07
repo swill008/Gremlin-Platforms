@@ -102,15 +102,15 @@ def _load_helpers():
 
 def test_summarize_covers_every_plugin_tag() -> None:
     ns = _load_helpers()
-    labels = ns["_TYPE_LABELS"]
-    wrappers = ns["_WRAPPERS"]
     for tag in _PLUGIN_TAGS:
         if tag == "root":
             continue
-        assert tag in labels or tag in wrappers, tag
-        act = _Act(tag, vjoy_device_id=1, vjoy_input_id=1, keys=["A"])
+        act = _Act(
+            tag, name=f"Name of {tag}", vjoy_device_id=1, vjoy_input_id=1, keys=["A"]
+        )
         lab, dest = ns["summarize_action"](act)
-        assert lab
+        # The type is the action's own (plugin) name.
+        assert lab == f"Name of {tag}"
         assert dest
 
 
@@ -123,8 +123,7 @@ def test_one_row_per_sequence_for_each_dest_action() -> None:
         binding.insert_action(_Act(tag, vjoy_device_id=1, vjoy_input_id=3), "children")
     rows = ns["sequences_for_item"](item)
     assert [index for index, _lab, _dest in rows] == list(range(len(dest_tags)))
-    labels = ns["_TYPE_LABELS"]
-    assert [lab for _i, lab, _d in rows] == [labels.get(t, t) for t in dest_tags]
+    assert [lab for _i, lab, _d in rows] == dest_tags
 
 
 def test_add_then_remove_every_sequence() -> None:
@@ -150,8 +149,8 @@ def test_wrapper_without_child_is_an_empty_sequence() -> None:
     ns = _load_helpers()
     item = _Item()
     binding = item.add_item_binding()
-    binding.insert_action(_Act("tempo", children=[]), "children")
-    assert ns["sequences_for_item"](item) == [(0, "Sequence", "Empty")]
+    binding.insert_action(_Act("tempo", name="Tempo", children=[]), "children")
+    assert ns["sequences_for_item"](item) == [(0, "Tempo", "No actions")]
 
 
 def test_wrapper_with_child_shows_the_child() -> None:
@@ -162,7 +161,7 @@ def test_wrapper_with_child_shows_the_child() -> None:
     binding.insert_action(_Act("chain", children=[child]), "children")
     rows = ns["sequences_for_item"](item)
     assert len(rows) == 1
-    assert rows[0][1] == ns["_TYPE_LABELS"]["map-to-vjoy"]
+    assert rows[0][1] == "map-to-vjoy"
     assert "vJoy 1" in rows[0][2]
 
 

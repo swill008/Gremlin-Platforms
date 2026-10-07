@@ -58,3 +58,7 @@ Abbreviated instructions from the [official documentation](https://python-poetry
 
 - Restart VS Code for the new environment to be picked up
 - Select the newly created Poetry virtual environment as the project's interpreter
+
+### HidHide when run from source
+
+With HidHide control on and the Allow list in use, the program adds its own executable to HidHide's program list so it still sees hidden devices. Run from source, that executable is `python.exe` of the virtual environment, so every Python program run with that `python.exe` sees hidden devices too. This is accepted for source runs; the installed `gremlin_platforms.exe` only lets itself through.

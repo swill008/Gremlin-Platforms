@@ -60,11 +60,6 @@ function leafKind(kind) {
     return kind || "btn"
 }
 
-function physicalName(kind, hwId) {
-    var k = leafKind(kind) + ":" + hwId
-    return physNames[k] || ""
-}
-
 function hardwareLabel(kind, hwId) {
     var lk = leafKind(kind)
     if (lk === "axis")
@@ -90,8 +85,7 @@ function isUserFriendly(kind, hwId, v) {
         return false
     if (t === hardwareLabel(kind, hwId))
         return false
-    // A typed name is always the user's, also when it is an EVO R part name
-    // (physNames is one stick's list, not this device's; 07 Q10).
+    // A typed name is always the user's (07 Q10).
     return true
 }
 
@@ -128,14 +122,12 @@ function friendlyOf(n, mem) {
     return hardwareLabel(n.kind, n.hwId)
 }
 
+// The control and what it does. No part names: those come only from a
+// template's chip names (07 RB10, decision D-07-RB10-NOEVOR).
 function fullNameOf(kind, hwId) {
     var lk = leafKind(kind)
-    var idn = lk === "axis" ? ("Axis " + hwId) : (lk === "hat" ? ("Hat " + hwId) : ("Button " + hwId))
-    var phys = physicalName(lk, hwId)
+    var s = hardwareLabel(lk, hwId)
     var dest = destOf(lk, hwId)
-    var s = idn
-    if (phys.length)
-        s += " · " + phys
     if (dest && dest !== "—")
         s += " → " + dest
     return s

@@ -243,13 +243,10 @@ def test_a_new_profile_object_keeps_another_profiles_rows(profile: Profile) -> N
 def test_vjoy_behavior_switch_sends_no_device_change(
     profile: Profile, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from gremlin.modules import output
     from gremlin.ui.profile import VJoyInputOrOutputModel
 
-    monkeypatch.setattr(
-        device_initialization,
-        "vjoy_devices",
-        lambda: [types.SimpleNamespace(vjoy_id=1)],
-    )
+    monkeypatch.setattr(output, "vjoy_axes", lambda: {1: []})
     listener = event_handler.EventListener()
     changes: list[int] = []
     notes: list[str] = []
@@ -288,6 +285,15 @@ def test_auto_load_hears_the_program_in_front_at_start(
     from gremlin import process_monitor
 
     heard: list[str] = []
+    # The monitor runs only while auto-load is on (D-02-Q19).
+    value = config.Configuration.value
+
+    def auto_load_on(self: Any, *key: str) -> Any:  # noqa: ANN401
+        if key == ("profile", "automation", "enable-auto-loading"):
+            return True
+        return value(self, *key)
+
+    monkeypatch.setattr(config.Configuration, "value", auto_load_on)
     monkeypatch.setattr(
         process_monitor.ProcessMonitor,
         "start",

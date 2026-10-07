@@ -42,15 +42,16 @@ def test_assignment_summary_counts_destinations() -> None:
             ("map-to-vjoy", "Map to vJoy", "vJoy 3 · Button 10"),
         ]
     )
-    assert text == "2 assignments — vJoy 3 · Button 9, vJoy 3 · Button 10"
+    assert text == "2 actions — vJoy 3 · Button 9, vJoy 3 · Button 10"
     assert dest == "vJoy 3 · Button 9, vJoy 3 · Button 10"
     qml = _QML.read_text(encoding="utf-8")
     py = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
-    assert "function armReveal(row)" in qml
-    assert "noteOpenRow(itemIndex)" in qml
+    # The quick editor and its row refresh are gone (05 Q18).
+    assert "function openSequence" not in qml
+    assert "noteOpenRow" not in qml
     assert "highlightFollowsCurrentItem: false" in qml
-    assert "def refreshOpenRow" in py
-    assert "def noteOpenRow" in py
+    assert "def refreshOpenRow" not in py
+    assert "def noteOpenRow" not in py
     assert "def sequences_for_item" in py
     assert "def writeSimpleMap" not in py  # unused, removed in Phase 5
     assert "function openAdvancedPane" in qml

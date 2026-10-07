@@ -38,3 +38,11 @@ def device_info(device_id: str | uuid.UUID) -> dill.DeviceSummary:
 def device_connected(device_id: str | uuid.UUID) -> bool:
     """Whether a device with this id is connected now."""
     return bool(dill.DILL.device_exists(_guid(device_id)))
+
+
+def devices() -> list[dill.DeviceSummary]:
+    """Every device the input driver lists now."""
+    return [
+        dill.DILL.get_device_information_by_index(i)
+        for i in range(dill.DILL.get_device_count())
+    ]

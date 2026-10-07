@@ -714,15 +714,7 @@ class MacroModel(ActionModel):
     changed = QtCore.Signal()
     recordingChanged = QtCore.Signal()
 
-    action_lookup = {
-        "joystick": macro.JoystickAction.create,
-        "key": macro.KeyAction.create,
-        "logical-device": macro.LogicalDeviceAction.create,
-        "mouse-button": macro.MouseButtonAction.create,
-        "mouse-motion": macro.MouseMotionAction.create,
-        "pause": macro.PauseAction.create,
-        "vjoy": macro.VJoyAction.create,
-    }
+    action_lookup = {tag: step.create for tag, step in macro.STEP_TYPES.items()}
 
     model_lookup = {
         "joystick": JoystickActionModel,
@@ -986,15 +978,6 @@ class MacroData(AbstractActionData):
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:
-        type_lookup = {
-            "joystick": macro.JoystickAction.create,
-            "key": macro.KeyAction.create,
-            "logical-device": macro.LogicalDeviceAction.create,
-            "mouse-button": macro.MouseButtonAction.create,
-            "mouse-motion": macro.MouseMotionAction.create,
-            "pause": macro.PauseAction.create,
-            "vjoy": macro.VJoyAction.create,
-        }
         self._id = util.read_action_id(node)
         self.is_exclusive = util.read_property(node, "is-exclusive", PropertyType.Bool)
         self.is_preemptive = util.read_property(
@@ -1013,8 +996,8 @@ class MacroData(AbstractActionData):
         for entry in node.iter("macro-action"):
             action_type = entry.get("type")
             action_obj = None
-            if action_type in type_lookup:
-                action_obj = type_lookup[action_type]()
+            if action_type in macro.STEP_TYPES:
+                action_obj = macro.STEP_TYPES[action_type].create()
                 action_obj.from_xml(entry)
                 self.actions.append(action_obj)
             else:

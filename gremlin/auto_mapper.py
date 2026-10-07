@@ -20,7 +20,7 @@ from gremlin import (
     shared_state,
     types,
 )
-from gremlin.modules import auto_map
+from gremlin.modules import auto_map, output
 from gremlin.modules.claim import claim_ids
 
 
@@ -221,10 +221,24 @@ class AutoMapper:
                 continue
             if int(vjoy_id) not in outputs:
                 return None
-            axes = {int(axis.axis_index) for axis in device.axis_map}
-            buttons = set(range(1, int(device.button_count) + 1))
-            hats = set(range(1, int(device.hat_count) + 1))
-            return {"axes": axes, "buttons": buttons, "hats": hats}
+            # Its sizes through the output module (08 R7, GL-275); axes by
+            # id, as the driver can leave gaps (1, 2, 6).
+            try:
+                axis_count, button_count, hat_count = output.vjoy_layout(int(vjoy_id))
+            except Exception:  # noqa: BLE001 - the driver can't be read
+                axis_count = button_count = hat_count = 0
+            axes = output.vjoy_axis_ids(int(vjoy_id))
+            if not (axes or axis_count or button_count or hat_count):
+                # The driver can't be read: the device list's sizes, as
+                # before (no control skipped for that).
+                axes = {int(axis.axis_index) for axis in device.axis_map}
+                button_count = int(device.button_count)
+                hat_count = int(device.hat_count)
+            return {
+                "axes": axes,
+                "buttons": set(range(1, int(button_count) + 1)),
+                "hats": set(range(1, int(hat_count) + 1)),
+            }
         return empty
 
     def _get_used_vjoy_inputs(self, mode: str) -> list[types.VjoyInput]:
@@ -270,7 +284,8 @@ class AutoMapper:
         return True
 
     def _create_mappings_report(self) -> str:
+        """In glossary words (08 Q8, S103)."""
         return (
-            f"Created {len(self._created_mappings)} mappings, "
-            f"retained {self._num_retained_bindings} previous bindings."
+            f"Made {len(self._created_mappings)} actions; "
+            f"{self._num_retained_bindings} inputs kept their actions."
         )

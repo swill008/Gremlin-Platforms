@@ -26,7 +26,7 @@ def ensure_shell_options() -> None:
             "show-stubs",
             PropertyType.Bool,
             True,
-            "Show stub cards for detected hardware that has no saved module.",
+            "Show a card for each device without a module.",
         ),
         (
             SECTION_DISPLAY,
@@ -34,7 +34,7 @@ def ensure_shell_options() -> None:
             "last-keep-after-release",
             PropertyType.Bool,
             True,
-            "Keep the last: value after the control is released.",
+            "Keep a card's last value after the control is released.",
         ),
         (
             SECTION_AUTOMAP,

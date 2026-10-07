@@ -408,7 +408,7 @@ def _tell_vjoy_problems() -> None:
     texts = list(dict.fromkeys(text for _vid, text in key))
     display_error(
         f"Gremlin-Platforms is running without {names}.",
-        "\n\n".join(texts) + "\n\nThen restart Gremlin-Platforms.",
+        "\n\n".join(texts) + "\n\nThen restart the program.",
     )
 
 

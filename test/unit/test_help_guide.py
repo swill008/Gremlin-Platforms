@@ -130,7 +130,8 @@ def test_every_action_plugin_has_a_topic() -> None:
     topics = {title for section, title in found if section == "Actions"}
     for init in sorted(_ROOT.joinpath("action_plugins").glob("*/__init__.py")):
         source = init.read_text(encoding="utf-8")
-        match = re.search(r'^\s+name = "([^"]+)"', source, re.M)
+        # The plugin class's own name (class level), not a local variable.
+        match = re.search(r'^    name = "([^"]+)"', source, re.M)
         if not match or match.group(1) == "Root":
             continue
         assert match.group(1) in topics, match.group(1)

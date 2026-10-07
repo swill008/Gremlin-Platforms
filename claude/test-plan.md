@@ -62,22 +62,22 @@ Profile Settings, 7 Options, 8 Button Map, 9 Viewers, 10 Calibration and Configu
 
 ### Toolbar
 - [ ] TB-01 [A] Home button (and its accent colour while on Home).
-- [ ] TB-02 [U] Toggle starts and stops the runner; footer shows Active / Not Running; tray icon changes.
+- [ ] TB-02 [U] Run starts the profile and Stop stops it; the bottom bar shows Running / Stopped; the tray icon changes. (Reworded 2026-10-06, GL-220: glossary D1.)
 - [ ] TB-03..07 [A] vJoy Viewer, Xbox Viewer, Button Map, Logical Device, Device buttons.
 - [ ] TB-08 [A] Gear opens Options.
-- [ ] TB-09 [A] Configuring mode combo: switching mode changes the edited map; footer "Executing mode" follows.
+- [ ] TB-09 [A] Toolbar Mode box: switching mode changes the actions shown; while running it switches the running mode (04 S54). There is one Mode label (glossary D10).
 - [ ] TB-10 [A] Manage Modes button.
 - [ ] TB-11 [A] The window cannot be made narrower than the toolbar.
 
 ### Status bar, window, tray, keyboard
-- [ ] SB-01..03 [A] Status text, Executing mode, saved-line with its tooltip.
+- [ ] SB-01..03 [A] Status text (Running / Stopped), saved-line with its tooltip.
 - [ ] W-01 [A] Window reopens where it was left (tested today; recheck in the full pass).
 - [ ] W-02 [A] Title shows the profile path. New unsaved profile: is the title blank? (see S-06)
 - [ ] W-03 [A] Close (X) with each unsaved state: profile, catalog display, output display, Button Map. Each prompts once, and after Save / Discard the app finishes closing. (see S-07)
-- [ ] W-04..05 [A] Close to tray / Minimize to tray options hide the window.
-- [ ] W-06..09 [A] Tray: left-click restores; menu Hide/Show, Activate/Deactivate, Quit.
-- [ ] W-21 [A] Close to tray, then quit from the tray: is the window position saved? (see S-21)
-- [ ] W-11 [A] Options > Disable Windows scaling > Restart restarts the app.
+- ~~W-04..05~~ Retired (GL-220, 09 Q17): one setting, Minimize to tray; see TRAY-ONE.
+- ~~W-06..09~~ Retired (GL-220, 09 Q17): the tray menu (Show/Hide Gremlin-Platforms, Run Profile / Stop Profile, Exit Gremlin-Platforms, 09 S64) is checked by TRAY-ONE and GLOSSARY-1.
+- [ ] W-21 [A] With Minimize to tray on, X hides the window; exit from the tray: is the window position saved? (see S-21)
+- [ ] W-11 [A] Options > Ignore Windows display scaling > Restart restarts the program.
 - [ ] W-12 [A] Error and notification dialogs are readable (theme).
 - [ ] KB-01 [A] Ctrl+N / Ctrl+O / Ctrl+S.
 - [ ] KB-03 [A] Esc on Home clears card selection.
@@ -128,7 +128,7 @@ Profile Settings, 7 Options, 8 Button Map, 9 Viewers, 10 Calibration and Configu
 - [ ] C-07b [A] Legacy "Logical Device" tab: is the header correct? (see S-20)
 - [ ] IC-01..02 [A] Type filter (every entry) and Destination filter.
 - [ ] IC-03..05 [A] Parent row click, child row click, Add Action open the pane.
-- [ ] IC-06 [A][D] Child Delete removes the action (no confirm, see S-14).
+- ~~IC-06~~ Superseded (GL-219, 05 Q20): catalog Delete now asks first.
 - [ ] IC-07 [U] Live LEDs, bars and row tint on a physical press.
 - [ ] IC-08 [A] Empty-catalog message for a module with no claimed controls.
 - [ ] IC-09..13 [A] Pane: X with and without changes, OK, "Close pane after OK" (persists), width grip (persists).
@@ -213,7 +213,7 @@ Profile Settings, 7 Options, 8 Button Map, 9 Viewers, 10 Calibration and Configu
 - [ ] BM-F01 [A] File > device list switches device; asks to save if dirty.
 - [ ] BM-F02..04 [A] Edit Mapping, Save (read-back message), Cancel (asks if dirty).
 - [ ] BM-F05..06 [A] Reset layout (Keep map / Reset, undoable) and Fit to photo frame.
-- [ ] BM-F07..08 [A][D] Choose background and Clear image. Clear then Cancel: is the image gone? (see S-24)
+- [ ] BM-F07..08 [A][D] Photo → Choose Photo… and Clear Photo (while editing only): Clear Photo removes the photo; Undo puts the previous photo back; Cancel puts back the photo the edit started with. (Rewritten 2026-10-06, GL-225.)
 - [ ] BM-F09..11 [A] Export PDF / PNG / JPG (tested today; recheck).
 - [ ] BM-F12 [A] Close with and without unsaved changes.
 - [ ] BM-E01..05 [A] Undo, Redo (Ctrl+Z / Ctrl+Y), Duplicate, Copy, Paste.
@@ -230,7 +230,7 @@ Profile Settings, 7 Options, 8 Button Map, 9 Viewers, 10 Calibration and Configu
 - [ ] TBL [A] Table right-click, every item (TBL-01..16).
 - [ ] TXT [A] Text box right-click, every item (TXT-01..18).
 - [ ] BM-S1 [A] After all edits: Save, close, reopen, and check the layout came back as saved.
-- [ ] BM-X1 [A] Map pack Export / Import: is there a menu item? (suspected unreachable, see S-22)
+- ~~BM-X1~~ Removed (GL-225): Button Map map packs moved to Device Pack on purpose (see S-22).
 
 ---
 
@@ -238,9 +238,9 @@ Profile Settings, 7 Options, 8 Button Map, 9 Viewers, 10 Calibration and Configu
 
 - [x] ~~DV-01..04 [A] Device Viewer: opens, pauses highlighting, fold rows, name tooltip. Esc does not close it (see S-30).~~ Removed (legacy Device Viewer).
 - [x] ~~DV-05..07 [U] Temporal, Current, and Buttons & Hats switches with a moving stick.~~ Removed (legacy Device Viewer).
-- [ ] VJV-01..02 [A] vJoy Viewer: cards, chips (dash rule), "Active" badge.
+- [ ] VJV-01..02 [A] vJoy Viewer: cards, chips (dash rule), "Running" badge (glossary D1).
 - [ ] VJV-03 [U] Temporal plot while moving an axis.
-- [ ] XV-01..02 [A] Xbox Viewer lists Map to Xbox cards; "Activate Gremlin…" message.
+- [ ] XV-01..02 [A] Xbox Viewer lists Map to Xbox cards; "Run the profile to plug in the virtual pad" message (glossary D1).
 - [ ] XV-03 [U] With Gremlin active the pad responds, including a hat mapped to a button (fix a) and Upper half triggers (fix e).
 
 ---
@@ -323,7 +323,7 @@ Profile Settings, 7 Options, 8 Button Map, 9 Viewers, 10 Calibration and Configu
 
 Physical input and real output. One sitting, about 30 minutes:
 
-1. Toggle runner on and off (TB-02). Footer and tray follow.
+1. Run and Stop the profile (TB-02). Bottom bar and tray follow.
 2. Home "last:" updates on a press (H-09).
 3. Catalog live LEDs, bars and tint (IC-07).
 4. Output View live (OV-01).
@@ -377,9 +377,9 @@ Main window:
 
 Tool windows and editors:
 - S-18b Profile auto-load regex stops after the first non-matching entry. config.py:~345
-- S-22 Button Map map-pack Export / Import cannot be reached (help and labels mention it). DialogJoystickButtonMap.qml:1358
+- ~~S-22~~ Resolved: map packs moved to Device Pack (bbf22b58); the Button Map has no pack menu.
 - S-23 Button Map help text disagrees with the menus (Import overlay, leader items). :836, :852
-- S-24 Button Map Clear image deletes the file at once; Cancel cannot bring it back. hardware_profile.py:1894
+- ~~S-24~~ Resolved: Clear Photo keeps a safety copy; Undo and Cancel bring the photo back (07 Q3).
 - S-25 Grid / snap / view settings write the module file even outside edit mode; Ctrl+0 does not. :1263
 - S-26 "action-priorities" option has no widget in Options.
 - S-27 Selection combos in Options may not save. ConfigGroup.qml:263
@@ -427,7 +427,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | TB-03 | PASS | vJoy Viewer toggles open and closed. |
 | TB-04, TB-07 | PASS (open) | Close-toggle uses the same code as TB-03. |
 | TB-05, TB-06, TB-08, TB-10 | PASS | Button Map, Logical Device (icon accent), Options, Manage Modes. |
-| TB-02 | DEFERRED | Runner on/off drives real vJoy output. |
+| TB-02 | DEFERRED | Run / Stop drives real vJoy output. |
 | TB-09 | DEFERRED to batch 11 | Needs a second mode (Manage Modes batch). |
 | TB-11 | PASS | Width cannot go below 1346 px. |
 | SB-03 | PASS | Footer saved-line. |
@@ -473,7 +473,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | IC-03 | PASS | Parent row click opens the action pane. |
 | IC-09 | PASS | Pane X with changes: Cancel keeps the edit; Discard drops it (reopen shows the old value). |
 | IC-11 | PASS | OK commits; pane stays with "Close pane after OK" off; X then closes with no prompt. |
-| IC-06 | PASS / NOTE | Child Delete removes at once with no confirmation (S-14); leaves a blank gap until the list rebuilds. |
+| IC-06 | SUPERSEDED | Was: child Delete removed at once with no confirmation (S-14). Now Delete asks first (05 Q20, GL-219). |
 | IC-05 | PASS | Add Action opens "New action"; Add + OK gives "1 assignment" (new action defaults to vJoy 1 X Axis). |
 | IC-17 | PASS | Shown > Show child rows hides them. |
 | IC-17b | FIXED (compact spacing when child rows are hidden) | Hidden child rows leave blank gaps between the parent rows. |
@@ -569,7 +569,7 @@ Exports (#11), chip context menu, Delete / Ctrl+Z, Align, Save and reopen (#20) 
 | BM-V02 / S-25 | NOTE (by design) | Show grid outside edit mode writes the module file immediately (`ui` block only). The editor help says "Grid / snap writes only ui", so this is intended. |
 | BM-X1 / S-22 | RESOLVED | No "Export map…" / "Import map…" in the File menu; the code (openExport / openImport) has no caller. |
 | BM-H01 / S-23 | PASS / FAIL | Editor help opens (F1 / Help). Its File section lists "Export map…" and "Import map…", which do not exist. |
-| BM-F08 / S-24 | NOT RUN | Clear image (destructive to the module picture). |
+| BM-F08 / S-24 | RESOLVED | Clear Photo keeps a safety copy; Undo and Cancel bring the photo back (07 Q3). Hands-on: BM-F07..08. |
 | BM-E03..05, BM-P01..03, TBL, TXT | NOT RUN | Remaining editor menus. |
 | BM-CARD-TRAY | FIXED | Button Map opened from a Home card (window not yet open) showed no chips in Edit Mapping: the other devices' panels turned the face off while the list filled in. Now only the panel in use does. Sandbox: card path, menu path, switching devices all show chips. |
 | LD-DRAG-STUCK | FIXED | Item drag used Windows' drag, which could start after release and swallow the next click. Now an in-app drag (as R16's action editor): ghost follows the pointer, drop on release. Group drag no longer logs ReferenceError (moves run after the handlers). Sandbox: quick and slow drags, before / into group, release outside, group drag. |
@@ -836,8 +836,8 @@ Decisions (user): every element can be locked and hidden from a Layers panel (th
 | BMAP2-2-HANDS-ON | [U] | Edit Mapping, press a few buttons and a hat on the stick: each selects its chip, scrolling when zoomed in; press one that is still in the pool: the pool filters to it. Turn Press to find off: presses only light chips. |
 | BMAP2-3 | DONE (this commit) | Action labels: gremlin/ui/button_map_labels.py turns each input's actions in a mode (with parent-mode inheritance; an item without actions inherits) into short text (Description, keys, vJoy/Xbox output, Change Mode target, TTS text, fixed words; containers give their children's text, curves none); HardwareProfile.actionLabels/profileModes, profileLabelsChanged on profile or mode changes. Chips show Name / Action / Name and action (editor chipText; RigChipItem, RigMiniChip). View → Chip text, View → Labels mode (Follow the program = running mode while active, else the main window's mode). Options → Labels: Chip text, Description first, Several actions (First/All), Unbound (Name/Blank/Dash). Tests: test_button_map_labels; golden `labels`. |
 | BMAP2-3-HANDS-ON | [U] | With a real profile: View → Chip text → Action; buttons with Map to Keyboard, Description, Map to vJoy, Change Mode show those; switch Labels mode to a child mode; edit an action in the main window and see the chip follow; run the profile and change mode: Follow the program follows. |
-| BMAP2-4 | DONE (this commit) | Export modes: File → Export modes… picks modes (all ticked), PDF / PNG / JPG; for each mode the editor shows that mode's action labels (Action if chips show names) and its name at the top (editor exportTitle, Options → Export → Mode title), the page is grabbed at the export size and kept (HardwareProfile.beginExportPages/addExportPage/finishExportPages), then written as one PDF with a page per mode (util.save_images_as_pdf) or one image per mode ("<name> - <mode>.png"). Tests: test_button_map_export (pages, names, slots); golden `labels` step export-page-title. |
-| BMAP2-4-HANDS-ON | [U] | With a profile of two or more modes: File → Export modes…, PDF: one page per mode, chips show that mode's actions, mode name at the top; PNG: one file per mode. Chips go back to how they were afterwards. |
+| BMAP2-4 | SUPERSEDED (GL-225): File → Export modes… is gone; every print and export is in File → Print & Export… (Ctrl+P), see the Button Map Guide. Was: DONE (this commit) | Export modes: File → Export modes… picks modes (all ticked), PDF / PNG / JPG; for each mode the editor shows that mode's action labels (Action if chips show names) and its name at the top (editor exportTitle, Options → Export → Mode title), the page is grabbed at the export size and kept (HardwareProfile.beginExportPages/addExportPage/finishExportPages), then written as one PDF with a page per mode (util.save_images_as_pdf) or one image per mode ("<name> - <mode>.png"). Tests: test_button_map_export (pages, names, slots); golden `labels` step export-page-title. |
+| BMAP2-4-HANDS-ON | SUPERSEDED (GL-225): File → Export modes… is gone; every print and export is in File → Print & Export… (Ctrl+P), see the Button Map Guide. Was: [U] | With a profile of two or more modes: File → Export modes…, PDF: one page per mode, chips show that mode's actions, mode name at the top; PNG: one file per mode. Chips go back to how they were afterwards. |
 | BMAP2-5 | DONE (this commit) | Mirror layout (qml/rig_mirror.js): every top-level box mirrored across the page via moveNodeBy (around-shapes and table-packed items follow their owners; locked items too), hotspots, spines and free leader ends mirrored once each (a chip's first leader shares them), pins left/right swapped, shapes flipH toggled and turned the other way, lines' ends mirrored, text/tables/group insides kept, pictures flipped only with Options → Editing → Mirror pictures. Edit → Mirror layout; File → Copy layout from → device (HardwareProfile.savedLayouts/layoutNodes) asks, optionally mirrors, enters editing; Undo restores. Tests: test_button_map_copy_layout; golden `mirror` (mirror twice = start). |
 | BMAP2-5-HANDS-ON | [U] | Open the EVO L, File → Copy layout from → EVO R with Mirror ticked: chips land on the mirrored side with leaders to mirrored hotspots; adjust to the L photo; Save. Edit → Mirror layout twice returns the map. |
 | BMAP2-6 | DONE (this commit) | Layout templates: modules/templates/<name>.json {kind button-map-template, name, device, savedAt, nodes} (HardwareProfile templates/templateExists/saveTemplate/templateNodes/renameTemplate/deleteTemplate/exportTemplate/importTemplate; imports number a taken name). File → Templates: Save layout as template… (name; asks before replacing), Apply template (the Copy dialog, not mirrored by default), Manage templates… (rename, export, delete, import). New window smoke test (test_button_map_window: loads the real window off-screen and opens the new dialogs; any QML warning fails). Tests: test_button_map_templates. |
@@ -852,14 +852,14 @@ Decisions (user): every element can be locked and hidden from a Layers panel (th
 | BMAP2-10-HANDS-ON | [U] | Save a chip's style, apply it to other chips (and on another device); save a line style with arrowheads, apply to a path; Options → Button Map → Library: rename and delete a style and a template. |
 | BMAP2-11 | DONE (this commit) | Photo look: Photo → Adjust photo → Look (Brightness, Contrast, Greyscale, Fade, Reset look). Editor photoBright/Contrast/Grey/Fade in the photo bag (written only when set; Python _photo_pose clamps and keeps them; undo snapshots restore them). Fade is the photo's opacity; the rest is an adjusted copy made by HardwareProfile.adjustedPhotoUrl (adjust_photo: QPainter greyscale blend, overlay / mid-grey contrast, white / black wash; cached in modules/cache, latest 12) — no shaders, since ShaderEffect/MultiEffect drew nothing off-screen. Tests: test_button_map_photo_look, test_photo_pose look; golden `photo_look`; smoke opens Adjust photo. |
 | BMAP2-11-HANDS-ON | [U] | Adjust photo: greyscale and fade the photo, brighten it, raise and lower contrast; Save; reopen: the look is kept; Undo steps back; export shows the look. |
-| BMAP2-12 | DONE (this commit) | Light page for printing: Options → Export → Light page (also File → Light page for printing). While exporting (both Export and Export modes) the editor's printLight routes every chip, mini-chip, group, leader, hotspot, shape, line, path, text box, table and callout colour through ink() = rig_shapes.invertLightness (HSL lightness turned over, hue/saturation/alpha kept; tested), the mode title is black, and the page is flattened on white. The photo is untouched; on screen nothing changes. Golden `light_page`. |
-| BMAP2-12-HANDS-ON | [U] | Turn on File → Light page for printing, Export PDF and Export modes: white page, light chips with dark text, dark leaders, the photo as it is; print one. |
+| BMAP2-12 | SUPERSEDED (GL-225): the Light page option is now Print & Export's Background → Light (07 S89). Was: DONE (this commit) | Light page for printing: Options → Export → Light page (also File → Light page for printing). While exporting (both Export and Export modes) the editor's printLight routes every chip, mini-chip, group, leader, hotspot, shape, line, path, text box, table and callout colour through ink() = rig_shapes.invertLightness (HSL lightness turned over, hue/saturation/alpha kept; tested), the mode title is black, and the page is flattened on white. The photo is untouched; on screen nothing changes. Golden `light_page`. |
+| BMAP2-12-HANDS-ON | SUPERSEDED (GL-225): the Light page option is now Print & Export's Background → Light (07 S89). Was: [U] | Turn on File → Light page for printing, Export PDF and Export modes: white page, light chips with dark text, dark leaders, the photo as it is; print one. |
 | BMAP2-13 | DONE (this commit) | Zoom: View → Zoom to fit page (Ctrl+1, VkbRigFace.zoomToPage) and Zoom to selection (Ctrl+2, editor zoomToSelection → face.fitEditorRect with a 25% margin, clamped to zoomMin..zoomMax); both persist the view. Options → View → Zoom speed (25–300%) scales the wheel factor in the face and the editor's pointer area. Golden `zoom`; smoke runs both. |
 | BMAP2-13-HANDS-ON | [U] | Select a group, Ctrl+2: it fills the view; Ctrl+1: whole page; set Zoom speed 200%: the wheel zooms faster. |
 | BMAP2-14 | DONE (this commit) | Rulers and guides: VkbRigFace Ruler canvases (top and left, percent ticks, guide marks; visible while editing with Options → View → Rulers / View → Rulers); dragging out of a ruler adds a guide (qml/rig_rulers.js: rulerGuidesX/Y page fractions), dragging a guide in the page moves it, dropping on its ruler or off the page removes it; guides drawn by RigGuides (Style.accent), saved per device in the ui bag, View → Show guides / Clear guides. Snapping: guides rank first in updateMoveGuides and join snapEnt's targets (also when Snap to entities is off). Note: properties declared after the root's Binding lines in VkbRigFace were dropped at runtime, so they sit with the other properties. Golden `rulers`. |
 | BMAP2-14-HANDS-ON | [U] | View → Rulers; drag a guide down from the top ruler, move a chip and a shape to it (they snap); drag the guide back onto the ruler; reopen the device: guides kept; export: no guides. |
-| BMAP2-15 | DONE (this commit) | Print: File → Print… (Ctrl+P) renders the page like Export (light page unless Options → Export → Print light is off) and calls HardwareProfile.printPage: crop, QPrintDialog, then print_image draws it as large as fits, centred, landscape when wider. QtPrintSupport added to the PyInstaller hidden imports. Also fixed: Export's light page was switched off before the grab (if without braces); the window smoke test now exports a light page through the real flow and checks the page is white. Tests: test_button_map_export (print_image in its own QApplication process). |
-| BMAP2-15-HANDS-ON | [U] | File → Print…: the Windows print dialog opens; print to a printer and to Microsoft Print to PDF: the page fills the paper, landscape, light colours. Cancel prints nothing. In the installed build too (QtPrintSupport bundled). |
+| BMAP2-15 | SUPERSEDED (GL-225): Print… is a button in Print & Export (Ctrl+P opens Print & Export), on the paper and margins chosen there (07 S82, S88). Was: DONE (this commit) | Print: File → Print… (Ctrl+P) renders the page like Export (light page unless Options → Export → Print light is off) and calls HardwareProfile.printPage: crop, QPrintDialog, then print_image draws it as large as fits, centred, landscape when wider. QtPrintSupport added to the PyInstaller hidden imports. Also fixed: Export's light page was switched off before the grab (if without braces); the window smoke test now exports a light page through the real flow and checks the page is white. Tests: test_button_map_export (print_image in its own QApplication process). |
+| BMAP2-15-HANDS-ON | SUPERSEDED (GL-225): Print… is a button in Print & Export (Ctrl+P opens Print & Export), on the paper and margins chosen there (07 S82, S88). Was: [U] | File → Print…: the Windows print dialog opens; print to a printer and to Microsoft Print to PDF: the page fills the paper, landscape, light colours. Cancel prints nothing. In the installed build too (QtPrintSupport bundled). |
 | BMAP3-1 | DONE (this commit) | Menus compact: compactMenu() on each menu's aboutToShow hides items that are not enabled (height 0, no gap) and separators with nothing visible on one side; the File menu sizes to the items showing; Edit Mapping and exports need a device; Photo menu greyed until editing; Copy layout from only with other layouts. Smoke test checks the File menu with and without a device. |
 | BMAP3-2 | DONE (this commit) | Drag chips back onto the pool: while a chip or member drag is over the pool (window's poolHit), the pool lights with "Let go to take it off the map"; dropping calls returnToPool: selected chips and groups (or the dragged one), a whole group, or the dragged member in group edit; locked stay; one undo step. Golden `to_pool` (stand-in pool strip). |
 | BMAP3-HANDS-ON | [U] | No device chosen: File shows devices and Close only; choose one: exports show; Edit Mapping: editing items appear. Drag a chip, a group, two selected chips onto the pool: the pool lights, they leave the map and show in the pool; Undo. |

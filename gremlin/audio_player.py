@@ -7,12 +7,11 @@ from __future__ import annotations
 import array
 import logging
 import threading
-import time
 from collections.abc import Callable, Generator
 
 import miniaudio
 
-from gremlin import threads
+from gremlin import clock, threads
 from gremlin.common import SingletonMetaclass
 from gremlin.config import Configuration
 from gremlin.log_once import log_once
@@ -108,6 +107,9 @@ class AudioPlayer(metaclass=SingletonMetaclass):
         # on the thread that queued them (the event thread).
         self._play_list: list[tuple[str, int]] = []
         self._currently_playing: list[AudioSample] = []
+        # Both lists are changed from the event thread, the playback thread
+        # and Stop: every change holds this (09 R9).
+        self._lock = threading.Lock()
         self._playback_mode = Configuration().value(
             "action", "play-sound", "playback-mode"
         )
@@ -133,8 +135,10 @@ class AudioPlayer(metaclass=SingletonMetaclass):
 
     def _ask_to_stop(self) -> None:
         self._is_ready = False
-        self._play_list = []
-        for sample in list(self._currently_playing):
+        with self._lock:
+            self._play_list = []
+            playing = list(self._currently_playing)
+        for sample in playing:
             sample.cancel()
 
     def stop(self) -> None:
@@ -157,20 +161,29 @@ class AudioPlayer(metaclass=SingletonMetaclass):
         # next Run (06 Q8).
         if not self._is_ready:
             return
-        self._play_list.append((file_name, volume))
+        with self._lock:
+            self._play_list.append((file_name, volume))
 
     def _next_sample(self) -> AudioSample | None:
         """The next queued sound, decoded and started; None if there is none
         or it can't be played (logged)."""
-        if not self._play_list:
-            return None
-        file_name, volume = self._play_list.pop(0)
+        with self._lock:
+            if not self._play_list:
+                return None
+            file_name, volume = self._play_list.pop(0)
         try:
             sample = AudioSample(file_name, volume)
-            if self._playback_mode == "Interrupt":
-                while self._currently_playing:
-                    self._currently_playing.pop(0).cancel()
-            self._currently_playing.append(sample)
+            with self._lock:
+                interrupted = (
+                    self._currently_playing
+                    if self._playback_mode == "Interrupt"
+                    else []
+                )
+                if interrupted:
+                    self._currently_playing = []
+                self._currently_playing.append(sample)
+            for old in interrupted:
+                old.cancel()
             sample.play()
         except Exception as exc:
             # A file that can't be decoded (damaged, unsupported format).
@@ -188,10 +201,11 @@ class AudioPlayer(metaclass=SingletonMetaclass):
             if sample is not None and self._playback_mode == "Sequential":
                 sample.block(lambda: self._is_ready)
             # Finished sounds go, with their decoded audio.
-            self._currently_playing = [
-                s for s in self._currently_playing if not s.done
-            ]
-            time.sleep(0.01)
+            with self._lock:
+                self._currently_playing = [
+                    s for s in self._currently_playing if not s.done
+                ]
+            clock.sleep(0.01)
 
 
 Configuration().register(

@@ -125,3 +125,33 @@ Guard tests: `test_library_only` `_WAITING` is now empty.
 Not done in batch 2: GL-040 (script top-level code can freeze: needs a design, user question), GL-153 measuring part, GL-045 History-limits-on-main-thread note (safe through the config lock), GL-029/168/185/186/201 (features / on hold).
 
 Open questions for the user at batch end: GL-040 design; GL-116 re-ask box; cards with no module file (03 Q8); `rig_chips.fullNameOf` adds EVO R part names to hover text on every device (07 RB10 remainder) — drop it?
+
+### Notes collected during batch 3
+- Open question for the user (C3b, GL-243): what counts as a device "no longer known" for pruning twin names, aliases, HidHide photos and links? Proposal: no module file and not present at a scan; the in-memory cache stays (scripts hold its objects).
+- Open question for the user (C1): "Gremlin's Xbox pad" (Device Information note, D-02-Q6) uses "Gremlin" alone, against glossary D12. Suggest "this program's Xbox pad".
+- C1 aligned glossary N20 (file picker titles) to Title Case, as D15 and GLOSSARY-4 already said ("Open Profile", "Choose Photo").
+- Lead: qml/OptionProfileAutoLoading.qml picker title "Select a File" → "Choose Profile" (D-01-Q14).
+- Open question for the user (C2, GL-040): the time limit covers a script's top-level code at load and add. At every Run, Script.reload() still runs it on the main thread with no limit. Use the same limit at Run?
+- Open question for the user (C3a, GL-249 / 03 7.2): does device_initialization count as "the input side"? If not, Home, Module Setup and the vJoy Viewer device lists go through gremlin/modules/hardware.py.
+- Open question for the user (C5, GL-269): Button Map pool search label: keep "every mode joined", or follow the chips' one-mode label?
+- Open question for the user (C5, GL-274): picture library clean-up: what counts as an unused library copy (maps reference device-folder copies; Undo can use library copies during an edit)?
+- Not done, carried to the proper process: GL-254 "viewing a key creates an empty input" (needs a detached draft input in ui/profile.py + Library); GL-270 read-on-load waits for BM41/GL-185.
+- Gap list correction (C2): GL-279 — gremlin/fsm.py is used (double_tap, tempo, smart_toggle, hat_buttons, code_runner); only the OSC model methods part stands (parked).
+
+## Batch 3 – text, glossary, help and clean-up (2026-10-07)
+
+6 agents plus a test-sweep helper, file owners in `claude/catchup-batch3-rules.md`.
+New test files: `test/unit/test_batch3_*.py`. Clean-up rows change no behaviour
+unless the row says so; the existing tests guard them.
+
+| Area | GL | Check (automatic) | Hands-on |
+|---|---|---|---|
+| C1 help, glossary, docs | 202-208, 210-212, 214, 218-223, 225, 226, 230-233, 280 + help for batches 1-2 | test_batch3_C1, test_help_guide, test_pages_fit | Options picker titles ("Choose Logs Folder"); HidHide window at 100% no scrollbar; Module Setup while running says "Saved changes work at once." |
+| C2 shell, settings, scripts | 040 (time limit), 205, 215, 227, 234, 236-238, 242, 244 (highlight), 251, 252, 254 (backend), 265, 278 | test_batch3_C2 | a script looping at top level: loading/adding shows the reason, program stays responsive; auto-load on picks up the program in front; Module Setup for two devices in a row |
+| C3a modules & Home | 203, 245-248, 250, 253, 254 (models), 258, 266, 267, 270/275 support | test_batch3_C3a, test_stage1_modules | Profile Settings with real vJoy; idle vJoy during a long Run stays alive, no keep-alive after Stop; Rename on Keyboard/Logical rows; Home after Delete Device and a re-save |
+| C3b devices & input | 209, 239-241, 243 (question), 244, 265, shown-name follow-up | test_batch3_C3b, test_hidhide_group | Listen and Record of mouse buttons; HidHide window with the real driver; plug a Gremlin Xbox pad; Input Monitor shows the alias |
+| C4 actions | 217, 244 (marking), 255-257, 260 (two plugins), 261 (catalog), 262-264 | test_batch3_c4, test_catalog_*, action_interaction, integration plugins | Configuration page Type box and "No actions"; Merge Axis/Deadzone record, switch, "+", save/reload; relative axis on vJoy and Logical Device |
+| C5 Button Map, History, Pack, Auto Mapper | EVO R names, 213, 221, 224 (checked), 228, 229, 230, 235, 268, 270 (part), 271-273, 275, 276, 277 | test_batch3_C5, test_stage1_button_map, j03 | Clear Photo then Save: no photo after reopening; Import Picture then Cancel: file gone; close Device Pack: %TEMP% folder gone; export a damaged device; Auto Mapper on vJoy with sparse axes |
+| L3 / lead | 258 (InputItem field), 272 (legacy qml/maps copy removed), test sweep | test_batch3_L3, test_glossary_words | – |
+
+Carried to the proper process (after the baseline): GL-249 and GL-243 (user questions), GL-254 viewing creates an input, GL-260 Condition data/UI split, GL-261 rest (newActionSequence, keyboard _description_from_item, ActionPriorityListModel), GL-269 and GL-274 (user questions), GL-270 read-on-load (BM41), GL-279 OSC part (parked), action_kinds.js own table.

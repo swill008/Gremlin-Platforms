@@ -726,27 +726,17 @@ def test_a_data_folder_that_cannot_be_made_does_not_stop_folder_lookups(
     util.logs_dir()  # must not raise
 
 
-def test_legacy_device_files_are_copied_once_never_over_a_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    source = tmp_path / "program" / "qml" / "maps"
-    (source / "stick").mkdir(parents=True)
-    (source / "stick" / "a.json").write_text("old a", encoding="utf-8")
-    (source / "b.json").write_text("old b", encoding="utf-8")
-    modules = tmp_path / "modules"
-    (modules).mkdir()
-    (modules / "b.json").write_text("mine", encoding="utf-8")
-    monkeypatch.setattr(
-        util, "resource_path", lambda rel: str(tmp_path / "program" / rel)
-    )
-    monkeypatch.setattr(util, "modules_dir", lambda: modules)
-
-    util.copy_legacy_modules()
-    assert (modules / "stick" / "a.json").read_text(encoding="utf-8") == "old a"
-    assert (modules / "b.json").read_text(encoding="utf-8") == "mine"
-    (modules / "stick" / "a.json").write_text("edited", encoding="utf-8")
-    util.copy_legacy_modules()  # the next start
-    assert (modules / "stick" / "a.json").read_text(encoding="utf-8") == "edited"
+def _release_doc(version: str) -> dict:
+    return {
+        "tag_name": f"Gremlin-Platforms-R1-{version}",
+        "html_url": f"https://github.com/x/y/releases/tag/{version}",
+        "assets": [{
+            "name": f"Gremlin-Platforms-R1-{version}-Setup.exe",
+            "browser_download_url": "https://github.com/x/y/releases/download/t/s.exe",
+            "size": 1000,
+            "digest": "sha256:" + "a" * 64,
+        }],
+    }
 
 
 class _Reply:
@@ -767,19 +757,6 @@ class _Reply:
 
     def deleteLater(self) -> None:
         pass
-
-
-def _release_doc(version: str) -> dict:
-    return {
-        "tag_name": f"Gremlin-Platforms-R1-{version}",
-        "html_url": f"https://github.com/x/y/releases/tag/{version}",
-        "assets": [{
-            "name": f"Gremlin-Platforms-R1-{version}-Setup.exe",
-            "browser_download_url": "https://github.com/x/y/releases/download/t/s.exe",
-            "size": 1000,
-            "digest": "sha256:" + "a" * 64,
-        }],
-    }
 
 
 def test_skip_this_version_and_the_release_page(

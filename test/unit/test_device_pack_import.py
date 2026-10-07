@@ -20,8 +20,10 @@ second PC.
 from __future__ import annotations
 
 import json
+import shutil
 import uuid
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -29,6 +31,7 @@ import pytest
 
 from gremlin import device_initialization, plugin_manager, shared_state, util
 from gremlin.modules import module_file, registry
+from gremlin.modules import store as module_store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
 from gremlin.ui import device_pack, hardware_profile
@@ -106,10 +109,36 @@ def _reload(profile: Profile, tmp_path: Path) -> Profile:
 
 
 @pytest.fixture
-def pack(tmp_path: Path) -> dict:
+def pack(tmp_path: Path) -> Iterator[dict]:
     name, uid = _stick()
     modules = util.modules_dir()
     modules.mkdir(parents=True, exist_ok=True)
+    # Module files and bindings other tests left are put aside, and the
+    # folder is put back as it was afterwards (the pack and imports write
+    # pjoy_pro.json, vjoy_1.json and vjoy_2.json there).
+    aside = tmp_path / "aside"
+    aside.mkdir()
+    for old in modules.glob("*.json"):
+        shutil.move(str(old), str(aside / old.name))
+    before = {p.name for p in modules.iterdir()}
+    bindings = module_store.bindings()
+    module_store.set_bindings({})
+    try:
+        yield from _pack(tmp_path, name, uid, modules)
+    finally:
+        for extra in modules.iterdir():
+            if extra.name in before:
+                continue
+            if extra.is_dir():
+                shutil.rmtree(extra, ignore_errors=True)
+            else:
+                extra.unlink(missing_ok=True)
+        for old in aside.iterdir():
+            shutil.move(str(old), str(modules / old.name))
+        module_store.set_bindings(bindings)
+
+
+def _pack(tmp_path: Path, name: str, uid: uuid.UUID, modules: Path) -> Iterator[dict]:
     module_file.write_json(
         _own_path(name),
         {
@@ -226,8 +255,10 @@ def test_the_warning_says_what_is_replaced(pack: dict) -> None:
     assert "Button 99" in preview["leftOut"]
     assert preview["moves"] == [{"from": "vJoy 2", "to": "vJoy 1"}]
     assert preview["hasModuleFile"] is True
-    # Wires are in "modes", with their counts, not again in the pieces.
-    assert preview["pieces"] == ["Input module: Checked controls"]
+    # Wires are in "modes", with their counts, not again in the pieces;
+    # checked controls are added, said on their own (08 Q3, GL-230).
+    assert preview["pieces"] == []
+    assert preview["addsChecks"] is True
 
 
 def test_missing_logical_inputs_can_be_created(pack: dict) -> None:
@@ -394,7 +425,7 @@ def test_opening_a_pack_says_the_vjoy_driver_is_missing(
     drivers = device_pack.describe_zip(pack["zip"])["drivers"]
     assert drivers == [
         "vJoy is not installed or not running: wires to vJoy won't do anything. "
-        "Install vJoy, then restart Gremlin-Platforms."
+        "Install vJoy, then restart the program."
     ]
 
 
@@ -433,7 +464,7 @@ def test_the_xbox_driver_is_checked_when_wires_send_to_xbox(
     assert notes == [
         "ViGEmBus is not installed: wires to Xbox won't do anything. Install "
         "ViGEmBus 1.22 from the Nefarius releases page, then restart "
-        "Gremlin-Platforms. This program does not download or bundle that "
+        "the program. This program does not download or bundle that "
         "installer."
     ]
     assert device_pack.driver_notes(set(), False) == []

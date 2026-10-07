@@ -17,8 +17,8 @@ was and its wires are back (button 4 only). Saved and opened again, the
 profile has the wires from before the import.
 
 Spec: 08 S49, S53, S59, S62, S64, S65 with Q3, S68, S73, S74, S80, S81.
-Known gap: GL-230 (the warning says "replaces" where checked controls are
-added), marked xfail. GL-031 and GL-032 need a change after the import, so
+GL-230 (the warning said "replaces" where checked controls are added) is
+fixed in batch 3. GL-031 and GL-032 need a change after the import, so
 this path doesn't reach them.
 """
 
@@ -147,11 +147,6 @@ def test_import_onto_the_other_stick_replaces_its_file_and_wires(run: dict) -> N
     assert step(run, "pjoy-after-import") == _PJOY
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-230: the warning says 'replaces' for checked controls",
-)
 def test_the_warning_says_checked_controls_are_added(run: dict) -> None:
     assert "adds the pack's checked controls" in step(run, "warning")
 

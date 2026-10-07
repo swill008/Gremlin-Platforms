@@ -54,12 +54,41 @@ from PySide6 import (
 # failure (01 S16, Q8). Imported by a test, the error is raised as usual.
 _startup_failure: tuple[str, str] | None = None
 
+
+# The settings core imports no UI or module code (01 section 7); it is handed
+# these as soon as it loads, before the first setting is read. Each loads its
+# module when first called.
+def _settings_trace(
+    action: str, window: str, function: str, path: object, result: str
+) -> None:
+    from gremlin.ui import live_debug
+
+    live_debug.trace(action, window, function, path, result)
+
+
+def _settings_title(name: str, key: str) -> str:
+    from gremlin.ui import option
+
+    return option.entry_title(name, key)
+
+
+def _settings_write(path: Path, text: str) -> None:
+    from gremlin.modules import module_file
+
+    module_file.write_text(path, text)
+
+
 try:
     import dill
     import resources  # noqa: F401
     from gremlin import clock
     from gremlin.config import Configuration
+    from gremlin.config import use as _use_settings_helpers
     from gremlin.types import PropertyType
+
+    _use_settings_helpers(
+        trace=_settings_trace, title=_settings_title, write_text=_settings_write
+    )
 except Exception as _e:
     if __name__ != "__main__":
         raise
@@ -113,6 +142,7 @@ if _startup_failure is None:
         import gremlin.ui.log_option  # noqa: F401
         import gremlin.ui.tools
         import gremlin.ui.ui_scale_option
+        import gremlin.ui.windows_scale_option
         import gremlin.ui.update_model  # noqa: E402
         import gremlin.ui.util
         import gremlin.osc
@@ -427,16 +457,16 @@ def _is_gremlin_process(pid: int, python_pids: set[int] | None = None) -> bool:
     return False
 
 
-def _gremlin_window_titles() -> list[str]:
-    titles: list[str] = []
+def _gremlin_windows() -> list[tuple[int, str, bool]]:
+    """(process id, title, visible) of every window another Gremlin-Platforms
+    copy has open: the one window scan of the second-copy check."""
+    found: list[tuple[int, str, bool]] = []
     protected = _this_process_tree()
     try:
         user32 = ctypes.windll.user32
 
         @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
         def _enum(hwnd: int, _: int) -> bool:
-            if not user32.IsWindowVisible(hwnd):
-                return True
             length = user32.GetWindowTextLengthW(hwnd) + 1
             buf = ctypes.create_unicode_buffer(length)
             user32.GetWindowTextW(hwnd, buf, length)
@@ -446,45 +476,25 @@ def _gremlin_window_titles() -> list[str]:
             pid = ctypes.c_ulong()
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
             value = int(pid.value)
-            if value in protected or not _is_gremlin_process(value):
+            if not value or value in protected or not _is_gremlin_process(value):
                 return True
-            titles.append(title)
+            found.append((value, title, bool(user32.IsWindowVisible(hwnd))))
             return True
 
         user32.EnumWindows(_enum, 0)
     except Exception:
         pass
-    return titles
+    return found
+
+
+def _gremlin_window_titles() -> list[str]:
+    """Titles of the other copies' visible windows."""
+    return [title for _pid, title, visible in _gremlin_windows() if visible]
 
 
 def _window_process_ids() -> set[int]:
-    pids: set[int] = set()
-    protected = _this_process_tree()
-    try:
-        user32 = ctypes.windll.user32
-
-        @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
-        def _enum(hwnd: int, _: int) -> bool:
-            length = user32.GetWindowTextLengthW(hwnd) + 1
-            buf = ctypes.create_unicode_buffer(length)
-            user32.GetWindowTextW(hwnd, buf, length)
-            if "Gremlin-Platforms" not in buf.value:
-                return True
-            pid = ctypes.c_ulong()
-            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-            value = int(pid.value)
-            if (
-                value
-                and value not in protected
-                and _is_gremlin_process(value)
-            ):
-                pids.add(value)
-            return True
-
-        user32.EnumWindows(_enum, 0)
-    except Exception:
-        pass
-    return pids
+    """Process ids of the other copies that have a window (shown or not)."""
+    return {pid for pid, _title, _visible in _gremlin_windows()}
 
 
 def _command_line_process_ids() -> set[int]:
@@ -726,25 +736,19 @@ def register_config_options() -> None:
     cfg.register(
         "global", "general", "device-change-behavior", PropertyType.Selection,
         "Reload",
-        "What the program does when a joystick is connected or disconnected.",
+        "What a running profile does when a controller is plugged in or "
+        "removed: Stop stops it, Ignore does nothing, Reload stops it and runs "
+        "it again.",
+        # "Disable" is shown as Stop (gremlin.ui.option; 02 Q2).
         {"valid_options": ["Disable", "Ignore", "Reload"]}, True,
     )
     cfg.register(
         "ui", "general", "dark-mode", PropertyType.Bool, True,
         "Use the dark mode UI.", {}, True,
     )
-    cfg.register(
-        "ui", "general", "ui-scale", PropertyType.Int, 100,
-        "Scale the program UI when Windows scaling is disabled. "
-        "The UI resizes when the slider is released.",
-        {"min": 70, "max": 200}, True,
-    )
-    cfg.register(
-        "ui", "general", "disable-windows-scaling", PropertyType.Bool, False,
-        "Disable Windows display scaling and use the UI scale slider instead. "
-        "Takes effect on the next start.",
-        {}, True,
-    )
+    # Defined once, by the modules that show them in Options.
+    gremlin.ui.ui_scale_option.register()
+    gremlin.ui.windows_scale_option.register()
     # One setting covers minimizing and closing. "close-to-tray" was the
     # second one: whoever had it on keeps that behavior, then it is dropped.
     was_close_to_tray = bool(
@@ -781,13 +785,15 @@ def register_config_options() -> None:
     cfg.register(
         "global", "history", "keep-days", PropertyType.Int,
         gremlin.history.KEEP_DAYS,
-        "Days the history keeps each saved change (Tools > History).",
+        "Days the history keeps each saved change (Tools > History). "
+        "Checked at start.",
         {"min": 1, "max": 3650}, True,
     )
     cfg.register(
         "global", "history", "max-megabytes", PropertyType.Int,
         gremlin.history.MAX_MEGABYTES,
-        "Largest size of each history file, in MB. The oldest changes go first.",
+        "Largest size of each history file, in MB. The oldest changes go "
+        "first. Checked at start.",
         {"min": 1, "max": 500}, True,
     )
     cfg.register(
@@ -1043,9 +1049,18 @@ class JoystickGremlinApp(QtWidgets.QApplication):
             profile = os.path.normpath(os.path.join(launch_dir, args.profile))
             if not os.path.isfile(profile):
                 self.syslog.warning(f"--profile not found: {profile}")
+                last = str(
+                    Configuration().value("global", "internal", "last-profile")
+                    or ""
+                )
+                # No last profile: the new one stays open (04 Q16).
+                instead = (
+                    "The last profile used was opened instead."
+                    if last
+                    else "A new profile is open."
+                )
                 gremlin.signal.display_error(
-                    "Profile not found.",
-                    f"{profile}\n\nThe last profile used was opened instead.",
+                    "Profile not found.", f"{profile}\n\n{instead}"
                 )
                 profile = None
         if profile is not None:

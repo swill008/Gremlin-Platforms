@@ -21,7 +21,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 
 **Outputs**
 - `gremlin/modules/output.py` (585): the output layer. vJoy firewall (`write_vjoy`, `vjoy_value`, `vjoy_state`, claims cache with 1 s TTL, open/retry of busy devices, blocked-output log once per Run), script vJoy (`ScriptVJoy`), Xbox pass-through (`write_xbox`, `xbox_state`), driver checks and wording, `reset_drivers`.
-- `vjoy/vjoy.py` (982), `vjoy/vjoy_interface.py` (115): vJoy driver wrapper; `VJoyProxy` (opened devices, class-level dict), per-device keep-alive timer.
+- `vjoy/vjoy.py` (982), `vjoy/vjoy_interface.py` (115): vJoy driver wrapper; `VJoyProxy` (opened devices, class-level dict); the keep-alive is in `gremlin/modules/output.py` since batch 3 (GL-267).
 - `vigem/xbox.py` (375): `XboxProxy` (pads 1-4, plugged in on first write, lock), `XboxPad.apply`, `snapshot`, `reset`. `vigem/own_pads.py` (125): remembers which Xbox devices are Gremlin's own pads. `vigem/ids.py`, `vigem/vigem_client.py`, `vigem/vigem_commons.py`: ids, DLL loading, driver checks.
 - `gremlin/macro.py` (1231): `MacroManager` (scheduler thread, one thread per running macro, exclusive/pre-emptive, Run counter `_run`, `_held_keys`), macro steps (Joystick, Key, Logical Device, Mouse Button, Mouse Motion, Pause, vJoy), repeat modes.
 - `gremlin/sendinput.py` (512): Windows `SendInput` for the mouse; `MouseController` (motion thread); `_held_buttons` and `release_held_buttons`.
@@ -119,7 +119,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | Profile loaded / mode renamed / mode deleted | `signal.profileChanged`, `modeRenamed`, `modeDeleted` | Undo cleared; steps renamed; pane closed with a notice |
 | Logical Device changed elsewhere | `signal.logicalDeviceModified` | `_on_external` rebuild; also Configuration models, `module_model` targets |
 | Options saved | `backend.emitConfigChanged` | `AudioPlayer.refresh` (playback mode) |
-| vJoy keep-alive | `VJoy._arm_keep_alive` (`threads.timer`, 60 s) | re-sends to an idle vJoy device |
+| vJoy keep-alive | `output._arm_keep_alive` (`run_scope.timer` on the main thread, 60 s) | resets an idle held vJoy device |
 
 ## 5. Talks to
 
@@ -154,7 +154,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | "user script timers" | `PeriodicRegistry.start` (only if callbacks exist) | `_running` False or new generation, `join(2.0)` | `time.monotonic`, `time.sleep` up to 1 s |
 | "vJoy relative axis" (Map to vJoy) | `map_to_vjoy._start_loop` 139 | `vjoy_owned` False, input centred | `clock` |
 | "logical device relative axis" | `map_to_logical_device._start_loop` 144 | Run number change, value changed elsewhere | `clock` |
-| "vJoy N keep-alive" | `VJoy._arm_keep_alive` | `invalidate` at reset | `threads.timer` 60 s, `time.time()` |
+| "vJoy N keep-alive" | `output._arm_keep_alive` | cancelled at Stop (run_scope CANCEL) and in `output.reset_vjoy` | `run_scope.timer` 60 s, `clock.monotonic()` |
 | Tempo / Double Tap / Smart Toggle timers | `threads.main_timer` (Qt main thread) | fire or cancel by the action; **not at Stop** | Qt timer |
 | Pulse release | `base_classes._pulse_event` | 50 ms, or `flush_pulses` at Stop | `QTimer.singleShot` on main thread; `time.sleep(0.05)` off it |
 | TTS engine | Qt object on the main thread | `stop()` stops speech; the engine stays | Qt |
@@ -252,7 +252,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S51. It should never open a vJoy device for a viewer or a Home card; they show values only while the profile holds the device. [test-plan: P2d] [test: test_output_layer.py::test_unopened_device_gives_nothing]
 - S52. It should, when another program holds a vJoy device, show "vJoy N is in use by another program." once per Run, log once, retry every 3 s and carry on by itself when the device is free. [tracker: DEV6] [test: test_device_fixes.py::test_busy_vjoy_is_told_once_and_retried_every_few_seconds] [test: test_device_fixes.py::test_a_new_run_tells_again]
 - S53. It should pick up an output module saved while running at once, the same as an input module (Q12); today within about 1 s. [user confirmed 2026-10-06; was code only]
-- S54. It should keep an idle vJoy device alive (re-send after 60 s of no writes) while held, and arm no new keep-alive after release. [user confirmed 2026-10-06; was code only] [test: test_threads.py::test_a_released_vjoy_device_arms_no_new_keep_alive]
+- S54. It should keep an idle vJoy device alive (re-send after 60 s of no writes) while held, and arm no new keep-alive after release. [user confirmed 2026-10-06; was code only] [test: test_batch3_C3a.py keep-alive tests]
 - S55. It should say "vJoy is not installed or not running" / "Install vJoy, then restart Gremlin-Platforms." wherever the vJoy driver is checked. [user confirmed 2026-10-06; was code only]
 
 ### Xbox output
@@ -349,7 +349,7 @@ Things nothing owns:
 - "What a Run holds" (timers, loops, held outputs, values) has no single owner; each part stops itself and `CodeRunner.stop` lists them by hand. Map 3 proposes `gremlin/run_scope.py`.
 - The "locked while running" rule has no owner in Python; each QML page checks `gremlinActive` itself.
 - Logical Device values have no reset owner (only whole-device reset at profile load).
-- The keep-alive and the busy retry for vJoy are split between `vjoy/vjoy.py` and `output.py`.
+- (Done in batch 3, GL-267) The keep-alive and the busy retry for vJoy are both in `output.py`.
 
 ## 11. Size and test coverage
 

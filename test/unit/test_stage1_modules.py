@@ -895,11 +895,6 @@ class _PausingSet(set):
         return found
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="GL-245: output's blocked log is changed without a lock"
-)
 def test_a_blocked_output_is_logged_once_from_two_threads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

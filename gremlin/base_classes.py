@@ -289,7 +289,9 @@ class AbstractActionData(ABC):
                 )
             )
         else:
-            print(f"Received invalid node in {self.id}")
+            logging.getLogger("system").warning(
+                f"Action {self.id} gave no node to save"
+            )
         return node
 
     def is_valid(self) -> bool:

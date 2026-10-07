@@ -7,12 +7,11 @@ from __future__ import annotations
 import ctypes
 import logging
 import threading
-import time
 from ctypes import wintypes
 from dataclasses import dataclass
 from typing import Callable
 
-from gremlin import threads
+from gremlin import clock, threads
 from gremlin.common import SingletonMetaclass
 from gremlin.types import MouseButton
 
@@ -249,7 +248,7 @@ def _mouse_event(n_code: int, w_param: int, l_param: int) -> None:
                 button_id = MouseButton.WheelDown
 
         # Create the event and pass it to all all registered callbacks
-        evt = MouseEvent(button_id, is_pressed, False)
+        evt = MouseEvent(button_id, is_pressed)
         for cb in g_mouse_callbacks:
             cb(evt)
 
@@ -289,7 +288,6 @@ class MouseEvent:
 
     button_id: MouseButton
     is_pressed: bool
-    is_injected: bool
 
 
 class _Hook:
@@ -330,8 +328,8 @@ class _Hook:
             return
         # Posted again until the thread ends: one posted before the thread
         # has its message queue would be lost.
-        deadline = time.monotonic() + self._STOP_WAIT_S
-        while thread.is_alive() and time.monotonic() < deadline:
+        deadline = clock.monotonic() + self._STOP_WAIT_S
+        while thread.is_alive() and clock.monotonic() < deadline:
             self._post_quit(thread)
             thread.join(0.05)
         if thread.is_alive():

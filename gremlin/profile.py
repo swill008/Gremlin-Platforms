@@ -1923,6 +1923,8 @@ class InputItem:
         self.library = library
         self.action_sequences: list[InputItemBinding] = []
         self.is_active = True
+        # The user's name for this input (05 Q15), saved as <action-name>.
+        self.action_name: str = ""
 
     def from_xml(self, node: ElementTree.Element) -> None:
         self.device_id = read_subelement(node, "device-id")
@@ -1940,6 +1942,9 @@ class InputItem:
             action = InputItemBinding(self)
             action.from_xml(entry)
             self.action_sequences.append(action)
+
+        child = node.find("action-name")
+        self.action_name = "" if child is None or child.text is None else child.text
 
     def to_xml(self) -> ElementTree.Element:
         node = ElementTree.Element("input")
@@ -1960,6 +1965,9 @@ class InputItem:
         # Action configurations
         for entry in self.action_sequences:
             node.append(entry.to_xml())
+
+        if self.action_name:
+            ElementTree.SubElement(node, "action-name").text = self.action_name
 
         return node
 

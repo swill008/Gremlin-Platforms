@@ -153,6 +153,9 @@ def test_settings_go_back(
 
     monkeypatch.setattr(config, "_config_file_path", str(tmp_path / "c.json"))
     cfg = config.Configuration()
+    # The settings are one shared object: put its entries back afterwards
+    # (a registration here has no description).
+    monkeypatch.setattr(cfg, "_data", {k: dict(v) for k, v in cfg._data.items()})
     cfg.register(
         "global",
         "history",

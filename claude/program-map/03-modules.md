@@ -451,7 +451,7 @@ Every device has a module file that says which of its controls the program may u
 24. Home `_reload` writes settings while reading (card order at module_model.py:1710-1711, kept stubs at :183); each write is a settings change. It settles after one pass; noted for the Stage 1 rule checks.
 
 **Open tracker items for this subsystem**
-- AU-64 (open): what is left: Button Map photo folders and export names still use the device's own name; device list cleared and refilled while read (device update runs on a timer thread, event_handler.py:388-419, while Home reads `physical_devices` on the main thread); a failed output-claims refresh blocks vJoy outputs for 1 s. Unverified.
+- AU-64 (open): what is left: only the Device Pack export file name still goes by the device's own name (photo folders follow the module file); device list cleared and refilled while read (device update runs on a timer thread, event_handler.py:388-419, while Home reads `physical_devices` on the main thread); a failed output-claims refresh blocks vJoy outputs for 1 s. Unverified.
 - AU-58 (in progress): only the OSC empty-state text in Module Setup is left (OSC parked).
 - AU-56 (on hold): at 200% on a small screen, Save Module and Save All are cut off.
 - AU-116 / AU-117 (open, Run lifecycle map): timers and loops that write to vJoy after Stop go around `output.reset_drivers`.

@@ -5,11 +5,13 @@
 
 Import is destructive by design: each ticked piece replaces what is on this
 machine (module file pieces; for a ticked mode, the device's wires and
-actions in that mode). The window warns first, the previous module file is
+actions in that mode), except Checked controls: the pack's are added to the
+ones checked here (08 Q3). The window warns first, the previous module file is
 kept in the imported folder, and Undo Import puts back the last import."""
 
 from __future__ import annotations
 
+import atexit
 import io
 import json
 import os
@@ -635,6 +637,25 @@ def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]
     return packed, pictures
 
 
+_NO_FILE = "This device has no module file yet."
+
+
+def export_refusal(path: Path) -> str:
+    """Why a device's module file can't be exported: none yet (08 S51), or
+    damaged, pointing to Start Fresh (08 Q19). "" when it can."""
+    path = Path(path)
+    if not path.is_file():
+        return _NO_FILE
+    reason = store.damage_of(path)
+    if reason:
+        return (
+            f"The module file {path.name} is damaged ({reason}), so it can't "
+            "be exported. Choose Start Fresh on the device's card first (the "
+            "damaged file is kept)."
+        )
+    return ""
+
+
 def _device_path(name: str) -> Path:
     match = _match_pack_device(name)
     guid = str(match["guid"]) if match and match.get("guid") else ""
@@ -675,9 +696,12 @@ def assemble(
     if not name:
         return "Choose a device."
     path = _device_path(name)
+    refused = export_refusal(path)
+    if refused:
+        return refused
     doc = _read_doc(path)
     if not doc:
-        return "This device has no module file yet."
+        return _NO_FILE
     match = _match_pack_device(name)
     guid = str(match["guid"]) if match and match.get("guid") else ""
     used: set[str] = set()
@@ -760,10 +784,21 @@ def _read_zip(path: Path) -> dict | str:
     return {"doc": doc, "wires": wires if isinstance(wires, dict) else {}, "outputs": outputs, "files": blobs}
 
 
-def _stage_images(files: dict[str, bytes]) -> tuple[str, dict[str, str]]:
+def drop_preview() -> None:
+    """Removes the pack's preview pictures folder in %TEMP%: when the
+    Device Pack window closes and at quit (08 section 10 gap 29)."""
     global _preview_dir
     if _preview_dir and os.path.isdir(_preview_dir):
         shutil.rmtree(_preview_dir, ignore_errors=True)
+    _preview_dir = ""
+
+
+def _stage_images(files: dict[str, bytes]) -> tuple[str, dict[str, str]]:
+    global _preview_dir, _drop_at_exit
+    drop_preview()
+    if not _drop_at_exit:
+        atexit.register(drop_preview)
+        _drop_at_exit = True
     folder = tempfile.mkdtemp(prefix="gremlin-pack-")
     _preview_dir = folder
     urls: dict[str, str] = {}
@@ -781,6 +816,7 @@ def _stage_images(files: dict[str, bytes]) -> tuple[str, dict[str, str]]:
 
 
 _preview_dir = ""
+_drop_at_exit = False
 
 
 def _too_new(doc: dict) -> str:
@@ -997,7 +1033,8 @@ def _merge_module(
     guid: str,
     limits: dict[str, set[int]] | None = None,
 ) -> tuple[dict, list[str]]:
-    """The module file after the ticked pieces replace what is here. limits:
+    """The module file after the ticked pieces replace what is here (checked
+    controls are added, 08 Q3). limits:
     the controls the device has (None: not known); others are left out."""
     direction = _doc_direction(incoming, str((incoming.get("pack") or {}).get("exportedName") or name))
     base = json.loads(json.dumps(existing)) if isinstance(existing, dict) else _skeleton(name, direction, guid)
@@ -1894,6 +1931,13 @@ _INPUT_KEYS = {
 }
 
 
+def _is_checks(item_id: str) -> bool:
+    """A Checked controls piece ("in.checks", "out:<slug>.checks")."""
+    return item_id == "in.checks" or (
+        item_id.startswith("out:") and item_id.endswith(".checks")
+    )
+
+
 def _titles(path: Path, chosen: set[str]) -> list[str]:
     described = describe_zip(path)
     if isinstance(described, str):
@@ -1903,10 +1947,12 @@ def _titles(path: Path, chosen: set[str]) -> list[str]:
         # Wires are listed per mode, with their counts, by the warning.
         if section.get("id") == "wires":
             continue
+        # Checked controls are added, not replaced: said on their own line
+        # (addsChecks, 08 Q3).
         names = [
             str(item.get("title") or "")
             for item in section.get("items") or []
-            if item.get("id") in chosen
+            if item.get("id") in chosen and not _is_checks(str(item.get("id")))
         ]
         if names:
             out.append(f"{section.get('title')}: " + ", ".join(names))
@@ -1968,6 +2014,8 @@ def preview_import(path: Path, target_name: str, selection: dict | None) -> dict
         "ok": True,
         "device": target,
         "pieces": _titles(path, chosen),
+        # Checked controls are added to the ones checked here (08 Q3).
+        "addsChecks": any(_is_checks(item) for item in chosen),
         "modes": [
             {
                 "name": name,

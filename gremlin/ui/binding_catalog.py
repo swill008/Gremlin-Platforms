@@ -48,40 +48,35 @@ def _fingerprint(binding: InputItemBinding) -> str:
     return binding_fingerprint(binding)
 
 
-def _or(value: int | str | None, default: int) -> int | str:
-    """value, or default when it is None (0 is a real index)."""
-    return default if value is None else value
+# The Type box, in order: (filter key, the action tag it picks). Its names
+# are the plugins' action names (05 Q6, RB12).
+_TYPE_FILTERS = [
+    ("all", ""),
+    ("vjoy", "map-to-vjoy"),
+    ("keyboard", "map-to-keyboard"),
+    ("mouse", "map-to-mouse"),
+    ("xbox", "map-to-xbox"),
+    ("macro", "macro"),
+    ("mode", "change-mode"),
+    ("other", ""),
+    ("unmapped", ""),
+]
+_TYPE_FILTER_TEXT = {"all": "All types", "other": "Other", "unmapped": "No actions"}
+
+_NAMED_FILTERS = {key: {tag} for key, tag in _TYPE_FILTERS if tag}
 
 
-_TYPE_LABELS = {
-    "map-to-vjoy": "Map to vJoy",
-    "map-to-keyboard": "Map to keyboard",
-    "map-to-mouse": "Map to mouse",
-    "map-to-xbox": "Map to Xbox",
-    "map-to-logical-device": "Map to logical device",
-    "macro": "Macro",
-    "change-mode": "Change mode",
-    "load-profile": "Load profile",
-    "text-to-speech": "Text to speech",
-    "run-command": "Run command",
-    "play-sound": "Play sound",
-    "response-curve": "Response curve",
-    "merge-axis": "Merge axis",
-    "split-axis": "Split axis",
-    "axis-delta": "Axis delta",
-    "dual-axis-deadzone": "Dual axis deadzone",
-    "hat-buttons": "Hat buttons",
-    "pause-resume": "Pause / resume",
-}
+def action_name(tag: str) -> str:
+    """The plugin's name for an action tag ("Map to Keyboard"), or the tag."""
+    from gremlin.plugin_manager import PluginManager
 
-_NAMED_FILTERS = {
-    "vjoy": {"map-to-vjoy"},
-    "keyboard": {"map-to-keyboard"},
-    "mouse": {"map-to-mouse"},
-    "xbox": {"map-to-xbox"},
-    "macro": {"macro"},
-    "mode": {"change-mode"},
-}
+    plugin = PluginManager().tag_map.get(tag)
+    return str(getattr(plugin, "name", "") or tag)
+
+
+def type_filter_names() -> list[str]:
+    """The Type box's entries, in _TYPE_FILTERS order."""
+    return [_TYPE_FILTER_TEXT.get(key) or action_name(tag) for key, tag in _TYPE_FILTERS]
 
 
 def _action_children(action) -> list:
@@ -105,7 +100,8 @@ def _key_name(key) -> str:
 def summarize_action(action) -> tuple[str, str]:
     """Return (type label, destination) for a leaf action."""
     tag = str(getattr(action, "tag", "") or "")
-    label = _TYPE_LABELS.get(tag, getattr(action, "name", None) or tag or "Action")
+    # The action's own (plugin) name, as Add Action shows it.
+    label = str(getattr(action, "name", None) or tag or "Action")
     dest = ""
     if tag in ("map-to-vjoy", "map-to-xbox"):
         dest = wiring.dest_label(action)
@@ -148,19 +144,11 @@ def collect_leaves(action) -> list[tuple[str, str, str]]:
     """Walk wrappers; return (tag, type label, dest) for leaves."""
     tag = str(getattr(action, "tag", "") or "")
     kids = _action_children(action)
-    if tag in _WRAPPERS or (kids and tag in _WRAPPERS):
+    if tag in _WRAPPERS:
         out: list[tuple[str, str, str]] = []
         for child in kids:
             out.extend(collect_leaves(child))
-        if out:
-            return out
-        if tag in _WRAPPERS:
-            return []
-    if kids and tag in ("chain", "tempo", "condition", "double-tap", "smart-toggle"):
-        out = []
-        for child in kids:
-            out.extend(collect_leaves(child))
-        return out or [(tag, _TYPE_LABELS.get(tag, tag), _TYPE_LABELS.get(tag, tag))]
+        return out
     label, dest = summarize_action(action)
     return [(tag, label, dest)]
 
@@ -177,10 +165,13 @@ def sequences_for_item(item) -> list[tuple[int, str, str]]:
             out.append((index, lab, dest))
         elif len(leaves) > 1:
             dest = ", ".join(item_dest for _tag, _lab, item_dest in leaves if item_dest)
-            out.append((index, f"{len(leaves)} actions", dest or "Sequence"))
+            out.append((index, f"{len(leaves)} actions", dest))
         else:
-            label = str(getattr(root, "action_label", "") or "") if root is not None else ""
-            out.append((index, "Sequence", label or "Empty"))
+            # Nothing that acts yet (an empty Tempo, say): its name, and
+            # "No actions" (05 S14, Q6).
+            kids = _action_children(root) if root is not None else []
+            label = str(getattr(kids[0], "name", "") or "") if kids else ""
+            out.append((index, label or "No actions", "No actions"))
     return out
 
 
@@ -202,14 +193,10 @@ def sequence_is_simple(item, index: int) -> bool:
 
 
 def assignment_summary(shown: list[tuple]) -> tuple[str, str]:
+    """("1 action — dest" / "N actions — dests", the dests)."""
     summary = ", ".join(dest for _t, _l, dest in shown)
-    text = (
-        f"{len(shown)} assignment"
-        + ("s" if len(shown) != 1 else "")
-        + " — "
-        + summary
-    )
-    return text, summary
+    count = "1 action" if len(shown) == 1 else f"{len(shown)} actions"
+    return f"{count} — {summary}", summary
 
 
 def leaves_for_item(item) -> list[tuple[str, str, str]]:
@@ -543,7 +530,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             self._rows.append(
                 {
                     "rowKind": "unmapped-header",
-                    "name": "Unmapped",
+                    "name": "No actions",
                     "summary": f"{len(unmapped)} controls — click to add",
                     "typeLabel": "",
                     "destLabel": "",
@@ -618,155 +605,6 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         nxt = row + 1
         return nxt >= len(self._rows) or self._rows[nxt]["rowKind"] != "leaf"
 
-    def _shown_for_device(self, device_index: int):
-        want = int(device_index)
-        n = self._claimed.rowCount()
-        for i in range(n):
-            if int(self._claimed.deviceIndexAt(i)) != want:
-                continue
-            kind = self._claimed.kindAt(i)
-            hw = self._claimed.hwIdAt(i)
-            name = self._claimed.nameAt(i)
-            item = self._claimed._input_item(
-                {"kind": kind, "hwId": hw, "deviceIndex": want, "name": name}
-            )
-            shown = self._shown_sequences(item)
-            return name, kind, hw, want, shown
-        return None
-
-    def _emit_row(self, row: int) -> None:
-        idx = self.index(row, 0)
-        self.dataChanged.emit(idx, idx, list(self.roles.keys()))
-
-    def _leaf_row(self, name, kind, hw, didx, seq_index, lab, dest, simple: bool) -> dict:
-        return {
-            "rowKind": "leaf",
-            "name": name,
-            "summary": dest,
-            "typeLabel": lab,
-            "destLabel": dest,
-            "kind": kind,
-            "hwId": hw,
-            "deviceIndex": didx,
-            "bindingCount": 1,
-            "indent": 1,
-            "sequenceIndex": int(seq_index),
-            "simple": bool(simple),
-        }
-
-    def _replace_leaves(self, row: int, name, kind, hw, didx, shown) -> None:
-        existing = self.leafRun(row)
-        item = None
-        found_item = self._input_item_for(didx, False)
-        if found_item is not None:
-            item = found_item
-        fresh = [
-            self._leaf_row(
-                name,
-                kind,
-                hw,
-                didx,
-                seq_index,
-                lab,
-                dest,
-                sequence_is_simple(item, seq_index),
-            )
-            for seq_index, lab, dest in shown
-        ]
-        if existing == len(fresh):
-            for offset, leaf in enumerate(fresh):
-                self._rows[row + 1 + offset] = leaf
-            if existing:
-                top = self.index(row + 1, 0)
-                bottom = self.index(row + existing, 0)
-                self.dataChanged.emit(top, bottom, list(self.roles.keys()))
-            return
-        if existing:
-            self.beginRemoveRows(QtCore.QModelIndex(), row + 1, row + existing)
-            del self._rows[row + 1 : row + 1 + existing]
-            self.endRemoveRows()
-        if fresh:
-            self.beginInsertRows(QtCore.QModelIndex(), row + 1, row + len(fresh))
-            self._rows[row + 1 : row + 1] = fresh
-            self.endInsertRows()
-        self.countChanged.emit()
-
-    def _apply_summary(self, row: int, shown) -> None:
-        text, summary = assignment_summary(shown)
-        current = self._rows[row]
-        if (
-            current.get("summary") == text
-            and int(current.get("bindingCount") or 0) == len(shown)
-        ):
-            return
-        current["summary"] = text
-        current["destLabel"] = summary
-        current["bindingCount"] = len(shown)
-        self._emit_row(row)
-
-    @QtCore.Slot(int, result=bool)
-    def noteOpenRow(self, device_index: int) -> bool:
-        """Update the open parent summary. Do not insert or remove rows."""
-        found = self._shown_for_device(device_index)
-        if found is None:
-            return False
-        _name, _kind, _hw, didx, shown = found
-        row = self.rowForDeviceIndex(didx)
-        if row < 0:
-            return False
-        current = self._rows[row]
-        if current["rowKind"] != "group" or not shown:
-            return False
-        self._apply_summary(row, shown)
-        return False
-
-    @QtCore.Slot(int, result=bool)
-    def refreshOpenRow(self, device_index: int) -> bool:
-        """Update one control without resetting the list.
-
-        Returns True when the row had to move between mapped and unmapped,
-        which rebuilds the list.
-        """
-        found = self._shown_for_device(device_index)
-        if found is None:
-            return False
-        name, kind, hw, didx, shown = found
-        row = self.rowForDeviceIndex(didx)
-        if row < 0:
-            self._rebuild()
-            return True
-        current = self._rows[row]
-        kind_now = current["rowKind"]
-        if kind_now == "unmapped" and not shown:
-            return False
-        if kind_now != "group" or not shown:
-            self._rebuild()
-            return True
-        text, summary = assignment_summary(shown)
-        same = (
-            current.get("summary") == text
-            and int(current.get("bindingCount") or 0) == len(shown)
-            and self.leafRun(row) == len(shown)
-        )
-        if same:
-            for offset, (seq_index, lab, dest) in enumerate(shown):
-                leaf = self._rows[row + 1 + offset]
-                if (
-                    int(_or(leaf.get("sequenceIndex"), -1)) != int(seq_index)
-                    or leaf.get("typeLabel") != lab
-                    or leaf.get("destLabel") != dest
-                ):
-                    same = False
-                    break
-        if same:
-            return False
-        current["summary"] = text
-        current["destLabel"] = summary
-        current["bindingCount"] = len(shown)
-        self._emit_row(row)
-        self._replace_leaves(row, name, kind, hw, didx, shown)
-        return False
-
     @QtCore.Slot(int, result=int)
     def rowForDeviceIndex(self, device_index: int) -> int:
         want = int(device_index)
@@ -779,71 +617,6 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             if fallback < 0:
                 fallback = i
         return fallback
-
-    def _input_item_for(self, device_index: int, create: bool):
-        want = int(device_index)
-        if want < 0:
-            return None
-        profile = shared_state.current_profile
-        dev = getattr(self._claimed, "_device", None)
-        if profile is None or dev is None:
-            return None
-        mode = str(getattr(self._claimed, "_mode", None) or "Default")
-        n = self._claimed.rowCount()
-        for i in range(n):
-            if int(self._claimed.deviceIndexAt(i)) != want:
-                continue
-            return profile.get_input_item(
-                dev.device_guid.uuid,
-                type_of(self._claimed.kindAt(i)),
-                int(self._claimed.hwIdAt(i)),
-                mode,
-                create_if_missing=create,
-            )
-        return None
-
-    @QtCore.Slot(result=list)
-    def vjoyDevices(self) -> list:
-        """Output vJoy devices for the quick editor. Each entry is id|name."""
-        from gremlin.device_initialization import output_vjoy_devices
-
-        rows = []
-        for dev in output_vjoy_devices():
-            rows.append(f"{int(dev.vjoy_id)}|{dev.name}")
-        return rows
-
-    @QtCore.Slot(int, result=int)
-    def addSequence(self, device_index: int) -> int:
-        """ADD on a catalog row: new action sequence for that control."""
-        want = int(device_index)
-        if want < 0 or _refused():
-            return -1
-        profile = shared_state.current_profile
-        dev = getattr(self._claimed, "_device", None)
-        if profile is None or dev is None:
-            return -1
-        mode = str(getattr(self._claimed, "_mode", None) or "Default")
-        n = self._claimed.rowCount()
-        for i in range(n):
-            if self._claimed.deviceIndexAt(i) != want:
-                continue
-            kind = self._claimed.kindAt(i)
-            hw = self._claimed.hwIdAt(i)
-            item = profile.get_input_item(
-                dev.device_guid.uuid,
-                type_of(kind),
-                int(hw),
-                mode,
-                create_if_missing=True,
-            )
-            if item is None:
-                return -1
-            item.add_item_binding()
-            seq = len(item.action_sequences) - 1
-            signal.inputItemChanged.emit(want)
-            signal.reloadCurrentInputItem.emit()
-            return seq
-        return -1
 
     @QtCore.Slot(int, int, result=bool)
     def removeSequence(self, device_index: int, sequence_index: int) -> bool:
@@ -1203,6 +976,15 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     parkEmptyInUnmapped = QtCore.Property(
         bool, fget=_get_park_empty, fset=_set_park_empty, notify=parkEmptyChanged
     )
+
+    @QtCore.Property(list, constant=True)
+    def typeFilterNames(self) -> list[str]:
+        """The Type box's entries; typeFilterKeys holds their filter keys."""
+        return type_filter_names()
+
+    @QtCore.Property(list, constant=True)
+    def typeFilterKeys(self) -> list[str]:
+        return [key for key, _tag in _TYPE_FILTERS]
 
     @QtCore.Property("QStringList", notify=filtersChanged)
     def destChoices(self) -> list[str]:

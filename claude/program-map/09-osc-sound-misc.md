@@ -403,9 +403,9 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 **Things nothing owns**
 - `Configuration.set` is patched by OSC; nobody owns "who may watch a setting" (R2).
 - `InputIdentifier.label/linear_index` replaced for all devices by `osc_persist` (R3).
-- The shared QML widgets and the Python foundations (section 2) have no page other than this one and no tests of their own except through the screens that use them.
+- The shared QML widgets and the Python foundations (section 2) have no page other than this one. Owner (GL-280, catch-up batch 3): this page; `TextInputDialog` and `DismissibleDialog` now have direct tests (`test/unit/test_batch3_C1.py`).
 - `gremlin/fsm.py` (dead) and `listenForInput`/`createInput` (no caller).
-- The leftover table in section 2 until pages 01, 05, 07, 08 confirm it.
+- The leftover table in section 2: accepted as it stands (Q20, decided as recommended); those pages' authors may still move a file.
 
 ## 11. Size and test coverage
 

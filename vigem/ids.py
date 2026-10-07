@@ -52,13 +52,13 @@ def is_vigem_xbox_summary(dev: Any) -> bool:
 
 def is_vigem_xbox_guid(device_guid: Any) -> bool:
     try:
-        import dill
+        # The one door to the device driver (D-02-Q11).
+        from gremlin.modules import hardware
 
         if hasattr(device_guid, "uuid"):
             uid = device_guid.uuid
         else:
             uid = uuid.UUID(str(device_guid))
-        info = dill.DILL.get_device_information_by_guid(dill.GUID.from_uuid(uid))
-        return is_vigem_xbox_summary(info)
+        return is_vigem_xbox_summary(hardware.device_info(uid))
     except Exception:
         return False

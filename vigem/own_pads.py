@@ -20,8 +20,8 @@ could be taken for Gremlin's (rare).
 from __future__ import annotations
 
 import threading
-import time
 
+from gremlin import clock
 from vigem.ids import XBOX_HID_PID, XBOX_HID_VID
 
 SETTING = ("global", "internal", "own-xbox-pads")
@@ -73,11 +73,11 @@ def _save() -> None:
 
 def _present_with_xbox_id() -> set[str]:
     try:
-        import dill
+        # The one door to the device driver (D-02-Q11).
+        from gremlin.modules import hardware
 
         out = set()
-        for i in range(dill.DILL.get_device_count()):
-            dev = dill.DILL.get_device_information_by_index(i)
+        for dev in hardware.devices():
             if has_xbox_id(dev):
                 out.add(_key(dev.device_guid))
         return out
@@ -91,7 +91,7 @@ def before_plug() -> None:
     present = _present_with_xbox_id()
     with _LOCK:
         _before = present
-        _expect_until = time.monotonic() + _WINDOW_S
+        _expect_until = clock.monotonic() + _WINDOW_S
 
 
 def note_device(dev: object) -> bool:
@@ -104,7 +104,7 @@ def note_device(dev: object) -> bool:
         known = _load()
         if key in known:
             return True
-        if time.monotonic() <= _expect_until and key not in _before:
+        if clock.monotonic() <= _expect_until and key not in _before:
             known.add(key)
             _save()
             return True

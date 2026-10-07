@@ -8,6 +8,7 @@ import copy
 import functools
 import heapq
 import importlib
+import importlib.machinery
 import importlib.util
 import inspect
 import logging
@@ -15,7 +16,7 @@ import numbers
 import random
 import string
 import threading
-import time
+import types
 import uuid
 from abc import (
     ABC,
@@ -32,10 +33,12 @@ from xml.etree import ElementTree
 import dill
 import gremlin.keyboard
 from gremlin import (
+    clock,
     error,
     event_handler,
     run_scope,
     shared_state,
+    threads,
     util,
 )
 from gremlin.logical_device import LogicalDevice
@@ -208,7 +211,7 @@ class PeriodicRegistry:
                 plugin_cb = self._install_plugins(item[1])
                 callback_interval[plugin_cb] = item[0]
                 heapq.heappush(
-                    self._queue, (time.monotonic() + item[0], index, plugin_cb)
+                    self._queue, (clock.monotonic() + item[0], index, plugin_cb)
                 )
 
         queue = self._queue
@@ -218,7 +221,7 @@ class PeriodicRegistry:
 
         while current():
             # Capture the current timestamp for reuse in the sleep down below.
-            while current() and queue[0][0] < (now := time.monotonic()):
+            while current() and queue[0][0] < (now := clock.monotonic()):
                 deadline, index, callback = heapq.heappop(queue)
                 try:
                     callback()
@@ -229,7 +232,7 @@ class PeriodicRegistry:
                 # One slower than its interval runs again from now, instead
                 # of catching up without end.
                 next_at = max(
-                    deadline + callback_interval[callback], time.monotonic()
+                    deadline + callback_interval[callback], clock.monotonic()
                 )
                 heapq.heappush(queue, (next_at, index, callback))
             if not current():
@@ -237,7 +240,7 @@ class PeriodicRegistry:
 
             # Sleep until either the next function needs to be run or
             # our timeout expires
-            time.sleep(max(0.0, min(queue[0][0] - now, 1.0)))
+            clock.sleep(max(0.0, min(queue[0][0] - now, 1.0)))
 
 
 callback_registry = CallbackRegistry()
@@ -464,8 +467,42 @@ def describe_load_error(error_: BaseException, path: Path) -> str:
     if isinstance(error_, SyntaxError):
         return f"Syntax error, line {error_.lineno}: {error_.msg}"
     if isinstance(error_, error.GremlinError):
-        return str(error_).removeprefix("Script: ")
+        # Its text itself: str() of a GremlinError is quoted.
+        return str(error_.value).removeprefix("Script: ")
     return f"{type(error_).__name__}: {error_}"
+
+
+# Seconds a script's top-level code may take when the script is loaded or
+# added (D-04-Q13-TIMELIMIT). Longer, and the script is marked as failed.
+TOP_LEVEL_TIME_LIMIT = 5.0
+
+
+def _run_top_level(
+    spec: importlib.machinery.ModuleSpec, module: types.ModuleType, name: str
+) -> None:
+    """Runs a script's top-level code on its own thread and waits for it at
+    most TOP_LEVEL_TIME_LIMIT seconds, so a script that loops or waits can't
+    freeze the program. Raises what the code raised, or a GremlinError when
+    it didn't finish in time (that thread ends whenever the code does)."""
+    done = threading.Event()
+    raised: list[BaseException] = []
+
+    def run() -> None:
+        try:
+            spec.loader.exec_module(module)
+        except BaseException as e:
+            raised.append(e)
+        finally:
+            done.set()
+
+    threads.start(f"script {name}", run)
+    if not done.wait(TOP_LEVEL_TIME_LIMIT):
+        raise error.GremlinError(
+            f"Script: Its top-level code did not finish within "
+            f"{TOP_LEVEL_TIME_LIMIT:g} s (it may loop or wait)"
+        )
+    if raised:
+        raise raised[0]
 
 
 def _without_layout(node: ElementTree.Element) -> ElementTree.Element:
@@ -693,12 +730,18 @@ class Script:
         if not self.path.is_file():
             raise error.GremlinError(f"Invalid script file '{self.path}'")
 
-        self.spec = importlib.util.spec_from_file_location(
+        spec = importlib.util.spec_from_file_location(
             "".join(random.choices(string.ascii_lowercase, k=16)), str(self.path)
         )
-        self.module = importlib.util.module_from_spec(self.spec)
-        self.module._script_id = self.id
-        self.spec.loader.exec_module(self.module)
+        if spec is None or spec.loader is None:
+            raise error.GremlinError(f"Script: Can't read '{self.path}'")
+        module = importlib.util.module_from_spec(spec)
+        module._script_id = self.id
+        # Kept only once it has run: a run that is still going after the
+        # time limit changes nothing here.
+        _run_top_level(spec, module, self.name or self.path.name)
+        self.spec = spec
+        self.module = module
 
         for key, value in self.module.__dict__.items():
             if isinstance(value, AbstractVariable):

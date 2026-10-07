@@ -9,10 +9,9 @@ import enum
 import logging
 import os
 import threading
-import time
 from typing import Any
 
-from gremlin import clock, threads
+from gremlin import clock
 from gremlin.common import SingletonMetaclass
 from gremlin.error import (
     VJoyBusyError,
@@ -105,6 +104,16 @@ def device_exists(vjoy_id: int) -> bool:
     return state not in [VJoyState.Missing.value, VJoyState.Unknown.value]
 
 
+def axis_ids(vjoy_id: int) -> list[int]:
+    """The axis ids (1 = X ... 8 = SL1) the vJoy device has, as VJoy numbers
+    them."""
+    return [
+        i + 1
+        for i, axis in enumerate(AxisCode)
+        if VJoyInterface.GetVJDAxisExist(vjoy_id, axis.value) > 0
+    ]
+
+
 def axis_count(vjoy_id: int) -> int:
     """Returns the number of axes of the given vJoy device.
 
@@ -114,11 +123,7 @@ def axis_count(vjoy_id: int) -> int:
     Returns:
         The number of axes available on a device
     """
-    count = 0
-    for axis in AxisCode:
-        if VJoyInterface.GetVJDAxisExist(vjoy_id, axis.value) > 0:
-            count += 1
-    return count
+    return len(axis_ids(vjoy_id))
 
 
 def button_count(vjoy_id: int) -> int:
@@ -465,9 +470,6 @@ class Hat:
 class VJoy:
     """Represents a vJoy device present in the system."""
 
-    # Duration of inactivity after which the keep alive routine is run
-    keep_alive_timeout = 60
-
     # Axis name mapping
     axis_equivalence = {
         AxisCode.X: 1,
@@ -535,13 +537,9 @@ class VJoy:
         self._button = self._init_buttons()
         self._hat = self._init_hats()
 
-        # Timestamp of the last time the device was used
-        self._last_active = time.time()
-        # Held while the timer is re-armed or cancelled, so a timer that is
-        # firing as the device is released can't arm a new one.
-        self._keep_alive_lock = threading.Lock()
-        self._keep_alive_timer: threading.Timer | None = None
-        self._arm_keep_alive()
+        # When the device was last written (clock.monotonic). The output
+        # module's keep-alive resets it after a long idle (06 S54).
+        self._last_active = clock.monotonic()
 
         # Reset all controls
         self.reset()
@@ -803,42 +801,20 @@ class VJoy:
 
     def used(self) -> None:
         """Updates the timestamp of the last time the device has been used."""
-        self._last_active = time.time()
+        self._last_active = clock.monotonic()
+
+    @property
+    def last_active(self) -> float:
+        """When the device was last written (clock.monotonic)."""
+        return self._last_active
 
     def invalidate(self) -> None:
-        """Releases all resources claimed by this instance.
-
-        Releases the lock on the vjoy device instance as well as terminating
-        the keep alive timer.
-        """
+        """Releases the vJoy device (its keep-alive belongs to the output
+        module, which stops it first)."""
         if self.vjoy_id:
             self.reset()
             VJoyInterface.RelinquishVJD(self.vjoy_id)
-            with self._keep_alive_lock:
-                self.vjoy_id = None
-                if self._keep_alive_timer is not None:
-                    self._keep_alive_timer.cancel()
-
-    def _keep_alive(self) -> None:
-        """Timer callback ensuring the vJoy device stays active.
-
-        If the device hasn't been used in the last 60 seconds the device will
-        be reset to ensure it doesn't time out.
-        """
-        if self.vjoy_id and self._last_active + VJoy.keep_alive_timeout < time.time():
-            self.reset()
-        self._arm_keep_alive()
-
-    def _arm_keep_alive(self) -> None:
-        """Calls _keep_alive in keep_alive_timeout seconds, while the
-        device is ours."""
-        with self._keep_alive_lock:
-            if self.vjoy_id:
-                self._keep_alive_timer = threads.timer(
-                    f"vJoy {self.vjoy_id} keep-alive",
-                    VJoy.keep_alive_timeout,
-                    self._keep_alive,
-                )
+            self.vjoy_id = None
 
     def _init_axes(self) -> dict[int, Axis]:
         """Retrieves all axes present on the vJoy device and creates their

@@ -18,6 +18,7 @@ from gremlin.base_classes import (
     Value,
 )
 from gremlin.modules import output
+from gremlin.modules.output import XboxError, XboxTarget
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
@@ -26,7 +27,6 @@ from gremlin.types import (
     PropertyType,
 )
 from gremlin.ui.action_model import ActionModel, SequenceIndex
-from vigem.xbox import XboxError, XboxTarget
 
 if TYPE_CHECKING:
     from gremlin.ui.profile import InputItemBindingModel
@@ -118,7 +118,8 @@ class MapToXboxFunctor(AbstractFunctor):
     ) -> None:
         if not self._should_execute(value):
             return
-        # The Xbox output module passes only the controls it claims.
+        # Through the Xbox output module, which passes every control to
+        # the pad: Xbox output has no claims (05 S54).
         pad_id = self.data.xbox_device_id
         target = self.data.xbox_target
         try:

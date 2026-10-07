@@ -31,6 +31,11 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 _IMAGE_EXT = store.PICTURE_EXT
 
+# The Button Map page every position is a fraction of, and the photo frame
+# in its middle (07 S68, Q14): the one place it is written. Save stamps it
+# into the map (VkbRigEditor's world page follows it).
+PAGE_SIZE = {"page": 32000, "pageW": 32000, "pageH": 18000, "photoWell": 0.75}
+
 
 # Off unless someone is tracing a save. Same idea as the HidHide log switch.
 _persist_log = False
@@ -258,6 +263,64 @@ def _read_template(path: Path) -> dict | None:
     if not doc["nodes"]:
         return None
     return doc
+
+
+def _named_pictures(doc: object) -> set[str]:
+    """The pictures a map names (its photo and every picture chip, also
+    inside groups), as stored references."""
+    refs: set[str] = set()
+    if isinstance(doc, dict):
+        image = str(doc.get("image") or "").strip()
+        if image:
+            refs.add(image)
+
+    def walk(value: object) -> None:
+        if isinstance(value, dict):
+            if value.get("shape") == "image" and value.get("src"):
+                refs.add(str(value["src"]))
+            for inner in value.values():
+                walk(inner)
+        elif isinstance(value, list):
+            for inner in value:
+                walk(inner)
+
+    walk(doc.get("nodes") if isinstance(doc, dict) else None)
+    return refs
+
+
+def _used_pictures() -> set[Path]:
+    """Every picture a module file, a template or a recovery copy names
+    (where it is in the modules folder)."""
+    docs: list[object] = [store.read_path(path) for path in store.module_files()]
+    for folder in (store.folder() / "templates", store.recovery_path("x").parent):
+        if folder.is_dir():
+            docs += [_read_template(path) for path in sorted(folder.glob("*.json"))]
+    used: set[Path] = set()
+    for doc in docs:
+        for ref in _named_pictures(doc):
+            try:
+                used.add(store.picture_path(ref).resolve())
+            except OSError:
+                continue
+    return used
+
+
+def unused_pictures(slug: str) -> list[Path]:
+    """Pictures in a device's folder no map, template or recovery copy names
+    (07 Q11). The photo's files are left to the photo's own safety copy."""
+    folder = store.pictures_dir_of(slug)
+    if not folder.is_dir():
+        return []
+    photos = {p.resolve() for p in store.photo_files(slug)}
+    used = _used_pictures()
+    return [
+        path
+        for path in sorted(folder.iterdir())
+        if path.is_file()
+        and path.suffix.lower() in _IMAGE_EXT
+        and path.resolve() not in photos
+        and path.resolve() not in used
+    ]
 
 
 def _is_hex_colour(value: object) -> bool:
@@ -599,14 +662,6 @@ def _picture_folder() -> Path:
     if pictures and Path(pictures).is_dir():
         return Path(pictures)
     return Path.home()
-
-
-def _stock_photo() -> Path:
-    return _install_root() / "qml" / "images" / "vkb_gladiator_rig.jpg"
-
-
-def _stock_photo_l() -> Path:
-    return _install_root() / "qml" / "images" / "vkb_gladiator_evo_l.jpg"
 
 
 def _collapsed_name(value: str) -> str:
@@ -1059,8 +1114,8 @@ class HardwareProfile(QtCore.QObject):
 
     def _resolve_existing(self, stored: str) -> Path | None:
         """The file of a stored picture: in the modules folder (only where
-        the reference says, 07 S11), or one of the program's own pictures
-        (qml/images). None when it is missing."""
+        the reference says, 07 S11), or one of the program's own pictures.
+        None when it is missing. (No stock photos ship, 07 Q12.)"""
         found = store.find_picture(stored)
         if found is not None:
             return found
@@ -1070,9 +1125,6 @@ class HardwareProfile(QtCore.QObject):
         installed = _install_root() / s
         if installed.is_file():
             return installed
-        stock = _stock_photo()
-        if "vkb_gladiator_rig" in s and stock.is_file():
-            return stock
         return None
 
     def _pack_assets(self, device_name: str, payload: dict) -> dict:
@@ -1081,11 +1133,13 @@ class HardwareProfile(QtCore.QObject):
         folder = self._profile_dir(device_name)
         slug = folder.name
         image = str(payload.get("image") or "")
-        src = self._resolve_existing(image) or _stock_photo()
-        ext = src.suffix.lower() if src and src.suffix.lower() in _IMAGE_EXT else ".jpg"
-        if not src or not src.is_file():
-            payload["image"] = "qml/images/vkb_gladiator_rig.jpg"
+        src = self._resolve_existing(image) if image else None
+        if src is None or not src.is_file():
+            # No photo (Clear Photo leaves none, 07 Q4), or one that is
+            # gone: never another device's or a stock photo (07 S11).
+            payload["image"] = ""
         else:
+            ext = src.suffix.lower() if src.suffix.lower() in _IMAGE_EXT else ".jpg"
             dest = folder / f"photo{ext}"
             self._put(src, dest)
             payload["image"] = store.picture_ref(slug, dest.name)
@@ -1136,7 +1190,7 @@ class HardwareProfile(QtCore.QObject):
         about how large the pack will be. The size is estimated from the
         files' sizes; the zip is built only by Export (08 S49, GL-196: this
         runs at every device change, on the UI thread)."""
-        from gremlin.ui.device_pack import pack_modes, size_text
+        from gremlin.ui.device_pack import export_refusal, pack_modes, size_text
 
         name = " ".join(str(device_name or "").split())
         if not name:
@@ -1145,11 +1199,13 @@ class HardwareProfile(QtCore.QObject):
         match = _match_pack_device(name)
         guid = str(match["guid"]) if match and match.get("guid") else ""
         path = store.path_for(name, guid)
-        doc = store.read_path(path) if path.is_file() else {}
+        # None yet, or damaged (08 S51, Q19).
+        refused = export_refusal(path)
+        doc = {} if refused else store.read_path(path)
         if not doc:
             return json.dumps({
                 "ok": False,
-                "error": "This device has no module file yet.",
+                "error": refused or "This device has no module file yet.",
                 "device": device_name,
             })
         estimate = path.stat().st_size
@@ -1317,6 +1373,13 @@ class HardwareProfile(QtCore.QObject):
         from gremlin.ui.device_pack import drop_import_undo
 
         drop_import_undo()
+
+    @QtCore.Slot()
+    def dropPackPreview(self) -> None:
+        """The Device Pack window closed: its preview pictures go."""
+        from gremlin.ui.device_pack import drop_preview
+
+        drop_preview()
 
     @QtCore.Slot(result=bool)
     def canUndoPackImport(self) -> bool:
@@ -1675,10 +1738,7 @@ class HardwareProfile(QtCore.QObject):
         payload["kind"] = "control.hardware"
         payload["device"] = name
         payload["space"] = "world"
-        payload["page"] = 32000
-        payload["pageW"] = 32000
-        payload["pageH"] = 18000
-        payload["photoWell"] = 0.75
+        payload.update(PAGE_SIZE)
         payload["photo"] = _photo_pose(payload.get("photo"))
 
         def change(doc: dict) -> None:
@@ -1851,6 +1911,22 @@ class HardwareProfile(QtCore.QObject):
         self.imageChanged.emit()
         return True
 
+    @QtCore.Slot(str, result=int)
+    def removeUnusedPictures(self, device_name: str) -> int:
+        """An edit ended (saved or cancelled): pictures it added to the
+        device's folder that no map uses go (07 Q11, GL-273). How many."""
+        slug = self._module_slug(device_name or self._device_name)
+        unused = unused_pictures(slug)
+        removed = 0
+        for path in unused:
+            try:
+                store.remove_picture_files([path])
+            except OSError:
+                continue
+            removed += 1
+            trace("SAVE", "Button Map", "removeUnusedPictures", path, "removed")
+        return removed
+
     # Photo safety copy for one Button Map editing session. Choose
     # background... and Clear image change the photo files at once; Cancel
     # puts the session's starting photo (files and the module file's
@@ -1977,7 +2053,7 @@ class HardwareProfile(QtCore.QObject):
         if found and found.is_file():
             return found.as_uri()
         s = (stored or "").strip().replace("\\", "/")
-        if not s or "vkb_gladiator_rig" in s:
+        if not s:
             return ""
         if s.startswith("file:") or s.startswith("qrc:"):
             return s
@@ -1991,22 +2067,17 @@ class HardwareProfile(QtCore.QObject):
         if guid is not None:
             self.setDeviceGuid(guid)
         # The folder of the file the Button Map opens (a renamed stick's
-        # old file). The stock photos below go by the device's own name.
-        own = store.pictures_dir_of(self._module_slug(device_name))
+        # old file, by the store's one rule with this object's id).
+        slug = self._module_slug(device_name)
+        own = store.pictures_dir_of(slug)
         for p in sorted(own.glob("photo.*")):
             if p.is_file():
                 return p.as_uri() + f"?t={int(p.stat().st_mtime_ns)}"
-        text = self.load(device_name)
-        try:
-            doc = json.loads(text) if text else {}
-        except json.JSONDecodeError:
-            doc = {}
+        # Read only: asking for the photo doesn't change this object's
+        # document (07 S11, GL-271).
+        doc = store.read_path(store.path_of(slug))
         found = self._resolve_existing(str(doc.get("image") or ""))
-        own_name = store.own_slug(device_name)
         if found and found.is_file():
-            # Never reuse the EVO R grip shot for a different module.
-            if found == _stock_photo() and own_name != "vkb_evo_r":
-                return ""
             try:
                 # A picture saved for another device lives in that device's folder.
                 if found.resolve().parent != own.resolve():
@@ -2015,15 +2086,8 @@ class HardwareProfile(QtCore.QObject):
                 found = None
             if found is not None:
                 return found.as_uri() + f"?t={int(found.stat().st_mtime_ns)}"
-        if own_name == "vkb_evo_r":
-            stock = _stock_photo()
-            return stock.as_uri() if stock.is_file() else ""
-        if own_name == "vkb_evo_l":
-            stock = _stock_photo_l()
-            if stock.is_file():
-                return stock.as_uri()
-            packed = store.pictures_dir_of("vkb_evo_l") / "photo.jpg"
-            return packed.as_uri() if packed.is_file() else ""
+        # No photo: none, never another device's (07 S11; no stock photos
+        # ship, 07 Q12).
         return ""
 
     @QtCore.Property(str, notify=pathChanged)

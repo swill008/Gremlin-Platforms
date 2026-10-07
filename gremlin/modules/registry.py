@@ -376,23 +376,6 @@ def outputs() -> list[Module]:
     return [m for m in modules() if m.is_output]
 
 
-def find(guid: object = "", name: str = "") -> Module | None:
-    """A module by bound device first, then by name (file name or device name)."""
-    key = guid_key(guid)
-    all_modules = modules()
-    if key:
-        for module in all_modules:
-            if guid_key(module.bound_guid) == key:
-                return module
-    wanted = " ".join(str(name or "").split()).casefold()
-    if wanted:
-        slug = plain_slug(name)
-        for module in all_modules:
-            if module.slug == slug or module.name.casefold() == wanted:
-                return module
-    return None
-
-
 def output_for_vjoy(vjoy_id: int) -> Module | None:
     """The output module that drives this vJoy device."""
     for module in outputs():

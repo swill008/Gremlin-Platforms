@@ -18,6 +18,7 @@ import Gremlin.UI
 import Gremlin.Menus
 
 import "helpers.js" as Helpers
+import "window_registry.js" as Registry
 import "main_commands.js" as MainCommands
 
 ApplicationWindow {
@@ -164,7 +165,9 @@ ApplicationWindow {
         if (_destBound)
             _destBound.text = _moduleModel.boundLine(configTitleName)
     }
+    // Module Setup: one at a time, also kept in the shared window list.
     property var configureWin: null
+    onConfigureWinChanged: Registry.track("DialogConfigureModule.qml", configureWin)
 
     ModuleListModel {
         id: _moduleModel

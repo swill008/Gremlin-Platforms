@@ -194,6 +194,15 @@ ColumnLayout {
                     return root + slash + folderName
                 }
 
+                // Pickers are titled by what they do (glossary N20, D15):
+                // "Choose Logs Folder".
+                function _pickerTitle() {
+                    var words = String(name || (properties["is_folder"] ? "folder" : "file"))
+                        .split(" ")
+                        .map(function(w) { return w.length ? w[0].toUpperCase() + w.slice(1) : w })
+                    return "Choose " + words.join(" ")
+                }
+
                 function _folderUrl(path) {
                     var text = String(path || "").replace(/\\/g, "/")
                     if (!text || text === ".")
@@ -242,7 +251,7 @@ ColumnLayout {
 
                     property var associatedField
 
-                    title: "Select a File"
+                    title: _pickerTitle()
 
                     onAccepted: () => {
                         model.value = selectedFile.toString().substring("file:///".length)
@@ -254,7 +263,7 @@ ColumnLayout {
 
                     property var associatedField
 
-                    title: "Select a Folder"
+                    title: _pickerTitle()
 
                     onAccepted: () => {
                         model.value = selectedFolder.toString().substring("file:///".length)

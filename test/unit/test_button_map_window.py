@@ -22,8 +22,10 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
         [sys.executable, str(_HERE / "button_map_window_smoke.py"), str(tmp_path)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=120,
-        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+        env={**os.environ, "QT_QPA_PLATFORM": "offscreen", "PYTHONIOENCODING": "utf-8"},
     )
     lines = result.stdout.splitlines()
     assert "done" in lines, result.stderr[-2000:]

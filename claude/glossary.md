@@ -10,8 +10,8 @@ Tracker refs in brackets.
 | What an input does [D2, D11] | **action** (an input's actions); an input with none: **No actions** | mapping, Unmapped, Not bound, Unbound, Empty |
 | The input device that feeds an output card | **Driven by: [device]**, or **Driven by: [nothing]** | Bound to: [Not bound] |
 | The page where you edit a device's actions [D6] | **Configuration** (unchanged) | |
-| The window for a device's module (claims, file, picture) [D6] | **Module Setup** ("Module Setup…" on the card and in Tools) | Configure input module / Configure output module |
-| The Button Map's settings | **Button Map Options** (Button Map → Edit → Button Map Options…; its own window, not in the main Options) | Editor options, Options → Button Map |
+| The window for a device's module (claims, file, picture) [D6] | **Module Setup** ("Module Setup…" on the card). Tools › Device Setup has **Input Module Setup** and **Output Module Setup** (they pick the kind), and the window is titled the same (03 Q11) | Configure input module / Configure output module |
+| The Button Map's settings | **Button Map Options**: a pane on the Button Map's tool rows (the **Options** tab, or Edit → Button Map Options…), not in the main Options (07 Q17) | Editor options, Options → Button Map, a window of its own |
 | The log window (Debug menu) | **Live Log Reader**, tabs **Config** / **Debug** / **Input Monitor** | Log viewer, Debug window |
 | Watching every log line as it happens | **Live** (red button on the Debug tab); **All logs** in the Log list; **Start empty**, **Clear View**, **Save Feed…**, **Show Log File** | Live capture, Tail, Stream |
 | Watching inputs and the actions they ran | **Input Monitor** (tab), **Monitor** (its red button); an input with none shows **no actions** | Live capture, Event viewer, nothing bound, Unbound |
@@ -25,12 +25,18 @@ Tracker refs in brackets.
 | The free-text box in a binding's header [D7] | **Note** (the Description action keeps its name) | Description (same word as the action) |
 | Adding to a macro [D8] | **Add Step** (other "Add Action" buttons all add an action, so they stay) | Add Action in the Macro editor |
 | The program's name [D12] | **Gremlin-Platforms** in titles and the tray; "the program" in sentences; HidHide's switch "Gremlin-Platforms controls HidHide" | Gremlin, Gremlin control |
-| Internal words [D13] | **output** (not dest), **device without a module** (not stub card), **device id** (not DILL), no raw group ids or slugs on screen | |
+| Internal words [D13] | **output** (not dest), **device without a module** (not stub card), **device id** (not DILL; Device Information's column is **Device ID**, not Device GUID), no raw group ids or slugs on screen | Device GUID, stub card |
 | Capitals [D15] | **Title Case** for menus, buttons and window titles (Windows style, and most of the program already); sentence case for messages, tooltips and help | a mix |
 | Home layout [N15] | **Single list / Side by side / Stacked** everywhere | also Split None / Vertical / Horizontal |
 | Options section for Home cards [N19] | **Home** (not "Display"); timing options named for what they time (e.g. "Highlight time", "Last input time") instead of each "Duration" | |
 | Spelling [N20] | US English: **color**, **behavior** (Qt, Windows and most of the program) | colour in some places |
-| File pickers [N20] | titled by what they do: "Open profile", "Save profile as", "Choose photo", "Import picture", "Export PNG" ... | "Please choose a file" and others |
+| File pickers [N20] | titled by what they do, in Title Case like every window title (D15, GLOSSARY-4): "Open Profile", "Save Profile As", "Choose Photo", "Import Picture", "Export PNG", "Choose Logs Folder" ... | "Please choose a file", "Select a File", "Select a Folder" |
+| An output a wire sends to but the output module doesn't claim | **(not claimed)** after its name (Configuration, chips, viewers, Map to vJoy, Calibration) | unclaimed, blocked |
+| An action used by more than one input | **shared** action; its editor says **Shared with …** (OK changes it for every input) | linked, reference copy |
+| Setting a device up again after its module file can't be read | **Start Fresh…** (card menu); the damaged file is kept as a copy | Reset module, Repair |
+| A module file another window saved while the Button Map was being edited | title **Module File Changed**; buttons **Keep Mine** / **Take Theirs** / Cancel | Conflict |
+| Taking back the last Device Pack import / mode delete | **Undo Import** (asks first) / **Undo Delete Mode** | Revert import, Restore mode |
+| Where Delete Device and Delete File keep their copies | the **deleted devices** folder (Options › Folders); pack imports keep the old file in the **imported** folder | trash, backup folder |
 
 ## Core terms
 
@@ -55,6 +61,6 @@ meanings; define a new idea here before it appears on screen.
 | **Output View** | The read-only page of an output device: what its output module sends. |
 | **Appearance** | How a page looks (Configuration, Output View, Logical Device); never what it does. |
 | **History** | Every saved change (profile saves, module files, settings), kept in its own files so it can be seen later (Tools > History, or History in an editor). Not Undo: Undo steps back while editing; History keeps what was saved. |
-| **Restore** | Putting back the version before or after a change from the History. It is itself a saved change (a new History entry). |
+| **Restore** | Putting back the version before or after a change from the History. A module file or settings restore is saved at once and is a new History entry at once; an input's actions go back into the open profile unsaved and show in the History at the next Save Profile; a whole-profile restore writes a copy next to the profile, which is not a History entry (08 Q1). |
 | **Button Map** | A picture of a device with a **chip** per control, a **hotspot** on the photo for each and a **leader** line between them; unplaced chips wait in the **pool**. Layout only: it never changes actions. |
 | **Wire** | The link from a device's control, through its input module, to an output module (the wiring layer: hardware > input module > wiring > output module > driver). A wire carries the control's actions. Button Map lines are never wires: they are **leaders**. |

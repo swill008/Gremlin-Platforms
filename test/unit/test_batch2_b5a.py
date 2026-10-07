@@ -144,7 +144,6 @@ def test_catalog_delete_and_undo_are_refused_while_running(
     assert _targets(profile) == []
     model._claimed.rowCount = lambda: 0
     assert not model.removeSequence(0, 0)
-    assert model.addSequence(0) == -1
 
 
 def test_logical_edits_are_refused_while_running(

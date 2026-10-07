@@ -585,7 +585,10 @@ class JoystickAction(AbstractAction):
         return JoystickAction(dill.UUID_Invalid, InputType.JoystickButton, 0, False)
 
     def __call__(self) -> None:
-        """Emits an Event instance through the EventListener system."""
+        """Emits an Event instance through the EventListener system.
+
+        Marked synthetic: the program made it, not the stick (02 S44).
+        Bindings still run on it; hardware-only screens ignore it."""
         el = event_handler.EventListener()
         if self.input_type == InputType.JoystickAxis:
             event = event_handler.Event(
@@ -594,6 +597,7 @@ class JoystickAction(AbstractAction):
                 identifier=self.input_id,
                 mode=_mode_name(),
                 value=self.value,
+                synthetic=True,
             )
         elif self.input_type == InputType.JoystickButton:
             event = event_handler.Event(
@@ -602,6 +606,7 @@ class JoystickAction(AbstractAction):
                 identifier=self.input_id,
                 mode=_mode_name(),
                 is_pressed=self.value,
+                synthetic=True,
             )
         elif self.input_type == InputType.JoystickHat:
             event = event_handler.Event(
@@ -610,6 +615,7 @@ class JoystickAction(AbstractAction):
                 identifier=self.input_id,
                 mode=_mode_name(),
                 value=self.value,
+                synthetic=True,
             )
 
         el.joystick_event.emit(event)
@@ -1089,6 +1095,22 @@ class VJoyAction(AbstractAction):
 
     def is_valid(self) -> bool:
         return True
+
+
+# Every macro step type by its tag: the editor's Add list and a profile's
+# steps both use this one table (05 RB13).
+STEP_TYPES: dict[str, type[AbstractAction]] = {
+    step.tag: step
+    for step in (
+        JoystickAction,
+        KeyAction,
+        LogicalDeviceAction,
+        MouseButtonAction,
+        MouseMotionAction,
+        PauseAction,
+        VJoyAction,
+    )
+}
 
 
 class AbstractRepeat(ABC):

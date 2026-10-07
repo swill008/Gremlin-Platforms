@@ -402,10 +402,12 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     h6 = history_count()
     w.enter_edit()
     out["clear-photo-ran"] = w.ev(menu_item("Clear Photo"))
-    wait_for(lambda: w.ev("_buttonMap.storedImage === _buttonMap.stockImage"))
+    wait_for(lambda: w.ev("_buttonMap.storedImage === \"\""))
     h7 = history_count()
     out["clear-photo"] = {
         "photo-files-left": sorted(p.name for p in (MODULES / SLUG).glob("photo.*")),
+        # Clear Photo leaves no photo (07 Q4, GL-221).
+        "shown": [w.ev("_buttonMap.storedImage"), w.ev("_buttonMap.photoOverride")],
         "dirty": w.ev("_buttonMap.isDirty()"),
         "history-before-save": h7 - h6,
     }
@@ -444,7 +446,7 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     wait_for(lambda: str(w.ev("_buttonMap.storedImage")).endswith(".png"))
     w.ev("_ed().flushPendingStep()")
     w.ev(menu_item("Clear Photo"))
-    wait_for(lambda: w.ev("_buttonMap.storedImage === _buttonMap.stockImage"))
+    wait_for(lambda: w.ev("_buttonMap.storedImage === \"\""))
     w.ev("_ed().flushPendingStep()")
     w.ev("_ed().undo()")
     after_one = {
@@ -598,7 +600,7 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
                       file_fx(3) != crash_fx]
     # A copy the same as the saved map goes without asking (S37).
     w.ev("_hw.saveRecovery(_buttonMap.targetName, JSON.stringify({image:"
-         " _buttonMap.liveImage.length ? _buttonMap.liveImage : _buttonMap.stockImage,"
+         " _buttonMap.liveImage,"
          " photo: _buttonMap.livePhoto || _buttonMap.photoFromDoc(null),"
          " nodes: _buttonMap.liveNodes}))")
     out["same-copy-written"] = RECOVERY.is_file()

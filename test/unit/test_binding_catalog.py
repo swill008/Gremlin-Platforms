@@ -11,7 +11,7 @@ from gremlin.ui.binding_catalog import collect_leaves, summarize_action
 class _Act:
     def __init__(self, tag, **kw):
         self.tag = tag
-        self.name = tag
+        self.name = kw.pop("name", tag)
         self.children = kw.pop("children", [])
         for k, v in kw.items():
             setattr(self, k, v)
@@ -23,6 +23,7 @@ class _Act:
 def test_vjoy_summary() -> None:
     a = _Act(
         "map-to-vjoy",
+        name="Map to vJoy",
         vjoy_device_id=2,
         vjoy_input_id=1,
         vjoy_input_type=InputType.JoystickAxis,
