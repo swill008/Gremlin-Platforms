@@ -59,5 +59,25 @@ Every piece of work, not only big batches:
    cross-file needs. Use one agent only when the pieces depend on each other
    or share the same files, and say why in one line. Don't hand a second,
    unrelated problem to an agent busy with the first: start another agent.
-   Stay within about 8–10 agents at once on the user's PC. Put rules 2–3 in
-   every agent's prompt.
+   Stay within about 8–10 agents at once on the user's PC. Put rules 2–3 and
+   5 in every agent's prompt.
+5. **Test runs (agents; user 2026-10-07).**
+   - The full run is `python test/run_tests.py --random-order` (6 parts, ~3
+     min): once, at the end, after the targeted tests pass.
+   - While working, run only the tests for the files you changed.
+   - To reproduce a CI failure, run that part once with CI's seed
+     (`--seed N --parts 3`); never run a whole part in one pytest process.
+   - No more proof runs once a fix is shown (the test failed on the old code
+     and passes on the new): stop and go to the final full run.
+   - Before any command expected to take over 3 min, log
+     `AGENT: <step>, expect ~N min, why`; anything over 5 min other than the
+     one full run needs the lead's OK first.
+6. **Overseeing agents (the lead; user 2026-10-07).**
+   - Give every agent a time budget in its brief ("about 20 min; check in
+     if you need more").
+   - Watch commands, not only results: the lead's monitor reports each new
+     command an agent starts with its expected time, and alerts on any single
+     test command running over 6 min.
+   - When an agent's fix is proven, check in: stop extra proof runs, move it
+     to the final full run and its report.
+   - Tell the user about any agent step over 5 min when it starts, not after.
