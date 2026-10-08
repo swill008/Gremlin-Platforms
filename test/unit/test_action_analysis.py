@@ -10,6 +10,8 @@ sys.path.append(".")
 
 import pathlib
 
+import pytest
+
 from gremlin import shared_state
 from gremlin.action_analysis import _extract_sequences
 from gremlin.profile import Profile
@@ -21,9 +23,18 @@ def get_sequence_types(sequence: list) -> list[str]:
     return [action.tag for action in sequence]
 
 
-def test_extract_sequences(xml_dir: pathlib.Path) -> None:
+def test_extract_sequences(
+    xml_dir: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+) -> None:
+    before = shared_state.current_profile
     p = Profile()
-    shared_state.current_profile = p
+    monkeypatch.setattr(shared_state, "current_profile", p)
+    if before is not None:
+        # Afterwards the open profile's Logical Device rows are shown again,
+        # not this profile's (its actions name inputs those rows lack).
+        request.addfinalizer(before.bind_devices)
     p.from_xml(str(xml_dir / _PROFILE_FOR_ANALYSIS))
 
     input_items = []
