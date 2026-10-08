@@ -120,7 +120,7 @@ works on files and the profile through their owners.
 ### F. Swap with Another Stick
 
 - **S26** Swap should exchange the ticked parts between two sticks plugged in now: each gets the other's settings. Bindings swap with every device reference inside actions and every script variable, as Swap Devices does today (04 S77-S78). [D-10-SWAP]
-- **S27** The dialog should show both sticks, What trades places (as S23), the profiles (as S23), and warnings for both directions (what each stick lacks that the other has; those bindings stay where they were). [D-10-SWAP, D-10-PROFILES]
+- **S27** The dialog should show both sticks, What trades places (as S23), the profiles (as S23), and warnings for both directions (what each stick lacks that the other has; those bindings stay where they were). The warnings also list actions elsewhere that refer to a control of one stick the other lacks (e.g. a Condition checking Left stick Axis 3 when Right stick has no Axis 3): the reference still moves with the swap, and is listed, not changed. [D-10-SWAP, D-10-PROFILES] [changed 2026-10-08 to follow D-10-SWAP-REFS]
 - **S28** It should keep an autosave of each stick first; Undo puts both back from them (S41). [D-10-AUTOSAVE] [changed 2026-10-08 to follow D-10-STREAMLINE]
 - **S29** It should refuse the Keyboard, Logical Device, OSC and Xbox, and refuse a stick swapped with itself. [carries 04 S79, 04 Q20]
 
@@ -188,5 +188,6 @@ Approved by the user, 2026-10-08 (wording as drafted; Q1 dropped).
 | D-10-TIDY | Size in the status bar and Tidy Library… |
 | D-10-SETTINGS, D-10-SAVE, D-10-SHARE, D-10-PROTO | Settings, saving, sharing, the prototype's layout |
 | D-10-Q1-DROP | No autosave trigger for a deleted profile |
+| D-10-SWAP-REFS | Swap warns about references to controls the other stick lacks |
 | D-10-STREAMLINE | Undo puts the autosave back; autosaves always on; no profile backups (History covers whole files); Shared folded into Not connected; no Edit Description; drag-drop import and double-click to Copy |
 | D-10-NO-DELETED-FOLDER | The deleted devices folder and its setting go; Delete File autosaves into the Library; nothing carried over (beta) |

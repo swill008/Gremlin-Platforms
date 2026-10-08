@@ -309,6 +309,7 @@ only when OSC is picked up.
 | D-10-Q1-DROP | 2026-10-08 | No autosave when a profile is deleted: the program can't delete profiles, so it never sees it. | User (Q1) | 10 Q1, S16 |
 | D-10-NO-DELETED-FOLDER | 2026-10-08 | The deleted devices folder and its setting are removed: Delete Device and Delete File keep autosaves in the Device Library only (Delete File: "Autosave: module file deleted", setup only); old deleted-devices files are not read or carried over; the Library has its own folder setting. | Beta, nothing to carry over; one place for every kind of deletion (user) | 10 S9, S16, S37; 03 S62; 08 S87, S88; 01 S124 |
 | D-10-STREAMLINE | 2026-10-08 | Streamlined: Undo puts the last Copy/Swap/Change back from its autosaves (works after a restart); autosaves are always on (no trigger settings); no separate profile backups (History has whole files, autosaves have the stick's bindings); a device from a shared pack is Not connected (no Shared state); no Edit Description… (edited in place, Rename on F2); a dropped pack .zip imports; double-click a saved setup opens Copy. | Smaller build, one way back (user: go with recommendations) | 10 S1, S3, S6, S16, S25, S28, S32, S33, S35, S36, S39-S41; glossary |
+| D-10-SWAP-REFS | 2026-10-08 | Swap's warnings also list actions elsewhere that refer to a control of one stick the other lacks (e.g. a Condition on Left stick Axis 3, Right stick has no Axis 3); the reference still moves, listed not changed. | Found while building Swap (LW); user chose the warning | 10 S27 |
 
 ## Later decisions
 
