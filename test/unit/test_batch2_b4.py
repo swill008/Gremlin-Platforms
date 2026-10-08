@@ -535,17 +535,9 @@ def test_initial_values_set_in_the_ui_are_clamped(profile: Profile) -> None:
 
 
 def test_swap_devices_refuses_the_same_device(profile: Profile) -> None:
-    from gremlin.ui.tools import Tools
-
     item = _bind(profile, "Default")
     with pytest.raises(swap_devices.SameDevice):
         swap_devices.swap_devices(profile, _STICK, _STICK)
-    tools = Tools()
-    try:
-        text = tools.swapDevices(str(_STICK), str(_STICK))
-    finally:
-        tools.deleteLater()
-    assert "same device" in text
     assert item.device_id == _STICK and profile.inputs[_STICK] == [item]
 
 

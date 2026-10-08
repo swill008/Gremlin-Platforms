@@ -2,12 +2,11 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Starts the program off-screen (stand-in hardware) and opens Swap Devices,
-Device Information or Calibration; prints what the window shows as JSON.
+"""Starts the program off-screen (stand-in hardware) and opens Device
+Information or Calibration; prints what the window shows as JSON.
 test_handson_F3_windows.py runs it in its own process with a fresh user
 folder.
 
-    python test/unit/handson_F3_windows_smoke.py swap 150
     python test/unit/handson_F3_windows_smoke.py devinfo
     python test/unit/handson_F3_windows_smoke.py calib
 """
@@ -30,7 +29,7 @@ fake_hardware = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fake_hardware)
 fake = fake_hardware.install()
 
-PART = sys.argv[1] if len(sys.argv) > 1 else "swap"
+PART = sys.argv[1] if len(sys.argv) > 1 else "devinfo"
 SCALE = int(sys.argv[2]) if len(sys.argv) > 2 else 100
 
 from vjoy import vjoy  # noqa: E402
@@ -48,7 +47,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 import shiboken6  # noqa: E402
-from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from PySide6 import QtCore, QtGui, QtQml, QtQuick  # noqa: E402
 
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
@@ -112,75 +111,8 @@ wait_until(lambda: win.isVisible())
 out: dict = {"part": PART, "scale": SCALE}
 
 
-def part_swap() -> None:
-    """04 S80: the Swap Bindings question fits in the window and can be
-    answered (click or keyboard)."""
-    w = open_window(win, "DialogSwapDevices.qml", "Swap Devices")
-    wait_until(w.isExposed)
-    out["window-before"] = [w.width(), w.height()]
-    box = ev(w, "_physicalDeviceSelection")
-    out["swap-connected"] = [
-        ev(box, f"textAt({i})") for i in range(int(ev(box, "count")))
-    ]
-    # Press Swap Bindings: the question opens.
-    button = next(
-        it for it in items(w.contentItem())
-        if it.property("text") == "Swap Bindings" and it.isVisible()
-    )
-    QtCore.QMetaObject.invokeMethod(button, "clicked")
-    wait_until(lambda: ev(button, "_swapGate.opened"))
-    out["opened"] = bool(ev(button, "_swapGate.opened"))
-    # The question laid out (its buttons side by side), and room for the
-    # window to grow.
-    wait_until(lambda: ev(button, "_swapGate.contentItem.children[2].children[2].x")
-               > ev(button, "_swapGate.contentItem.children[2].children[0].x"))
-    wait_until(lambda: w.height() >= ev(button, "_swapGate.height"))
-    out["window"] = [w.width(), w.height()]
-    # The question's buttons, by their row in the dialog, in window pixels.
-    boxes = {}
-    for i in range(3):
-        box = ev(button, f"""(function() {{
-            var b = _swapGate.contentItem.children[2].children[{i}]
-            var p = b.mapToItem(null, 0, 0)
-            return [b.text, b.visible, p.x, p.y, b.width, b.height] }})()""")
-        if box[1]:
-            boxes[box[0]] = box[2:]
-    out["buttons"] = boxes
-    # Esc answers Cancel: the question closes and nothing is swapped.
-    status = ev(button, "_statusMessage.text")
-    w.requestActivate()
-    out["active"] = wait_until(w.isActive)
-    QtTest.QTest.keyClick(w, QtCore.Qt.Key.Key_Escape)
-    out["closed-by-esc"] = wait_until(lambda: not ev(button, "_swapGate.opened"))
-    out["status-unchanged"] = ev(button, "_statusMessage.text") == status
-    # Return never answers it (a stick can send Return).
-    QtCore.QMetaObject.invokeMethod(button, "clicked")
-    wait_until(lambda: ev(button, "_swapGate.opened"))
-    QtTest.QTest.keyClick(w, QtCore.Qt.Key.Key_Return)
-    wait_until(lambda: not ev(button, "_swapGate.opened"), 300)
-    out["open-after-return"] = bool(ev(button, "_swapGate.opened"))
-    # Tab reaches the question's buttons; Space presses the one in focus.
-    focused = None
-    for _ in range(4):
-        QtTest.QTest.keyClick(w, QtCore.Qt.Key.Key_Tab)
-        item = w.activeFocusItem()
-        text = item.property("text") if item is not None else None
-        if text in ("Cancel", "Swap bindings"):
-            focused = text
-            break
-    out["tab-focus"] = focused
-    if focused == "Cancel":
-        QtTest.QTest.keyClick(w, QtCore.Qt.Key.Key_Space)
-        out["closed-by-space"] = wait_until(
-            lambda: not ev(button, "_swapGate.opened")
-        )
-    out["window-after"] = [w.width(), w.height()]
-    out["min-height"] = w.minimumHeight()
-
-
 def part_devinfo() -> None:
-    """02 S9: Device Information lists the left-out vJoy; Swap Devices'
-    connected devices are sticks only (no vJoy)."""
+    """02 S9: Device Information lists the left-out vJoy."""
     w = open_window(win, "DialogDeviceInformation.qml", "Device Information")
     wait_until(lambda: any(
         isinstance(it.property("text"), str) and "pJoy Pro" in it.property("text")
@@ -242,7 +174,7 @@ def part_calib() -> None:
 
 
 try:
-    {"swap": part_swap, "devinfo": part_devinfo, "calib": part_calib}[PART]()
+    {"devinfo": part_devinfo, "calib": part_calib}[PART]()
 except Exception as exc:  # noqa: BLE001
     out["error"] = repr(exc)
 print("RESULT " + json.dumps(out), flush=True)

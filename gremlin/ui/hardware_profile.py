@@ -9,7 +9,6 @@ import logging
 import os
 import shutil
 import sys
-import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -475,8 +474,6 @@ _binding_store = registry.binding_store
 _clear_device_binding = store.unbind
 _live_devices = store.live_devices
 _guid_text = store.guid_text
-_deleted_dir = store.deleted_dir
-_keep_deleted_copy = store.keep_deleted_copy
 _pack_file_name = store.pack_file_name
 _archive_stamp = store.archive_stamp
 _unique_archive = store.unique_archive
@@ -523,30 +520,76 @@ def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
 # --- Delete File and Delete Device ---------------------------------------------
 
 
-def delete_module_file(device_name: str, guid: str) -> str:
-    """Delete File: deletes this device's file (the one it opens: a renamed
-    stick's is its old file), keeping a copy in the deleted devices folder
-    (03 S62). The pictures stay (03 Q14). Refused when another stick uses
-    the file."""
-    return store.delete(
-        device_name, guid, keep_copy=True, pictures=False, who="Configure Module"
+def _open_profile_paths() -> list[Path]:
+    """The open profile, for an autosave's bindings (10 S18): its file, or
+    Path("") (the Library's mark for the open profile) when it has never
+    been saved; none when no profile is open."""
+    from gremlin.shared_state import current_profile
+
+    if current_profile is None:
+        return []
+    fpath = getattr(current_profile, "fpath", None)
+    return [Path(fpath) if fpath else Path("")]
+
+
+def _autosave(name: str, guid: str, trigger: str, reason: str,
+              profiles: list[Path]) -> str:
+    """Keeps an autosave in the Device Library (10 S16-S21). Why it could
+    not be kept, or "" (the caller must not go on, 10 S20)."""
+    from gremlin import device_library as library
+
+    try:
+        result = library.autosave(name, guid, trigger, reason, profiles)
+    except Exception as exc:  # noqa: BLE001 - any failure refuses the delete
+        result = {"ok": False, "error": str(exc) or type(exc).__name__}
+    if isinstance(result, dict) and result.get("ok"):
+        trace("SAVE", "Device Library", trigger, name, "ok")
+        return ""
+    trace("SAVE", "Device Library", trigger, name, "error")
+    error = str(result.get("error", "") if isinstance(result, dict) else "")
+    if not error.startswith("The autosave could not be kept"):
+        error = "The autosave could not be kept: " + (
+            error or "it could not be written or read back."
+        )
+    return error
+
+
+def _autosave_before_pack(zip_path: Path, target_name: str) -> str:
+    """Device Pack import onto a stick: a "before Device Pack <pack>"
+    autosave first (10 S16-S17), named after the pack's file. Why it could
+    not be kept, or "". An output device has none (S16: of a stick)."""
+    from gremlin.ui import device_pack
+
+    name = " ".join(str(target_name or "").split())
+    if not name:
+        return ""  # apply_zip refuses it
+    match = device_pack._match_pack_device(name)
+    guid = str(match["guid"]) if match and match.get("guid") else ""
+    if store.direction_for(name, guid) != "source":
+        return ""
+    return _autosave(
+        name, guid, "pack", f"Autosave: before Device Pack {zip_path.stem}",
+        _open_profile_paths(),
     )
 
 
-def _deleted_pack_path(device_name: str) -> Path:
-    """Where Delete Device's "Save a copy" writes the pack (03 S91)."""
-    return store.deleted_pack_path(device_name)
-
-
-def _zip_readable(path: Path) -> bool:
-    try:
-        with zipfile.ZipFile(path, "r") as zf:
-            if "map.json" not in zf.namelist():
-                return False
-            doc = json.loads(zf.read("map.json").decode("utf-8"))
-        return isinstance(doc, dict)
-    except Exception:
-        return False
+def delete_module_file(device_name: str, guid: str) -> str:
+    """Delete File: deletes this device's file (the one it opens: a renamed
+    stick's is its old file), keeping a "module file deleted" autosave in
+    the Device Library first (03 S62, 10 S16); nothing is deleted when it
+    can't be kept. The pictures stay (03 Q14). Refused when another stick
+    uses the file."""
+    name = " ".join(str(device_name or "").split())
+    path = store.path_for(name, guid)
+    if store.other_users(path.stem, name, guid):
+        return "Another stick is using this file."
+    if path.is_file():
+        failed = _autosave(
+            name, guid, "module_file", "Autosave: module file deleted", []
+        )
+        if failed:
+            return f"The module file was not deleted. {failed}"
+    return store.delete(name, guid, pictures=False, who="Configure Module")
 
 
 def _device_stays_listed(device_name: str) -> bool:
@@ -633,12 +676,13 @@ def _profile_running() -> bool:
     return bool(run_scope.running() or shared_state.runtime_active())
 
 
-def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
-    """Delete Device: the pack first when asked, then the device's wires (in
-    memory, the profile left unsaved, 03 Q4), its module file (a copy always
-    kept in the deleted devices folder, 03 Q5), its pictures, recovery copy
-    and photo safety copies (07 Q11) and its file choices. An output module
-    file, or one another stick uses, stays. Refused while running (03 Q6)."""
+def delete_device(device_name: str, guid: str) -> str:
+    """Delete Device: a "stick deleted" autosave in the Device Library first
+    (10 S16-S21, 03 S91: refused when it can't be written or read back),
+    then the device's wires (in memory, the profile left unsaved, 03 Q4),
+    its module file, its pictures, recovery copy and photo safety copies
+    (07 Q11) and its file choices. An output module file, or one another
+    stick uses, stays. Refused while running (03 Q6)."""
     from gremlin.shared_state import current_profile
 
     name = " ".join(str(device_name or "").split())
@@ -647,36 +691,14 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
     # It changes the running profile (03 Q6).
     if _profile_running():
         return json.dumps({"ok": False, "error": _STOP_FIRST})
-    pack_path = ""
-    if save_copy:
-        if not store.exists(name, guid):
-            return json.dumps({
-                "ok": False,
-                "error": "This device has no module file, so a pack cannot be saved.",
-            })
-        from gremlin.ui.device_pack import assemble
-
-        built = assemble(name, HardwareProfile()._resolve_existing)
-        if isinstance(built, str):
-            return json.dumps({"ok": False, "error": built})
-        data, _info = built
-        dest = _deleted_pack_path(name)
-        try:
-            store.write_deleted_pack(dest, data)
-        except OSError as exc:
-            trace("SAVE", "Delete Device", "delete_device", dest, "error")
-            return json.dumps({"ok": False, "error": f"The pack could not be written. {exc}"})
-        trace("SAVE", "Delete Device", "delete_device", dest, "ok")
-        if not _zip_readable(dest):
-            try:
-                dest.unlink()
-            except OSError:
-                pass
-            return json.dumps({
-                "ok": False,
-                "error": "The pack could not be read back, so the device was not deleted.",
-            })
-        pack_path = str(dest)
+    failed = _autosave(
+        name, guid, "deleted", "Autosave: stick deleted", _open_profile_paths()
+    )
+    if failed:
+        return json.dumps({
+            "ok": False,
+            "error": f"The device was not deleted. {failed}",
+        })
     _drop_profile_wires(name, guid)
     # The device's file is the one it opens (a renamed stick's old file),
     # found before its file choices are cleared.
@@ -685,9 +707,7 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
     protected = is_output_name(name)
     file_error = ""
     if not shared and not protected:
-        file_error = store.delete(
-            name, guid, keep_copy=True, pictures=True, who="Delete Device"
-        )
+        file_error = store.delete(name, guid, pictures=True, who="Delete Device")
     store.unbind(name, guid)
     own_left = own_path.is_file()
     profile = current_profile
@@ -700,13 +720,13 @@ def delete_device(device_name: str, guid: str, save_copy: bool) -> str:
                 "The wires were removed, but the module file could not be deleted. "
                 f"{file_error}"
             ),
-            "packPath": pack_path,
+            "autosaved": True,
         })
     listed = _device_stays_listed(name)
     return json.dumps({
         "ok": True,
         "name": name,
-        "packPath": pack_path,
+        "autosaved": True,
         "keptFile": bool((shared or protected) and own_left),
         "keepModule": protected,
         "stub": listed and not own_left,
@@ -1581,6 +1601,9 @@ class HardwareProfile(QtCore.QObject):
                         continue
                     items.append(item["id"])
             chosen = {"items": items, "outputs": outputs}
+        failed = _autosave_before_pack(Path(src), target_name)
+        if failed:
+            return json.dumps({"ok": False, "error": f"Nothing was imported. {failed}"})
         result = apply_zip(Path(src), target_name, chosen if isinstance(chosen, dict) else {})
         return json.dumps(result)
 

@@ -717,10 +717,12 @@ def register_config_options() -> None:
             "The history of every saved change. Changes saved before the "
             "folder is moved stay in the old folder.",
         ),
+        # The Device Library's folder: chosen in Device Library Settings, not
+        # Options (10 S37); there is no deleted devices folder any more.
         (
-            "deleted devices",
-            "deleted-devices-folder",
-            "Backup packs saved by Delete Device.",
+            "device library",
+            "device-library-folder",
+            "The Device Library: saved setups and autosaves.",
         ),
     ):
         default = str(Path(gremlin.util.data_folder()) / name)
@@ -1122,6 +1124,13 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.engine.rootContext().setContextProperty("signal", gremlin.signal.signal)
         self.updater = gremlin.ui.update_model.UpdateModel(self)
         self.engine.rootContext().setContextProperty("updater", self.updater)
+        # The Device Library window's model (10); it follows device changes.
+        from gremlin.ui.device_library_model import DeviceLibraryModel
+
+        self.device_library = DeviceLibraryModel(self)
+        self.engine.rootContext().setContextProperty(
+            "deviceLibrary", self.device_library
+        )
 
 
 def _check_second_copy() -> tuple[QtCore.QLockFile | None, bool]:

@@ -1,0 +1,1144 @@
+# -*- coding: utf-8; -*-
+# SPDX-License-Identifier: GPL-3.0-only
+
+"""The Device Library window's model (10 Device Library): the only thing its
+QML talks to.
+
+It reads the Library through its owner (gremlin.device_library) and runs
+Copy, Swap, Change vJoy Output and Undo through theirs (library_copy,
+library_swap, library_profiles). One change runs at a time and the window
+shows it is busy (section 6). Results come back as result(map).
+
+Threads (section 6, program thread rules): the owners run on the main
+thread, which owns the open profile, the device lists, the module files'
+registry and the settings. Inside library_profiles.responsive() their file
+work (reading and writing saved profiles, and what the owners hand to
+library_profiles.background()) runs on a program thread while the event
+loop keeps going. Only work that reads nothing the main thread owns runs
+wholly on a program thread: the saved profiles' scan and the size measure.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import logging
+import types
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+from PySide6 import QtCore
+
+from gremlin.ui.util import to_local_path
+
+# The parts a saved setup can hold, in the order they are shown (contract
+# PARTS), with their labels.
+PARTS = ["setup", "button_map", "appearance", "calibration", "bindings"]
+PART_LABELS = {
+    "setup": "Setup",
+    "button_map": "Button Map",
+    "appearance": "Appearance",
+    "calibration": "Calibration",
+    "bindings": "Bindings",
+}
+# The longer labels in a saved setup's details (S11).
+_HOLDS_LABELS = {
+    "setup": "Setup (claims, friendly names)",
+    "button_map": "Button Map and photo",
+    "appearance": "Appearance",
+    "calibration": "Calibration",
+    "setup_damaged": "Setup (damaged file, kept as is)",
+}
+STATE_LABELS = {
+    "connected": "Connected",
+    "not_connected": "Not connected",
+    "deleted": "Deleted",
+}
+FILTERS = ["connected", "not_connected", "deleted", "autosaves"]
+
+# A replan waits this long for the ticks to settle (section 6).
+_PLAN_SETTLE_MS = 150
+
+_BUSY_TEXT = "Another change is still running: wait for it to finish."
+
+
+def _real_api() -> types.SimpleNamespace:
+    """The owners the model calls (imported when first used)."""
+    from gremlin import device_library as library
+    from gremlin import library_copy, library_profiles, library_swap
+    from gremlin.modules import output
+
+    return types.SimpleNamespace(
+        library=library,
+        profiles=library_profiles,
+        copy=library_copy,
+        swap=library_swap,
+        vjoy_ids=output.vjoy_ids,
+    )
+
+
+def size_text(count: int) -> str:
+    """A size on disk for the status bar, e.g. "48 MB"."""
+    if count < 1024:
+        return f"{count} bytes"
+    size = float(count)
+    for unit in ("KB", "MB", "GB"):
+        size /= 1024.0
+        if size < 1024 or unit == "GB":
+            return f"{size:.0f} {unit}" if size >= 10 else f"{size:.1f} {unit}"
+    return ""
+
+
+def _count_text(count: int) -> str:
+    if count == 0:
+        return "No saved setups"
+    return "1 saved setup" if count == 1 else f"{count} saved setups"
+
+
+def _date(at: str) -> str:
+    return (at or "")[:10]
+
+
+def _date_time(at: str) -> str:
+    return (at or "")[:16].replace("T", " ")
+
+
+def inputs_text(counts: dict) -> str:
+    """S8: "32 buttons, 6 axes, 1 hat" ("" when not known)."""
+    if not counts:
+        return ""
+    words = []
+    for key, one, many in (
+        ("buttons", "button", "buttons"),
+        ("axes", "axis", "axes"),
+        ("hats", "hat", "hats"),
+    ):
+        n = int(counts.get(key) or 0)
+        words.append(f"no {many}" if n == 0 else f"{n} {one if n == 1 else many}")
+    return ", ".join(words)
+
+
+def undo_text(last: dict | None) -> str:
+    """Edit › Undo's text (S41, D-10-REDO-LABEL): "Undo <change>", and
+    "Redo <change>" right after an Undo ("" when there is nothing to undo)."""
+    if not last:
+        return ""
+    word = "Redo" if last.get("undone") else "Undo"
+    label = " ".join(str(last.get("label") or "").split())
+    while label.lower().startswith(("undo ", "redo ")):
+        label = label[5:].lstrip()
+    return f"{word} {label}" if label else word
+
+
+def _short_id(guid: str) -> str:
+    """A few characters of a device id, to tell twins apart (S22, S26)."""
+    clean = "".join(c for c in str(guid or "") if c.isalnum())
+    return clean[:8].upper()
+
+
+def _twin_label(dev: dict, names: list[str]) -> str:
+    """The device's name, with its short id when another device has the
+    same name (casefolded names of every device in names)."""
+    name = str(dev.get("name", ""))
+    short = _short_id(dev.get("guid", ""))
+    if short and names.count(name.casefold()) > 1:
+        return f"{name} [{short}]"
+    return name
+
+
+def _and(words: list[str]) -> str:
+    return words[0] if len(words) == 1 else ", ".join(words[:-1]) + " and " + words[-1]
+
+
+def also_move_text(others: list[dict]) -> str:
+    """S30: "Also move Left stick from vJoy 2 to vJoy 1 (swap them)", every
+    other stick on a target vJoy named with its own from and to."""
+    groups: dict[tuple[int, int], list[str]] = {}
+    for row in others:
+        try:
+            key = (int(row.get("vjoy") or 0), int(row.get("to") or 0))
+        except (TypeError, ValueError):
+            continue
+        name = str(row.get("name") or "")
+        names = groups.setdefault(key, [])
+        if name and name not in names:
+            names.append(name)
+    parts = [
+        f"{_and(names)} from vJoy {a} to vJoy {b}"
+        for (a, b), names in groups.items()
+        if names
+    ]
+    if not parts:
+        return ""
+    return "Also move " + ", and ".join(parts) + " (swap them)"
+
+
+def _is_autosave(setup: dict) -> bool:
+    return setup.get("origin") == "autosave" and not setup.get("own")
+
+
+def _setup_sub(setup: dict) -> str:
+    """The line under a saved setup's name (how it was kept)."""
+    origin = setup.get("origin", "user")
+    if origin == "pack":
+        return setup.get("reason") or "From a Device Pack"
+    if origin == "autosave":
+        return (
+            "Was an autosave, now yours" if setup.get("own") else "Kept automatically"
+        )
+    return "Saved by you"
+
+
+def _vjoy_text(vjoys: dict) -> str:
+    parts = [
+        f"vJoy {number} ({count} input{'s' if count != 1 else ''})"
+        for number, count in sorted(vjoys.items(), key=lambda kv: int(kv[0]))
+    ]
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return "Sends to " + parts[0]
+    return "Sends to " + ", ".join(parts[:-1]) + " and " + parts[-1]
+
+
+def _result(op: str, value: object) -> dict:
+    """A Result map for QML: always op, ok, error, warnings, notes."""
+    out: dict[str, Any] = (
+        dict(value) if isinstance(value, dict) else {"ok": bool(value)}
+    )
+    out["op"] = op
+    out.setdefault("ok", True)
+    out.setdefault("error", "")
+    out["warnings"] = list(out.get("warnings") or [])
+    out["notes"] = list(out.get("notes") or [])
+    return out
+
+
+class DeviceLibraryModel(QtCore.QObject):
+    """The Device Library for QML (context property deviceLibrary)."""
+
+    changed = QtCore.Signal()
+    result = QtCore.Signal(dict)
+    busyChanged = QtCore.Signal()
+    planningChanged = QtCore.Signal()
+    # A plan's Result, from a worker thread or the main thread.
+    _planned = QtCore.Signal(str, int, object)
+    # From a worker thread to the main thread: (op, ticket, result, change).
+    _done = QtCore.Signal(str, int, object, bool)
+    _sized = QtCore.Signal(int)
+
+    def __init__(
+        self,
+        parent: QtCore.QObject | None = None,
+        api: types.SimpleNamespace | None = None,
+        watch_devices: bool = True,
+    ) -> None:
+        super().__init__(parent)
+        self._api = api
+        self._devices: list[dict] = []
+        self._open: set[str] = set()
+        self._selected = ""
+        self._filters: dict[str, bool] = {name: True for name in FILTERS}
+        self._search = ""
+        self._matches: set[str] | None = None
+        self._busy = False
+        self._busy_op = ""
+        self._ticket = 0
+        self._size: int | None = None
+        self._sizing = False
+        self._resize = False
+        self._settings: dict[str, Any] = {"keep": 10, "default_parts": [], "folder": ""}
+        self._undo = ""
+        self._rows: list[dict] = []
+        # Read once per refresh: a device's inputs (S8), a setup's photo (S11).
+        self._inputs: dict[str, str] = {}
+        self._photos: dict[str, str] = {}
+        # The sticks last noted as seen (S8).
+        self._seen: set[str] = set()
+        # op -> (ticket, fn, args, paths): the newest plan asked for,
+        # waiting for ticks to settle.
+        self._plans: dict[str, tuple] = {}
+        self._plan_running: set[str] = set()
+        self._plan_timers: dict[str, QtCore.QTimer] = {}
+        self._done.connect(self._finish)
+        self._planned.connect(self._take_plan)
+        self._sized.connect(self._take_size)
+        if watch_devices:
+            try:
+                from gremlin import event_handler
+
+                event_handler.EventListener().device_change_event.connect(self.refresh)
+            except Exception:
+                logging.getLogger("system").exception(
+                    "Device Library: device changes not followed"
+                )
+
+    # | The owners
+
+    @property
+    def api(self) -> types.SimpleNamespace:
+        if self._api is None:
+            self._api = _real_api()
+        return self._api
+
+    # | Reading the Library
+
+    def _responsive(self) -> contextlib.AbstractContextManager:
+        """library_profiles.responsive(), or nothing for owners without it."""
+        make = getattr(self.api.profiles, "responsive", None)
+        return make() if make is not None else contextlib.nullcontext()
+
+    @QtCore.Slot()
+    def refresh(self) -> None:
+        """Reads the Library again (device changes, after each change).
+        While a change runs it waits for it: the change's owner is part way
+        through the Library then (section 6)."""
+        if self._busy:
+            # _finish refreshes when the change is done.
+            return
+        lib = self.api.library
+        try:
+            self._devices = list(lib.devices())
+        except Exception:
+            logging.getLogger("system").exception("Device Library: list failed")
+            self._devices = []
+        try:
+            self._settings = dict(lib.settings())
+        except Exception:
+            logging.getLogger("system").exception("Device Library: settings failed")
+        try:
+            last = lib.last_change()
+        except Exception:
+            last = None
+        self._undo = undo_text(last)
+        if self._search:
+            self._matches = self._search_keys(self._search)
+        keys = {d["key"] for d in self._devices} | {
+            s["key"] for d in self._devices for s in d.get("setups", [])
+        }
+        self._open &= keys
+        if self._selected and self._selected not in keys:
+            self._selected = ""
+        self._inputs.clear()
+        self._photos.clear()
+        self._note_seen()
+        self._rebuild()
+        self._measure()
+
+    def _note_seen(self) -> None:
+        """S8: tells the Library which sticks are plugged in when that
+        changes (the ones just unplugged too: their last time seen)."""
+        now = {
+            str(d.get("guid"))
+            for d in self._devices
+            if d.get("state") == "connected" and d.get("guid")
+        }
+        if now == self._seen:
+            return
+        changed = sorted(now | self._seen)
+        self._seen = now
+        note = getattr(self.api.library, "note_seen", None)
+        if note is None:
+            return
+        try:
+            note(changed)
+        except Exception:
+            logging.getLogger("system").exception("Device Library: seen not kept")
+
+    def _inputs_of(self, key: str) -> str:
+        if key not in self._inputs:
+            text = ""
+            read = getattr(self.api.library, "inputs", None)
+            if read is not None:
+                try:
+                    text = inputs_text(read(key) or {})
+                except Exception:
+                    logging.getLogger("system").exception(
+                        "Device Library: inputs not read"
+                    )
+            self._inputs[key] = text
+        return self._inputs[key]
+
+    def _photo_of(self, key: str) -> str:
+        if key not in self._photos:
+            path = ""
+            read = getattr(self.api.library, "photo", None)
+            if read is not None:
+                try:
+                    path = str(read(key) or "")
+                except Exception:
+                    logging.getLogger("system").exception(
+                        "Device Library: photo not read"
+                    )
+            self._photos[key] = path
+        return self._photos[key]
+
+    def _search_keys(self, text: str) -> set[str]:
+        try:
+            return set(self.api.library.search(text))
+        except Exception:
+            logging.getLogger("system").exception("Device Library: search failed")
+            return set()
+
+    def _rebuild(self) -> None:
+        rows: list[dict] = []
+        matches = self._matches
+        names = [str(d.get("name", "")).casefold() for d in self._devices]
+        for dev in self._devices:
+            state = dev.get("state", "not_connected")
+            if not self._filters.get(state, True):
+                continue
+            setups = list(dev.get("setups", []))
+            if not self._filters["autosaves"]:
+                setups = [s for s in setups if not _is_autosave(s)]
+            opened = dev["key"] in self._open
+            if matches is not None:
+                hits = [s for s in setups if s["key"] in matches]
+                if dev["key"] not in matches:
+                    if not hits:
+                        continue
+                    setups = hits
+                opened = opened or bool(hits)
+            count = len(dev.get("setups", []))
+            rows.append(
+                {
+                    "kind": "device",
+                    "key": dev["key"],
+                    "device": dev["key"],
+                    "name": dev.get("name", ""),
+                    # Twins (the same shown name) are told apart by their
+                    # id in the list, as in the To lists.
+                    "label": _twin_label(dev, names),
+                    "description": dev.get("description", ""),
+                    "state": state,
+                    "stateLabel": STATE_LABELS.get(state, state),
+                    "count": count,
+                    "countText": _count_text(count),
+                    "open": opened,
+                    "hasChildren": count > 0,
+                }
+            )
+            if not opened:
+                continue
+            for setup in setups:
+                rows.append(
+                    {
+                        "kind": "setup",
+                        "key": setup["key"],
+                        "device": dev["key"],
+                        "name": setup.get("name", ""),
+                        "description": setup.get("description", ""),
+                        "sub": _setup_sub(setup),
+                        "date": _date(setup.get("created", "")),
+                        "mark": "autosave" if _is_autosave(setup) else "own",
+                        "state": state,
+                    }
+                )
+        self._rows = rows
+        self.changed.emit()
+
+    def _measure(self) -> None:
+        """The Library's size on disk, measured in the background (S4)."""
+        if self._sizing:
+            self._resize = True
+            return
+        self._sizing = True
+        self._resize = False
+        size_bytes = self.api.library.size_bytes
+
+        def work() -> None:
+            try:
+                value = int(size_bytes())
+            except Exception:
+                value = -1
+            try:
+                self._sized.emit(value)
+            except RuntimeError:
+                pass
+
+        try:
+            from gremlin import threads
+
+            threads.start("Device Library size", work)
+        except Exception:
+            self._sizing = False
+
+    @QtCore.Slot(int)
+    def _take_size(self, value: int) -> None:
+        self._sizing = False
+        self._size = value if value >= 0 else None
+        self.changed.emit()
+        if self._resize:
+            self._measure()
+
+    def _device(self, key: str) -> dict | None:
+        return next((d for d in self._devices if d["key"] == key), None)
+
+    def _setup(self, key: str) -> tuple[dict, dict] | tuple[None, None]:
+        for dev in self._devices:
+            for setup in dev.get("setups", []):
+                if setup["key"] == key:
+                    return dev, setup
+        return None, None
+
+    # | Properties
+
+    def _get_rows(self) -> list:
+        return self._rows
+
+    def _get_selected(self) -> str:
+        return self._selected
+
+    def _get_filters(self) -> dict:
+        return dict(self._filters)
+
+    def _get_search(self) -> str:
+        return self._search
+
+    def _get_busy(self) -> bool:
+        return self._busy
+
+    def _get_undo(self) -> str:
+        return self._undo
+
+    def _get_status(self) -> str:
+        devices = len(self._devices)
+        setups = sum(len(d.get("setups", [])) for d in self._devices)
+        parts = [
+            f"{devices} device{'s' if devices != 1 else ''} ·"
+            f" {_count_text(setups).lower()}",
+            f"Autosaves: newest {self._settings.get('keep', 10)} per stick",
+        ]
+        if self._size is not None:
+            parts.append(f"Library: {size_text(self._size)}")
+        return "     ".join(parts)
+
+    def _get_folder(self) -> str:
+        return str(self._settings.get("folder", ""))
+
+    def _get_details(self) -> dict:
+        key = self._selected
+        if not key:
+            return {}
+        dev = self._device(key)
+        if dev is not None:
+            return self._device_details(dev)
+        dev, setup = self._setup(key)
+        if dev is None or setup is None:
+            return {}
+        return self._setup_details(dev, setup)
+
+    def _device_details(self, dev: dict) -> dict:
+        state = dev.get("state", "not_connected")
+        count = len(dev.get("setups", []))
+        return {
+            "kind": "device",
+            "key": dev["key"],
+            "deviceKey": dev["key"],
+            "crumb": "Device",
+            "name": dev.get("name", ""),
+            "description": dev.get("description", ""),
+            "state": state,
+            "stateLabel": STATE_LABELS.get(state, state),
+            "guid": dev.get("guid", ""),
+            "module": dev.get("module", ""),
+            # S8: what inputs it has and when it was last seen.
+            "inputs": self._inputs_of(dev["key"]),
+            "lastSeen": "now"
+            if state == "connected"
+            else _date_time(str(dev.get("seen") or "")),
+            # S22: Copy takes its current settings (module file here, or
+            # plugged in now); otherwise one of its saved setups.
+            "hasCurrent": bool(dev.get("module")) or state == "connected",
+            "countText": _count_text(count),
+            "count": count,
+            "connected": state == "connected",
+            "canDeleteDevice": state != "connected" and not dev.get("module"),
+        }
+
+    def _setup_details(self, dev: dict, setup: dict) -> dict:
+        holds = list(setup.get("holds", []))
+        when = _date_time(setup.get("created", ""))
+        origin = setup.get("origin", "user")
+        if origin == "autosave" and not setup.get("own"):
+            why = setup.get("reason") or setup.get("name", "")
+            kept = (
+                f"Kept automatically ({why}) · {when}"
+                if why
+                else f"Kept automatically · {when}"
+            )
+        elif origin == "autosave":
+            kept = f"Kept automatically, now yours · {when}"
+        elif origin == "pack":
+            kept = f"{setup.get('reason') or 'From a Device Pack'} · {when}"
+        else:
+            kept = f"Saved by you · {when}"
+        bindings = []
+        if "bindings" in holds:
+            for prof in setup.get("profiles", []):
+                line = f"Bindings from {prof.get('name', '')}"
+                if prof.get("modes"):
+                    line += " · modes " + ", ".join(prof["modes"])
+                if prof.get("actions") is not None:
+                    n = int(prof.get("actions") or 0)
+                    line += f" · {n} action{'s' if n != 1 else ''}"
+                bindings.append(line)
+            if not bindings:
+                bindings.append("Bindings")
+        modes: list[str] = []
+        for prof in setup.get("profiles", []):
+            for mode in prof.get("modes", []):
+                if mode not in modes:
+                    modes.append(mode)
+        state = dev.get("state", "not_connected")
+        return {
+            "kind": "setup",
+            "key": setup["key"],
+            "deviceKey": dev["key"],
+            "deviceName": dev.get("name", ""),
+            "crumb": f"{dev.get('name', '')} › saved setup",
+            "name": setup.get("name", ""),
+            "description": setup.get("description", ""),
+            "kept": kept,
+            "own": bool(setup.get("own")),
+            "origin": origin,
+            "holds": holds,
+            "holdsLabels": [
+                _HOLDS_LABELS[p]
+                for p in [*PARTS, "setup_damaged"]
+                if p in holds and p in _HOLDS_LABELS
+            ],
+            "bindings": bindings,
+            "modes": modes,
+            "sends": _vjoy_text(setup.get("vjoys", {}) or {}),
+            "history": [
+                {"at": _date(h.get("at", "")), "text": h.get("text", "")}
+                for h in setup.get("history", [])
+            ],
+            "photo": self._photo_of(setup["key"]),
+            "state": state,
+            "guid": dev.get("guid", ""),
+            "connected": state == "connected",
+            # Its device's current settings (S12: something to save now).
+            "module": dev.get("module", ""),
+            "hasCurrent": bool(dev.get("module")) or state == "connected",
+        }
+
+    rows = QtCore.Property(list, fget=_get_rows, notify=changed)
+    selected = QtCore.Property(str, fget=_get_selected, notify=changed)
+    details = QtCore.Property(dict, fget=_get_details, notify=changed)
+    filters = QtCore.Property(dict, fget=_get_filters, notify=changed)
+    searchText = QtCore.Property(str, fget=_get_search, notify=changed)
+    statusText = QtCore.Property(str, fget=_get_status, notify=changed)
+    folderText = QtCore.Property(str, fget=_get_folder, notify=changed)
+    busy = QtCore.Property(bool, fget=_get_busy, notify=busyChanged)
+    undoText = QtCore.Property(str, fget=_get_undo, notify=changed)
+
+    @QtCore.Property(list, constant=True)
+    def partList(self) -> list:
+        return [{"key": p, "label": PART_LABELS[p]} for p in PARTS]
+
+    # | The list
+
+    @QtCore.Slot(str)
+    def toggleOpen(self, key: str) -> None:
+        if key in self._open:
+            self._open.discard(key)
+        else:
+            self._open.add(key)
+        self._rebuild()
+
+    @QtCore.Slot(bool)
+    def setAllOpen(self, on: bool) -> None:
+        """View › Expand All / Collapse All."""
+        self._open = (
+            {d["key"] for d in self._devices if d.get("setups")} if on else set()
+        )
+        self._rebuild()
+
+    @QtCore.Slot(str)
+    def select(self, key: str) -> None:
+        self._selected = key
+        dev, _setup = self._setup(key)
+        if dev is not None:
+            self._open.add(dev["key"])
+            self._rebuild()
+        else:
+            self.changed.emit()
+
+    @QtCore.Slot(str, str, result=str)
+    def findDevice(self, name: str, guid: str) -> str:
+        """The key of the device with that id (or name), "" when none."""
+
+        def clean(v: str) -> str:
+            return str(v or "").strip("{}").lower()
+
+        if guid:
+            for dev in self._devices:
+                if clean(dev.get("guid", "")) == clean(guid):
+                    return dev["key"]
+        for dev in self._devices:
+            if name and dev.get("name") == name:
+                return dev["key"]
+        return ""
+
+    @QtCore.Slot(str, result=str)
+    def newestSetup(self, deviceKey: str) -> str:
+        """The device's newest saved setup ("" when it has none): what a
+        device row with no current settings here copies (S22)."""
+        dev = self._device(deviceKey)
+        setups = dev.get("setups", []) if dev else []
+        return setups[0]["key"] if setups else ""
+
+    @QtCore.Slot(str, bool)
+    def setFilter(self, name: str, on: bool) -> None:
+        if name in self._filters:
+            self._filters[name] = bool(on)
+            self._rebuild()
+
+    @QtCore.Slot(str)
+    def setSearch(self, text: str) -> None:
+        self._search = text.strip()
+        self._matches = self._search_keys(self._search) if self._search else None
+        self._rebuild()
+
+    # | Names and descriptions (S7, S13): quick writes, done at once
+
+    @QtCore.Slot(str, str, result=bool)
+    def rename(self, key: str, name: str) -> bool:
+        name = name.strip()
+        if not name:
+            self.result.emit(
+                _result("rename", {"ok": False, "error": "A name can't be empty."})
+            )
+            return False
+        return self._now("rename", self.api.library.rename, key, name)
+
+    @QtCore.Slot(str, str, result=bool)
+    def describe(self, key: str, text: str) -> bool:
+        return self._now("describe", self.api.library.describe, key, text)
+
+    def _now(self, op: str, fn: Callable[..., object], *args: object) -> bool:
+        if self._busy:
+            self.result.emit(_result(op, {"ok": False, "error": _BUSY_TEXT}))
+            return False
+        try:
+            res = _result(op, fn(*args))
+        except Exception as e:
+            logging.getLogger("system").exception("Device Library: %s failed", op)
+            res = _result(op, {"ok": False, "error": str(e)})
+        self.refresh()
+        self.result.emit(res)
+        return bool(res["ok"])
+
+    # | Changes, in the background, one at a time
+
+    def _start(
+        self,
+        op: str,
+        fn: Callable[..., object],
+        *args: object,
+        change: bool = True,
+        main: bool = False,
+    ) -> int:
+        """Runs fn(*args) on a program thread; its Result comes back as
+        result(map) with op and the returned ticket. A change (change=True)
+        is refused while another runs. Returns 0 when refused.
+
+        main=True: work that touches what the main thread owns (the open
+        profile, devices, module files, settings) runs on the main thread
+        instead, after the window has shown it is busy, inside
+        library_profiles.responsive(): its file work runs in the background
+        while the event loop keeps going (section 6)."""
+        if change and self._busy:
+            self.result.emit(_result(op, {"ok": False, "error": _BUSY_TEXT}))
+            return 0
+        self._ticket += 1
+        ticket = self._ticket
+        if change:
+            self._busy = True
+            self._busy_op = op
+            self.busyChanged.emit()
+
+        def work() -> None:
+            try:
+                value = fn(*args)
+            except Exception as e:
+                logging.getLogger("system").exception("Device Library: %s failed", op)
+                value = {"ok": False, "error": str(e) or type(e).__name__}
+            self._emit_done(op, ticket, value, change)
+
+        if main:
+
+            def on_main() -> None:
+                with self._responsive():
+                    work()
+
+            # The next turn of the event loop: busy is drawn first.
+            QtCore.QTimer.singleShot(0, self, on_main)
+            return ticket
+        try:
+            from gremlin import threads
+
+            threads.start(f"Device Library {op}", work)
+        except Exception as e:
+            self._done.emit(op, ticket, {"ok": False, "error": str(e)}, change)
+        return ticket
+
+    def _emit_done(self, op: str, ticket: int, value: object, change: bool) -> None:
+        """From any thread; a model already gone takes nothing (the
+        thread ends by itself either way)."""
+        try:
+            self._done.emit(op, ticket, value, change)
+        except RuntimeError:
+            pass
+
+    @QtCore.Slot(str, int, object, bool)
+    def _finish(self, op: str, ticket: int, value: object, change: bool) -> None:
+        res = _result(op, value)
+        res["ticket"] = ticket
+        if change:
+            self._busy = False
+            self._busy_op = ""
+            self.busyChanged.emit()
+            self.refresh()
+        self.result.emit(res)
+        if change:
+            # Plans asked for meanwhile run now.
+            for waiting in list(self._plans):
+                timer = self._plan_timers.get(waiting)
+                if timer is not None and not timer.isActive():
+                    self._run_plan(waiting)
+
+    @staticmethod
+    def _paths(urls: list) -> list[Path]:
+        """The ticked profiles; "" is the open profile that was never saved
+        (S33), passed on as Path("") (library_profiles.Batch's open one)."""
+        return [to_local_path(u) if str(u) else Path("") for u in (urls or [])]
+
+    def _target(self, key: str) -> tuple[str, str]:
+        """(name, guid) for the owners: the device's own name where the
+        Library gives it (the shown name can be a Home alias, S7), and
+        always its id, which decides which stick it is (S12, S22, S26)."""
+        dev = self._device(key)
+        if dev is None:
+            return "", ""
+        name = dev.get("ownName") or dev.get("name", "")
+        return str(name), str(dev.get("guid") or "")
+
+    @QtCore.Slot(str, list, result=int)
+    def saveToLibrary(self, key: str, profilePaths: list) -> int:
+        """S12: a saved setup of the device (its own), one per ticked profile."""
+        name, guid = self._target(key)
+        return self._start(
+            "save",
+            self.api.library.save_setup,
+            name,
+            guid,
+            self._paths(profilePaths),
+            main=True,
+        )
+
+    # | Plans (what Copy, Swap and Change vJoy Output would do): ticks
+    # settle first, then the plan runs on the main thread (it reads the
+    # open profile and the device lists) with the saved profiles read in
+    # the background (library_profiles.responsive, section 6). None runs
+    # while a change does: it waits for it.
+
+    def _get_planning(self) -> bool:
+        return bool(self._plans or self._plan_running)
+
+    # A plan is waiting or running: the dialogs show "Checking…".
+    planning = QtCore.Property(bool, fget=_get_planning, notify=planningChanged)
+
+    def _plan(
+        self,
+        op: str,
+        fn: Callable[..., dict],
+        args: Callable[[list[Path]], tuple],
+        paths: list[Path],
+    ) -> int:
+        """Asks for a plan; only the newest asked for each op runs, after
+        _PLAN_SETTLE_MS without another (one replan after ticks settle).
+        Its Result comes back as result(map) with op and the ticket."""
+        was = self._get_planning()
+        self._ticket += 1
+        ticket = self._ticket
+        self._plans[op] = (ticket, fn, args, list(paths))
+        timer = self._plan_timers.get(op)
+        if timer is None:
+            timer = QtCore.QTimer(self)
+            timer.setSingleShot(True)
+            timer.setInterval(_PLAN_SETTLE_MS)
+            timer.timeout.connect(lambda op=op: self._run_plan(op))
+            self._plan_timers[op] = timer
+        timer.start()
+        if not was:
+            self.planningChanged.emit()
+        return ticket
+
+    def _run_plan(self, op: str) -> None:
+        if op in self._plan_running or self._busy:
+            # One at a time per plan, none during a change: the newest runs
+            # when that is back.
+            return
+        pending = self._plans.pop(op, None)
+        if pending is None:
+            return
+        ticket, fn, args, paths = pending
+        self._plan_running.add(op)
+        try:
+            with self._responsive():
+                value = fn(*args(paths))
+        except Exception as e:
+            logging.getLogger("system").exception("Device Library: %s failed", op)
+            value = {"ok": False, "error": str(e) or type(e).__name__}
+        if not isinstance(value, dict):
+            value = {"ok": bool(value)}
+        self._planned.emit(op, ticket, value)
+
+    @QtCore.Slot(str, int, object)
+    def _take_plan(self, op: str, ticket: int, value: object) -> None:
+        self._plan_running.discard(op)
+        res = _result(op, value)
+        res["ticket"] = ticket
+        self.result.emit(res)
+        if op in self._plans and not self._plan_timers[op].isActive():
+            self._run_plan(op)
+        if not self._get_planning():
+            self.planningChanged.emit()
+
+    @QtCore.Slot(str, str, list, list, list, result=int)
+    def planCopy(
+        self, sourceKey: str, targetKey: str, parts: list, profiles: list, modes: list
+    ) -> int:
+        name, guid = self._target(targetKey)
+        parts, modes = list(parts), list(modes)
+        return self._plan(
+            "planCopy",
+            self.api.copy.plan_copy,
+            lambda chosen: (sourceKey, name, guid, parts, chosen, modes),
+            self._paths(profiles),
+        )
+
+    @QtCore.Slot(str, str, list, list, list, result=int)
+    def copy(
+        self, sourceKey: str, targetKey: str, parts: list, profiles: list, modes: list
+    ) -> int:
+        name, guid = self._target(targetKey)
+        return self._start(
+            "copy",
+            self.api.copy.copy,
+            sourceKey,
+            name,
+            guid,
+            list(parts),
+            self._paths(profiles),
+            list(modes),
+            main=True,
+        )
+
+    @QtCore.Slot(str, str, list, list, result=int)
+    def planSwap(
+        self, firstKey: str, secondKey: str, parts: list, profiles: list
+    ) -> int:
+        first, second = self._target(firstKey), self._target(secondKey)
+        parts = list(parts)
+        return self._plan(
+            "planSwap",
+            self.api.swap.plan_swap,
+            lambda chosen: (first, second, parts, chosen),
+            self._paths(profiles),
+        )
+
+    @QtCore.Slot(str, str, list, list, result=int)
+    def swap(self, firstKey: str, secondKey: str, parts: list, profiles: list) -> int:
+        return self._start(
+            "swap",
+            self.api.swap.swap,
+            self._target(firstKey),
+            self._target(secondKey),
+            list(parts),
+            self._paths(profiles),
+            main=True,
+        )
+
+    @staticmethod
+    def _moves(moves: dict) -> dict[int, int]:
+        return {int(k): int(v) for k, v in (moves or {}).items()}
+
+    @QtCore.Slot(str, dict, bool, list, result=int)
+    def planOutput(self, key: str, moves: dict, swapOther: bool, profiles: list) -> int:
+        name, guid = self._target(key)
+        clean, other = self._moves(moves), bool(swapOther)
+        return self._plan(
+            "planOutput",
+            self.api.copy.plan_output,
+            lambda chosen: (name, guid, clean, other, chosen),
+            self._paths(profiles),
+        )
+
+    @QtCore.Slot(str, dict, bool, list, result=int)
+    def changeOutput(
+        self, key: str, moves: dict, swapOther: bool, profiles: list
+    ) -> int:
+        name, guid = self._target(key)
+        return self._start(
+            "output",
+            self.api.copy.change_output,
+            name,
+            guid,
+            self._moves(moves),
+            bool(swapOther),
+            self._paths(profiles),
+            main=True,
+        )
+
+    @QtCore.Slot(result=int)
+    def undo(self) -> int:
+        """S41: puts the last Copy, Swap or Change vJoy Output back."""
+        if not self._undo:
+            return 0
+        return self._start("undo", self.api.copy.undo_last, main=True)
+
+    @QtCore.Slot(str, str, result=int)
+    def exportSetup(self, key: str, url: str) -> int:
+        dest = to_local_path(url)
+        if dest.suffix.lower() != ".zip":
+            dest = dest.with_name(dest.name + ".zip")
+        # Main thread: the owner reads the settings and the modules folder
+        # (item 7); its file work can go through library_profiles.background.
+        return self._start(
+            "export", self.api.library.export_setup, key, dest, main=True
+        )
+
+    @QtCore.Slot(str, result=int)
+    def importPack(self, url: str) -> int:
+        """S35, S39: a Device Pack .zip becomes a saved setup."""
+        path = to_local_path(url)
+        if path.suffix.lower() != ".zip":
+            self.result.emit(
+                _result(
+                    "import",
+                    {"ok": False, "error": f"{path.name} isn't a Device Pack (.zip)."},
+                )
+            )
+            return 0
+        return self._start("import", self.api.library.import_pack, path, main=True)
+
+    @QtCore.Slot(str, result=int)
+    def deleteItem(self, key: str) -> int:
+        return self._start("delete", self.api.library.delete, key, main=True)
+
+    @QtCore.Slot(int, result=list)
+    def tidyPreview(self, months: int) -> list:
+        """S38: what Tidy would remove (nothing is removed here)."""
+        try:
+            return list(self.api.library.tidy_preview(int(months)))
+        except Exception:
+            logging.getLogger("system").exception("Device Library: tidy preview failed")
+            return []
+
+    @QtCore.Slot(list, result=int)
+    def tidy(self, keys: list) -> int:
+        return self._start(
+            "tidy", self.api.library.tidy, [str(k) for k in keys], main=True
+        )
+
+    @QtCore.Slot(result=dict)
+    def settings(self) -> dict:
+        try:
+            return dict(self.api.library.settings())
+        except Exception:
+            return dict(self._settings)
+
+    @QtCore.Slot(dict, result=int)
+    def setSettings(self, values: dict) -> int:
+        clean: dict[str, Any] = {}
+        if "keep" in values:
+            clean["keep"] = max(1, int(values["keep"]))
+        if "default_parts" in values:
+            clean["default_parts"] = [p for p in values["default_parts"] if p in PARTS]
+        if "folder" in values:
+            clean["folder"] = (
+                str(to_local_path(values["folder"])) if values["folder"] else ""
+            )
+
+        def apply() -> dict:
+            self.api.library.set_settings(clean)
+            return {"ok": True}
+
+        # Main thread: the folder is a program setting (Configuration().set).
+        return self._start("settings", apply, main=True)
+
+    @QtCore.Slot(result=list)
+    def connectedSticks(self) -> list:
+        """The devices plugged in now (To lists: S22, S26)."""
+        out = []
+        connected = [d for d in self._devices if d.get("state") == "connected"]
+        names = [str(d.get("name", "")).casefold() for d in connected]
+        for dev in connected:
+            # Twins (the same name) are told apart by their id.
+            label = _twin_label(dev, names)
+            if dev.get("description"):
+                label += f"  ({dev['description']})"
+            out.append(
+                {
+                    "key": dev["key"],
+                    "name": dev.get("name", ""),
+                    "guid": dev.get("guid", ""),
+                    "label": label,
+                }
+            )
+        return out
+
+    @QtCore.Slot(list, result=int)
+    @QtCore.Slot(list, bool, result=int)
+    def profilesUsing(self, guids: list, alwaysOpen: bool = False) -> int:
+        """The profiles with bindings for these devices: result op
+        "profiles" with "profiles". The open profile is read here on the
+        main thread (it is edited there), the saved ones in the background.
+        alwaysOpen keeps the open profile in the list even with no bindings
+        for them (Copy, Swap, Change: S23, 08 S89, D-10-PROFILES)."""
+        clean = [str(g) for g in guids if str(g)]
+        prof = self.api.profiles
+        try:
+            row = prof.open_profile_row(clean, True)
+        except Exception:
+            logging.getLogger("system").exception("Device Library: open profile")
+            row = None
+        open_path = str(row.get("path") or "") if row else ""
+        if row is not None and not alwaysOpen and not int(row.get("actions") or 0):
+            row = None
+
+        def work() -> dict:
+            found = list(prof.saved_profiles_using(clean, open_path)) if clean else []
+            rows = ([row] if row is not None else []) + found
+            return {
+                "ok": True,
+                "profiles": [dict(p, path=str(p.get("path", ""))) for p in rows],
+            }
+
+        return self._start("profiles", work, change=False)
+
+    @QtCore.Slot(list, result=str)
+    def alsoMoveText(self, others: list) -> str:
+        """S30: the "Also move …" line for every other stick on a target
+        vJoy (the plan's others: [{name, vjoy, to}]), "" when none."""
+        return also_move_text(list(others or []))
+
+    @QtCore.Slot(result=list)
+    def vjoyNumbers(self) -> list:
+        """S30: the vJoy devices that exist (from the output modules)."""
+        read = getattr(self.api, "vjoy_ids", None)
+        if read is None:
+            return []
+        try:
+            return sorted({int(n) for n in read()})
+        except Exception:
+            logging.getLogger("system").exception("Device Library: vJoy list")
+            return []
+
+    @QtCore.Slot(str, result=str)
+    def fileUrl(self, path: str) -> str:
+        return QtCore.QUrl.fromLocalFile(path).toString() if path else ""

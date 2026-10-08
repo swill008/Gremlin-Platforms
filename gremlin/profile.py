@@ -1458,7 +1458,7 @@ class Profile:
 
     current_version = 14
 
-    def __init__(self) -> None:
+    def __init__(self, bind: bool = True) -> None:
         self.inputs: dict[uuid.UUID, list[InputItem]] = {}
         self.library = Library(self)
         # Said after a load (an action type this program doesn't have).
@@ -1477,8 +1477,10 @@ class Profile:
         self.logical_device = LogicalRows()
         self._osc_inputs: dict[str, OscDevice.Input] = {}
         self._osc_by_id: dict[tuple[InputType, int], str] = {}
-        # A new profile is the one shown until another is bound.
-        self.bind_devices()
+        # A new profile is the one shown until another is bound; one read
+        # without opening it (bind=False, the Device Library, 10 S33) never is.
+        if bind:
+            self.bind_devices()
 
     def bind_devices(self) -> None:
         """LogicalDevice() and OscDevice() show this profile's rows (the open
@@ -1802,6 +1804,22 @@ class Profile:
         it). Library.change puts the list back if the change fails."""
         note_edit()
         self.device_database.devices[device_id] = DeviceInfo(device_id, name)
+
+    def move_inputs(
+        self, items: list[InputItem], source: uuid.UUID, target: uuid.UUID
+    ) -> int:
+        """Moves these inputs of source to target (Swap leaves controls the
+        other stick lacks where they were, 10 S27). Returns how many of them
+        have actions."""
+        note_edit()
+        moving = {id(item) for item in items}
+        self.inputs[source] = [
+            i for i in self.inputs.get(source, []) if id(i) not in moving
+        ]
+        for item in items:
+            item.device_id = target
+        self.inputs.setdefault(target, []).extend(items)
+        return sum(1 for item in items if item.action_sequences)
 
     def swap_device_inputs(self, first: uuid.UUID, second: uuid.UUID) -> int:
         """Every input of one device moves to the other and back (Swap

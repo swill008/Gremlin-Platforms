@@ -71,7 +71,9 @@ Item {
     signal openPairing(var card)
     signal openCalibration(var card)
     signal openDeviceInformation(var card)
-    signal assignHardware(var card)
+    // The Device Library (10 S2): card null for Home's button, else the
+    // card's device with "copy", "swap" or "output".
+    signal openDeviceLibrary(var card, string action)
     signal ignoreDevice(var card)
     signal deviceDeleted(var card)
 
@@ -393,8 +395,6 @@ Item {
         _deleteForeign = !!preview.foreign
         _deleteListed = preview.listed !== false
         _deleteKeepModule = !!preview.keepModule
-        _deleteSaveCopy = _deleteCanPack
-        _saveCopyBox.checked = _deleteCanPack
         _explainAdvance = false
         _explainDialog.open()
     }
@@ -415,17 +415,14 @@ Item {
             lines.push("The Windows device stays, and its card stays without a module.")
         else if (!_deleteListed)
             lines.push("This device is not connected, so no card will remain.")
-        if (!_deleteCanPack)
-            lines.push("This device has no module file, so a pack cannot be saved.")
+        // 03 S90, 10 S21: always kept; the user is not asked.
+        lines.push("An autosave of this device is kept in the Device Library first, so it can be copied back. If the autosave can't be kept, nothing is deleted.")
         return lines.join("\n\n")
     }
 
     function confirmBody() {
         var line = "Really delete " + _deleteName + "?"
-        if (_deleteSaveCopy)
-            line += " A pack will be written to deleted devices first."
-        else
-            line += " No copy will be saved."
+        line += " An autosave is kept in the Device Library first."
         if (_deleteKeepModule)
             line += " The output module file stays. Only this device's actions are removed."
         else if (_deleteShared)
@@ -461,7 +458,7 @@ Item {
         var raw = String(_deleteCard.rawName || _deleteCard.cardName || _deleteCard.name || "")
         var guid = String(_deleteCard.guid || "")
         var card = _deleteCard
-        var rawResult = model.deleteDevice(raw, guid, _deleteSaveCopy)
+        var rawResult = model.deleteDevice(raw, guid)
         var result = {}
         try {
             result = JSON.parse(rawResult)
@@ -475,10 +472,8 @@ Item {
             return
         }
         var done = "Deleted " + String(result.name || _deleteName) + "."
-        if (result.packPath)
-            done += " A copy was saved to " + result.packPath + "."
-        else
-            done += " No copy was saved."
+        if (result.autosaved)
+            done += " An autosave was kept in the Device Library."
         if (result.keepModule)
             done += " The output module file was kept. Only this device's actions were removed."
         else if (result.keptFile)
@@ -502,7 +497,6 @@ Item {
     property bool _deleteForeign: false
     property bool _deleteListed: true
     property bool _deleteKeepModule: false
-    property bool _deleteSaveCopy: true
     property bool _explainAdvance: false
     property bool _confirmAdvance: false
     property string _doneTitle: ""
@@ -527,7 +521,7 @@ Item {
         card.onOpenPairing.connect(function() { _page.openPairing(_page.pack(card)) })
         card.onOpenCalibration.connect(function() { _page.openCalibration(_page.pack(card)) })
         card.onOpenDeviceInformation.connect(function() { _page.openDeviceInformation(_page.pack(card)) })
-        card.onAssignHardware.connect(function() { _page.assignHardware(_page.pack(card)) })
+        card.onOpenDeviceLibrary.connect(function(action) { _page.openDeviceLibrary(_page.pack(card), action) })
         card.onIgnoreDevice.connect(function() { _page.ignoreDevice(_page.pack(card)) })
         card.dragStarted.connect(function() { _page.beginDrag(card) })
         card.dragMovedAt.connect(function(sx, sy) { _page.updateDragAt(sx, sy) })
@@ -616,6 +610,11 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
+            Button {
+                objectName: "homeDeviceLibraryButton"
+                text: "Device Library…"
+                onClicked: _page.openDeviceLibrary(null, "")
+            }
             Item { Layout.fillWidth: true }
             CheckBox {
                 text: "Compact view"
@@ -1090,12 +1089,6 @@ Item {
                 wrapMode: Text.WordWrap
                 Layout.preferredWidth: Style.dp(440)
                 Layout.fillWidth: true
-            }
-            CheckBox {
-                id: _saveCopyBox
-                text: "Save a copy in deleted devices"
-                enabled: _page._deleteCanPack
-                onToggled: _page._deleteSaveCopy = checked
             }
             RowLayout {
                 Layout.alignment: Qt.AlignRight

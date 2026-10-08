@@ -225,18 +225,19 @@ def test_a_matching_twin_name_is_kept_when_the_stick_is_alone(
 
 @pytest.fixture
 def aliases() -> Iterator[None]:
+    from gremlin import device_aliases
     from gremlin.ui import device_names
 
     device_names._ensure()
     before = Configuration().value(
         device_names.SECTION, device_names.GROUP, device_names.NAME
     )
-    device_names._CACHE = None
+    device_aliases._CACHE = None
     yield
     Configuration().set(
         device_names.SECTION, device_names.GROUP, device_names.NAME, before
     )
-    device_names._CACHE = None
+    device_aliases._CACHE = None
 
 
 def test_one_shown_name_twin_vjoy_number_and_alias(

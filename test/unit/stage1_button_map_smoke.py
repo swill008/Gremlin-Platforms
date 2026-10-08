@@ -739,7 +739,7 @@ def part_outside(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     result = expression(
         w.root,
         "_moduleModel.deleteDevice(" + json.dumps(NAME) + ", "
-        + json.dumps(GUID) + ", false)",
+        + json.dumps(GUID) + ")",
     ).evaluate()
     deleted = json.loads(result[0] if isinstance(result, tuple) else result)
     out["delete-ok"] = [deleted.get("ok"), MAP_FILE.is_file()]

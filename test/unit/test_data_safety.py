@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Nothing the user made is lost without being asked: saving names the
-unfinished actions it would leave out, deleting a module file keeps a copy,
+unfinished actions it would leave out, deleting a module file keeps an
+autosave in the Device Library,
 and cancelling a Button Map edit puts the photo back."""
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ import types
 
 import pytest
 
+from gremlin import device_library as library
 from gremlin import profile
 from gremlin.modules import registry, store
 from gremlin.ui import hardware_profile
@@ -54,8 +56,7 @@ def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.
     maps = tmp_path / "modules"
     maps.mkdir()
     monkeypatch.setattr(store, "folder", lambda: maps)
-    deleted = tmp_path / "deleted devices"
-    monkeypatch.setattr(store, "deleted_dir", lambda: deleted)
+    monkeypatch.setattr(library, "folder", lambda: tmp_path / "device library")
     monkeypatch.setattr(store, "users_of", lambda slug: set())
     monkeypatch.setattr(store, "bindings", lambda: {})
     monkeypatch.setattr(registry, "guid_for_name", lambda name: "")
@@ -63,20 +64,26 @@ def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.
 
 
 def test_deleting_a_module_file_keeps_a_copy(modules: pathlib.Path) -> None:
+    # 03 S62, 08 S88: the copy is a "module file deleted" autosave in the
+    # Device Library (D-10-NO-DELETED-FOLDER).
     claim = {"claim": {"buttons": [1]}}
     (modules / "stick_r.json").write_text(json.dumps(claim), encoding="utf-8")
     assert hardware_profile.delete_module_file("Stick R", "") == ""
     assert not (modules / "stick_r.json").exists()
-    kept = list((modules.parent / "deleted devices").glob("stick_r *.json"))
-    assert len(kept) == 1
-    assert json.loads(kept[0].read_text(encoding="utf-8")) == claim
+    found = library.find_device("Stick R", "")
+    assert found is not None
+    names = [setup["name"] for setup in found["setups"]]
+    assert names == ["Autosave: module file deleted"]
+    assert not (modules.parent / "deleted devices").exists()
 
 
 def test_no_copy_means_no_delete(
     modules: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     (modules / "stick_r.json").write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(store, "keep_deleted_copy", lambda path: None)
+    monkeypatch.setattr(
+        library, "autosave", lambda *args: {"ok": False, "error": "no room"}
+    )
     message = hardware_profile.delete_module_file("Stick R", "")
     assert "not deleted" in message
     assert (modules / "stick_r.json").exists()

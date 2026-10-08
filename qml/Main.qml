@@ -20,6 +20,7 @@ import Gremlin.Menus
 import "helpers.js" as Helpers
 import "window_registry.js" as Registry
 import "main_commands.js" as MainCommands
+import "device_library_open.js" as DeviceLibraryOpen
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -823,6 +824,13 @@ ApplicationWindow {
         Helpers.createComponent(spec)
     }
 
+    // The Device Library window (10 S2), on a device and one of its
+    // dialogs ("copy", "swap", "output") or on nothing ("", "", "").
+    function openDeviceLibrary(deviceName, guid, action) {
+        DeviceLibraryOpen.openDeviceLibrary(String(deviceName || ""), String(guid || ""),
+                                            String(action || ""))
+    }
+
     // The same, with properties (Tools > History shows everything, even
     // when it is open on one device's changes).
     function openToolWith(spec, properties) {
@@ -1258,7 +1266,7 @@ ApplicationWindow {
                 ThemedMenuItem { command: "tools.configureInput" }
                 ThemedMenuItem { command: "tools.configureOutput" }
                 ThemedMenuItem { command: "tools.deviceInfo" }
-                ThemedMenuItem { command: "tools.swapDevices" }
+                ThemedMenuItem { command: "tools.deviceLibrary" }
                 ThemedMenuItem { command: "tools.devicePack" }
             }
             ThemedMenu {
@@ -1762,8 +1770,11 @@ ApplicationWindow {
                 onOpenDeviceInformation: function(card) {
                     Helpers.createComponent("DialogDeviceInformation.qml", {"initialGuid": card.guid || ""})
                 }
-                onAssignHardware: function(card) {
-                    Helpers.createComponent("DialogSwapDevices.qml", {"initialGuid": card.guid || ""})
+                // Home's Device Library… button (no card) and the card
+                // menu's Copy / Swap / Change vJoy Output (10 S2, 03 S88).
+                onOpenDeviceLibrary: function(card, action) {
+                    openDeviceLibrary(card ? String(card.rawName || card.name || "") : "",
+                                      card ? String(card.guid || "") : "", action)
                 }
                 onIgnoreDevice: function(card) {
                     _moduleModel.ignoreSlug(card.slug)

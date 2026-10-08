@@ -43,7 +43,7 @@ def scan(
 ) -> Iterator[pathlib.Path]:
     """A first scan from an empty list with modules in tmp_path; the twin,
     alias and HidHide settings put back after."""
-    from gremlin import hidhide_driver
+    from gremlin import device_aliases, hidhide_driver
     from gremlin.modules import store
     from gremlin.ui import device_names, hidhide
 
@@ -73,11 +73,11 @@ def scan(
         ("display", "hidhide", "module-links"),
     ]
     before = [cfg.value(*key) for key in keys]
-    device_names._CACHE = None
+    device_aliases._CACHE = None
     yield tmp_path
     for key, value in zip(keys, before):
         cfg.set(*key, value)
-    device_names._CACHE = None
+    device_aliases._CACHE = None
     # The real device list back for the next tests.
     monkeypatch.undo()
     di._joystick_devices.clear()
@@ -107,6 +107,7 @@ def test_twin_names_of_unplugged_devices_without_a_file_are_forgotten(
 
 
 def test_aliases_of_forgotten_devices_go_others_stay(scan: pathlib.Path) -> None:
+    from gremlin import device_aliases
     from gremlin.ui import device_names
 
     _module(scan, "pjoy_pro_3", {"device": "pJoy Pro (3)", "boundGuidLocal": _KEPT})
@@ -119,7 +120,7 @@ def test_aliases_of_forgotten_devices_go_others_stay(scan: pathlib.Path) -> None
     device_names.set_alias("keyboard", "Keys")  # not a device id
     di.joystick_devices_initialization()
 
-    device_names._CACHE = None
+    device_aliases._CACHE = None
     assert device_names._load() == {
         _STICK: "Main stick", _KEPT: "Spare twin", _BOUND: "Old one",
         "keyboard": "Keys",

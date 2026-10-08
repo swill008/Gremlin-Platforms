@@ -2,26 +2,28 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Journey 9: Delete Device with "Save a copy", then bring it back.
+"""Journey 9: Delete Device (its autosave kept), then bring it back.
 
 The pJoy Pro has a module file (buttons 1-3, button 1 named "Trigger")
 and wires in two modes (button 1 sends vJoy button 1 in Default, button 2
 sends vJoy button 2 in Combat); a Saitek X52 has a wire of its own. On
 Home the user picks Delete Device on the pJoy's card: the explanation
-(with "Save a copy in deleted devices" ticked), the red confirm, then the
-result. A pack is written to the deleted devices folder; the pJoy's module
-file and its wires go; the X52 keeps its wire; the pJoy's card stays,
+(saying an autosave is kept in the Device Library; no "Save a copy"
+question), the red confirm, then the result. A "stick deleted" autosave is
+kept in the Device Library (10 S16-S21); the pJoy's module file and its
+wires go; the X52 keeps its wire; the pJoy's card stays,
 without a module.
 
-Then Tools > Device Pack > Import of that pack onto the pJoy Pro, Replace:
+Then Tools > Device Pack > Import of that autosave's pack onto the pJoy Pro, Replace:
 the module file (checked controls, the name "Trigger") and the wires in
 both modes are back; saved and opened again, the profile has them.
 
 Spec: 03 S90, S91, S92, S96 and Q4 (Delete Device leaves the profile
 unsaved, decision); 08 S86, S87, S89, S68, S74. GL-138 (Delete
 Device wrote the whole profile to disk at once) fixed in batch 2. GL-024
-(no test for the "Save a copy" pack and importing it back) is what this
-journey covers.
+(no test for the kept copy and importing it back) is what this journey
+covers; the copy is the Device Library's autosave since D-10-DELETE and
+D-10-NO-DELETED-FOLDER.
 """
 
 from __future__ import annotations
@@ -53,6 +55,7 @@ def story(j: Journey) -> None:
 
     from PySide6 import QtCore
 
+    from gremlin import device_library as library
     from gremlin import util
 
     out = j.out
@@ -85,13 +88,16 @@ def story(j: Journey) -> None:
     home = _status_page(j)
     j.ev('askDelete(model.cardMap("pjoy_pro"))', home)
     out["explain"] = j.ev("explainBody()", home)
-    out["save-copy-ticked"] = j.ev("_deleteSaveCopy", home)
     out["confirm"] = j.ev("confirmBody()", home)
     j.ev("runDelete()", home)
     out["done-title"] = j.ev("_doneTitle", home)
     out["done"] = j.ev("_doneMessage", home)
-    packs = sorted(util.deleted_devices_dir().rglob("*.zip"))
-    out["packs"] = [p.relative_to(util.deleted_devices_dir()).as_posix() for p in packs]
+    found = library.find_device("pJoy Pro", str(uid)) or {"setups": []}
+    out["autosaves"] = [s["name"] for s in found["setups"]]
+    packs = [library.pack_path(s["key"]) for s in found["setups"]]
+    out["packs-exist"] = [p.is_file() for p in packs]
+    old_folder = pathlib.Path(util.data_folder()) / "deleted devices"
+    out["deleted-devices-folder"] = old_folder.exists()
     out["module-gone"] = not module_path.exists()
     out["pjoy-after-delete"] = j.wires(uid)
     out["x52-after-delete"] = j.wires(x52)
@@ -153,16 +159,18 @@ _PJOY = {"Combat": [[2, [2]]], "Default": [[1, [1]]]}
 _X52 = {"Default": [[4, [9]]]}
 
 
-def test_delete_device_explains_and_saves_a_copy_first(run: dict) -> None:
+def test_delete_device_explains_and_keeps_an_autosave_first(run: dict) -> None:
     assert step(run, "pjoy-before") == _PJOY
     assert step(run, "file-had-wires") is True
-    assert step(run, "save-copy-ticked") is True
     assert "module file" in step(run, "explain")
+    assert "kept in the Device Library" in step(run, "explain")
     assert step(run, "confirm").startswith("Really delete pJoy Pro?")
-    assert "A pack will be written to deleted devices first." in step(run, "confirm")
+    assert "An autosave is kept in the Device Library first." in step(run, "confirm")
     assert step(run, "done-title") == "Device deleted"
-    packs = step(run, "packs")
-    assert len(packs) == 1 and packs[0].startswith("pJoy Pro/")
+    assert "An autosave was kept in the Device Library." in step(run, "done")
+    assert step(run, "autosaves") == ["Autosave: stick deleted"]
+    assert step(run, "packs-exist") == [True]
+    assert step(run, "deleted-devices-folder") is False
 
 
 def test_the_device_file_and_wires_go_and_others_stay(run: dict) -> None:

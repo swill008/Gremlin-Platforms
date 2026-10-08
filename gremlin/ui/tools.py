@@ -4,19 +4,14 @@
 
 from __future__ import annotations
 
-import logging
-import uuid
-
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import (
     auto_mapper,
     config,
-    error,
     shared_state,
     signal,
-    swap_devices,
 )
 
 QML_IMPORT_NAME = "Gremlin.Tools"
@@ -63,35 +58,3 @@ class Tools(QtCore.QObject):
         if cfg.exists("automap", "mapper", "overwrite-used-inputs"):
             return bool(cfg.value("automap", "mapper", "overwrite-used-inputs"))
         return False
-
-    @QtCore.Slot(str, str, result=str)
-    def swapDevices(self, source_uuid_str: str, target_uuid_str: str) -> str:
-        try:
-            source_uuid = uuid.UUID(source_uuid_str)
-            target_uuid = uuid.UUID(target_uuid_str)
-            result = swap_devices.swap_devices(
-                shared_state.current_profile, source_uuid, target_uuid
-            )
-            signal.signal.profileChanged.emit()
-            signal.signal.reloadCurrentInputItem.emit()
-            return result.as_string()
-        except ValueError:
-            logging.getLogger("system").error(
-                f"Invalid UUID provided for swapping devices: "
-                f"{source_uuid_str}, {target_uuid_str}"
-            )
-            return (
-                "Could not swap: choose a profile device and a connected device."
-            )
-        except swap_devices.SameDevice:
-            return (
-                "Could not swap: the profile device and the connected device "
-                "are the same device."
-            )
-        except error.GremlinError as e:
-            # The keyboard, logical device, OSC or Xbox: not a stick.
-            logging.getLogger("system").error(f"Swap devices refused: {e}")
-            return (
-                "Could not swap: the keyboard, the Logical Device, OSC and "
-                "the Xbox pad can't be swapped."
-            )

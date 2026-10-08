@@ -522,7 +522,10 @@ def pack_modes(guid: str) -> list[dict]:
     return [{"name": name, "count": counts[name]} for name in sorted(counts)]
 
 
-def _collect_wires(guid: str, only_modes: list[str] | None = None) -> dict:
+def _collect_wires(
+    guid: str, only_modes: list[str] | None = None, profile: Profile | None = None
+) -> dict:
+    """The device's wires in a profile (None: the open one)."""
     text = str(guid or "").strip()
     empty = {"modes": [], "actions": [], "outputs": [], "tree": {}}
     if not text:
@@ -532,7 +535,8 @@ def _collect_wires(guid: str, only_modes: list[str] | None = None) -> dict:
         from gremlin.util import read_action_ids
     except Exception:
         return empty
-    profile = current_profile
+    if profile is None:
+        profile = current_profile
     uid = parse_guid(text)
     if profile is None or uid is None:
         return empty
@@ -657,7 +661,10 @@ def export_refusal(path: Path) -> str:
     return ""
 
 
-def _device_path(name: str) -> Path:
+def _device_path(name: str, guid: str = "") -> Path:
+    if guid:
+        # By its id: an unplugged twin's own file, never the other twin's.
+        return store.path_for_id(name, guid)
     match = _match_pack_device(name)
     guid = str(match["guid"]) if match and match.get("guid") else ""
     return store.path_for(name, guid)
@@ -708,23 +715,35 @@ def plan_pack(
     resolve: Callable[[str], Path | None],
     modes: list[str] | None = None,
     notes: dict | None = None,
+    profile: Profile | None = None,
+    guid: str = "",
 ) -> dict | str:
-    """Everything the pack takes from the open profile and the module files,
+    """Everything the pack takes from the open profile (or profile, one
+    that isn't open: the Device Library) and the module files,
     read on the main thread: the documents, the wires and the picture files
     to copy. build_pack(plan) makes the zip from it on any thread (08 S107).
     A str when the device can't be exported (none, or damaged: 08 S51, Q19)."""
     name = " ".join(str(device_name or "").split())
     if not name:
         return "Choose a device."
-    path = _device_path(name)
+    # With its id, its own file (twins share a name).
+    path = _device_path(name, guid)
     refused = export_refusal(path)
     if refused:
         return refused
     doc = _read_doc(path)
     if not doc:
         return _NO_FILE
-    match = _match_pack_device(name)
-    guid = str(match["guid"]) if match and match.get("guid") else ""
+    if not guid:
+        match = _match_pack_device(name)
+        guid = str(match["guid"]) if match and match.get("guid") else ""
+    if not guid and profile is not None:
+        # A stick not plugged in: its id from the profile's device list.
+        want = " ".join(name.split()).casefold()
+        for uid, info in profile.device_database.devices.items():
+            if " ".join(str(info.name or "").split()).casefold() == want:
+                guid = str(uid)
+                break
     used: set[str] = set()
     files: list[tuple[Path, str]] = []
     packed, pictures = _rewrite_images(doc, resolve, used, files)
@@ -732,7 +751,7 @@ def plan_pack(
     packed.pop("boundName", None)
     packed["device"] = name
     packed["pack"] = _pack_label(name, guid, notes)
-    wires = _collect_wires(guid, modes)
+    wires = _collect_wires(guid, modes, profile)
     outputs: list[tuple[str, dict]] = []
     for output_name in wires["outputs"]:
         built = _output_doc(output_name, resolve, used, files)
@@ -851,10 +870,12 @@ def assemble(
     resolve,
     modes: list[str] | None = None,
     notes: dict | None = None,
+    profile: Profile | None = None,
+    guid: str = "",
 ) -> tuple[bytes, dict] | str:
     """The pack for one device. modes: the modes whose wires go in (None:
     all of them). notes: {author, note}, shown when the pack is imported."""
-    plan = plan_pack(device_name, resolve, modes, notes)
+    plan = plan_pack(device_name, resolve, modes, notes, profile, guid)
     if isinstance(plan, str):
         return plan
     return build_pack(plan)
@@ -1486,17 +1507,33 @@ def _logical_targets(action_xml: list[str]) -> list[tuple[str, int]]:
     return found
 
 
-def _missing_logical(action_xml: list[str]) -> list[tuple[str, int]]:
+def _rows_of(profile: object) -> object:
+    """A profile's Logical Device rows when it isn't the open one (None:
+    the open profile's, what LogicalDevice() shows)."""
+    from gremlin import shared_state
+
+    if profile is None or profile is shared_state.current_profile:
+        return None
+    return getattr(profile, "logical_device", None)
+
+
+def _missing_logical(
+    action_xml: list[str], rows: object = None
+) -> list[tuple[str, int]]:
+    """The Logical Device inputs these actions send to that rows (a
+    profile's Logical Device rows; None: the open profile's) lack. A
+    profile that isn't open is checked against its own rows (10 S24)."""
     from gremlin.logical_device import LogicalDevice
     from gremlin.types import InputType
 
+    shown = rows if rows is not None else LogicalDevice()
     missing = []
     for kind, number in _logical_targets(action_xml):
         try:
             ident = LogicalDevice.Input.Identifier(InputType.to_enum(kind), number)
         except Exception:
             continue
-        if not LogicalDevice().exists(ident):
+        if not shown.exists(ident):  # type: ignore[attr-defined]
             missing.append((kind, number))
     return missing
 
@@ -1562,11 +1599,15 @@ def _pack_drivers(loaded: dict, moves: dict[int, int] | None = None) -> list[str
 
 
 def _plan_wires(
-    wires: dict, chosen: set[str], limits: dict[str, set[int]] | None
+    wires: dict,
+    chosen: set[str],
+    limits: dict[str, set[int]] | None,
+    rows: object = None,
 ) -> dict:
     """What importing the ticked modes would write, before anything changes:
     their inputs (less the controls the device doesn't have) and only the
-    actions those inputs use."""
+    actions those inputs use. rows: the Logical Device rows of the profile
+    they go into (None: the open profile's)."""
     from gremlin.types import InputType
     from gremlin.util import read_subelement
 
@@ -1617,7 +1658,7 @@ def _plan_wires(
         "inputs": inputs,
         "actions": actions,
         "leftOut": left_out,
-        "missingLogical": _missing_logical(actions),
+        "missingLogical": _missing_logical(actions, rows),
     }
 
 
@@ -1707,9 +1748,11 @@ def _apply_wires(
     target_name: str,
     moves: dict[int, int],
     create_logical: bool,
+    into: Profile | None = None,
 ) -> tuple[list[str], dict | None]:
     """Replaces the device's wires and actions in each ticked mode with the
-    pack's. Returns the notes and what Undo Import needs."""
+    pack's. Returns the notes and what Undo Import needs. into: the profile
+    to change (None: the open one)."""
     if not plan["modes"]:
         return [], None
     if not target_guid:
@@ -1720,7 +1763,7 @@ def _apply_wires(
         from gremlin.types import InputType
     except Exception:
         return ["The wires were not written."], None
-    profile = current_profile
+    profile = into if into is not None else current_profile
     if profile is None:
         return ["The wires were not written. No profile is open."], None
     uid = parse_guid(target_guid)
@@ -1738,7 +1781,10 @@ def _apply_wires(
             missing = plan["missingLogical"]
             if missing and create_logical:
                 for kind, number in missing:
-                    made = LogicalDevice().create(
+                    # Into the profile changed (the open one: what
+                    # LogicalDevice() shows).
+                    rows = _rows_of(profile) or LogicalDevice()
+                    made = rows.create(  # type: ignore[attr-defined]
                         InputType.to_enum(kind), input_id=number
                     )
                     created_logical.append(made.identifier)
@@ -2147,7 +2193,22 @@ def preview_import(path: Path, target_name: str, selection: dict | None) -> dict
     }
 
 
-def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
+def apply_zip(
+    path: Path,
+    target_name: str,
+    selection: dict | None,
+    profile: Profile | None = None,
+    *,
+    record_undo: bool = True,
+    fresh: bool = False,
+    target_guid: str = "",
+) -> dict:
+    """Imports the ticked pieces onto target_name. For the Device Library
+    (10 S24, S41), without the window: profile is the profile the wires go
+    into (None: the open one); record_undo=False leaves Undo Import as it
+    was (the Library's autosave is the way back); fresh=True builds the
+    module file from the pack alone instead of adding to the one here;
+    target_guid (twins share a name) decides which device it is."""
     global _last_import
     target = " ".join(str(target_name or "").split())
     if not target:
@@ -2172,7 +2233,14 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
     chosen = _selected(selection)
     if not chosen:
         return {"ok": False, "error": "Choose at least one piece to import."}
-    match = _match_pack_device(target)
+    match = _match_pack_device(target, target_guid)
+    if target_guid:
+        # The id decides (twins share a name). A stick that isn't plugged
+        # in is still the one the caller knows (the Device Library's Undo,
+        # 10 S41): its own file by its id, never another's by the name.
+        if not match:
+            match = {"name": target, "guid": target_guid, "connected": False}
+        target = str(match.get("name") or target)
     guid = str(match["guid"]) if match and match.get("guid") else ""
     limits = _device_limits(guid)
     notes: list[str] = []
@@ -2182,13 +2250,13 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         item.startswith("pic:") and _picture_is_input(item, doc) for item in chosen
     )
     if touches_input:
-        dest = _device_path(target)
+        dest = _device_path(target, guid if target_guid else "")
         damaged = store.damage_of(dest)
         if damaged:
             # 08 Q2 / F1: refused, as every other save into a damaged file;
             # nothing is changed (the wires neither).
             return {"ok": False, "error": _damaged_text(dest, damaged)}
-        existing = _read_doc(dest)
+        existing = None if fresh else _read_doc(dest)
         merged, merged_notes = _merge_module(
             existing, doc, chosen, "in.", target, guid, limits
         )
@@ -2257,7 +2325,8 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
             continue
         notes.append(f"Saved {dest.name} for {out_name}.")
         notes.extend(merged_notes)
-    plan = _plan_wires(loaded["wires"], chosen, limits)
+    # The profile they go into says which Logical Device inputs it lacks.
+    plan = _plan_wires(loaded["wires"], chosen, limits, _rows_of(profile))
     wire_notes, wires_undo = _apply_wires(
         plan,
         loaded["wires"].get("tree") or {},
@@ -2265,6 +2334,7 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         target,
         _vjoy_moves(loaded["outputs"], targets),
         bool((selection or {}).get("createLogical")),
+        profile,
     )
     notes.extend(wire_notes)
     if not notes:
@@ -2273,10 +2343,11 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         # Nothing was written (an output that couldn't be, wires that
         # weren't): the import before this one can still be undone.
         return {"ok": False, "error": "\n".join(notes)}
-    # A new import keeps the one before it for good (only an import that
-    # changed something: a failed one leaves the last one undoable).
-    drop_import_undo()
-    _last_import = {"files": files, "wires": wires_undo, "written": _written(files)}
+    if record_undo:
+        # A new import keeps the one before it for good (only an import that
+        # changed something: a failed one leaves the last one undoable).
+        drop_import_undo()
+        _last_import = {"files": files, "wires": wires_undo, "written": _written(files)}
     try:
         from gremlin.signal import signal
         signal.configChanged.emit()
@@ -2284,7 +2355,41 @@ def apply_zip(path: Path, target_name: str, selection: dict | None) -> dict:
         signal.reloadUi.emit()
     except Exception:
         pass
-    return {"ok": True, "device": target, "report": "\n".join(notes), "canUndo": True}
+    return {"ok": True, "device": target, "report": "\n".join(notes), "canUndo": record_undo}
+
+
+def pack_item_ids(path: Path) -> dict | str:
+    """A pack's input device pieces as the window's item ids, without
+    staging its pictures (for the Device Library, 10 S23-S24):
+    {"input": [ids], "modes": [modes with wires]}; a str when it can't be
+    read."""
+    loaded = _read_zip(path)
+    if isinstance(loaded, str):
+        return loaded
+    doc = loaded["doc"]
+    newer = _too_new(doc)
+    if newer:
+        return newer
+    arcs: list[str] = []
+    photo = Path(str(doc.get("image") or "")).name
+    if photo and photo in loaded["files"]:
+        arcs.append(photo)
+    for node in doc.get("nodes") or []:
+        if isinstance(node, dict) and (
+            node.get("kind") == "image" or node.get("shape") == "image"
+        ):
+            arc = Path(str(node.get("src") or "")).name
+            if arc and arc in loaded["files"] and arc not in arcs:
+                arcs.append(arc)
+    pictures = [{"item": _item("pic:" + arc, arc, arc)} for arc in arcs]
+    ids = [str(row["id"]) for row in _module_items("in.", doc, pictures)]
+    ids.extend("pic:" + arc for arc in arcs)
+    modes = [
+        str(mode.get("name") or "Default")
+        for mode in loaded["wires"].get("modes") or []
+        if isinstance(mode, dict) and mode.get("inputs")
+    ]
+    return {"input": list(dict.fromkeys(ids)), "modes": modes}
 
 
 def _damaged_text(path: Path, reason: str) -> str:
@@ -2307,3 +2412,9 @@ def _picture_is_input(item: str, doc: dict) -> bool:
         if isinstance(node, dict) and Path(str(node.get("src") or "")).name == arc:
             return True
     return False
+
+
+# Public names for the Device Library store (gremlin/modules/library.py).
+collect_wires = _collect_wires
+pack_label = _pack_label
+too_new = _too_new

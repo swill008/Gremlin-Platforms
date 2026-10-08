@@ -305,14 +305,10 @@ def test_swap_devices_lists_only_sticks(profile: Profile) -> None:
 def test_swap_devices_refuses_what_isnt_a_stick(
     profile: Profile, device: uuid.UUID
 ) -> None:
-    from gremlin.ui.tools import Tools
-
     item = profile.get_input_item(device, InputType.JoystickButton, 1, "Default", True)
     for source, target in ((device, _STICK), (_STICK, device)):
         with pytest.raises(error.GremlinError):
             swap_devices.swap_devices(profile, source, target)
-    message = Tools().swapDevices(str(device), str(_STICK))
-    assert message.startswith("Could not swap")
     assert item is not None and item.device_id == device
     assert _STICK not in profile.inputs
 

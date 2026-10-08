@@ -106,11 +106,16 @@ def test_home_help_lists_every_card_and_what_each_leaves_out() -> None:
     home = _topic("Home")
     for card in ("Keyboard", "OSC", "Logical Device", "vJoy", "Xbox"):
         assert card in home, card
-    assert "vJoy cards have no Calibration, Swap Device… or Delete Device" in home
+    assert (
+        "vJoy cards have no Calibration, Copy Setup to Another Stick…, Swap with "
+        "Another Stick…, Change vJoy Output… or Delete Device"
+    ) in home
     assert (
         "The Logical Device card has no Module Setup, Auto Mapper, Calibration, "
-        "Device Information or Swap Device"
+        "Device Information, Copy Setup to Another Stick…, Swap with Another "
+        "Stick… or Change vJoy Output…"
     ) in home
+    assert "Swap Device…" not in home
     assert "unsaved changes" in home  # Delete Device leaves the profile unsaved
     card = _read("qml/StatusCard.qml")
     # The rules the help describes are the card's own.
@@ -177,7 +182,9 @@ def test_device_pack_and_backup_help() -> None:
     assert "adds the pack's checked controls" in pack
     assert "open another pack" in pack
     backups = _topic("Deleted devices and backups")
-    words = ("deleted devices", "imported", "Delete File", "Import", "Browse for File")
+    # The copies are autosaves in the Device Library (D-10-NO-DELETED-FOLDER).
+    assert "deleted devices folder" not in backups
+    words = ("Device Library", "autosave", "imported", "Delete File", "Import")
     for word in words:
         assert word in backups, word
 

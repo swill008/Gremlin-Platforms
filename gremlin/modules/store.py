@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The module file store: the one owner of which module file a device uses
-and of every change to module files, their pictures, the deleted devices
-folder and the file choices (system-maps map 1, gap list GL-067).
+and of every change to module files, their pictures
+and the file choices (system-maps map 1, gap list GL-067).
 
 Callers pass a device's name and id and never build module paths:
 
@@ -166,6 +166,58 @@ def path_for(device_name: str, guid: str = "") -> Path:
     return path_of(slug_for(device_name, guid))
 
 
+def _live(guid: str) -> bool:
+    want = guid_key(stored_guid_key(guid))
+    return bool(want) and any(
+        guid_key(guid_text(getattr(dev, "device_guid", ""))) == want
+        for dev in live_devices()
+    )
+
+
+def file_of_guid(guid: str) -> Path | None:
+    """The module file of the device with this id, found by the id alone
+    (the file chosen for the id, else the one bound to it); None when it
+    has none. Never by name: twins share one (10 S41)."""
+    key = stored_guid_key(guid)
+    want = guid_key(key)
+    if not want:
+        return None
+    found = registry.modules()
+    chosen = plain_slug(bindings().get(key, ""))
+    if chosen and path_of(chosen).is_file():
+        module = next((m for m in found if m.slug == chosen), None)
+        bound = guid_key(module.bound_guid) if module is not None else ""
+        if not bound or bound == want:
+            return path_of(chosen)
+    for module in found:
+        if guid_key(module.bound_guid) == want:
+            return path_of(module.slug)
+    return None
+
+
+def path_for_id(device_name: str, guid: str) -> Path:
+    """path_for for a device known by its id, plugged in or not (the Device
+    Library and Device Pack, 10 S41): its own file found by its id first
+    (file_of_guid), as twins share a name; else path_for. Unplugged with no
+    file of its own: a path no other device uses, so nothing of another
+    stick (a twin of the same name) is written or removed."""
+    if not stored_guid_key(guid):
+        return path_for(device_name, guid)
+    found = file_of_guid(guid)
+    if found is not None:
+        return found
+    path = path_for(device_name, guid)
+    if _live(guid):
+        return path
+    want = guid_key(stored_guid_key(guid))
+    module = next((m for m in registry.modules() if m.slug == path.stem), None)
+    other = guid_key(module.bound_guid) if module is not None else ""
+    named = registry.guid_for_name(device_name)
+    if (other and other != want) or (named and guid_key(named) != want):
+        return path_of(f"{own_slug(device_name)}_{want[:8].lower()}")
+    return path
+
+
 def pictures_dir_of(slug: str) -> Path:
     """<modules>/<slug>/ for a slug the program already has."""
     return folder() / (_safe_stem(slug) or "device")
@@ -187,7 +239,7 @@ def module_relative(stored: str) -> str:
     text = str(stored or "").replace("\\", "/").lstrip("/")
     marker = "qml/maps/"
     if text.lower().startswith(marker):
-        return text[len(marker):]
+        return text[len(marker) :]
     return text
 
 
@@ -624,15 +676,14 @@ def delete(
     device_name: str,
     guid: str = "",
     *,
-    keep_copy: bool = True,
     pictures: bool = False,
     who: str = "Configure Module",
 ) -> str:
     """Deletes the device's module file (the one it uses: a renamed stick's
     old file) and the file choices pointing it there.
 
-    keep_copy: a copy goes to the deleted devices folder first, or nothing
-    is deleted (03 S62, Q5). pictures: its picture folder, old photo files,
+    The caller keeps the Device Library's autosave first (03 S62, S91).
+    pictures: its picture folder, old photo files,
     recovery copy and photo safety copies go too (Delete Device; Delete File
     keeps the pictures, 03 Q14). Refused when another device uses the file.
     The reason it was refused or failed, or "".
@@ -642,12 +693,6 @@ def delete(
     if other_users(slug, device_name, guid):
         return "Another stick is using this file."
     if path.is_file():
-        if keep_copy:
-            kept = keep_deleted_copy(path)
-            if kept is None:
-                return (
-                    "Could not keep a copy of the module file, so it was not deleted."
-                )
         try:
             delete_path(path, who)
         except OSError as exc:
@@ -691,37 +736,6 @@ def move_aside(device_name: str, guid: str = "") -> Path | None:
     return move_aside_path(path)
 
 
-# --- the deleted devices folder -------------------------------------------------
-
-
-def deleted_dir() -> Path:
-    """The deleted devices folder (data folder by default, Options can move
-    it, 03 S98)."""
-    from gremlin.util import deleted_devices_dir
-
-    return Path(deleted_devices_dir())
-
-
-def keep_deleted_copy(path: Path) -> Path | None:
-    """Copies a module file about to be deleted into the deleted devices
-    folder as "<name> <date time>.json", so it can be imported back. None
-    when the copy could not be made."""
-    try:
-        target = deleted_dir()
-        target.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y-%m-%d %H%M%S")
-        stem = Path(path).stem
-        dest = target / f"{stem} {stamp}.json"
-        number = 2
-        while dest.exists():
-            dest = target / f"{stem} {stamp} {number}.json"
-            number += 1
-        module_file.write_bytes(dest, Path(path).read_bytes())
-        return dest
-    except OSError:
-        return None
-
-
 def pack_file_name(device_name: str) -> str:
     """A device name as a file name (characters files can't hold become
     spaces)."""
@@ -729,43 +743,6 @@ def pack_file_name(device_name: str) -> str:
     cleaned = [" " if ch in '<>:"/\\|?*' or ord(ch) < 32 else ch for ch in raw]
     name = " ".join("".join(cleaned).split()).strip(" .")
     return name or "device"
-
-
-def deleted_pack_path(device_name: str, stamp: str = "") -> Path:
-    """deleted devices\\<name>\\<name>.<stamp>.zip (one folder per name,
-    03 S91)."""
-    base = pack_file_name(device_name)
-    return deleted_dir() / base / f"{base}.{stamp or archive_stamp()}.zip"
-
-
-def write_deleted_pack(dest: Path, data: bytes) -> Path:
-    """Delete Device's "Save a copy": writes the device's pack at dest (from
-    deleted_pack_path) atomically. Raises OSError."""
-    module_file.write_bytes(Path(dest), data)
-    return Path(dest)
-
-
-def deleted_items() -> list[dict]:
-    """What the deleted devices folder holds, newest first: Delete File's
-    and Delete Device's module file copies ("file") and Delete Device's
-    packs ("pack"). Each {"kind", "path", "name"}."""
-    target = deleted_dir()
-    if not target.is_dir():
-        return []
-    found: list[dict] = []
-    for path in target.glob("*.json"):
-        found.append({"kind": "file", "path": str(path), "name": path.stem})
-    for path in target.glob("*/*.zip"):
-        found.append({"kind": "pack", "path": str(path), "name": path.parent.name})
-
-    def when(item: dict) -> float:
-        try:
-            return Path(item["path"]).stat().st_mtime
-        except OSError:
-            return 0.0
-
-    found.sort(key=when, reverse=True)
-    return found
 
 
 # --- file choices (the binding store) -------------------------------------------
@@ -888,7 +865,7 @@ def foreign_file(device_name: str, guid: str = "") -> str:
 
 
 def doc_direction(doc: dict, exported_name: str = "") -> str:
-    """"dest" or "source" for a module document (a pack's or a file's)."""
+    """ "dest" or "source" for a module document (a pack's or a file's)."""
     label = _dict(doc.get("pack"))
     named = str(doc.get("device") or label.get("exportedName") or exported_name or "")
     if registry.is_output_name(named):
@@ -900,7 +877,7 @@ def doc_direction(doc: dict, exported_name: str = "") -> str:
 
 
 def direction_for(device_name: str, guid: str = "") -> str:
-    """"dest" for an output device (or a file marked dest), else "source"."""
+    """ "dest" for an output device (or a file marked dest), else "source"."""
     if registry.is_output_name(device_name):
         return "dest"
     doc = read(device_name, guid)
@@ -963,9 +940,43 @@ def known_devices() -> list[dict]:
     return sorted(rows.values(), key=lambda row: row["name"].lower())
 
 
-def match_known_device(name: str) -> dict | None:
-    """The known_devices() row of this name, or None."""
+def match_known_device(name: str, guid: str = "") -> dict | None:
+    """The known_devices() row of this name, or None. With guid, the guid
+    decides (twins share a name, 10 S22): the connected device with that
+    id, else the known row with it; None when neither has it."""
     want = _collapsed(name)
+    key = stored_guid_key(guid)
+    if key:
+        for dev in live_devices():
+            text = guid_text(getattr(dev, "device_guid", ""))
+            if stored_guid_key(text) != key:
+                continue
+            own = " ".join(str(getattr(dev, "name", "") or name).split())
+            path = path_for(own, text)
+            return {
+                "name": own,
+                "guid": text,
+                "connected": True,
+                "hasFile": path.is_file(),
+                "fileName": path.name,
+            }
+        for row in known_devices():
+            if stored_guid_key(row.get("guid", "")) == key:
+                return row
+        # Unplugged, its module file found by its id (a twin's shares the
+        # other twin's name, so the name would find the wrong one, 10 S41).
+        found = file_of_guid(guid)
+        if found is not None:
+            doc = registry.read_doc(found) or {}
+            own = " ".join(str(doc.get("device") or name or found.stem).split())
+            return {
+                "name": own,
+                "guid": str(guid),
+                "connected": False,
+                "hasFile": True,
+                "fileName": found.name,
+            }
+        return None
     if not want:
         return None
     for row in known_devices():
@@ -994,8 +1005,18 @@ def archive_stamp(moment: datetime | None = None) -> str:
     """Year, day, month, then hour, minute and second (local time)."""
     moment = moment or datetime.now()
     month = (
-        "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-        "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+        "JAN",
+        "FEB",
+        "MAR",
+        "APR",
+        "MAY",
+        "JUN",
+        "JUL",
+        "AUG",
+        "SEP",
+        "OCT",
+        "NOV",
+        "DEC",
     )[moment.month - 1]
     return (
         f"{moment.year:04d}-{moment.day:02d}-{month}_"
@@ -1074,7 +1095,11 @@ def filter_nodes(
             continue
         hid = _hid(node)
         pool = {
-            "btn": buttons, "button": buttons, "axis": axes, "hat": hats, "key": keys
+            "btn": buttons,
+            "button": buttons,
+            "axis": axes,
+            "hat": hats,
+            "key": keys,
         }
         if kind in pool:
             if hid in pool[kind]:

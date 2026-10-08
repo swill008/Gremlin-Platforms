@@ -729,9 +729,10 @@ def main_window(tmp_path_factory: pytest.TempPathFactory) -> dict:
 
 def test_s5_the_data_folders_are_made_at_start(main_window: dict) -> None:
     assert {
-        "modules", "logs", "profiles", "scripts", "export", "history",
-        "deleted devices", "plugins",
+        "modules", "logs", "profiles", "scripts", "export", "history", "plugins",
     } <= set(main_window["folders"])
+    # No deleted devices folder (01 S124, D-10-NO-DELETED-FOLDER).
+    assert "deleted devices" not in main_window["folders"]
 
 
 def test_s57_the_title_names_the_profile_and_marks_unsaved_changes(

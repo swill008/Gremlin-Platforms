@@ -552,7 +552,7 @@ ApplicationWindow {
                         return
                     _deleteGate.confirmThen("Delete Module File",
                         "Delete " + moduleFileLabel + "? It holds this device's claimed inputs, calibration and Button Map layout.\n\n"
-                        + "A copy is kept in the deleted devices folder, so you can import it back. "
+                        + "An autosave of it (\"Autosave: module file deleted\") is kept in the Device Library first; if it can't be kept, nothing is deleted. "
                         + "The device's pictures are kept.",
                         "Delete file", function() {
                             moduleFileMessage = moduleModel.deleteModuleFile(deviceGuid, deviceName)

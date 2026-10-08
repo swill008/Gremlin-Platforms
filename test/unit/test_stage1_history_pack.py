@@ -42,6 +42,7 @@ from gremlin import (
     plugin_manager,
     shared_state,
 )
+from gremlin import device_library as library
 from gremlin.auto_mapper import AutoMapper, AutoMapperOptions
 from gremlin.modules import module_file
 from gremlin.profile import DeviceInfo, Profile
@@ -667,36 +668,46 @@ def test_a_pack_output_module_keeps_to_the_vjoys_size(
     assert "Button 99" in result["report"]
 
 
-# --- GL-024: Delete Device's "Save a copy" pack ------------------------------------
+# --- GL-024: Delete Device's "stick deleted" autosave (10 S21) ----------------------
 
 
-def _stick_to_delete(folder: Path, monkeypatch: pytest.MonkeyPatch) -> Profile:
+def _stick_to_delete(
+    folder: Path, monkeypatch: pytest.MonkeyPatch, path: Path | None = None
+) -> Profile:
     write_module(folder, "pjoy_pro", stick_doc(image="pjoy_pro/photo.jpg"))
     (folder / "pjoy_pro").mkdir()
     (folder / "pjoy_pro" / "photo.jpg").write_bytes(b"\xff\xd8 a photo \xff\xd9")
-    profile = new_profile(monkeypatch)
+    profile = new_profile(monkeypatch, path)
     profile.modes.add_mode("Combat")
     map_button(profile, stick_uid(), 1, 1)
     map_button(profile, stick_uid(), 2, 2, "Combat")
+    if path is not None:
+        profile.to_xml(path)
     return profile
 
 
-def test_delete_device_saves_a_pack_that_can_be_imported_back(
+def test_delete_device_keeps_an_autosave_that_can_be_imported_back(
     folder: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    profile = _stick_to_delete(folder, monkeypatch)
+    profile = _stick_to_delete(folder, monkeypatch, tmp_path / "open.xml")
     model = module_model.ModuleListModel()
-    result = json.loads(model.deleteDevice("pJoy Pro", stick_guid(), True))
+    result = json.loads(model.deleteDevice("pJoy Pro", stick_guid()))
     assert result["ok"], result
-    pack = Path(result["packPath"])
-    # S86: the deleted devices folder, a folder per device name.
-    assert pack.parent == tmp_path / "deleted devices" / "pJoy Pro"
-    assert re.fullmatch(r"pJoy Pro\..+\.zip", pack.name)
+    assert result["autosaved"] is True
+    # S86: kept in the Device Library (10 S16-S21), not a deleted devices
+    # folder (D-10-NO-DELETED-FOLDER).
+    found = library.find_device("pJoy Pro", stick_guid())
+    # Still plugged in here, so it shows as Connected (10 S6).
+    assert found is not None
+    setup = found["setups"][0]
+    assert setup["name"] == "Autosave: stick deleted" and setup["origin"] == "autosave"
+    pack = library.pack_path(setup["key"])
     with zipfile.ZipFile(pack) as zf:
         names = zf.namelist()
         doc = json.loads(zf.read("map.json"))
     assert "wires.json" in names and "photo.jpg" in names
     assert doc["claim"]["buttons"] == [1, 2]
+    assert not (tmp_path / "deleted devices").exists()
     assert not (folder / "pjoy_pro.json").exists()
     assert mapped(profile, stick_uid()) == set()
 
@@ -712,7 +723,7 @@ def test_delete_device_saves_a_pack_that_can_be_imported_back(
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Combat", 2)}
 
 
-def test_delete_device_is_refused_when_the_pack_cant_be_read_back(
+def test_delete_device_is_refused_when_the_autosave_cant_be_read_back(
     folder: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     profile = _stick_to_delete(folder, monkeypatch)
@@ -722,37 +733,28 @@ def test_delete_device_is_refused_when_the_pack_cant_be_read_back(
         "assemble",
         lambda *_a, **_k: (b"not a zip", {"device": "pJoy Pro"}),
     )
-    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid(), True))
-    # S86: if it can't be read back, nothing is deleted (and no bad pack stays).
-    assert result == {
-        "ok": False,
-        "error": "The pack could not be read back, so the device was not deleted.",
-    }
+    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid()))
+    # S86, 10 S20: if it can't be read back, nothing is deleted.
+    assert not result["ok"]
+    assert result["error"].startswith(
+        "The device was not deleted. The autosave could not be kept"
+    ), result
     assert (folder / "pjoy_pro.json").read_bytes() == before
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Combat", 2)}
-    assert not list((tmp_path / "deleted devices").rglob("*.zip"))
 
 
-def test_delete_device_is_refused_when_the_pack_cant_be_written(
+def test_delete_device_is_refused_when_the_autosave_cant_be_written(
     folder: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     profile = _stick_to_delete(folder, monkeypatch)
-    blocked = tmp_path / "a folder where the pack would go"
-    blocked.mkdir()
-    monkeypatch.setattr(hardware_profile, "_deleted_pack_path", lambda name: blocked)
-    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid(), True))
+    blocked = tmp_path / "a file where the library would go"
+    blocked.write_text("x", encoding="utf-8")
+    monkeypatch.setattr(library, "folder", lambda: blocked)
+    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid()))
     assert not result["ok"]
-    assert result["error"].startswith("The pack could not be written.")
+    assert "The autosave could not be kept" in result["error"], result
     assert (folder / "pjoy_pro.json").is_file()
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Combat", 2)}
-
-
-def test_save_a_copy_needs_a_module_file(folder: Path) -> None:
-    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid(), True))
-    assert result == {
-        "ok": False,
-        "error": "This device has no module file, so a pack cannot be saved.",
-    }
 
 
 # --- GL-025: Auto Mapper -------------------------------------------------------------

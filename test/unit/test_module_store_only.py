@@ -55,6 +55,11 @@ _ALLOWED = {
     ("gremlin/modules/module_file.py", "writes with module_file directly"),
     # History Restore's copy of a profile next to the profile.
     ("gremlin/ui/history_model.py", "writes with module_file directly"),
+    # The Device Library's own list and saved-setup packs (10), not module
+    # files: module files it puts back go through the store (store.replace).
+    ("gremlin/device_library.py", "writes with module_file directly"),
+    # Saved profiles that aren't open, changed by Copy / Swap (10 S33).
+    ("gremlin/library_profiles.py", "writes with module_file directly"),
 }
 
 

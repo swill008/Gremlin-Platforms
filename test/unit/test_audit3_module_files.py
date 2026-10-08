@@ -174,7 +174,7 @@ def test_delete_device_removes_a_renamed_sticks_file(folder: Path) -> None:
     preview = json.loads(hardware_profile.delete_preview("pJoy Pro", guid))
     assert preview["canPack"] and not preview["shared"]
 
-    result = json.loads(hardware_profile.delete_device("pJoy Pro", guid, False))
+    result = json.loads(hardware_profile.delete_device("pJoy Pro", guid))
     assert result["ok"], result
     # Old: removed pjoy_pro.json (none) and kept old_name.json and its photo.
     assert not (folder / "old_name.json").exists()
@@ -440,7 +440,7 @@ def test_a_deleted_devices_place_in_the_card_order_goes(folder: Path) -> None:
     )
     model = module_model.ModuleListModel()
     module_model._set_order(["gone_stick"] + [r.slug for r in model._rows])
-    raw = json.loads(model.deleteDevice("Gone Stick", "", False))
+    raw = json.loads(model.deleteDevice("Gone Stick", ""))
     assert raw["ok"], raw
     # Old: "gone_stick" stayed in the order for good.
     assert "gone_stick" not in module_model._order_slugs()

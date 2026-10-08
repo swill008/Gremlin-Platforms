@@ -45,6 +45,7 @@ from gremlin import (
     threads,
     util,
 )
+from gremlin import device_library as library
 from gremlin.modules import module_file, output, registry, store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
@@ -93,7 +94,7 @@ def settle_history() -> None:
 def folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     """The modules folder empty (everything there, including picture and
     imported folders other tests left, is put aside and back), with its
-    bindings, the Home layout settings, History, the deleted devices
+    bindings, the Home layout settings, History, the Device Library
     folder, both Undo Import records and the open profile all put back as
     they were afterwards."""
     settle_history()
@@ -114,8 +115,7 @@ def folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
         key: cfg.value(module_model._CFG_SECTION, module_model._CFG_GROUP, key)
         for key in _DISPLAY_KEYS
     }
-    deleted = tmp_path / "deleted devices"
-    monkeypatch.setattr(util, "deleted_devices_dir", lambda: deleted)
+    monkeypatch.setattr(library, "folder", lambda: tmp_path / "device library")
     monkeypatch.setattr(store, "_file_import_undo", {})
     monkeypatch.setattr(device_pack, "_last_import", None)
     monkeypatch.setattr(shared_state, "current_profile", None)
@@ -366,7 +366,7 @@ def test_delete_device_removes_the_devices_actions_file_and_card_layout(
     model.setPileSize("pjoy_pro", 400, 300)
     model.stackSelected("pjoy_pro", "keyboard")
 
-    result = json.loads(model.deleteDevice("pJoy Pro", stick_guid(), False))
+    result = json.loads(model.deleteDevice("pJoy Pro", stick_guid()))
     assert result["ok"], result
     # S92: actions in every mode, the module file, its pictures, its file
     # bindings, and the card's size and stack. Other devices keep theirs.
@@ -399,7 +399,7 @@ def test_delete_device_of_an_unplugged_stick(
     )
     profile = open_profile(monkeypatch)
     model = module_model.ModuleListModel()
-    result = json.loads(model.deleteDevice("Gone Stick", str(_OTHER), False))
+    result = json.loads(model.deleteDevice("Gone Stick", str(_OTHER)))
     assert result["ok"], result
     assert not (folder / "gone_stick.json").exists()
     assert mapped(profile, _OTHER) == set()
@@ -414,23 +414,25 @@ def test_delete_device_on_a_vjoy_keeps_its_output_module_file(folder: Path) -> N
     before = path.read_bytes()
     preview = json.loads(hardware_profile.delete_preview("vJoy 1", vjoy_guid()))
     assert preview["keepModule"] is True
-    result = json.loads(hardware_profile.delete_device("vJoy 1", vjoy_guid(), False))
+    result = json.loads(hardware_profile.delete_device("vJoy 1", vjoy_guid()))
     assert result["ok"], result
     # S93 / Q18: output module files are not deleted.
     assert path.read_bytes() == before
     assert result["keepModule"] and result["keptFile"]
 
 
-def test_delete_device_without_save_a_copy_still_keeps_the_file(
+def test_delete_device_always_keeps_a_stick_deleted_autosave(
     folder: Path, tmp_path: Path
 ) -> None:
-    path = write_module(folder, "pjoy_pro", stick_doc())
-    before = path.read_bytes()
-    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid(), False))
+    write_module(folder, "pjoy_pro", stick_doc())
+    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid()))
     assert result["ok"], result
-    # Q5: always a copy of the module file in deleted devices, as Delete File.
-    copies = list((tmp_path / "deleted devices").rglob("*.json"))
-    assert [c.read_bytes() for c in copies] == [before]
+    # S91, 10 S21: always an autosave in the Device Library (no deleted
+    # devices folder, D-10-NO-DELETED-FOLDER).
+    found = library.find_device("pJoy Pro", stick_guid())
+    assert found is not None
+    assert [s["name"] for s in found["setups"]] == ["Autosave: stick deleted"]
+    assert not (tmp_path / "deleted devices").exists()
 
 
 def test_delete_device_is_refused_while_running(
@@ -439,7 +441,7 @@ def test_delete_device_is_refused_while_running(
     path = write_module(folder, "pjoy_pro", stick_doc())
     profile = open_profile(monkeypatch)
     monkeypatch.setattr(shared_state, "_runtime_active", True)
-    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid(), False))
+    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid()))
     # Q6: "Stop first"; nothing changes.
     assert not result["ok"]
     assert "stop" in result["error"].lower()
@@ -457,7 +459,7 @@ def test_delete_device_leaves_the_profile_unsaved(
     profile.to_xml(saved)
     on_disk = saved.read_bytes()
     map_button(profile, _OTHER, 9, 9)  # another edit, not saved
-    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid(), False))
+    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid()))
     assert result["ok"], result
     assert mapped(profile, stick_uid()) == set()
     # Q4: removed in memory only; the profile on disk is as it was.
@@ -740,26 +742,31 @@ _NOT_FOR_LOGICAL = {
     "Calibration",
     "Auto Mapper",
     "Device Information",
-    "Swap Device…",
+    "Copy Setup to Another Stick…",
+    "Swap with Another Stick…",
+    "Change vJoy Output…",
 }
 
 
 def test_card_menus_leave_out_what_does_not_apply() -> None:
     # S88.
     stick = card_menu("pjoy_pro", "pJoy Pro", "source", "DirectInput", "physical")
-    assert {"Module Setup…", "Calibration", "Auto Mapper", "Swap Device…"} <= set(stick)
+    assert {
+        "Module Setup…", "Calibration", "Auto Mapper", "Swap with Another Stick…"
+    } <= set(stick)
+    assert "Swap Device…" not in stick
     assert "Start Fresh…" not in stick
     damaged = card_menu(
         "pjoy_pro", "pJoy Pro", "source", "DirectInput", "physical", "bad JSON"
     )
     assert "Start Fresh…" in damaged
     xbox = card_menu("xbox", "Xbox 360 Controller", "dest", "XInput", "xbox")
-    assert not {"Module Setup…", "Calibration", "Auto Mapper", "Swap Device…"} & set(
-        xbox
-    )
+    assert not {
+        "Module Setup…", "Calibration", "Auto Mapper", "Swap with Another Stick…"
+    } & set(xbox)
     vjoy = card_menu("vjoy_1", "vJoy 1", "dest", "DirectInput", "physical")
     assert "Module Setup…" in vjoy
-    assert not {"Calibration", "Swap Device…"} & set(vjoy)
+    assert not {"Calibration", "Swap with Another Stick…"} & set(vjoy)
     for slug, name in (("keyboard", "Keyboard"), ("osc", "OSC")):
         menu = card_menu(slug, name, "source", "HID", slug)
         assert not (_NOT_FOR_LOGICAL - {"Module Setup…"}) & set(menu)
@@ -1059,17 +1066,7 @@ def test_delete_device_removes_its_recovery_and_photo_safety_copies(
     stash = store.photo_stash_dir("pjoy_pro")
     stash.mkdir(parents=True)
     (stash / "manifest.json").write_text("{}", encoding="utf-8")
-    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid(), False))
+    result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid()))
     assert result["ok"], result
     assert not recovery.exists()
     assert not stash.exists()
-
-
-def test_the_deleted_devices_folder_is_listed(folder: Path, tmp_path: Path) -> None:
-    # GL-092 (03 S62, S91): the store lists both kinds of copy it keeps.
-    path = write_module(folder, "pjoy_pro", stick_doc())
-    assert store.keep_deleted_copy(path) is not None
-    pack = store.deleted_pack_path("pJoy Pro", "2026-06-OCT_10_00_00")
-    store.write_deleted_pack(pack, b"zip")
-    kinds = sorted(item["kind"] for item in store.deleted_items())
-    assert kinds == ["file", "pack"]

@@ -79,8 +79,10 @@ function commandList() {
           run: function() { openConfigureModule("dest") } },
         { id: "tools.deviceInfo", text: "Device Information", group: "Tools › Device Setup",
           run: function() { openTool("DialogDeviceInformation.qml") } },
-        { id: "tools.swapDevices", text: "Swap Devices", group: "Tools › Device Setup",
-          run: function() { openTool("DialogSwapDevices.qml") } },
+        // The Device Library (10 S2): every device and its saved setups.
+        { id: "tools.deviceLibrary", text: "Device Library…", group: "Tools › Device Setup",
+          keywords: "saved setup autosave copy swap change vjoy output replace stick",
+          run: function() { openDeviceLibrary("", "", "") } },
         { id: "tools.devicePack", text: "Device Pack", group: "Tools › Device Setup",
           run: function() { openTool("DialogDevicePack.qml") } },
         { id: "tools.logical", text: "Logical Device", group: "Tools › Mapping",

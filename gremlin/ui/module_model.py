@@ -1520,9 +1520,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def deletePreview(self, device_name: str, guid: str) -> str:
         return delete_preview(device_name, guid)
 
-    @QtCore.Slot(str, str, bool, result=str)
-    def deleteDevice(self, device_name: str, guid: str, save_copy: bool) -> str:
-        raw = delete_device(device_name, guid, bool(save_copy))
+    @QtCore.Slot(str, str, result=str)
+    def deleteDevice(self, device_name: str, guid: str) -> str:
+        """Delete Device: always keeps a "stick deleted" autosave in the
+        Device Library first (no "Save a copy" question, 10 S21)."""
+        raw = delete_device(device_name, guid)
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:

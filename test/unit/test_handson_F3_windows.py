@@ -2,13 +2,9 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Hands-on fixes F3: Swap Devices' question, Device Information's list and
-Calibration waiting for a stick (spec 04 S80, 02 S9 / Q6, 03 S101).
-
-04 S80: the Swap Bindings question opened inside a window only as tall as
-its own controls; its Cancel and Swap bindings buttons were drawn below the
-window's bottom edge. A question bigger than its window now grows the
-window while it is open (DismissibleDialog, for every window).
+"""Hands-on fixes F3: Device Information's list and Calibration waiting for
+a stick (spec 02 S9 / Q6, 03 S101). (The Swap Devices window these fixes
+also covered, 04 S80, was replaced by the Device Library, D-10-SWAP.)
 
 02 S9: DeviceListModel.deviceType had no getter, so QML's
 `deviceType: "information"` was silently dropped and Device Information
@@ -32,8 +28,6 @@ import os
 import pathlib
 import subprocess
 
-import pytest
-
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "handson_F3_windows_smoke.py"
 
@@ -51,29 +45,6 @@ def _run(tmp_path: pathlib.Path, *args: str) -> dict:
     out = json.loads(lines[-1][len("RESULT "):])
     assert "error" not in out, out
     return out
-
-
-@pytest.mark.parametrize("scale", [100, 150])
-def test_the_swap_question_fits_its_window_and_keys_answer_it(
-    tmp_path: pathlib.Path, scale: int
-) -> None:
-    out = _run(tmp_path, "swap", str(scale))
-    assert out["opened"], out
-    width, height = out["window"]
-    assert set(out["buttons"]) == {"Cancel", "Swap bindings"}, out
-    for name, (x, y, w, h) in out["buttons"].items():
-        assert 0 <= x and x + w <= width, (name, out)
-        assert 0 <= y and y + h <= height, (name, out)
-    # Esc is Cancel (nothing swapped); Return does nothing (a stick sends it).
-    assert out["closed-by-esc"] and out["status-unchanged"], out
-    assert out["open-after-return"], out
-    # The keyboard reaches the buttons.
-    assert out["tab-focus"] in ("Cancel", "Swap bindings"), out
-    if out["tab-focus"] == "Cancel":
-        assert out["closed-by-space"], out
-    # "To connected device": sticks, not vJoy (vJoy cards have no Swap
-    # Device…).
-    assert out["swap-connected"] == ["pJoy Pro"], out
 
 
 def test_device_information_lists_the_left_out_vjoy(

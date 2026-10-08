@@ -9,7 +9,8 @@
   the second (6). Not now kept the copy but deleted its new photo; it now
   keeps both until Restore or Discard (decision A).
 - Swap Devices listed the devices from before a swap, so a second Swap
-  swapped everything back (17).
+  swapped everything back (17). The Swap Devices window is gone (Device
+  Library, D-10-SWAP); the list model's refresh is still checked.
 - Keyboard: after Add Key the highlighted row was another key than the
   editor's (20); a key only looked at in a mode showed Delete (33), and
   Delete in the mode with its actions left it listed.
@@ -118,8 +119,8 @@ if __name__ != "__main__":
     ) -> None:
         import uuid
 
+        from gremlin import swap_devices
         from gremlin.ui.profile import ProfileDeviceListModel
-        from gremlin.ui.tools import Tools
 
         previous = shared_state.current_profile
         loaded = Profile()
@@ -130,7 +131,10 @@ if __name__ != "__main__":
             source = "97b77b40-07d8-11f0-8028-444553540000"
             target = str(uuid.uuid4())
             assert _rows(model, b"uuid") == [source]
-            Tools().swapDevices(source, target)
+            swap_devices.swap_devices(
+                loaded, uuid.UUID(source), uuid.UUID(target)
+            )
+            signal.profileChanged.emit()
             # The bindings moved: both listed, with their new counts (the
             # list said the old device still had them).
             uuids = _rows(model, b"uuid")
@@ -296,14 +300,6 @@ if __name__ != "__main__":
         # Another reset (a key added before the one shown, from elsewhere):
         # the highlight follows the editor's key to its new row.
         assert r["moved"] == "2 S S 2"
-
-    def test_swap_list_selection_after_a_swap(tmp_path: pathlib.Path) -> None:
-        r = _run("swap", tmp_path)
-        before, after = r["swap"].split(" | ")
-        assert before.endswith("- 9 actions")
-        # The same device stays chosen, now with its new count.
-        assert after.endswith("- 0 actions")
-        assert r["swap-count"] == "2"
 
     def test_options_search_does_not_match_other(tmp_path: pathlib.Path) -> None:
         r = _run("options", tmp_path)
@@ -703,71 +699,6 @@ Window {
     _report(warnings)
 
 
-def _swap(out: pathlib.Path) -> None:
-    import uuid
-
-    from PySide6 import QtCore
-
-    app, engine, warnings = _engine(out)  # noqa: F841
-    from gremlin import event_handler, shared_state
-    from gremlin.profile import Profile
-
-    # Device changes aren't wanted here: no listener (and no Windows hooks).
-    class _Listener(QtCore.QObject):
-        device_change_event = QtCore.Signal()
-
-    listener = _Listener()
-    event_handler.EventListener = lambda: listener
-    import gremlin.ui.profile  # noqa: F401
-    import gremlin.ui.tools  # noqa: F401
-    from gremlin.types import InputType
-
-    # A stick with nine bound buttons.
-    loaded = Profile()
-    shared_state.current_profile = loaded
-    stick = uuid.UUID("97b77b40-07d8-11f0-8028-444553540000")
-    for button in range(1, 10):
-        loaded.get_input_item(
-            stick, InputType.JoystickButton, button, "Default", True
-        ).add_item_binding()
-    engine.loadData(
-        b"""
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Window
-import Gremlin.Profile
-import Gremlin.Tools
-Window {
-    width: 500; height: 200; visible: true
-    property alias box: _box
-    Tools { id: _tools }
-    ComboBox {
-        id: _box
-        width: 400
-        model: ProfileDeviceListModel {}
-        textRole: "nameAndActions"
-        valueRole: "uuid"
-    }
-    function swap(to) { return _tools.swapDevices(_box.currentValue, to) }
-}
-""",
-        QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "Root.qml")),
-    )
-    win = engine.rootObjects()[0]
-    _wait(300)
-    before = _js(win, "box.currentText")
-    chosen = _js(win, "box.currentValue")
-    _js(win, f"swap('{uuid.uuid4()}')")
-    _wait(300)
-    after = _js(win, "box.currentText")
-    same = _js(win, "box.currentValue")
-    if same != chosen:
-        print(f"ERROR swap: the choice moved from {chosen} to {same}", flush=True)
-    _Out.result("swap", f"{before} | {after}")
-    _Out.result("swap-count", _js(win, "String(box.count)"))
-    _report(warnings)
-
-
 def _options(out: pathlib.Path) -> None:
     from PySide6 import QtCore
 
@@ -830,8 +761,8 @@ if __name__ == "__main__":
     _part, _out_dir = sys.argv[1], pathlib.Path(sys.argv[2])
     _out_dir.mkdir(parents=True, exist_ok=True)
     try:
-        {"buttonmap": _button_map, "keyboard": _keyboard, "swap": _swap,
-         "options": _options}[_part](_out_dir)
+        parts = {"buttonmap": _button_map, "keyboard": _keyboard, "options": _options}
+        parts[_part](_out_dir)
     except Exception as failed:  # noqa: BLE001 (said, then the process ends)
         import traceback
 

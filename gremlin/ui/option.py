@@ -162,7 +162,6 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ("", [("global", "files", "export-folder")]),
         ("", [("global", "files", "logs-folder")]),
         ("", [("global", "files", "history-folder")]),
-        ("", [("global", "files", "deleted-devices-folder")]),
         ("", [("global", "files", "plugin-directory")]),
     ]),
 ]
@@ -196,6 +195,8 @@ def stored_choice(key: tuple[str, str, str], shown: Any) -> Any:  # noqa: ANN401
 _HIDDEN = {
     ("action", "general", "action-priorities"),
     ("global", "general", "hidhide-on-start"),
+    # Chosen in Device Library Settings only (10 S37, 01 S124).
+    ("global", "files", "device-library-folder"),
 }
 
 # Sections with a window of their own (the Button Map's options).

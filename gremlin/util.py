@@ -1002,11 +1002,6 @@ def history_dir() -> Path:
     return _child_dir("history")
 
 
-def deleted_devices_dir() -> Path:
-    """Backup packs saved by Delete Device."""
-    return _configured_child("deleted-devices-folder", "deleted devices")
-
-
 def ensure_data_folders() -> None:
     """Create the data folder and the folders inside it."""
     modules_dir()
@@ -1015,7 +1010,6 @@ def ensure_data_folders() -> None:
     scripts_dir()
     export_dir()
     history_dir()
-    deleted_devices_dir()
     plugins_dir()
 
 

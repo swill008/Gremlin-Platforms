@@ -57,7 +57,8 @@ Rectangle {
     signal openPairing()
     signal openCalibration()
     signal openDeviceInformation()
-    signal assignHardware()
+    // The Device Library on this card's device: "copy", "swap" or "output".
+    signal openDeviceLibrary(string action)
     signal ignoreDevice()
     signal dropAt(real sx, real sy)
     signal dragStarted()
@@ -448,8 +449,9 @@ Rectangle {
     function menuModel() {
         var dest = direction === "dest"
         var xbox = bus === "XInput" || tab === "xbox" || slug === "xbox"
-        // The Keyboard and OSC aren't game controllers: Swap Devices, the
-        // Auto Mapper and Device Information don't list them.
+        // The Keyboard and OSC aren't game controllers: the Device Library's
+        // Copy / Swap / Change vJoy Output, the Auto Mapper and Device
+        // Information don't list them.
         var notStick = slug === "keyboard" || slug === "osc"
         // The Logical Device has no hardware to set up, calibrate, describe
         // or swap (03 Q7).
@@ -485,8 +487,14 @@ Rectangle {
             MenuModel.section("device", "Device", [
                 _card.damaged === "" ? null
                     : MenuModel.action("Start Fresh…", function() { _card.startFresh() }),
-                (dest || notStick || logical) ? null
-                    : MenuModel.action("Swap Device…", function() { _card.assignHardware() }),
+                // Not on output (vJoy, Xbox), Keyboard, OSC or Logical Device
+                // cards (03 S88, 09 S31): they open the Device Library.
+                (dest || xbox || notStick || logical) ? null
+                    : MenuModel.action("Copy Setup to Another Stick…", function() { _card.openDeviceLibrary("copy") }),
+                (dest || xbox || notStick || logical) ? null
+                    : MenuModel.action("Swap with Another Stick…", function() { _card.openDeviceLibrary("swap") }),
+                (dest || xbox || notStick || logical) ? null
+                    : MenuModel.action("Change vJoy Output…", function() { _card.openDeviceLibrary("output") }),
                 MenuModel.action("Reset Card Layout", function() { _card.clearSettings() }),
                 // Output module files are never deleted (03 Q18).
                 dest ? null
