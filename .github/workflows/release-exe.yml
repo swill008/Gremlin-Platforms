@@ -25,10 +25,27 @@ jobs:
       - name: Set up Poetry
         uses: abatilo/actions-poetry@v2
         with:
-          poetry-version: "latest"
+          # The Poetry that wrote poetry.lock (its first line); never "latest".
+          poetry-version: "2.4.3"
+
+      # Only the locked versions go into the exe (see ci.yml).
+      - name: Check poetry.lock matches pyproject.toml
+        run: poetry check --lock
 
       - name: Install dependencies
-        run: poetry install
+        run: poetry sync --no-interaction
+
+      # What this exe is built from, on the run's summary page.
+      - name: Record the package versions
+        shell: bash
+        run: |
+          {
+            echo "### Built with"
+            echo '```'
+            poetry run python --version
+            poetry run python -m pip list --format=freeze
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # The in-app updater finds the release by these names, so they all come
       # from version.json.

@@ -73,12 +73,20 @@ jobs:
       - name: Install Poetry
         uses: abatilo/actions-poetry@v2
         with:
-          poetry-version: "latest"
+          # The Poetry that wrote poetry.lock (its first line); never "latest".
+          poetry-version: "2.4.3"
 
-      # poetry.lock is not in the repository: poetry resolves pyproject.toml.
+      # poetry.lock is in the repository and is the only source of versions:
+      # a lock out of step with pyproject.toml fails here instead of being
+      # re-resolved (PySide6 6.12.0 came in that way, run 37754952665), and
+      # sync installs exactly the locked set. test/unit/test_dependency_lock.py
+      # keeps these steps.
+      - name: Check poetry.lock matches pyproject.toml
+        run: poetry check --lock
+
       - name: Install dependencies
         id: install
-        run: poetry install --no-interaction
+        run: poetry sync --no-interaction
 
       - name: Install the baseline's pyright and ruff versions
         run: poetry run python -m pip install $(poetry run python tools/pyright_baseline.py --pins)
