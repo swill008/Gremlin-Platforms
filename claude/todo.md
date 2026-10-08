@@ -162,6 +162,10 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     before the Device Library, and EventListener().terminate() doesn't help.
     run_tests.py parts end anyway, so full runs and CI pass. Find the native cause;
     meanwhile arm a faulthandler deadman at the end of pytest_unconfigure.
+    Same family: Home models (ModuleListModel) made by tests are left alive and
+    refresh during later tests, hitting their stand-ins (LW swap fake 2026-10-08,
+    test_diagnostics_zip on CI run 37853647126). Fixed the two fakes; the real fix is
+    test fixtures that delete the models they make (or a conftest teardown).
 
 43. Exit-hang check (user go 2026-10-08, after the Device Library is committed):
     (1) test-plan.md rule: a run must end within 20 s of pytest's summary, else it is an

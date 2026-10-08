@@ -1,6 +1,6 @@
 # Device Library
 
-**Approved by the user 2026-10-08. Not built yet.** Written from
+**Approved by the user 2026-10-08. S1-S42 built (2026-10-08); S43-S50 approved, being built.** Written from
 the design discussion of 2026-10-08 (decisions D-10-* in
 `claude/decisions.md`) and the off-screen Qt prototype in
 `.agent-logs/handson/DL/` (renders `dl_main.png`, `dl_menu.png`,

@@ -175,6 +175,12 @@ ApplicationWindow {
                            + "a stick that is set up here is deleted with Delete Device on Home.")
     }
 
+    // The Device Library Guide: only the Device Library's topics (S42).
+    function openGuide() {
+        Helpers.createComponent("DialogDeviceLibraryGuide.qml")
+    }
+
+    Shortcut { sequence: "F1"; onActivated: _lib.openGuide() }
     Shortcut { sequence: "F2"; onActivated: _lib.startRename() }
     Shortcut { sequence: "Ctrl+F"; onActivated: { _search.forceActiveFocus(); _search.selectAll() } }
 
@@ -295,6 +301,11 @@ ApplicationWindow {
                 id: _settingsMenu
                 title: "Settings"
                 ThemedMenuItem { text: "Device Library Settings…"; enabled: !_lib.busy; onTriggered: _settingsDlg.openNow() }
+            }
+            ThemedMenu {
+                id: _helpMenu
+                title: "Help"
+                ThemedMenuItem { text: "Device Library Guide"; hint: "F1"; onTriggered: _lib.openGuide() }
             }
         }
 

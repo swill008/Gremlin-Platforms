@@ -25,7 +25,8 @@ ApplicationWindow {
     U.Universal.theme: Style.theme
 
     // "" for the program's User Guide; "buttonmap" for the Button Map's own
-    // guide (DialogButtonMapGuide.qml), which covers only the Button Map.
+    // guide (DialogButtonMapGuide.qml), which covers only the Button Map;
+    // "devicelibrary" for the Device Library's (DialogDeviceLibraryGuide.qml).
     property string guide: ""
 
     ToolWindowMemory {
@@ -36,7 +37,9 @@ ApplicationWindow {
     }
 
     property string initialSection: ""
-    property var _topics: guide === "buttonmap" ? HelpTopics.buttonMapTopics() : HelpTopics.topics()
+    property var _topics: guide === "buttonmap" ? HelpTopics.buttonMapTopics()
+                        : guide === "devicelibrary" ? HelpTopics.deviceLibraryTopics()
+                        : HelpTopics.topics()
     property int _index: 0
 
     function _showSection(name) {
