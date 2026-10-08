@@ -48,9 +48,14 @@ Every piece of work, not only big batches:
    `PYTHONUNBUFFERED=1 <command> 2>&1 | python tools/agent_log.py <AGENT>`.
    Output goes to `.agent-logs/<AGENT>.log` and, prefixed with the agent's
    name, to `.agent-logs/all.log` (not in git). The lead's own runs use the
-   name `lead`. When agents start, give the user the commands to watch them:
-   `Get-Content .agent-logs\<AGENT>.log -Wait -Tail 50` per agent and
-   `Get-Content .agent-logs\all.log -Wait -Tail 80` for all of them.
+   name `lead`. **Whenever agents are spawned (user 2026-10-07), open a live
+   log view for the user straight away** — a separate PowerShell window
+   (`Start-Process powershell -ArgumentList '-NoLogo','-NoProfile','-NoExit',
+   '-Command',"Get-Content '<repo>\.agent-logs\all.log' -Wait -Tail 80"`;
+   the Terminal panel's tabs don't start here) — unless one is already open,
+   and give the watch commands with full paths:
+   `Get-Content "<repo>\.agent-logs\<AGENT>.log" -Wait -Tail 50` per agent and
+   `Get-Content "<repo>\.agent-logs\all.log" -Wait -Tail 80` for all of them.
 4. **Agents: parallel by default (user 2026-10-07).** Before starting any
    task, and again whenever new work appears mid-task (several CI failures,
    several findings), split it into independent pieces and give each its own
