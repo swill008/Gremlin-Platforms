@@ -273,10 +273,10 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 
 ### Deleted-device backups
 
-- **S86** Delete Device with "Save a copy in deleted devices" should first write a full pack (module file, pictures, wires in every mode) to the deleted devices folder in a folder per device name; if it can't be written or read back, nothing is deleted. [user confirmed 2026-10-06; was code only] [test-plan: H-19g-b for the folder]
-- **S87** The deleted devices folder should be in the data folder by default and changeable in Options > Folders. [test-plan: H-19g-b] [test: test_deleted_devices_folder.py]
+- **S86** Delete Device should first keep a "stick deleted" autosave (a full pack: module file, pictures, wires in every mode) in the Device Library (10 S16-S21); if it can't be written or read back, nothing is deleted. [user confirmed 2026-10-06; was code only] [test-plan: H-19g-b for the folder] [changed 2026-10-08 to follow D-10-DELETE (Device Library, 10)]
+- **S87** The Device Library folder (which replaces the deleted devices folder) should be in the data folder by default and changeable in Device Library Settings (10 S36-S37). [test-plan: H-19g-b] [test: test_deleted_devices_folder.py] [changed 2026-10-08 to follow D-10-DELETED (Device Library, 10)]
 - **S88** Delete File (Module Setup) should ask first and copy the module file into the deleted devices folder as "<name> <date time>.json"; when the copy fails nothing is deleted. [tracker: A2] [test-plan: SAFE-1] [test: test_data_safety.py]
-- **S89** A deleted device's pack can be put back with Device Pack > Import. [user confirmed 2026-10-06; was code only]
+- **S89** A deleted device's pack can be put back with Device Pack > Import, or from the Device Library with Copy to Another Stick (10 S22). [user confirmed 2026-10-06; was code only] [changed 2026-10-08 to follow D-10-COPY (Device Library, 10)]
 
 ### Auto Mapper
 

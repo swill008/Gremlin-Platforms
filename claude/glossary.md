@@ -22,7 +22,7 @@ Tracker refs in brackets.
 | The editor for how a page looks (Home, Configuration, Logical) [D9] | **Appearance** ("Appearance…") | Show Editor, Display, Display Editor, View Settings, Display options |
 | The current mode [D10] | one label, **Mode**, on the toolbar; the footer's duplicate goes | "Configuring mode" + "Executing mode" (always the same) |
 | Hiding a card from Home [D3] | **Hide Card** / **Hidden Cards** | Hide device / Hidden devices (too close to HidHide) |
-| Swapping which device a profile uses [D5] | card command **Swap Device…** (opens Swap Devices); "Assign hardware" stays only on the Logical page | Assign hardware… on the card |
+| Putting one stick's setup on another (10) | card and Device menu commands **Copy Setup to Another Stick…** (card) / **Copy to Another Stick…** (Device Library), **Swap with Another Stick…**, **Change vJoy Output…**; "Assign hardware" stays only on the Logical page | Swap Device…, Swap Devices (replaced 2026-10-08), Assign hardware… on the card |
 | The free-text box in a binding's header [D7] | **Note** (the Description action keeps its name) | Description (same word as the action) |
 | Adding to a macro [D8] | **Add Step** (other "Add Action" buttons all add an action, so they stay) | Add Action in the Macro editor |
 | The program's name [D12] | **Gremlin-Platforms** in titles and the tray; "the program" in sentences; HidHide's switch "Gremlin-Platforms controls HidHide" | Gremlin, Gremlin control |
@@ -37,10 +37,10 @@ Tracker refs in brackets.
 | Setting a device up again after its module file can't be read | **Start Fresh…** (card menu); the damaged file is kept as a copy | Reset module, Repair |
 | A module file another window saved while the Button Map was being edited | title **Module File Changed**; buttons **Keep Mine** / **Take Theirs** / Cancel | Conflict |
 | Taking back the last Device Pack import / mode delete | **Undo Import** (asks first) / **Undo Delete Mode** | Revert import, Restore mode |
-| Release notes in the Update window (01 S133) | **Getting the release notes…** while they load; **Release notes unavailable.** when there are none or no connection | Loading…, Fetching, No changelog |
+| Release notes in the Update window (01 S133) | **What's new in <version>** (only when several versions); **Release notes unavailable.** when there are none or no connection; the window opens with the notes already there (D-01-UPDATE-NOTES-CACHE) | Getting the release notes…, Loading…, Fetching, No changelog |
 | Filtering the Button Map's Layers panel (07 S102) | **Search layers…** (Ctrl+F); kind toggles **All · Chips · Groups · Hotspots · Leaders · Shapes · Lines · Pictures · Text · Tables · Photo**; "N of M" or **No layers match** | Find, Filter, Lookup |
 | A Button Map export (PDF, PNG, JPG) still being written in the background (07 S101) | **Exporting…** (muted note in Print & Export; the Export buttons are disabled meanwhile); a failure is **Export Failed** with the reason (07 Q19) | Saving…, Busy, Please wait, Working… |
-| Where Delete Device and Delete File keep their copies | the **deleted devices** folder (Options › Folders); pack imports keep the old file in the **imported** folder | trash, backup folder |
+| Where Delete Device and Delete File keep their copies | the **Device Library** (its folder in Device Library Settings); deleted sticks show there as **Deleted**; pack imports keep the old file in the **imported** folder | deleted devices folder (replaced 2026-10-08), trash, backup folder |
 
 ## Core terms
 
@@ -67,4 +67,8 @@ meanings; define a new idea here before it appears on screen.
 | **History** | Every saved change (profile saves, module files, settings), kept in its own files so it can be seen later (Tools > History, or History in an editor). Not Undo: Undo steps back while editing; History keeps what was saved. |
 | **Restore** | Putting back the version before or after a change from the History. A module file or settings restore is saved at once and is a new History entry at once; an input's actions go back into the open profile unsaved and show in the History at the next Save Profile; a whole-profile restore writes a copy next to the profile, which is not a History entry (08 Q1). |
 | **Button Map** | A picture of a device with a **chip** per control, a **hotspot** on the photo for each and a **leader** line between them; unplaced chips wait in the **pool**. Layout only: it never changes actions. |
+| **Device Library** | The window that keeps every device the program has known (connected, not connected, deleted, shared) and its saved setups (10). Not the internal device library (dill). |
+| **Saved setup** | A stored copy of a device's settings and bindings in the Device Library, with a name and a description: kept by you (**Save to Device Library…**) or automatically (an **autosave**). |
+| **Autosave** | A saved setup the program keeps by itself before something replaces a stick's settings (deleted, Copy, Swap, Change vJoy Output, Device Pack); named "Autosave: <reason>"; the newest 10 per stick are kept. Renaming or describing one makes it yours. |
+| **Shared** (device) | A device added to the Device Library from someone else's Device Pack; it can be copied from, never to. |
 | **Wire** | The link from a device's control, through its input module, to an output module (the wiring layer: hardware > input module > wiring > output module > driver). A wire carries the control's actions. Button Map lines are never wires: they are **leaders**. |

@@ -255,7 +255,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 - **S28** Sort should order the list A-Z by address. [user confirmed 2026-10-06; was code only]
 - **S29** OSC inputs should be listed in Logical Device → Assign Hardware for a button. [help: Assign hardware and actions]
 - **S30** The OSC page should have no Appearance panel. [help: Appearance] [tracker: AU-52]
-- **S31** The OSC card should not offer Swap Device, Auto Mapper, Device Information or Calibration. [tracker: AU-68, AU-58, AU-91]
+- **S31** The OSC card should not offer Copy Setup to Another Stick, Swap with Another Stick, Change vJoy Output (which replace Swap Device), Auto Mapper, Device Information or Calibration. [changed 2026-10-08 to follow D-10-SWAP (Device Library, 10)] [tracker: AU-68, AU-58, AU-91]
 - **S32** Input highlighting should not jump to OSC inputs. [user confirmed 2026-10-06; was code only] (backend.py 277)
 - **S33** OSC Add and Calibration should each hold their own highlight pause; closing one does not resume while the other is open. [tracker: N11]
 - **S34** The OSC page's empty state should talk about OSC, not sticks. [tracker: AU-58 (left: OSC parked)]

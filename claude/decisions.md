@@ -28,7 +28,7 @@ answers:
 
 Page numbers: 01 app shell, 02 devices and input, 03 modules, 04 profile and
 modes, 05 actions and editors, 06 Run and outputs, 07 Button Map, 08 History,
-Device Pack and Auto Mapper, 09 OSC, sound and the rest.
+Device Pack and Auto Mapper, 09 OSC, sound and the rest, 10 Device Library.
 
 Pages 06, 05 and 03 were reviewed question by question. Pages 01, 02, 04,
 07, 08 and 09 were approved "all as recommended" (2026-10-06): each of their
@@ -286,6 +286,27 @@ only when OSC is picked up.
 | D-09-Q18 | 2026-10-06 | OSC (parked): Options text "while the profile runs" and "the port your OSC sender sends to". | Glossary words (recommended). | 09 Q18 |
 | D-09-Q19 | 2026-10-06 | `gremlin/fsm.py` and its test are removed, after the leftover list is agreed. | Used only by its own test (recommended). | 09 Q19 |
 | D-09-Q20 | 2026-10-06 | The leftover table in page 09 section 2 is accepted; pages 01, 05, 07, 08 confirm their files. | (recommended) | 09 Q20 |
+
+## 10 Device Library (approved 2026-10-08)
+
+| ID | Date | Decision | Why / rules out | Spec refs |
+|---|---|---|---|---|
+| D-10-LIBRARY | 2026-10-08 | A Device Library keeps every device the program has known: connected, not connected, deleted, and shared (from someone else's pack, never plugged in here). | Copy, swap and replace need one place to pick any stick from (user) | 10 S6-S9 |
+| D-10-NAMES | 2026-10-08 | Every device and saved setup can be renamed and described; a set-up device has one name (Library and Home card agree). | Tell one stick, setup or set of bindings from another (user) | 10 S7 |
+| D-10-ROWS | 2026-10-08 | A device row opens with a caret to its saved setups, newest first; the user's own and autosaves are marked differently. | User | 10 S10 |
+| D-10-AUTOSAVE | 2026-10-08 | Autosave without asking when a stick is deleted, and before Copy, Swap, Change vJoy Output and a Device Pack import replace its settings; reason in the name; newest 10 per stick kept; a renamed or described autosave becomes the user's and is never removed by the limit. Bindings copies are kept. | User (a1-a4) | 10 S13, S16-S21, S25, S28, S32 |
+| D-10-WINDOW | 2026-10-08 | The Device Library is a separate window with its own menus (File, Edit, Device, View, Settings) and Device Library Settings; opened from Home and Tools › Device Setup; card items open it on the card's device. | User (f) | 10 S1-S3 |
+| D-10-DELETED | 2026-10-08 | Deleted devices are part of the Library; the deleted devices folder setting moves from Options into Device Library Settings as the library folder; old deleted-devices files show as Deleted. | User (g) | 10 S9, S37; 01 S124; 03 S98; 08 S87 |
+| D-10-DELETE | 2026-10-08 | Delete Device always keeps a 'stick deleted' autosave and no longer asks 'Save a copy'. | User (h) | 10 S21; 03 S90-S91; 08 S86 |
+| D-10-COPY | 2026-10-08 | Copy Setup to Another Stick: a saved setup (or a device's settings) onto a connected stick, ticked parts (Calibration off by default), like a Device Pack import; the source never changes. | Case 1: new stick, old bindings (user) | 10 S22-S25; 03 S88; 08 S89 |
+| D-10-SWAP | 2026-10-08 | Swap with Another Stick: two connected sticks exchange the ticked parts, warnings both ways. Replaces Swap Devices (Tools menu and the card's Swap Device…). | Case 2; Swap Devices only swapped bindings and confused (user) | 10 S26-S29; 04 S77-S83, Q20; 03 S88; 09 S31 |
+| D-10-OUTPUT | 2026-10-08 | Change vJoy Output: a stick keeps its bindings, only the vJoy they send to changes (per vJoy row), optionally swapping the stick that used the target; unclaimed outputs, macros and scripts naming a vJoy are listed, not changed. | Case 3 (user) | 10 S30-S32 |
+| D-10-PROFILES | 2026-10-08 | Copy, Swap and Change vJoy Output list every profile with bindings for the sticks, the open one ticked (Tick all); profiles not open get a backup before they change. | User (b, option 3) | 10 S23, S27, S30, S33-S34 |
+| D-10-SEARCH | 2026-10-08 | Search matches names, descriptions, contents, profile and mode names, vJoy numbers and autosave reasons. | User (d, option 3) | 10 S5 |
+| D-10-TIDY | 2026-10-08 | The status bar shows the Library's size; Edit › Tidy Library… lists what it would remove and asks first; nothing else removes without asking except the autosave limit. | User (e, options 2 and 3) | 10 S4, S15, S38 |
+| D-10-WORD | 2026-10-08 | The word for a stored copy is 'saved setup'; 'autosave' for the ones the program keeps. | User (c) | glossary; 10 |
+| D-10-PROTO | 2026-10-08 | Window layout as the Qt prototype v3: quiet outline chips, red Delete, photo preview and short history in the details, Copy/Swap/Change dialogs with warning boxes. | User reviewed the renders | 10 S3, S11, S23, S27, S30 |
+| D-10-Q1-DROP | 2026-10-08 | No autosave when a profile is deleted: the program can't delete profiles, so it never sees it. | User (Q1) | 10 Q1, S16 |
 
 ## Later decisions
 

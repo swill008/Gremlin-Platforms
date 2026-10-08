@@ -258,6 +258,8 @@ Who else changes profile data (not single-owner)
 
 ### Swap Devices
 
+**Replaced (2026-10-08, D-10-SWAP):** Swap Devices (Tools menu and the card's Swap Device…) goes. Swap with Another Stick, Copy Setup to Another Stick and Change vJoy Output in the Device Library (10 S22-S34) replace it; S77-S79 carry over as 10 S26 and S29, Q20 as 10 S29. S77-S83 below describe today's code until it is removed.
+
 - S77. It should move every binding, every device reference inside actions and every script variable from the chosen profile device to the chosen connected device, and the connected device's bindings the other way (a swap, not a copy). [help: Swap Devices] [tracker: AU-36]
 - S78. It should move inputs with no actions with their device too. [tracker: AU-36]
 - S79. It should leave out and refuse the Keyboard, Logical Device, OSC and Xbox. [tracker: AU-91] [test-plan: AUDIT2-F-H-REST]

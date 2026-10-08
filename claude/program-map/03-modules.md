@@ -355,19 +355,19 @@ Every device has a module file that says which of its controls the program may u
 - S87. Card order, hiding, sizes and stacks should be kept by the device's own name, not by its file. [system-maps: decision F2 (pending)]
 
 ### J. Card menu
-- S88. The card menu should leave out what doesn't apply: Xbox has no Module Setup; output, Keyboard and OSC cards have no Calibration; Keyboard, OSC and Xbox have no Auto Mapper or Device Information; output, Keyboard and OSC have no Swap Device…; Start Fresh… shows only for a damaged file. [help: Home] [tracker: AU-68, AU-58]
+- S88. The card menu should leave out what doesn't apply: Xbox has no Module Setup; output, Keyboard and OSC cards have no Calibration; Keyboard, OSC and Xbox have no Auto Mapper or Device Information; output, Keyboard, OSC, Logical Device and Xbox have no Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output… (they replace Swap Device…, which goes); Start Fresh… shows only for a damaged file. [help: Home] [tracker: AU-68, AU-58] [changed 2026-10-08 to follow D-10-COPY, D-10-SWAP, D-10-OUTPUT (Device Library, 10)]
 - S89. Calibration and Auto Mapper opened from a card should open on that card's module file. [tracker: C5] [test: test_audit3_module_files::test_calibration_and_auto_mapper_open_on_the_cards_file]
 
 ### K. Delete Device
-- S90. Delete Device should take three steps: an explanation with "Save a copy in deleted devices" (ticked when there is a file), a red confirm, then a result. [test-plan: H-19g]
-- S91. "Save a copy" should write a pack to `deleted devices\<name>\<name>.<stamp>.zip` and check it reads back; if it can't, nothing is deleted. [test-plan: H-19g-b] [code: hardware_profile.py:1107-1135]
+- S90. Delete Device should take three steps: an explanation (saying an autosave is kept in the Device Library, when that trigger is on), a red confirm, then a result. There is no "Save a copy" question. [test-plan: H-19g] [changed 2026-10-08 to follow D-10-DELETE (Device Library, 10)]
+- S91. It should keep a "stick deleted" autosave in the Device Library (10 S16-S21) and check it reads back; if it can't, nothing is deleted. [test-plan: H-19g-b] [code: hardware_profile.py:1107-1135] [changed 2026-10-08 to follow D-10-DELETE (Device Library, 10)]
 - S92. It should remove the device's actions in every mode, its module file and pictures, its file bindings, and the card's size and stack. [code: StatusPage.qml:401] [test: test_audit3_module_files::test_delete_device_removes_a_renamed_sticks_file]
 - S93. For a vJoy or Xbox card it should keep the output module file and remove only actions stored on that device. [user confirmed 2026-10-06; was code only: hardware_profile.py:1148-1151, StatusPage.qml:394-395]
 - S94. A file another device uses should stay. [test: test_audit3_module_files::test_a_file_another_stick_uses_is_not_deleted]
 - S95. The profile should be written to disk at once when it has a file; if that fails, the module file and the pack are kept and the user is told to reload the profile. [history-notes: "Delete Device, which saves at once"] [code: hardware_profile.py:1033-1057, 1136-1143]
 - S96. A device still plugged in should keep a card without a module; an unplugged one's card and its place in the order go. [code: module_model.py:1431-1444] [test: test_audit3_module_files::test_a_deleted_devices_place_in_the_card_order_goes]
 - S97. The deleted device's open windows should close. [test-plan: H-19g]
-- S98. The deleted devices folder should be in the data folder by default and can be chosen in Options. [test-plan: H-19g-b fix]
+- S98. Deleted devices are kept in the Device Library; its folder is in the data folder by default and is chosen in Device Library Settings (10 S36-S37), not Options. [test-plan: H-19g-b fix] [changed 2026-10-08 to follow D-10-DELETED (Device Library, 10)]
 
 ### L. Calibration
 - S99. Calibration should be stored in the device's input module and applied before any action sees the axis. [help: Calibration]
