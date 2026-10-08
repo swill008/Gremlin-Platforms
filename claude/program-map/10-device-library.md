@@ -79,7 +79,7 @@ works on files and the profile through their owners.
 
 ### A. The window
 
-- **S1** The Device Library should be a separate window, like the Button Map, with its own menu bar: **File** (Import Device Pack…, Export Saved Setup…, Open Library Folder, Close), **Edit** (Undo, Rename… (F2), Delete…, Tidy Library…; the description is edited in place), **Device** (Save to Device Library…, Copy to Another Stick…, Swap with Another Stick…, Change vJoy Output…), **View** (Connected, Not Connected, Deleted, Autosaves, Expand All, Collapse All, Search…), **Settings** (Device Library Settings…). Menus follow 01 S66 (only what can be used now). [user decision: D-10-WINDOW]
+- **S1** The Device Library should be a separate window, like the Button Map, with its own menu bar: **File** (Import Device Pack…, Export Saved Setup…, Open Library Folder, Close), **Edit** (Undo, Rename… (F2), Delete…, Tidy Library…; the description is edited in place), **Device** (Save to Device Library…, Copy to Another Stick…, Swap with Another Stick…, Change vJoy Output…), **View** (Connected, Not Connected, Deleted, Autosaves, Expand All, Collapse All, Search…), **Settings** (Device Library Settings…), **Help** (Device Library Guide, F1; S42). Menus follow 01 S66 (only what can be used now). [user decision: D-10-WINDOW]
 - **S2** It should open from a Device Library… button on Home and from Tools › Device Setup › Device Library…; the card menu items (03 S88) open it on that card's device. [D-10-WINDOW]
 - **S3** The left side should hold filter chips (Connected, Not connected, Deleted, Autosaves; several at once, each an outline with a tick when on), a search box and the device list; the right side the details of what is selected; a divider between them can be dragged. [D-10-WINDOW, D-10-PROTO]
 - **S4** The status bar should show the number of devices and saved setups, the autosave limit, the library's size on disk (e.g. "Library: 48 MB") and the library folder. [D-10-TIDY]
@@ -99,7 +99,7 @@ works on files and the profile through their owners.
 - **S12** Device › Save to Device Library… should keep a saved setup of the selected device (the user's own): its module file now, and its bindings from the profiles the user ticks (one saved setup per profile, named after the profile by default). [D-10-SAVE]
 - **S13** An autosave the user renames or describes becomes the user's own and is never removed by the autosave limit. [D-10-AUTOSAVE]
 - **S14** Export Saved Setup… should write the saved setup as a Device Pack anywhere the user picks (08 S57 rules). [D-10-SHARE]
-- **S15** Delete… should ask first, then remove the saved setup (or a device and all its saved setups). A connected or set-up device is never deleted here (that is Delete Device, 03 K); only its saved setups. [D-10-TIDY]
+- **S15** Deleting always asks first and names exactly what goes. On a saved setup, **Delete…** removes it. On a device the items depend on its state (S47): a **not connected** device (unplugged, deleted or from a pack) has **Remove from Library…**, which removes the device and all its saved setups, and, when it still has a module file here, removes that too as Home's Delete Device does (03 K, autosave first, refused while the profile runs); a **connected** device has **Clear Setup…** (the same as Delete Device: an autosave first, then its module file and bindings go; the stick stays plugged in with no setup) and **Delete Saved Setups…** (forgets its saved setups; the stick keeps its settings). [D-10-TIDY] [changed 2026-10-08 to follow D-10-REMOVE]
 
 ### D. Autosaves
 
@@ -152,6 +152,21 @@ works on files and the profile through their owners.
 - **S40** Double-clicking a saved setup should open Copy to Another Stick with it as From. [D-10-STREAMLINE]
 - **S41** Edit › Undo should put the last Copy, Swap or Change vJoy Output back by copying the autosaves it kept onto their sticks (every part they hold, into the profiles they came from). Because it uses the autosaves, it still works after the window closes or the program restarts, until another change replaces it. Undo is itself a change and keeps its own autosave first. The Edit menu item names the change: "Undo <change>" (e.g. "Undo Copy DCS F-16 to Right stick"), and right after an Undo it reads "Redo <change>". [D-10-STREAMLINE] [D-10-REDO-LABEL]
 
+### L. Guide
+
+- **S42** Help › Device Library Guide (and F1 in the window) should open the User Guide window showing only the Device Library's own topics, as the Button Map Guide does for the Button Map (07): what the Library is, devices and saved setups, autosaves, Copy, Swap, Change vJoy Output, Undo and Redo, profiles that aren't open, search and filters, packs (import, export, sharing), settings and Tidy, Delete Device and Delete File, renamed and twin sticks, and common questions. The program's User Guide keeps its Device Library topic and points to the guide. [D-10-GUIDE]
+
+### M. Right-click menu and selection
+
+- **S43** Right-clicking a row should first select it (highlighted, details shown, as a left-click does), then open its menu; the keyboard Menu key and Shift+F10 open the same menu on the selected row. Rows show a hover highlight and a pressed flash; a row that is being changed shows a small busy mark. [D-10-CONTEXT]
+- **S44** A device's menu should hold, as they apply: Copy to Another Stick… (from its current settings), Swap with Another Stick… (connected), Change vJoy Output…, Save to Device Library…, Export Current Setup… (a Device Pack of its current settings), Rename… (F2), Edit Description, Open Module Setup…, Open Button Map, Show on Home, Expand / Collapse, and the delete items of S15. [D-10-CONTEXT]
+- **S45** A saved setup's menu should hold: Copy to Another Stick…, Restore to This Stick… (S48), Export…, Rename… (F2), Edit Description, Keep This Autosave (S49, autosaves only), Delete…. [D-10-CONTEXT]
+- **S46** The menu on empty space in the list should hold: Import Device Pack…, Expand All, Collapse All, Device Library Settings…. [D-10-CONTEXT]
+- **S47** Menus show only what can be used now (01 S66); delete items are red and always ask first, naming what goes (e.g. "Remove T.16000M and its 4 saved setups from the Library?"). [D-10-CONTEXT, D-10-REMOVE]
+- **S48** Restore to This Stick… should put a saved setup back on its own stick (which must be plugged in) as Copy does (S22-S25, autosave first, Undo), without choosing a target. [D-10-RESTORE]
+- **S49** Keep This Autosave should make an autosave the user's own in one step (as renaming or describing it does, S13), so the autosave limit never removes it. [D-10-KEEP]
+- **S50** Ctrl-click and Shift-click should select several saved setups (or several devices); Delete… / Remove from Library… then act on all of them after one question that lists them. Copy, Swap, Change, Restore, Rename and Export act on one row only. [D-10-MULTI]
+
 ## 9. Questions for the user
 
 - **Q1** The design had a sixth autosave trigger, "a profile with bindings for the stick is deleted". The program can't delete profiles (that happens in Explorer), so it never sees it. **Decided (user, 2026-10-08): dropped** (D-10-Q1-DROP); the other autosaves and the user's own saved setups keep bindings copies.
@@ -189,6 +204,12 @@ Approved by the user, 2026-10-08 (wording as drafted; Q1 dropped).
 | D-10-TIDY | Size in the status bar and Tidy Library… |
 | D-10-SETTINGS, D-10-SAVE, D-10-SHARE, D-10-PROTO | Settings, saving, sharing, the prototype's layout |
 | D-10-Q1-DROP | No autosave trigger for a deleted profile |
+| D-10-REMOVE | Remove from Library (not connected), Clear Setup and Delete Saved Setups (connected) |
+| D-10-CONTEXT | Right-click menus for devices, saved setups and empty space; selection and feedback |
+| D-10-RESTORE | Restore to This Stick |
+| D-10-KEEP | Keep This Autosave |
+| D-10-MULTI | Select several rows to delete together |
+| D-10-GUIDE | Device Library Guide in the window's Help menu (F1) |
 | D-10-REDO-LABEL | After an Undo the Edit item reads "Redo <change>" |
 | D-10-DAMAGED-KEPT | A damaged module file is autosaved as it is, so delete always works |
 | D-10-SWAP-REFS | Swap warns about references to controls the other stick lacks |
