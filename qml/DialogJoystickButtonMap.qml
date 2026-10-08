@@ -1954,6 +1954,16 @@ ApplicationWindow {
         persistUi()
     }
 
+    // Ctrl+F and View > Search layers… (07 S102): to the Layers search box,
+    // opening Layers first. Later, so a just-opened pane is shown and the
+    // palette that ran it has given focus back.
+    function searchLayers() {
+        if (!editing)
+            return
+        _tools.setOpen("layers", true)
+        Qt.callLater(function() { _layersPanel.focusSearch() })
+    }
+
     function openChipMenu(x, y) {
         applySelected()
     }
@@ -3044,7 +3054,14 @@ ApplicationWindow {
                     onTriggered: _tools.toggle("layers")
                 }
                 ThemedMenuItem {
+                    text: "Search layers…"
+                    hint: "Ctrl+F"
+                    enabled: editing
+                    onTriggered: _buttonMap.searchLayers()
+                }
+                ThemedMenuItem {
                     text: "Properties"
+                    enabled: editing
                     checkable: true
                     checked: _tools.isOpen("props")
                     onTriggered: _tools.toggle("props")
@@ -3974,6 +3991,11 @@ ApplicationWindow {
                 Shortcut {
                     sequence: "Ctrl+K"
                     onActivated: _palette.open()
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+F"
+                    onActivated: searchLayers()
                 }
                 Shortcut {
                     sequence: "F1"
