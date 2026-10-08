@@ -595,7 +595,8 @@ function deviceLibraryTopics() {
             + "</ul>"
             + "<p>A saved setup's menu: <b>Copy to Another Stick…</b>, <b>Restore to This Stick…</b> (when its stick is plugged in), <b>Export…</b>, <b>Rename…</b>, <b>Edit Description</b>, <b>Keep This Autosave</b> (autosaves only) and <b>Delete…</b>.</p>"
             + "<p>The empty space's menu: <b>Import Device Pack…</b>, <b>Expand All</b>, <b>Collapse All</b> and <b>Device Library Settings…</b>.</p>"
-            + "<p>A menu shows only what you can do now: an item that doesn't apply, or that has to wait while a change runs, is left out. The delete items are red, and each asks first, naming exactly what goes, for example \"Remove Old Warthog stick and its 4 saved setups from the Library?\".</p>"),
+            + "<p>A menu shows only what you can do now: an item that doesn't apply, or that has to wait while a change runs, is left out. The delete items are red, and each asks first, naming exactly what goes, for example \"Remove Old Warthog stick and its 4 saved setups from the Library?\".</p>"
+            + "<p>To know which one you will get, look at the menu's title: it names the device and its state, for example \"Left throttle · Connected\" or \"Old Warthog stick · Deleted\". Under each delete item a grey line says what it does: <b>Clear Setup…</b> \"Its settings go; the stick stays plugged in\", <b>Delete Saved Setups…</b> \"Only the saved setups go; its settings stay\", <b>Remove from Library…</b> \"Gone from the Library, with its saved setups\".</p>"),
         topic("Devices and saved setups", "Devices",
             "<p>Each device row shows its name, its description, how many saved setups it has, and its state:</p>"
             + "<ul>"
@@ -769,7 +770,7 @@ function deviceLibraryTopics() {
             "<p>Every delete asks first and names exactly what goes. What it does depends on what is selected:</p>"
             + "<ul>"
             + "<li>A saved setup: <b>Delete…</b> removes it from the Device Library.</li>"
-            + "<li>A device that isn't connected (unplugged, deleted, or from a pack): <b>Remove from Library…</b> removes the device and all its saved setups. If its module file is still here, that goes first, as Delete Device on Home does: an autosave is kept first. If Delete Device can't run, nothing is removed and the message says why.</li>"
+            + "<li>A device that isn't connected (unplugged, deleted, or from a pack): <b>Remove from Library…</b> removes the device and all its saved setups. If its module file is still here, that goes first, as Delete Device on Home does. Nothing is kept: removing can't be undone. If Delete Device can't run, nothing is removed and the message says why.</li>"
             + "<li>A connected stick: <b>Clear Setup…</b> is Delete Device on Home: an autosave is kept in the Device Library first, then its module file and its bindings go, and the stick stays plugged in with no setup. <b>Delete Saved Setups…</b> removes only its saved setups; the stick keeps its settings.</li>"
             + "</ul>"
             + "<p>Edit › <b>Delete…</b> and the red button under the details follow the same rules. On a device the button reads Remove from Library… or Delete Saved Setups… by its state, and Edit › Delete… does the same. Clear Setup… is only in the device's right-click menu.</p>"

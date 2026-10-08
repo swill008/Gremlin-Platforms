@@ -89,7 +89,7 @@ def test_s43_right_click_selects_first_then_opens(run: dict) -> None:
 def test_s44_s15_connected_device_menu(run: dict) -> None:
     got = run["rc-connected"]
     assert _menu(got["menu"]) == [
-        "Left throttle",
+        "Left throttle · Connected",
         "Copy to Another Stick…",
         "Swap with Another Stick…",
         "Change vJoy Output…",
@@ -102,7 +102,9 @@ def test_s44_s15_connected_device_menu(run: dict) -> None:
         "Show on Home",
         "Expand",
         "Clear Setup…",
+        "Its settings go; the stick stays plugged in (off)",
         "Delete Saved Setups…",
+        "Only the saved setups go; its settings stay (off)",
     ]
     assert got["danger"] == ["Clear Setup…", "Delete Saved Setups…"]
 
@@ -110,7 +112,7 @@ def test_s44_s15_connected_device_menu(run: dict) -> None:
 def test_s44_s15_not_connected_and_deleted_device_menus(run: dict) -> None:
     got = run["rc-not-connected"]
     assert _menu(got["menu"]) == [
-        "Rudder pedals",
+        "Rudder pedals · Not connected",
         "Copy to Another Stick…",
         "Change vJoy Output…",
         "Save to Device Library…",
@@ -121,16 +123,18 @@ def test_s44_s15_not_connected_and_deleted_device_menus(run: dict) -> None:
         "Open Button Map",
         "Show on Home",
         "Remove from Library…",
+        "Gone from the Library, with its saved setups (off)",
     ]
     assert got["danger"] == ["Remove from Library…"]
     # Deleted: nothing current here, no Home card; only what applies.
     assert _menu(run["rc-deleted"]) == [
-        "Old Warthog stick",
+        "Old Warthog stick · Deleted",
         "Change vJoy Output…",
         "Rename… (F2)",
         "Edit Description",
         "Expand",
         "Remove from Library…",
+        "Gone from the Library, with its saved setups (off)",
     ]
 
 
@@ -173,6 +177,9 @@ def test_s15_s47_remove_asks_and_runs_delete_device_first(run: dict) -> None:
     ask = run["remove-ask"]
     assert ask["title"] == "Remove Rudder pedals from the Library?"
     assert "module file" in ask["body"] and ask["red"] and ask["go"] == "Remove"
+    # D-10-DELETE-CLARITY: nothing is said to be kept (Remove deletes it all).
+    assert "Nothing is kept: this can't be undone." in ask["body"]
+    assert "autosave is kept" not in ask["body"]
     # Refused (the profile runs): nothing removed from the Library.
     refused = run["remove-refused"]
     assert refused["bad"] and refused["message"].startswith("Stop the profile first")
@@ -270,9 +277,12 @@ def test_s50_several_devices(run: dict) -> None:
 def test_s43_keyboard_and_hover(run: dict) -> None:
     assert run["keys-shift-f10"] == {
         "selected": "dev-00000001",
-        "title": "Left throttle",
+        "title": "Left throttle · Connected",
     }
-    assert run["keys-menu"] == {"selected": "dev-00000002", "title": "Right stick"}
+    assert run["keys-menu"] == {
+        "selected": "dev-00000002",
+        "title": "Right stick · Connected",
+    }
     assert run["hover"] is True
 
 

@@ -207,10 +207,9 @@ ApplicationWindow {
         var heading = "Remove " + details.name
             + (details.count > 0 ? " and " + _setupsText(details.count) : "")
             + " from the Library?"
-        var body = (plan.module_file
-                    ? "Its module file here goes too, as Delete Device on Home does: "
-                      + "an autosave is kept first. " : "")
-            + "This can't be undone."
+        // Nothing is kept: Delete Device's autosave goes with the rest.
+        var body = (plan.module_file ? "Its module file here goes too. " : "")
+            + "Nothing is kept: this can't be undone."
         _deleteDlg.ask(heading, body, "Remove", function() { _lib.runRemove([key]) })
     }
 
@@ -397,7 +396,10 @@ ApplicationWindow {
         var current = d.hasCurrent === true
         // It has a card on Home: plugged in, or a module file here.
         var card = connected || (d.module || "").length > 0
-        return MenuModel.menu("library-device", d.name, [
+        // D-10-DELETE-CLARITY: the title names the state the delete items
+        // depend on; a grey line under each says what it does.
+        var stateText = connected ? "Connected" : (d.state === "deleted" ? "Deleted" : "Not connected")
+        return MenuModel.menu("library-device", d.name + " · " + stateText, [
             MenuModel.action("Copy to Another Stick…", function() { _lib.openCopy() }, free && current),
             MenuModel.action("Swap with Another Stick…", function() { _lib.openSwap() }, free && connected),
             MenuModel.action("Change vJoy Output…", function() { _lib.openOutput() }, canOutput),
@@ -413,12 +415,15 @@ ApplicationWindow {
                 : null,
             connected ? null
                 : MenuModel.action("Remove from Library…", function() { _lib.askRemove() }, free, { danger: true }),
+            connected || !free ? null : MenuModel.note("Gone from the Library, with its saved setups"),
             connected
                 ? MenuModel.action("Clear Setup…", function() { _lib.askClearSetup() }, free, { danger: true })
                 : null,
+            connected && free ? MenuModel.note("Its settings go; the stick stays plugged in") : null,
             connected && d.count > 0
                 ? MenuModel.action("Delete Saved Setups…", function() { _lib.askDeleteSetups() }, free, { danger: true })
-                : null
+                : null,
+            connected && d.count > 0 && free ? MenuModel.note("Only the saved setups go; its settings stay") : null
         ], [])
     }
 

@@ -320,6 +320,7 @@ only when OSC is picked up.
 | D-10-MULTI | 2026-10-08 | Ctrl/Shift-click select several rows; Delete / Remove act on all after one question; other actions on one row. | Suggestion accepted (user) | 10 S50 |
 | D-10-MULTI-NOTE | 2026-10-08 | With a plugged-in stick among several selected devices, the right-click menu shows a grey line "Remove from Library works only on devices that aren't plugged in" instead of an empty menu. | Found while building (CU); user chose the suggestion | 10 S50 |
 | D-10-ACTIVITY | 2026-10-08 | A saved setup's short list in the details (saved, described, copied to…) is headed Activity, not History, so it isn't confused with Tools › History. The Library's file changes stay in Tools › History as every save does. | User question on overlap with History; rename chosen | 10 S11 |
+| D-10-DELETE-CLARITY | 2026-10-08 | Right-click delete items made unmistakable: the device menu's title names its state (Connected / Not connected / Deleted); a grey line under each delete item says what it does; Remove from Library's question says "Nothing is kept: this can't be undone." (not "an autosave is kept first", which Remove then deletes). | User asked how to tell clear from delete; all three suggestions chosen | 10 S47 |
 
 ## Later decisions
 

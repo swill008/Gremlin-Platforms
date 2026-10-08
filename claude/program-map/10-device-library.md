@@ -1,6 +1,6 @@
 # Device Library
 
-**Approved by the user 2026-10-08. S1-S42 built (2026-10-08); S43-S50 approved, being built.** Written from
+**Approved by the user 2026-10-08. S1-S50 built (2026-10-08).** Written from
 the design discussion of 2026-10-08 (decisions D-10-* in
 `claude/decisions.md`) and the off-screen Qt prototype in
 `.agent-logs/handson/DL/` (renders `dl_main.png`, `dl_menu.png`,
@@ -162,7 +162,7 @@ works on files and the profile through their owners.
 - **S44** A device's menu should hold, as they apply: Copy to Another Stick… (from its current settings), Swap with Another Stick… (connected), Change vJoy Output…, Save to Device Library…, Export Current Setup… (a Device Pack of its current settings), Rename… (F2), Edit Description, Open Module Setup…, Open Button Map, Show on Home, Expand / Collapse, and the delete items of S15. [D-10-CONTEXT]
 - **S45** A saved setup's menu should hold: Copy to Another Stick…, Restore to This Stick… (S48), Export…, Rename… (F2), Edit Description, Keep This Autosave (S49, autosaves only), Delete…. [D-10-CONTEXT]
 - **S46** The menu on empty space in the list should hold: Import Device Pack…, Expand All, Collapse All, Device Library Settings…. [D-10-CONTEXT]
-- **S47** Menus show only what can be used now (01 S66); delete items are red and always ask first, naming what goes (e.g. "Remove T.16000M and its 4 saved setups from the Library?"). [D-10-CONTEXT, D-10-REMOVE]
+- **S47** Menus show only what can be used now (01 S66); delete items are red and always ask first, naming what goes (e.g. "Remove T.16000M and its 4 saved setups from the Library?"). [D-10-CONTEXT, D-10-REMOVE] A device's menu title names its state ("Left throttle · Connected", "· Not connected", "· Deleted"), and each delete item has a grey line under it saying what it does: Clear Setup… "Its settings go; the stick stays plugged in", Delete Saved Setups… "Only the saved setups go; its settings stay", Remove from Library… "Gone from the Library, with its saved setups". Remove from Library's question never says anything is kept: "Nothing is kept: this can't be undone." [D-10-DELETE-CLARITY]
 - **S48** Restore to This Stick… should put a saved setup back on its own stick (which must be plugged in) as Copy does (S22-S25, autosave first, Undo), without choosing a target. [D-10-RESTORE]
 - **S49** Keep This Autosave should make an autosave the user's own in one step (as renaming or describing it does, S13), so the autosave limit never removes it. [D-10-KEEP]
 - **S50** Ctrl-click and Shift-click should select several saved setups (or several devices); Delete… / Remove from Library… then act on all of them after one question that lists them. Copy, Swap, Change, Restore, Rename and Export act on one row only. When a plugged-in stick is among several selected devices, the menu shows a grey line "Remove from Library works only on devices that aren't plugged in" instead of an empty menu. [D-10-MULTI] [D-10-MULTI-NOTE]
@@ -211,6 +211,7 @@ Approved by the user, 2026-10-08 (wording as drafted; Q1 dropped).
 | D-10-MULTI | Select several rows to delete together |
 | D-10-MULTI-NOTE | Grey line when Remove can't apply to several selected devices |
 | D-10-ACTIVITY | The saved setup's short list is called Activity |
+| D-10-DELETE-CLARITY | State in the menu title, a grey line under each delete item, Remove's question says nothing is kept |
 | D-10-GUIDE | Device Library Guide in the window's Help menu (F1) |
 | D-10-REDO-LABEL | After an Undo the Edit item reads "Redo <change>" |
 | D-10-DAMAGED-KEPT | A damaged module file is autosaved as it is, so delete always works |
