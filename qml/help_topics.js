@@ -400,6 +400,7 @@ function buttonMapTopics() {
             + "<li><b>Ctrl+0</b> Reset view to 100%; <b>Alt</b> while dragging: no snapping; <b>Shift</b> while drawing: keep proportions or 15° steps</li>"
             + "<li><b>Esc</b> Cancel the tool, crop, rename or group edit</li>"
             + "<li><b>Ctrl+K</b> Command palette</li>"
+            + "<li><b>Ctrl+F</b> Search layers (opens Layers)</li>"
             + "<li><b>F1</b> This guide</li>"
             + "</ul>"),
         topic("Chips", "Chips",
@@ -507,8 +508,11 @@ function buttonMapTopics() {
             + "<li>Open a chip (the arrow) to hide or lock its hotspot or each leader on its own. Locking or hiding the chip covers them all.</li>"
             + "<li>Drag a row up or down to change what is on top. The right-click menu's <b>Arrange</b> section does the same a step at a time: Bring to Front, Bring Forward, Send Back, Send to Back.</li>"
             + "<li>Click a row to select the item (Ctrl or Shift to add); a right-click selects it too before its menu opens (a row in a selection keeps the selection). Double-click a drawing's row to name it.</li>"
-            + "<li><b>Show all</b> and <b>Unlock all</b> undo every hide and lock. The filter shows only Chips, Drawings, Pictures, or Text &amp; tables.</li>"
-            + "</ul>"),
+            + "<li><b>Show all</b> and <b>Unlock all</b> undo every hide and lock.</li>"
+            + "</ul>"
+            + "<p><b>Search layers…</b>, the box under the panel's header, finds rows as you type, in any case and anywhere in: the row's name, the control (Button 12, Hat 1, X Axis, even when the chip has a friendly name), what the chip shows (its action or description), and the kind of row. Ctrl+F (or View → <b>Search layers…</b>) goes to the box, opening Layers if it is closed. <b>Esc</b> or the box's <b>×</b> clears it; <b>Enter</b> selects every match on the map and brings the first into view.</p>"
+            + "<p>Under the box, one toggle per kind of row: <b>All · Chips · Groups · Hotspots · Leaders · Shapes · Lines · Pictures · Text · Tables · Photo</b>. Turn on any number of kinds to show only those; with none on, every row shows and <b>All</b> lights; <b>All</b> turns them all off again. The search looks only in the kinds that are on. A matching hotspot, leader or group member shows under its chip or group, which is dimmed when it doesn't match itself. While a filter is on, a line says how many rows match (12 of 148) or <b>No layers match</b>. The eye, lock, rename, drag and delete work on the rows shown.</p>"
+            + "<p>The kinds and the search stay while the Button Map is open, also when another device's map is shown; they go back to none and empty when the Button Map closes.</p>"),
         topic("Panels", "Properties panel",
             "<p>View → <b>Properties</b> shows the selected item's exact values while editing. Positions and sizes are in percent of the page.</p>"
             + "<ul>"

@@ -22,7 +22,28 @@ Rectangle {
     property var ed: null
     // A row's menu is open (for tests).
     readonly property bool rowMenuOpen: _rowMenu.opened
+    // Older tests' single kind ("all", "chips", "drawings", "pictures",
+    // "text"); used only while no kind toggle is on and the search is empty.
     property string filter: "all"
+    // The kind toggles that are on (none = every kind) and the search text.
+    // Kept on the panel, which the window keeps while it is open: another
+    // device's map (a new ed) keeps them (07 S102).
+    property var kinds: []
+    property string searchText: ""
+    readonly property var filterState: ({ kinds: kinds.slice(), query: searchText.trim() })
+    readonly property bool filtering: kinds.length > 0 || searchText.trim() !== ""
+    readonly property var counts: (filtering && ed && ed.layerCounts) ? (ed.tick, ed.layerCounts(filterState)) : null
+    // "12 of 148" or "No layers match" while a filter is on.
+    readonly property string countText: !counts ? ""
+        : (counts.matches > 0 ? counts.matches + " of " + counts.total : "No layers match")
+    readonly property var kindToggles: [
+        { key: "all", label: "All" }, { key: "chip", label: "Chips" },
+        { key: "group", label: "Groups" }, { key: "hotspot", label: "Hotspots" },
+        { key: "leader", label: "Leaders" }, { key: "shape", label: "Shapes" },
+        { key: "line", label: "Lines" }, { key: "picture", label: "Pictures" },
+        { key: "text", label: "Text" }, { key: "table", label: "Tables" },
+        { key: "photo", label: "Photo" }
+    ]
     // Chip ids whose hotspot and leader rows are open.
     property var expanded: ({})
     property string renameId: ""
@@ -31,7 +52,8 @@ Rectangle {
     property int dropRow: -1
     readonly property real rowH: Style.dp(26)
     readonly property int textPx: Style.dp(13)
-    readonly property var rows: (ed && ed.layerRows) ? (ed.tick, ed.layerRows(filter, expanded)) : []
+    readonly property var rows: (ed && ed.layerRows)
+        ? (ed.tick, ed.layerRows(filtering ? filterState : filter, expanded)) : []
 
     signal closeRequested()
 
@@ -70,6 +92,37 @@ Rectangle {
         onWheel: (w) => { w.accepted = true }
     }
 
+    // A kind toggle: All turns them all off; any other turns itself on or off.
+    function toggleKind(key) {
+        if (key === "all") {
+            kinds = []
+            return
+        }
+        var k = kinds.slice()
+        var at = k.indexOf(key)
+        if (at >= 0)
+            k.splice(at, 1)
+        else
+            k.push(key)
+        kinds = k
+    }
+
+    function kindOn(key) {
+        return key === "all" ? kinds.length === 0 : kinds.indexOf(key) >= 0
+    }
+
+    // Ctrl+F: to the search box, its text selected.
+    function focusSearch() {
+        _search.forceActiveFocus()
+        _search.selectAll()
+    }
+
+    // Enter in the box: every match selected on the map.
+    function selectMatches() {
+        if (filtering && ed && ed.selectLayerMatches)
+            ed.selectLayerMatches(filterState)
+    }
+
     function toggleOpen(id) {
         var e = expanded
         if (e[id])
@@ -93,7 +146,14 @@ Rectangle {
             ed.focusMap()
     }
 
+    // Group members have no eye or lock of their own (yet).
+    function hasFlags(row) {
+        return !!row && row.type !== "member"
+    }
+
     function flag(row, which) {
+        if (!hasFlags(row))
+            return
         if (row.part === "photo")
             ed.setPhotoFlag(which, !(which === "hidden" ? ed.photoHidden : ed.photoLocked))
         else
@@ -130,9 +190,11 @@ Rectangle {
         spacing: Style.dp(4)
 
         RowLayout {
+            id: _header
             Layout.fillWidth: true
             spacing: Style.dp(4)
             Label {
+                id: _title
                 text: "Layers"
                 font.pixelSize: _panel.textPx
                 font.bold: true
@@ -140,6 +202,7 @@ Rectangle {
                 Layout.fillWidth: true
             }
             Repeater {
+                id: _hdrRepeater
                 model: [
                     { label: "Show all", run: function() { _panel.ed.showAll() } },
                     { label: "Unlock all", run: function() { _panel.ed.unlockAll() } }
@@ -167,6 +230,7 @@ Rectangle {
                 }
             }
             Label {
+                id: _closeLabel
                 text: "×"
                 font.pixelSize: Style.dp(16)
                 color: _closeArea.containsMouse ? Style.fgStrong : Style.fgMuted
@@ -180,21 +244,82 @@ Rectangle {
             }
         }
 
-        // Filter by kind of item.
+        // Search layers: filters the rows as you type; Esc or × clears it,
+        // Enter selects every match on the map.
+        TextField {
+            id: _search
+            objectName: "layersSearch"
+            Layout.fillWidth: true
+            Layout.preferredHeight: Style.dp(26)
+            font.pixelSize: _panel.textPx
+            placeholderText: "Search layers…"
+            selectByMouse: true
+            leftPadding: Style.dp(6)
+            rightPadding: Style.dp(22)
+            topPadding: 0
+            bottomPadding: 0
+            verticalAlignment: TextInput.AlignVCenter
+            Component.onCompleted: text = _panel.searchText
+            onTextChanged: if (_panel.searchText !== text) _panel.searchText = text
+            onAccepted: _panel.selectMatches()
+            Keys.onEscapePressed: (e) => {
+                if (text === "") {
+                    e.accepted = false
+                    return
+                }
+                _panel.searchText = ""
+            }
+            Connections {
+                target: _panel
+                function onSearchTextChanged() {
+                    if (_search.text !== _panel.searchText)
+                        _search.text = _panel.searchText
+                }
+            }
+            Label {
+                id: _clear
+                anchors.right: parent.right
+                anchors.rightMargin: Style.dp(6)
+                anchors.verticalCenter: parent.verticalCenter
+                visible: _search.text !== ""
+                text: "×"
+                font.pixelSize: Style.dp(16)
+                color: _clearArea.containsMouse ? Style.fgStrong : Style.fgMuted
+                MouseArea {
+                    id: _clearArea
+                    anchors.fill: parent
+                    anchors.margins: -Style.dp(4)
+                    hoverEnabled: true
+                    cursorShape: Qt.ArrowCursor
+                    onClicked: _panel.searchText = ""
+                }
+            }
+        }
+
+        // Show: one toggle per kind; any number on, none lights All.
         Flow {
+            id: _kindFlow
             Layout.fillWidth: true
             spacing: Style.dp(3)
+            Label {
+                id: _showLabel
+                height: Style.dp(20)
+                verticalAlignment: Text.AlignVCenter
+                text: "Show:"
+                font.pixelSize: _panel.textPx - Style.dp(2)
+                color: Style.fgMuted
+            }
             Repeater {
-                model: [
-                    { key: "all", label: "All" }, { key: "chips", label: "Chips" },
-                    { key: "drawings", label: "Drawings" }, { key: "pictures", label: "Pictures" },
-                    { key: "text", label: "Text & tables" }
-                ]
+                id: _kindRepeater
+                model: _panel.kindToggles
                 delegate: Rectangle {
                     required property var modelData
-                    readonly property bool on: _panel.filter === modelData.key
+                    readonly property string key: modelData.key
+                    readonly property bool on: _panel.kindOn(modelData.key)
                     implicitWidth: _fText.implicitWidth + Style.dp(10)
                     implicitHeight: Style.dp(20)
+                    width: implicitWidth
+                    height: implicitHeight
                     radius: Style.dp(4)
                     color: on ? Style.accent : (_fArea.containsMouse ? Style.bgSelected : Style.clear)
                     border.color: on ? Style.accent : Style.line
@@ -209,10 +334,21 @@ Rectangle {
                         id: _fArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: _panel.filter = modelData.key
+                        onClicked: _panel.toggleKind(modelData.key)
                     }
                 }
             }
+        }
+
+        // How many rows match, while a filter is on.
+        Label {
+            id: _countLine
+            Layout.fillWidth: true
+            visible: _panel.countText !== ""
+            text: _panel.countText
+            font.pixelSize: _panel.textPx - Style.dp(2)
+            color: Style.fgMuted
+            elide: Text.ElideRight
         }
 
         Flickable {
@@ -242,7 +378,10 @@ Rectangle {
                         width: _rowsColumn.width
                         height: _panel.rowH
                         color: row.selected ? Style.bgSelected : (_rowArea.containsMouse ? Style.bgRaised : Style.clear)
-                        opacity: (row.hidden || row.hiddenFrom) ? 0.55 : 1
+                        // A heading (shown only for a matching row under
+                        // it) is dimmed.
+                        readonly property bool heading: !!row.heading
+                        opacity: (heading ? 0.5 : 1) * ((row.hidden || row.hiddenFrom) ? 0.55 : 1)
 
                         // Drop line: the dragged row lands above this one.
                         Rectangle {
@@ -351,7 +490,7 @@ Rectangle {
                                     var icons = {
                                         chip: "", group: "", shape: "", line: "",
                                         picture: "", text: "", table: "", hotspot: "",
-                                        leader: "", photo: ""
+                                        member: "", leader: "", photo: ""
                                     }
                                     return icons[t] || ""
                                 }
@@ -363,12 +502,13 @@ Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 Label {
+                                    objectName: "rowName"
                                     visible: _panel.renameId !== _row.row.id || _row.row.part !== ""
                                     anchors.fill: parent
                                     verticalAlignment: Text.AlignVCenter
                                     text: _row.row.name
                                     font.pixelSize: _panel.textPx
-                                    color: Style.fg
+                                    color: _row.heading ? Style.fgMuted : Style.fg
                                     elide: Text.ElideRight
                                 }
                                 TextField {
@@ -422,6 +562,7 @@ Rectangle {
                                 model: ["hidden", "locked"]
                                 delegate: Label {
                                     required property string modelData
+                                    objectName: "flag_" + modelData
                                     readonly property bool on: modelData === "hidden" ? _row.row.hidden : _row.row.locked
                                     readonly property bool from: modelData === "hidden" ? _row.row.hiddenFrom : _row.row.lockedFrom
                                     Layout.preferredWidth: Style.dp(22)
@@ -430,10 +571,14 @@ Rectangle {
                                                                  : ((on || from) ? "" : "")
                                     font.family: Style.iconFont
                                     font.pixelSize: Style.dp(13)
-                                    color: on ? Style.accent : (from ? Style.fgDisabled : (_flagArea.containsMouse ? Style.fg : Style.fgMuted))
+                                    readonly property bool can: _panel.hasFlags(_row.row)
+                                    color: !can ? Style.fgDisabled
+                                         : (on ? Style.accent : (from ? Style.fgDisabled
+                                         : (_flagArea.containsMouse ? Style.fg : Style.fgMuted)))
                                     MouseArea {
                                         id: _flagArea
                                         anchors.fill: parent
+                                        enabled: parent.can
                                         hoverEnabled: true
                                         onClicked: _panel.flag(_row.row, parent.modelData)
                                     }
@@ -459,6 +604,81 @@ Rectangle {
             if (r.selected) t += " *"
             out.push(t)
         }
+        return out
+    }
+
+    // For tests: lays out the panel now.
+    function forceLayout() {
+        _rowsColumn.forceLayout()
+    }
+
+    function _find(item, name) {
+        if (!item)
+            return null
+        if (item.objectName === name)
+            return item
+        var kids = item.children || []
+        for (var i = 0; i < kids.length; i++) {
+            var hit = _find(kids[i], name)
+            if (hit)
+                return hit
+        }
+        return null
+    }
+
+    // For tests: a kind toggle, the box's ×, a row's eye or lock.
+    function kindButton(key) {
+        for (var i = 0; i < _kindRepeater.count; i++)
+            if (_kindRepeater.itemAt(i).key === key)
+                return _kindRepeater.itemAt(i)
+        return null
+    }
+    function clearButton() { return _clear }
+    function flagButton(i, which) {
+        _rowsColumn.forceLayout()
+        return _find(_repeater.itemAt(i), "flag_" + which)
+    }
+    function litKinds() {
+        var out = []
+        for (var i = 0; i < kindToggles.length; i++)
+            if (kindOn(kindToggles[i].key))
+                out.push(kindToggles[i].key)
+        return out
+    }
+    function searchFieldText() { return _search.text }
+    function searchHasFocus() { return _search.activeFocus }
+    function searchSelected() { return _search.selectedText }
+    function rowLook(i) {
+        _rowsColumn.forceLayout()
+        var it = _repeater.itemAt(i)
+        var name = _find(it, "rowName")
+        return { heading: it.heading, opacity: it.opacity, color: String(name.color),
+                 bold: name.font.bold }
+    }
+    // For tests: the header, box, toggles and count line parts that do not
+    // fit inside the panel (or are squeezed below their text's width).
+    function clippedParts() {
+        var out = []
+        var left = Style.dp(6) - 0.5
+        var right = width - Style.dp(6) + 0.5
+        function check(name, it, needW) {
+            if (!it || !it.visible)
+                return
+            var p = it.mapToItem(_panel, 0, 0)
+            if (p.x < left || p.x + it.width > right || it.width + 0.5 < needW)
+                out.push(name + " x=" + Math.round(p.x) + " w=" + Math.round(it.width)
+                         + " need=" + Math.round(needW) + " panel=" + Math.round(width))
+        }
+        check("title", _title, _title.implicitWidth)
+        for (var h = 0; h < _hdrRepeater.count; h++)
+            check("header " + h, _hdrRepeater.itemAt(h), _hdrRepeater.itemAt(h).implicitWidth)
+        check("close", _closeLabel, _closeLabel.implicitWidth)
+        check("search", _search, Style.dp(60))
+        check("show", _showLabel, _showLabel.implicitWidth)
+        for (var k = 0; k < _kindRepeater.count; k++)
+            check("kind " + _kindRepeater.itemAt(k).key, _kindRepeater.itemAt(k),
+                  _kindRepeater.itemAt(k).implicitWidth)
+        check("count", _countLine, _countLine.implicitWidth)
         return out
     }
 

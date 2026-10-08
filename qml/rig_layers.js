@@ -264,7 +264,8 @@ function toggleLayerFlag(id, part, flag) {
 // always keeps its hotspot's place), a picture, drawing, text box or table is
 // removed. The photo and locked items are not deleted. One undo step.
 function canDeleteLayer(id, part) {
-    if (part === "photo" || !id)
+    // A group member's row (a search result) is not its own item.
+    if (part === "photo" || !id || String(part || "").indexOf("member:") === 0)
         return false
     var n = nodeAt(id)
     if (!n || isLocked(n))
@@ -424,49 +425,210 @@ var _FILTERS = {
     text: ["text", "table"]
 }
 
+// Each row's kind as its Layers-panel toggle names it (07 S102); a group
+// member counts as a group's row.
+var _KIND_WORDS = {
+    chip: "Chips", group: "Groups", member: "Groups", hotspot: "Hotspots", leader: "Leaders",
+    shape: "Shapes", line: "Lines", picture: "Pictures", text: "Text", table: "Tables", photo: "Photo"
+}
+
+// The panel's filter as { kinds, query, active }. A string is the old
+// single-choice kind ("all", "chips", ...) and keeps working as before.
+function _layerFilter(state) {
+    if (state === undefined || state === null || typeof state === "string") {
+        var types = _FILTERS[state || "all"] || null
+        return { kinds: types || [], query: "", active: false, legacy: true }
+    }
+    var kinds = (state.kinds || []).map(function(k) { return String(k) })
+    var query = String(state.query || "").trim().toLowerCase()
+    return { kinds: kinds, query: query, active: kinds.length > 0 || query.length > 0, legacy: false }
+}
+
+function _kindOn(f, type) {
+    if (!f.kinds.length)
+        return true
+    // A group member shows under the Chips toggle as well as Groups.
+    if (type === "member")
+        return f.kinds.indexOf("group") >= 0 || f.kinds.indexOf("chip") >= 0
+    return f.kinds.indexOf(type) >= 0
+}
+
+// Matches the search on the row's name, its control (even when renamed),
+// what the chip shows and the kind of row (07 S102).
+function _textOn(f, type, name, extra) {
+    if (!f.query)
+        return true
+    var hay = [name, type === "member" ? "" : type, _KIND_WORDS[type] || ""].concat(extra || [])
+    for (var i = 0; i < hay.length; i++) {
+        if (String(hay[i] || "").toLowerCase().indexOf(f.query) >= 0)
+            return true
+    }
+    return false
+}
+
+function _rowMatches(f, type, name, extra) {
+    return _kindOn(f, type) && _textOn(f, type, name, extra)
+}
+
+// A chip's or member's control and the text it shows.
+function _chipExtra(n, mem) {
+    var kind = mem ? memberKind(n, mem) : n.kind
+    var hwId = mem ? mem.hwId : n.hwId
+    var out = [chipText(n, mem), friendlyOf(n, mem)]
+    if (hwId !== undefined && hwId !== null)
+        out.push(hardwareLabel(kind, hwId))
+    return out
+}
+
+// One item's rows: the item, then its hotspot, leaders and (as search
+// results only) group members. all: every row, for counting; otherwise the
+// rows the panel shows, with match and heading set.
+function _itemRows(f, n, i, expanded, all) {
+    var type = layerType(n)
+    var hasParts = type === "chip" || type === "group"
+    var open = hasParts && !!(expanded && expanded[n.id])
+    var name = layerName(n)
+    var extra = type === "chip" ? _chipExtra(n, null) : []
+    var head = {
+        id: n.id, part: "", depth: 0, type: type, name: name,
+        hidden: isHidden(n), locked: isLocked(n), hiddenFrom: false, lockedFrom: false,
+        selected: isSelected(n.id), canOpen: hasParts, open: open, index: i, renamable: isDraw(n),
+        match: _rowMatches(f, type, name, extra), heading: false
+    }
+    var parts = []
+    if (hasParts) {
+        parts.push({
+            id: n.id, part: "hot", depth: 1, type: "hotspot", name: "Hotspot",
+            hidden: !!n.hotHidden, locked: !!n.hotLocked, hiddenFrom: isHidden(n), lockedFrom: isLocked(n),
+            selected: false, canOpen: false, open: false, index: i, renamable: false,
+            match: _rowMatches(f, "hotspot", "Hotspot", []), heading: false
+        })
+        var ls = leaderList(n)
+        for (var k = 0; k < ls.length; k++) {
+            var ln = "Leader " + (k + 1)
+            parts.push({
+                id: n.id, part: "leader:" + k, depth: 1, type: "leader", name: ln,
+                hidden: !!ls[k].hidden, locked: !!ls[k].locked, hiddenFrom: isHidden(n), lockedFrom: isLocked(n),
+                selected: false, canOpen: false, open: false, index: i, renamable: false,
+                match: _rowMatches(f, "leader", ln, []), heading: false
+            })
+        }
+    }
+    var members = type === "group" ? (n.members || []) : []
+    var memRows = []
+    for (var m = 0; m < members.length; m++) {
+        var mn = memberLabel(n, members[m])
+        memRows.push({
+            id: n.id, part: "member:" + m, depth: 1, type: "member", name: mn,
+            hidden: false, locked: false, hiddenFrom: isHidden(n), lockedFrom: isLocked(n),
+            selected: false, canOpen: false, open: false, index: i, renamable: false,
+            match: _rowMatches(f, "member", mn, _chipExtra(n, members[m])), heading: false
+        })
+    }
+    if (all)
+        return [head].concat(parts, memRows)
+    if (!f.active) {
+        // No filter: the rows as before the search (members have no rows).
+        head.match = true
+        if (!open)
+            return [head]
+        parts.forEach(function(p) { p.match = true })
+        return [head].concat(parts)
+    }
+    // A filter: matching parts show even under a closed chip; an open chip
+    // that matches shows all its parts. A member shows only as a match.
+    var shown = []
+    var childHit = false
+    for (var p = 0; p < parts.length; p++) {
+        if (parts[p].match || (open && head.match)) {
+            shown.push(parts[p])
+            childHit = childHit || parts[p].match
+        }
+    }
+    for (var q = 0; q < memRows.length; q++) {
+        if (memRows[q].match) {
+            shown.push(memRows[q])
+            childHit = true
+        }
+    }
+    if (!head.match && !childHit)
+        return []
+    head.heading = !head.match
+    return [head].concat(shown)
+}
+
+function _photoRow(f) {
+    return {
+        id: "", part: "photo", depth: 0, type: "photo", name: "Background photo",
+        hidden: photoHidden, locked: photoLocked, hiddenFrom: false, lockedFrom: false,
+        selected: false, canOpen: false, open: false, index: -1, renamable: false,
+        match: !f.active || _rowMatches(f, "photo", "Background photo", []), heading: false
+    }
+}
+
 // The Layers panel's rows, top of the stack first, then the background photo.
 // expanded maps a chip's id to true when its hotspot and leader rows show.
-function layerRows(filter, expanded) {
+// state is the panel's filter, { kinds, query } (07 S102), or an old kind
+// name ("all", "chips", ...). Each row has match (it passes the filter) and
+// heading (shown only for a matching hotspot, leader or member under it; the
+// panel dims it). With no filter every row matches.
+function layerRows(state, expanded) {
     tick
-    var types = _FILTERS[filter || "all"] || null
+    var f = _layerFilter(state)
     var list = nodes || []
     var rows = []
     for (var i = list.length - 1; i >= 0; i--) {
         var n = list[i]
-        var type = layerType(n)
-        if (types && types.indexOf(type) < 0)
+        if (f.legacy && f.kinds.length && f.kinds.indexOf(layerType(n)) < 0)
             continue
-        var hasParts = type === "chip" || type === "group"
-        var open = hasParts && !!(expanded && expanded[n.id])
-        rows.push({
-            id: n.id, part: "", depth: 0, type: type, name: layerName(n),
-            hidden: isHidden(n), locked: isLocked(n), hiddenFrom: false, lockedFrom: false,
-            selected: isSelected(n.id), canOpen: hasParts, open: open, index: i, renamable: isDraw(n)
-        })
-        if (!open)
-            continue
-        rows.push({
-            id: n.id, part: "hot", depth: 1, type: "hotspot", name: "Hotspot",
-            hidden: !!n.hotHidden, locked: !!n.hotLocked, hiddenFrom: isHidden(n), lockedFrom: isLocked(n),
-            selected: false, canOpen: false, open: false, index: i, renamable: false
-        })
-        var ls = leaderList(n)
-        for (var k = 0; k < ls.length; k++) {
-            rows.push({
-                id: n.id, part: "leader:" + k, depth: 1, type: "leader", name: "Leader " + (k + 1),
-                hidden: !!ls[k].hidden, locked: !!ls[k].locked, hiddenFrom: isHidden(n), lockedFrom: isLocked(n),
-                selected: false, canOpen: false, open: false, index: i, renamable: false
-            })
-        }
+        rows = rows.concat(_itemRows(f, n, i, expanded, false))
     }
-    if (!types) {
-        rows.push({
-            id: "", part: "photo", depth: 0, type: "photo", name: "Background photo",
-            hidden: photoHidden, locked: photoLocked, hiddenFrom: false, lockedFrom: false,
-            selected: false, canOpen: false, open: false, index: -1, renamable: false
-        })
-    }
+    var photo = _photoRow(f)
+    if (f.legacy ? !f.kinds.length : photo.match)
+        rows.push(photo)
     return rows
+}
+
+// The panel's "12 of 148": every row there is (open or not, hotspots,
+// leaders, group members and the photo) and how many pass the filter.
+function layerCounts(state) {
+    tick
+    var f = _layerFilter(state)
+    var list = nodes || []
+    var all = []
+    for (var i = list.length - 1; i >= 0; i--)
+        all = all.concat(_itemRows(f, list[i], i, null, true))
+    all.push(_photoRow(f))
+    var matches = 0
+    for (var r = 0; r < all.length; r++) {
+        if (!f.active || all[r].match)
+            matches++
+    }
+    return { matches: matches, total: all.length }
+}
+
+// Enter in the search box: selects every match on the map (a hotspot,
+// leader or member selects its chip or group; not the photo, nor a hidden
+// item) and brings the first into view. Selecting is not an edit: no undo
+// step. Returns how many items were selected.
+function selectLayerMatches(state) {
+    var rows = layerRows(state, null)
+    var ids = []
+    for (var i = 0; i < rows.length; i++) {
+        var r = rows[i]
+        if (!r.match || !r.id || ids.indexOf(r.id) >= 0 || isHidden(nodeAt(r.id)))
+            continue
+        ids.push(r.id)
+    }
+    if (!ids.length)
+        return 0
+    setSelection(ids)
+    var b = nodeBox(nodeAt(ids[0]))
+    if (face && face.showEditorRect)
+        face.showEditorRect(b.x, b.y, b.w, b.h)
+    repaint()
+    selectedChanged()
+    return ids.length
 }
 
 function setPhotoFlag(flag, on) {

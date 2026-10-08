@@ -602,7 +602,9 @@ Item {
     function layerName(n) { return RigLayers.layerName(n) }
     function renameLayer(id, name) { return RigLayers.renameLayer(id, name) }
     function layerType(n) { return RigLayers.layerType(n) }
-    function layerRows(filter, expanded) { return RigLayers.layerRows(filter, expanded) }
+    function layerRows(state, expanded) { return RigLayers.layerRows(state, expanded) }
+    function layerCounts(state) { return RigLayers.layerCounts(state) }
+    function selectLayerMatches(state) { return RigLayers.selectLayerMatches(state) }
     function setPhotoFlag(flag, on) { return RigLayers.setPhotoFlag(flag, on) }
 
     // Lining up and spacing out the selection (rig_align.js)
