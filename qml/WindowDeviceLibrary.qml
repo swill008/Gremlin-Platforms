@@ -375,9 +375,13 @@ ApplicationWindow {
             return MenuModel.menu("library-many", title, [
                 what === "delete" ? MenuModel.action("Delete…", function() { _lib.askMany() }, free, { danger: true }) : null,
                 what === "remove" ? MenuModel.action("Remove from Library…", function() { _lib.askMany() }, free, { danger: true }) : null,
-                // A plugged-in stick among them: say why, not an empty menu.
+                // A plugged-in stick among them: Remove greyed out, its tooltip
+                // says why, not an empty menu (D-10-MENU-TIPS).
                 what === "" && row && row.kind === "device"
-                    ? MenuModel.note("Remove from Library works only on devices that aren't plugged in") : null
+                    ? MenuModel.action("Remove from Library…", function() {}, false, {
+                          shownOff: true,
+                          tip: "Remove from Library works only on devices that aren't plugged in" })
+                    : null
             ], [])
         }
         if (d.kind === "setup") {
@@ -397,7 +401,7 @@ ApplicationWindow {
         // It has a card on Home: plugged in, or a module file here.
         var card = connected || (d.module || "").length > 0
         // D-10-DELETE-CLARITY: the title names the state the delete items
-        // depend on; a grey line under each says what it does.
+        // depend on; each one's tooltip says what it does (D-10-MENU-TIPS).
         var stateText = connected ? "Connected" : (d.state === "deleted" ? "Deleted" : "Not connected")
         return MenuModel.menu("library-device", d.name + " · " + stateText, [
             MenuModel.action("Copy to Another Stick…", function() { _lib.openCopy() }, free && current),
@@ -414,16 +418,16 @@ ApplicationWindow {
                 ? MenuModel.action(row.open ? "Collapse" : "Expand", function() { _lib.lib.toggleOpen(d.key) })
                 : null,
             connected ? null
-                : MenuModel.action("Remove from Library…", function() { _lib.askRemove() }, free, { danger: true }),
-            connected || !free ? null : MenuModel.note("Gone from the Library, with its saved setups"),
+                : MenuModel.action("Remove from Library…", function() { _lib.askRemove() }, free,
+                                   { danger: true, tip: "Gone from the Library, with its saved setups" }),
             connected
-                ? MenuModel.action("Clear Setup…", function() { _lib.askClearSetup() }, free, { danger: true })
+                ? MenuModel.action("Clear Setup…", function() { _lib.askClearSetup() }, free,
+                                   { danger: true, tip: "Its settings go; the stick stays plugged in" })
                 : null,
-            connected && free ? MenuModel.note("Its settings go; the stick stays plugged in") : null,
             connected && d.count > 0
-                ? MenuModel.action("Delete Saved Setups…", function() { _lib.askDeleteSetups() }, free, { danger: true })
-                : null,
-            connected && d.count > 0 && free ? MenuModel.note("Only the saved setups go; its settings stay") : null
+                ? MenuModel.action("Delete Saved Setups…", function() { _lib.askDeleteSetups() }, free,
+                                   { danger: true, tip: "Only the saved setups go; its settings stay" })
+                : null
         ], [])
     }
 

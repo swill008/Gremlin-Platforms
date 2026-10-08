@@ -47,21 +47,15 @@ function _on(enabled) {
 }
 
 // opts: danger (red text, for deletes), hint (shown on the right, e.g. a
-// shortcut), keepOpen (the menu stays open after it runs).
+// shortcut), keepOpen (the menu stays open after it runs), tip (a hover
+// tooltip saying what it does), shownOff (shown greyed out even where
+// unavailable items are hidden, so its tip can say why).
 function action(text, run, enabled, opts) {
     var o = opts || {}
     return {
         kind: "action", text: text, run: run, enabled: _on(enabled),
-        danger: !!o.danger, hint: o.hint || "", keepOpen: !!o.keepOpen
-    }
-}
-
-// A grey line that explains why nothing else is offered; never runs, and
-// shown even where unavailable items are hidden.
-function note(text) {
-    return {
-        kind: "action", text: text, run: function() {}, enabled: false,
-        danger: false, hint: "", keepOpen: true, note: true
+        danger: !!o.danger, hint: o.hint || "", keepOpen: !!o.keepOpen,
+        tip: o.tip || "", shownOff: !!o.shownOff
     }
 }
 

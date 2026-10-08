@@ -293,7 +293,7 @@ Popup {
     }
 
     function _shown(item) {
-        return !hideUnavailable || item.enabled || !!item.note
+        return !hideUnavailable || item.enabled || !!item.shownOff
     }
 
     // Visible rows, top to bottom: quick rows, then each section header and,
@@ -339,6 +339,8 @@ Popup {
                 t += ": " + it.value + (it.suffix || "")
             if (it.hint)
                 t += " (" + it.hint + ")"
+            if (it.tip)
+                t += " [tip: " + it.tip + "]"
             if (!it.enabled)
                 t += " (off)"
             out.push(t)
@@ -697,14 +699,23 @@ Popup {
                 font.pixelSize: it && it.kind === "toggle" ? _menu.textPx : _menu.textPx - Style.dp(1)
                 color: it && it.kind === "toggle" ? Style.menuAccent : Style.menuHint
             }
+            // What it does, as the program's usual tooltip (like the pin's);
+            // a greyed-out row shows it too.
+            ToolTip.visible: !!(it && it.tip) && _rowArea.containsMouse
+            ToolTip.delay: Style.tooltipDelayMs
+            ToolTip.text: it && it.tip ? it.tip : ""
             MouseArea {
+                id: _rowArea
                 anchors.fill: parent
                 hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
+                readonly property bool on: !!(it && it.enabled)
+                cursorShape: on ? Qt.PointingHandCursor : Qt.ArrowCursor
                 // Only a moving pointer: rows that slide under a still one keep the keyboard's row.
-                onPositionChanged: (m) => _menu.hoverRow(this, m, rowIndex)
-                enabled: !!(it && it.enabled)
+                onPositionChanged: (m) => { if (on) _menu.hoverRow(this, m, rowIndex) }
+                // Off: hovered only, for its tooltip; a click does nothing.
                 onClicked: {
+                    if (!on)
+                        return
                     _menu.focusRow = rowIndex
                     _menu.run(it)
                 }

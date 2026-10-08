@@ -101,10 +101,8 @@ def test_s44_s15_connected_device_menu(run: dict) -> None:
         "Open Button Map",
         "Show on Home",
         "Expand",
-        "Clear Setup…",
-        "Its settings go; the stick stays plugged in (off)",
-        "Delete Saved Setups…",
-        "Only the saved setups go; its settings stay (off)",
+        "Clear Setup… [tip: Its settings go; the stick stays plugged in]",
+        "Delete Saved Setups… [tip: Only the saved setups go; its settings stay]",
     ]
     assert got["danger"] == ["Clear Setup…", "Delete Saved Setups…"]
 
@@ -122,8 +120,7 @@ def test_s44_s15_not_connected_and_deleted_device_menus(run: dict) -> None:
         "Open Module Setup…",
         "Open Button Map",
         "Show on Home",
-        "Remove from Library…",
-        "Gone from the Library, with its saved setups (off)",
+        "Remove from Library… [tip: Gone from the Library, with its saved setups]",
     ]
     assert got["danger"] == ["Remove from Library…"]
     # Deleted: nothing current here, no Home card; only what applies.
@@ -133,8 +130,7 @@ def test_s44_s15_not_connected_and_deleted_device_menus(run: dict) -> None:
         "Rename… (F2)",
         "Edit Description",
         "Expand",
-        "Remove from Library…",
-        "Gone from the Library, with its saved setups (off)",
+        "Remove from Library… [tip: Gone from the Library, with its saved setups]",
     ]
 
 
@@ -260,11 +256,13 @@ def test_s50_several_devices(run: dict) -> None:
         "dev-00000004",
     ]
     got = run["multi-devices"]
-    # A connected one among them: Remove from Library doesn't apply, and a
-    # grey line says why (user, 2026-10-08) instead of an empty menu.
+    # A connected one among them: Remove from Library is greyed out and its
+    # tooltip says why (D-10-MENU-TIPS) instead of an empty menu.
     assert _menu(got["connectedIncluded"]) == [
         "2 devices",
-        "Remove from Library works only on devices that aren't plugged in (off)",
+        "Remove from Library…"
+        " [tip: Remove from Library works only on devices that aren't plugged in]"
+        " (off)",
     ]
     assert _menu(got["menu"]) == ["2 devices", "Remove from Library…"]
     title, body = run["multi-devices-go"]
@@ -291,3 +289,20 @@ def test_s44_export_current(run: dict) -> None:
     calls = [c for c in run["calls"] if c[0] == "export_current"]
     assert calls and calls[0][1] == "dev-00000001"
     assert calls[0][2].endswith("Left throttle.zip")
+
+
+def test_menu_tips_use_the_programs_tooltip_not_menu_text() -> None:
+    """D-10-MENU-TIPS: a menu row's tip is the usual hover ToolTip (shown on
+    a greyed-out row too); there is no grey-line item kind any more."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    model = (root / "theme/Gremlin/Menus/menu_model.js").read_text(encoding="utf-8")
+    menu = (root / "theme/Gremlin/Menus/ContextMenu.qml").read_text(encoding="utf-8")
+    lib = (root / "qml/WindowDeviceLibrary.qml").read_text(encoding="utf-8")
+    assert "function note(" not in model
+    assert "MenuModel.note(" not in lib
+    assert "tip: o.tip" in model
+    assert "ToolTip.text: it && it.tip" in menu
+    assert "ToolTip.visible: !!(it && it.tip) && _rowArea.containsMouse" in menu
+    assert "ToolTip.delay: Style.tooltipDelayMs" in menu
