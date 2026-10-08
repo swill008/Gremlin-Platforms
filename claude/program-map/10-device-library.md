@@ -108,6 +108,7 @@ works on files and the profile through their owners.
 - **S18** An autosave should hold everything the stick has: its module file and pictures, and its bindings in every mode from every profile the action changes (the open profile and any ticked saved profiles).
 - **S19** Only the newest N autosaves per stick are kept (N = 10 by default, set in Device Library Settings); older autosaves are removed when a new one is kept. The user's own saved setups (S12, S13) are never removed this way. [D-10-AUTOSAVE]
 - **S20** If an autosave can't be written or read back, the action that needed it should not run, and say so (as Delete Device's copy does today, 03 S91). [carries 03 S91, 08 S86]
+- **S20a** A stick whose module file is damaged can still be autosaved: the autosave keeps the damaged file exactly as it is, with the stick's bindings, and shows it as holding "Setup (damaged file, kept as is)". So Delete Device and Delete File always work for it. Copy and Swap never put a damaged file on another stick (only its bindings can be copied from such a setup). [D-10-DAMAGED-KEPT]
 - **S21** Delete Device should always keep a "stick deleted" autosave (when that trigger is on) and no longer ask "Save a copy". [D-10-DELETE, changes 03 S90-S91, 08 S86]
 
 ### E. Copy to Another Stick
@@ -188,6 +189,7 @@ Approved by the user, 2026-10-08 (wording as drafted; Q1 dropped).
 | D-10-TIDY | Size in the status bar and Tidy Library… |
 | D-10-SETTINGS, D-10-SAVE, D-10-SHARE, D-10-PROTO | Settings, saving, sharing, the prototype's layout |
 | D-10-Q1-DROP | No autosave trigger for a deleted profile |
+| D-10-DAMAGED-KEPT | A damaged module file is autosaved as it is, so delete always works |
 | D-10-SWAP-REFS | Swap warns about references to controls the other stick lacks |
 | D-10-STREAMLINE | Undo puts the autosave back; autosaves always on; no profile backups (History covers whole files); Shared folded into Not connected; no Edit Description; drag-drop import and double-click to Copy |
 | D-10-NO-DELETED-FOLDER | The deleted devices folder and its setting go; Delete File autosaves into the Library; nothing carried over (beta) |
