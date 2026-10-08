@@ -104,7 +104,7 @@ class UpdateModel(QtCore.QObject):
         # Try Again after a failed update: install as soon as the check
         # finds that version.
         self._retry = False
-        # Release notes of the offered version(s), Markdown (01 S133), and
+        # What's new of the offered version(s), HTML (01 S133), and
         # whether the releases list is still on its way.
         self._notes = ""
         self._notes_loading = False
@@ -161,8 +161,9 @@ class UpdateModel(QtCore.QObject):
 
     @QtCore.Property(str, notify=notesChanged)
     def releaseNotes(self) -> str:
-        """The offered release's notes (and those of the versions between),
-        newest first, as safe Markdown; "" when there are none to show."""
+        """What's new in the offered release (and in the versions between),
+        newest first, as small safe HTML (updater.notes_html); "" when there
+        is none to show."""
         return self._notes
 
     @QtCore.Property(bool, notify=notesChanged)
@@ -242,7 +243,7 @@ class UpdateModel(QtCore.QObject):
         """Show the release's own notes now, then ask GitHub for the list so
         the versions in between show too. The window never waits on it."""
         self._set_notes(
-            updater.notes_markdown([(release.version, release.notes)]), False
+            updater.notes_html([(release.version, release.notes)]), False
         )
         url = updater.notes_url(
             updater.feed_url(
@@ -315,7 +316,7 @@ class UpdateModel(QtCore.QObject):
         )
         if not any(version == release.version for version, _ in entries):
             entries.insert(0, (release.version, release.notes))
-        self._set_notes(updater.notes_markdown(entries), False)
+        self._set_notes(updater.notes_html(entries), False)
 
     def _set_notes(self, notes: str, loading: bool) -> None:
         if (notes, loading) == (self._notes, self._notes_loading):

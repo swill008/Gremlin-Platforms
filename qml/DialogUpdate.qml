@@ -33,6 +33,27 @@ ApplicationWindow {
     // Closing the window is the same as Cancel: no download left running unseen.
     onClosing: if (updater && state_ === "downloading") updater.cancel()
 
+    // The notes' small headings and muted version lines (01 S133).
+    function _css(c) {
+        return "rgba(" + Math.round(c.r * 255) + "," + Math.round(c.g * 255) + ","
+            + Math.round(c.b * 255) + "," + c.a.toFixed(3) + ")"
+    }
+    function notesStyle() {
+        return "<style>"
+            + "p { margin-top: 0px; margin-bottom: " + Style.dp(4) + "px; }"
+            + "p.kind { margin-top: " + Style.dp(8) + "px; margin-bottom: " + Style.dp(2) + "px; }"
+            + "p.ver { color: " + _css(Style.fgMuted) + "; font-size: "
+            + Math.round(Style.fontSize * 0.87) + "px; margin-top: " + Style.dp(6) + "px; }"
+            + "p.none { color: " + _css(Style.fgMuted) + "; }"
+            // Half the usual list indent at every level (Qt indents 40 px a
+            // level; a negative margin adds up the same way).
+            + "ul { margin-top: 0px; margin-bottom: " + Style.dp(2) + "px; margin-left: -20px; }"
+            + "li { margin-bottom: " + Style.dp(2) + "px; }"
+            + "hr { background-color: " + _css(Style.line) + "; }"
+            + "code { font-family: '" + Style.monoFont + "'; }"
+            + "</style>"
+    }
+
     function message() {
         if (!updater)
             return ""
@@ -77,44 +98,77 @@ ApplicationWindow {
 
         Label {
             Layout.fillWidth: true
-            Layout.fillHeight: !_notesView.visible
+            Layout.fillHeight: !_notesBox.visible
             wrapMode: Text.WordWrap
             textFormat: Text.StyledText
             text: _root.message()
         }
 
-        // The offered release's notes, and those of the versions between,
-        // newest first (01 S133). Raw HTML and pictures are already removed.
-        ScrollView {
-            id: _notesView
-            objectName: "releaseNotesView"
+        // What's new in the offered release, and in the versions between,
+        // newest first, then the link to the full notes (01 S133,
+        // D-01-UPDATE-WHATSNEW). The HTML comes from updater.notes_html:
+        // nothing from the release body runs or loads.
+        Rectangle {
+            id: _notesBox
+            objectName: "releaseNotesBox"
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: _root.state_ === "available"
-            clip: true
+            color: Style.bgWell
+            border.color: Style.line
+            border.width: 1
+            radius: Style.dp(4)
 
-            TextArea {
-                objectName: "releaseNotes"
-                readOnly: true
-                selectByMouse: true
-                wrapMode: TextEdit.Wrap
-                readonly property string notes: updater ? updater.releaseNotes : ""
-                textFormat: notes ? TextEdit.MarkdownText : TextEdit.PlainText
-                text: notes ? notes
-                    : updater && updater.notesLoading ? qsTr("Getting the release notes…")
-                    : qsTr("Release notes unavailable.")
-                onLinkActivated: (link) => {
-                    if (/^https:\/\//.test(link))
-                        Qt.openUrlExternally(link)
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: Style.dp(1)
+                spacing: 0
+
+                ScrollView {
+                    id: _notesView
+                    objectName: "releaseNotesView"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+
+                    TextArea {
+                        objectName: "releaseNotes"
+                        readOnly: true
+                        selectByMouse: true
+                        wrapMode: TextEdit.Wrap
+                        background: null
+                        leftPadding: Style.dp(10)
+                        rightPadding: Style.dp(10)
+                        topPadding: Style.dp(8)
+                        bottomPadding: Style.dp(4)
+                        readonly property string notes: updater ? updater.releaseNotes : ""
+                        textFormat: notes ? TextEdit.RichText : TextEdit.PlainText
+                        text: notes ? _root.notesStyle() + notes
+                            : updater && updater.notesLoading ? qsTr("Getting the release notes…")
+                            : qsTr("Release notes unavailable.")
+                        onLinkActivated: (link) => {
+                            if (/^https:\/\//.test(link))
+                                Qt.openUrlExternally(link)
+                        }
+                    }
+                }
+
+                // The newest release's page: install files, install steps
+                // and everything else.
+                Label {
+                    objectName: "fullReleaseNotes"
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Style.dp(10)
+                    Layout.rightMargin: Style.dp(10)
+                    Layout.topMargin: Style.dp(4)
+                    Layout.bottomMargin: Style.dp(8)
+                    text: "<a href='open'>" + qsTr("Full release notes on GitHub") + "</a> ↗"
+                    textFormat: Text.StyledText
+                    onLinkActivated: () => { updater.openReleasePage() }
+
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
                 }
             }
-        }
-
-        Label {
-            visible: _root.state_ === "available"
-            text: "<a href='notes'>Release notes</a>"
-            textFormat: Text.StyledText
-            onLinkActivated: () => { updater.openReleasePage() }
         }
 
         ProgressBar {
