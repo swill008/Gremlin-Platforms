@@ -148,6 +148,13 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     plus menu differences (test_menus, test_button_map_window), runs 37754952665.
     pyproject.toml holds PySide6 below 6.12 until we find what changed and fix it.
 
+40. Retire the Device Pack window once the Device Library is in and used
+    (user, 2026-10-08): the Library saves, exports, imports and copies packs;
+    decide what of Device Pack's fine-grained piece choices (map view, print
+    settings) to keep. Spec change first (08 S49-S85).
+41. Compare two saved setups in the Device Library with History's
+    before/after view (user, 2026-10-08). Design first.
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).

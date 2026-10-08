@@ -351,7 +351,7 @@ Duplicated logic
 - S123 Update requests should close their connection with the reply (no stray SSL message about 30 s later). [test-plan: SSL-CONSOLE]
 
 ### User data folders
-- S124 The data folder should default to Gremlin Platforms in the user's profile. Each folder (profiles, modules, scripts, export, logs, history, plugins) can be chosen in Options → Folders and defaults to a folder inside the data folder; the Device Library's folder (which replaces deleted devices) is chosen in Device Library Settings (10 S37). [changed 2026-10-08 to follow D-10-DELETED (Device Library, 10)] [help: Options] [test-plan: Batch 7 OPT-F] [test-plan: AUDIT2-F-H-REST]
+- S124 The data folder should default to Gremlin Platforms in the user's profile. Each folder (profiles, modules, scripts, export, logs, history, plugins) can be chosen in Options → Folders and defaults to a folder inside the data folder; the Device Library's folder is chosen in Device Library Settings (10 S37); there is no deleted devices folder. [changed 2026-10-08 to follow D-10-NO-DELETED-FOLDER] [changed 2026-10-08 to follow D-10-DELETED (Device Library, 10)] [help: Options] [test-plan: Batch 7 OPT-F] [test-plan: AUDIT2-F-H-REST]
 - S125 Changes to the logs folder and the plugins folder should take effect on the next start. [test-plan: OPT-F01..F08 "Plugin dir and logs need a restart"]
 - S126 A chosen folder that can't be made or reached should fall back to the default folder. [user confirmed 2026-10-06; was code only]
 - S127 (retired) ~~Device files from the old `qml/maps` folder should be copied once into the modules folder, never over an existing file.~~ [changed 2026-10-07 to follow GL-272 (nothing ships in `qml/maps`; `copy_legacy_modules` removed in batch 3)]

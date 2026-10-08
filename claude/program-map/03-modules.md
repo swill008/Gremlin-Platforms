@@ -321,7 +321,7 @@ Every device has a module file that says which of its controls the program may u
 - S59. Undo in the import notice should put the previous file back (or remove a new one) and bind again the devices the import unbound; OK drops the Undo. [tracker: AU-21, AU-113] [test: test_audit2_coverage::test_undo_of_a_module_import_binds_the_devices_again, test_module_setup_import_notice::test_an_undo_is_not_red]
 - S60. A failed import or Undo should turn the notice red. [tracker: AU-104] [test: test_module_setup_import_notice::test_a_failed_import_is_red, test_a_failed_undo_turns_it_red]
 - S61. Importing with unsaved ticks should ask first. [code: DialogConfigureModule.qml:478-484] [test-plan: CFGM-04 (S-31)]
-- S62. Delete File should ask first, keep a copy in the deleted devices folder, and refuse when no copy can be kept or another stick uses the file. [tracker: A2] [test: test_data_safety::test_deleting_a_module_file_keeps_a_copy, test_no_copy_means_no_delete, test_audit3_module_files::test_a_file_another_stick_uses_is_not_deleted]
+- S62. Delete File should ask first, keep a "module file deleted" autosave in the Device Library (10 S16, S20), and refuse when the autosave can't be kept or another stick uses the file. [changed 2026-10-08 to follow D-10-NO-DELETED-FOLDER] [tracker: A2] [test: test_data_safety::test_deleting_a_module_file_keeps_a_copy, test_no_copy_means_no_delete, test_audit3_module_files::test_a_file_another_stick_uses_is_not_deleted]
 - S63. A Delete File that failed should leave no History entry. [test: test_audit3_module_files::test_a_delete_module_file_that_failed_is_no_history_entry]
 
 ### G. Damaged files and Start Fresh

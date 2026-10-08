@@ -30,8 +30,8 @@ spec change. See "The plan" in `claude/system-maps.md`.
 | [07-button-map](07-button-map.md) | Button Map editor, photos, recovery, print/export | 100 | 19 | 23 | reviewed 2026-10-06 (all as recommended) |
 | [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper | 103 | 21 | 30 | reviewed 2026-10-06 (all as recommended) |
 | [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (parked), sound, speech, tray, theme, help; leftover files | 89 | 20 | 27 | reviewed 2026-10-06 (all as recommended) |
-| [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 38 | 1 | all (not built) | approved 2026-10-08 |
-| **Total** | | **963** | **174** | **225** | |
+| [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 41 | 1 | all (not built) | approved 2026-10-08 |
+| **Total** | | **966** | **174** | **225** | |
 
 ## Most serious findings (to confirm first)
 
