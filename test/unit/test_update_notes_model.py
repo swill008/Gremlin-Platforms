@@ -2,7 +2,8 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""01 S133 (D-01-UPDATE-NOTES, D-01-UPDATE-WHATSNEW): the Update window's
+"""01 S133 (D-01-UPDATE-NOTES, D-01-UPDATE-WHATSNEW, D-01-UPDATE-NOTES-CACHE):
+the Update window's
 release notes: only each release's What's new, with small headings.
 
 Nothing goes out: a stand-in network hands the model GitHub's replies.
@@ -141,10 +142,10 @@ def _plain(html: str) -> str:
 def test_one_newer_release_shows_only_its_whats_new(model) -> None:  # noqa: ANN001
     body = _release_text("1.0.27")
     _check(model, _doc("1.0.27", body))
-    assert model.state == "available"
-    # Its own notes show straight away, before the list arrives.
-    assert "Search layers" in model.releaseNotes
+    # The window waits for the list (D-01-UPDATE-NOTES-CACHE).
+    assert model.state == "checking" and model.releaseNotes == ""
     model._network.replies[1].finish([_doc("1.0.27", body)])
+    assert model.state == "available"
     html = model.releaseNotes
     text = _plain(html)
     assert "Search layers" in text and "Esc clears" in text
@@ -160,7 +161,6 @@ def test_one_newer_release_shows_only_its_whats_new(model) -> None:  # noqa: ANN
     assert 'class="ver"' not in html and "1.0.27" not in text
     # Sub-points sit in a list inside the bullet.
     assert html.count("<ul") >= 3
-    assert model.notesLoading is False
 
 
 def test_skipped_versions_show_newest_first_in_one_request(model) -> None:  # noqa: ANN001
@@ -177,8 +177,8 @@ def test_skipped_versions_show_newest_first_in_one_request(model) -> None:  # no
     ])
     html = model.releaseNotes
     assert re.findall(r'<p class="ver">([^<]*)</p>', html) == [
-        "1.0.3", "1.0.2", "1.0.1",
-    ]
+        "What's new in 1.0.3", "What's new in 1.0.2", "What's new in 1.0.1",
+    ]  # D-01-UPDATE-VERSION-LINE
     assert html.count("<hr") == 2  # a thin line between versions
     for gone in ("Beta", "Draft", "Running", "Old"):
         assert gone not in html
@@ -199,8 +199,8 @@ def test_an_old_release_without_whats_new_says_unavailable(model) -> None:  # no
     )
     html = model.releaseNotes
     assert "Download the installer" not in html
-    assert html.index('<p class="ver">1.0.26</p>') < html.index(
-        '<p class="ver">1.0.25</p>'
+    assert html.index("<p class=\"ver\">What's new in 1.0.26</p>") < html.index(
+        "<p class=\"ver\">What's new in 1.0.25</p>"
     )
     assert html.rstrip().endswith('<p class="none">Release notes unavailable.</p>')
 
@@ -235,7 +235,6 @@ def test_no_notes_or_no_network_leaves_updating_working(model) -> None:  # noqa:
     _check(model, latest)
     model._network.replies[1].finish(None, _HostNotFound)
     assert model.releaseNotes == ""  # the window says "Release notes unavailable."
-    assert model.notesLoading is False
     assert model.state == "available" and model.canInstall
 
 
@@ -260,17 +259,16 @@ def test_unsafe_markup_is_dropped(model) -> None:  # noqa: ANN001
     assert "<code>&lt;user&gt;</code>" in html
 
 
-def test_a_slow_list_doesnt_hold_up_the_window(model) -> None:  # noqa: ANN001
+def test_a_list_that_fails_shows_the_own_notes(model) -> None:  # noqa: ANN001
     _check(model, _doc("1.0.1", _new("1.0.1", "One")))
-    # The list hasn't answered: the window is already offering the update.
-    assert model.state == "available" and model.offers == [1]
-    assert model.notesLoading is True
-    # Bounded: the list gives up like the check does.
+    assert model.state == "checking" and model.offers == []
+    # Bounded: the request gives up like the check does (and the model
+    # stops waiting after _NOTES_WAIT_MS).
     timeout = model._network.requests[1].transferTimeout()
     assert timeout == update_model._CHECK_TIMEOUT_MS
     model._network.replies[1].finish(None, _Timeout)
-    assert model.notesLoading is False
-    assert "One" in model.releaseNotes  # the latest release's own notes stay
+    assert model.state == "available" and model.offers == [1]
+    assert "One" in model.releaseNotes  # the latest release's own notes
 
 
 def test_a_late_list_from_an_earlier_check_is_ignored(model) -> None:  # noqa: ANN001
@@ -280,6 +278,8 @@ def test_a_late_list_from_an_earlier_check_is_ignored(model) -> None:  # noqa: A
     model.check(True)
     model._network.replies[2].finish(_doc("1.0.2", _new("1.0.2", "Two")))
     stale.finish([_doc("1.0.1", _new("1.0.1", "One"))])
+    assert model.state == "checking"
+    model._network.replies[3].finish(None, _HostNotFound)
     assert "Two" in model.releaseNotes
     assert "One" not in model.releaseNotes
 
@@ -331,7 +331,7 @@ def test_an_offline_run_sends_no_notes_request(
     m._on_checked(reply)  # type: ignore[arg-type]
     assert m.state == "available"
     assert network.requests == []
-    assert "One" in m.releaseNotes and m.notesLoading is False
+    assert "One" in m.releaseNotes
 
 
 def test_a_notes_reply_after_the_model_is_gone_does_nothing(
@@ -355,3 +355,88 @@ def test_a_new_check_abandons_the_pending_notes_request(model) -> None:  # noqa:
     model._state = "upToDate"
     model.check(True)
     assert pending.aborted
+
+
+# --- D-01-UPDATE-NOTES-CACHE: fetched before the window shows them, filled
+# once, kept for the session ------------------------------------------------
+
+
+def _fills(m) -> list[str]:  # noqa: ANN001
+    """Every non-empty notes text the window is handed."""
+    fills: list[str] = []
+    m.notesChanged.connect(
+        lambda: fills.append(m.releaseNotes) if m.releaseNotes else None
+    )
+    return fills
+
+
+def _wait_until(condition, ms: int = 3000) -> None:  # noqa: ANN001
+    from gremlin import clock
+
+    end = clock.monotonic() + ms / 1000.0
+    while not condition() and clock.monotonic() < end:
+        _app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 20)
+    assert condition()
+
+
+@pytest.mark.parametrize("manual", [True, False])
+def test_the_window_opens_once_with_every_version(model, manual: bool) -> None:  # noqa: ANN001
+    """Help > Check for Updates and the start-up check alike: the list is
+    fetched while "Checking…"; the window opens with both versions in one go."""
+    fills = _fills(model)
+    _check(model, _doc("1.0.2", _new("1.0.2", "Two")), manual=manual)
+    assert model.state == "checking" and model.offers == []
+    assert fills == [] and model.releaseNotes == ""
+    model._network.replies[1].finish([
+        _doc("1.0.2", _new("1.0.2", "Two")), _doc("1.0.1", _new("1.0.1", "One")),
+    ])
+    assert model.state == "available" and model.offers == [1]
+    assert len(fills) == 1
+    assert "Two" in fills[0] and "One" in fills[0]
+
+
+def test_a_list_that_takes_too_long_uses_the_own_notes_and_never_refills(
+    model, monkeypatch: pytest.MonkeyPatch  # noqa: ANN001
+) -> None:
+    monkeypatch.setattr(update_model, "_NOTES_WAIT_MS", 30)
+    fills = _fills(model)
+    _check(model, _doc("1.0.2", _new("1.0.2", "Two")), manual=False)
+    assert model.state == "checking"
+    _wait_until(lambda: model.state == "available")
+    assert model.offers == [1]
+    assert len(fills) == 1 and "Two" in fills[0]
+    late = model._network.replies[1]
+    assert late.aborted
+    late.finish([
+        _doc("1.0.2", _new("1.0.2", "Two")), _doc("1.0.1", _new("1.0.1", "One")),
+    ])
+    _app.processEvents()
+    assert len(fills) == 1 and "One" not in model.releaseNotes
+
+
+def test_the_wait_is_about_five_seconds() -> None:
+    assert 3000 <= update_model._NOTES_WAIT_MS <= 6000
+
+
+def test_opening_again_uses_the_kept_notes(model) -> None:  # noqa: ANN001
+    _check(model, _doc("1.0.2", _new("1.0.2", "Two")))
+    model._network.replies[1].finish([
+        _doc("1.0.2", _new("1.0.2", "Two")), _doc("1.0.1", _new("1.0.1", "One")),
+    ])
+    shown = model.releaseNotes
+    fills = _fills(model)
+    model.check(True)
+    model._network.replies[2].finish(_doc("1.0.2", _new("1.0.2", "Two")))
+    # At once, from the kept notes: no new list request.
+    assert model.state == "available" and model.offers == [1, 1]
+    assert len(model._network.requests) == 3
+    assert fills == [shown]
+    # A newer release found later replaces them.
+    model.check(True)
+    model._network.replies[3].finish(_doc("1.0.3", _new("1.0.3", "Three")))
+    assert model.state == "checking"
+    assert model._network.urls()[4] == updater.RELEASES_LIST_URL
+    model._network.replies[4].finish([
+        _doc("1.0.3", _new("1.0.3", "Three")), _doc("1.0.2", _new("1.0.2", "Two")),
+    ])
+    assert "Three" in model.releaseNotes and model.state == "available"

@@ -31,6 +31,9 @@ from gremlin.signal import signal
 
 _CHECK_TIMEOUT_MS = 10000
 _DOWNLOAD_STALL_MS = 30000
+# How long a check waits for the list of skipped versions before it shows
+# the newest release's own notes (01 S133, D-01-UPDATE-NOTES-CACHE).
+_NOTES_WAIT_MS = 5000
 
 # The update being installed: set just before setup starts, read and cleared
 # on the next start. Still on an older version then means setup failed and
@@ -104,14 +107,19 @@ class UpdateModel(QtCore.QObject):
         # Try Again after a failed update: install as soon as the check
         # finds that version.
         self._retry = False
-        # What's new of the offered version(s), HTML (01 S133), and
-        # whether the releases list is still on its way.
+        # What's new of the offered version(s), HTML (01 S133).
         self._notes = ""
-        self._notes_loading = False
+        # The notes kept for the session: (newest version, HTML), set once
+        # the releases list has answered (D-01-UPDATE-NOTES-CACHE).
+        self._notes_cache: tuple[str, str] | None = None
         # The releases-list request on its way, and the release it is for;
         # a new check abandons it.
         self._notes_reply: QtNetwork.QNetworkReply | None = None
         self._notes_release: updater.Release | None = None
+        # Gives up on the list after _NOTES_WAIT_MS.
+        self._notes_timer = QtCore.QTimer(self)
+        self._notes_timer.setSingleShot(True)
+        self._notes_timer.timeout.connect(self._on_notes_timeout)
         self._kind = updater.install_kind(
             bool(getattr(sys, "frozen", False)), Path(sys.executable).parent
         )
@@ -166,10 +174,6 @@ class UpdateModel(QtCore.QObject):
         is none to show."""
         return self._notes
 
-    @QtCore.Property(bool, notify=notesChanged)
-    def notesLoading(self) -> bool:
-        return self._notes_loading
-
     @QtCore.Property(float, notify=progressChanged)
     def progress(self) -> float:
         if not self._release or not self._release.setup:
@@ -193,7 +197,7 @@ class UpdateModel(QtCore.QObject):
             return
         self._manual = bool(manual)
         self._abandon_notes()
-        self._set_notes("", False)
+        self._set_notes("")
         # Tests and off-screen checks set this: nothing goes out.
         if os.environ.get("GREMLIN_OFFLINE"):
             self._fail("Offline: the update check is turned off here.")
@@ -232,19 +236,20 @@ class UpdateModel(QtCore.QObject):
             release.version, self.currentVersion, skipped, self._manual
         ):
             self._fetch_notes(release)
-            self._set_state("available")
-            self.offerUpdate.emit()
         else:
             self._set_state("upToDate")
 
     # --- release notes (01 S133) --------------------------------------------
 
     def _fetch_notes(self, release: updater.Release) -> None:
-        """Show the release's own notes now, then ask GitHub for the list so
-        the versions in between show too. The window never waits on it."""
-        self._set_notes(
-            updater.notes_html([(release.version, release.notes)]), False
-        )
+        """Get the notes, then offer the update: the window is filled once
+        and never refilled while open (D-01-UPDATE-NOTES-CACHE). The list of
+        the versions in between is asked for while "Checking…"; after
+        _NOTES_WAIT_MS, or with no list, the release's own notes are used.
+        Notes from a list are kept for the session."""
+        if self._notes_cache and self._notes_cache[0] == release.version:
+            self._offer(self._notes_cache[1])
+            return
         url = updater.notes_url(
             updater.feed_url(
                 self._config.value("global", "internal", "update-feed-url")
@@ -254,6 +259,7 @@ class UpdateModel(QtCore.QObject):
         # Tests and off-screen checks set this: nothing goes out (older tests
         # hand the model the check's reply directly).
         if not url or os.environ.get("GREMLIN_OFFLINE"):
+            self._offer(self._own_notes(release))
             return
         request = _one_off_request(url)
         request.setRawHeader(b"Accept", b"application/vnd.github+json")
@@ -265,11 +271,21 @@ class UpdateModel(QtCore.QObject):
         # A bound slot, not a lambda: Qt drops the connection when the model
         # goes, so a late reply never reaches a deleted model.
         reply.finished.connect(self._on_notes)
-        self._set_notes(self._notes, True)
+        self._notes_timer.start(_NOTES_WAIT_MS)
+
+    @staticmethod
+    def _own_notes(release: updater.Release) -> str:
+        return updater.notes_html([(release.version, release.notes)])
+
+    def _offer(self, notes: str) -> None:
+        self._set_notes(notes)
+        self._set_state("available")
+        self.offerUpdate.emit()
 
     def _abandon_notes(self) -> None:
-        """Stop the releases-list request on its way (a new check started);
-        its reply is never read."""
+        """Stop the releases-list request on its way (a new check started,
+        or the wait ran out); its reply is never read."""
+        self._notes_timer.stop()
         reply, self._notes_reply = self._notes_reply, None
         self._notes_release = None
         if reply is None:
@@ -285,44 +301,59 @@ class UpdateModel(QtCore.QObject):
             pass  # already gone
 
     @QtCore.Slot()
+    def _on_notes_timeout(self) -> None:
+        release = self._notes_release
+        if release is None:
+            return
+        logging.getLogger("system").info(
+            "Update: no release list after %d ms", _NOTES_WAIT_MS
+        )
+        self._abandon_notes()
+        self._offer(self._own_notes(release))
+
+    @QtCore.Slot()
     def _on_notes(self) -> None:
+        self._notes_timer.stop()
         reply, self._notes_reply = self._notes_reply, None
         release, self._notes_release = self._notes_release, None
         if reply is None or release is None:
             return
         try:
             reply.deleteLater()
-            self._read_notes(reply, release)
+            notes = self._read_notes(reply, release)
         except Exception:
             # Notes are extra: a bad reply never stops the update.
             logging.getLogger("system").exception("Update: release notes")
-            self._set_notes(self._notes, False)
+            notes = self._own_notes(release)
+        self._offer(notes)
 
     def _read_notes(
         self, reply: QtNetwork.QNetworkReply, release: updater.Release
-    ) -> None:
-        docs = None
-        if reply.error() == QtNetwork.QNetworkReply.NetworkError.NoError:
-            try:
-                docs = json.loads(bytes(reply.readAll().data()).decode("utf-8"))
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                docs = None
-        else:
+    ) -> str:
+        """The notes from the list (kept for the session), or the release's
+        own when the list didn't come."""
+        if reply.error() != QtNetwork.QNetworkReply.NetworkError.NoError:
             logging.getLogger("system").info(
                 "Update: no release list: %s", reply.errorString()
             )
+            return self._own_notes(release)
+        try:
+            docs = json.loads(bytes(reply.readAll().data()).decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return self._own_notes(release)
         entries = updater.newer_notes(
             docs, util.get_code_version(), release.version
         )
         if not any(version == release.version for version, _ in entries):
             entries.insert(0, (release.version, release.notes))
-        self._set_notes(updater.notes_html(entries), False)
+        notes = updater.notes_html(entries)
+        self._notes_cache = (release.version, notes)
+        return notes
 
-    def _set_notes(self, notes: str, loading: bool) -> None:
-        if (notes, loading) == (self._notes, self._notes_loading):
+    def _set_notes(self, notes: str) -> None:
+        if notes == self._notes:
             return
         self._notes = notes
-        self._notes_loading = loading
         self.notesChanged.emit()
 
     def _fail(self, text: str) -> None:

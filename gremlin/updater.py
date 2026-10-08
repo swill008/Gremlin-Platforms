@@ -245,9 +245,10 @@ def newer_notes(docs: object, running: str, latest: str) -> list[tuple[str, str]
 
 def notes_html(entries: list[tuple[str, str]]) -> str:
     """The What's new of each release, in the order given, as HTML for the
-    Update window (01 S133). With several, each starts with a small version
-    line (class "ver") after a thin rule; one has none. "" when none of
-    them has a What's new part."""
+    Update window (01 S133). With several, each starts with a small
+    "What's new in <version>" line (class "ver"), with a thin rule and
+    space between versions (D-01-UPDATE-VERSION-LINE); one has none. ""
+    when none of them has a What's new part."""
     sections = [(version, whats_new(body, version)) for version, body in entries]
     if not any(text for _, text in sections):
         return ""
@@ -257,7 +258,9 @@ def notes_html(entries: list[tuple[str, str]]) -> str:
         if several:
             if index:
                 parts.append("<hr>")
-            parts.append(f'<p class="ver">{html.escape(version)}</p>')
+            parts.append(
+                f"<p class=\"ver\">What's new in {html.escape(version)}</p>"
+            )
         parts.append(
             _section_html(text) if text
             else f'<p class="none">{_UNAVAILABLE}</p>'

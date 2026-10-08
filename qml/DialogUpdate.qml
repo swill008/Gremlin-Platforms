@@ -49,7 +49,10 @@ ApplicationWindow {
             // level; a negative margin adds up the same way).
             + "ul { margin-top: 0px; margin-bottom: " + Style.dp(2) + "px; margin-left: -20px; }"
             + "li { margin-bottom: " + Style.dp(2) + "px; }"
-            + "hr { background-color: " + _css(Style.line) + "; }"
+            // About a line of space above and below the rule between
+            // versions (D-01-UPDATE-VERSION-LINE).
+            + "hr { background-color: " + _css(Style.line) + "; margin-top: "
+            + Style.dp(14) + "px; margin-bottom: " + Style.dp(14) + "px; }"
             + "code { font-family: '" + Style.monoFont + "'; }"
             + "</style>"
     }
@@ -137,15 +140,25 @@ ApplicationWindow {
                         selectByMouse: true
                         wrapMode: TextEdit.Wrap
                         background: null
+                        // The style turns a focused text area to its light
+                        // look (black text) whatever the theme; clicking
+                        // into the notes keeps the program's theme.
+                        U.Universal.theme: Style.theme
                         leftPadding: Style.dp(10)
                         rightPadding: Style.dp(10)
                         topPadding: Style.dp(8)
                         bottomPadding: Style.dp(4)
                         readonly property string notes: updater ? updater.releaseNotes : ""
                         textFormat: notes ? TextEdit.RichText : TextEdit.PlainText
+                        // Filled once, before the window shows (the model
+                        // waits for the list: D-01-UPDATE-NOTES-CACHE).
                         text: notes ? _root.notesStyle() + notes
-                            : updater && updater.notesLoading ? qsTr("Getting the release notes…")
                             : qsTr("Release notes unavailable.")
+                        // Safety net: should the text ever change while
+                        // shown, redraw all of it once it is laid out (a
+                        // refill once left the added part blank until a
+                        // resize).
+                        onTextChanged: Qt.callLater(update)
                         onLinkActivated: (link) => {
                             if (/^https:\/\//.test(link))
                                 Qt.openUrlExternally(link)
