@@ -32,7 +32,7 @@ them the other way round; a friend's shared setup is put on your stick.
 | `<library folder>\library.json` | The list: devices (name, description, device id when known, kind: set up here / deleted / from a pack) and their saved setups (name, description, date, origin, whether it is the user's, what it holds, which profiles and modes its bindings came from, vJoy outputs). |
 | `<library folder>\<device>\<saved setup>.zip` | Each saved setup is a Device Pack (08 S49-S55 format), so it can be exported and shared as it is. |
 
-Code (planned): a library owner in `gremlin/modules/` (the one writer of
+Code: the library owner `gremlin/device_library.py` (the one writer of
 `library.json` and the packs, built on `device_pack.assemble` and the pack
 import), a QML model in `gremlin/ui/`, `qml/WindowDeviceLibrary.qml` and its
 dialogs. Copy, Swap and Change vJoy Output change profiles only through the
@@ -104,7 +104,7 @@ works on files and the profile through their owners.
 ### D. Autosaves
 
 - **S16** The program should keep an autosave of a stick, without asking, when: the stick is deleted (Delete Device); its module file is deleted (Module Setup's Delete File: setup only, "Autosave: module file deleted"); before Copy replaces its settings; before Swap; before Change vJoy Output; before a Device Pack is put on it. They are always on (they are the way back, S41). [D-10-AUTOSAVE] [changed 2026-10-08 to follow D-10-STREAMLINE]
-- **S17** An autosave's name should say why it was kept: "Autosave: stick deleted", "Autosave: before Copy from <stick>", "Autosave: before Swap with <stick>", "Autosave: before Change vJoy Output (vJoy 1 → 2)", "Autosave: before Device Pack <pack>". [D-10-AUTOSAVE]
+- **S17** An autosave's name should say why it was kept: "Autosave: stick deleted", "Autosave: before Copy from <stick>", "Autosave: before Swap with <stick>", "Autosave: before Change vJoy Output (vJoy 1 → 2)", "Autosave: before Device Pack <pack>" (<pack> is the pack's file name without .zip; user, 2026-10-08). [D-10-AUTOSAVE]
 - **S18** An autosave should hold everything the stick has: its module file and pictures, and its bindings in every mode from every profile the action changes (the open profile and any ticked saved profiles).
 - **S19** Only the newest N autosaves per stick are kept (N = 10 by default, set in Device Library Settings); older autosaves are removed when a new one is kept. The user's own saved setups (S12, S13) are never removed this way. [D-10-AUTOSAVE]
 - **S20** If an autosave can't be written or read back, the action that needed it should not run, and say so (as Delete Device's copy does today, 03 S91). [carries 03 S91, 08 S86]
@@ -150,7 +150,7 @@ works on files and the profile through their owners.
 
 - **S39** Dropping a Device Pack (.zip) on the window should import it as File › Import Device Pack… does (S35). [D-10-STREAMLINE]
 - **S40** Double-clicking a saved setup should open Copy to Another Stick with it as From. [D-10-STREAMLINE]
-- **S41** Edit › Undo should put the last Copy, Swap or Change vJoy Output back by copying the autosaves it kept onto their sticks (every part they hold, into the profiles they came from). Because it uses the autosaves, it still works after the window closes or the program restarts, until another change replaces it. Undo is itself a change and keeps its own autosave first. [D-10-STREAMLINE]
+- **S41** Edit › Undo should put the last Copy, Swap or Change vJoy Output back by copying the autosaves it kept onto their sticks (every part they hold, into the profiles they came from). Because it uses the autosaves, it still works after the window closes or the program restarts, until another change replaces it. Undo is itself a change and keeps its own autosave first. The Edit menu item names the change: "Undo <change>" (e.g. "Undo Copy DCS F-16 to Right stick"), and right after an Undo it reads "Redo <change>". [D-10-STREAMLINE] [D-10-REDO-LABEL]
 
 ## 9. Questions for the user
 
@@ -189,6 +189,7 @@ Approved by the user, 2026-10-08 (wording as drafted; Q1 dropped).
 | D-10-TIDY | Size in the status bar and Tidy Library… |
 | D-10-SETTINGS, D-10-SAVE, D-10-SHARE, D-10-PROTO | Settings, saving, sharing, the prototype's layout |
 | D-10-Q1-DROP | No autosave trigger for a deleted profile |
+| D-10-REDO-LABEL | After an Undo the Edit item reads "Redo <change>" |
 | D-10-DAMAGED-KEPT | A damaged module file is autosaved as it is, so delete always works |
 | D-10-SWAP-REFS | Swap warns about references to controls the other stick lacks |
 | D-10-STREAMLINE | Undo puts the autosave back; autosaves always on; no profile backups (History covers whole files); Shared folded into Not connected; no Edit Description; drag-drop import and double-click to Copy |

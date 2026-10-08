@@ -30,9 +30,9 @@ QML / JS
 - `qml/DialogManageModes.qml` (249): add, rename, Inherits from, delete (asks with binding count).
 - `qml/ProfileSettings.qml` (256): Startup Mode, Macro Default Delay, vJoy Behavior, vJoy Initial Values.
 - `qml/ScriptManager.qml` (248), `qml/ScriptConfiguration.qml` (374): Scripts page and a script's variables.
-- `qml/DialogSwapDevices.qml` (164): Swap Devices window.
+- ~~`qml/DialogSwapDevices.qml` (164): Swap Devices window.~~ Removed 2026-10-08 (D-10-SWAP); the Device Library replaces it (10).
 - `qml/OptionProfileAutoLoading.qml` (237): Options › Profiles › Auto-load list.
-- `qml/help_topics.js`: topics Profiles, What is saved where, Run and status, Modes, Change Mode, Load Profile, Profile Settings, Scripts, Swap Devices, History.
+- `qml/help_topics.js`: topics Profiles, What is saved where, Run and status, Modes, Change Mode, Load Profile, Profile Settings, Scripts, History (Swap Devices replaced by the Device Library topic, 2026-10-08).
 
 Tests (main ones)
 - `test/unit/test_profile.py`, `test_tree.py`, `test_modes.py`, `test_mode_hierarchy_model.py`, `test_profile_settings.py`, `test_profile_unsaved.py`, `test_profile_save_safe.py`, `test_profile_unused_actions.py`, `test_profile_missing_child_action.py`, `test_library_invalid_children.py`, `test_recent_profiles.py`, `test_load_and_rename_safety.py`, `test_autoload_and_mode_prompts.py`, `test_audit_profile.py`, `test_audit2_modes.py`, `test_audit3_modes.py`, `test_audit_saving.py`, `test_audit2_saving.py`, `test_audit2_coverage.py`, `test_startup_messages.py`, `test_write_less.py`, `test_mode_refresh_and_add_key.py`, `test_swap_devices.py`, `test_audit3_screens.py` (Swap list), `test_user_script.py`, `test_user_script_load_errors.py`, `test_data_safety.py`.
@@ -93,7 +93,7 @@ Who else changes profile data (not single-owner)
 | Configuration page: edit actions in a binding | `InputItemBindingModel` | | `move_action` 392, `remove_action` 448 (+ `Library.remove_unused`), `append_action` 484, `_set_behavior` 587 |
 | Configuration page: open an input | `backend.getInputItem` 451 | | `Profile.get_input_item(..., create_if_missing=True)` 993 (empty items are not saved) |
 | Undo / Redo, History Restore, Device Pack | other subsystems | | `Profile.input_snapshot` 1091, `put_input` 1126, `add_inputs` 1058, `drop_inputs` 1174 |
-| Tools › Swap Devices… / card "Swap Device…" | `DialogSwapDevices.qml:133` (asks first) | `_tools.swapDevices` | `Tools.swapDevices` 65 → `swap_devices.swap_devices` 130; `signal.profileChanged` |
+| ~~Tools › Swap Devices… / card "Swap Device…"~~ (removed 2026-10-08, D-10-SWAP) | Device Library › Swap with Another Stick… (10 S26) | `deviceLibrary` model | `library_swap.swap` → `swap_devices.swap_devices` (with limits); `library_profiles.Batch` |
 | Scripts › Add Script | `ScriptManager.qml:37` | | `ScriptListModel.addScript` 406 → `ScriptManager.add_script` 1816 → `Script()` (runs the script file) |
 | Scripts › rename / remove (asks) / configure variables | `ScriptManager.qml:205`, `:231`; `ScriptConfiguration.qml` | | `renameScript` 419, `removeScript` 412, variable models' setters |
 | Run | toolbar / tray | `Backend.toggleActiveState` 417 → `activate_gremlin(True)` | `CodeRunner.start(profile, ui_state.currentMode)`: scripts reloaded (`_setup_user_scripts`), mode lookup built, `ModeManager.switch_to(start mode)`, vJoy initial values written |

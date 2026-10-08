@@ -155,6 +155,32 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 41. Compare two saved setups in the Device Library with History's
     before/after view (user, 2026-10-08). Design first.
 
+42. Test teardown hang (found 2026-10-08, HG): one pytest process running
+    test_data_safety.py::test_a_profile_with_an_unknown_action_type_opens_and_keeps_it
+    with a Delete Device test from test_stage1_history_pack.py passes, then never
+    exits (native teardown after atexit; no Python thread left). Same on the code
+    before the Device Library, and EventListener().terminate() doesn't help.
+    run_tests.py parts end anyway, so full runs and CI pass. Find the native cause;
+    meanwhile arm a faulthandler deadman at the end of pytest_unconfigure.
+
+43. Exit-hang check (user go 2026-10-08, after the Device Library is committed):
+    (1) test-plan.md rule: a run must end within 20 s of pytest's summary, else it is an
+    EXIT HANG (reported with part and files, never passed/slow) + batch checklist line;
+    (2) run_tests.py: after a part's summary wait <= 20 s, then report EXIT HANG, list
+    its files, dump stacks, end it; a WARNING (summary + CI annotation) until to-do 42 is
+    fixed, then a failure; (3) conftest pytest_unconfigure arms faulthandler (20 s, dump
+    + exit); (4) agent contract + lead watcher report exit hangs; (5) memory note.
+
+44. Tests must never touch the real vJoy driver (user, 2026-10-08). The PC blue-screened
+    (0x3B SYSTEM_SERVICE_EXCEPTION in vjoy.sys 2.1.9, 2019; dump analysed with WinDbg:
+    AV_vjoy!unknown_function at vjoy+0x4bc3) while stuck test processes were being
+    killed. Add a check at test start-up/teardown: if the real vJoy library
+    (vJoyInterface.dll) is loaded or the vJoy device is opened in a test process, the
+    test fails and names itself. Find and fix any test that reaches it. Look at it with
+    to-do 42 (exit hang may be vJoy unloading) and 43 (exit-hang check). Until done:
+    one test process per agent, no kill-and-retry loops, the hanging pair off-limits.
+    The vJoy driver version itself is the user's decision.
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).
