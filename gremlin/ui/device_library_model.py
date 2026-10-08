@@ -238,6 +238,11 @@ class DeviceLibraryModel(QtCore.QObject):
         self._devices: list[dict] = []
         self._open: set[str] = set()
         self._selected = ""
+        # Every selected row (S50: several saved setups, or several
+        # devices); _selected is the one the details show.
+        self._picked: list[str] = []
+        # The rows a running change is changing (S43's busy mark).
+        self._busy_keys: list[str] = []
         self._filters: dict[str, bool] = {name: True for name in FILTERS}
         self._search = ""
         self._matches: set[str] | None = None
@@ -319,6 +324,9 @@ class DeviceLibraryModel(QtCore.QObject):
         self._open &= keys
         if self._selected and self._selected not in keys:
             self._selected = ""
+        self._picked = [k for k in self._picked if k in keys]
+        if self._selected and self._selected not in self._picked:
+            self._picked = [self._selected]
         self._inputs.clear()
         self._photos.clear()
         self._note_seen()
@@ -498,6 +506,12 @@ class DeviceLibraryModel(QtCore.QObject):
     def _get_busy(self) -> bool:
         return self._busy
 
+    def _get_picked(self) -> list:
+        return list(self._picked)
+
+    def _get_busy_keys(self) -> list:
+        return list(self._busy_keys)
+
     def _get_undo(self) -> str:
         return self._undo
 
@@ -632,6 +646,8 @@ class DeviceLibraryModel(QtCore.QObject):
     statusText = QtCore.Property(str, fget=_get_status, notify=changed)
     folderText = QtCore.Property(str, fget=_get_folder, notify=changed)
     busy = QtCore.Property(bool, fget=_get_busy, notify=busyChanged)
+    selectedKeys = QtCore.Property(list, fget=_get_picked, notify=changed)
+    busyKeys = QtCore.Property(list, fget=_get_busy_keys, notify=busyChanged)
     undoText = QtCore.Property(str, fget=_get_undo, notify=changed)
 
     @QtCore.Property(list, constant=True)
@@ -659,12 +675,84 @@ class DeviceLibraryModel(QtCore.QObject):
     @QtCore.Slot(str)
     def select(self, key: str) -> None:
         self._selected = key
+        self._picked = [key] if key else []
         dev, _setup = self._setup(key)
         if dev is not None:
             self._open.add(dev["key"])
             self._rebuild()
         else:
             self.changed.emit()
+
+    def _kind(self, key: str) -> str:
+        return "device" if self._device(key) is not None else "setup"
+
+    @QtCore.Slot(str, str)
+    def pick(self, key: str, how: str) -> None:
+        """S50: Ctrl-click ("toggle") adds or takes away a row, Shift-click
+        ("range") selects the rows from the last one clicked to this one.
+        Several saved setups, or several devices: a row of the other kind
+        starts a new selection. Anything else selects only this row."""
+        if how not in ("toggle", "range") or not self._picked:
+            self.select(key)
+            return
+        kind = self._kind(key)
+        same = [k for k in self._picked if self._kind(k) == kind]
+        if not same:
+            self.select(key)
+            return
+        if how == "toggle":
+            if key in same:
+                same.remove(key)
+                if not same:
+                    self.select("")
+                    return
+                self._picked = same
+                if self._selected == key:
+                    self._selected = same[-1]
+            else:
+                self._picked = [*same, key]
+                self._selected = key
+        else:
+            order = [r["key"] for r in self._rows if r["kind"] == kind]
+            anchor = self._selected if self._selected in same else same[-1]
+            if key not in order or anchor not in order:
+                self.select(key)
+                return
+            a, b = sorted((order.index(anchor), order.index(key)))
+            self._picked = order[a : b + 1]
+            self._selected = key
+        self.changed.emit()
+
+    @QtCore.Slot(str, result=dict)
+    def deviceTarget(self, key: str) -> dict:
+        """A device's own name, id and Home card key: what Home's Delete
+        Device, Module Setup, Button Map and Show on Home take (S15, S44)."""
+        dev = self._device(key)
+        if dev is None:
+            return {}
+        name, guid = self._target(key)
+        from gremlin.modules import store
+
+        return {
+            "key": key,
+            "name": name,
+            "guid": guid,
+            "shown": str(dev.get("name", "")),
+            "slug": store.card_key(name),
+            "module": str(dev.get("module", "") or ""),
+            "state": str(dev.get("state", "")),
+        }
+
+    @QtCore.Slot(str, result=dict)
+    def removalPlan(self, key: str) -> dict:
+        """S15: what Remove from Library would remove (module_file: the
+        module file still here, which Home's Delete Device removes first)."""
+        try:
+            return dict(self.api.library.removal_plan(key) or {})
+        except Exception:
+            logging.getLogger("system").exception("Device Library: removal plan")
+            dev = self._device(key)
+            return {"module_file": str(dev.get("module", "")) if dev else ""}
 
     @QtCore.Slot(str, str, result=str)
     def findDevice(self, name: str, guid: str) -> str:
@@ -740,6 +828,7 @@ class DeviceLibraryModel(QtCore.QObject):
         *args: object,
         change: bool = True,
         main: bool = False,
+        keys: list[str] | tuple[str, ...] = (),
     ) -> int:
         """Runs fn(*args) on a program thread; its Result comes back as
         result(map) with op and the returned ticket. A change (change=True)
@@ -758,6 +847,7 @@ class DeviceLibraryModel(QtCore.QObject):
         if change:
             self._busy = True
             self._busy_op = op
+            self._busy_keys = [str(k) for k in keys if k]
             self.busyChanged.emit()
 
         def work() -> None:
@@ -800,6 +890,7 @@ class DeviceLibraryModel(QtCore.QObject):
         if change:
             self._busy = False
             self._busy_op = ""
+            self._busy_keys = []
             self.busyChanged.emit()
             self.refresh()
         self.result.emit(res)
@@ -1028,7 +1119,68 @@ class DeviceLibraryModel(QtCore.QObject):
 
     @QtCore.Slot(str, result=int)
     def deleteItem(self, key: str) -> int:
-        return self._start("delete", self.api.library.delete, key, main=True)
+        return self._start(
+            "delete", self.api.library.delete, key, main=True, keys=[key]
+        )
+
+    # | The row menus' changes (S15, S44-S50)
+
+    @QtCore.Slot(str, result=int)
+    def removeDevice(self, key: str) -> int:
+        """S15 Remove from Library: the device and all its saved setups
+        (its module file, if any, went first through Home's Delete Device)."""
+        return self._start(
+            "remove", self.api.library.remove_device, key, main=True, keys=[key]
+        )
+
+    @QtCore.Slot(str, result=int)
+    def deleteSavedSetups(self, key: str) -> int:
+        """S15 Delete Saved Setups: forgets a connected stick's saved
+        setups; the stick keeps its settings."""
+        return self._start(
+            "deleteSetups",
+            self.api.library.delete_saved_setups,
+            key,
+            main=True,
+            keys=[key],
+        )
+
+    @QtCore.Slot(list, result=int)
+    def deleteMany(self, keys: list) -> int:
+        """S50: Delete... / Remove from Library... on every selected row."""
+        clean = [str(k) for k in keys if str(k)]
+        return self._start(
+            "deleteMany", self.api.library.delete_many, clean, main=True, keys=clean
+        )
+
+    @QtCore.Slot(str, result=bool)
+    def keep(self, key: str) -> bool:
+        """S49 Keep This Autosave: the autosave becomes the user's own."""
+        return self._now("keep", self.api.library.keep, key)
+
+    @QtCore.Slot(str, result=int)
+    def restoreToStick(self, key: str) -> int:
+        """S48: a saved setup back on its own stick, as Copy does
+        (autosave first, Undo)."""
+        return self._start(
+            "restore", self.api.copy.restore_to_stick, key, main=True, keys=[key]
+        )
+
+    @QtCore.Slot(str, str, result=int)
+    def exportCurrent(self, key: str, url: str) -> int:
+        """S44 Export Current Setup...: a Device Pack of the device's
+        current settings."""
+        dest = to_local_path(url)
+        if dest.suffix.lower() != ".zip":
+            dest = dest.with_name(dest.name + ".zip")
+        return self._start(
+            "exportCurrent",
+            self.api.library.export_current,
+            key,
+            dest,
+            main=True,
+            keys=[key],
+        )
 
     @QtCore.Slot(int, result=list)
     def tidyPreview(self, months: int) -> list:

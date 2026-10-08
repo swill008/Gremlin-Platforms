@@ -318,6 +318,8 @@ only when OSC is picked up.
 | D-10-RESTORE | 2026-10-08 | Restore to This Stick… puts a saved setup back on its own (plugged-in) stick like Copy, autosave first, Undo. | Suggestion accepted (user) | 10 S48 |
 | D-10-KEEP | 2026-10-08 | Keep This Autosave makes an autosave the user's own in one step. | Suggestion accepted (user) | 10 S49 |
 | D-10-MULTI | 2026-10-08 | Ctrl/Shift-click select several rows; Delete / Remove act on all after one question; other actions on one row. | Suggestion accepted (user) | 10 S50 |
+| D-10-MULTI-NOTE | 2026-10-08 | With a plugged-in stick among several selected devices, the right-click menu shows a grey line "Remove from Library works only on devices that aren't plugged in" instead of an empty menu. | Found while building (CU); user chose the suggestion | 10 S50 |
+| D-10-ACTIVITY | 2026-10-08 | A saved setup's short list in the details (saved, described, copied to…) is headed Activity, not History, so it isn't confused with Tools › History. The Library's file changes stay in Tools › History as every save does. | User question on overlap with History; rename chosen | 10 S11 |
 
 ## Later decisions
 

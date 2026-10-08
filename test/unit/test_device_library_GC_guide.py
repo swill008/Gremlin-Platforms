@@ -108,6 +108,12 @@ def test_the_guide_builds_with_every_part(qapp: QtCore.QCoreApplication) -> None
         "Tidy Library",
         "Delete Device and Delete File",
         "Renamed and twin sticks",
+        # The right-click menus and what came with them (S43-S50).
+        "Right-click menus",
+        "Restore to This Stick",
+        "Keep This Autosave",
+        "Selecting several rows",
+        "Delete and Remove from Library",
     ):
         assert title in titles, title
     every_body = _run("deviceLibraryTopics().every(t => t.body.length > 80)")
@@ -145,6 +151,95 @@ def test_the_menu_items_named_are_the_windows() -> None:
     for item in menu_items:
         assert item in text, item
         assert f'text: "{item}"' in _WINDOW or f'"{item}"]' in _WINDOW, item
+
+
+def _row_menu_items() -> set[str]:
+    """The labels of the window's right-click menus (rowMenuModel)."""
+    start = _WINDOW.index("function rowMenuModel()")
+    end = _WINDOW.index("\n    }\n", start)
+    body = _WINDOW[start:end]
+    items = set(re.findall(r'MenuModel\.action\("([^"]+)"', body))
+    items.update(re.findall(r'"(Collapse|Expand)"', body))
+    return items
+
+
+def test_the_right_click_menus_named_are_the_windows() -> None:
+    """S43-S47: the guide names every item of the three right-click menus,
+    with the window's exact labels, and the keys that open them."""
+    text = _text(_guide_source())
+    built = _row_menu_items()
+    device = (
+        "Copy to Another Stick…",
+        "Swap with Another Stick…",
+        "Change vJoy Output…",
+        "Save to Device Library…",
+        "Export Current Setup…",
+        "Rename…",
+        "Edit Description",
+        "Open Module Setup…",
+        "Open Button Map",
+        "Show on Home",
+        "Expand",
+        "Collapse",
+        "Remove from Library…",
+        "Clear Setup…",
+        "Delete Saved Setups…",
+    )
+    setup = (
+        "Copy to Another Stick…",
+        "Restore to This Stick…",
+        "Export…",
+        "Rename…",
+        "Edit Description",
+        "Keep This Autosave",
+        "Delete…",
+    )
+    space = (
+        "Import Device Pack…",
+        "Expand All",
+        "Collapse All",
+        "Device Library Settings…",
+    )
+    for item in (*device, *setup, *space):
+        assert item in built, item
+        assert f"<b>{item}</b>" in _guide_source(), item
+    assert built <= {*device, *setup, *space}, built - {*device, *setup, *space}
+    topic = _run(
+        "deviceLibraryTopics().filter(t => t.title === 'Right-click menus')[0].body"
+    )
+    for words in ("Menu", "Shift+F10", "selects it first", "left out", "red"):
+        assert words in str(topic), words
+    assert '"Menu", "Shift+F10"' in _WINDOW
+    # The delete question quoted is the window's.
+    assert "from the Library?" in text and '" from the Library?"' in _WINDOW
+
+
+def test_the_delete_topic_follows_the_states() -> None:
+    """S15 as built: Remove from Library (not connected, Delete Device first
+    for a module file still here), Clear Setup and Delete Saved Setups
+    (connected), Delete… on a saved setup; the details button's labels."""
+    body = str(
+        _run(
+            "deviceLibraryTopics().filter(t => t.title === "
+            "'Delete and Remove from Library')[0].body"
+        )
+    )
+    for words in (
+        "Remove from Library…",
+        "Clear Setup…",
+        "Delete Saved Setups…",
+        "Delete…",
+        "Delete Device",
+        "autosave is kept",
+        "stays plugged in with no setup",
+        "keeps its settings",
+        "can't be undone",
+        "Restore to This Stick…",
+    ):
+        assert words in body, words
+    assert '"Delete Saved Setups…" : "Remove from Library…"' in _WINDOW
+    for gone in ("deleted with Delete Device on Home. The stick itself",):
+        assert gone not in body
 
 
 def test_every_bold_label_is_on_screen() -> None:
@@ -213,6 +308,7 @@ def test_the_words_match_the_program() -> None:
     ):
         assert name in text and name in code, name
     for start in (
+        "Autosave: before Restore of ",
         "Autosave: before Copy from ",
         "Autosave: before Swap with ",
         "Autosave: before Change vJoy Output (",
@@ -232,8 +328,17 @@ def test_the_words_match_the_program() -> None:
         "Library: ",
         "(swap them)",
         "current settings",
+        "Remove Old Warthog stick and its 4 saved setups from the Library?",
     ):
-        assert words in text and words in _SHOWN, words
+        assert words in text, words
+        if words.startswith("Remove "):
+            assert '"Remove " + details.name' in _WINDOW
+            assert '" from the Library?"' in _WINDOW
+        else:
+            assert words in _SHOWN, words
+    # Keep This Autosave's History line, as the library writes it.
+    library = (_ROOT / "gremlin" / "device_library.py").read_text(encoding="utf-8")
+    assert "Kept as your own" in text and '"Kept as your own"' in library
 
 
 def test_glossary_words_and_nothing_removed() -> None:
@@ -255,7 +360,8 @@ def test_glossary_words_and_nothing_removed() -> None:
         "Swap Device…",
         "Shared",
         "Save a copy",
-        "Edit Description",
+        # "Edit Description" (no dots) is a right-click item now (S44, S45).
+        "Edit Description…",
         "backup",
     ):
         assert gone not in text, gone

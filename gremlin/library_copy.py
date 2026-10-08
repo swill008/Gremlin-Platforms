@@ -455,15 +455,85 @@ def copy(
         )
 
 
+def _exists(stored: str) -> bool:
+    """A profile a saved setup came from is still there: the open one, or
+    a file on disk. "" (a pack's bindings, no profile) never is."""
+    if not str(stored or "").strip():
+        return False
+    current = shared_state.current_profile
+    if current is not None and _same_path(stored, current.fpath):
+        return True
+    if str(stored) == ".":
+        return False
+    try:
+        return Path(stored).is_file()
+    except OSError:
+        return False
+
+
+def restore_to_stick(setup_key: str) -> dict:
+    """Restore to This Stick… (S48): the saved setup back on its own stick
+    (by its device id; it must be plugged in) as Copy does (S22-S25):
+    every part it holds (calibration too: the same stick; a damaged
+    module file never, S20a), into the profiles it came from that are
+    still there, every mode it has. Autosave first ("Autosave: before
+    Restore of <setup>"), the last change for Undo, a history line."""
+    found = _find_setup(setup_key)
+    if found is None:
+        return _fail("This saved setup isn't in the Device Library.")
+    dev, setup = found
+    guid = str(dev.get("guid") or "")
+    name = str(dev.get("name") or "")
+    if not _connected(guid):
+        return _fail(
+            f"{name or 'Its stick'} isn't plugged in. A saved setup can only be "
+            "restored to its stick while it is plugged in."
+        )
+    holds = [str(p) for p in setup.get("holds") or []]
+    parts = [p for p in library.PARTS if p in holds]
+    if _damaged(setup) and "bindings" not in parts:
+        return _fail(
+            "This saved setup's module file is damaged and it has no bindings, "
+            "so there is nothing to restore."
+        )
+    profiles: list[Path] = []
+    gone: list[str] = []
+    for row in setup.get("profiles") or []:
+        if not isinstance(row, dict):
+            continue
+        stored = str(row.get("path") or "")
+        if _exists(stored):
+            if Path(stored) not in profiles:
+                profiles.append(Path(stored))
+        elif stored.strip():
+            gone.append(str(row.get("name") or _profile_name(stored)))
+    try:
+        with _scratch() as scratch:
+            out = _copy(
+                setup_key, name, guid, parts, profiles, None, scratch, restore=True
+            )
+    except Exception as e:  # noqa: BLE001 - refused, said
+        return _fail(f"The saved setup couldn't be restored ({e}).")
+    if gone and "bindings" in parts:
+        out["warnings"].append(
+            "These profiles it came from are no longer there, so their bindings "
+            "weren't restored: " + ", ".join(gone) + "."
+        )
+    return out
+
+
 def _copy(
     setup_key: str,
     target_name: str,
     target_guid: str,
     parts: list[str],
     profiles: list[Path],
-    modes: list[str],
+    modes: list[str] | None,
     scratch: Path,
+    restore: bool = False,
 ) -> dict:
+    """restore: Restore to This Stick (S48), named so in the autosave, the
+    Undo label and the saved setup's history."""
     checked = _copy_checks(setup_key, target_name, target_guid, parts, scratch)
     if not checked["ok"]:
         return checked
@@ -486,7 +556,9 @@ def _copy(
         own,
         target_guid,
         "copy",
-        f"Autosave: before Copy from {source_name}",
+        f"Autosave: before Restore of {checked['setup'].get('name') or ''}"
+        if restore
+        else f"Autosave: before Copy from {source_name}",
         profiles,
     )
     if not saved["ok"]:
@@ -544,10 +616,12 @@ def _copy(
     # The saved setup copied ("Copy DCS F-16 to Right stick"), or the
     # device whose current settings were copied.
     what = source_name if current else str(checked["setup"].get("name") or source_name)
-    label = f"Copy {what} to {target}"
+    label = f"{'Restore' if restore else 'Copy'} {what} to {target}"
     try:
         if not current:
-            library.add_history(setup_key, f"Copied to {target}")
+            library.add_history(
+                setup_key, f"{'Restored' if restore else 'Copied'} to {target}"
+            )
         library.set_last_change("copy", keys, label)
     except Exception as e:  # noqa: BLE001 - the copy is done; said
         out["warnings"].append(f"The Library couldn't record the copy ({e}).")

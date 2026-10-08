@@ -82,3 +82,10 @@ def test_the_app_gives_qml_the_device_library_model() -> None:
     wanted = 'setContextProperty(\n            "deviceLibrary", self.device_library'
     assert wanted in text
     assert text.index('"deviceLibrary"') < text.index("def _check_second_copy")
+
+
+def test_a_saved_setups_list_is_called_activity_not_history() -> None:
+    """D-10-ACTIVITY: the details' short list isn't named like Tools > History."""
+    text = (_ROOT / "qml" / "WindowDeviceLibrary.qml").read_text(encoding="utf-8")
+    assert 'Label { text: "Activity"' in text
+    assert 'Label { text: "History"' not in text

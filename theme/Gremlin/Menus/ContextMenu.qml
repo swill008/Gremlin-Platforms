@@ -293,7 +293,7 @@ Popup {
     }
 
     function _shown(item) {
-        return !hideUnavailable || item.enabled
+        return !hideUnavailable || item.enabled || !!item.note
     }
 
     // Visible rows, top to bottom: quick rows, then each section header and,

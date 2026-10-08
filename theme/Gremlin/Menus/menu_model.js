@@ -56,6 +56,15 @@ function action(text, run, enabled, opts) {
     }
 }
 
+// A grey line that explains why nothing else is offered; never runs, and
+// shown even where unavailable items are hidden.
+function note(text) {
+    return {
+        kind: "action", text: text, run: function() {}, enabled: false,
+        danger: false, hint: "", keepOpen: true, note: true
+    }
+}
+
 function toggle(text, checked, run, enabled) {
     return { kind: "toggle", text: text, checked: !!checked, run: run, enabled: _on(enabled) }
 }

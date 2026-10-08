@@ -95,7 +95,7 @@ works on files and the profile through their owners.
 ### C. Saved setups
 
 - **S10** A device row should open with a caret to show its saved setups as rows under it, newest first. Saved setups the user made (or renamed or described, S13) show a save mark; autosaves show an autosave mark. [D-10-ROWS]
-- **S11** A saved setup holds any of: Setup (claims, friendly names), Button Map and photo, Appearance, Calibration, and Bindings (from one profile, the modes saved, the vJoy outputs they send to). Selecting one should show its name (renamable), its description (editable in place), when and why it was kept, exactly what it holds, a Button Map photo preview, a short history (saved, description edited, copied to which stick and when), and the actions Copy, Swap, Change vJoy Output, Export and Delete (Delete in red). [D-10-PROTO]
+- **S11** A saved setup holds any of: Setup (claims, friendly names), Button Map and photo, Appearance, Calibration, and Bindings (from one profile, the modes saved, the vJoy outputs they send to). Selecting one should show its name (renamable), its description (editable in place), when and why it was kept, exactly what it holds, a Button Map photo preview, a short **Activity** list (saved, description edited, copied to which stick and when; named Activity so it isn't confused with Tools › History) [changed 2026-10-08 to follow D-10-ACTIVITY], and the actions Copy, Swap, Change vJoy Output, Export and Delete (Delete in red). [D-10-PROTO]
 - **S12** Device › Save to Device Library… should keep a saved setup of the selected device (the user's own): its module file now, and its bindings from the profiles the user ticks (one saved setup per profile, named after the profile by default). [D-10-SAVE]
 - **S13** An autosave the user renames or describes becomes the user's own and is never removed by the autosave limit. [D-10-AUTOSAVE]
 - **S14** Export Saved Setup… should write the saved setup as a Device Pack anywhere the user picks (08 S57 rules). [D-10-SHARE]
@@ -104,7 +104,7 @@ works on files and the profile through their owners.
 ### D. Autosaves
 
 - **S16** The program should keep an autosave of a stick, without asking, when: the stick is deleted (Delete Device); its module file is deleted (Module Setup's Delete File: setup only, "Autosave: module file deleted"); before Copy replaces its settings; before Swap; before Change vJoy Output; before a Device Pack is put on it. They are always on (they are the way back, S41). [D-10-AUTOSAVE] [changed 2026-10-08 to follow D-10-STREAMLINE]
-- **S17** An autosave's name should say why it was kept: "Autosave: stick deleted", "Autosave: before Copy from <stick>", "Autosave: before Swap with <stick>", "Autosave: before Change vJoy Output (vJoy 1 → 2)", "Autosave: before Device Pack <pack>" (<pack> is the pack's file name without .zip; user, 2026-10-08). [D-10-AUTOSAVE]
+- **S17** An autosave's name should say why it was kept: "Autosave: stick deleted", "Autosave: before Copy from <stick>", "Autosave: before Swap with <stick>", "Autosave: before Change vJoy Output (vJoy 1 → 2)", "Autosave: before Device Pack <pack>", "Autosave: before Restore of <saved setup>" (S48) (<pack> is the pack's file name without .zip; user, 2026-10-08). [D-10-AUTOSAVE]
 - **S18** An autosave should hold everything the stick has: its module file and pictures, and its bindings in every mode from every profile the action changes (the open profile and any ticked saved profiles).
 - **S19** Only the newest N autosaves per stick are kept (N = 10 by default, set in Device Library Settings); older autosaves are removed when a new one is kept. The user's own saved setups (S12, S13) are never removed this way. [D-10-AUTOSAVE]
 - **S20** If an autosave can't be written or read back, the action that needed it should not run, and say so (as Delete Device's copy does today, 03 S91). [carries 03 S91, 08 S86]
@@ -165,7 +165,7 @@ works on files and the profile through their owners.
 - **S47** Menus show only what can be used now (01 S66); delete items are red and always ask first, naming what goes (e.g. "Remove T.16000M and its 4 saved setups from the Library?"). [D-10-CONTEXT, D-10-REMOVE]
 - **S48** Restore to This Stick… should put a saved setup back on its own stick (which must be plugged in) as Copy does (S22-S25, autosave first, Undo), without choosing a target. [D-10-RESTORE]
 - **S49** Keep This Autosave should make an autosave the user's own in one step (as renaming or describing it does, S13), so the autosave limit never removes it. [D-10-KEEP]
-- **S50** Ctrl-click and Shift-click should select several saved setups (or several devices); Delete… / Remove from Library… then act on all of them after one question that lists them. Copy, Swap, Change, Restore, Rename and Export act on one row only. [D-10-MULTI]
+- **S50** Ctrl-click and Shift-click should select several saved setups (or several devices); Delete… / Remove from Library… then act on all of them after one question that lists them. Copy, Swap, Change, Restore, Rename and Export act on one row only. When a plugged-in stick is among several selected devices, the menu shows a grey line "Remove from Library works only on devices that aren't plugged in" instead of an empty menu. [D-10-MULTI] [D-10-MULTI-NOTE]
 
 ## 9. Questions for the user
 
@@ -209,6 +209,8 @@ Approved by the user, 2026-10-08 (wording as drafted; Q1 dropped).
 | D-10-RESTORE | Restore to This Stick |
 | D-10-KEEP | Keep This Autosave |
 | D-10-MULTI | Select several rows to delete together |
+| D-10-MULTI-NOTE | Grey line when Remove can't apply to several selected devices |
+| D-10-ACTIVITY | The saved setup's short list is called Activity |
 | D-10-GUIDE | Device Library Guide in the window's Help menu (F1) |
 | D-10-REDO-LABEL | After an Undo the Edit item reads "Redo <change>" |
 | D-10-DAMAGED-KEPT | A damaged module file is autosaved as it is, so delete always works |

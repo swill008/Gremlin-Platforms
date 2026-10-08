@@ -581,7 +581,21 @@ function deviceLibraryTopics() {
             + "<li><b>Settings</b>: <b>Device Library Settings…</b>.</li>"
             + "<li><b>Help</b>: <b>Device Library Guide</b> (F1).</li>"
             + "</ul>"
-            + "<p>Menu items you can't use right now are greyed out: for example Swap with Another Stick… needs a stick that is plugged in.</p>"),
+            + "<p>Menu items you can't use right now are greyed out: for example Swap with Another Stick… needs a stick that is plugged in.</p>"
+            + "<p>Right-click a row, or the empty space in the list, for a menu of what you can do with it (see Right-click menus).</p>"),
+        topic("Getting started", "Right-click menus",
+            "<p>Right-clicking a row selects it first, as a click does (it is highlighted and its details show), then opens its menu. The <b>Menu</b> key or <b>Shift+F10</b> opens the same menu on the selected row. Right-clicking the empty space in the list opens the list's own menu.</p>"
+            + "<p>A device's menu:</p>"
+            + "<ul>"
+            + "<li><b>Copy to Another Stick…</b> (from its current settings), <b>Swap with Another Stick…</b> (when it is plugged in), <b>Change vJoy Output…</b>, <b>Save to Device Library…</b> and <b>Export Current Setup…</b> (see Export a saved setup).</li>"
+            + "<li><b>Rename…</b> (F2) and <b>Edit Description</b>, which puts the cursor in its description.</li>"
+            + "<li><b>Open Module Setup…</b>, <b>Open Button Map</b> and <b>Show on Home</b>, for a stick with a card on Home (plugged in, or set up here): they open in the main window.</li>"
+            + "<li><b>Expand</b> or <b>Collapse</b>, when it has saved setups.</li>"
+            + "<li>The delete items, by its state: <b>Remove from Library…</b> when it isn't connected; <b>Clear Setup…</b> and <b>Delete Saved Setups…</b> when it is (see Delete and Remove from Library).</li>"
+            + "</ul>"
+            + "<p>A saved setup's menu: <b>Copy to Another Stick…</b>, <b>Restore to This Stick…</b> (when its stick is plugged in), <b>Export…</b>, <b>Rename…</b>, <b>Edit Description</b>, <b>Keep This Autosave</b> (autosaves only) and <b>Delete…</b>.</p>"
+            + "<p>The empty space's menu: <b>Import Device Pack…</b>, <b>Expand All</b>, <b>Collapse All</b> and <b>Device Library Settings…</b>.</p>"
+            + "<p>A menu shows only what you can do now: an item that doesn't apply, or that has to wait while a change runs, is left out. The delete items are red, and each asks first, naming exactly what goes, for example \"Remove Old Warthog stick and its 4 saved setups from the Library?\".</p>"),
         topic("Devices and saved setups", "Devices",
             "<p>Each device row shows its name, its description, how many saved setups it has, and its state:</p>"
             + "<ul>"
@@ -590,6 +604,7 @@ function deviceLibraryTopics() {
             + "<li><b>Deleted</b>: removed with Delete Device on Home. Its autosave is kept under it.</li>"
             + "</ul>"
             + "<p>Select a device to see its name, description and state, what inputs it has (for example \"32 buttons, 6 axes, 1 hat\") and when it was last seen.</p>"
+            + "<p>The buttons under a device's details: <b>Save to Device Library…</b>, <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>, and the red <b>Remove from Library…</b> (not connected) or <b>Delete Saved Setups…</b> (connected).</p>"
             + "<p>Click the caret beside a device, or double-click the device, to show or hide its saved setups.</p>"),
         topic("Devices and saved setups", "Saved setups",
             "<p>A device's saved setups are listed under it, newest first. A save mark shows the ones that are yours; an autosave mark shows the ones the program kept. The line under each name says how it was kept: <b>Saved by you</b>, <b>Kept automatically</b>, <b>Was an autosave, now yours</b>, or which pack it came from.</p>"
@@ -601,7 +616,7 @@ function deviceLibraryTopics() {
             + "<li><b>Calibration</b>.</li>"
             + "<li><b>Bindings</b>: the stick's actions from one profile, in the modes saved, and the vJoy outputs they send to.</li>"
             + "</ul>"
-            + "<p>Select one to see its name and description, when and why it was kept, exactly what it holds (under <b>Holds</b>, for example \"Bindings from DCS.xml · modes Default, Landing · 212 actions\" and \"Sends to vJoy 1 (38 inputs)\"), a preview of its Button Map photo, and a short <b>History</b>: when it was saved, when its description was edited, and which sticks it was copied to.</p>"
+            + "<p>Select one to see its name and description, when and why it was kept, exactly what it holds (under <b>Holds</b>, for example \"Bindings from DCS.xml · modes Default, Landing · 212 actions\" and \"Sends to vJoy 1 (38 inputs)\"), a preview of its Button Map photo, and its <b>Activity</b>: when it was saved, when its description was edited, and which sticks it was copied to. (Activity is only about that saved setup; Tools → History keeps every saved change in the program.)</p>"
             + "<p>The buttons under the details: <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>, <b>Export…</b> and <b>Delete…</b>.</p>"
             + "<p>A stick whose module file was damaged can still be kept: its saved setup holds <b>Setup (damaged file, kept as is)</b>. That file is never put on another stick; only its bindings can be copied.</p>"),
         topic("Devices and saved setups", "Names and descriptions",
@@ -629,18 +644,23 @@ function deviceLibraryTopics() {
             + "<li>Before <b>Swap</b>, one of each stick: \"Autosave: before Swap with Right stick\".</li>"
             + "<li>Before <b>Change vJoy Output</b>: \"Autosave: before Change vJoy Output (vJoy 1 → 2)\".</li>"
             + "<li>Before a <b>Device Pack</b> is imported onto the stick from Home: \"Autosave: before Device Pack My F-16\" (the pack's file name).</li>"
+            + "<li>Before <b>Restore to This Stick…</b>: \"Autosave: before Restore of DCS F-16\".</li>"
             + "<li>Before <b>Undo</b> puts a change back: \"Autosave: before Undo\".</li>"
             + "</ul>"
             + "<p>An autosave holds everything the stick has: its module file and pictures, and its bindings in every mode from every profile the change touches.</p>"
             + "<p>If an autosave can't be written or read back, the change doesn't run and the message says why.</p>"),
         topic("Autosaves", "How many are kept",
             "<p>Only the newest 10 autosaves per stick are kept; when a new one is kept, the oldest goes. Change the number in <b>Device Library Settings…</b> (\"Keep the newest … autosaves per stick\"). The status bar shows the number in use.</p>"
-            + "<p>Your own saved setups are never removed this way, nor is an autosave you renamed or described: it becomes yours.</p>"
+            + "<p>Your own saved setups are never removed this way, nor is an autosave you renamed, described or kept with Keep This Autosave: it becomes yours.</p>"
             + "<p>Turn off the <b>Autosaves</b> filter to hide autosaves from the list.</p>"),
+        topic("Autosaves", "Keep This Autosave",
+            "<p>Right-click an autosave and choose <b>Keep This Autosave</b> to make it yours in one step, as renaming or describing it does. The autosave limit then never removes it.</p>"
+            + "<p>Its line then reads <b>Was an autosave, now yours</b>, it shows a save mark, and its Activity says \"Kept as your own\". The item shows only on autosaves that are not yours yet.</p>"),
         topic("Autosaves", "Delete Device and Delete File",
             "<p><b>Delete Device</b> on Home always keeps an autosave of the stick first: its module file, its pictures and its bindings in every mode. There is no question about a copy. The stick then shows in the Device Library as <b>Deleted</b>, with its autosave under it.</p>"
             + "<p><b>Delete File</b> in Module Setup keeps an autosave of the module file (\"Autosave: module file deleted\").</p>"
             + "<p>Both work even when the module file is damaged: the damaged file is kept exactly as it is.</p>"
+            + "<p>In the Device Library, <b>Clear Setup…</b> on a connected stick is the same as Delete Device, and Remove from Library… runs Delete Device first for a stick whose module file is still here.</p>"
             + "<p>To use a deleted stick's setup again, select its autosave and choose <b>Copy to Another Stick…</b>.</p>"),
         topic("Changing sticks", "Copy to Another Stick",
             "<p><b>Copy to Another Stick…</b> puts a saved setup, or a stick's current settings, on a stick plugged in now. Double-clicking a saved setup opens it too.</p>"
@@ -653,6 +673,14 @@ function deviceLibraryTopics() {
             + "<li>A warning box lists what won't copy because the target stick lacks it (buttons, hats, axes and the bindings on them). Those are left out; the rest copies.</li>"
             + "</ul>"
             + "<p>Press <b>Copy</b>. An autosave of the target stick is kept first, and Edit › Undo puts it back. The saved setup and the stick it came from never change.</p>"),
+        topic("Changing sticks", "Restore to This Stick",
+            "<p><b>Restore to This Stick…</b>, in a saved setup's right-click menu, puts the saved setup back on the stick it belongs to, without choosing a To stick. That stick must be plugged in.</p>"
+            + "<ul>"
+            + "<li>It works as Copy does: every part the saved setup holds (Calibration too, as it is the same stick), into the profiles it came from that are still there, in every mode it has.</li>"
+            + "<li>It asks first; press <b>Restore</b>.</li>"
+            + "<li>An autosave of the stick is kept first (\"Autosave: before Restore of DCS F-16\"), and Edit › Undo puts it back.</li>"
+            + "</ul>"
+            + "<p>To choose the parts, profiles and modes, or to put it on another stick, use Copy to Another Stick… instead.</p>"),
         topic("Changing sticks", "Swap with Another Stick",
             "<p><b>Swap with Another Stick…</b> lets two sticks trade places: each gets the other's settings. Both must be plugged in.</p>"
             + "<ul>"
@@ -684,17 +712,18 @@ function deviceLibraryTopics() {
             "<p>Reading profiles, keeping autosaves and writing files run in the background, so the window keeps responding.</p>"
             + "<ul>"
             + "<li>The dialogs show <b>Reading the profiles…</b> and <b>Checking…</b> while they work out the profiles and the warnings. Wait for the warnings before you press Copy, Swap or Change.</li>"
-            + "<li>While a change runs, the status bar shows <b>Working…</b> and the menu items that would start another change are greyed out. One change runs at a time.</li>"
+            + "<li>While a change runs, the status bar shows <b>Working…</b> and the menu items that would start another change are greyed out (left out of the right-click menus). One change runs at a time.</li>"
+            + "<li>A row that is being changed shows a small busy mark until the change is done.</li>"
             + "</ul>"),
         topic("Undo and Redo", "Undo and Redo",
-            "<p>Edit › <b>Undo</b> puts the last Copy, Swap or Change vJoy Output back, by copying the autosaves it kept onto their sticks: every part they hold, into the profiles they came from.</p>"
+            "<p>Edit › <b>Undo</b> puts the last Copy, Swap, Change vJoy Output or Restore back, by copying the autosaves it kept onto their sticks: every part they hold, into the profiles they came from.</p>"
             + "<ul>"
             + "<li>The menu item names the change, for example \"Undo Copy DCS F-16 to Right stick\".</li>"
             + "<li>Right after an Undo it reads \"Redo Copy DCS F-16 to Right stick\": choose it to make the change again.</li>"
             + "<li>Undo keeps its own autosave first (\"Autosave: before Undo\").</li>"
             + "<li>It still works after you close the window or restart the program, until another change replaces it.</li>"
             + "</ul>"
-            + "<p>Only the last change can be undone here. For an older one, select the autosave it kept and use <b>Copy to Another Stick…</b>.</p>"),
+            + "<p>Only the last change can be undone here. For an older one, right-click the autosave it kept and choose <b>Restore to This Stick…</b>, or use <b>Copy to Another Stick…</b>.</p>"),
         topic("Finding things", "Search",
             "<p>Type in the search box (<b>Ctrl+F</b> or View › <b>Search…</b> goes there; <b>Esc</b> clears it). It finds, in any case:</p>"
             + "<ul>"
@@ -708,8 +737,16 @@ function deviceLibraryTopics() {
         topic("Finding things", "Filters and the list",
             "<p>The filters <b>Connected</b>, <b>Not connected</b>, <b>Deleted</b> and <b>Autosaves</b> work together: each one that is ticked shows that kind, so you can, for example, hide deleted sticks and autosaves. The View menu has the same four.</p>"
             + "<p>View › <b>Expand All</b> shows every device's saved setups; <b>Collapse All</b> hides them.</p>"),
+        topic("Finding things", "Selecting several rows",
+            "<p>Ctrl-click adds a row to the selection or takes it away; Shift-click selects every row from the last one you clicked to this one. You can select several saved setups, or several devices, but not both: clicking a row of the other kind starts a new selection.</p>"
+            + "<ul>"
+            + "<li><b>Delete…</b> (saved setups) or <b>Remove from Library…</b> (devices that aren't connected) acts on all of them, after one question that lists them. It is in the right-click menu, in Edit › Delete… and on the red <b>Delete…</b> button.</li>"
+            + "<li>Devices are removed together only when none of them is connected.</li>"
+            + "<li>Copy, Swap, Change vJoy Output, Restore, Rename and Export act on one row only: while several rows are selected they are greyed out, or left out of the menu and the details.</li>"
+            + "</ul>"),
         topic("Sharing", "Export a saved setup",
             "<p>Select a saved setup and choose <b>Export…</b> (or File › <b>Export Saved Setup…</b>). It is written as a Device Pack (.zip) wherever you pick, ready to give to a friend.</p>"
+            + "<p>To share a stick's settings as they are now, right-click the device and choose <b>Export Current Setup…</b>: it writes a Device Pack of its current settings, without keeping a saved setup first. It needs a stick set up here or plugged in.</p>"
             + "<p>File › <b>Open Library Folder</b> opens the library's folder in File Explorer.</p>"),
         topic("Sharing", "Import a Device Pack",
             "<p>File › <b>Import Device Pack…</b>, or dropping a Device Pack (.zip) on the window, adds it as a saved setup:</p>"
@@ -728,14 +765,16 @@ function deviceLibraryTopics() {
         topic("Settings and tidying", "Tidy Library",
             "<p>The status bar shows how much space the library takes. Edit › <b>Tidy Library…</b> lists what it could remove: autosaves older than a number of months you choose (6 to start), and deleted devices with no saved setups. Each item shows its size and is ticked; untick what you want to keep.</p>"
             + "<p>Nothing is removed until you press <b>Remove</b>. Apart from this and the autosave limit, nothing in the library is removed without asking.</p>"),
-        topic("Settings and tidying", "Delete",
-            "<p>Edit › <b>Delete…</b>, or the red <b>Delete…</b> button, asks first, then:</p>"
+        topic("Settings and tidying", "Delete and Remove from Library",
+            "<p>Every delete asks first and names exactly what goes. What it does depends on what is selected:</p>"
             + "<ul>"
-            + "<li>removes the selected saved setup;</li>"
-            + "<li>for a deleted device, or one that came from a pack, removes the device and all its saved setups;</li>"
-            + "<li>for a stick that is plugged in or set up here, removes only its saved setups. The stick itself is deleted with Delete Device on Home.</li>"
+            + "<li>A saved setup: <b>Delete…</b> removes it from the Device Library.</li>"
+            + "<li>A device that isn't connected (unplugged, deleted, or from a pack): <b>Remove from Library…</b> removes the device and all its saved setups. If its module file is still here, that goes first, as Delete Device on Home does: an autosave is kept first. If Delete Device can't run, nothing is removed and the message says why.</li>"
+            + "<li>A connected stick: <b>Clear Setup…</b> is Delete Device on Home: an autosave is kept in the Device Library first, then its module file and its bindings go, and the stick stays plugged in with no setup. <b>Delete Saved Setups…</b> removes only its saved setups; the stick keeps its settings.</li>"
             + "</ul>"
-            + "<p>This can't be undone.</p>"),
+            + "<p>Edit › <b>Delete…</b> and the red button under the details follow the same rules. On a device the button reads Remove from Library… or Delete Saved Setups… by its state, and Edit › Delete… does the same. Clear Setup… is only in the device's right-click menu.</p>"
+            + "<p>To delete several rows with one question, see Selecting several rows.</p>"
+            + "<p>Removing and deleting from the Library can't be undone. Clear Setup… can: its autosave is under the stick, ready for <b>Restore to This Stick…</b>.</p>"),
         topic("Renamed and twin sticks", "Renamed and twin sticks",
             "<p>A stick's name in the Device Library is its name on Home. Rename it in either place and both change; dialogs, autosave names and the Undo item use that name.</p>"
             + "<p>Two sticks with the same name (twins) are told apart by a short id after the name, in the list and in the To lists: for example \"Right stick [EEEE0006]\". Rename one of them to tell them apart more easily.</p>"),
@@ -743,18 +782,21 @@ function deviceLibraryTopics() {
             "<p>Plug in the new stick. In the Device Library, open the old stick's row, select a saved setup (or its \"Autosave: stick deleted\" if you deleted it) and choose <b>Copy to Another Stick…</b> with the new stick as To. Untick Calibration unless the sticks are the same model. The warning box lists any controls the new stick doesn't have.</p>"),
         topic("Common questions", "How do I give my setup to a friend?",
             "<p>Select the saved setup and press <b>Export…</b>. Send them the .zip: they import it with File › <b>Import Device Pack…</b> (or drop it on their Device Library) and copy it onto their stick.</p>"
-            + "<p>To share the stick's settings as they are now, first use <b>Save to Device Library…</b>, then export that saved setup.</p>"),
+            + "<p>To share the stick's settings as they are now, right-click the device and choose <b>Export Current Setup…</b>, or keep them with <b>Save to Device Library…</b> and export that saved setup.</p>"),
         topic("Common questions", "Why can't I copy to this stick?",
             "<p>Copy and Swap only work onto sticks plugged in now: the To list shows nothing else. Plug the stick in and open the dialog again. A device that came from someone's pack has never been plugged in here, so you can copy from it but not to it.</p>"),
         topic("Common questions", "Where did my old setup go?",
             "<ul>"
             + "<li>A deleted stick shows as <b>Deleted</b>, with its autosave under it. Make sure the Deleted and Autosaves filters are ticked and the search box is empty.</li>"
-            + "<li>Copy, Swap, Change vJoy Output and a Device Pack import keep an autosave first; search for the change (\"before Copy\").</li>"
-            + "<li>Only the newest autosaves per stick are kept (Device Library Settings…). Rename or describe one to keep it for good.</li>"
+            + "<li>Clear Setup… keeps \"Autosave: stick deleted\" under the stick: right-click it and choose Restore to This Stick….</li>"
+            + "<li>Copy, Swap, Change vJoy Output, Restore and a Device Pack import keep an autosave first; search for the change (\"before Restore\").</li>"
+            + "<li>Only the newest autosaves per stick are kept (Device Library Settings…). Choose <b>Keep This Autosave</b>, or rename or describe one, to keep it for good.</li>"
+            + "<li>Saved setups removed with Delete…, Delete Saved Setups… or Remove from Library… are gone for good.</li>"
             + "</ul>"),
         topic("Common questions", "I made a mistake: how do I go back?",
-            "<p>Edit › <b>Undo</b> puts the last Copy, Swap or Change vJoy Output back, even after a restart. For an older change, select the autosave it kept and copy it back onto the stick. A profile that wasn't open was saved, so History can also restore the whole file.</p>"),
+            "<p>Edit › <b>Undo</b> puts the last Copy, Swap, Change vJoy Output or Restore back, even after a restart. For an older change, right-click the autosave it kept and choose <b>Restore to This Stick…</b> (the stick must be plugged in), or copy it onto the stick with Copy to Another Stick…. After Clear Setup…, restore its \"Autosave: stick deleted\" the same way. A profile that wasn't open was saved, so History can also restore the whole file.</p>"),
         topic("Common questions", "Why are the buttons greyed out?",
-            "<p>The window is busy: a dialog shows <b>Checking…</b>, or the status bar shows <b>Working…</b> while a change runs. Wait for it to finish. Otherwise the selection doesn't allow it: Swap with Another Stick… needs a stick that is plugged in, Export… needs a saved setup, and Save to Device Library… needs a stick set up here or plugged in.</p>")
+            "<p>The window is busy: a dialog shows <b>Checking…</b>, or the status bar shows <b>Working…</b> while a change runs. Wait for it to finish. Otherwise the selection doesn't allow it: Swap with Another Stick… needs a stick that is plugged in, Export… needs a saved setup, and Save to Device Library… needs a stick set up here or plugged in. With several rows selected only delete works.</p>"
+            + "<p>The right-click menus leave out what doesn't apply instead of greying it out.</p>")
     ]
 }

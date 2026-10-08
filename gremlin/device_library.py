@@ -1455,9 +1455,20 @@ def pack_path(setup_key: str) -> Path:
 
 
 def delete(key: str) -> dict:
-    """A saved setup, or a device with all its saved setups. A connected or
-    set-up device itself stays (that is Delete Device); only its saved
-    setups go."""
+    """A saved setup, or a device with all its saved setups. A connected
+    device is refused (S15: Clear Setup… or Delete Saved Setups…); a
+    set-up device that isn't plugged in stays (Remove from Library runs
+    Delete Device first); only its saved setups go."""
+    return _delete(key)
+
+
+def _plugged_in(name: str) -> str:
+    return f"{name} is plugged in: use Clear Setup… or Delete Saved Setups… instead."
+
+
+def _delete(key: str, setups_only: bool = False) -> dict:
+    """delete(); setups_only: a device keeps its record, plugged in or not
+    (Delete Saved Setups…, S15)."""
     with _LOCK:
         try:
             doc = _load()
@@ -1474,15 +1485,19 @@ def delete(key: str) -> dict:
             row = next((r for r in _view(doc) if r["key"] == key), None)
             if row is None:
                 return _result(False, "That is no longer in the Device Library.")
+            if row["state"] == "connected" and not setups_only:
+                return _result(False, _plugged_in(row["name"]))
             rec = _find_record(doc, key)
             if rec is not None:
                 files.extend(
                     folder() / s.get("file", "") for s in rec.get("setups") or []
                 )
-                if row["state"] == "connected" or row["module"]:
+                if setups_only:
+                    rec["setups"] = []
+                elif row["module"]:
                     rec["setups"] = []
                     notes.append(
-                        f"{row['name']} stays: it is set up here or plugged in "
+                        f"{row['name']} stays: it is set up here "
                         "(Delete Device removes it). Its saved setups were removed."
                     )
                 else:
@@ -1504,6 +1519,137 @@ def delete(key: str) -> dict:
             }
         )
         return _result(True, "", notes=notes)
+
+
+# --- the context menus (S15, S44, S49, S50) -------------------------------------------
+
+
+def removal_plan(key: str) -> dict:
+    """What Remove from Library… would remove (S15, S47), for the question
+    and for the caller to run Delete Device first when the device still has
+    a module file here: {"name", "shown", "setups", "module_file",
+    "connected"}."""
+    row = device(key)
+    if row is None:
+        return _result(False, "That device is no longer in the Device Library.")
+    return _result(
+        True,
+        "",
+        name=str(row.get("name") or ""),
+        shown=shown(str(row.get("name") or ""), str(row.get("guid") or "")),
+        setups=len(row.get("setups") or []),
+        module_file=bool(row.get("module")),
+        connected=row.get("state") == "connected",
+    )
+
+
+def remove_device(key: str) -> dict:
+    """Remove from Library… (S15, D-10-REMOVE): a device that isn't plugged
+    in, with all its saved setups (the "stick deleted" autosave too).
+    Refused while it is plugged in, and while it still has a module file
+    here (module_file True: the caller runs Delete Device first)."""
+    plan = removal_plan(key)
+    if not plan["ok"]:
+        return plan
+    if plan["connected"]:
+        return _result(False, _plugged_in(plan["shown"]))
+    if plan["module_file"]:
+        return _result(
+            False,
+            f"{plan['shown']} still has a module file here: Delete Device "
+            "removes it first.",
+            module_file=True,
+        )
+    return _delete(key)
+
+
+def delete_saved_setups(key: str) -> dict:
+    """Delete Saved Setups… (S15): every saved setup of a device plugged in
+    (or set up here) goes; the device and its settings stay."""
+    row = device(key)
+    if row is None:
+        return _result(False, "That device is no longer in the Device Library.")
+    if row.get("state") != "connected" and not row.get("module"):
+        return _result(
+            False,
+            f"{row.get('name', '')} isn't plugged in: use Remove from Library… "
+            "instead.",
+        )
+    return _delete(key, setups_only=True)
+
+
+def keep(setup_key: str) -> dict:
+    """Keep This Autosave (S49): the autosave becomes the user's own, as
+    renaming or describing it does (S13), so the limit never removes it."""
+    with _LOCK:
+        try:
+            with _editing() as doc:
+                found = _find_setup(doc, setup_key)
+                if not found:
+                    raise KeyError(setup_key)
+                _rec, setup = found
+                if setup.get("origin") != "autosave":
+                    return _result(False, "Only an autosave can be kept this way.")
+                if not setup.get("own"):
+                    setup["own"] = True
+                    _history(setup, "Kept as your own")
+        except KeyError:
+            return _result(False, "That is no longer in the Device Library.")
+        except LibraryDamaged as exc:
+            return _result(False, str(exc))
+    return _result()
+
+
+def delete_many(keys: list[str]) -> dict:
+    """Delete… / Remove from Library… on several rows (S50): each by the
+    rules of delete (a saved setup) or remove_device (a device); saved
+    setups first. ok when anything went; "removed" lists the keys that
+    went, "refused" [{"key", "error"}] the others (also in warnings)."""
+    wanted = list(dict.fromkeys(str(k) for k in keys or []))
+    doc = _read()
+    setups = [k for k in wanted if _find_setup(doc, k)]
+    removed: list[str] = []
+    refused: list[dict] = []
+    for key in setups + [k for k in wanted if k not in setups]:
+        out = delete(key) if key in setups else remove_device(key)
+        if out["ok"]:
+            removed.append(key)
+        else:
+            refused.append({"key": key, "error": str(out["error"])})
+    warnings = [r["error"] for r in refused]
+    if not removed:
+        return _result(
+            False,
+            " ".join(warnings) or "Nothing was chosen.",
+            removed=removed,
+            refused=refused,
+        )
+    return _result(True, "", warnings=warnings, removed=removed, refused=refused)
+
+
+def export_current(device_key: str, dest: Path) -> dict:
+    """Export Current Setup… (S44): a Device Pack of the device's current
+    settings (its module file, and its bindings in the open profile),
+    written where the user picked as Export Saved Setup… is (S14, 08 S57).
+    No saved setup is kept. Reads the open profile: call on the main
+    thread."""
+    from gremlin.modules import store
+    from gremlin.ui import device_pack
+
+    dest = Path(dest)
+    if dest.suffix.lower() != ".zip":
+        dest = dest.with_name(dest.name + ".zip")
+    if store.is_inside(dest):
+        return _result(False, "A Device Pack can't be saved inside the modules folder.")
+    built = current_pack(device_key, _open_profile())
+    if not built["ok"]:
+        return built
+    data = built["data"]
+    info = {"device": built["name"], "sizeText": device_pack.size_text(len(data))}
+    out = _bg("export Device Pack", device_pack.save_pack, data, info, dest)
+    base = _result(bool(out.get("ok")), str(out.get("error") or ""))
+    base.update({k: v for k, v in out.items() if k not in ("ok", "error")})
+    return base
 
 
 def _own_dirs(doc: dict) -> set[str]:

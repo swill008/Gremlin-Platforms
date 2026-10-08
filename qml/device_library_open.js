@@ -13,3 +13,15 @@ function openDeviceLibrary(deviceName, guid, action)
         window.openOn(String(deviceName || ""), String(guid || ""), String(action || ""))
     return window
 }
+
+// The Device Library's row menus reach the main window here (10 S15, S44):
+// action "deleteDevice" (Home's Delete Device), "moduleSetup", "buttonMap"
+// or "home" (Show on Home) for target, the model's deviceTarget(key).
+// Main.qml's libraryAction does them; returns its Result as JSON text.
+function toMain(action, target)
+{
+    var main = Helpers.mainWindow()
+    if (!main || typeof main.libraryAction !== "function")
+        return JSON.stringify({ ok: false, error: "The main window isn't open." })
+    return String(main.libraryAction(String(action || ""), target || {}) || "")
+}

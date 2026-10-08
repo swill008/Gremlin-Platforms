@@ -110,7 +110,9 @@ def test_s7_s8_s11_s13_details_names_descriptions(run: dict) -> None:
     assert run["describe-then-move"]["kept"] == "Typed then moved"
     assert ["describe", "set-00000003", "Typed then moved"] in run["calls"]
     dev = run["device-details"]
-    assert dev["state"] == "Not connected" and not dev["swap"] and not dev["del"]
+    # S15 (changed 2026-10-08, D-10-REMOVE): a device that isn't connected
+    # can be removed from the Library (Remove from Library…).
+    assert dev["state"] == "Not connected" and not dev["swap"] and dev["del"]
 
 
 def test_s23_s25_s41_copy_and_undo(run: dict) -> None:

@@ -831,6 +831,59 @@ ApplicationWindow {
                                             String(action || ""))
     }
 
+    // The Device Library's row menus (10 S15, S44), for target {name, guid,
+    // slug} (device_library_open.js toMain): Home's Delete Device, Module
+    // Setup, Button Map, Show on Home. Returns a Result as JSON text.
+    function libraryAction(action, target) {
+        var name = String(target.name || "")
+        var card = _moduleModel.cardMap(String(target.slug || ""))
+        if (action === "deleteDevice") {
+            var raw = _moduleModel.deleteDevice(name, String(target.guid || ""))
+            try {
+                if (JSON.parse(raw).ok)
+                    _root.closeDeletedDevice(card && card.slug ? card : { "rawName": name, "guid": target.guid })
+            } catch (err) {}
+            return raw
+        }
+        if (!card || !card.slug)
+            return JSON.stringify({ "ok": false, "error": (target.shown || name) + " has no card on Home." })
+        if (action === "moduleSetup")
+            _root.openConfigureModule(card.direction === "dest" ? "dest" : "source", card)
+        else if (action === "buttonMap")
+            _root.openButtonMapForCard(card)
+        else if (action === "home")
+            _root.showCardOnHome(card)
+        else
+            return JSON.stringify({ "ok": false, "error": "Unknown action " + action })
+        return JSON.stringify({ "ok": true })
+    }
+
+    // Show on Home: the main window in front, on Home, with that card
+    // selected and scrolled into view.
+    function showCardOnHome(card) {
+        if (uiState && uiState.currentRoom !== "status")
+            uiState.setCurrentRoom("status")
+        _moduleModel.setFocus(card.slug)
+        if (!_root.visible)
+            _root.show()
+        _root.raise()
+        _root.requestActivate()
+        Qt.callLater(function() {
+            var page = _statusLoader.item
+            var item = page && page.cardBySlug ? page.cardBySlug(card.slug) : null
+            var flick = item ? item.parent : null
+            while (flick && flick.contentY === undefined)
+                flick = flick.parent
+            if (!flick)
+                return
+            var at = item.mapToItem(flick.contentItem, 0, 0)
+            if (at.y >= flick.contentY && at.y + item.height <= flick.contentY + flick.height)
+                return
+            var most = Math.max(0, flick.contentHeight - flick.height)
+            flick.contentY = Math.min(most, Math.max(0, at.y - Style.dp(12)))
+        })
+    }
+
     // The same, with properties (Tools > History shows everything, even
     // when it is open on one device's changes).
     function openToolWith(spec, properties) {
