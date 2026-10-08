@@ -38,6 +38,7 @@ Tracker refs in brackets.
 | A module file another window saved while the Button Map was being edited | title **Module File Changed**; buttons **Keep Mine** / **Take Theirs** / Cancel | Conflict |
 | Taking back the last Device Pack import / mode delete | **Undo Import** (asks first) / **Undo Delete Mode** | Revert import, Restore mode |
 | Release notes in the Update window (01 S133) | **Getting the release notes…** while they load; **Release notes unavailable.** when there are none or no connection | Loading…, Fetching, No changelog |
+| Filtering the Button Map's Layers panel (07 S102) | **Search layers…** (Ctrl+F); kind toggles **All · Chips · Groups · Hotspots · Leaders · Shapes · Lines · Pictures · Text · Tables · Photo**; "N of M" or **No layers match** | Find, Filter, Lookup |
 | A Button Map export (PDF, PNG, JPG) still being written in the background (07 S101) | **Exporting…** (muted note in Print & Export; the Export buttons are disabled meanwhile); a failure is **Export Failed** with the reason (07 Q19) | Saving…, Busy, Please wait, Working… |
 | Where Delete Device and Delete File keep their copies | the **deleted devices** folder (Options › Folders); pack imports keep the old file in the **imported** folder | trash, backup folder |
 
