@@ -1773,7 +1773,9 @@ ApplicationWindow {
                 // Home's Device Library… button (no card) and the card
                 // menu's Copy / Swap / Change vJoy Output (10 S2, 03 S88).
                 onOpenDeviceLibrary: function(card, action) {
-                    openDeviceLibrary(card ? String(card.rawName || card.name || "") : "",
+                    // _root's function: here a bare openDeviceLibrary is this
+                    // page's own signal, which would fire itself.
+                    _root.openDeviceLibrary(card ? String(card.rawName || card.name || "") : "",
                                       card ? String(card.guid || "") : "", action)
                 }
                 onIgnoreDevice: function(card) {
