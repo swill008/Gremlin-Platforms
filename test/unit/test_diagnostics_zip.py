@@ -74,15 +74,15 @@ def home(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> pathlib.Pat
     modules = [
         SimpleNamespace(
             name="pJoy Pro", bound_guid="0F0E0D0C-0000-0000-0000-000000000001",
-            is_output=False, path=data / "modules" / "pjoy.json",
+            is_output=False, path=data / "modules" / "pjoy.json", slug="pjoy",
         ),
         SimpleNamespace(
             name="Old Pedals", bound_guid="0F0E0D0C-0000-0000-0000-0000000000FF",
-            is_output=False, path=data / "modules" / "pedals.json",
+            is_output=False, path=data / "modules" / "pedals.json", slug="pedals",
         ),
         SimpleNamespace(
             name="vJoy 1", bound_guid="", is_output=True,
-            path=data / "modules" / "vjoy1.json",
+            path=data / "modules" / "vjoy1.json", slug="vjoy1",
         ),
     ]
     monkeypatch.setattr(registry, "modules", lambda: modules)
@@ -281,3 +281,12 @@ def test_the_save_dialog_starts_on_the_desktop(home: pathlib.Path) -> None:
     assert suggested.parent == desktop
     assert suggested.name.startswith("Gremlin-Platforms diagnostics ")
     assert suggested.suffix == ".zip"
+
+
+def test_the_stand_in_modules_answer_the_file_lookup(home: pathlib.Path) -> None:
+    """A Home model left by an earlier test may refresh while these tests
+    run and look a device's file up through the stand-in modules (CI run
+    37853647126: AttributeError 'slug' in module_model._refresh_inplace)."""
+    from gremlin.modules import store
+
+    assert store.slug_for("Some stick", "{0F0E0D0C-0000-0000-0000-0000000000AA}")
