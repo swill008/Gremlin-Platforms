@@ -13,7 +13,10 @@ repository = "https://github.com/WhiteMagic/JoystickGremlin"
 jsonschema = ">=4.25"
 miniaudio = ">=1.61"
 python = ">=3.13, <3.14"
-PySide6 = ">=6.8"
+# Held below 6.12 (2026-10-08): with 6.12.0 the programs started off-screen
+# by the tests crash (access violation) and menus come up different on CI
+# (runs 37754952665, both attempts). To-do 39.
+PySide6 = ">=6.8, <6.12"
 PyInstaller = ">=6.10"
 pywin32 = ">=308"
 pytest = ">=9.0"

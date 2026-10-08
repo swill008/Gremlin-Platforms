@@ -143,6 +143,11 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     stutters while idle (Q19); after a stick is re-plugged, actions read its
     last value until it moves (D-05-UNPLUG-CENTRE note).
 
+39. PySide6 6.12.0: CI picked it up on 2026-10-08 (no poetry.lock in the repo) and 24
+    tests that start the program off-screen crashed (access violation, exit 3221225477),
+    plus menu differences (test_menus, test_button_map_window), runs 37754952665.
+    pyproject.toml holds PySide6 below 6.12 until we find what changed and fix it.
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).
