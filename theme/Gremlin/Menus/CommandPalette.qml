@@ -44,15 +44,17 @@ T.Popup {
 
     function runPick(i) {
         var c = results[i]
-        if (!c)
+        if (!c || !Commands.isAvailable(c.id))
             return
         if (keepOpen) {
-            Commands.trigger(c.id)
+            c.run()
             return
         }
         close()
         // After the palette has closed, so a dialog it opens gets the focus.
-        Qt.callLater(function() { Commands.trigger(c.id) })
+        // Runs the command it holds: closing may take the window's commands
+        // out of the list (a Button Map's onClosed).
+        Qt.callLater(function() { c.run() })
     }
 
     // Names listed now, for tests.
