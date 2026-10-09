@@ -176,3 +176,22 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | OSC functional check: Stop checks + re-run (OSC-func follow-up) | test | ~6 min | 1 min | 15:19 |
 | 2026-10-09 | OSC functional report page (lead) | docs | ~3 min | 2 min | 15:21–15:23 |
 | 2026-10-09 | Full run (OSC Stop release) (lead) | test | ~6 min | 6 min | 15:20–15:26, all green |
+| 2026-10-09 | OSC features: addresses on Button Map + Home (BMAP) | feature | ~15 min | 9 min | 15:31–15:40 |
+| 2026-10-09 | OSC features: encoder runtime + hooks (ENC-core) | feature | ~20 min | 5 min | 15:30–15:35 |
+| 2026-10-09 | OSC features: zeroconf discovery (ZC) | feature | ~20 min | 4 min | 15:31–15:35 |
+| 2026-10-09 | OSC features: feedback runtime + sync (FB-run) | feature | ~25 min | 5 min | 15:30–15:35 |
+| 2026-10-09 | OSC features: traffic monitor (MON) | feature | ~20 min | 6 min | 15:30–15:36 |
+| 2026-10-09 | OSC features: targets, output, addresses, discovery UI (TGT) | feature | ~20 min | 7 min | 15:30–15:37 |
+| 2026-10-09 | OSC features: encoder UI + Import E (ENC-ui) | feature | ~15 min | 6 min | 15:31–15:37 |
+| 2026-10-09 | OSC features: feedback list UI (FB-ui) | feature | ~20 min | 8 min | 15:30–15:38 |
+| 2026-10-09 | OSC features: Send OSC action + output client (OUT) | feature | ~25 min | 9 min | 15:30–15:39 |
+| 2026-10-09 | OSC features: spec, decisions, glossary, Help (DOC) | docs | ~25 min | 9 min | 15:31–15:40 |
+| 2026-10-09 | OSC features: carry tests, found 2 gaps (CARRY) | test | ~15 min | 3 min | 15:38–15:41 |
+| 2026-10-09 | OSC features: send_osc in build/labels, wording, 2 carry fixes (lead) | fix | ~8 min | 8 min | 15:40–15:48 |
+| 2026-10-09 | OSC features: E2E 66 loopback checks (E2E) | test | ~20 min | 5 min | 15:38–15:43 |
+| 2026-10-09 | OSC features: sync in Monitor + feedback retry after output off (lead) | fix | ~5 min | 8 min | 15:50–15:58 |
+| 2026-10-09 | OSC full functional check 66/66 + report (lead) | test | ~5 min | 3 min | 16:03–16:06 |
+| 2026-10-09 | Companion v5 research overview (COMP-research) | research | ~12 min | 2 min | 15:58–16:00 |
+| 2026-10-09 | Companion v5 core OSC API (COMP-recv) | research | ~10 min | 2 min | 16:00–16:02 |
+| 2026-10-09 | Companion v5 Generic OSC module (COMP-send) | research | ~10 min | 2 min | 16:00–16:02 |
+| 2026-10-09 | OSC features: final full run (lead) | test | ~6 min | 6 min | 16:02–16:08, all green |

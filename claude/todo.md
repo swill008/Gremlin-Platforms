@@ -311,6 +311,10 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     modes.
 67. OSC idea (to-do): OSC from user scripts. Scripts can send and receive OSC (script API).
 
+68. OSC (to-do, user 2026-10-09): feedback from action states (e.g. a toggle action's on/off) as a feedback source.
+69. OSC (to-do): encoder acceleration (bigger steps when the knob turns fast).
+70. OSC (to-do): OSC inputs in the live Input Viewer, like stick inputs.
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).
