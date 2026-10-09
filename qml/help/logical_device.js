@@ -25,12 +25,13 @@ function topics() {
             title: "The Logical Device",
             body: "<p>The Logical Device is a virtual device inside the program. Physical inputs feed its buttons, axes and hats, and each of its controls has actions of its own. Use it to combine several physical controls before sending them on.</p>"
                 + "<ul>"
-                + "<li>To open it, choose <b>Logical Device</b> on the toolbar, or <b>Tools › Mapping › Logical Device</b>.</li>"
+                + "<li>To open it, choose <b>Logical Device</b> on the toolbar <a href=\"show:toolbar/Logical Device\">Show me ›</a>, or <b>Tools › Mapping › Logical Device</b> <a href=\"open:tools.logical\">Open ›</a>.</li>"
                 + "<li>Controls are named by type and number: Button 1, Axis 1, Hat 1.</li>"
                 + "<li>The path is: physical control › Assign Hardware › Logical Device control › its actions.</li>"
                 + "</ul>"
                 + _good([
                     "Editing is locked while the profile runs (\"Profile running: stop it to edit\").",
+                    "Its values go back to neutral at Stop and at the start of each Run: axes at 0, buttons up, hats centred.",
                     "Its card shows on <a href=\"topic:home-devices-home\">Home</a> once it has a module file."
                 ]),
             related: ["logical-device-add-controls", "logical-device-assign-hardware", "modes-modes",
@@ -46,7 +47,10 @@ function topics() {
                 + "<li>Open <b>Add Inputs</b>.</li>"
                 + "<li>Next to <b>Buttons</b>, <b>Axes</b> or <b>Hats</b>, set how many (up to 180), then choose <b>Add</b>.</li>"
                 + "</ol>"
-                + _good(["To take it back, choose <b>Undo</b> (<b>Ctrl+Z</b>)."]),
+                + _good([
+                    "To take it back, choose <b>Undo</b> (<b>Ctrl+Z</b>).",
+                    "A Device Pack import can add the inputs its wires need; <b>Undo Import</b> removes them again. See " + _link("home-devices-device-pack-import", "Put a Device Pack on a device") + "."
+                ]),
             related: ["logical-device-about", "logical-device-rename-control", "logical-device-undo"]
         },
         {
@@ -126,7 +130,7 @@ function topics() {
                 + "<li>Type in <b>Search</b> to filter the list.</li>"
                 + "<li>Tick a control. It gets a " + _link("configuration-actions-map-to-logical-device", "Map to Logical Device") + " action in the current mode.</li>"
                 + "</ol>"
-                + "<p>The control then shows <b>Written by</b> with the source. On that line an axis has Absolute or Relative and a scale; a button has <b>Invert</b>.</p>"
+                + "<p>The control then lists the source on a row under it (shown while <b>Show written by</b> is on in <b>Appearance…</b>). On that row an axis has absolute or relative and a scale; a button has <b>Invert</b>.</p>"
                 + _good([
                     "To remove the link, untick the control.",
                     "Assign Hardware only picks what feeds the control; it never lists outputs. To send on, see " + _link("logical-device-send-to-xbox-vjoy", "Send a control to Xbox or vJoy") + "."
@@ -163,7 +167,7 @@ function topics() {
                 + "<p>The whole path: physical control › Assign Hardware › Logical Device control › Map to Xbox › Xbox 360 Controller.</p>"
                 + _good([
                     "Map to Xbox needs the <b>ViGEmBus</b> driver; see <a href=\"topic:home-devices-xbox-output\">Xbox output module</a>.",
-                    "If Map to Xbox isn't in the list, <a href=\"topic:options-profile-options\">Options</a> › Actions › Add Action Menu › <b>Actions offered</b> may hide it."
+                    "If Map to Xbox isn't in the list, <b>Actions offered</b> <a href=\"show:option/Actions offered\">Show me ›</a> in " + _link("options-profile-options", "Options") + " may hide it."
                 ]),
             related: ["configuration-actions-map-to-xbox", "configuration-actions-map-to-vjoy",
                       "logical-device-assign-hardware"]
@@ -227,6 +231,13 @@ function topics() {
             title: "Why is the Logical Device page empty?",
             body: "<p>It has no buttons, axes or hats yet. Right-click empty space and use <b>Add Inputs</b>.</p>",
             related: ["logical-device-add-controls"]
+        },
+        {
+            id: "logical-device-q-add-control-first",
+            section: questions,
+            title: "Why does a macro or condition say \"Add a Logical Device control first.\"?",
+            body: "<p>The Logical Device has no controls yet, and nothing is created for you. Add a button, axis or hat first; see " + _link("logical-device-add-controls", "Add buttons, axes and hats") + ".</p>",
+            related: ["logical-device-add-controls", "configuration-actions-macro", "configuration-actions-condition"]
         }
     ]
 }

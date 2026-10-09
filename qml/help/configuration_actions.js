@@ -27,18 +27,34 @@ function topics() {
             title: "The Configuration page",
             body: "<p>The Configuration page lists the claimed inputs of one device and the actions on each.</p>"
                 + "<ul>"
-                + "<li>To open it, double-click a card on <a href=\"topic:home-devices-home\">Home</a>, or choose <b>View › Configuration</b>.</li>"
+                + "<li>To open it, double-click a card on <a href=\"topic:home-devices-home\">Home</a>, or choose <b>View › Configuration</b> <a href=\"show:menu/View/Configuration\">Show me ›</a>.</li>"
                 + "<li>The arrows beside the title step to the previous or next device.</li>"
-                + "<li>Actions belong to the mode shown in <b>Mode</b> on the toolbar; see <a href=\"topic:modes-mode-box\">the Mode box</a>.</li>"
+                + "<li>Actions belong to the mode in the <b>Mode</b> box <a href=\"show:modebar\">Show me ›</a>, on the mode bar under the toolbar; see <a href=\"topic:modes-mode-box\">Choose the mode you edit and run</a>.</li>"
+                + "<li>Each input's row shows its <b>Note</b>. The rows under it name each action and where it goes: the vJoy output, the keys, the mode or the file.</li>"
                 + "<li><b>Move inputs with no actions to the end</b> lists those inputs together under a <b>No actions</b> heading.</li>"
                 + "</ul>"
                 + _good([
-                    "<b>OK</b> keeps an action in the profile; <b>File › Save Profile</b> writes it to disk.",
+                    "<b>OK</b> keeps an action in the profile; <b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> writes it to disk.",
+                    "With no claimed inputs, the page says so and points to <b>Module Setup…</b> on the card's menu.",
                     "The <b>Keyboard</b> card opens its own page; see " + _link("keyboard-page", "Set up keyboard keys") + ".",
                     "An output device opens its <b>Output View</b> instead; see " + _link("output-view", "Output View") + "."
                 ]),
-            related: ["configuration-actions-add-action", "configuration-actions-undo", "modes-modes",
+            related: ["configuration-actions-add-action", "configuration-actions-filter", "modes-modes",
                       "configuration-actions-appearance"]
+        },
+        {
+            id: "configuration-actions-filter",
+            section: page,
+            title: "Filter the inputs",
+            body: "<p>The filters above the list show only the inputs you want to see.</p>"
+                + "<ul>"
+                + "<li><b>Type</b> shows inputs with one kind of action, such as Map to vJoy, Macro or Change Mode, or those with <b>No actions</b>.</li>"
+                + "<li><b>Output</b> shows inputs that send to one place. It lists only the places in use.</li>"
+                + "</ul>"
+                + _good([
+                    "When nothing matches, the page says \"No inputs match the current filters.\" Choose <b>Clear Filters</b> to see every input again."
+                ]),
+            related: ["configuration-actions-configuration-page", "configuration-actions-add-action"]
         },
         {
             id: "configuration-actions-add-action",
@@ -50,15 +66,81 @@ function topics() {
                 + "<li>On the input's row, choose <b>Add Action</b>. The action editor opens beside it.</li>"
                 + "<li>Choose the action and set it up.</li>"
                 + "<li>Choose <b>OK</b>.</li>"
-                + "<li>To keep it on disk, choose <b>File › Save Profile</b> (<b>Ctrl+S</b>).</li>"
+                + "<li>To keep it on disk, choose <b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>).</li>"
                 + "</ol>"
                 + _good([
+                    "Clicking an input's row opens all its actions in the editor; clicking a row under it opens only that action.",
                     "<b>Close pane after OK</b> closes the editor when OK succeeds.",
                     "Leaving an input with changes in the editor that are not saved asks first.",
+                    "If you pick another mode while the editor has changes, it stays open and its title adds \"(in <i>mode</i>)\": OK still writes to that mode. If that mode is deleted, the editor closes with a notice.",
                     "While the profile runs, the actions are locked (\"Profile running: stop it to edit\"). <b>Run</b> asks first about an action editor with changes."
                 ]),
-            related: ["configuration-actions-choose-action", "configuration-actions-delete-action",
-                      "configuration-actions-undo"]
+            related: ["configuration-actions-choose-action", "configuration-actions-right-click",
+                      "configuration-actions-delete-action", "configuration-actions-undo"]
+        },
+        {
+            id: "configuration-actions-right-click",
+            section: page,
+            title: "Add an action from the right-click menu",
+            body: "<p>Right-click an action in the editor to add another action beside it.</p>"
+                + "<ul>"
+                + "<li>The first items add the 3 actions at the top of your <b>Actions offered</b> list.</li>"
+                + "<li>The rest are grouped under <b>Add: Map to</b>, <b>Add: Axis and Hat</b>, <b>Add: Logic and Timing</b> and <b>Add: Other</b>.</li>"
+                + "<li><b>Delete</b> removes the action.</li>"
+                + "</ul>"
+                + _good([
+                    "<b>Actions offered</b> <a href=\"show:option/Actions offered\">Show me ›</a> sets the order, the same as the <b>Add Action</b> list."
+                ]),
+            related: ["configuration-actions-add-action", "configuration-actions-choose-action"]
+        },
+        {
+            id: "configuration-actions-bindings",
+            section: page,
+            title: "Arrange the bindings on an input",
+            body: "<p>An input can have more than one binding, each with its own actions.</p>"
+                + "<ul>"
+                + "<li>Type a <b>Note</b> in the binding's header. It shows on the input's row.</li>"
+                + "<li>Drag a binding by its handle to change the order.</li>"
+                + "<li>To remove a binding, choose the remove button in its header (\"Remove this binding and all its actions\"). A binding with actions asks first.</li>"
+                + "<li>Each action has its own label box. A label you leave blank stays blank.</li>"
+                + "</ul>"
+                + _good([
+                    "On a button, actions that allow it have switches for press and release. With both off, the action shows \"Off: never runs\"."
+                ]),
+            related: ["configuration-actions-add-action", "configuration-actions-treat-as"]
+        },
+        {
+            id: "configuration-actions-treat-as",
+            section: page,
+            title: "Treat an axis or hat as a button",
+            body: "<p><b>Treat as</b> in a binding's header lets an axis or a hat fire button actions.</p>"
+                + "<ol>"
+                + "<li>Choose <b>Treat as</b> <b>Button</b>.</li>"
+                + "<li>For an axis, set <b>Activate between</b> and <b>when entered from</b>. Entering the range presses; leaving it releases.</li>"
+                + "<li>For a hat, pick the directions under <b>Activate on</b>. Any of them presses the button.</li>"
+                + "</ol>"
+                + _good([
+                    "Changing Treat as on a binding that has actions asks first, and removes those actions.",
+                    "An axis already inside the range when you choose <b>Run</b> gives no press until it leaves and comes back."
+                ]),
+            related: ["configuration-actions-bindings", "configuration-actions-choose-action"]
+        },
+        {
+            id: "configuration-actions-safety-net",
+            section: page,
+            title: "Unfinished actions and warnings",
+            body: "<p>An action with a problem shows a warning or error icon on its row. Point at the icon to see why.</p>"
+                + "<ul>"
+                + "<li>A warning still runs. An error means the action is not finished.</li>"
+                + "<li>Before saving, the program lists the unfinished actions with their first error. Choose <b>Save without them</b> to leave them out, or <b>Cancel</b> to go back and finish them.</li>"
+                + "<li><b>Run</b> skips unfinished actions.</li>"
+                + "</ul>"
+                + _good([
+                    "A Play Sound or Load Profile action whose file is missing is kept with a warning. Pressing it does nothing until the file is back or you choose another.",
+                    "A profile with an action this program doesn't know still opens. A message names it; the action is kept and saved as it was, but does nothing."
+                ]),
+            related: ["configuration-actions-add-action", "configuration-actions-q-not-kept",
+                      "configuration-actions-play-sound", "configuration-actions-load-profile"]
         },
         {
             id: "configuration-actions-delete-action",
@@ -67,7 +149,7 @@ function topics() {
             body: "<p>Deleting an action takes it off the input in the current mode.</p>"
                 + "<ol>"
                 + "<li>Open the device's Configuration page and select the input.</li>"
-                + "<li>Choose <b>Delete</b> on the action.</li>"
+                + "<li>Choose <b>Delete</b> on the action's row, then <b>Delete</b> again to confirm.</li>"
                 + "</ol>"
                 + _good([
                     "To take the delete back, choose <b>Undo</b> (<b>Ctrl+Z</b>).",
@@ -86,6 +168,7 @@ function topics() {
                 + _good([
                     "The steps are kept until you open another device or profile.",
                     "Undo and Redo wait while an action is open in the editor.",
+                    "If a step can't be played, it stays in the list and a notice says \"That change couldn't be put back.\"",
                     "Saved changes are also kept in the <a href=\"topic:tools-history\">History</a> (<b>Tools › History</b>)."
                 ]),
             related: ["configuration-actions-add-action", "configuration-actions-delete-action", "tools-history"]
@@ -104,6 +187,8 @@ function topics() {
                 + _good([
                     "<b>Undo</b> and <b>Redo</b> step back through each OK, asking first when the draft has changes.",
                     "Choosing another key, or deleting one, while the draft has changes asks first.",
+                    "<b>Delete</b> on a key asks first and removes only its actions in this mode. It shows only on keys with actions in this mode, or with none in any mode.",
+                    "To give a key a name of your own, double-click it. The name is saved in the profile. The key's <b>Note</b> shows on its row.",
                     "A key binding fires only for keys the Keyboard <a href=\"topic:home-devices-input-modules\">input module</a> claims."
                 ]),
             related: ["configuration-actions-add-action", "configuration-actions-map-to-keyboard"]
@@ -152,9 +237,10 @@ function topics() {
                 + "<li>Every other action does one thing, such as " + _link("map-to-vjoy", "Map to vJoy") + " or " + _link("map-to-keyboard", "Map to Keyboard") + ".</li>"
                 + "</ul>"
                 + _good([
-                    "<a href=\"topic:options-profile-options\">Options</a> › Actions › Add Action Menu › <b>Actions offered</b> sets the order of the list and can hide actions you never use."
+                    "<b>Actions offered</b> <a href=\"show:option/Actions offered\">Show me ›</a> in <a href=\"topic:options-profile-options\">Options</a> sets the order of the list and can hide actions you never use.",
+                    "<b>Map to vJoy</b> is offered only when a vJoy device can be an output."
                 ]),
-            related: ["configuration-actions-add-action", "configuration-actions-reference", "options-profile-options"]
+            related: ["configuration-actions-add-action", "configuration-actions-right-click", "configuration-actions-reference", "options-profile-options"]
         },
         {
             id: "configuration-actions-map-to-vjoy",
@@ -167,6 +253,7 @@ function topics() {
                 + "<li>For a button, tick <b>Invert activation</b>.</li>"
                 + "</ol>"
                 + _good([
+                    "A Relative axis stops when the input rests for 1 second, or when something else moves that vJoy axis.",
                     "Only outputs claimed by the vJoy output module are sent. An output that isn't claimed shows <b>Output not claimed</b>; claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a>."
                 ]),
             related: ["configuration-actions-map-to-xbox", "configuration-actions-map-to-logical-device",
@@ -176,14 +263,16 @@ function topics() {
             id: "configuration-actions-map-to-xbox",
             section: actions,
             title: "Map to Xbox",
-            body: "<p>Sends the input to the virtual Xbox 360 controller. Every control is available; there is nothing to claim.</p>"
+            body: "<p>Sends the input to the virtual Xbox 360 controller. There is nothing to claim.</p>"
                 + "<ul>"
                 + "<li><b>Xbox</b>: the Xbox output module (Xbox 360 Controller).</li>"
-                + "<li><b>Target</b>: any of the 22 controls: sticks, triggers, buttons, D-pad.</li>"
-                + "<li>Trigger: <b>Full axis</b> (−1 → 0%, +1 → 100%) or <b>Upper half</b> (center → 0%).</li>"
+                + "<li><b>Target</b>: the controls that fit the input. An axis drives sticks and triggers; a button or key drives buttons and triggers; a hat drives the D-pad, buttons and sticks.</li>"
+                + "<li>Axis on a trigger: <b>Full axis</b> (−1 → 0%, +1 → 100%) or <b>Upper half</b> (center → 0%).</li>"
                 + "<li>Button: <b>Invert activation</b>.</li>"
                 + "</ul>"
                 + _good([
+                    "A button, key or hat on a trigger pulls it fully while pressed and lets go on release. A hat on a stick moves it in the hat's direction.",
+                    "A target saved earlier that no longer fits stays in the list and still works.",
                     "Map to Xbox needs the <b>ViGEmBus</b> driver; see <a href=\"topic:home-devices-xbox-output\">Xbox output module</a>.",
                     "To send a Logical Device control to Xbox, see " + "<a href=\"topic:logical-device-send-to-xbox-vjoy\">Send a control to Xbox or vJoy</a>" + "."
                 ]),
@@ -281,7 +370,12 @@ function topics() {
                 + "<li>Pick or create a <b>Merge axis instance</b>.</li>"
                 + "<li>Pick the <b>First axis</b> and <b>Second axis</b>.</li>"
                 + "<li>Choose the <b>Merge operation</b>: Average, Minimum, Maximum, Sum, Bidirectional or Prefer Center.</li>"
-                + "</ol>",
+                + "</ol>"
+                + _good([
+                    "The <b>+</b> button beside the list makes a new merge axis instance and selects it. The pencil renames it.",
+                    "The list offers the one you are editing, a new one, and those other inputs use; never deleted ones.",
+                    "Picking one another input uses shares it: it keeps its own name."
+                ]),
             related: ["configuration-actions-split-axis", "configuration-actions-dual-axis-deadzone"]
         },
         {
@@ -293,7 +387,12 @@ function topics() {
                 + "<li>Pick or create a <b>Deadzone instance</b>.</li>"
                 + "<li>Pick the two axes.</li>"
                 + "<li>Add the actions for each axis's result to its own action list.</li>"
-                + "</ol>",
+                + "</ol>"
+                + _good([
+                    "The <b>+</b> button beside the list makes a new deadzone instance and selects it. The pencil renames it.",
+                    "The list offers the one you are editing, a new one, and those other inputs use; never deleted ones.",
+                    "Picking one another input uses shares it: it keeps its own name."
+                ]),
             related: ["configuration-actions-response-curve", "configuration-actions-merge-axis"]
         },
         {
@@ -312,7 +411,11 @@ function topics() {
                 + "<li>Choose <b>Any</b> or <b>All</b>.</li>"
                 + "<li>Choose <b>Add Condition</b> and pick its kind: Joystick, Keyboard, Current Input, vJoy or Logical Device state.</li>"
                 + "<li>Add the actions for true and for false.</li>"
-                + "</ol>",
+                + "</ol>"
+                + _good([
+                    "A condition reads inputs through their input module: an input the module doesn't claim reads as at rest.",
+                    "A condition on a stick plugged in later works once it is connected."
+                ]),
             related: ["configuration-actions-chain", "configuration-actions-tempo"]
         },
         {
@@ -356,7 +459,10 @@ function topics() {
             id: "configuration-actions-hat-as-buttons",
             section: actions,
             title: "Hat as Buttons",
-            body: "<p>Gives each hat direction its own action list. Set <b>Button mode</b> to <b>4 way</b> or <b>8 way</b>.</p>",
+            body: "<p>Gives each hat direction its own action list. Set <b>Button mode</b> to <b>4 way</b> or <b>8 way</b>.</p>"
+                + _good([
+                    "Switching from 8 way to 4 way asks first when the diagonal directions have actions, and removes them on <b>Switch to 4 way</b>."
+                ]),
             related: ["configuration-actions-choose-action"]
         },
         {
@@ -370,14 +476,24 @@ function topics() {
                 + "<li><b>Unwind</b> one step.</li>"
                 + "<li><b>Cycle</b> through a list.</li>"
                 + "<li><b>Temporary</b>: only while held.</li>"
-                + "</ul>",
+                + "</ul>"
+                + _good([
+                    "Cycle's first press moves to the mode after the current one, or to the first in the list if the current mode isn't in it. Deleted modes are skipped.",
+                    "Renaming a mode updates the Change Mode actions that name it.",
+                    "<b>Mode cycle resolution</b> <a href=\"show:option/Mode cycle resolution\">Show me ›</a> decides where a loop back to an earlier mode lands."
+                ]),
             related: ["configuration-actions-load-profile", "modes-modes", "modes-manage"]
         },
         {
             id: "configuration-actions-load-profile",
             section: actions,
             title: "Load Profile",
-            body: "<p>Loads another profile file when the input fires. Set <b>Profile filename</b>, or choose <b>Select File</b>.</p>",
+            body: "<p>Loads another profile file when the input fires. Set <b>Profile filename</b>, or choose <b>Select File</b>.</p>"
+                + _good([
+                    "While the profile runs, it stops, loads the new profile and runs it.",
+                    "It doesn't load over unsaved changes: a notice, \"Load Profile Waited\", asks you to save or discard them first.",
+                    "If the file is missing, nothing is loaded and a notice says so. A profile whose Load Profile file is missing still opens; the action shows a warning."
+                ]),
             related: ["configuration-actions-change-mode", "getting-started-run"]
         },
         {
@@ -385,7 +501,11 @@ function topics() {
             section: actions,
             title: "Pause and Resume",
             body: "<p>Choose <b>Pause</b>, <b>Resume</b> or <b>Toggle</b> to stop or restart the processing of all actions.</p>"
-                + _good(["While paused, the status reads Running (Paused)."]),
+                + _good([
+                    "While paused, the status reads Running (Paused).",
+                    "Pause and Resume actions keep working while paused, so you can resume.",
+                    "Each <b>Run</b> starts un-paused."
+                ]),
             related: ["configuration-actions-change-mode"]
         },
         {
@@ -393,7 +513,11 @@ function topics() {
             section: actions,
             title: "Play Sound",
             body: "<p>Plays a WAV, MP3 or OGG file at the chosen <b>Volume</b>.</p>"
-                + _good(["<a href=\"topic:options-profile-options\">Options</a> › Actions › Play Sound sets what happens when sounds overlap."]),
+                + _good([
+                    "<b>Playback mode</b> <a href=\"show:option/Playback mode\">Show me ›</a> sets what happens when sounds overlap: <b>Sequential</b> plays them one after another, <b>Interrupt</b> stops the one playing, <b>Overlap</b> plays them together.",
+                    "Sounds play only while the profile runs. <b>Stop</b> cuts them off.",
+                    "A missing file shows a warning; pressing the input plays nothing."
+                ]),
             related: ["configuration-actions-text-to-speech"]
         },
         {
@@ -406,7 +530,11 @@ function topics() {
                 + "<li>Choose <b>Interrupt</b>, <b>Queue Front</b> or <b>Queue Back</b>.</li>"
                 + "<li>Set <b>Volume</b>, <b>Rate</b> and <b>Pitch</b>.</li>"
                 + "</ol>"
-                + _good(["The voice is set in <a href=\"topic:options-profile-options\">Options</a> › Actions › Text to Speech."]),
+                + _good([
+                    "Typing ${current_mode} in the text speaks the current mode's name.",
+                    "Speech plays only while the profile runs. <b>Stop</b> cuts it off.",
+                    "Choose the voice in Options under <b>Text to Speech</b> <a href=\"show:option/Voice selection\">Show me ›</a>. If that voice is no longer installed, the Windows default voice speaks."
+                ]),
             related: ["configuration-actions-play-sound"]
         },
         {
@@ -447,7 +575,7 @@ function topics() {
             id: "configuration-actions-q-cannot-edit",
             section: questions,
             title: "Why can't I change an action?",
-            body: "<p>The profile is running. While it runs, the actions are locked (\"Profile running: stop it to edit\"). Choose <b>Stop</b>, then edit; see <a href=\"topic:getting-started-run\">Run and Stop</a>.</p>",
+            body: "<p>The profile is running. While it runs, the Configuration, Keyboard, OSC and Logical Device pages are locked (\"Profile running: stop it to edit\"). Choose <b>Stop</b> <a href=\"show:toolbar/Run\">Show me ›</a>, then edit; see <a href=\"topic:getting-started-run\">Run and Stop</a>.</p>",
             related: ["configuration-actions-add-action"]
         },
         {
@@ -463,6 +591,13 @@ function topics() {
             title: "Why did my action not stay after I closed the program?",
             body: "<p><b>OK</b> keeps the action in the open profile only. Choose <b>File › Save Profile</b> (<b>Ctrl+S</b>) to write it to disk.</p>",
             related: ["configuration-actions-add-action"]
+        },
+        {
+            id: "configuration-actions-q-unfinished",
+            section: questions,
+            title: "Why does Save say some actions are not finished?",
+            body: "<p>Those actions have an error, so they can't be saved. Choose <b>Cancel</b> to go back and finish them, or <b>Save without them</b> to leave them out. See <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and warnings</a>.</p>",
+            related: ["configuration-actions-safety-net"]
         },
         {
             id: "configuration-actions-q-vjoy-not-claimed",

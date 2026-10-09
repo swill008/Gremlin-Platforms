@@ -192,7 +192,8 @@ def test_history_help_says_when_a_restore_shows() -> None:
 # | ends on another pack; backups are explained.
 
 def test_device_pack_and_backup_help() -> None:
-    pack = (_topic("Module files") + _topic("Share a setup with a Device Pack"))
+    pack = (_topic("Module files") + _topic("Share a setup with a Device Pack")
+            + _topic("Put a Device Pack on a device"))
     assert "adds the pack's checked controls" in pack
     assert "open another pack" in pack
     backups = _topic("Deleted devices and backups")

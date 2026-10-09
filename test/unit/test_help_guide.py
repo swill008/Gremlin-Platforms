@@ -176,6 +176,13 @@ def _known_words() -> str:
             r'"[a-z-]+",\s*"(?:\d+-)?([a-z0-9_-]+)",\s*PropertyType',
             path.read_text(encoding="utf-8", errors="replace"),
         )
+    # The Options pages list their settings as (section, group, key) in
+    # gremlin/ui/option.py; the shown label is the key made readable too.
+    for path in (_ROOT / "gremlin" / "ui").glob("*option*.py"):
+        keys += re.findall(
+            r'\(\s*"[a-z-]+",\s*"[a-z-]+",\s*"(?:\d+-)?([a-z0-9_-]+)"\s*\)',
+            path.read_text(encoding="utf-8", errors="replace"),
+        )
     # Built in qml/rig_menu.js from Rotate snap (15 by default).
     parts += ["Rotate −15°", "Rotate +15°"]
     parts += [re.sub(r"[_-]+", " ", key).capitalize() for key in keys]

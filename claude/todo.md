@@ -237,6 +237,34 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     (Library's, with Undo link). Later: section divider/heading, empty state, file/folder picker that
     remembers folders, shared Undo/Redo bar. Estimates: pair ~30 min (3 agents), 1+2 ~30 min.
 
+53. QUEUED (user 2026-10-09: do all 3 passes, before the 1.0.30 release): Help gap fill from the
+    08:53 audit (all 10 spec pages vs qml/help). Pass 1: fix 6 wrong items (mode bar not "on the
+    toolbar"; auto-load on "comes to the front"; Text to Speech buttons only; Device Library menus
+    "left out" not greyed; Map to Xbox offers only fitting targets; Undo Delete Mode needs a spec line,
+    ask the user). Pass 2: ~12 new topics (safety net: recovery copy, unfinished actions / Save
+    without them, missing files; Treat as; what Stop releases; the tray incl. memory saving (01 S87);
+    Clear History + Before/After + Previous/Next change; command-line options; the Help window itself
+    (S137, S138); Button Map unplugged/damaged; Device Pack refusals; card drag/resize; mode rules).
+    Pass 3: ~55 partly covered topics. 5 agents, one chapter file each; claude/help-style.md.
+    Estimates: 10 + 30-40 + 30 min.
+54. PLANNING (user 2026-10-09): "Show me" links in Help that open or point at the thing a topic
+    names (a menu, a window, a setting). Discussion in progress; no code.
+
+55. AFTER THE 1.0.30 RELEASE (user 2026-10-09: build it after the release). GAP (found 2026-10-09 by HW-config): 04 S94 profile recovery copy (Q14, approved 2026-10-06:
+    copy of unsaved profile edits about every minute, Restore / Discard / Not now on next open or
+    after a crash, removed on Save / Discard / clean close) is not in the program. Not in Help until
+    built. (09 S61 reworded to buttons and keys, user approved 2026-10-09.)
+    UDM edge case: a deleted mode's own Change Mode action naming a mode renamed since comes back
+    with the old name (not covered).
+
+56. Spec vs program, found by the Help writers 2026-10-09 (small; not fixed): 03 S46 Module Setup Save
+    while unplugged says "...to save its setup..." when the stick is unplugged after opening (spec:
+    "Plug in <device> to change its setup. Nothing was saved."; gremlin/ui/module_model.py ~1900,
+    ~1951); 03 S103 a calibration with lowest above highest gets "...lowest and highest values are the
+    same"; 08 S104 spec spells "Previous change"/"Next change", buttons say "Previous Change"/"Next
+    Change" (glossary Title Case); 05 S59 "Reuse" never appears on screen; 07 S12 Button Map status
+    line on a refused save into a damaged file says only "Not written..." (check the dialog).
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).

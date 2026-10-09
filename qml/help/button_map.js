@@ -26,11 +26,14 @@ function topics() {
         t("button-map-open", "Getting started", "Open the Button Map",
             "<p>The Button Map opens in its own window, on one device.</p>"
             + "<ol>"
-            + "<li>Open it from a device card's right-click menu, the toolbar, or <b>Tools › Mapping › Button Map</b>.</li>"
-            + "<li>To show another device, choose it from <b>File › Device</b>.</li>"
+            + "<li>Open it from a device card's right-click menu, the toolbar, or <b>Tools › Mapping › Button Map</b> <a href=\"open:tools.buttonMap\">Open ›</a>.</li>"
+            + "<li>To show another device, choose it from <b>File › Device</b>. The device shown has a tick.</li>"
             + "</ol>"
             + "<h4>Good to know</h4>"
             + "<ul>"
+            + "<li>Switching device while you have unsaved edits asks to save first; <b>Cancel</b> stays on the current device.</li>"
+            + "<li><b>File › Device</b> doesn't list vJoy or Xbox outputs; their cards still open their Button Map.</li>"
+            + "<li>The Button Map closes when its device is deleted.</li>"
             + "<li>Before you edit, the map is live: rest the pointer on a chip to see which control it is, and drag with the left or middle button to pan.</li>"
             + "<li>The menus show only what you can use right now, with shortcuts beside their commands. <b>View › Command Palette</b> (<b>Ctrl+K</b>) lists every menu command you can use now: type part of a name and press <b>Enter</b>.</li>"
             + "</ul>",
@@ -39,12 +42,14 @@ function topics() {
             "<p>Editing places chips on the photo and draws on the map. Nothing is written until you save.</p>"
             + "<ol>"
             + "<li>Choose <b>File › Edit Mapping</b>.</li>"
-            + "<li>Drag chips from the pool beside the map onto the photo. Type in the pool's filter to find a control by name.</li>"
+            + "<li>Drag chips from the pool beside the map onto the photo. Type in the pool's filter to find a control by name, number or output.</li>"
             + "<li>Choose <b>File › Save</b> (<b>Ctrl+S</b>) to write the layout to the device's module file, or <b>File › Cancel</b> to leave without saving.</li>"
             + "</ol>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>Closing with unsaved edits asks first.</li>"
+            + "<li>Save reads the layout back and says \"Saved to the module file.\" When it can't write it, it says \"Not written. It is still only on this screen.\"</li>"
+            + "<li>Cancel and closing ask first when there are unsaved edits; choosing Save there saves and leaves editing.</li>"
+            + "<li>Undo and Redo work only while editing, back as many steps as <b>Undo steps</b> in Button Map Options (80 at first).</li>"
             + "<li>Most of this chapter is about editing.</li>"
             + "<li>What Save writes, and what is kept at once, is listed in <a href=\"topic:button-map-options\">Button Map Options</a>.</li>"
             + "</ul>",
@@ -98,7 +103,7 @@ function topics() {
             + "<p>Open it with <b>Options</b> on the top tool row, or <b>Edit › Button Map Options…</b>. The groups are down its left; the chosen group's settings sit on the right, one line each, with each setting's description on its ⓘ. Changes apply and are kept at once, and the pane opens on the group you used last. Like every tool it can be pinned, locked, moved with its tab, or resized by its edges.</p>"
             + "<ul>"
             + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>No actions</b>. See <a href=\"topic:button-map-action-labels\">Show actions on chips</a>.</li>"
-            + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror Layout and Copy Button Map from Device also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back; <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b>.</li>"
+            + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror Layout and Copy Button Map from Device also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back (80 at first); <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b>.</li>"
             + "<li><b>Autosave</b>: keeps a recovery copy of unsaved edits every <b>Seconds between recovery copies</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy.</li>"
             + "<li><b>View</b>: <b>Zoom speed</b>, how fast the mouse wheel zooms; <b>Rulers</b>, shown or not (also <b>View › Rulers</b>).</li>"
             + "<li><b>Colors</b>: <b>Recent colors</b>, how many the color picker keeps.</li>"
@@ -110,6 +115,19 @@ function topics() {
             + "<li>The view (zoom and pan), the grid settings and Show Guides are kept with the device's map at once, also while editing, and Cancel leaves them. Outside editing, Print &amp; Export's settings are kept at once. Rulers is a setting of the program, kept at once.</li>"
             + "</ul>",
             ["button-map-edit", "button-map-styles"]),
+        t("button-map-unplugged", "Getting started", "Unplugged sticks and damaged module files",
+            "<p>A stick's Button Map shows only while the stick is connected.</p>"
+            + "<ul>"
+            + "<li>For an unplugged stick the map is covered with \"Connect &lt;name&gt; to see its Button Map.\" It loads by itself when the stick connects.</li>"
+            + "<li>An unplugged stick's map still exports from <b>Print &amp; Export…</b>.</li>"
+            + "<li>Outputs (vJoy, Xbox), Keyboard, Logical Device and OSC need no stick and always show.</li>"
+            + "<li>Unplugging a stick while you edit keeps the edit on screen: \"&lt;name&gt; is disconnected. You can still save or cancel this edit.\"</li>"
+            + "</ul>"
+            + "<h4>Good to know</h4>"
+            + "<ul>"
+            + "<li>When the device's module file is damaged, the map shows empty and Save is refused with the reason; Cancel leaves the damaged file as it is. To set the device up again, choose <b>Start Fresh…</b> on its card; the damaged file is kept as a copy.</li>"
+            + "</ul>",
+            ["button-map-open", "button-map-edit", "button-map-print"]),
 
         // ---- The map -------------------------------------------------------
         t("button-map-view", "The map", "Zoom, pan and use the grid",
@@ -189,7 +207,7 @@ function topics() {
             "<p>A chip shows a control's name (Button 10, Axis 1, Hat 1) or its friendly name.</p>"
             + "<ol>"
             + "<li>Drag a chip from the pool onto the photo; drag it again to move it.</li>"
-            + "<li>Double-click a chip to edit its name.</li>"
+            + "<li>Double-click a chip to edit its name. <b>Shift+Enter</b> starts a second row.</li>"
             + "<li>Right-click it to style it.</li>"
             + "</ol>"
             + "<p>A chip's right-click menu has:</p>"
@@ -203,7 +221,7 @@ function topics() {
             + "<ul>"
             + "<li>To take chips off the map, drag them back onto the pool: the pool lights up, and letting go removes them. With several chips selected, they all go; a group goes whole, and while a group is being edited the member you drag leaves it. Locked chips stay. Undo brings them back.</li>"
             + "<li>Tick <b>Chip only</b> beside the pool filter (also in Button Map Options) to place chips on their own, with no leader and no hotspot. Add them later from the chip's menu (<b>Leader</b> › <b>Add Leader</b>, <b>Hotspot</b> › <b>Hide Hotspot</b>).</li>"
-            + "<li><b>Ctrl+D</b> duplicates the selection; <b>Ctrl+C</b> and <b>Ctrl+V</b> copy and paste it inside the editor.</li>"
+            + "<li><b>Ctrl+D</b> duplicates the selection; <b>Ctrl+C</b> and <b>Ctrl+V</b> copy and paste it inside the editor. Copied chips stay copied when another device's map opens, so you can paste them there.</li>"
             + "</ul>",
             ["button-map-hotspots", "button-map-groups", "button-map-styles"]),
         t("button-map-action-labels", "Chips", "Show actions on chips",
@@ -223,6 +241,7 @@ function topics() {
             + "<li><b>Several actions</b> shows the first one's text, or all of them joined with +. <b>No actions</b> sets what a chip shows when its control does nothing in that mode: its name, nothing, or a dash.</li>"
             + "<li>A control with no actions in a mode shows its parent mode's, as the running profile does.</li>"
             + "<li>Labels follow the profile as you edit it. Renaming a chip still edits its name.</li>"
+            + "<li>The chosen Labels Mode follows a rename of that mode, goes back to <b>Follow the Program</b> when the mode is deleted, and is forgotten when the Button Map closes.</li>"
             + "</ul>",
             ["button-map-chips", "button-map-options"]),
         t("button-map-hotspots", "Chips", "Hotspots and leaders",
@@ -287,12 +306,13 @@ function topics() {
         t("button-map-templates", "Chips", "Use layout templates",
             "<p>A template keeps a map's chips, leaders and drawings under a name, to put on any device.</p>"
             + "<ul>"
-            + "<li><b>Save Layout as Template…</b> keeps this map's layout under a name.</li>"
+            + "<li><b>Save Layout as Template…</b> keeps this map's layout under a name. A name already used asks before replacing it (<b>Replace Template</b>). An empty map can't be saved as a template.</li>"
             + "<li><b>Apply Template</b> puts one on the device you are editing. It asks first; Undo puts the old layout back.</li>"
-            + "<li><b>Manage Templates…</b> renames, deletes, exports a template to a file to share, and imports one.</li>"
+            + "<li><b>Manage Templates…</b> renames, deletes (it asks first), exports a template to a file to share, and imports one. An imported template whose name is taken gets a number.</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
+            + "<li>When a rename or export fails, the message names the file, the folder and the reason.</li>"
             + "<li>A template keeps where its pictures are, not the picture files themselves.</li>"
             + "<li>Button Map Options › <b>Library</b> also renames and deletes templates.</li>"
             + "</ul>",
@@ -445,6 +465,7 @@ function topics() {
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>Pictures are saved beside the device's module file.</li>"
+            + "<li>A picture dropped while not editing is refused: \"Click Edit Mapping first, then drop the picture again.\"</li>"
             + "</ul>",
             ["button-map-rotate", "button-map-photo"]),
         t("button-map-styles", "Drawing", "Save and apply styles",
@@ -471,6 +492,7 @@ function topics() {
             + "<li>Drag a row up or down to change what is on top. The right-click menu's <b>Arrange</b> section does the same a step at a time: Bring to Front, Bring Forward, Send Back, Send to Back.</li>"
             + "<li>Select a row to select the item (Ctrl or Shift to add); a right-click selects it too before its menu opens (a row in a selection keeps the selection). Double-click a drawing's row to name it.</li>"
             + "<li><b>Show all</b> and <b>Unlock all</b> undo every hide and lock.</li>"
+            + "<li><b>Delete</b> on an open group's row removes the whole group.</li>"
             + "</ul>",
             ["button-map-search-layers", "button-map-properties"]),
         t("button-map-search-layers", "Panels", "Search and filter layers",
@@ -486,6 +508,8 @@ function topics() {
             + "<ul>"
             + "<li>A matching hotspot, leader or group member shows under its chip or group, which is dimmed when it doesn't match itself.</li>"
             + "<li>While a filter is on, a line says how many rows match (12 of 148) or <b>No layers match</b>. The eye, lock, rename, drag and delete work on the rows shown.</li>"
+            + "<li>A group member found by the search can be selected, but its eye and lock are greyed out and it can't be deleted: hide, lock or delete the whole group from its row.</li>"
+            + "<li><b>Ctrl+F</b> works only while editing, as Layers shows only then.</li>"
             + "<li>The kinds and the search stay while the Button Map is open, also when another device's map is shown; they go back to none and empty when the Button Map closes.</li>"
             + "</ul>",
             ["button-map-layers"]),
@@ -542,7 +566,10 @@ function topics() {
             + "<ul>"
             + "<li>The settings are kept with the map and are the same for every print and export. The size of the window or the screen's scale makes no difference.</li>"
             + "<li>Every print and export takes the print area, whatever the zoom. Selection marks, handles, guides and the grid are left off, and so are hidden items. Lines and text are drawn at the export's size, not enlarged. A PDF goes on the chosen paper, inside its margins.</li>"
-            + "<li>While an export is still being written, Print &amp; Export shows <b>Exporting…</b> and the Export buttons wait.</li>"
+            + "<li>While an export is still being written, Print &amp; Export shows <b>Exporting…</b> and the Export buttons wait: one export runs at a time.</li>"
+            + "<li>An export's longest side is at most 16384 pixels; a larger Scale is made smaller to fit.</li>"
+            + "<li>When an export can't be written, <b>Export Failed</b> says \"Export failed.\" with the file, the folder and the reason, such as a read-only folder or a file open in another program.</li>"
+            + "<li>An unplugged stick's map still exports.</li>"
             + "</ul>",
             ["button-map-print-area"]),
         t("button-map-print-area", "Print and export", "Set the print area",
@@ -573,6 +600,9 @@ function topics() {
         t("button-map-qa-lost-edits", "Common questions", "The program closed before I saved: are my edits gone?",
             "<p>Not when <b>Autosave</b> is on in Button Map Options: open the device again and choose <b>Restore</b>, then save. See <a href=\"topic:button-map-options\">Button Map Options</a>.</p>",
             ["button-map-options", "button-map-edit"]),
+        t("button-map-qa-connect", "Common questions", "Why does the Button Map say \"Connect\" instead of showing the map?",
+            "<p>The stick is unplugged. Plug it in and the map loads by itself. See <a href=\"topic:button-map-unplugged\">Unplugged sticks and damaged module files</a>.</p>",
+            ["button-map-unplugged"]),
         t("button-map-qa-export-part", "Common questions", "How do I print only part of the map?",
             "<p>Set a print area: hold <b>Alt</b> and drag around the part you want, then use <b>Print &amp; Export…</b>. See <a href=\"topic:button-map-print-area\">Set the print area</a>.</p>",
             ["button-map-print-area", "button-map-print"])

@@ -23,7 +23,7 @@ function topics() {
             "<p>The Device Library opens in its own window. Open it in one of these ways:</p>"
             + "<ul>"
             + "<li>Select the <b>Device Library…</b> button on Home.</li>"
-            + "<li>In the main window, choose <b>Tools › Device Setup › Device Library…</b>.</li>"
+            + "<li>In the main window, choose <b>Tools › Device Setup › Device Library…</b> <a href=\"open:tools.deviceLibrary\">Open ›</a>.</li>"
             + "<li>Right-click a stick's card on Home and, in its Device section, choose <b>Copy Setup to Another Stick…</b>, <b>Swap with Another Stick…</b> or <b>Change vJoy Output…</b>. The window opens on that stick, with that dialog.</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
@@ -53,7 +53,7 @@ function topics() {
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>Menu items you can't use right now are greyed out. For example, Swap with Another Stick… needs a stick that is plugged in.</li>"
+            + "<li>The menus show only what you can use now: an item that doesn't apply is left out. For example, <b>Swap with Another Stick…</b> shows only when a stick that is plugged in is selected.</li>"
             + "<li>Right-click a row, or the empty space in the list, for a menu of what you can do there.</li>"
             + "</ul>",
             ["device-library-menus", "device-library-filters"]),
@@ -87,7 +87,7 @@ function topics() {
             + "<ul>"
             + "<li><b>Connected</b>: plugged in now.</li>"
             + "<li><b>Not connected</b>: set up here but unplugged, or a device that came only from someone else's Device Pack. You can copy from it, never to it.</li>"
-            + "<li><b>Deleted</b>: removed with Delete Device on Home. Its autosave is kept under it.</li>"
+            + "<li><b>Deleted</b>: removed with Delete Device on Home or Delete File in Module Setup since the Device Library has existed. Its autosave is kept under it. Sticks deleted before that are not listed.</li>"
             + "</ul>"
             + "<p>Select a device to see its name, description and state, its inputs (for example \"32 buttons, 6 axes, 1 hat\") and when it was last seen. The buttons under its details are <b>Save to Device Library…</b>, <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>, and the red <b>Remove from Library…</b> (not connected) or <b>Delete Saved Setups…</b> (connected).</p>"
             + "<p>Select the caret beside a device, or double-click the device, to show or hide its saved setups.</p>",
@@ -285,7 +285,7 @@ function topics() {
             "<p>Reading profiles, keeping autosaves and writing files run in the background, so the window keeps responding.</p>"
             + "<ul>"
             + "<li>The dialogs show <b>Reading the profiles…</b> and <b>Checking…</b> while they work out the profiles and the warnings. Wait for the warnings before you press Copy, Swap or Change.</li>"
-            + "<li>While a change runs, the status bar shows <b>Working…</b>, and the menu items that would start another change are greyed out (left out of the right-click menus). One change runs at a time.</li>"
+            + "<li>While a change runs, the status bar shows <b>Working…</b>, and the menu items that would start another change are left out of the menus, and the buttons that would start one are greyed out. One change runs at a time.</li>"
             + "<li>A row that is being changed shows a small busy mark until the change is done.</li>"
             + "</ul>",
             ["device-library-qa-greyed"]),
@@ -357,7 +357,8 @@ function topics() {
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>Devices are removed together only when none of them is connected.</li>"
-            + "<li>Copy, Swap, Change vJoy Output, Restore, Rename and Export act on one row only: while several rows are selected they are greyed out, or left out of the menu and the details.</li>"
+            + "<li>Copy, Swap, Change vJoy Output, Restore, Rename and Export act on one row only: while several rows are selected they are left out of the menus and greyed out under the details.</li>"
+            + "<li>When a plugged-in stick is among the selected devices, the right-click menu shows <b>Remove from Library…</b> greyed out. Rest the pointer on it to see why: \"Remove from Library works only on devices that aren't plugged in\".</li>"
             + "</ul>",
             ["device-library-delete"]),
 
@@ -459,7 +460,7 @@ function topics() {
             + "<p>See <a href=\"topic:device-library-undo\">Undo and redo a change</a>.</p>",
             ["device-library-undo", "device-library-history", "device-library-restore"]),
         t("device-library-qa-greyed", "Common questions", "Why are the buttons greyed out?",
-            "<p>The window is busy: a dialog shows <b>Checking…</b>, or the status bar shows <b>Working…</b> while a change runs. Wait for it to finish. Otherwise the selection doesn't allow it: Swap with Another Stick… needs a stick that is plugged in, Export… needs a saved setup, and Save to Device Library… needs a stick set up here or plugged in. With several rows selected only delete works. The right-click menus leave out what doesn't apply instead of greying it out.</p>"
+            "<p>The window is busy: a dialog shows <b>Checking…</b>, or the status bar shows <b>Working…</b> while a change runs. Wait for it to finish. Otherwise the selection doesn't allow it: Swap with Another Stick… needs a stick that is plugged in, Export… needs a saved setup, and Save to Device Library… needs a stick set up here or plugged in. With several rows selected only delete works. The menus leave out what doesn't apply instead of greying it out; one exception is <b>Remove from Library…</b> with a plugged-in stick among several selected devices.</p>"
             + "<p>See <a href=\"topic:device-library-busy\">When the window is busy</a>.</p>",
             ["device-library-busy", "device-library-select"])
     ]

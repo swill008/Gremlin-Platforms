@@ -293,7 +293,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 - **S58** The voice chosen in Options → Actions → Text to Speech should be used by every Text to Speech action, also when changed while running. [help: Text to Speech] [user confirmed 2026-10-06; was code only]
 - **S59** If the saved voice is no longer installed, the system's default voice should speak. [user confirmed 2026-10-06; was code only]
 - **S60** `${current_mode}` in the text should be replaced by the current mode name. [user confirmed 2026-10-06; was code only]
-- **S61** Text to Speech is offered on joystick buttons only (not keyboard keys). [user confirmed 2026-10-06; was code only] [test-plan: S-34 asks whether that is intended]
+- **S61** Text to Speech is offered on joystick buttons and keyboard keys. [changed 2026-10-09 to match D-09-Q11 / D-05-Q7 (user approved); was "joystick buttons only"] [test-plan: S-34 closed]
 
 ### Tray
 - **S62** The tray icon should show while the program runs, idle or active to match Running/Stopped, with the tooltip "Gremlin-Platforms". [glossary: program name in the tray] [test-plan: TB-02]
