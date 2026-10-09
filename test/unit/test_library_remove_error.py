@@ -34,7 +34,9 @@ _MODULE = {
 }
 
 
-def _run(tmp_path: pathlib.Path, bindings: dict | None = None) -> dict:
+def _run(
+    tmp_path: pathlib.Path, bindings: dict | None = None, history: bool = False
+) -> dict:
     home = tmp_path / "home"
     modules = home / "Gremlin Platforms" / "modules"
     modules.mkdir(parents=True)
@@ -46,6 +48,7 @@ def _run(tmp_path: pathlib.Path, bindings: dict | None = None) -> dict:
         QT_QPA_PLATFORM="offscreen",
         GREMLIN_OFFLINE="1",
         PYTHONIOENCODING="utf-8",
+        GREMLIN_SMOKE_HISTORY="1" if history else "0",
     )
     args = [sys.executable, str(_SMOKE), _NAME, str(module)]
     if bindings is not None:
@@ -75,11 +78,35 @@ def test_remove_deletes_the_module_file(tmp_path: pathlib.Path) -> None:
     assert not out["bad"], out["message"]
 
 
-def test_remove_says_why_when_the_module_file_stays(tmp_path: pathlib.Path) -> None:
-    # Another stick uses the file: Delete Device keeps it (ok), so Remove
-    # must stop and say so, never stop silently (D-10-REMOVE-ERROR).
+def test_remove_drops_a_stale_file_choice_with_the_file(tmp_path: pathlib.Path) -> None:
+    # A choice left by an id that is neither plugged in nor in the Library
+    # (an old id of the same stick) is no other device (03 S94): the file
+    # goes and so does that choice (10 S52, D-10-REMOVE-ALL).
     other = "AAAA0001-0000-0000-0000-000000000000"
     out = _run(tmp_path, {other: "hid_remapper_achb"})
-    assert out["fileAfter"], out
-    assert out["after"] is not None, out
-    assert out["bad"] and "module file is still here" in out["message"], out
+    assert not out["fileAfter"], out
+    assert out["after"] is None, out
+    assert not out["bad"], out["message"]
+    assert "hid_remapper_achb" not in out["bindingsAfter"].values(), out
+
+
+def test_remove_is_one_history_entry_and_restore_puts_it_all_back(
+    tmp_path: pathlib.Path,
+) -> None:
+    # 10 S51-S52 (D-10-IN-HISTORY, D-10-REMOVE-ALL), 08 S12a: Remove from
+    # Library on a stick with a module file, a saved setup, a friendly name
+    # and a stale file choice is one action, so one entry (not Delete
+    # Device's autosave, the module file's delete, the settings and the
+    # Library's part); its Restore puts every piece back.
+    other = "AAAA0001-0000-0000-0000-000000000000"
+    out = _run(tmp_path, {other: "hid_remapper_achb"}, history=True)
+    assert out["before"] and out["before"]["count"] >= 1, out
+    assert out["after"] is None and not out["fileAfter"], out
+    shown = out["plan"]["shown"] or _NAME
+    assert out["titles"] == [f"Removed {shown} from the Device Library"], out
+    assert out["restore"]["ok"], out
+    assert out["fileRestored"], out
+    assert out["rowRestored"] is not None, out
+    assert out["rowRestored"]["count"] == out["before"]["count"], out
+    assert out["bindingsRestored"].get(other) == "hid_remapper_achb", out
+    assert out["aliasAfter"] == "" and out["aliasRestored"] == "Left Box", out

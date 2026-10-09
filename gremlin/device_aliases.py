@@ -18,6 +18,9 @@ GROUP = "display"
 NAME = "aliases"
 
 _CACHE: dict[str, str] | None = None
+# The stored list _CACHE was read from: a value put back from outside
+# (Tools > History Restore) is read again.
+_CACHE_RAW: list | None = None
 
 
 def _ensure() -> Configuration:
@@ -37,10 +40,10 @@ def _ensure() -> Configuration:
 
 
 def _load() -> dict[str, str]:
-    global _CACHE
-    if _CACHE is not None:
-        return _CACHE
+    global _CACHE, _CACHE_RAW
     raw = _ensure().value(SECTION, GROUP, NAME) or []
+    if _CACHE is not None and raw == _CACHE_RAW:
+        return _CACHE
     names: dict[str, str] = {}
     for entry in raw:
         if isinstance(entry, list) and len(entry) >= 2:
@@ -49,13 +52,15 @@ def _load() -> dict[str, str]:
             if key:
                 names[key] = value
     _CACHE = names
+    _CACHE_RAW = [list(e) if isinstance(e, list) else e for e in raw]
     return names
 
 
 def _save(names: dict[str, str]) -> None:
-    global _CACHE
+    global _CACHE, _CACHE_RAW
     _CACHE = dict(names)
     rows = [[key, value] for key, value in names.items() if value]
+    _CACHE_RAW = [list(row) for row in rows]
     _ensure().set(SECTION, GROUP, NAME, rows)
 
 

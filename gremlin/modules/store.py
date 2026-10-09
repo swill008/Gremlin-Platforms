@@ -698,15 +698,13 @@ def delete(
         except OSError as exc:
             return f"The module file could not be deleted. {exc}"
     error = _remove_device_leftovers(slug, who) if pictures else ""
-    key = stored_guid_key(guid) or registry.guid_for_name(device_name)
-    name_key = registry.name_key(device_name)
+    # No other device uses the file, so every choice left for it is this
+    # device's own or a stale one (an old id of it, 03 S94): all go.
     data = bindings()
-    changed = False
-    for each in (key, name_key):
-        if each and plain_slug(str(data.get(each, ""))) == slug:
-            data.pop(each, None)
-            changed = True
-    if changed:
+    stale = [each for each, value in data.items() if plain_slug(str(value)) == slug]
+    for each in stale:
+        data.pop(each, None)
+    if stale:
         set_bindings(data)
     return error
 
@@ -839,13 +837,43 @@ def users_of(slug: str) -> set[str]:
     return users
 
 
+def _library_ids() -> set[str]:
+    """The ids of the devices the Device Library has a record of."""
+    try:
+        from gremlin import device_library
+
+        records = device_library._read().get("devices") or []
+    except Exception:  # noqa: BLE001 - no Library: it knows no device
+        return set()
+    ids = {
+        guid_key(stored_guid_key(rec.get("guid", "")))
+        for rec in records
+        if isinstance(rec, dict)
+    }
+    return ids - {""}
+
+
 def other_users(slug: str, device_name: str, guid: str = "") -> set[str]:
-    """The other devices that use module file slug. Name entries are left
-    out: each is saved with its device's id, and a renamed stick's old name
-    entry is the stick itself."""
+    """The other devices that use module file slug: plugged in now, or one
+    the Device Library has as a separate device (03 S94). A choice left by
+    any other id (an old id of the same stick) is stale and doesn't count.
+    Name entries are left out: each is saved with its device's id, and a
+    renamed stick's old name entry is the stick itself."""
     key = stored_guid_key(guid) or registry.guid_for_name(device_name)
-    users = {user for user in users_of(slug) if not user.startswith("name:")}
-    return users - ({key} if key else set())
+    own = guid_key(key)
+    users = {
+        user
+        for user in users_of(slug)
+        if not user.startswith("name:") and not (own and guid_key(user) == own)
+    }
+    if not users:
+        return users
+    known = _library_ids()
+    return {
+        user
+        for user in users
+        if _live(user) or guid_key(stored_guid_key(user)) in known
+    }
 
 
 def is_shared(device_name: str, guid: str = "") -> bool:

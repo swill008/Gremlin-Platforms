@@ -14,6 +14,7 @@ profile, to open with File > Load Profile.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from datetime import datetime
@@ -172,7 +173,20 @@ def describe(entry: dict) -> dict:
     before, after = entry.get("before"), entry.get("after")
     note = ""
     panes = False
-    if area == "profile" and kind == "input":
+    if kind == history.GROUP_KIND:
+        # One action of several steps (10 S51): each step under its title.
+        parts = [describe(part) for part in _parts(entry)]
+        texts = tuple(
+            "\n\n".join(f"{p['title']}\n{p[which]}" for p in parts)
+            for which in ("before", "after")
+        )
+        can = (
+            any(p["canRestoreBefore"] for p in parts),
+            any(p["canRestoreAfter"] for p in parts),
+        )
+        note = "Puts back every part of it at once."
+        panes = any(p["closesPanes"] for p in parts)
+    elif area == "profile" and kind == "input":
         texts = (_input_text(before), _input_text(after))
         can = (True, True)
         note = "Goes back into the open profile, unsaved."
@@ -383,7 +397,20 @@ def _restore_settings(side: dict | None) -> tuple[bool, str]:
         if not _apply_at_once(section, group, name, value):
             cfg.set(section, group, name, value)
     signal.configChanged.emit()
+    _names_changed()
     return True, "Settings put back."
+
+
+def _names_changed() -> None:
+    """Friendly names put back show at once (Home, the Library): what
+    device_aliases.set_alias tells its listeners."""
+    from gremlin import device_aliases
+
+    for listener in list(getattr(device_aliases, "_LISTENERS", [])):
+        try:
+            listener()
+        except Exception:  # noqa: BLE001 - one listener never stops Restore
+            logging.getLogger("system").exception("History: a name listener failed")
 
 
 def _apply_at_once(section: str, group: str, name: str, value: object) -> bool:
@@ -410,6 +437,65 @@ def _apply_at_once(section: str, group: str, name: str, value: object) -> bool:
     return False
 
 
+def _parts(entry: dict) -> list[dict]:
+    """A group entry's parts as entries of their own, in the order made."""
+    befores = entry.get("before") or []
+    afters = entry.get("after") or []
+    parts = []
+    for first, second in zip(befores, afters, strict=False):
+        parts.append({
+            "id": entry.get("id"),
+            "at": entry.get("at"),
+            "area": first.get("area"),
+            "kind": first.get("kind"),
+            "title": first.get("title"),
+            "subject": first.get("subject"),
+            "before": first.get("side"),
+            "after": second.get("side"),
+        })
+    return parts
+
+
+def _restore_group(entry: dict, which: str) -> tuple[bool, str]:
+    """Each part that can be put back, as one new entry: "before" from the
+    last step back to the first, "after" from the first on."""
+    parts = _parts(entry)
+    if which == "before":
+        parts.reverse()
+    key = "canRestoreBefore" if which == "before" else "canRestoreAfter"
+    token = history.begin_group(f"Put back from History: {entry.get('title', '')}")
+    messages: list[str] = []
+    try:
+        for part in parts:
+            if not describe(part)[key]:
+                continue
+            ok, message = _restore_one(part, which)
+            if not ok:
+                return False, message
+            messages.append(message)
+    finally:
+        history.end_group(token)
+    return True, " ".join(messages) or "Put back."
+
+
+def _restore_one(entry: dict, which: str) -> tuple[bool, str]:
+    side = entry.get(which)
+    area, kind = entry.get("area"), entry.get("kind")
+    if kind == history.GROUP_KIND:
+        return _restore_group(entry, which)
+    if area == "profile" and kind == "input":
+        return _restore_input(entry, side)
+    if area == "profile":
+        return _restore_profile(entry, side, which)
+    if area == "settings":
+        return _restore_settings(side)
+    if kind == "library":
+        from gremlin import device_library
+
+        return device_library.restore_history(entry, side)
+    return _restore_module(entry, side)
+
+
 def restore(entry_id: str, which: str) -> dict:
     """Puts back the "before" or "after" version of an entry."""
     entry = history.entry(entry_id)
@@ -419,21 +505,8 @@ def restore(entry_id: str, which: str) -> dict:
         "canRestoreBefore" if which == "before" else "canRestoreAfter"
     ]:
         return {"ok": False, "message": "That version can't be put back."}
-    side = entry.get(which)
-    area, kind = entry.get("area"), entry.get("kind")
     try:
-        if area == "profile" and kind == "input":
-            ok, message = _restore_input(entry, side)
-        elif area == "profile":
-            ok, message = _restore_profile(entry, side, which)
-        elif area == "settings":
-            ok, message = _restore_settings(side)
-        elif kind == "library":
-            from gremlin import device_library
-
-            ok, message = device_library.restore_history(entry, side)
-        else:
-            ok, message = _restore_module(entry, side)
+        ok, message = _restore_one(entry, which)
     except Exception as exc:
         return {"ok": False, "message": f"It couldn't be put back: {exc}"}
     return {"ok": ok, "message": message}

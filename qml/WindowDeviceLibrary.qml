@@ -298,8 +298,11 @@ ApplicationWindow {
     }
 
     // Remove from Library: Delete Device first where a module file is still
-    // here (stops at the first refused), then the Library's part.
+    // here (stops at the first refused), then the Library's part. All of it
+    // is one History entry (S51-S52): the model's group, ended by the
+    // removal's result (or here when it stops early).
     function runRemove(keys) {
+        lib.beginRemove(keys)
         for (var i = 0; i < keys.length; i++) {
             var plan = lib.removalPlan(keys[i])
             if (!plan.module_file)
@@ -307,9 +310,12 @@ ApplicationWindow {
             // Delete Device's reason when it fails (S47, D-10-REMOVE-ERROR);
             // and when it kept the file (another stick uses it), say so.
             var res = toMain("deleteDevice", keys[i])
-            if (!res.ok)
+            if (!res.ok) {
+                lib.endRemove()
                 return
+            }
             if (lib.removalPlan(keys[i]).module_file) {
+                lib.endRemove()
                 showMessage((plan.shown || plan.name) + "'s module file is still here"
                             + (res.keptFile ? ": another stick uses it." : ".")
                             + " Nothing was removed from the Library.", true)

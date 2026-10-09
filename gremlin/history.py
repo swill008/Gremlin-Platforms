@@ -105,6 +105,8 @@ def record(
     happened, as the History window shows it. subject: what it was about
     (profile, device, input, mode, file...). before/after: the content."""
     entry = _make(area, title, subject, before, after, kind)
+    if _held(entry):
+        return entry["id"]
     if _closing:
         _handle(entry)
         return entry["id"]
@@ -143,6 +145,10 @@ def write_now(
 ) -> str:
     """Writes an entry at once: for work later() runs on the writer thread."""
     entry = _make(area, title, subject, before, after, kind)
+    held = getattr(_capture, "entries", None)
+    if held is not None:
+        held.append(entry)
+        return entry["id"]
     _append(entry)
     return entry["id"]
 
@@ -150,11 +156,127 @@ def write_now(
 def later(work: Callable[[], None]) -> None:
     """Runs work on the writer thread (comparing a save, keeping pictures),
     so the save itself stays quick. It writes with write_now()."""
+    if _held(work):
+        return
     if _closing:
         _handle(work)
         return
     _queue.put(work)
     _wake_writer()
+
+
+# --- one action, one entry (10 S51, 08 S12a) -----------------------------------
+#
+# An action made of several steps that each record (Remove from Library:
+# Delete Device's autosave, its module file, the Library's list) opens a
+# group: what the opening thread records until the group ends is held, then
+# written as one entry (kind "group") holding each part, so Restore puts
+# them all back. Other threads record as usual.
+
+GROUP_KIND = "group"
+_group_lock = threading.Lock()
+_group: dict | None = None
+# On the writer thread, while a group's held work runs: write_now() lands here.
+_capture = threading.local()
+
+
+def begin_group(title: str, area: str = "modules") -> str:
+    """Opens a group named title; returns its token ("" when one is open
+    already: what this records joins that one)."""
+    global _group
+    with _group_lock:
+        if _group is not None:
+            return ""
+        token = uuid.uuid4().hex
+        _group = {
+            "token": token,
+            "title": title,
+            "area": area,
+            "thread": threading.get_ident(),
+            "items": [],
+        }
+        return token
+
+
+def end_group(token: str) -> None:
+    """Ends the group begin_group() opened (a token "" or not the open
+    one: nothing). What it held is written as one entry."""
+    global _group
+    with _group_lock:
+        if not token or _group is None or _group["token"] != token:
+            return
+        mine = _group["thread"] == threading.get_ident()
+    if mine:
+        _save_settings_now()
+    with _group_lock:
+        if _group is None or _group["token"] != token:
+            return
+        group, _group = _group, None
+    if group["items"]:
+        later(lambda: _write_group(group))
+
+
+def _save_settings_now() -> None:
+    """Settings changed in the group are saved (and so recorded) now, not
+    a second later, so they join it."""
+    try:
+        from gremlin import deferred_write
+
+        if deferred_write.pending("configuration"):
+            deferred_write.flush("configuration")
+    except Exception:  # noqa: BLE001 - the group ends either way
+        syslog.exception("History: settings not saved with the change")
+
+
+def _held(item: dict | Callable[[], None]) -> bool:
+    """True when the open group takes item (recorded on its thread)."""
+    with _group_lock:
+        if _group is None or _group["thread"] != threading.get_ident():
+            return False
+        _group["items"].append(item)
+        return True
+
+
+def _write_group(group: dict) -> None:
+    parts: list[dict] = []
+    _capture.entries = parts
+    try:
+        for item in group["items"]:
+            if callable(item):
+                try:
+                    item()
+                except Exception:
+                    syslog.exception("History: could not record a change")
+            else:
+                parts.append(item)
+    finally:
+        _capture.entries = None
+    if not parts:
+        return
+    if len(parts) == 1:
+        entry = dict(parts[0], title=group["title"] or parts[0]["title"])
+        _append(entry)
+        return
+    _append(group_entry(group["area"], group["title"], parts))
+
+
+def group_entry(area: str, title: str, parts: list[dict]) -> dict:
+    """One entry for several: before/after list each part's side."""
+
+    def side(which: str) -> list[dict]:
+        return [
+            {
+                "area": p.get("area"),
+                "kind": p.get("kind"),
+                "title": p.get("title"),
+                "subject": p.get("subject"),
+                "side": p.get(which),
+            }
+            for p in parts
+        ]
+
+    subject = {"parts": [str(p.get("title") or "") for p in parts]}
+    return _make(area, title, subject, side("before"), side("after"), GROUP_KIND)
 
 
 def _wake_writer() -> None:

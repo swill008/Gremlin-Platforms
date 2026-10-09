@@ -21,6 +21,7 @@ wholly on a program thread: the saved profiles' scan and the size measure.
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 import types
 from collections.abc import Callable
@@ -59,17 +60,36 @@ FILTERS = ["connected", "not_connected", "deleted", "autosaves"]
 # A replan waits this long for the ticks to settle (section 6).
 _PLAN_SETTLE_MS = 150
 
+# How long a Remove from Library's History group waits for its end.
+_GROUP_LIMIT_MS = 60_000
+
 _BUSY_TEXT = "Another change is still running: wait for it to finish."
 
 
 def _real_api() -> types.SimpleNamespace:
     """The owners the model calls (imported when first used)."""
     from gremlin import device_library as library
-    from gremlin import library_copy, library_profiles, library_swap
+    from gremlin import history, library_copy, library_profiles, library_swap
     from gremlin.modules import output
+
+    def forget(name: str, guid: str) -> None:
+        try:
+            from gremlin import device_forget
+        except ImportError:
+            logging.getLogger("system").warning("Device Library: nothing forgets")
+            return
+        device_forget.forget_device(name, guid)
+
+    def file_choices() -> str:
+        from gremlin.modules import store
+
+        return json.dumps(store.bindings(), sort_keys=True)
 
     return types.SimpleNamespace(
         library=library,
+        history=history,
+        forget=forget,
+        file_choices=file_choices,
         profiles=library_profiles,
         copy=library_copy,
         swap=library_swap,
@@ -265,6 +285,9 @@ class DeviceLibraryModel(QtCore.QObject):
         self._plans: dict[str, tuple] = {}
         self._plan_running: set[str] = set()
         self._plan_timers: dict[str, QtCore.QTimer] = {}
+        # The History group a Remove from Library is recorded in (S51-S52).
+        self._group = ""
+        self._choices: str | None = None
         self._done.connect(self._finish)
         self._planned.connect(self._take_plan)
         self._sized.connect(self._take_size)
@@ -887,6 +910,8 @@ class DeviceLibraryModel(QtCore.QObject):
     def _finish(self, op: str, ticket: int, value: object, change: bool) -> None:
         res = _result(op, value)
         res["ticket"] = ticket
+        if op in ("remove", "deleteMany"):
+            self.endRemove()
         if change:
             self._busy = False
             self._busy_op = ""
@@ -1125,13 +1150,97 @@ class DeviceLibraryModel(QtCore.QObject):
 
     # | The row menus' changes (S15, S44-S50)
 
+    @QtCore.Slot(list)
+    def beginRemove(self, keys: list) -> None:
+        """S51-S52: Remove from Library is one History entry. Everything
+        recorded on the main thread from now (Home's Delete Device run
+        first by the window, then removeDevice/deleteMany) joins it until
+        that removal's result, or endRemove()."""
+        hist = getattr(self.api, "history", None)
+        if hist is None:
+            return
+        self.endRemove()
+        clean = [str(k) for k in keys or [] if str(k)]
+        if len(clean) == 1:
+            plan = self.removalPlan(clean[0])
+            what = str(plan.get("shown") or plan.get("name") or "a device")
+        else:
+            what = f"{len(clean)} devices"
+        self._group = hist.begin_group(f"Removed {what} from the Device Library")
+        self._choices = self._file_choices() if self._group else None
+        # A window that never ends it doesn't hold History's records.
+        token = self._group
+        QtCore.QTimer.singleShot(_GROUP_LIMIT_MS, self, lambda: self._end(token))
+
+    @QtCore.Slot()
+    def endRemove(self) -> None:
+        self._end(self._group)
+
+    def _end(self, token: str) -> None:
+        hist = getattr(self.api, "history", None)
+        if not token or token != self._group or hist is None:
+            return
+        self._group = ""
+        self._note_choices(hist)
+        hist.end_group(token)
+
+    def _file_choices(self) -> str | None:
+        read = getattr(self.api, "file_choices", None)
+        try:
+            return read() if read is not None else None
+        except Exception:  # noqa: BLE001 - not kept, not recorded
+            return None
+
+    def _note_choices(self, hist: Any) -> None:  # noqa: ANN401
+        """The file choices the removal dropped (03 S94, 10 S52): an
+        internal setting the settings save doesn't record, so recorded here
+        into the group, for its Restore."""
+        before, self._choices = self._choices, None
+        after = self._file_choices()
+        if before is None or after is None or before == after:
+            return
+        key = "global/internal/module-file-bindings"
+        hist.record(
+            "settings",
+            "Module file choices",
+            {"keys": [key]},
+            {key: json.dumps(json.loads(before))},
+            {key: json.dumps(json.loads(after))},
+        )
+
+    def _removing(self, fn: Callable[..., dict], *args: object) -> Callable[[], dict]:
+        """fn(*args), then each device it removed forgotten (S52: friendly
+        name, Home card settings, calibration)."""
+        keys = [str(k) for k in (args[0] if isinstance(args[0], list) else args)]
+        targets = {k: self._target(k) for k in keys}
+
+        def run() -> dict:
+            out = fn(*args)
+            forget = getattr(self.api, "forget", None)
+            if forget is None or not isinstance(out, dict) or not out.get("ok"):
+                return out
+            gone = out.get("removed")
+            for key in gone if isinstance(gone, list) else keys:
+                name, guid = targets.get(str(key), ("", ""))
+                if name or guid:
+                    forget(name, guid)
+            return out
+
+        return run
+
     @QtCore.Slot(str, result=int)
     def removeDevice(self, key: str) -> int:
         """S15 Remove from Library: the device and all its saved setups
         (its module file, if any, went first through Home's Delete Device)."""
-        return self._start(
-            "remove", self.api.library.remove_device, key, main=True, keys=[key]
+        ticket = self._start(
+            "remove",
+            self._removing(self.api.library.remove_device, key),
+            main=True,
+            keys=[key],
         )
+        if not ticket:
+            self.endRemove()
+        return ticket
 
     @QtCore.Slot(str, result=int)
     def deleteSavedSetups(self, key: str) -> int:
@@ -1149,9 +1258,15 @@ class DeviceLibraryModel(QtCore.QObject):
     def deleteMany(self, keys: list) -> int:
         """S50: Delete... / Remove from Library... on every selected row."""
         clean = [str(k) for k in keys if str(k)]
-        return self._start(
-            "deleteMany", self.api.library.delete_many, clean, main=True, keys=clean
+        ticket = self._start(
+            "deleteMany",
+            self._removing(self.api.library.delete_many, clean),
+            main=True,
+            keys=clean,
         )
+        if not ticket:
+            self.endRemove()
+        return ticket
 
     @QtCore.Slot(str, result=bool)
     def keep(self, key: str) -> bool:

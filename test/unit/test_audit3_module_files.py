@@ -182,10 +182,17 @@ def test_delete_device_removes_a_renamed_sticks_file(folder: Path) -> None:
     assert result["stub"] and not result["keptFile"]
 
 
-def test_a_file_another_stick_uses_is_not_deleted(folder: Path) -> None:
+def test_a_file_another_stick_uses_is_not_deleted(
+    twins: list,  # noqa: F811
+    folder: Path,
+) -> None:
+    # The other stick is plugged in (03 S94: a choice from an id that is
+    # neither plugged in nor in the Device Library is stale).
+    device_initialization.joystick_devices_initialization()
     guid = _renamed(folder)
+    other = next(g for g, n in _names().items() if n != "pJoy Pro")
     data = module_store.bindings()
-    data["{11111111-2222-3333-4444-555555555555}"] = "old_name"
+    data[stored_guid_key(other)] = "old_name"
     module_store.set_bindings(data)
     assert hardware_profile.delete_module_file("pJoy Pro", guid) == (
         "Another stick is using this file."

@@ -45,6 +45,9 @@ if len(sys.argv) > 3:
 
     store.set_bindings(json.loads(sys.argv[3]))
 messages: list[str] = []
+# GREMLIN_SMOKE_HISTORY=1: a saved setup first, and after the removal its
+# History entries, then Restore of the newest (10 S51, D-10-IN-HISTORY).
+HISTORY = os.environ.get("GREMLIN_SMOKE_HISTORY") == "1"
 
 
 def _capture(mode, context, text: str) -> None:  # noqa: ANN001
@@ -97,15 +100,43 @@ assert lib is not None
 wait_until(lambda: bool(ev(lib, "_lib.lib !== null && _lib.lib.rows.length > 0")), 8000)
 
 
+# The device's Library key: found by it once a friendly name changes the
+# name it is shown by.
+KEY = ""
+
+
 def row() -> dict | None:
     rows = json.loads(str(ev(lib, "JSON.stringify(_lib.lib.rows)")))
     return next(
-        (r for r in rows if r.get("kind") == "device" and r.get("name") == NAME), None
+        (
+            r
+            for r in rows
+            if r.get("kind") == "device"
+            and (r.get("name") == NAME or r.get("key") == KEY)
+        ),
+        None,
     )
 
 
+if HISTORY:
+    from gremlin import device_library
+
+    _guid = json.loads(MODULE.read_text(encoding="utf-8")).get("boundGuidLocal", "")
+    from gremlin import device_aliases
+
+    KEY = (row() or {}).get("key", "")
+    device_aliases.set_alias(_guid, "Left Box")
+    saved = device_library.save_setup(NAME, _guid, [], own=True)
+    assert saved["ok"], saved
+    ev(lib, "_lib.lib.refresh()")
+    wait_until(lambda: bool(row()) and row().get("count", 0) > 0, 5000)
+
 before = row()
 out: dict = {"before": before, "fileBefore": MODULE.is_file()}
+if HISTORY:
+    from gremlin import history
+
+    count = len(history.entries())
 if before:
     key = json.dumps(before["key"])
     for name, call in (("target", "deviceTarget"), ("plan", "removalPlan")):
@@ -116,6 +147,26 @@ if before:
     wait_until(lambda: row() is None, 5000)
 out["fileAfter"] = MODULE.is_file()
 out["after"] = row()
+from gremlin.modules import store as _store  # noqa: E402
+
+out["bindingsAfter"] = _store.bindings()
+if HISTORY:
+    out["aliasAfter"] = device_aliases.display_name(_guid, "")
+if HISTORY and before:
+    from gremlin.ui import history_model
+
+    wait_until(lambda: not bool(ev(lib, "_lib.lib.busy")), 5000)
+    new = history.entries()
+    new = new[: len(new) - count]
+    out["titles"] = [e["title"] for e in new]
+    if new:
+        out["restore"] = history_model.restore(new[0]["id"], "before")
+        ev(lib, "_lib.lib.refresh()")
+        wait_until(lambda: row() is not None, 5000)
+    out["fileRestored"] = MODULE.is_file()
+    out["bindingsRestored"] = _store.bindings()
+    out["aliasRestored"] = device_aliases.display_name(_guid, "")
+    out["rowRestored"] = row()
 out["message"] = str(ev(lib, "_lib.message") or "")
 out["bad"] = bool(ev(lib, "_lib.messageBad"))
 out["qml"] = messages[:10]
