@@ -325,6 +325,7 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._scope = ""
+        self._main_sections: list[tuple[str, list | None]] | None = None
 
     def _get_scope(self) -> str:
         return self._scope
@@ -378,7 +379,14 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
     def _sections(self) -> list[tuple[str, list | None]]:
         if self._scope:
             return [(SECTION_DISPLAY_NAMES.get(self._scope, self._scope), None)]
-        return [(title, groups) for title, groups in main_layout()]
+        # main_layout() walks the whole registry; Qt asks for the sections
+        # many times while the window opens, so build it once per model. A
+        # new model is made each time an Options window opens.
+        if self._main_sections is None:
+            self._main_sections = [
+                (title, groups) for title, groups in main_layout()
+            ]
+        return self._main_sections
 
 
 @ta.QmlElement
