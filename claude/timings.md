@@ -54,3 +54,9 @@ a time to the user.
 | 2026-10-09 | Full run (chipRows + View Full Help) | test | ~5 min | 6 min | 10:49–10:55, all green |
 | 2026-10-09 | Device Library toolbar button (DL-tool) | feature | ~10-15 min | 4 min | 10:58–11:02 |
 | 2026-10-09 | Full run (titles + toolbar), after fixing the title test crash | test | ~5 min | 5 min | 11:12–11:17, all green |
+| 2026-10-09 | Plugged-in by id: shared check + Delete Device (ID-check) | fix | ~15 min | 4 min | 11:20–11:24 |
+| 2026-10-09 | Plugged-in by id: Button Map cover, Module Setup (ID-map) | fix | ~15 min | 4 min | 11:22–11:26 |
+| 2026-10-09 | Plugged-in by id: Device Library + copy (ID-lib) | fix | ~15 min | 8 min | 11:21–11:29 |
+| 2026-10-09 | Id not name: Auto Mapper + Device Pack (ID-misc) | fix | ~12 min | 6 min | 11:24–11:30 |
+| 2026-10-09 | Map entries for the id batch (MAP-id) | docs | ~8 min | 3 min | 11:30–11:33 |
+| 2026-10-09 | Full run (plugged-in by id batch) | test | ~5 min | 5 min | 11:30–11:35, all green |

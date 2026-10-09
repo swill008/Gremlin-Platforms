@@ -18,15 +18,17 @@ Every device has a module file that says which of its controls the program may u
 - `gremlin/modules/gate.py`: `should_forward`, the one rule for whether a hardware event may enter the wire; helpers for the card "last:" line.
 - `gremlin/modules/runtime.py`: `InputModuleRuntime` singleton: takes raw stick and key events, passes only claimed ones on (`event`, `key_event`); reloads claims on config, profile and device changes.
 - `gremlin/modules/inputs.py`: claimed reads of other inputs for Merge Axis, Dual Axis Deadzone, Condition and the script `joy` / `keyboard` objects (unclaimed reads neutral).
-- `gremlin/modules/hardware.py`: device info by id for the UI (`device_info`, `device_connected`), so the UI does not call the device library.
+- `gremlin/modules/hardware.py`: device info by id for the UI (`device_info`, `device_connected`), so the UI does not call the device library. `plugged_in(guid, name="")` (S90a): a device is plugged in when its id is in the live device list; built-ins (Keyboard, OSC, Logical Device, vJoy, Xbox) by their fixed id or `is_output_name`, and id-less Keyboard / OSC / Logical Device by name; no id -> False. The one plugged-in check for Delete Device, Module Setup, Home cards, the Button Map, the Device Library, Auto Mapper and Device Pack.
 - `gremlin/modules/output.py`: the only code that writes to vJoy and ViGEm: claimed vJoy reads and writes, busy-vJoy retry, Xbox pass-through, driver checks, `reset_drivers` at Stop. Caches output claims for 1 s.
 - `gremlin/modules/calibration.py`: calibration curves stored in the input module; which connected sticks have one (`_source_modules`); `write_axes`.
 - `gremlin/modules/auto_map.py`: input and output module lists for the Auto Mapper; `merge_claim_into_output` ("Also claim the matching outputs").
 - `gremlin/modules/wiring.py`: destination labels ("vJoy 3 · Button 5 (Fire)", "(not claimed)"). Wiring is its own subsystem; listed because it reads output claims.
 
 **UI models (gremlin/ui/)**
-- `gremlin/ui/module_model.py`: `ModuleListModel` (Home cards: rows, status, counts, last line, Driven by, focus, hide, order, stacks, sizes, compact, split; Output View and Configuration Appearance load/save; Delete Device, Start Fresh, import wrappers), `DriverInputModel` (Module Setup's control list, press-to-claim, Undo/Redo, `saveClaim`), `CardSizes` (Options reset).
-- `gremlin/ui/hardware_profile.py` (2398; lines ~456-760 only, the rest is the Button Map): `_maps_dir`, module file choices and binding (`module_file_choices`, `foreign_module_file`, `bind_module_file`), `delete_module_file`, `delete_preview`, `delete_device` (going through `store`), autosave before a pack, deleted devices folder. Also `copyImage` / `keepPhoto` / `profilePhotoUrl` used by Module Setup and the cards.
+- `gremlin/ui/module_model.py`: `ModuleListModel` (Home cards: rows, status, counts, last line, Driven by, focus, hide, order, stacks, sizes, compact, split; Output View and Configuration Appearance load/save; Delete Device, Start Fresh, import wrappers), `DriverInputModel` (Module Setup's control list, press-to-claim, Undo/Redo, `saveClaim`), `CardSizes` (Options reset). Plugged-in checks: `_device_connected` -> `hardware.plugged_in`; `loadDevice` ~1954 (a card with no id is not plugged in, so Save is refused, S46), `saveClaim` ~2336; `_reload` / `_card_status` read the live list by id (S73).
+- `gremlin/ui/viewer_devices.py` (202; mapped on page 02): `available` -> `hardware.plugged_in` (S90a; the stale `_connected_keys` copy and name matching are gone), used by the Button Map cover (07 S5-S8).
+- `gremlin/auto_mapper.py` `_source_uuid` and `gremlin/ui/device_pack.py` `plan_pack` / `_ids_named` (mapped on page 08): by id, never the name (S90a).
+- `gremlin/ui/hardware_profile.py` (2385; lines ~456-760 only, the rest is the Button Map): `_maps_dir`, module file choices and binding (`module_file_choices`, `foreign_module_file`, `bind_module_file`), `delete_module_file`, `delete_preview`, `delete_device` (going through `store`; both pass the guid, and `_device_stays_listed(name, guid)` -> `hardware.plugged_in` decides the text and whether the card stays, S90a), autosave before a pack, deleted devices folder. Also `copyImage` / `keepPhoto` / `profilePhotoUrl` used by Module Setup and the cards.
 - `gremlin/ui/module_inputs.py`: `ModuleClaimedInputModel`, the Configuration page's left list (claimed controls only); also used by the Output View.
 - `gremlin/ui/module_pairing.py`: vJoy Viewer pair models (source modules with vJoy wires, per-axis/button rows).
 - `gremlin/ui/module_calibration.py`: `CalibrationModuleModel`, the Calibration window's device drop-down.
@@ -60,6 +62,7 @@ Every device has a module file that says which of its controls the program may u
 - `test_bound_cards.py`, `test_driven_by_follows_edits.py`, `test_status_claim_cache.py`, `test_card_sizes_follow.py`: Home cards.
 - `test_output_view_pads.py`, `test_catalog_display.py`, `test_dest_live_guid.py`: Output View / Appearance.
 - `test_auto_mapper_claims.py`: Auto Mapper claim merge.
+- Plugged in by id (S90a): `test_plugged_in.py` (18: `plugged_in` itself, `test_delete_text_*`, `test_delete_result_*`), `test_plugged_in_pages.py` (7: Button Map cover, Module Setup Save refused for a no-id card and the unplugged twin, Home cards from the live list by id), `test_id_not_name_lookups.py` (5: Auto Mapper source id, Device Pack export by id / shared name refused), `test_library_plugged_in.py` (4, page 10).
 
 ## 3. What it owns
 
@@ -115,7 +118,7 @@ Every device has a module file that says which of its controls the program may u
 | Menu: Start Fresh… (only when damaged) | `startFresh` -> `StatusPage.askStartFresh` (confirm) | `model.startFresh` -> `module_file.start_fresh` |
 | Menu: Swap Device… (not output/Keyboard/OSC) | `assignHardware` | `DialogSwapDevices.qml` (other subsystem) |
 | Menu: Reset Card Layout | `clearSettings` | `model.clearCardSettings` (size + unstack) |
-| Menu: Delete Device | `StatusPage.askDelete` -> explain popup -> `askConfirm` (`Confirm.ask`, red Delete Device) -> `runDelete` | `model.deletePreview`, `model.deleteDevice` -> `hardware_profile.delete_device`; then `Main.closeDeletedDevice` |
+| Menu: Delete Device | `StatusPage.askDelete` -> explain popup -> `askConfirm` (`Confirm.ask`, red Delete Device) -> `runDelete` | `model.deletePreview`, `model.deleteDevice` (both pass the guid) -> `hardware_profile.delete_preview` / `delete_device`; plugged in = `_device_stays_listed` -> `hardware.plugged_in` (S90a); then `Main.closeDeletedDevice` |
 | Empty space menu: Unhide All Cards / Hidden Cards row / Reset All Card Sizes / Layout | `StatusPage._emptyMenu` | `model.unignoreAll` / `unignoreSlug` / `resetAllCardSizes` / commands `view.layout.*` -> `setSplitMode` |
 | Esc on Home | `StatusPage` Keys | deselect |
 | Split divider drag | `_splitView` timer (150 ms) | `model.setSplitRatio` -> `window_placement.save_split` |
@@ -126,7 +129,7 @@ Every device has a module file that says which of its controls the program may u
 | User action / trigger | Handler | Function it reaches |
 |---|---|---|
 | Card menu or Tools › Device Setup › Input / Output Module Setup | `Main.openConfigureModule` (picks first card of the asked kind; refuses Xbox; closes an open window for another device) | window created with direction, name, guid |
-| Window opens | `Component.onCompleted` | `_hw.setDeviceGuid`, `DriverInputModel.loadDevice`, `_hw.profilePhotoUrl` |
+| Window opens | `Component.onCompleted` | `_hw.setDeviceGuid`, `DriverInputModel.loadDevice` (plugged in by id via `hardware.plugged_in`; no id -> Save refused, S46), `_hw.profilePhotoUrl` |
 | Tick / untick a control | CheckBox `onClicked` | `setClaimed` (Undo step) |
 | Type a friendly name | TextField `onEditingFinished` | `setFriendly` (Undo step) |
 | Press a control on the stick | `EventListener.joystick_event` (queued, raw) | `DriverInputModel._on_joy` -> `markPressed` (ticks it, lights the row, scrolls) |
@@ -307,7 +310,7 @@ Every device has a module file that says which of its controls the program may u
 - S43. Undo / Redo should step back through ticks, presses that tick, and names, 100 steps, until another device is opened. [help: Input modules] [test: test_module_setup_undo::test_undo_and_redo_checks_and_names, test_steps_are_capped, test_another_device_starts_without_steps]
 - S44. Save Module should write the file the window opened (the device's bound file), record the device id, and bind that file to the device. [tracker: AU-04] [test: test_audit_devices::test_save_writes_to_the_bound_file]
 - S45. A physical stick saved here should always be an input module (repairs an old "dest" file). [test: test_audit_devices::test_a_stick_marked_as_an_output_is_repaired_by_saving]
-- S46. Save for a device that is not plugged in should be refused: "Plug in <device> to change its setup. Nothing was saved."; when it is plugged back in, Save works with the work on screen kept. Keyboard, OSC and Xbox are never blocked. [test-plan: MODULE-SETUP-UNPLUGGED] [tracker: DEV10] [test: test_module_setup_unplugged::test_unplugged_device_save_is_refused, test_keyboard_and_osc_are_never_blocked]
+- S46. Save for a device that is not plugged in should be refused: "Plug in <device> to change its setup. Nothing was saved."; when it is plugged back in, Save works with the work on screen kept. Keyboard, OSC and Xbox are never blocked. [test-plan: MODULE-SETUP-UNPLUGGED] [tracker: DEV10] [test: test_module_setup_unplugged::test_unplugged_device_save_is_refused, test_keyboard_and_osc_are_never_blocked] [test: test_plugged_in_pages.py::test_module_setup_with_no_id_refuses_save, ::test_module_setup_of_the_unplugged_twin_refuses_save]
 - S47. Saving an output module should also save the profile when the profile has a file; if the profile has unfinished actions, it is not saved and the window says so. [help: What is saved where] [tracker: A12]
 - S48. A save should be checked by reading the file back; a mismatch counts as not saved. [user confirmed 2026-10-06; was code only: module_model.py:2310-2325]
 - S49. Cancel, closing the window, or quitting the program with unsaved ticks, names or picture should ask first. [tracker: N4] [code: DialogConfigureModule.qml:201-208]
@@ -340,7 +343,7 @@ Every device has a module file that says which of its controls the program may u
 - S70. Home should show one card per physical device, each vJoy device and the Xbox controller. [help: Home]
 - S71. Home should always show cards for Keyboard and OSC (not only with a module file or show-stubs on), and a card for the Logical Device when it has a module file. [user confirmed 2026-10-06; was code only: module_model.py:1653-1695] [changed 2026-10-07 to follow decision D-03-S71-ALWAYS]
 - S72. A device with no module file should show "No module" (when Options' show-stubs is on); after Delete Device a device still plugged in keeps a card without a module even with it off. [glossary: Internal words ("device without a module")] [tracker: UI12] [code: module_model.py:153-185]
-- S73. A card should show its photo (not in compact view), name, status · bus, claimed counts in words ("1 hat", "2 hats"), "Driven by: [...]" on output cards only, and "last: ...". [help: Home] [glossary: Driven by] [tracker: AU-57]
+- S73. A card should show its photo (not in compact view), name, status · bus, claimed counts in words ("1 hat", "2 hats"), "Driven by: [...]" on output cards only, and "last: ...". [help: Home] [glossary: Driven by] [tracker: AU-57] [test: test_plugged_in_pages.py::test_home_cards_come_from_the_live_list_by_id]
 - S74. The last line should show the latest input the input module passed (input cards) or the latest output sent (output cards, only while running), using the friendly name, with the hardware name on hover. [help: Home] [test: test_input_module_gate::test_status_last_hid_only_on_input_cards, test_dest_last_prefers_button_press_then_axis] [user confirmed 2026-10-06; was code only: friendly name and hover]
 - S75. Driven by should follow action edits within a moment, show full Xbox names, and drop extra spaces from a module file's name. [tracker: G-DRIVENBY] [test: test_driven_by_follows_edits, test_bound_cards::test_xbox_wire_uses_full_name, test_driven_by_drops_spaces_from_a_module_files_name]
 - S76. A card should re-read its module file at most twice a second, and only when the file changed. [test: test_status_claim_cache::test_many_events_read_the_file_once, test_a_newer_save_is_picked_up]
@@ -364,6 +367,7 @@ Every device has a module file that says which of its controls the program may u
 
 ### K. Delete Device
 - S90. Delete Device should take three steps: an explanation (saying an autosave is kept in the Device Library, when that trigger is on), a red confirm, then a result. There is no "Save a copy" question. [test-plan: H-19g] [changed 2026-10-08 to follow D-10-DELETE (Device Library, 10)]
+- S90a. Whether a device is plugged in (Delete Device's text and result, Module Setup, the Button Map, the Device Library) is decided by its Windows id against the live device list (`gremlin/modules/hardware.py plugged_in`), never by its name; a card with no id is not plugged in; Keyboard, OSC, vJoy and Xbox are built in and always present. [user 2026-10-09: a stick showed "not connected" until it moved, because the name was compared] [code: gremlin/modules/hardware.py plugged_in; hardware_profile.py _device_stays_listed, delete_preview, delete_device; module_model.py _device_connected, loadDevice, saveClaim, _reload, _card_status; viewer_devices.py available; device_library.py _connected, _view; library_copy.py _connected; auto_mapper.py _source_uuid; device_pack.py plan_pack, _ids_named] [test: test_plugged_in.py, test_plugged_in_pages.py, test_library_plugged_in.py, test_id_not_name_lookups.py]
 - S91. It should keep a "stick deleted" autosave in the Device Library (10 S16-S21) and check it reads back; if it can't, nothing is deleted. [test-plan: H-19g-b] [code: hardware_profile.py:1107-1135] [changed 2026-10-08 to follow D-10-DELETE (Device Library, 10)]
 - S92. It should remove the device's actions in every mode, its module file and pictures, its file bindings, and the card's size and stack. [code: StatusPage.qml:401] [test: test_audit3_module_files::test_delete_device_removes_a_renamed_sticks_file]
 - S93. For a vJoy or Xbox card it should keep the output module file and remove only actions stored on that device. [user confirmed 2026-10-06; was code only: hardware_profile.py:1148-1151, StatusPage.qml:394-395]
@@ -431,7 +435,7 @@ Every device has a module file that says which of its controls the program may u
 
 **Where code differs from the spec or a rule**
 1. A stale id is not filtered in `saveClaim`, `startFresh`, `_load_module_doc`, `_module_damage`, `_source_claim` (module_model.py:2245, 1451, 379, 491, 1505), but is filtered for Delete, Device Pack and Output View (`guid_for_module`, hardware_profile.py:956). Save and Start Fresh can reach a different file from Delete. [S9; system-maps map 1]
-2. Name-only lookups: `module_exists`, `_refresh_inplace`, `claimedCount`, module_pairing, module_inputs (see 7.6). Twin naming makes a wrong file unlikely; SUSPECTED, no test. [S6, S77]
+2. Name-only lookups: `module_exists`, `_refresh_inplace`, `claimedCount`, module_pairing, module_inputs (see 7.6). Twin naming makes a wrong file unlikely; SUSPECTED, no test. [S6, S77] (2026-10-09: the plugged-in check itself now goes by id everywhere through `hardware.plugged_in`, S90a; these file lookups are still by name.)
 3. Import writes the own-name file, not the bound file (hardware_profile.py:700-701). [Q13]
 4. Start Fresh leaves no History entry (module_file.py:107-113, module_model.py:1456). [S69, Q17]
 5. Running note says "next time it starts" but changes are live. [Q1]
@@ -476,11 +480,11 @@ Every device has a module file that says which of its controls the program may u
 
 **Size (lines, roughly)**
 - Core `gremlin/modules/*`: about 4,100 (store.py 1,551, output.py 804, registry.py 445).
-- UI models: module_model.py 2,407; module-file part of hardware_profile.py about 300; device.py calibration part about 570; module_inputs 264; module_pairing 323; output_modules 302; live_input 446; module_calibration 80; auto_map_modules 80. About 4,800.
+- UI models: module_model.py 2,406; module-file part of hardware_profile.py about 300; modules/hardware.py 76; device.py calibration part about 570; module_inputs 264; module_pairing 323; output_modules 302; live_input 446; module_calibration 80; auto_map_modules 80. About 4,800.
 - QML: StatusPage 1,178; OutputModuleView 1,286; DialogConfigureModule 739; DialogCalibration 679; StatusCard 510; HatView 75; RunningNote 30. About 4,500.
 - Total about 13,400 lines in about 27 files.
 
-**Covered by tests** (see section 2 list): the gate and Keyboard rules, output firewall and Xbox pass-through, the file rule (renamed, twins, stale id, vJoy), damaged files and Start Fresh (model level), Module Setup Undo / unplugged / import notice, Calibration Undo / unsaved / bad curves / new id, Delete File copy, Delete Device of a renamed or shared file (and its shared question), refused-save wording (`test_spec_wording_56.py`), the shared pieces in Module Setup, Calibration and the Output View (`test_calibration_shared_pieces.py`, `test_module_setup_import_notice.py`, `test_main_shared_pieces.py`), card order with hidden / renamed / deleted cards, Driven by, card-size follow, claim cache, Output View numbering.
+**Covered by tests** (see section 2 list): the gate and Keyboard rules, output firewall and Xbox pass-through, the file rule (renamed, twins, stale id, vJoy), damaged files and Start Fresh (model level), Module Setup Undo / unplugged / import notice, Calibration Undo / unsaved / bad curves / new id, Delete File copy, Delete Device of a renamed or shared file (and its shared question), plugged in by id not name (S90a: Delete Device text and result, Module Setup Save, Home cards, Button Map, Library, Auto Mapper, Device Pack), refused-save wording (`test_spec_wording_56.py`), the shared pieces in Module Setup, Calibration and the Output View (`test_calibration_shared_pieces.py`, `test_module_setup_import_notice.py`, `test_main_shared_pieces.py`), card order with hidden / renamed / deleted cards, Driven by, card-size follow, claim cache, Output View numbering.
 
 **Obvious untested paths**
 - Stacks: `stackSelected`, `unstackSlug`, `unstackAll`, `raiseSlug` (no unit test found beyond option-text checks), and stacks with hidden or unplugged cards.

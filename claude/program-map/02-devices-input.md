@@ -36,7 +36,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | `qml/KeyboardInputList.qml` (219) | Keyboard device page; adds keys with InputListener. |
 | `qml/DialogDeviceInformation.qml` (208) | Tools > Device Setup > Device Information (DeviceListModel "all"). |
 | `qml/DialogInputViewer.qml` (103) | vJoy Viewer (reads the claimed feed, not raw; listed for completeness). |
-| `gremlin/ui/viewer_devices.py` (228) | The vJoy Viewer's device list and pairing labels (`Gremlin.Device`); re-reads on `device_change_event`; reads vJoy through the output module. |
+| `gremlin/ui/viewer_devices.py` (202) | The vJoy Viewer's device list and pairing labels (`Gremlin.Device`); re-reads on `device_change_event`; reads vJoy through the output module. |
 | `qml/InputViewerCard.qml` (320), `qml/AxesStateSeries.qml` (133) | One device card in the vJoy Viewer (axes, buttons, hats), and its scrolling axis graph. |
 | `gremlin/ui/xbox_viewer.py` (413) | The Xbox Viewer's model: Gremlin's Xbox pads through the output module, their pairing and state (`xbox_maps`). |
 | `qml/DialogXboxViewer.qml` (107), `qml/XboxViewerCard.qml` (243), `qml/Xbox360Face.qml` (153) | Tools > Viewers > Xbox Viewer window, one pad card, the pad picture. |

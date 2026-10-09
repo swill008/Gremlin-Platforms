@@ -36,8 +36,8 @@ On disk:
 
 Code (built 2026-10-08/09):
 
-- `gremlin/device_library.py` (2242 lines): the library owner, the one writer of `library.json` and the packs: folder, devices, save_setup, autosave (S16-S21) and its limit, rename/describe/delete, import_pack/export_setup, tidy, size, search, settings, last change, History text and Restore for Library entries (S51).
-- `gremlin/library_copy.py` (1328): Copy to Another Stick, Restore to This Stick, Change vJoy Output (renumbers Map to vJoy, nested actions too) and undo_change/undo_last (S22-S25, S30-S33, S48).
+- `gremlin/device_library.py` (2249 lines): the library owner (connected = `_connected`: a device with an id and `hardware.plugged_in`, 03 S90a; `_view` joins a plugged-in stick to the row / record with the same id only, never by name), the one writer of `library.json` and the packs: folder, devices, save_setup, autosave (S16-S21) and its limit, rename/describe/delete, import_pack/export_setup, tidy, size, search, settings, last change, History text and Restore for Library entries (S51).
+- `gremlin/library_copy.py` (1331): `_connected` -> `hardware.plugged_in` (by live id). Copy to Another Stick, Restore to This Stick, Change vJoy Output (renumbers Map to vJoy, nested actions too) and undo_change/undo_last (S22-S25, S30-S33, S48).
 - `gremlin/library_swap.py` (525): Swap with Another Stick (S26-S29): module-file parts through `modules/store.py`, bindings through `swap_devices` per ticked profile; autosave of both sticks first.
 - `gremlin/library_profiles.py` (496): profiles that aren't open (S33-S34): profiles_using, read_profile, Batch (one change across several profiles; the open one changed in memory), responsive()/background() (section 6).
 - `gremlin/library_undo.py` (176): Undo and Redo steps for this session's Library actions (S53); emptied by Clear History (08 S12b) through on_cleared.
@@ -74,6 +74,7 @@ profile owner, and module files only through `modules/store.py`.
 |---|---|
 | Toolbar **Device Library** button (`Main.qml _deviceLibraryButton`, every page; tests `test_device_library_DD_menus.py::test_the_toolbar_has_the_device_library_button_not_home`, `test_mode_bar.py::test_the_toolbar_device_library_button_opens_the_window`); Tools › Device Setup › **Device Library…** (`tools.deviceLibrary`) | `Main.qml openDeviceLibrary` → `device_library_open.js` opens the window or brings it to the front. |
 | Card menu: **Copy Setup to Another Stick…**, **Swap with Another Stick…**, **Change vJoy Output…** (`StatusCard.qml` 493-497) | Open the window on that card's device and the matching dialog (`openOn(name, guid, action)`). |
+| Device plugged in / out | `device_library._connected` / `_view`, `library_copy._connected` → `hardware.plugged_in` (by id, 03 S90a); rows join by id only. |
 | Window menus, right-click menus, double-click (S40), shortcuts | `DeviceLibraryModel` slots: `copy`, `swap`, `changeOutput`, `restoreToStick`, `saveToLibrary`, `rename`, `describe`, `keep`, `deleteItem` / `deleteMany`, `beginRemove` / `removeDevice` / `endRemove`, `beginClearSetup`, `deleteSavedSetups`, `importPack`, `exportSetup` / `exportCurrent`, `tidyPreview` / `tidy`, `setSettings`, `undo` / `redo`. |
 | Row menu: Delete Device, Module Setup, Button Map, Show on Home | `device_library_open.js toMain` → `Main.qml libraryAction`. |
 | Row menu: Show in History (S56) | Tools › History filtered to the device. |
@@ -137,7 +138,7 @@ works on files and the profile through their owners.
 - **S12** Device › Save to Device Library… should keep a saved setup of the selected device (the user's own): its module file now, and its bindings from the profiles the user ticks (one saved setup per profile, named after the profile by default). [D-10-SAVE]
 - **S13** An autosave the user renames or describes becomes the user's own and is never removed by the autosave limit. [D-10-AUTOSAVE]
 - **S14** Export Saved Setup… should write the saved setup as a Device Pack anywhere the user picks (08 S57 rules). [D-10-SHARE]
-- **S15** Deleting always asks first and names exactly what goes. On a saved setup, **Delete…** removes it. On a device the items depend on its state (S47): a **not connected** device (unplugged, deleted or from a pack) has **Remove from Library…**, which removes the device and all its saved setups, and, when it still has a module file here, removes that too as Home's Delete Device does (03 K, autosave first, refused while the profile runs); a **connected** device has **Clear Setup…** (the same as Delete Device: an autosave first, then its module file and bindings go; the stick stays plugged in with no setup) and **Delete Saved Setups…** (forgets its saved setups; the stick keeps its settings). [D-10-TIDY] [changed 2026-10-08 to follow D-10-REMOVE]
+- **S15** Deleting always asks first and names exactly what goes. On a saved setup, **Delete…** removes it. On a device the items depend on its state (S47): a **not connected** device (unplugged, deleted or from a pack) has **Remove from Library…**, which removes the device and all its saved setups, and, when it still has a module file here, removes that too as Home's Delete Device does (03 K, autosave first, refused while the profile runs); a **connected** device has **Clear Setup…** (the same as Delete Device: an autosave first, then its module file and bindings go; the stick stays plugged in with no setup) and **Delete Saved Setups…** (forgets its saved setups; the stick keeps its settings). [D-10-TIDY] [changed 2026-10-08 to follow D-10-REMOVE] [test: test_library_plugged_in.py::test_twin_sticks_one_unplugged_only_the_plugged_one_is_connected, ::test_a_name_with_double_spaces_is_connected_by_its_id]
 
 ### D. Autosaves
 
@@ -176,7 +177,7 @@ works on files and the profile through their owners.
 
 ### I. Packs from other people
 
-- **S35** File › Import Device Pack… should add the pack as a saved setup: under the device it was made from when that device is in the Library, otherwise under a new Not connected device named after the pack. The saved setup says where it came from ("From <Made by>'s pack") and takes the pack's Note as its description. [D-10-SHARE] [changed 2026-10-08 to follow D-10-STREAMLINE]
+- **S35** File › Import Device Pack… should add the pack as a saved setup: under the device it was made from when that device is in the Library, otherwise under a new Not connected device named after the pack. The saved setup says where it came from ("From <Made by>'s pack") and takes the pack's Note as its description. [D-10-SHARE] [changed 2026-10-08 to follow D-10-STREAMLINE] [test: test_library_plugged_in.py::test_a_pack_device_not_on_this_pc_stays_not_connected]
 
 ### J. Settings and tidying
 
@@ -203,7 +204,7 @@ works on files and the profile through their owners.
 - **S47** Menus show only what can be used now (01 S66); delete items are red and always ask first, naming what goes (e.g. "Remove T.16000M and its 4 saved setups from the Library?"). [D-10-CONTEXT, D-10-REMOVE] A device's menu title names its state ("Left throttle · Connected", "· Not connected", "· Deleted"), and each delete item has a tooltip (the program's usual hover tooltip, not text in the menu) saying what it does: Clear Setup… "Its settings go; the stick stays plugged in", Delete Saved Setups… "Only the saved setups go; its settings stay", Remove from Library… "Gone from the Library, with its saved setups". Remove from Library's question says "You can restore it from Tools › History." (D-10-IN-HISTORY). [D-10-DELETE-CLARITY] [D-10-MENU-TIPS] If Delete Device (run first for a device with a module file) fails, Remove stops and shows its reason; it never stops silently. [2026-10-09: D-10-REMOVE-ERROR]
 - **S48** Restore to This Stick… should put a saved setup back on its own stick (which must be plugged in) as Copy does (S22-S25, autosave first, Undo), without choosing a target. [D-10-RESTORE]
 - **S49** Keep This Autosave should make an autosave the user's own in one step (as renaming or describing it does, S13), so the autosave limit never removes it. [D-10-KEEP]
-- **S50** Ctrl-click and Shift-click should select several saved setups (or several devices); Delete… / Remove from Library… then act on all of them after one question that lists them. Copy, Swap, Change, Restore, Rename and Export act on one row only. When a plugged-in stick is among several selected devices, the menu shows Remove from Library… greyed out (it can't be clicked) with the tooltip "Remove from Library works only on devices that aren't plugged in", instead of an empty menu. [D-10-MULTI] [D-10-MULTI-NOTE] [D-10-MENU-TIPS]
+- **S50** Ctrl-click and Shift-click should select several saved setups (or several devices); Delete… / Remove from Library… then act on all of them after one question that lists them. Copy, Swap, Change, Restore, Rename and Export act on one row only. When a plugged-in stick is among several selected devices, the menu shows Remove from Library… greyed out (it can't be clicked) with the tooltip "Remove from Library works only on devices that aren't plugged in", instead of an empty menu. [D-10-MULTI] [D-10-MULTI-NOTE] [D-10-MENU-TIPS] [test: test_library_plugged_in.py::test_twin_sticks_one_unplugged_only_the_plugged_one_is_connected]
 - **S51** Every change to the Library's own files is a Tools › History entry, like a module-file save: its list (names, descriptions, records) and its saved setups (a new one, a delete, Delete Saved Setups…, Remove from Library…, an autosave pruned past the limit). One action is one entry, named for what happened ("Removed HID Remapper ACHB from the Device Library", "Deleted saved setup X"); Restore puts back the files and the list as they were before it. Delete and Remove questions say "You can restore it from Tools › History." [user decision 2026-10-09: D-10-IN-HISTORY]
 - **S52** Remove from Library… removes the device entirely: its module file and folder (pictures, Button Map photo, recovery copies), its saved setups and autosaves, its Library record and last-seen date, every file choice that points at its file (stale old ids too, 03 S94), its friendly name, its Home card settings (size, place, hidden, compact) and its calibration; its bindings leave the open profile (kept only if that profile is saved). Other saved profiles and HidHide are not touched. It is ONE Tools › History entry ("Removed X from the Device Library"; several at once: "Removed N devices from the Device Library") whose Restore puts every piece back. Clear Setup… is likewise one entry, "Cleared the setup of X" (its autosave and the module-file delete together). [2026-10-09: D-10-ONE-ENTRY-TITLES] A device still plugged in is not removed (it gets Clear Setup…, and Windows keeps listing it as a plain card on Home). [user decision 2026-10-09: D-10-REMOVE-ALL]
 - **S53** Undo and Redo are separate, plainly named items (the change they act on is in their tooltip and in the status bar, S53a): in Edit (Ctrl+Z, Ctrl+Y) and as small Undo / Redo buttons beside the right-click menu's title, as other right-click menus show them. They work on every Library action (each is one History entry, S51): Undo restores the newest one's "before", Redo its "after". Several steps: Undo walks back through this session's Library actions newest first, Redo forward; a new action clears Redo. Older changes stay in Tools › History. Replaces S41's single last-change Undo and D-10-REDO-LABEL. [user decision 2026-10-09: D-10-UNDO-REDO]
@@ -233,8 +234,8 @@ Built 2026-10-08/09 (S1-S56). Swap Devices (04 S77-S83), Delete Device's
 
 ## 11. Size and test coverage
 
-Code: about 6,600 lines of Python (device_library 2242, device_library_model
-1584, library_copy 1328, library_swap 525, library_profiles 496,
+Code: about 6,600 lines of Python (device_library 2249, device_library_model
+1584, library_copy 1331, library_swap 525, library_profiles 496,
 library_undo 176, device_aliases 134, device_forget 133) and 2,688 of QML/JS
 (WindowDeviceLibrary 1515, five dialogs 1146, device_library_open.js 27).
 
@@ -249,7 +250,9 @@ and Delete (DD, test_library_remove_error, test_device_forget), threads
 test_library_undo_redo, test_library_undo_ui, test_library_status_last), the
 window and menus (LU_window, CU_menus, DD_menus, FM_window, FM2_window,
 test_library_menu_refresh), the Guide (GC_guide) and built-in inputs
-(test_library_builtin_section, test_library_no_builtins). Shared pieces
+(test_library_builtin_section, test_library_no_builtins). Plugged in by id
+(03 S90a): `test_library_plugged_in.py` (4: twins, double-spaced name, pack
+device not on this PC, Copy / Restore by live id). Shared pieces
 (questions, red buttons, SearchBox, MessageLine, UndoBar, EmptyState, Device
 Pack choosers): `test_library_shared_pieces.py` (with
 `library_shared_pieces_smoke.py`), plus `test_device_library_CU_menus.py`,
