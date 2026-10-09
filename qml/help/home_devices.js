@@ -78,7 +78,8 @@ function topics() {
                 + "<li>The Xbox card has no Module Setup, Auto Mapper, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick…, Change vJoy Output… or Delete Device.</li>"
                 + "<li>The Keyboard and OSC cards have no Auto Mapper, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
                 + "<li>The Logical Device card has no Module Setup, Auto Mapper, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
-                + "</ul>",
+                + "</ul>"
+                + "<p>To give the Logical Device card a picture, right-click it and choose <b>Add Image…</b> (under <b>Device</b>). Later, use <b>Change Image…</b> or <b>Remove Image</b>.</p>",
             related: ["home-devices-home", "home-devices-delete-device", "home-devices-input-modules", "getting-started-menus"]
         },
         {

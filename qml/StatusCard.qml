@@ -69,6 +69,9 @@ Rectangle {
     signal clearSettings()
     signal deleteDevice()
     signal startFresh()
+    // The Logical Device card's own picture (03 S88, D-03-LD-IMAGE).
+    signal addImage()
+    signal removeImage()
     signal unstackCard()
     signal unstackAllCards()
     signal shiftToggled()
@@ -495,6 +498,13 @@ Rectangle {
                     : MenuModel.action("Swap with Another Stick…", function() { _card.openDeviceLibrary("swap") }),
                 (dest || xbox || notStick || logical) ? null
                     : MenuModel.action("Change vJoy Output…", function() { _card.openDeviceLibrary("output") }),
+                // The Logical Device's card picture (03 S88, D-03-LD-IMAGE):
+                // the other cards set theirs in Module Setup / Button Map.
+                !logical ? null
+                    : MenuModel.action(_card.photo ? "Change Image…" : "Add Image…",
+                                       function() { _card.addImage() }),
+                (!logical || !_card.photo) ? null
+                    : MenuModel.action("Remove Image", function() { _card.removeImage() }),
                 MenuModel.action("Reset Card Layout", function() { _card.clearSettings() }),
                 // Output module files are never deleted (03 Q18).
                 dest ? null

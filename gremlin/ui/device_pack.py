@@ -273,6 +273,27 @@ def _catalog_lines(doc: dict) -> list[str]:
     ]
 
 
+# The Logical Device's layout in its module file (D-04-LD-FILE, 10 S6a).
+_LOGICAL_KEY = "logical-device"
+
+
+def _logical_lines(doc: dict) -> list[str]:
+    layout = doc.get(_LOGICAL_KEY)
+    if not isinstance(layout, dict):
+        return []
+    controls = [c for c in layout.get("controls") or [] if isinstance(c, dict)]
+    lines = ["The Logical Device's controls and groups."]
+    for row in controls:
+        kind = str(row.get("type") or "").capitalize()
+        label = str(row.get("label") or "").strip()
+        text = f"{kind} {row.get('id')}"
+        lines.append(f"{text} — {label}" if label else text)
+    groups = [str(g) for g in layout.get("groups") or []]
+    if groups:
+        lines.append("Groups: " + ", ".join(groups))
+    return lines
+
+
 def _clip(lines: list[str], limit: int = 40) -> str:
     if len(lines) <= limit:
         return "\n".join(lines)
@@ -309,6 +330,11 @@ def _module_items(prefix: str, doc: dict, pictures: list[dict]) -> list[dict]:
     if catalog:
         items.append(
             _item(prefix + "catalog", "Configuration Appearance", _clip(catalog))
+        )
+    logical = _logical_lines(doc)
+    if logical:
+        items.append(
+            _item(prefix + "logical", "Logical Device layout", _clip(logical))
         )
     chips = _chip_lines(doc)
     needs = [row["id"] for row in pictures if row.get("onMap")]
@@ -1191,6 +1217,13 @@ def _copy_names_onto_nodes(nodes: list, names: dict) -> None:
                 member["friendly"] = label
 
 
+def _is_logical_device(guid: str) -> bool:
+    """Only the Logical Device's own file takes a layout, by its id."""
+    from gremlin.modules import device_class
+
+    return bool(guid) and device_class.device_kind(guid) == "logical_device"
+
+
 def _merge_module(
     existing: dict | None,
     incoming: dict,
@@ -1365,6 +1398,14 @@ def _merge_module(
             else:
                 ui.pop(key, None)
         base["ui"] = ui
+    if (
+        prefix + "logical" in chosen
+        and isinstance(incoming.get(_LOGICAL_KEY), dict)
+        and _is_logical_device(guid)
+    ):
+        # In the same write as the other parts: one History entry, and the
+        # store reloads the Logical Device (D-04-LD-FILE).
+        base[_LOGICAL_KEY] = json.loads(json.dumps(incoming[_LOGICAL_KEY]))
     photo = Path(str(incoming.get("image") or "")).name
     if photo and ("pic:" + photo) in chosen:
         base["image"] = photo
@@ -2197,7 +2238,7 @@ def _write_module(
 
 _INPUT_KEYS = {
     "in.checks", "in.names", "in.calibration", "in.view", "in.catalog",
-    "in.layout", "in.mapview", "in.print",
+    "in.layout", "in.mapview", "in.print", "in.logical",
 }
 
 

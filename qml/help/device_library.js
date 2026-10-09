@@ -96,7 +96,8 @@ function topics() {
             "<p>The program's built-in inputs, Keyboard, OSC and the Logical Device, are listed last, under the <b>BUILT-IN INPUTS</b> heading. They are part of the program, so they are never plugged in, unplugged or removed.</p>"
             + "<ul>"
             + "<li>Their menu and buttons have only <b>Save to Device Library…</b>, <b>Restore…</b> (puts back their newest saved setup), <b>Export…</b>, <b>Rename…</b> and <b>Edit Description</b>.</li>"
-            + "<li>They need no plugged-in device, so Restore always works. Every profile uses the one Logical Device, so keep its other layouts here as saved setups. To bring in a Logical Device pack, choose <b>File › Import Device Pack…</b> (it is filed under the Logical Device), then <b>Restore…</b>.</li>"
+            + "<li>They need nothing plugged in, so Restore always works. It brings back the saved setup: its settings in the profiles it came from, and for the Logical Device its layout and picture too. An autosave is kept first, and <b>Edit › Undo</b> takes the whole Restore back in one step.</li>"
+            + "<li>Every profile uses the one Logical Device, so keep its other layouts here as saved setups. To bring in a Logical Device pack, choose <b>File › Import Device Pack…</b> (it is filed under the Logical Device), then <b>Restore…</b>.</li>"
             + "<li>They can't be copied, swapped, cleared or removed, and they have no state badge.</li>"
             + "<li>The filters never hide them; a search that matches none of them does.</li>"
             + "</ul>",
@@ -235,7 +236,7 @@ function topics() {
             + "<li>It works as Copy does, with every part the saved setup holds (Calibration too, as it is the same stick), into the profiles it came from that are still there, in every mode it has.</li>"
             + "<li>An autosave of the stick is kept first (\"Autosave: before Restore of DCS F-16\"), and <b>Edit › Undo</b> puts it back.</li>"
             + "<li>To choose the parts, profiles and modes, or to put it on another stick, use <a href=\"topic:device-library-copy\">Copy a setup to another stick</a>.</li>"
-            + "<li>On a built-in input, <b>Restore…</b> puts back its newest saved setup.</li>"
+            + "<li>On a built-in input (Keyboard, OSC, the Logical Device), <b>Restore…</b> puts back its newest saved setup with nothing plugged in, the Logical Device's layout and picture too. See <a href=\"topic:device-library-built-in\">Built-in inputs</a>.</li>"
             + "</ul>",
             ["device-library-copy", "device-library-undo"]),
         t("device-library-swap", "Changing sticks", "Swap two sticks",

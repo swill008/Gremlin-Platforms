@@ -33,6 +33,7 @@ function topics() {
                     "Editing is locked while the profile runs (\"Profile running: stop it to edit\").",
                     "Its values go back to neutral at Stop and at the start of each Run: axes at 0, buttons up, hats centred.",
                     "Its card always shows on <a href=\"topic:home-devices-home\">Home</a>.",
+                    "To give its card a picture, right-click the Logical Device card and choose <b>Add Image…</b> (under <b>Device</b>); later, <b>Change Image…</b> or <b>Remove Image</b>.",
                     "Every profile uses the same Logical Device; see " + _link("logical-device-saved", "Where the Logical Device is saved") + "."
                 ]),
             related: ["logical-device-add-controls", "logical-device-assign-hardware", "modes-modes",

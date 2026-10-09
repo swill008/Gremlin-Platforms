@@ -553,6 +553,8 @@ Item {
         })
         card.onDeleteDevice.connect(function() { _page.askDelete(card) })
         card.onStartFresh.connect(function() { _page.askStartFresh(card) })
+        card.onAddImage.connect(function() { _page.pickCardImage(card.slug) })
+        card.onRemoveImage.connect(function() { _page.removeCardImage(card.slug) })
         card.onUnstackCard.connect(function() {
             if (model)
                 model.unstackSlug(card.slug)
@@ -562,6 +564,33 @@ Item {
                 model.unstackAll(card.slug)
         })
         card.Component.onDestruction.connect(function() { _page.unregisterCard(card) })
+    }
+
+    // The Logical Device card's picture (03 S88, D-03-LD-IMAGE): the model
+    // copies it next to the module file; Remove doesn't ask (History can
+    // bring it back), as the Button Map's Clear Photo.
+    property string _imageSlug: ""
+
+    function pickCardImage(slug) {
+        _imageSlug = slug
+        _cardImagePicker.open()
+    }
+
+    function removeCardImage(slug) {
+        if (model && model.removeCardImage(slug))
+            refreshCards()
+    }
+
+    FilePicker {
+        id: _cardImagePicker
+        kind: "picture"
+        title: "Choose Image"
+        nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
+        onPicked: (selectedFile) => {
+            if (_page.model && _page._imageSlug
+                    && _page.model.setCardImage(_page._imageSlug, String(selectedFile)))
+                _page.refreshCards()
+        }
     }
 
     function refreshCards() {

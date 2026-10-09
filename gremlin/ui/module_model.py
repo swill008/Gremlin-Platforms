@@ -20,7 +20,7 @@ from gremlin.types import InputType, PropertyType
 from gremlin import keyboard as gremlin_keyboard
 from gremlin.ui.live_debug import trace
 from gremlin.modules.ids import guid_key
-from gremlin.modules import ids, store
+from gremlin.modules import ids, module_file, store
 from gremlin.modules.claim import (
     claim_friendly,
     key_id,
@@ -739,6 +739,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
         signal.configChanged.connect(self._schedule_refresh)
         signal.inputItemChanged.connect(lambda _index: self._targets_timer.start())
         signal.logicalDeviceModified.connect(self._targets_timer.start)
+        # A restored Logical Device file (History, Library) may bring its
+        # picture back or take it away: the card shows it at once.
+        signal.logicalDeviceReloaded.connect(self._logical_reloaded)
         signal.actionsChanged.connect(self._targets_timer.start)
         # Options > Reset all card sizes changes the saved sizes elsewhere;
         # re-read them here so Home cards follow at once.
@@ -1332,6 +1335,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             "lastHardware": last_h,
             "focused": row.slug == self._focus,
             "damaged": row.damaged,
+            "hasPhoto": bool(row.photo),
         }
 
     @QtCore.Slot(str, result="QVariantMap")
@@ -1340,6 +1344,82 @@ class ModuleListModel(QtCore.QAbstractListModel):
             if row.slug == slug:
                 return self._row_map(row)
         return {}
+
+    @QtCore.Slot()
+    def _logical_reloaded(self) -> None:
+        self._set_card_photo("logical")
+
+    def _set_card_photo(self, slug: str) -> None:
+        """Reads the card's photo again (after Add/Remove Image)."""
+        for idx, row in enumerate(self._rows):
+            if row.slug != slug:
+                continue
+            row.photo = self._photo(row.raw_name or row.name, row.guid)
+            ix = self.index(idx, 0)
+            self.dataChanged.emit(ix, ix, [QtCore.Qt.ItemDataRole.UserRole + 11])
+
+    @QtCore.Slot(str, str, result=bool)
+    def setCardImage(self, slug: str, fileUrl: str) -> bool:
+        """Add/Change Image on the Logical Device card (03 S88): the picture
+        becomes its photo and its module file's "image", through the store
+        (History, Library, Export and Restore carry it). Other cards and a
+        damaged file: False."""
+        if slug != "logical":
+            return False
+        from gremlin import logical_device_file
+
+        path = logical_device_file.path()
+        reason = store.damage_of(path)
+        if reason:
+            module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
+            return False
+        self._hw.setDeviceGuid(LOGICAL_GUID)
+        rel = self._hw.copyImage(fileUrl, "Logical Device")
+        if not rel:
+            return False
+
+        def change(doc: dict) -> None:
+            doc["image"] = rel
+
+        try:
+            if not store.update_path(path, change, "Home"):
+                return False
+        except OSError:
+            return False
+        self._set_card_photo(slug)
+        return True
+
+    @QtCore.Slot(str, result=bool)
+    def removeCardImage(self, slug: str) -> bool:
+        """Remove Image on the Logical Device card: its photo files go and
+        its module file's "image" is "" (History keeps both)."""
+        if slug != "logical":
+            return False
+        from gremlin import logical_device_file
+
+        path = logical_device_file.path()
+        reason = store.damage_of(path)
+        if reason:
+            module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
+            return False
+        folder = store.pictures_dir_of(logical_device_file.SLUG)
+        found = (
+            [p for p in folder.glob("photo*.*") if p.is_file()] if folder.is_dir() else []
+        )
+        try:
+            store.remove_picture_files(found)
+
+            def change(doc: dict) -> object:
+                if not doc.get("image"):
+                    return False
+                doc["image"] = ""
+                return None
+
+            store.update_path(path, change, "Home")
+        except OSError:
+            return False
+        self._set_card_photo(slug)
+        return True
 
     @QtCore.Slot()
     def _refresh_targets(self) -> None:

@@ -37,7 +37,7 @@ On disk:
 Code (built 2026-10-08/09):
 
 - `gremlin/device_library.py` (2247 lines): the library owner (`is_built_in_guid` -> `device_class.can('library_builtin', guid)`, by id only, 03 S90b; connected = `_connected`: a device with an id and `hardware.plugged_in`, 03 S90a; `_view` joins a plugged-in stick to the row / record with the same id only, never by name), the one writer of `library.json` and the packs: folder, devices, save_setup, autosave (S16-S21) and its limit, rename/describe/delete, import_pack/export_setup, tidy, size, search, settings, last change, History text and Restore for Library entries (S51).
-- `gremlin/library_copy.py` (1329): `_connected` -> `hardware.plugged_in` (by live id). `_copy_checks` / `plan_output` / `change_output` use `is_built_in_guid`; `_special` uses `device_class.is_internal_input` (03 S90b), so a stick named "Keyboard" is a normal device. Copy to Another Stick, Restore to This Stick, Change vJoy Output (renumbers Map to vJoy, nested actions too) and undo_change/undo_last (S22-S25, S30-S33, S48). Copy targets: `_connected` -> `device_class.can("copy")` + `hardware.plugged_in` (external devices only, by live id; 03 S90a/S90b); `plan_output` / `change_output` refuse via `_copyable` -> `can("copy")`. Test `test_library_copy_targets.py` (4).
+- `gremlin/library_copy.py` (1329): `_connected` -> `hardware.plugged_in` (by live id). `_copy_checks` / `plan_output` / `change_output` use `is_built_in_guid`; `_special` uses `device_class.is_internal_input` (03 S90b), so a stick named "Keyboard" is a normal device. Copy to Another Stick, Restore to This Stick, Change vJoy Output (renumbers Map to vJoy, nested actions too) and undo_change/undo_last (S22-S25, S30-S33, S48). Copy targets: `_connected` -> `device_class.can("copy")` + `hardware.plugged_in` (external devices only, by live id; 03 S90a/S90b); `plan_output` / `change_output` refuse via `_copyable` -> `can("copy")`. Test `test_library_copy_targets.py` (4). Restore of a built-in (2026-10-09, S6/S6a): `restore_to_stick` sends a `library_builtin` device (Keyboard, OSC, Logical Device) to `_restore_built_in` (no stick checks): autosave "Autosave: before Restore of …", the setup back into the profiles it came from, one Undo step "Restore X to Y", one History entry.
 - `gremlin/library_swap.py` (529): Swap with Another Stick (S26-S29; `_refusal` -> `device_class.can('swap', id)`, `_refused_word` from `display_name`, the Xbox text kept "the Xbox controller", 03 S90b): module-file parts through `modules/store.py`, bindings through `swap_devices` per ticked profile; autosave of both sticks first. `_refused_word` by `device_kind`: the Xbox pad "the Xbox controller", vJoy "vJoy", the others from `display_name`.
 - `gremlin/library_profiles.py` (496): profiles that aren't open (S33-S34): profiles_using, read_profile, Batch (one change across several profiles; the open one changed in memory), responsive()/background() (section 6).
 - `gremlin/library_undo.py` (176): Undo and Redo steps for this session's Library actions (S53); emptied by Clear History (08 S12b) through on_cleared.
@@ -55,7 +55,7 @@ Code (built 2026-10-08/09):
 
 Callers elsewhere: `gremlin/ui/hardware_profile.py` (`_autosave`, `_autosave_before_pack`: the Delete Device, Delete File and Device Pack import autosaves), `gremlin/modules/store.py` (reads the list's records), `gremlin/ui/history_model.py` (Library entries' text and Restore), `qml/StatusCard.qml` / `StatusPage.qml` / `Main.qml` (card menu items, Tools menu, `libraryAction`), `qml/main_commands.js` (`tools.deviceLibrary`).
 
-Logical Device as a built-in (D-04-LD-FILE, 2026-10-09; S6, S6a): `device_class` puts it in `library_builtin`; `device_library.py` / `device_library_model.py` save, restore, export and import its layout (`LogicalRows.to_dict` / `load_dict`, written through `gremlin/logical_device_file.py`, page 06); `modules/store.py` and `registry.py` skip the plugged-in check for built-ins without hardware by class (`no_hardware_limits`); `store._reload_logical_device(path)`, called from `replace()` and `write_text()`, reloads the Logical Device after Restore, Import, Undo or a History restore of its file.
+Logical Device as a built-in (D-04-LD-FILE, 2026-10-09; S6, S6a): `device_class` puts it in `library_builtin`; `device_library.py` / `device_library_model.py` save, restore, export and import its layout (`LogicalRows.to_dict` / `load_dict`, written through `gremlin/logical_device_file.py`, page 06); `modules/store.py` and `registry.py` skip the plugged-in check for built-ins without hardware by class (`no_hardware_limits`); `store._reload_logical_device(path)`, called from `replace()` and `write_text()`, reloads the Logical Device after Restore, Import, Undo or a History restore of its file. `gremlin/ui/device_pack.py apply_zip` carries the Logical Device's `logical-device` layout key in the same single module-file write (Restore and Import Device Pack), and `store.replace` reloads it, so the card photo redraws (`logicalDeviceReloaded`).
 
 Copy, Swap and Change vJoy Output change profiles only through the
 profile owner, and module files only through `modules/store.py`.
@@ -67,6 +67,7 @@ profile owner, and module files only through `modules/store.py`.
 - Device names and descriptions for devices with no module file here (deleted,
   and those that came from a pack). For devices set up here the name is the module file's friendly
   name (S6); the user's names live in `device_aliases` (settings `devices/display/aliases`).
+- Restore of a built-in input (`library_copy._restore_built_in`): its autosave, Undo step and History entry.
 - This session's Undo/Redo steps (`library_undo`, in memory; emptied by Clear History).
 - The window's selection, open rows, filters, search and waiting plans (`DeviceLibraryModel`, in memory).
 
@@ -81,7 +82,7 @@ profile owner, and module files only through `modules/store.py`.
 | Window menus, right-click menus, double-click (S40), shortcuts | `DeviceLibraryModel` slots: `copy`, `swap`, `changeOutput`, `restoreToStick`, `saveToLibrary`, `rename`, `describe`, `keep`, `deleteItem` / `deleteMany`, `beginRemove` / `removeDevice` / `endRemove`, `beginClearSetup`, `deleteSavedSetups`, `importPack`, `exportSetup` / `exportCurrent`, `tidyPreview` / `tidy`, `setSettings`, `undo` / `redo`. |
 | Row menu: Delete Device, Module Setup, Button Map, Show on Home | `device_library_open.js toMain` → `Main.qml libraryAction`. |
 | Row menu: Show in History (S56) | Tools › History filtered to the device. |
-| Any delete / remove / Clear Setup in the window | `askConfirm(title, text, action, run)` → `Confirm.ask` (red named button; `_lib.asking` while open) → the model slot (`deleteItem` / `deleteMany`, `removeDevice`, `deleteSavedSetups`, `beginClearSetup`). Tidy: `_tidyDlg.askRemove()` → `tidy`. Restore to stick: `_restoreDlg.ask()` → `restoreToStick`. |
+| Any delete / remove / Clear Setup in the window | `askConfirm(title, text, action, run)` → `Confirm.ask` (red named button; `_lib.asking` while open) → the model slot (`deleteItem` / `deleteMany`, `removeDevice`, `deleteSavedSetups`, `beginClearSetup`). Tidy: `_tidyDlg.askRemove()` → `tidy`. Restore to stick: `_restoreDlg.ask()` → `restoreToStick` → `library_copy.restore_to_stick` (a built-in → `_restore_built_in`, no plugged-in check). |
 | Import / Export Device Pack | `FilePicker` (`_importFile`, `_exportFile`, `_exportCurrentFile`) → `importPack`, `exportSaved()` / `exportCurrent()` (`_packName()` suggests the name) → `exportSetup` / `exportCurrent`. |
 | Message line Undo link; status bar Undo / Redo | `MessageLine` / `UndoBar` → `undo` / `redo`. |
 | Delete Device / Delete File (Home) | `hardware_profile.delete_device` / `delete_module_file` keep the "stick deleted" / "module file deleted" autosave first (S16-S21); refused when it can't be kept (S20). |
@@ -90,7 +91,9 @@ profile owner, and module files only through `modules/store.py`.
 
 ## 5. Talks to
 
-Device Pack (export and import code), module store (`modules/store.py`), the
+Device Pack (export and import code; `device_pack.apply_zip` writes a built-in's
+setup, the Logical Device layout key included), module store (`modules/store.py`;
+`replace` reloads the Logical Device), the
 profile owner (bindings in the open profile and saved profiles, through
 `library_profiles`), History (every change it saves is a History entry like
 any other save; Library entries restored through `device_library`), the device
@@ -227,6 +230,7 @@ Built 2026-10-08/09 (S1-S56). Swap Devices (04 S77-S83), Delete Device's
 "Save a copy" and the deleted devices folder are gone. Open:
 
 - D-04-LD-FILE (2026-10-09): the Logical Device under Built-in inputs (S6, S6a), being built 2026-10-09 (tests `test_ld_lib.py` (7), `test_ld_pack.py` (5)).
+- Closed: Restore refused for built-ins (fixed 2026-10-09, IMG-restore). Restore of every Built-in inputs row (Keyboard, OSC, Logical Device) said "isn't plugged in" because `library_copy.restore_to_stick` used the stick checks; built-ins now go to `_restore_built_in`, and the Logical Device's layout and picture come back (`device_pack.apply_zip` carries the `logical-device` key). Tests `test_ld_restore_builtin.py`, `test_ld_card_image_carry.py` (7), `test_lib_builtin_actions.py`, `test_lib_restore_builtin_e2e.py`.
 - To-do 52 (after 1.0.30): the Library's delete and remove questions move
   onto the shared red button and question (01 S140-S143: DangerButton,
   ConfirmDialog); Tidy already uses it.
@@ -255,7 +259,10 @@ and Delete (DD, test_library_remove_error, test_device_forget), threads
 test_library_undo_redo, test_library_undo_ui, test_library_status_last), the
 window and menus (LU_window, CU_menus, DD_menus, FM_window, FM2_window,
 test_library_menu_refresh), the Guide (GC_guide) and built-in inputs
-(test_library_builtin_section, test_library_no_builtins). Plugged in by id
+(test_library_builtin_section, test_library_no_builtins; Restore of a built-in
+with nothing plugged in, layout and card picture carried, one Undo step and one
+History entry: `test_ld_restore_builtin.py` (6), `test_lib_builtin_actions.py` (8 x 3 built-ins), `test_lib_restore_builtin_e2e.py` (1), `test_ld_card_image_carry.py` (7),
+`test_lib_builtin_actions.py`, `test_lib_restore_builtin_e2e.py`). Plugged in by id
 (03 S90a): `test_library_plugged_in.py` (4: twins, double-spaced name, pack
 device not on this PC, Copy / Restore by live id). Device classes (03 S90b):
 `test_library_device_class.py` (`::test_built_in_guid_is_keyboard_osc_and_logical_device`,

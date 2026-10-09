@@ -42,6 +42,9 @@ _PART_ITEMS = {
 }
 # Put back by Undo too (a Copy leaves them unticked, as the pack window does).
 _MAP_SETTINGS = ("in.mapview", "in.print")
+# The Logical Device's layout in its module file (10 S6a); only its own
+# packs have it.
+_LOGICAL_ITEM = "in.logical"
 _MODULE_PARTS = {"setup", "button_map", "appearance", "calibration"}
 _KIND_WORD = {2: "axis", 3: "button", 4: "hat"}
 # A part LS marks as a damaged module file kept as is (S20a).
@@ -181,6 +184,9 @@ def _module_items(
         wanted.update(i for i in ids if i.startswith("pic:"))
         if everything:
             wanted.update(_MAP_SETTINGS)
+    if everything:
+        # A put-back takes the Logical Device's layout too (D-04-LD-FILE).
+        wanted.add(_LOGICAL_ITEM)
     return [i for i in ids if i in wanted]
 
 
@@ -498,6 +504,8 @@ def restore_to_stick(setup_key: str) -> dict:
     dev, setup = found
     guid = str(dev.get("guid") or "")
     name = str(dev.get("name") or "")
+    if library.is_built_in_guid(guid):
+        return _restore_built_in(setup_key, dev, setup)
     if not _connected(guid):
         return _fail(
             f"{name or 'Its stick'} isn't plugged in. A saved setup can only be "
@@ -533,6 +541,55 @@ def restore_to_stick(setup_key: str) -> dict:
             "These profiles it came from are no longer there, so their bindings "
             "weren't restored: " + ", ".join(gone) + "."
         )
+    return out
+
+
+def _restore_built_in(setup_key: str, dev: dict, setup: dict) -> dict:
+    """Restore of a built-in input (10 S6, S6a): it is always there, so no
+    plugged-in check and no Copy (Copy is for external devices, S90b); the
+    saved setup is put back as the Library's own put-back does, after an
+    autosave, as one change for Undo. Its module file goes through the
+    store, which reloads the Logical Device."""
+    guid = str(dev.get("guid") or "")
+    name = str(dev.get("name") or "")
+    shown = library.shown(name, guid) or name
+    rows = [r for r in setup.get("profiles") or [] if isinstance(r, dict)]
+    here = [r for r in rows if _exists(str(r.get("path") or ""))]
+    gone = [
+        str(r.get("name") or _profile_name(str(r.get("path") or "")))
+        for r in rows
+        if r not in here and str(r.get("path") or "").strip()
+    ]
+    profiles = list(dict.fromkeys(Path(str(r.get("path"))) for r in here))
+    saved = _autosave(
+        library.own_name(name, guid),
+        guid,
+        "copy",
+        f"Autosave: before Restore of {setup.get('name') or ''}",
+        profiles,
+    )
+    if not saved["ok"]:
+        return saved
+    keys = _autosave_keys(saved)
+    try:
+        out = _restore(dev, {**setup, "profiles": here})
+    except Exception as e:  # noqa: BLE001 - refused, said
+        return _fail(f"The saved setup couldn't be restored ({e}).", autosaves=keys)
+    out["autosaves"] = keys
+    if not out.get("ok"):
+        return out
+    if gone and "bindings" in [str(p) for p in setup.get("holds") or []]:
+        out["warnings"].append(
+            "These profiles it came from are no longer there, so their bindings "
+            "weren't restored: " + ", ".join(gone) + "."
+        )
+    try:
+        library.add_history(setup_key, f"Restored to {shown}")
+        library.set_last_change(
+            "copy", keys, f"Restore {setup.get('name') or ''} to {shown}"
+        )
+    except Exception as e:  # noqa: BLE001 - the restore is done; said
+        out["warnings"].append(f"The Library couldn't record the restore ({e}).")
     return out
 
 
