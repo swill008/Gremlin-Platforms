@@ -9,7 +9,8 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 ## 2. Files
 
 **Run lifecycle**
-- `gremlin/code_runner.py` (527 lines): `CodeRunner.start/stop`, the Run number (`run_number`), `CallbackObject` (one per action sequence), `VirtualAxisButton` / `VirtualHatButton` / `VirtualButtonFunctor` (an axis range or hat directions used as a button), `_refresh_axes` (vJoy Initial Values, refresh on Run and on mode change).
+- `gremlin/run_scope.py` (438): what one Run holds and the Stop that lets go of it (map 3, GL-046, batch 1 d68f4d88). The one Run number (`number`, `alive`), `begin` / `stop`, Run timers (`timer`, cancelled at Stop or fired with at_stop="fire"), loops (`loop`), held keys and mouse buttons (`hold`, `let_go`, `release_owner`, `owning`), `on_stop` steps in Stop stages (CUT_INPUT, CANCEL, FIRE_PENDING, END_WORK, RELEASE_HELD, NEUTRAL, ...). Only `CodeRunner` calls `begin` / `stop`; `test_run_scope_only.py` guards that.
+- `gremlin/code_runner.py` (634 lines): `CodeRunner.start/stop`, the Run number (`run_number`), `CallbackObject` (one per action sequence), `VirtualAxisButton` / `VirtualHatButton` / `VirtualButtonFunctor` (an axis range or hat directions used as a button), `_refresh_axes` (vJoy Initial Values, refresh on Run and on mode change).
 - `gremlin/event_helpers.py` (239): `ButtonReleaseActions` singleton (release callbacks run after the other callbacks of an event; auto-release of vJoy and Logical Device buttons when the mode changed in between).
 - `gremlin/event_handler.py` (754), part: `EventHandler` (callback table per device, mode and event; `process_event`; `pause/resume/toggle_active`; `build_event_lookup` copies parent-mode callbacks into child modes).
 - `gremlin/user_script.py` (1426), part: `callback_registry`, `PeriodicRegistry` (script timers, its own thread), `VJoyPlugin` (scripts' `vjoy` object).
@@ -20,20 +21,28 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 - `joystick_gremlin.py`, `shutdown_cleanup` 240-285: Stop when the program quits.
 
 **Outputs**
-- `gremlin/modules/output.py` (585): the output layer. vJoy firewall (`write_vjoy`, `vjoy_value`, `vjoy_state`, claims cache with 1 s TTL, open/retry of busy devices, blocked-output log once per Run), script vJoy (`ScriptVJoy`), Xbox pass-through (`write_xbox`, `xbox_state`), driver checks and wording, `reset_drivers`.
+- `gremlin/modules/output.py` (804): the output layer. vJoy firewall (`write_vjoy`, `vjoy_value`, `vjoy_state`, claims cache with 1 s TTL, open/retry of busy devices, blocked-output log once per Run), script vJoy (`ScriptVJoy`), Xbox pass-through (`write_xbox`, `xbox_state`), driver checks and wording, `reset_drivers`.
 - `vjoy/vjoy.py` (982), `vjoy/vjoy_interface.py` (115): vJoy driver wrapper; `VJoyProxy` (opened devices, class-level dict); the keep-alive is in `gremlin/modules/output.py` since batch 3 (GL-267).
 - `vigem/xbox.py` (375): `XboxProxy` (pads 1-4, plugged in on first write, lock), `XboxPad.apply`, `snapshot`, `reset`. `vigem/own_pads.py` (125): remembers which Xbox devices are Gremlin's own pads. `vigem/ids.py`, `vigem/vigem_client.py`, `vigem/vigem_commons.py`: ids, DLL loading, driver checks.
-- `gremlin/macro.py` (1231): `MacroManager` (scheduler thread, one thread per running macro, exclusive/pre-emptive, Run counter `_run`, `_held_keys`), macro steps (Joystick, Key, Logical Device, Mouse Button, Mouse Motion, Pause, vJoy), repeat modes.
+- `gremlin/macro.py` (1257): `MacroManager` (scheduler thread, one thread per running macro, exclusive/pre-emptive, Run counter `_run`, `_held_keys`), macro steps (Joystick, Key, Logical Device, Mouse Button, Mouse Motion, Pause, vJoy), repeat modes.
 - `gremlin/sendinput.py` (512): Windows `SendInput` for the mouse; `MouseController` (motion thread); `_held_buttons` and `release_held_buttons`.
 - `gremlin/keyboard.py` (414), part: `send_key_down/up` 217-237 (keys sent, not tracked).
 - `gremlin/audio_player.py` (204): `AudioPlayer` (playback thread; Sequential / Interrupt / Overlap).
 - `gremlin/tts.py` (122): `TTSManager` (Qt WinRT text-to-speech, queue).
 - Action plugins that write outputs (mapped with the Actions page, listed here for the calls): `action_plugins/map_to_vjoy` (442, relative-axis thread), `map_to_xbox` (386), `map_to_logical_device` (429, relative-axis thread), `map_to_mouse`, `map_to_keyboard`, `macro`, `play_sound`, `text_to_speech`, `pause_resume`, `tempo` / `double_tap` / `smart_toggle` (timers), `condition` (reads vJoy, Logical Device, keyboard and joystick state).
 
+**Xbox output page, viewer and driver check**
+- `gremlin/ui/xbox_device_model.py` (200): `XboxDriverStatus` (ViGEm installed / ready / version, hint, Download and Game Controllers links) and `XboxDeviceModel` (the Xbox page's rows for one pad: each Xbox target and what sends to it).
+- `gremlin/ui/xbox_maps.py` (41): `walk_actions`, `xbox_maps_for_item` (the Map to Xbox targets of a binding, nested actions too).
+- `gremlin/ui/xbox_viewer.py` (413): Xbox viewer models (QML `Gremlin.Device`): `XboxViewerDeviceModel`, `XboxPadListModel`, `XboxMappedAxisModel` / `ButtonModel` / `HatModel` (which inputs send to each pad target).
+- `qml/XboxDevice.qml` (121): the Xbox output page (Home Xbox tab). `qml/XboxDriverCheck.qml` (78): the ViGEm driver line and its links.
+- `qml/DialogXboxViewer.qml` (107), `qml/XboxViewerCard.qml` (243): Tools Xbox viewer window and its card (uses `Xbox360Face.qml`).
+- `gremlin/ui/vjoy_status.py` (187): `VJoyStatus` (QML `Gremlin.Device`): which vJoy devices are active, which vJoy and extra tabs (Keyboard, Logical, OSC, Xbox) are pinned on Home (settings `devices/display/vjoy-tabs`, `extra-tabs`), `xboxAvailable`.
+
 **Logical Device**
 - `gremlin/logical_device.py` (618): `LogicalDevice` singleton: inputs (axis/button/hat, id, label, user name, group, hide system name), current values (`_value`), groups, order, `memento/restore` (for Undo).
-- `gremlin/ui/logical_layout.py` (1531): `LogicalLayoutModel` for the page: rows, filters, selection, groups, sort, Assign Hardware links (Map to Logical Device actions), the action pane (draft/commit), Undo/Redo (50 steps).
-- `qml/LogicalPage.qml` (2037): the page; `editorLocked` while running (114), menus, drag, filters, pane.
+- `gremlin/ui/logical_layout.py` (1580): `LogicalLayoutModel` for the page: rows, filters, selection, groups, sort, Assign Hardware links (Map to Logical Device actions), the action pane (draft/commit), Undo/Redo (50 steps; each step carries a label, read by the Undo bar through `lastChange`, `undone`, `undoTip`, `redoTip`, signal `revisionChanged`), `parentCount` (rows shown, the Find count).
+- `qml/LogicalPage.qml` (2134): the page; `editorLocked` while running, menus, drag, filters, pane. Find and the Assign Hardware search are the shared `SearchBox` (`logicalFind`; "N found", ×); Undo / Redo is the shared `UndoBar` (`logicalUndoBar`); an empty list shows `EmptyState` with Clear Filters; Delete row(s), Delete Group, Clear Name and Delete action ask the shared question (`Confirm.ask`, S140).
 - `qml/LogicalDeviceSelector.qml` + `gremlin/ui/device.py` `LogicalDeviceSelectorModel` (674): Logical Device pickers in action editors. `device.py` `LogicalDeviceManagementModel` (486): older model with `createInput/changeName/deleteInput` (no QML user found).
 
 **Run/Stop UI**
@@ -43,8 +52,9 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 
 **Tests** (main ones)
 - `test/unit/test_audit3_run_stop.py` (9 tests: held keys, buttons, motion, Logical loop, stuck macro step), `test_audit2_macros.py` (4), `test_audit_runtime.py` (9), `test_action_fixes.py` (Run/Stop items), `test_audit2_coverage.py` (Run flag, release after a failing action, Load Profile restart).
-- `test_output_layer.py` (7), `test_vjoy_writers_use_firewall.py` (3), `test_device_fixes.py` (vJoy busy), `test_xbox_output_module.py` (9), `test_map_to_xbox.py`, `test_map_to_xbox_inputs.py`, `test_one_copy_of_each_rule.py`.
-- `test_logical_device.py` (8), `test_logical_layout.py`, `test_logical_events_pass_gate.py` (2), `test_audit_editing.py` (Logical Undo), `test_audit3_actions_undo.py` (Logical Undo), `test_audit2_modes.py` (Logical pane mode).
+- `test_output_layer.py` (7), `test_vjoy_writers_use_firewall.py` (3), `test_device_fixes.py` (vJoy busy), `test_xbox_output_module.py` (9), `test_map_to_xbox.py`, `test_map_to_xbox_inputs.py`, `test_xbox_incoming_names.py` (3), `test_xbox_pads_told_apart.py` (4), `test_xbox_viewer_driver_check.py` (8), `test_one_copy_of_each_rule.py`.
+- `test_run_scope_only.py` (6): only CodeRunner begins and stops a Run; nothing keeps its own Run counter.
+- `test_logical_device.py` (8), `test_logical_layout.py`, `test_undo_bar_labels.py` (Logical step labels, `parentCount`), `test_config_pages_shared_pieces.py::test_logical_page_search_delete_and_undo_bar`, `test_logical_events_pass_gate.py` (2), `test_audit_editing.py` (Logical Undo), `test_audit3_actions_undo.py` (Logical Undo), `test_audit2_modes.py` (Logical pane mode).
 - `test_threads.py`, `test_bounded_waits.py`, `test_program_fixes.py` (sound), `test_play_sound_missing_file.py`, `test_mode_refresh_and_add_key.py`, `test_device_scan.py`, `test_device_reconnect.py`, `test_user_script.py`.
 - `test/action_interaction/test_macro.py` (9), `test_pause_resume.py`, `test_tempo.py`, `test_condition.py`.
 
@@ -100,26 +110,33 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | Map to vJoy / Map to Xbox / Map to Logical Device / Map to Keyboard / Map to Mouse / Macro / Play Sound / Text to Speech fire | their functors | `output.write_vjoy`, `output.write_xbox`, `LogicalDevice[...].update` + emit, `keyboard.send_key_down/up` (via macros), `sendinput.*`, `MacroManager.queue_macro`, `AudioPlayer.enqueue`, `TTSManager.enqueue` |
 | Script writes `vjoy[n]...` | `output.ScriptVJoy` | `write_vjoy` / `vjoy_value` |
 | Script `@periodic` | `PeriodicRegistry._thread_loop` | callbacks on the script-timer thread |
-| Tempo / Double Tap / Smart Toggle time out | `threads.main_timer` (Qt main thread) | child actions (not cancelled at Stop: AU-116) |
+| Tempo / Double Tap / Smart Toggle time out | `run_scope.timer` (Qt main thread) | child actions (cancelled at Stop, GL-047) |
 | Relative axis (Map to vJoy, Map to Logical Device) | `threads.start` loop | writes every step; ends by vJoy release (vJoy) or Run number (Logical) |
 | Short pulse | `base_classes._pulse_event` 612 | release after 50 ms (`QTimer.singleShot` on main thread, `time.sleep` elsewhere); `flush_pulses` at Stop |
 | Viewers / Home cards read outputs | `live_input`, `pair_live`, `xbox_viewer`, `module_model` | `output.vjoy_state`, `vjoy_held`, `xbox_state` (never open a device) |
 | Logical page: Add Buttons/Axes/Hats (count up to 180) | `LogicalPage.qml` menu -> `addMany` 836 | `_apply` -> `LogicalDevice.create_many` |
-| Logical page: Rename, Hide system name, Clear Name | `setRowLabel` 882 / `setUserName` 873 | `set_user_label` |
-| Logical page: Delete rows | `deleteParents` 912 | delete inputs and their links/actions |
+| Logical page: Rename, Hide system name | `setRowLabel` 882 / `setUserName` 873 | `set_user_label` |
+| Logical page: Clear Name | `Confirm.ask` (red, "Clear the name of X?") -> `setUserName` | `set_user_label` |
+| Logical page: Delete row(s) | `Confirm.ask` (red Delete Row / Delete N Rows) -> `deleteParents` | delete inputs and their links/actions |
+| Logical page: Delete Group | `Confirm.ask` (rows stay, in Ungrouped) -> `removeGroup` | `delete_group` |
 | Logical page: New/Rename/Delete Group, Group as, Move to, Move Group Up/Down | `addGroup`, `renameGroup`, `removeGroup`, `moveSelected`, `moveGroupUp/Down` | `ensure_group`, `rename_group`, `delete_group`, `place`, `move_group_before` |
 | Logical page: drag a row or group header | `moveRow` 931, `moveParent` 982 | `place`, `move_group_before` |
 | Logical page: Order menu | `sortBySystem`, `sortByName`, `sortGroupNames` | `sort_within`, `sort_groups` |
-| Logical page: Find / filters | `setFilter` 1083 | rebuild rows |
+| Logical page: Find (`SearchBox` `logicalFind`) / filters; empty list Clear Filters (`EmptyState`) | `setFilter` | rebuild rows; `parentCount` gives "N found" |
+| Logical page: Assign Hardware search (`SearchBox`) | `hardware` (list filter) | rows of claimed controls |
 | Logical page: Assign Hardware ticks | `hardware` 1159 (list), `setLinks` 1215 | add/remove Map to Logical Device on the source input in the page's mode |
 | Logical page: writer line Absolute/Relative, scale, Invert | `setAxisMode` 1106, `setAxisScale` 1117, `setInverted` 1125 | edits the source's Map to Logical Device action |
-| Logical page: Add Action, open, OK, Cancel, Delete action | `beginNewAction` 1291, `beginPane` 1287, `commitPane` 1378, `discardPane` 1455, `endPane` 1461, `deleteAction` 811 | binding_catalog draft helpers (`_clone_binding`, `_attach_binding`, `_drop_shadow`) |
-| Logical page: Undo / Redo (menu, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z) | `undo` 323, `redo` 334 | `_replay` (memento + input snapshots) |
+| Logical page: Add Action, open, OK, Cancel, Delete action | `beginNewAction`, `beginPane`, `commitPane`, `discardPane`, `endPane`; Delete action always asks (`Confirm.ask`) -> `deleteAction` | binding_catalog draft helpers (`_clone_binding`, `_attach_binding`, `_drop_shadow`) |
+| Logical page: Undo / Redo (`UndoBar` `logicalUndoBar`, menu, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z) | `undo`, `redo` | `_replay` (memento + input snapshots); labelled steps |
 | Logical page: mode picker | `setMode` 806 | rows for that mode |
 | Profile loaded / mode renamed / mode deleted | `signal.profileChanged`, `modeRenamed`, `modeDeleted` | Undo cleared; steps renamed; pane closed with a notice |
 | Logical Device changed elsewhere | `signal.logicalDeviceModified` | `_on_external` rebuild; also Configuration models, `module_model` targets |
 | Options saved | `backend.emitConfigChanged` | `AudioPlayer.refresh` (playback mode) |
 | vJoy keep-alive | `output._arm_keep_alive` (`run_scope.timer` on the main thread, 60 s) | resets an idle held vJoy device |
+| Run start / Stop (owner) | `CodeRunner.start` -> `run_scope.begin`; `CodeRunner.stop` -> `run_scope.stop` | new Run number; Stop stages in order (section 6) |
+| Tools › Viewers › Xbox Viewer (`tools.xboxViewer`, toolbar button) | `openTool("DialogXboxViewer.qml")` | `XboxViewerDeviceModel`, `XboxPadListModel`, `XboxMapped*Model` reload; `output.xbox_state` |
+| Home Xbox tab / Xbox output page | `XboxDevice.qml`, `XboxDriverCheck.qml` | `XboxDeviceModel` (pad rows), `XboxDriverStatus` (driver line, Download, Game Controllers) |
+| Home device list: which vJoy and extra tabs show | `DeviceList.qml` 28-81 (`VJoyStatus`) | `isActive`, `isPinned`, `isExtraPinned`; pins kept in settings `devices/display/vjoy-tabs`, `extra-tabs` |
 
 ## 5. Talks to
 
@@ -141,6 +158,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | History / saving | Logical Device and its links are saved with the profile | - |
 | Live Log Reader / input monitor | `input_monitor.record` in `process_event` | reads `gremlin_active` |
 | Process monitor (auto-load) | - | `process_changed` -> Stop/Run |
+| Run scope (`run_scope.py`) | `begin` / `stop`; actions, macros, scripts, keyboard, mouse and output register timers, loops, held keys and Stop steps | - |
 | Threads (`gremlin.threads`) | every loop and timer here (macro scheduler, macros, mouse, audio, script timers, relative-axis loops, keep-alive) | `threads.shutdown` at quit |
 
 ## 6. Threads and timers
@@ -155,10 +173,12 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | "vJoy relative axis" (Map to vJoy) | `map_to_vjoy._start_loop` 139 | `vjoy_owned` False, input centred | `clock` |
 | "logical device relative axis" | `map_to_logical_device._start_loop` 144 | Run number change, value changed elsewhere | `clock` |
 | "vJoy N keep-alive" | `output._arm_keep_alive` | cancelled at Stop (run_scope CANCEL) and in `output.reset_vjoy` | `run_scope.timer` 60 s, `clock.monotonic()` |
-| Tempo / Double Tap / Smart Toggle timers | `threads.main_timer` (Qt main thread) | fire or cancel by the action; **not at Stop** | Qt timer |
+| Tempo / Double Tap / Smart Toggle timers | `run_scope.timer` (Qt main thread) | fire or cancel by the action; cancelled at Stop (CANCEL stage, GL-047) | Qt timer |
 | Pulse release | `base_classes._pulse_event` | 50 ms, or `flush_pulses` at Stop | `QTimer.singleShot` on main thread; `time.sleep(0.05)` off it |
 | TTS engine | Qt object on the main thread | `stop()` stops speech; the engine stays | Qt |
 | Event listener, device update timer | event_handler (other subsystem) | `shutdown_cleanup` | - |
+
+Every Run timer, loop and held output registers with `run_scope`; `run_scope.stop()` lets go of them in stage order (CUT_INPUT, CANCEL, FIRE_PENDING, END_WORK, RELEASE_HELD, NEUTRAL, ...), each step once, errors logged and the rest go on.
 
 Event callbacks run on the main thread (queued Qt signals from the listener thread). Macro steps run on macro threads, so a vJoy or Logical Device write can come from a macro thread, a relative-axis thread, a script-timer thread and the main thread at the same time.
 
@@ -318,14 +338,14 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 ## 10. Known gaps
 
 Code against spec or rule:
-- G1. Tempo, Double Tap and Smart Toggle timers fire after Stop and write outputs, reopening vJoy or plugging the Xbox pad back in (S30, RB4). [tracker: AU-116]
-- G2. Map to vJoy relative loop can carry into the next Run on a quick Stop/Run (S26, RB5). [tracker: AU-117]
-- G3. Keys a script presses stay down after Stop (S31, RB3). [tracker: AU-117]
-- G4. A macro that ends early leaves its key down until Stop (S70). [tracker: AU-117]
-- G5. Logical Device values carry into the next Run (S85, RB7). [tracker: AU-117]
-- G6. A release callback from the last Run can fire in the next (RB6). No tracker item.
-- G7. Three Run counters can disagree (RB2). No tracker item.
-- G8. A failed Run, then Run again: events and callbacks may be handled twice; the UI may say Running after a failure (RB17, RB18). No tracker item; ACT21 fixed only Stop.
+- G1. (done, batch 1 d68f4d88, GL-047: Run timers through `run_scope.timer`) Tempo, Double Tap and Smart Toggle timers fire after Stop and write outputs, reopening vJoy or plugging the Xbox pad back in (S30, RB4). [tracker: AU-116]
+- G2. (done, GL-048) Map to vJoy relative loop can carry into the next Run on a quick Stop/Run (S26, RB5). [tracker: AU-117]
+- G3. (done, GL-049: `run_scope.hold`) Keys a script presses stay down after Stop (S31, RB3). [tracker: AU-117]
+- G4. (done, GL-048) A macro that ends early leaves its key down until Stop (S70). [tracker: AU-117]
+- G5. (done, GL-050: NEUTRAL stage) Logical Device values carry into the next Run (S85, RB7). [tracker: AU-117]
+- G6. (done, GL-051) A release callback from the last Run can fire in the next (RB6). No tracker item.
+- G7. (done, GL-046: one Run number in `run_scope`) Three Run counters can disagree (RB2). No tracker item.
+- G8. (done, GL-054: a failed start runs Stop itself) A failed Run, then Run again: events and callbacks may be handled twice; the UI may say Running after a failure (RB17, RB18). No tracker item; ACT21 fixed only Stop.
 - G9. A failed output-claims read blocks every vJoy output for up to 1 s (RB16). [tracker: AU-64]
 - G10. vJoy Initial Values depend on the DirectInput readback reading 0 (S8, RB1).
 - G11. Sound and speech after Stop (RB21).
@@ -337,6 +357,10 @@ Code against spec or rule:
 - G17. `TTSManager.stop` leaves the engine and its signal connection alive across Runs (by design today; no `start` on a dead engine is possible).
 - G18. Help "Run and status" wording matches the glossary, but the test plan rows TB-02 and W-06..09 still say "Toggle", "Active / Not Running", "Activate/Deactivate" (test-plan text only; no such words found on screen).
 
+From the to-do list:
+- To-do 44 (done): tests never load the real vJoy driver (`test/vjoy_guard.py`); real-vJoy runs are opt-in (`run_tests.py --real-vjoy`).
+- To-do 48: a vJoy loopback stand-in so the integration tests (test/integration) run on every normal run and on CI, not only with the real driver.
+
 Open tracker items for this subsystem:
 - AU-116 (open): Tempo, Double Tap, Smart Toggle timers not cancelled at Stop.
 - AU-117 (open): other Run/Stop leftovers (macro key, vJoy relative loop, script keys, Logical Device values).
@@ -346,16 +370,16 @@ Open tracker items for this subsystem:
 - AU-74 (won't fix): Run/Stop only on the toolbar and tray.
 
 Things nothing owns:
-- "What a Run holds" (timers, loops, held outputs, values) has no single owner; each part stops itself and `CodeRunner.stop` lists them by hand. Map 3 proposes `gremlin/run_scope.py`.
+- (Done in batch 1, GL-046) "What a Run holds" is owned by `gremlin/run_scope.py`; Stop runs its stages in order.
 - The "locked while running" rule has no owner in Python; each QML page checks `gremlinActive` itself.
 - Logical Device values have no reset owner (only whole-device reset at profile load).
 - (Done in batch 3, GL-267) The keep-alive and the busy retry for vJoy are both in `output.py`.
 
 ## 11. Size and test coverage
 
-Size (lines, roughly): code_runner 527, event_helpers 239, macro 1231, sendinput 512, output 585, audio_player 204, tts 122, logical_device 618, logical_layout 1531, LogicalPage.qml 2037, system_tray 332; vjoy 1100, vigem 720; parts of backend (~120), event_handler (~200), user_script (~200), base_classes (~120), joystick_gremlin (~45), Main.qml (~40). About 11,000 lines in all, half of it the Logical page.
+Size (lines, roughly, 2026-10-09): run_scope 438, code_runner 634, event_helpers 239, macro 1257, sendinput 512, output 804, Xbox page and viewer about 1,180 (Python 654, QML 549), vjoy_status 187, audio_player 204, tts 122, logical_device 618, logical_layout 1580, LogicalPage.qml 2134, system_tray 332; vjoy 1100, vigem 720; parts of backend (~120), event_handler (~200), user_script (~200), base_classes (~120), joystick_gremlin (~45), Main.qml (~40). About 11,000 lines in all, half of it the Logical page.
 
-Covered well: Stop releasing held keys, mouse buttons and motion (`test_audit3_run_stop.py`); macros at Stop and stale macros (`test_audit2_macros.py`, `test_action_fixes.py`); the vJoy firewall (`test_output_layer.py`, `test_vjoy_writers_use_firewall.py`); vJoy busy (`test_device_fixes.py`); Xbox pass-through (`test_xbox_output_module.py`, `test_map_to_xbox.py`); thread start/stop (`test_threads.py`, `test_bounded_waits.py`); Logical Device data (`test_logical_device.py`) and its Undo (`test_audit_editing.py`, `test_audit3_actions_undo.py`); sound loading (`test_program_fixes.py`, `test_play_sound_missing_file.py`). The four files run off-screen today: 28 passed.
+Covered well: Stop releasing held keys, mouse buttons and motion (`test_audit3_run_stop.py`); macros at Stop and stale macros (`test_audit2_macros.py`, `test_action_fixes.py`); the vJoy firewall (`test_output_layer.py`, `test_vjoy_writers_use_firewall.py`); vJoy busy (`test_device_fixes.py`); Xbox pass-through (`test_xbox_output_module.py`, `test_map_to_xbox.py`); thread start/stop (`test_threads.py`, `test_bounded_waits.py`); Logical Device data (`test_logical_device.py`) and its Undo (`test_audit_editing.py`, `test_audit3_actions_undo.py`, step labels `test_undo_bar_labels.py`); Logical page shared pieces (Find, delete questions, Undo bar: `test_config_pages_shared_pieces.py`); sound loading (`test_program_fixes.py`, `test_play_sound_missing_file.py`). The four files run off-screen today: 28 passed.
 
 Not tested (seen in code, no test found):
 - A Run that fails partway, then Run again (double connection, callbacks twice).

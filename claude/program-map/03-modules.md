@@ -13,6 +13,7 @@ Every device has a module file that says which of its controls the program may u
 - `gremlin/modules/ids.py`: built-in device ids (Keyboard, OSC, Xbox, Logical Device) and `guid_key` / `stored_guid_key`, the two ways ids are compared and stored.
 - `gremlin/modules/claim.py`: what a claim is (`buttons`, `axes`, `hats`, `keys`, `friendly`, `keysChosen`), reading it clean, and the "is this control claimed" checks, including the Keyboard rules.
 - `gremlin/modules/registry.py`: reads every `modules\*.json` once (re-read when its time or size changes), classifies input/output, and holds THE file rule `resolve_module_slug`; also `for_device`, vJoy id rules, `_binding_store` (reads the `module-file-bindings` setting).
+- `gremlin/modules/store.py` (1551, batch 1, GL-067): the module file store, the one owner of which module file a device uses and of every change to module files, their pictures and the file choices (`slug_for`, `path_for`, `pictures_dir`, `card_key`, `read`, `damage`, `update`, ...). Callers pass a device's name and id and never build module paths. Shared with the Device Library (10) and History / Device Pack (08).
 - `gremlin/modules/module_file.py`: safe write (temp file then swap, History hook), `load_for_update` (refuses a damaged file), `start_fresh` (moves a damaged file aside), refused-save message.
 - `gremlin/modules/gate.py`: `should_forward`, the one rule for whether a hardware event may enter the wire; helpers for the card "last:" line.
 - `gremlin/modules/runtime.py`: `InputModuleRuntime` singleton: takes raw stick and key events, passes only claimed ones on (`event`, `key_event`); reloads claims on config, profile and device changes.
@@ -25,7 +26,7 @@ Every device has a module file that says which of its controls the program may u
 
 **UI models (gremlin/ui/)**
 - `gremlin/ui/module_model.py`: `ModuleListModel` (Home cards: rows, status, counts, last line, Driven by, focus, hide, order, stacks, sizes, compact, split; Output View and Configuration Appearance load/save; Delete Device, Start Fresh, import wrappers), `DriverInputModel` (Module Setup's control list, press-to-claim, Undo/Redo, `saveClaim`), `CardSizes` (Options reset).
-- `gremlin/ui/hardware_profile.py` (lines ~275-1181 only; the rest is the Button Map): module path helpers (`_maps_dir`, `_slug`, `guid_for_module`, `module_json_path`), binding store writes, `import_module_file` / `undo_last_import`, `delete_module_file`, `delete_device`, `delete_preview`, deleted devices folder. Also `copyImage` / `keepPhoto` / `profilePhotoUrl` used by Module Setup and the cards.
+- `gremlin/ui/hardware_profile.py` (2398; lines ~456-760 only, the rest is the Button Map): `_maps_dir`, module file choices and binding (`module_file_choices`, `foreign_module_file`, `bind_module_file`), `delete_module_file`, `delete_preview`, `delete_device` (going through `store`), autosave before a pack, deleted devices folder. Also `copyImage` / `keepPhoto` / `profilePhotoUrl` used by Module Setup and the cards.
 - `gremlin/ui/module_inputs.py`: `ModuleClaimedInputModel`, the Configuration page's left list (claimed controls only); also used by the Output View.
 - `gremlin/ui/module_pairing.py`: vJoy Viewer pair models (source modules with vJoy wires, per-axis/button rows).
 - `gremlin/ui/module_calibration.py`: `CalibrationModuleModel`, the Calibration window's device drop-down.
@@ -35,15 +36,16 @@ Every device has a module file that says which of its controls the program may u
 - `gremlin/ui/live_input.py`: `DeviceLiveState`, live values for the Output View (reads vJoy through `output.vjoy_state`).
 
 **QML / JS**
-- `qml/StatusPage.qml`: Home page: card flow, drag, Shift-select, stacks, empty-space menu, Hidden Cards, Delete Device (3 steps) and Start Fresh dialogs.
+- `qml/StatusPage.qml` (1178): Home page: card flow, drag, Shift-select, stacks, empty-space menu, Hidden Cards, Delete Device (3 steps; step 2 is the shared question `Confirm.ask`, S140) and Start Fresh dialogs.
 - `qml/StatusCard.qml`: one card: photo, name, status, counts, Driven by, last line, Output View button, resize grips, right-click menu.
-- `qml/DialogConfigureModule.qml`: Module Setup window (control list, Import Image, Module File dialog with Import / Browse / Open Modules Folder / Delete File, import notice with Undo, Undo/Redo, History, Save).
-- `qml/DialogCalibration.qml`: Calibration window.
-- `qml/OutputModuleView.qml`: Output View page and its Appearance panel.
+- `qml/DialogConfigureModule.qml` (739): Module Setup window (control list, Import Image, Module File dialog with Import / Browse / Open Modules Folder / Delete File, Undo/Redo, History, Save). Undo / Redo is the shared `UndoBar` (named steps); import results and their Undo link are on a `MessageLine` (`showFileMessage`, `undoImport`, `_dropImportUndo`); Delete File is a `DangerButton` that asks the shared question; Import Image / Browse for File are `FilePicker` kinds "picture" / "module-file".
+- `qml/DialogCalibration.qml` (679): Calibration window. Undo / Redo is the shared `UndoBar` (`noteChange`, `_step`); Saved / Save Failed go on a `MessageLine` (`report`, no popup); an empty list shows `EmptyState`.
+- `qml/OutputModuleView.qml` (1286): Output View page and its Appearance panel; Screen Background is a `FilePicker` kind "picture".
+- `qml/HatView.qml` (75): the hat drawing (eight directions, the pressed one lit) on the Output View.
 - `qml/RunningNote.qml`: "The profile is running..." note shown in Module Setup.
 - `qml/Main.qml`: opens the windows (`openConfigureModule` ~387-450, card signal handlers ~1414-1462).
 - `qml/main_commands.js`: Tools › Device Setup › Input/Output Module Setup, Calibration, Device Pack; View › Home Layout.
-- `qml/help_topics.js`: Help topics "Home", "Input modules", "vJoy output modules", "Xbox output module", "Module files and Device Pack", "Hidden cards", "Calibration", "What is saved where".
+- Help book (`qml/help/home_devices.js`, page 01): topics "Home", "Input modules", "vJoy output modules", "Xbox output module", "Module files and Device Pack", "Hidden cards", "Calibration", "What is saved where".
 
 **Tests (main ones)**
 - `test/unit/test_module_claim.py`, `test_module_ids.py`, `test_module_registry.py`, `test_modules_layer.py`, `test_one_copy_of_each_rule.py`: claim/id/registry basics and layer guards.
@@ -51,8 +53,10 @@ Every device has a module file that says which of its controls the program may u
 - `test_output_layer.py`, `test_vjoy_writers_use_firewall.py`, `test_vjoy_viewer_reads_output_module.py`, `test_xbox_output_module.py`, `test_xbox_pads_told_apart.py`: output modules.
 - `test_module_lookup_device_first.py`, `test_twin_devices.py`, `test_audit_devices.py`, `test_audit3_module_files.py`: the file rule, renamed sticks, twins, card order, delete.
 - `test_module_file_damage.py`, `test_data_safety.py`, `test_write_less.py`: damaged files, Start Fresh, Delete File copy.
-- `test_module_setup_undo.py`, `test_module_setup_unplugged.py`, `test_module_setup_import_notice.py`, `test_audit2_coverage.py`: Module Setup.
-- `test_calibration_undo.py`, `test_calibration_unsaved.py`, `test_audit2_keyboard_calibration.py`, `test_device_fixes.py`: Calibration, busy vJoy, plug-in reload.
+- `test_module_setup_undo.py`, `test_module_setup_unplugged.py`, `test_module_setup_import_notice.py` (6: import results and Undo link on the message line), `test_audit2_coverage.py`, `test_batch3_C5.py::test_delete_file_confirm_says_the_pictures_are_kept`: Module Setup.
+- `test_calibration_undo.py`, `test_calibration_unsaved.py`, `test_calibration_shared_pieces.py` (UndoBar, MessageLine, EmptyState), `test_audit2_keyboard_calibration.py`, `test_device_fixes.py`: Calibration, busy vJoy, plug-in reload.
+- `test_spec_wording_56.py`: refused-save wording (Module Setup unplugged S46, Calibration lowest above highest S103; also the Button Map's damaged-file refusal, page 07 S12).
+- `test_main_shared_pieces.py::test_delete_device_asks_the_shared_question`, `::test_screen_background_uses_the_picture_chooser`; journey `test/journeys/test_j09_delete_device_and_back.py`: Delete Device and Output View on the shared pieces.
 - `test_bound_cards.py`, `test_driven_by_follows_edits.py`, `test_status_claim_cache.py`, `test_card_sizes_follow.py`: Home cards.
 - `test_output_view_pads.py`, `test_catalog_display.py`, `test_dest_live_guid.py`: Output View / Appearance.
 - `test_auto_mapper_claims.py`: Auto Mapper claim merge.
@@ -111,7 +115,7 @@ Every device has a module file that says which of its controls the program may u
 | Menu: Start Fresh… (only when damaged) | `startFresh` -> `StatusPage.askStartFresh` (confirm) | `model.startFresh` -> `module_file.start_fresh` |
 | Menu: Swap Device… (not output/Keyboard/OSC) | `assignHardware` | `DialogSwapDevices.qml` (other subsystem) |
 | Menu: Reset Card Layout | `clearSettings` | `model.clearCardSettings` (size + unstack) |
-| Menu: Delete Device | `StatusPage.askDelete` -> explain popup -> confirm popup -> `runDelete` | `model.deletePreview`, `model.deleteDevice` -> `hardware_profile.delete_device`; then `Main.closeDeletedDevice` |
+| Menu: Delete Device | `StatusPage.askDelete` -> explain popup -> `askConfirm` (`Confirm.ask`, red Delete Device) -> `runDelete` | `model.deletePreview`, `model.deleteDevice` -> `hardware_profile.delete_device`; then `Main.closeDeletedDevice` |
 | Empty space menu: Unhide All Cards / Hidden Cards row / Reset All Card Sizes / Layout | `StatusPage._emptyMenu` | `model.unignoreAll` / `unignoreSlug` / `resetAllCardSizes` / commands `view.layout.*` -> `setSplitMode` |
 | Esc on Home | `StatusPage` Keys | deselect |
 | Split divider drag | `_splitView` timer (150 ms) | `model.setSplitRatio` -> `window_placement.save_split` |
@@ -127,17 +131,17 @@ Every device has a module file that says which of its controls the program may u
 | Type a friendly name | TextField `onEditingFinished` | `setFriendly` (Undo step) |
 | Press a control on the stick | `EventListener.joystick_event` (queued, raw) | `DriverInputModel._on_joy` -> `markPressed` (ticks it, lights the row, scrolls) |
 | Press a key (Keyboard module) | `EventListener.keyboard_event` (queued, raw) | `_on_key` (adds an unlisted key ticked) -> `markPressed` |
-| Undo / Redo buttons, Ctrl+Z / Ctrl+Y | `undoEdit` / `redoEdit` | `DriverInputModel.undo` / `redo` |
-| Import Image… | `_imageDialog.onAccepted` | `_hw.copyImage` (writes picture and module file at once) |
+| Undo / Redo (`UndoBar`, step names), Ctrl+Z / Ctrl+Y | `undoEdit` / `redoEdit` | `DriverInputModel.undo` / `redo` |
+| Import Image… | `FilePicker` ("picture") `picked` | `_hw.copyImage` (writes picture and module file at once) |
 | Save Module (or "Save Module and Profile" for an output with a profile file) | `commitModule` | `_hw.keepPhoto`, `saveClaim` -> `bind_module_file`, `configChanged`; for output: `backend.unfinishedActions`, `backend.saveProfile`; `model.notifyClaims`; `backend.noteSave` |
 | Cancel / window close with unsaved work | `onClosing` -> `_saveGate.ask` | Save -> `commitModule`; Discard -> close |
 | History | button | `DialogHistory.qml` filtered by `moduleFileFor(...).json` |
 | Module File button | dialog | `refreshModuleFileLabel` (`moduleFileFor`, `moduleFileExists`, `moduleFileNames`, `foreignModuleFile`) |
 | Import from (drop-down of `imported\*.json`) | `_moduleFilePick.onActivated` (asks first when unsaved) | `model.importModuleFile` -> `import_module_file`, then `showImportResult` |
-| Browse for File | `_moduleLoadDialog` | `model.importModuleFile` |
-| Import notice: Undo / OK | `_importNotice` buttons | `model.undoLastImport` / `model.dropImportUndo` |
+| Browse for File | `FilePicker` ("module-file") | `model.importModuleFile` |
+| Import result on the message line: Undo link / × / next message / close | `showFileMessage` -> `MessageLine`; `undoImport` / `_dropImportUndo` | `model.undoLastImport` / `model.dropImportUndo` |
 | Open Modules Folder | button | `Qt.openUrlExternally(model.mapsFolderUrl())` |
-| Delete File | `_deleteGate.confirmThen` | `model.deleteModuleFile` -> `delete_module_file` |
+| Delete File (red) | `Confirm.ask` ("Delete <file>.json?", Delete File) | `model.deleteModuleFile` -> `delete_module_file` |
 | Stick plugged / unplugged while open | `EventListener.device_change_event` | `DriverInputModel._device_list_changed` (sets / clears the "Plug in" reason, or loads controls) |
 | Quit with Module Setup open | `Main` quit check | `hasUnsavedWork()` |
 
@@ -152,8 +156,8 @@ Every device has a module file that says which of its controls the program may u
 | Type a limit, With center | delegate | `setData` (Undo step, merged within 1 s) |
 | Reset | button | `reset` |
 | Save (per axis) | button | `save` -> `calibration.write_axis` -> `_saved` -> `EventListener.reload_calibration` |
-| Save All | button | `saveAllRefusedReason`, `saveAll` -> `write_axes` |
-| Undo / Redo | buttons, shortcuts | `undo` / `redo` (stops a capture) |
+| Save All | button | `saveAllRefusedReason`, `saveAll` -> `write_axes`; result via `report` on the `MessageLine` |
+| Undo / Redo (`UndoBar`) | buttons, shortcuts | `undoEdit` / `redoEdit` -> `undo` / `redo` (stops a capture) |
 | History | button | `DialogHistory.qml` filtered by `<slug>.json` |
 | Close / switch with unsaved | `onClosing` / `chooseModule` | `_saveGate` |
 | Stick plugged / unplugged | `device_change_event` | `CalibrationModuleModel.reload`, `AxisCalibration._device_list_changed` |
@@ -318,7 +322,7 @@ Every device has a module file that says which of its controls the program may u
 - S56. Import should keep only the controls this device has (and name the ones left out), keep this device's existing picture, and not change profile wires. [user confirmed 2026-10-06; was code only: hardware_profile.py:458-555, 759-779]
 - S57. Import should be refused for: a file that can't be read, a file that is not a module file, a vJoy file onto a stick or a stick file onto a vJoy, a device that isn't connected, and a current file that can't be read. [user confirmed 2026-10-06; was code only: hardware_profile.py:694-736]
 - S58. The previous file should be kept in the imported folder. [help: Module files and Device Pack]
-- S59. Undo in the import notice should put the previous file back (or remove a new one) and bind again the devices the import unbound; OK drops the Undo. [tracker: AU-21, AU-113] [test: test_audit2_coverage::test_undo_of_a_module_import_binds_the_devices_again, test_module_setup_import_notice::test_an_undo_is_not_red]
+- S59. Undo on the import's message line (01 S142; was a notice) should put the previous file back (or remove a new one) and bind again the devices the import unbound; the Undo lasts until the next message, the line's × or closing the Module File window [changed 2026-10-09 with the shared message line; was "OK drops the Undo"]. [tracker: AU-21, AU-113] [test: test_audit2_coverage::test_undo_of_a_module_import_binds_the_devices_again, test_module_setup_import_notice::test_an_undo_is_not_red]
 - S60. A failed import or Undo should turn the notice red. [tracker: AU-104] [test: test_module_setup_import_notice::test_a_failed_import_is_red, test_a_failed_undo_turns_it_red]
 - S61. Importing with unsaved ticks should ask first. [code: DialogConfigureModule.qml:478-484] [test-plan: CFGM-04 (S-31)]
 - S62. Delete File should ask first, keep a "module file deleted" autosave in the Device Library (10 S16, S20), and refuse when the autosave can't be kept or another stick uses the file. [changed 2026-10-08 to follow D-10-NO-DELETED-FOLDER] [tracker: A2] [test: test_data_safety::test_deleting_a_module_file_keeps_a_copy, test_no_copy_means_no_delete, test_audit3_module_files::test_a_file_another_stick_uses_is_not_deleted]
@@ -375,7 +379,7 @@ Every device has a module file that says which of its controls the program may u
 - S100. It should list connected sticks that have an input module (not Keyboard, OSC or outputs); with none it says "No connected input module." [code: calibration.py:54-90] [tracker: AU-58]
 - S101. Opened from a card, it should show that device; a device not connected yet is shown when it connects. [help: Calibration] [code: DialogCalibration.qml:69-95, 148-167]
 - S102. Calibrate Center and Calibrate Extrema should capture from the first value read, and only one capture runs at a time per axis (another axis can capture at the same time). [tracker: DEV13, N3] [changed 2026-10-07 to follow decision D-03-S102-PERAXIS]
-- S103. Saving should be refused when low is not below high, or the center is outside them, with the reason. [tracker: DEV13, AU-99] [test: test_audit2_keyboard_calibration::test_a_center_outside_the_range_is_refused_with_the_reason, test_a_curve_loading_would_drop_is_not_written]
+- S103. Saving should be refused when low is not below high, or the center is outside them, with the reason ("The lowest value is above the highest." when it is; user approved 2026-10-09). [tracker: DEV13, AU-99] [test: test_audit2_keyboard_calibration::test_a_center_outside_the_range_is_refused_with_the_reason, test_a_curve_loading_would_drop_is_not_written]
 - S104. A hand-edited bad curve in a file should be ignored (the default is used). [tracker: AU-61] [test: test_audit_devices::test_calibration_with_low_above_high_is_not_used]
 - S105. Each axis should have its own Save; Save All writes every unsaved axis in one file write; an axis shows "Not saved" until saved, and back at the saved values it is not unsaved. [help: Calibration] [tracker: C15] [test: test_calibration_unsaved::test_back_at_the_saved_values_is_not_unsaved, test_a_changed_limit_is_unsaved]
 - S106. Undo / Redo should step back through each axis's changes until another module is chosen; Undo during a capture stops it and its button goes up. [help: Calibration] [tracker: AU-25] [test: test_calibration_undo]
@@ -450,6 +454,9 @@ Every device has a module file that says which of its controls the program may u
 22. OSC (parked, mapped only): Module Setup lists OSC addresses with claim boxes (module_model.py:1900-1931), but Run passes every OSC event without a claim (runtime.py:22-27), so OSC claims do nothing at Run.
 23. `calibration._source_modules` skips a second stick on the same file (calibration.py:72-73); only matters for twins from before twin naming.
 24. Home `_reload` writes settings while reading (card order at module_model.py:1710-1711, kept stubs at :183); each write is a settings change. It settles after one pass; noted for the Stage 1 rule checks.
+25. Calibration's "Raw" value box accepts typing but saves nothing; it should be read-only (to-do 49). `DialogCalibration.qml` ~353.
+26. Module Setup Save on a stick unplugged after opening says "...to save its setup...", not S46's "Plug in <device> to change its setup. Nothing was saved." (to-do 56). `module_model.py` ~1900, ~1951.
+27. A calibration with lowest above highest gets "...lowest and highest values are the same" (S103; to-do 56).
 
 **Open tracker items for this subsystem**
 - AU-64 (open): what is left: only the Device Pack export file name still goes by the device's own name (photo folders follow the module file); device list cleared and refilled while read (device update runs on a timer thread, event_handler.py:388-419, while Home reads `physical_devices` on the main thread); a failed output-claims refresh blocks vJoy outputs for 1 s. Unverified.
@@ -459,7 +466,7 @@ Every device has a module file that says which of its controls the program may u
 - System-maps map 1 (Module files): not approved; decisions F1-F4 open.
 
 **Things nothing owns**
-- The module file store (paths, guid filter, writes, deletes, pictures, bindings): spread over `module_model.py`, `hardware_profile.py`, `device_pack.py`, `calibration.py`, `auto_map.py` (system-maps map 1 proposes `gremlin/modules/store.py`).
+- ~~The module file store~~: now `gremlin/modules/store.py` (batch 1); callers still in `module_model.py`, `hardware_profile.py`, `device_pack.py`, `calibration.py`, `auto_map.py`, `library_swap.py`, `library_copy.py` go through it.
 - The card key (device's own name slug) has no named owner or function.
 - The binding store is read in the core (`registry`) but only written from a UI file (`hardware_profile`).
 - The deleted devices folder holds two formats (Delete File's `.json`, Delete Device's `.zip` packs) written by two functions; nothing lists or prunes it.
@@ -468,12 +475,12 @@ Every device has a module file that says which of its controls the program may u
 ## 11. Size and test coverage
 
 **Size (lines, roughly)**
-- Core `gremlin/modules/*`: about 2,200 (output.py 585, registry.py 403).
-- UI models: module_model.py 2,334; module-file part of hardware_profile.py about 900; device.py calibration part about 570; module_inputs 264; module_pairing 323; output_modules 302; live_input 446; module_calibration 72; auto_map_modules 80. About 5,300.
-- QML: StatusPage 1,226; OutputModuleView 1,284; DialogConfigureModule 659; DialogCalibration 573; StatusCard 495; RunningNote 19. About 4,250.
-- Total about 11,800 lines in about 25 files.
+- Core `gremlin/modules/*`: about 4,100 (store.py 1,551, output.py 804, registry.py 445).
+- UI models: module_model.py 2,407; module-file part of hardware_profile.py about 300; device.py calibration part about 570; module_inputs 264; module_pairing 323; output_modules 302; live_input 446; module_calibration 80; auto_map_modules 80. About 4,800.
+- QML: StatusPage 1,178; OutputModuleView 1,286; DialogConfigureModule 739; DialogCalibration 679; StatusCard 510; HatView 75; RunningNote 30. About 4,500.
+- Total about 13,400 lines in about 27 files.
 
-**Covered by tests** (see section 2 list): the gate and Keyboard rules, output firewall and Xbox pass-through, the file rule (renamed, twins, stale id, vJoy), damaged files and Start Fresh (model level), Module Setup Undo / unplugged / import notice, Calibration Undo / unsaved / bad curves / new id, Delete File copy, Delete Device of a renamed or shared file, card order with hidden / renamed / deleted cards, Driven by, card-size follow, claim cache, Output View numbering.
+**Covered by tests** (see section 2 list): the gate and Keyboard rules, output firewall and Xbox pass-through, the file rule (renamed, twins, stale id, vJoy), damaged files and Start Fresh (model level), Module Setup Undo / unplugged / import notice, Calibration Undo / unsaved / bad curves / new id, Delete File copy, Delete Device of a renamed or shared file (and its shared question), refused-save wording (`test_spec_wording_56.py`), the shared pieces in Module Setup, Calibration and the Output View (`test_calibration_shared_pieces.py`, `test_module_setup_import_notice.py`, `test_main_shared_pieces.py`), card order with hidden / renamed / deleted cards, Driven by, card-size follow, claim cache, Output View numbering.
 
 **Obvious untested paths**
 - Stacks: `stackSelected`, `unstackSlug`, `unstackAll`, `raiseSlug` (no unit test found beyond option-text checks), and stacks with hidden or unplugged cards.

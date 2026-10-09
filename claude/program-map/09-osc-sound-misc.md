@@ -1,6 +1,6 @@
 # OSC, sound and speech, tray, look and help (and the leftovers)
 
-Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them before a step starts. **OSC is parked** (todo.md, 2 Oct): this page maps it and lists its open items, it does not judge them. Sound and speech are mapped here only at the system level (the player and the speech engine); the Play Sound and Text to Speech editors belong to the Actions page. The last part of section 2 lists every file in `gremlin/` and `qml/` that no other page names, so nothing is unmapped.
+Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 11 brought up to date 9 Oct. Line numbers drift; re-check them before a step starts. **OSC is parked** (todo.md, 2 Oct): this page maps it and lists its open items, it does not judge them. Sound and speech are mapped here only at the system level (the player and the speech engine); the Play Sound and Text to Speech editors belong to the Actions page. The last part of section 2 lists every file in `gremlin/` and `qml/` that no other page names, so nothing is unmapped.
 
 ## 1. Purpose
 
@@ -17,7 +17,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 - `gremlin/ui/osc_device_model.py` (343): `OscDeviceManagementModel` (the OSC page's list: add, import, Listen, rename address, delete, clear, sort, mode, row data); `OscInputIdentifier`; `_parse_import_line`.
 - `gremlin/ui/osc_option.py` (212): Options rows: `OscInputHostModel`, `OscOutputHostModel` (IP list with rescan + port), `OscAutoreleaseModel` (delay and presets); registers them in `MetaConfigOption`.
 - `gremlin/ui/osc_settings_info.py` (43): `OscSettingsInfo.summary()`, the text in the "Listening for OSC" box.
-- `qml/OscDevice.qml` (223): the OSC page (list of inputs, Clear / Sort / Add / Import, rename and delete per row, locked while running).
+- `qml/OscDevice.qml` (227): the OSC page (list of inputs, Clear / Sort / Add / Import, rename and delete per row, locked while running). Clear is a red `DangerButton` that asks the shared question (`askClear`, `Confirm.ask`, red Clear OSC Inputs).
 - `qml/OscAddDialog.qml` (277): "OSC Input Mapper": Cmd, Change/Button/Axis, Message only / Message + data, Trigger on message + delay, Listen, Bulk capture.
 - `qml/OscImportDialog.qml` (84): paste addresses, one per line, with type suffixes.
 - `qml/OptionOscInputHost.qml` (76), `qml/OptionOscOutputHost.qml` (64), `qml/OptionOscAutorelease.qml` (71): the Options rows.
@@ -25,17 +25,17 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 - `tools_osc/` (outside `gremlin/`): the standalone tester used before the OSC page existed (`osc_listener.py`, `osc_send_test.py`, README, PATH_B.md, WIRE.md, a patch). Its README still says "Tools → Options → osc … port 9000" and "Activate the profile".
 
 **Sound and speech (system level)**
-- `gremlin/audio_player.py` (204): `AudioSample` (decode with miniaudio, volume, play, cancel, bounded `block`); `AudioPlayer` singleton (queue, playback thread, Sequential / Interrupt / Overlap); registers `action/play-sound/playback-mode`.
-- `gremlin/tts.py` (122): `TTSManager` singleton (Qt WinRT `QTextToSpeech`, queue: Queue Back / Queue Front / Interrupt, voice); registers `action/text-to-speech/voice`.
+- `gremlin/audio_player.py` (222): `AudioSample` (decode with miniaudio, volume, play, cancel, bounded `block`); `AudioPlayer` singleton (queue, playback thread, Sequential / Interrupt / Overlap); registers `action/play-sound/playback-mode`.
+- `gremlin/tts.py` (224): `TTSManager` singleton (Qt WinRT `QTextToSpeech`, queue: Queue Back / Queue Front / Interrupt, voice); registers `action/text-to-speech/voice`.
 - Callers: `action_plugins/play_sound/__init__.py` 51-75 (`AudioPlayer().enqueue`), `action_plugins/text_to_speech/__init__.py` 47-67 (`TTSManager().enqueue`, `${current_mode}`), `gremlin/code_runner.py` 376-377 / 435-436 (start/stop), `joystick_gremlin.py` 277-283 (stop at quit), `gremlin/ui/backend.py` 355 (`emitConfigChanged` re-reads the playback mode), `gremlin/ui/option.py` 709-760 (`TTSVoiceSelectionModel`), `qml/OptionTTSVoiceSelection.qml` (30).
 
 **Tray**
-- `gremlin/ui/system_tray.py` (332): `SystemTrayIcon` (Win32 tray icon and hidden helper window, idle/active icon, menu: Show/Hide Gremlin-Platforms, Run Profile/Stop Profile, Exit Gremlin-Platforms; minimize/close to tray; one-time balloon; re-adds the icon when Explorer restarts).
+- `gremlin/ui/system_tray.py` (344): `SystemTrayIcon` (Win32 tray icon and hidden helper window, idle/active icon, menu: Show/Hide Gremlin-Platforms, Run Profile/Stop Profile, Exit Gremlin-Platforms; minimize/close to tray; one-time balloon; re-adds the icon when Explorer restarts).
 - `gremlin/ui/tray_memory.py` (77): gives memory back while hidden (`enter_tray`, `leave_tray`, `release`, `trim_working_set`).
 - `qml/Main.qml` 86-98 (`trayed`, `enterTray`, `leaveTray`), `joystick_gremlin.py` 689-710 (settings `minimize-to-tray`, `tray-notice-shown`, old `close-to-tray` carried over), 967-971 (icon made unless off-screen), 1000-1001 (`--start-minimized`).
 
 **Look: theme, colours, UI scale, Windows scaling**
-- `qml/Style.qml` (205): the `Gremlin.Style` singleton: dark and light colour tokens, `dp()`, `fitWidth/fitHeight`, fonts, menu tokens.
+- `qml/Style.qml` (227): the `Gremlin.Style` singleton: dark and light colour tokens, `dp()`, `fitWidth/fitHeight`, fonts, menu tokens.
 - `qml/ColorInformation.qml` (19) + `gremlin/ui/util.py` 466-499 `ColorInformation`: hands the Universal accent/background/foreground to Python (used by `gremlin/ui/action_image_generator.py` `_ink`, 78-82).
 - `theme/GremlinStyle/` (33 control files + `impl/`): the Qt Quick Controls style the whole program uses (Universal, sized by `Style.dp`). `theme/Gremlin/Base`, `theme/Gremlin/Compact`: custom and compact controls. `theme/Gremlin/Menus`: one menu look, context menus, command palette, `commands.js`, `menu_model.js`. 64 QML/JS files, about 4,900 lines. `theme/Gremlin/AGENTS.md`, `Compact/AGENT.md`: rules for extending them.
 - `gremlin/ui/ui_scale_option.py` (108): `ui/general/ui-scale` 70-200 %, `active_scale()` (100 when Windows scaling is on), Python `dp()`, `UiScaleModel`. `qml/OptionUiScale.qml` (50).
@@ -44,12 +44,11 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 - `gremlin/ui/backend.py` 489-495 (`useDarkMode`, `uiScale`); `qml/Main.qml` 100-103 and 1345-1351 (set `Style.isDarkMode` at start and on `configChanged`).
 
 **Help and glossary**
-- `qml/help_topics.js` (509): `topics()` (User Guide, 59 topics) and `buttonMapTopics()` (Button Map Guide).
-- `qml/DialogHelp.qml` (160): the User Guide window (F1, Help → User Guide; `main_commands.js` 108). `qml/DialogButtonMapGuide.qml` (12): the same window with the Button Map topics.
-- `claude/glossary.md` (60): the approved words (2 Oct). Kept by `test/unit/test_glossary_words.py`.
+- The Help book and the Help window moved to page 01 (one Help, 01 S128-S139, 9 Oct): `qml/help/` (10 chapter files), `DialogHelp.qml`, `help_search.js`, `HelpSearchBar.qml`, `help_links.js`, `Pulse.qml`. `qml/help_topics.js` (24) is now only the old entry points over the book; `DialogButtonMapGuide.qml` is gone.
+- `claude/glossary.md` (76): the approved words (2 Oct, added to since). Kept by `test/unit/test_glossary_words.py`.
 
-**Shared QML widgets (no other page owns them; mapped here)**
-- Dialogs: `DismissibleDialog.qml` (222, 23 users: confirm/cancel popup), `TextInputDialog.qml` (147, 6 users: one-line text with `allowBlank`, validator), `ErrorDialog.qml` (98).
+**Shared QML widgets (no other page owns them; mapped here)**. The shared pieces built 9 Oct (DangerButton, ConfirmDialog/`confirm.js`, SearchBox, MessageLine, SectionHeading, EmptyState, UndoBar, FilePicker, RenameField; 01 S135, S140-S143) are on page 01.
+- Dialogs: `DismissibleDialog.qml` (265, 23 users: confirm/cancel popup), `TextInputDialog.qml` (147, 6 users: one-line text with `allowBlank`, validator), `ErrorDialog.qml` (98).
 - Small controls: `IconButton.qml`, `IconCheckBox.qml`, `InputButton.qml` (279: the row button of the Keyboard and OSC lists), `JGListView.qml`, `JGSpinBox.qml`, `JGTabButton.qml`, `JGText.qml`, `JGTextField.qml`, `JGToolButton.qml` (toolbar button, icon-only when narrow), `LabelValueComboBox.qml`, `CompactSwitch.qml` + `CompactSwitchIndicator.qml`, `BetterProgressBar.qml`, `HorizontalDivider.qml`, `LayoutHorizontalSpacer.qml`, `LayoutVerticalSpacer.qml`, `Triangle.qml`, `DragDropArea.qml`, `DropMarker.qml`.
 - Tips and icons: `PointerTip.qml` (14 users), `HintsTooltip.qml`, `BootstrapIcons.qml`, `BootstrapIconsNames.qml` (icon font names).
 
@@ -57,18 +56,10 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 - `gremlin/common.py` (93: singletons, small helpers), `gremlin/error.py` (85: `GremlinError` and subclasses), `gremlin/types.py` (761: `InputType`, `PropertyType`, axis names and other enums), `gremlin/ui/type_aliases.py` (38: `QmlElement`, type aliases).
 - `gremlin/fsm.py` (121): a small state machine. Only `test/unit/test_fsm.py` uses it; no program code imports it.
 
-**Leftovers: files no current page names (6 Oct), with the page they most likely belong to.** Pages 01, 05, 07, 08 were not written yet when this list was made; their authors should tick these off.
+**Leftovers: files no page names yet.** The 6 Oct table gave every leftover file a likely page; by 9 Oct those pages name them in their section 2 (01 app shell and settings, 02 viewers, 03 pairing and Output View, 05 actions, 06 Xbox page, 07 Button Map, 08 History and Device Pack), and `test/unit/test_program_map_covers_files.py` keeps every program file on a page. Only build output is left:
 
 | Files | Most likely page |
 |---|---|
-| `gremlin/action_analysis.py`, `gremlin/ui/action_model.py`, `gremlin/ui/action_image_generator.py`, `gremlin/ui/binding_catalog.py`, `gremlin/plugin_manager.py`, `gremlin/spline.py`; `qml/ActionNode.qml`, `ActionSelector.qml`, `RootActionNode.qml`, `ActionDragDropArea.qml`, `InputItemBinding.qml`, `InputItemBindingConfigurationHeader.qml`, `InputBehavior.qml`, `TriggerMode.qml`, `ButtonStateSelector.qml`, `HatDirectionSelector.qml`, `HatDirectionSelectorV2.qml`, `VJoySelector.qml`, `NumericalRangeSlider.qml`, `OptionActionSequenceOrdering.qml`, `action_kinds.js` | 05 Actions and editors |
-| `qml/rig_*.js` (28 files), `qml/Rig*.qml` (15 files), `VkbRigEditor.qml`, `VkbRigFace.qml`, `DialogJoystickButtonMap.qml`, `JoystickButtonMapCard.qml`, `PrintExportWindow.qml`, `ToolDock.qml`, `ToolPane.qml`, `ToolRow.qml` (used only by the Button Map), `DialogButtonMapGuide.qml`, `OptionButtonMapLibrary.qml`; `gremlin/ui/button_map_labels.py`, `gremlin/ui/button_map_options.py` | 07 Button Map |
-| `gremlin/history_modules.py`, `gremlin/history_profile.py`, `qml/DialogDevicePack.qml` | 08 History / Device Pack / Auto Mapper |
-| `gremlin/ui/input_pairing.py`, `gremlin/ui/pair_live.py` | 03 Modules (pairing) |
-| `gremlin/ui/viewer_devices.py`, `gremlin/ui/xbox_viewer.py`, `qml/DialogXboxViewer.qml`, `XboxViewerCard.qml`, `Xbox360Face.qml`, `InputViewerCard.qml`, `AxesStateSeries.qml` | 02 Devices and input (viewers) |
-| `qml/HatView.qml` (used by `OutputModuleView.qml`) | 03 Modules (Output View) |
-| `qml/XboxDevice.qml`, `XboxDriverCheck.qml`, `gremlin/ui/xbox_device_model.py`, `gremlin/ui/xbox_maps.py` | 06 Run time and outputs (Xbox page) |
-| `qml/DeviceList.qml`, `DeviceTabBar.qml`, `gremlin/ui/vjoy_status.py` (which tabs show), `gremlin/ui/highlight_option.py` + `OptionHighlightSpeed.qml`, `OptionLogLevel.qml`, `OptionStatusCards.qml`, `DynamicItemLoader.qml` (Options rows) | 01 App shell and settings |
 | `dist/` (a built copy of the program, including `action_plugins`) | build output; not mapped |
 
 ## 3. What it owns
@@ -106,7 +97,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 | Row rename (name) | `InputButton.onRenameRequested` (OscDevice.qml 123) | `ActionNames.setOnModel` (the input's friendly name, not its address) |
 | Row edit (pencil) | OscDevice.qml 135-151 → `TextInputDialog` | `changeName(old, new)` → `OscDevice.set_label` (blank allowed; duplicates silently ignored) |
 | Row delete (x) | OscDevice.qml 153-164 | `deleteInput(label)`: drops the input's actions in every mode, then the row; no confirmation, no Undo |
-| Clear | OscDevice.qml 196-199 → `_clearDialog` (Clear / Cancel) | `clearAllInputs()` |
+| Clear (red) | `OscDevice.askClear` → `Confirm.ask` ("Clear OSC inputs?", Clear OSC Inputs / Cancel; replaces `_clearDialog`) | `clearAllInputs()` |
 | Sort | OscDevice.qml 203-206 | `sortInputs()`: A-Z until the page reloads; no way back |
 | Add → OK | OscAddDialog 256-262 → OscDevice.qml 88-91 | `createMappedInput(mode, cmd)`; mode is "Axis" for Axis or Change, else "Button"; an address that exists only selects that row |
 | Add → Listen (one message) | OscAddDialog 221-238 | `listenForCommand()` → `OscRuntime.listen_once()` (starts the listener even when not running) → first packet → `learned` → `commandCaptured` → dialog binds and closes |
@@ -163,8 +154,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 | Universal colours change | colour properties of `ColorInformation.qml` | `_theme_refresh_timer` → `ColorInformation().update_colors`, `bumpThemeRevision` (action images reload, `InputButton.qml` 215) |
 | Options → UI scale (release slider) | `OptionUiScale.qml` `onPressedChanged` | `UiScaleModel.setScale` → `signal.uiScaleChanged` → `backend.uiScaleChanged` → `Style.uiScale` |
 | Options → Ignore Windows display scaling | `OptionWindowsScale.qml` 26-41 | `setDisabled`; if it differs from the running state: Restart / Later / Cancel; Restart → `backend.requestRestart()` |
-| F1 or Help → User Guide | `main_commands.js` 108 | `openTool("DialogHelp.qml")` |
-| F1 in the Button Map | `DialogJoystickButtonMap.qml` 963, 3653 | `DialogButtonMapGuide.qml` |
+| Help (F1) anywhere | see page 01 (one Help) | `DialogHelp.qml` with a chapter (`""` main window, `button-map`, `device-library`) |
 
 ## 5. Talks to
 
@@ -192,10 +182,10 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 | "OSC listener" (`serve_forever`) | `OscListener.start` via `gremlin.threads.start` (osc.py 243) | `OscListener.stop` → `shutdown()` + `server_close()`; also listed for `threads.shutdown` | `shutdown()` waits for the server's next poll (0.5 s at most). Called on the main thread. |
 | One thread per UDP packet | python-osc `ThreadingOSCUDPServer` (osc.py 241) | ends by itself | Not made through `gremlin.threads`; not listed (AU-67). Only emits a Qt signal, handled on the main thread. |
 | OSC auto-release | `QTimer.singleShot(delay)` on the main thread (osc.py 496) | not cancelled at Stop or on a new press | Fires a release event with the mode from press time. |
-| Bulk debounce | `time.monotonic()` (osc_bulk.py 46) | — | Not `gremlin.clock`. |
-| "audio player" | `AudioPlayer.start` via `gremlin.threads.start` (audio_player.py 130) | `_ask_to_stop` (flag, clear queue, cancel samples); `stop` joins 2 s | Loop sleeps 10 ms with `time.sleep` (190); Sequential waits in 0.5 s steps re-checking the flag (68-70). |
+| Bulk debounce | `time.monotonic()` (osc_bulk.py 46) | — | Not `gremlin.clock` (OSC parked; the rest moved to `gremlin.clock`, GL-265). |
+| "audio player" | `AudioPlayer.start` via `gremlin.threads.start` | `_ask_to_stop` (flag, clear queue, cancel samples); `stop` joins 2 s | Loop sleeps 10 ms with `clock.sleep` (208); queue under a lock (GL-278); Sequential waits in 0.5 s steps re-checking the flag (68-70). |
 | miniaudio playback | `miniaudio.PlaybackDevice.start` | sample generator ends or `cancel` | Native thread inside miniaudio. |
-| Speech | Qt WinRT engine (main thread object) | `TTSManager.stop` → `engine.stop()` | Queue driven by `stateChanged`. |
+| Speech | Qt WinRT engine (main thread object) | `TTSManager.stop` → `engine.stop()` | Queue driven by `stateChanged`; `enqueue` from another thread is passed to the main thread (GL-042). |
 | Tray helper window | Win32 window procedure on the main thread's message loop | `release_resources` at quit | — |
 | Tray memory clean-up | `QTimer.singleShot(400)` (tray_memory.py 33) | skips itself if the window is visible or the app is closing | — |
 | Theme refresh | `_theme_refresh_timer` 0 ms single shot (joystick_gremlin.py 956) | — | Coalesces three colour signals. |
@@ -376,16 +366,16 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 - **G-OSC17** `tools_osc/README.md` describes the old flow (lower-case "osc" section, port 9000, "Activate the profile").
 - **G-OSC18** OSC Module Setup claims are read for the card but ignored at run time. (R1, Q4)
 
-**Sound, speech, tray, look**
-- **G1** Text to Speech engine may be called off the main thread when a timer-run action speaks. (R10) SUSPECTED.
-- **G2** `_play_list` shared between threads without a lock. (R9) SUSPECTED.
-- **G3** Options voice list shows the first voice when the saved voice is missing. (Q12)
-- **G4** No message when WinRT speech is unavailable. (Q13) SUSPECTED.
-- **G5** Windows-scaling check box wording differs from its title and help. (Q15)
-- **G6** Action images ignore UI scale and the light theme's grey. (R14, Q16) SUSPECTED.
-- **G7** 200 % on a small screen still cuts off contents in eight windows. [tracker: AU-56 (open, on hold)]
-- **G8** The test plan's tray rows (W-04..W-09, TB-02) use the old words and the old two settings. (Q17)
-- **G9** The User Guide has no OSC topic; OSC is only named in Options, Appearance and Assign Hardware. No search in the User Guide. [help]
+**Sound, speech, tray, look** (status 9 Oct, from claude/gap-list.md)
+- **G1** Text to Speech engine may be called off the main thread when a timer-run action speaks. (R10) Done (GL-042, batch 2).
+- **G2** `_play_list` shared between threads without a lock. (R9) Done (GL-278, batch 3).
+- **G3** Options voice list shows the first voice when the saved voice is missing. (Q12) Done (GL-198, batch 2).
+- **G4** No message when WinRT speech is unavailable. (Q13) Done (GL-199, batch 2).
+- **G5** Windows-scaling check box wording differs from its title and help. (Q15) Done (GL-233, batch 3).
+- **G6** Action images ignore UI scale and the light theme's grey. (R14, Q16) Needs a hands-on check (GL-200).
+- **G7** 200 % on a small screen still cuts off contents in eight windows. Open, on hold (GL-201). [tracker: AU-56]
+- **G8** The test plan's tray rows (W-04..W-09, TB-02) use the old words and the old two settings. (Q17) Done (GL-220, batch 3).
+- **G9** The User Guide has no OSC topic. Partly done: Help has search (01 S137) and an "OSC options" topic; there is still no topic for the OSC page itself (OSC parked).
 
 **Open tracker items for this page**
 - B15 (planned): OSC input port clashes with output port when unset.
@@ -404,20 +394,20 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-ch
 - `Configuration.set` is patched by OSC; nobody owns "who may watch a setting" (R2).
 - `InputIdentifier.label/linear_index` replaced for all devices by `osc_persist` (R3).
 - The shared QML widgets and the Python foundations (section 2) have no page other than this one. Owner (GL-280, catch-up batch 3): this page; `TextInputDialog` and `DismissibleDialog` now have direct tests (`test/unit/test_batch3_C1.py`).
-- `gremlin/fsm.py` (dead) and `listenForInput`/`createInput` (no caller).
-- The leftover table in section 2: accepted as it stands (Q20, decided as recommended); those pages' authors may still move a file.
+- `listenForInput`/`createInput` in the OSC model (no caller; GL-279). `gremlin/fsm.py` is used (D-09-Q19-SUPERSEDED).
+- The leftover table in section 2: accepted (Q20); by 9 Oct the pages named their files and the table holds only what is still waiting.
 
 ## 11. Size and test coverage
 
 | Part | Files / lines (rough) | Tests that cover it | Obvious untested paths |
 |---|---|---|---|
-| OSC | 12 files, about 2,030 lines (+ `tools_osc/`) | None of its own. `test_input_module_gate.py::test_osc_passthrough` (gate only); `test_audit3_run_stop.py`, `test_action_fixes.py`, `test_audit2_coverage.py` replace `OscRuntime` with a stand-in; `test_program_imports.py` (import order); `test_startup_settings_kept.py` (OSC tab setting) | Everything else: packet → event, auto-release, pad-args, Listen, Bulk, import parsing, rename/delete/clear, profile save/load of `<osc-device>`, port parsing, rebind on settings change |
-| Sound | `audio_player.py` 204 | `test_program_fixes.py` (3 sound tests), `test_bounded_waits.py::test_a_sound_is_not_waited_for_once_the_player_stops`, `test_threads.py::test_the_audio_player_stopped_right_after_starting_ends`, `test_play_sound_missing_file.py` (5) | Interrupt and Overlap modes, mode change while running, Stop during Sequential with a long queue |
-| Speech | `tts.py` 122 | `test_action_tts.py` (8: the action's data and feedback only) | `TTSManager` queue modes, Stop, voice missing, WinRT missing, off-main-thread call |
-| Tray | `system_tray.py` 332, `tray_memory.py` 77 | `test_tray_memory.py` (3), `test_audit3_startup.py::test_the_tray_icon_uses_the_shared_check`, `::test_the_app_built_off_screen_installs_no_hook_hidhide_or_tray`, `test_audit2_startup_devices.py::test_the_tray_icon_follows_the_platform_qt_started_on`; TRAY-ONE checked off-screen by hand | Tray menu commands, close-to-tray event filter, one-time balloon, Explorer restart, `--start-minimized` |
-| Look | `Style.qml` 205, `ColorInformation.qml` 19, `ui_scale_option.py` 108, `windows_scale_option.py` 68, two option QML 116, `theme/` 64 files ~4,900 | `test_ui_scale.py` (6), `test_colour_tokens.py` (2), `test_button_map_colours.py`, `test_tool_windows_fit`, `test_main_window_fits`, `test_pages_fit.py`, menu tests | Restart path of the Windows-scaling box, dark-mode switch while windows are open, Python drawing colours |
-| Help / glossary | `help_topics.js` 509, `DialogHelp.qml` 160, `glossary.md` 60 | `test_help_guide.py` (6), `test_glossary_words.py` (3) | Nothing checks that help topics match current behaviour beyond menu paths and action names |
-| Shared widgets / foundations | ~25 QML files (~1,600 lines); `common.py`, `error.py`, `types.py`, `type_aliases.py` (~980) | Only through screens and unit tests that import them; `test_fsm.py` for dead `fsm.py` | `TextInputDialog` rules (`allowBlank`, validator) are not tested directly |
+| OSC | 12 files, about 2,030 lines (+ `tools_osc/`) | None of its own. `test_input_module_gate.py::test_osc_passthrough` (gate only); `test_audit3_run_stop.py`, `test_action_fixes.py`, `test_audit2_coverage.py` replace `OscRuntime` with a stand-in; `test_program_imports.py` (import order); `test_startup_settings_kept.py` (OSC tab setting); `test_main_shared_pieces.py::test_osc_clear_is_red_and_asks` (Clear asks the shared question) | Everything else: packet → event, auto-release, pad-args, Listen, Bulk, import parsing, rename/delete/clear, profile save/load of `<osc-device>`, port parsing, rebind on settings change |
+| Sound | `audio_player.py` 222 | `test_program_fixes.py` (3 sound tests), `test_bounded_waits.py::test_a_sound_is_not_waited_for_once_the_player_stops`, `test_threads.py::test_the_audio_player_stopped_right_after_starting_ends`, `test_play_sound_missing_file.py` (5) | Interrupt and Overlap modes, mode change while running, Stop during Sequential with a long queue |
+| Speech | `tts.py` 224 | `test_action_tts.py` (8: the action's data and feedback only) | `TTSManager` queue modes, Stop, voice missing, WinRT missing, off-main-thread call |
+| Tray | `system_tray.py` 344, `tray_memory.py` 77 | `test_tray_memory.py` (3), `test_audit3_startup.py::test_the_tray_icon_uses_the_shared_check`, `::test_the_app_built_off_screen_installs_no_hook_hidhide_or_tray`, `test_audit2_startup_devices.py::test_the_tray_icon_follows_the_platform_qt_started_on`; TRAY-ONE checked off-screen by hand | Tray menu commands, close-to-tray event filter, one-time balloon, Explorer restart, `--start-minimized` |
+| Look | `Style.qml` 227, `ColorInformation.qml` 19, `ui_scale_option.py` 108, `windows_scale_option.py` 68, two option QML 116, `theme/` 64 files ~4,900 | `test_ui_scale.py` (6), `test_colour_tokens.py` (2), `test_button_map_colours.py`, `test_tool_windows_fit`, `test_main_window_fits`, `test_pages_fit.py`, menu tests | Restart path of the Windows-scaling box, dark-mode switch while windows are open, Python drawing colours |
+| Help / glossary | Help moved to page 01 (9 Oct); `glossary.md` 76 | `test_glossary_words.py` (3); Help tests are listed on page 01 | — |
+| Shared widgets / foundations | ~25 QML files (~1,600 lines); `common.py`, `error.py`, `types.py`, `type_aliases.py` (~980) | Only through screens and unit tests that import them; `test_fsm.py`; `test_batch3_C1.py` (`TextInputDialog`, `DismissibleDialog`) | — |
 
 Checked for this page: the eight test files above (`test_ui_scale`, `test_tray_memory`, `test_help_guide`, `test_glossary_words`, `test_input_module_gate`, `test_colour_tokens`, `test_action_tts`, `test_play_sound_missing_file`) run off-screen: 45 passed. OSC helpers run directly: `parse_port('')` = 8000, blank rename accepted, Axis sorts before Button, import C/E → Axis.
 

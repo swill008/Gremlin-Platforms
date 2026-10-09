@@ -27,7 +27,13 @@ section 12; where they disagree, the decision wins). The plan is
    `Spec: <page> <S/Q refs>` naming what it implements, or
    `Spec: none (no behaviour change)`. `test/unit/test_spec_line.py` fails
    otherwise.
-6. Pass this section on to any agent you start.
+6. Keep the whole program map current (user, 2026-10-09), not only section 8:
+   every batch updates the pages it touches (section 2 files, 3 owns, 4 entry
+   points, 5 talks to, 10 known gaps, 11 tests, the README counts) before its
+   commit; each agent adds its own entries. `test/unit/test_program_map_covers_files.py`
+   fails when a program file isn't on the map. Before every release, do a full
+   map check (counts, gaps, anything stale) as part of the release steps.
+7. Pass this section on to any agent you start.
 
 ## Working standard (required, user 2026-10-07)
 

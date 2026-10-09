@@ -9,33 +9,34 @@ The profile is the file you open and save: the modes, the actions on every input
 ## 2. Files
 
 Python
-- `gremlin/profile.py` (1913 lines): `Profile` (load, save, unsaved check, input snapshots for Undo/History), `Settings` (startup mode, macro delay, vJoy as input, vJoy initial values), `Library` (every action by id; clone, pick lists, drop unused/invalid), `InputItem` / `InputItemBinding` (an input in a mode and its root actions), virtual buttons, `DeviceDatabase` (device names by id), `ModeHierarchy` (mode tree: add, rename, delete, parent), `ScriptManager` (the profile's script list).
-- `gremlin/base_classes.py` (682): `AbstractActionData` (id, label, activation mode, children per selector, to_xml/from_xml, `is_valid` from Error feedback), `AbstractFunctor` (runtime side, pulse helper), `UserFeedback`, `Value`.
+- `gremlin/profile.py` (2722 lines): `Profile` (load, save, unsaved check, input snapshots for Undo/History), `Settings` (startup mode, macro delay, vJoy as input, vJoy initial values), `Library` (every action by id; clone, pick lists, drop unused/invalid), `InputItem` / `InputItemBinding` (an input in a mode and its root actions), virtual buttons, `DeviceDatabase` (device names by id), `ModeHierarchy` (mode tree: add, rename, delete, parent), `ScriptManager` (the profile's script list).
+- `gremlin/base_classes.py` (737): `AbstractActionData` (id, label, activation mode, children per selector, to_xml/from_xml, `is_valid` from Error feedback), `AbstractFunctor` (runtime side, pulse helper), `UserFeedback`, `Value`.
 - `gremlin/tree.py` (250): `TreeNode`, the generic tree under the mode hierarchy (parent/children, cycle check, depth-first walks).
-- `gremlin/mode_manager.py` (368): run-time mode stack (`ModeManager`: switch, previous, unwind, cycle, temporary, rename, drop), `ModeSequence` (Cycle), `resolve_start_mode`, last mode per profile (kept in memory while running, `flush_last_modes`), option `action/change-mode/resolution-mode`.
-- `gremlin/ui/profile.py` (1399): QML models: `InputItemModel` and `InputItemBindingModel` (bindings on the Configuration page), `ModeListModel`, `ModeHierarchyModel` (Manage Modes), `rename_mode` / `delete_mode` (the one path every rename/delete uses), `StartupModeModel`, `ProfileSettingsModel` (macro delay), `VJoyInputOrOutputModel`, `OutputVJoyListModel`, `OutputVJoyInitialValuesModel`, `ProfileDeviceListModel` (Swap Devices list).
-- `gremlin/ui/backend.py` (704): `Backend` (new, load, save, save as, recent, forget, last profile at start, auto-load, unsaved flag, Run/Stop entry, toolbar mode pick), `UIState` (the mode, device, input, tab and room shown).
-- `gremlin/swap_devices.py` (162): moves every binding, action reference and script variable from one device id to another.
-- `gremlin/ui/tools.py` (89; `swapDevices` 64-89): the QML slot for Swap Bindings.
-- `gremlin/user_script.py` (1426): `Script` (loads the .py, its variables, load errors), variable types, callback and periodic registries, decorators, plugins giving scripts `joy` / `vjoy` / `keyboard`.
-- `gremlin/ui/script.py` (451): `ScriptListModel` (add, remove, rename) and one QML model per variable type.
+- `gremlin/mode_manager.py` (435): run-time mode stack (`ModeManager`: switch, previous, unwind, cycle, temporary, rename, drop), `ModeSequence` (Cycle), `resolve_start_mode`, last mode per profile (kept in memory while running, `flush_last_modes`), option `action/change-mode/resolution-mode`.
+- `gremlin/ui/profile.py` (1540): QML models: `InputItemModel` and `InputItemBindingModel` (bindings on the Configuration page), `ModeListModel`, `ModeHierarchyModel` (Manage Modes), `rename_mode` / `delete_mode` (the one path every rename/delete uses), Undo Delete Mode (S46a: `_deleted_modes` per open profile, `undo_delete_mode`, `_rename_in_deletes` follows a renamed parent or child; `ModeHierarchyModel.canUndoDelete`, `undoDeleteName`, `undoDelete`), `StartupModeModel`, `ProfileSettingsModel` (macro delay), `VJoyInputOrOutputModel`, `OutputVJoyListModel`, `OutputVJoyInitialValuesModel`, `ProfileDeviceListModel` (Swap Devices list).
+- `gremlin/ui/backend.py` (901): `Backend` (new, load, save, save as, recent, forget, last profile at start, auto-load, unsaved flag, Run/Stop entry, toolbar mode pick; keeps, offers, restores and removes recovery copies, S94), `UIState` (the mode, device, input, tab and room shown).
+- `gremlin/swap_devices.py` (265): moves every binding, action reference and script variable from one device id to another (with limits); called by the Device Library (`library_swap.py`, `library_copy.py`, page 10).
+- `gremlin/profile_recovery.py` (200, new 2026-10-09, to-do 55): recovery copies of unsaved profile edits (S94, Q14). `ProfileRecovery.tick` keeps a copy about every minute while there are unsaved changes, in `<data folder>/recovery/profile-<stem>-<sha1>.json` (Untitled: `profile-untitled.json`); `restore`, `discard`, `forget_session` (Save, Discard, clean close remove this session's copies; Not now keeps it).
+- `gremlin/edits.py` (52): the edit count (Q19, D-04-Q19): `note_edit`, `EditNoted`, `edit_count`; the title `*` reuses its last answer while the count hasn't moved.
+- `gremlin/user_script.py` (1725): `Script` (loads the .py, its variables, load errors), variable types, callback and periodic registries, decorators, plugins giving scripts `joy` / `vjoy` / `keyboard`.
+- `gremlin/ui/script.py` (467): `ScriptListModel` (add, remove, rename) and one QML model per variable type.
 - `gremlin/config.py` (`get_profile`, `get_profile_with_regex` 516-551): auto-load program-to-profile matching.
-- `gremlin/process_monitor.py` (131): the thread that reports the focused program (feeds auto-load).
+- `gremlin/process_monitor.py` (135): the thread that reports the focused program (feeds auto-load).
 - `joystick_gremlin.py` (`process_cmd_args` 978-1001; settings registered 594-598, 750): `--profile` or last profile at start.
 - `action_plugins/load_profile/__init__.py` (Load Profile action, 50-80): loads another profile from a running profile.
 
 QML / JS
-- `qml/Main.qml`: File menu, unsaved guard (`guardUnsavedChanges` 706), `saveProfileChecked` 528 (asks about unfinished actions), Save As / Open file dialogs 817-885, Recent 901-920, toolbar Mode box and Manage Modes button 1140-1202, `*` in the title (1.5 s timer, 27-45), footer status, `onClosing` 1366, "Last profile didn't open" 1300.
+- `qml/Main.qml`: File menu, unsaved guard (`guardUnsavedChanges` 706), `saveProfileChecked` 528 (asks about unfinished actions), Save As / Open choosers (`_saveProfileFileDialog`, `_loadProfileFileDialog`: `FilePicker` kind "profile", ~1459-1520, S143), Recent 901-920, recovery offer (`offerProfileRecovery`, `_profileRecoveryGate`: "Unsaved Edits Found", Restore / Discard / Not now), toolbar Mode box and Manage Modes button 1140-1202, `*` in the title (1.5 s timer, 27-45), footer status, `onClosing` 1366, "Last profile didn't open" 1300.
 - `qml/main_commands.js`: menu/shortcut entries (file.new/load/save/saveAs/exit, tools.swapDevices, Manage Modes).
-- `qml/DialogManageModes.qml` (249): add, rename, Inherits from, delete (asks with binding count).
-- `qml/ProfileSettings.qml` (256): Startup Mode, Macro Default Delay, vJoy Behavior, vJoy Initial Values.
-- `qml/ScriptManager.qml` (248), `qml/ScriptConfiguration.qml` (374): Scripts page and a script's variables.
+- `qml/DialogManageModes.qml` (288): add, rename, Inherits from, delete (asks the shared question, `confirmDelete` :46: mode name, binding count, "You can restore it from Tools › History."), Undo Delete Mode is the shared `UndoBar` (:180, tooltip Undo Delete Mode; S46a).
+- `qml/ProfileSettings.qml` (258): Startup Mode, Macro Default Delay, vJoy Behavior, vJoy Initial Values.
+- `qml/ScriptManager.qml` (252), `qml/ScriptConfiguration.qml` (370): Scripts page and a script's variables. Add Script is a `FilePicker` kind "script"; Remove asks the shared question (S85, S140).
 - ~~`qml/DialogSwapDevices.qml` (164): Swap Devices window.~~ Removed 2026-10-08 (D-10-SWAP); the Device Library replaces it (10).
-- `qml/OptionProfileAutoLoading.qml` (237): Options › Profiles › Auto-load list.
-- `qml/help_topics.js`: topics Profiles, What is saved where, Run and status, Modes, Change Mode, Load Profile, Profile Settings, Scripts, History (Swap Devices replaced by the Device Library topic, 2026-10-08).
+- `qml/OptionProfileAutoLoading.qml` (276): Options › Profiles › Auto-load list. Select Profile / Browse Executable are `FilePicker` "profile" / "other"; remove is a `DangerButton` that asks the shared question (`askRemove`).
+- Help (Help book on page 01, `qml/help/`): topics Profiles, What is saved where, Run and status, Modes, Change Mode, Load Profile, Profile Settings, Scripts, History (Swap Devices replaced by the Device Library topic, 2026-10-08).
 
 Tests (main ones)
-- `test/unit/test_profile.py`, `test_tree.py`, `test_modes.py`, `test_mode_hierarchy_model.py`, `test_profile_settings.py`, `test_profile_unsaved.py`, `test_profile_save_safe.py`, `test_profile_unused_actions.py`, `test_profile_missing_child_action.py`, `test_library_invalid_children.py`, `test_recent_profiles.py`, `test_load_and_rename_safety.py`, `test_autoload_and_mode_prompts.py`, `test_audit_profile.py`, `test_audit2_modes.py`, `test_audit3_modes.py`, `test_audit_saving.py`, `test_audit2_saving.py`, `test_audit2_coverage.py`, `test_startup_messages.py`, `test_write_less.py`, `test_mode_refresh_and_add_key.py`, `test_swap_devices.py`, `test_audit3_screens.py` (Swap list), `test_user_script.py`, `test_user_script_load_errors.py`, `test_data_safety.py`.
+- `test/unit/test_profile.py`, `test_tree.py`, `test_modes.py`, `test_mode_hierarchy_model.py`, `test_profile_settings.py`, `test_profile_unsaved.py`, `test_profile_save_safe.py`, `test_profile_unused_actions.py`, `test_profile_missing_child_action.py`, `test_library_invalid_children.py`, `test_recent_profiles.py`, `test_load_and_rename_safety.py`, `test_autoload_and_mode_prompts.py`, `test_audit_profile.py`, `test_audit2_modes.py`, `test_audit3_modes.py`, `test_audit_saving.py`, `test_audit2_saving.py`, `test_audit2_coverage.py`, `test_startup_messages.py`, `test_write_less.py`, `test_mode_refresh_and_add_key.py`, `test_swap_devices.py`, `test_audit3_screens.py` (Swap list), `test_undo_delete_mode.py`, `test_tools2_shared_pieces.py` (Manage Modes question and Undo bar), `test_main_shared_pieces.py` (profile choosers, Remove Script), `test_options_shared_pieces.py` (auto-load remove and choosers), `test_profile_recovery.py`, `profile_recovery_smoke.py` (app start), `test_user_script.py`, `test_user_script_load_errors.py`, `test_data_safety.py`.
 - `test/action_interaction/test_modes.py` (mode stack at run time), `test/integration/test_e2e_user_script.py`, `test_e2e_profile_simple.py`.
 
 ## 3. What it owns
@@ -84,7 +85,7 @@ Who else changes profile data (not single-owner)
 | Manage Modes: Add Mode | `DialogManageModes.qml:142` | `nameTaken` check | `ModeHierarchyModel.newMode` 909 → `ModeHierarchy.add_mode` 1604 |
 | Manage Modes: rename (pencil) | `:183` | `nameTaken(value, name)` | `ModeHierarchyModel.renameMode` 917 → `ui/profile.rename_mode` 841 → `ModeHierarchy.rename_mode` 1658, `ModeManager.rename_mode` 235, `EventHandler.rename_mode`, `signal.modeRenamed`, `modesChanged` |
 | Manage Modes: Inherits from | `:213` | | `ModeHierarchyModel.setParent` 936 → `ModeHierarchy.set_parent` 1706 |
-| Manage Modes: delete (trash, asks with binding count) | `:245`, `confirmDelete` 39 | `bindingCount` | `ModeHierarchyModel.deleteMode` 928 → `ui/profile.delete_mode` 857 → `ModeHierarchy.delete_mode` 1625, `ModeManager.drop_mode` 252, `EventHandler.drop_mode`, `signal.modeDeleted` |
+| Manage Modes: delete (trash) | `:284`, `confirmDelete` 46 → `Confirm.ask` (mode name, binding count, red Delete Mode) | `bindingCount` | `ModeHierarchyModel.deleteMode` 928 → `ui/profile.delete_mode` 857 → `ModeHierarchy.delete_mode` 1625, `ModeManager.drop_mode` 252, `EventHandler.drop_mode`, `signal.modeDeleted` |
 | Profile Settings › Startup Mode | `ProfileSettings.qml:58` | | `StartupModeModel.currentSelectionIndex` setter 1094 |
 | Profile Settings › Macro Default Delay / Use the Options default | `:93`, `:113` | | `ProfileSettingsModel.macroDefaultDelay` / `macroDelayFromOptions` 1312-1341 |
 | Profile Settings › vJoy Behavior switch | `:145` | | `VJoyInputOrOutputModel.setData` 1151: sets `vjoy_as_input`, emits `signal.profileChanged` and `EventListener.device_change_event` |
@@ -94,14 +95,19 @@ Who else changes profile data (not single-owner)
 | Configuration page: open an input | `backend.getInputItem` 451 | | `Profile.get_input_item(..., create_if_missing=True)` 993 (empty items are not saved) |
 | Undo / Redo, History Restore, Device Pack | other subsystems | | `Profile.input_snapshot` 1091, `put_input` 1126, `add_inputs` 1058, `drop_inputs` 1174 |
 | ~~Tools › Swap Devices… / card "Swap Device…"~~ (removed 2026-10-08, D-10-SWAP) | Device Library › Swap with Another Stick… (10 S26) | `deviceLibrary` model | `library_swap.swap` → `swap_devices.swap_devices` (with limits); `library_profiles.Batch` |
-| Scripts › Add Script | `ScriptManager.qml:37` | | `ScriptListModel.addScript` 406 → `ScriptManager.add_script` 1816 → `Script()` (runs the script file) |
-| Scripts › rename / remove (asks) / configure variables | `ScriptManager.qml:205`, `:231`; `ScriptConfiguration.qml` | | `renameScript` 419, `removeScript` 412, variable models' setters |
+| Scripts › Add Script | `ScriptManager.qml:26` `FilePicker` ("script") | | `ScriptListModel.addScript` 406 → `ScriptManager.add_script` 1816 → `Script()` (runs the script file) |
+| Scripts › rename / remove / configure variables | `ScriptManager.qml:205`; Remove `:234` → `Confirm.ask` (red Remove Script, S85); `ScriptConfiguration.qml` | | `renameScript` 419, `removeScript` 412, variable models' setters |
 | Run | toolbar / tray | `Backend.toggleActiveState` 417 → `activate_gremlin(True)` | `CodeRunner.start(profile, ui_state.currentMode)`: scripts reloaded (`_setup_user_scripts`), mode lookup built, `ModeManager.switch_to(start mode)`, vJoy initial values written |
 | Stop | toolbar / tray / load / new / auto-load | `activate_gremlin(False)` | `CodeRunner.stop` (flushes last mode) |
 | Change Mode action, Cycle, Temporary, Previous, Unwind | running action | | `ModeManager.switch_to` 295, `cycle` 266, `temporary` 345 / `leave_temporary` 349, `previous` 276, `unwind` 287 |
 | Mode changed (signal) | `ModeManager.mode_changed` | `Backend._on_mode_changed` 317 | toolbar follows; `CodeRunner._refresh_on_mode_change` (axis refresh option) |
 | Profile changed (Backend signal) | load, new | `ModeManager.reset`, `UIState.setCurrentMode`, `_profile_change_handler` (in that order, 257-261) | `shared_state.current_profile` set last |
 | Profile changed (global `signal.profileChanged`) | swap, Auto Mapper, vJoy Behavior switch, backend | models reset: `ModeListModel`, `StartupModeModel`, `ProfileSettingsModel`, `ProfileDeviceListModel`, vJoy models; `UIState.clearKeyboardInput` | |
+| Recovery copy (S94) | `Backend._keep_recovery_copy` (60 s timer) | | `ProfileRecovery.tick`; hooks in `newProfile`, `loadProfile` / `loadRecentProfile`, `openLastProfile`, `saveProfile`; app quit → `forget_session` |
+| Recovery offer | `recoveryOfferChanged` → `Main.offerProfileRecovery` → `_profileRecoveryGate` | Restore / Discard / Not now | `Backend.takeRecoveryOffer`, `restoreRecovery(path)` (opens the copy, unsaved), `discardRecovery(path)` |
+| Manage Modes: Undo Delete Mode | `UndoBar` `onUndo` (`DialogManageModes.qml:180-193`) | |
+| File › Save Profile As… / Load Profile… choosers | `FilePicker` "profile" (`Main.qml` `_saveProfileFileDialog` / `_loadProfileFileDialog`) | `FolderMemory` | `saveProfileChecked` / `backend.loadProfile` |
+| Options › Auto-load: remove | `autoLoadRemove` → `askRemove` → `Confirm.ask` (red Remove Entry) | | `ProfileAutoLoadingModel.removeEntry` | `ModeHierarchyModel.undoDelete` → `ui/profile.undo_delete_mode` (notice when it can't) |
 | Hourly safety flush | `deferred_write.schedule("last-mode", ...)` | | `flush_last_modes` |
 
 ## 5. Talks to
@@ -132,7 +138,8 @@ Who else changes profile data (not single-owner)
 - `AbstractFunctor._pulse_event` (`base_classes.py:612-657`): on the main thread a 50 ms `QTimer.singleShot` (`flush_pulses` sends pending ones at Stop); off the main thread `time.sleep(0.05)`.
 - Last mode while running: `deferred_write.schedule("last-mode", flush_last_modes, 3_600_000)` (one hour safety net); saved for real on Stop and quit.
 - Settings writes (`Configuration.set`) are deferred about 1 s by `deferred_write`.
-- `Main.qml:35` Timer, 1.5 s, while the window is active: calls `profileContainsUnsavedChanges`, which rebuilds the whole profile XML on the main thread.
+- `Main.qml:35` Timer, 1.5 s, while the window is active: calls `profileContainsUnsavedChanges`; since D-04-Q19 it reuses its last answer while `edits.edit_count()` hasn't moved, else rebuilds the profile XML on the main thread.
+- `Backend._recovery_timer`, 60 s, main thread: `ProfileRecovery.tick` writes the recovery copy (small file, main thread like the Button Map's autosave).
 - Process monitor thread (owned by the process-monitor code) emits `process_changed`; the handler runs on the main thread.
 - Loading a profile and adding a script run the script's top-level Python code on the main thread (`user_script.py:454-456`, `:683`), with no time limit. [out of date: since batch 2 (GL-040, D-04-Q13-TIMELIMIT) it runs on a worker thread with a time limit]
 
@@ -216,7 +223,7 @@ Who else changes profile data (not single-owner)
 - S44. It should, on rename, move everything that names the mode: inputs, Change Mode targets (also a running Cycle), script mode settings (also of scripts that failed to load), Startup Mode, the stored last mode, the running mode stack and lookup, the toolbar, Configuration and Logical Device panes and Undo steps, the Button Map labels mode. [test-plan: AUDIT-A-PROFILE, AUDIT2-C-MODES, AUDIT3-TRACE] [tracker: AU-20, AU-82, AU-88, AU-112] [test: test_audit2_modes.py] [test: test_audit3_modes.py]
 - S45. It should, before delete, ask and say how many bindings go with the mode. [test-plan: SAFE-4] [tracker: A9] [test: test_autoload_and_mode_prompts.py::test_mode_delete_counts_the_bindings_it_removes]
 - S46. It should, on delete, move every child mode up one level, delete the mode's inputs and the actions only they used, set Startup Mode back to Last Active if it named the mode, drop it from the stored last mode, the running stack and lookup, close its panes and Undo steps, and move the toolbar to the first mode. [test-plan: AUDIT-A-PROFILE, AUDIT2-C-MODES] [tracker: AU-01] [test: test_audit_profile.py::test_deleting_a_mode_keeps_every_child] [test: test_profile_unused_actions.py::test_delete_mode_takes_the_actions_with_it] [test: test_modes.py::test_startup_mode_follows_rename_and_delete] [changed 2026-10-09: D-04-LAST-ACTIVE]
-- S46a. Manage Modes has **Undo Delete Mode**: while the same profile is open, it brings back the mode deleted last (then the one before), with its bindings, its place in the tree, the child modes that moved up, and Startup Mode if it named it. If it can't, a notice says why. [user decision 2026-10-09: D-04-UNDO-DELETE-MODE; was code only] [test: test_undo_delete_mode.py]
+- S46a. Manage Modes has **Undo Delete Mode** (since 2026-10-09 the shared Undo bar's **Undo**, tooltip "Undo Delete Mode", with "Last change: Delete mode X" beside it; 01 S143): while the same profile is open, it brings back the mode deleted last (then the one before), with its bindings, its place in the tree, the child modes that moved up, and Startup Mode if it named it. If it can't, a notice says why. [user decision 2026-10-09: D-04-UNDO-DELETE-MODE; was code only] [test: test_undo_delete_mode.py]
 - S47. It should send every rename and delete (Manage Modes, Device Pack Undo Import) through one path. [test-plan: AUDIT3-TRACE] [test: test_audit3_modes.py::test_undo_import_deletes_a_mode_everywhere]
 - S48. It should never put an input back (Undo, History Restore) into a mode that no longer exists; it says the mode isn't in the profile. [test-plan: AUDIT2-C-MODES] [test: test_audit2_modes.py::test_nothing_is_put_into_a_deleted_mode]
 - S49. It should allow mode edits while running, show the running note, and keep the running profile working with the new names. [test-plan: AUDIT2-C-MODES] [tracker: N18, AU-88]
@@ -318,20 +325,22 @@ Code differs from the spec or a rule
 4. The mode stack is not reset at Stop or Run (Q4; `system-maps.md` § 3 item P).
 5. vJoy Initial Values are only written when the axis reads exactly 0 (Q11). `code_runner.py:475-478`.
 6. The vJoy Behavior switch fires a fake device change (R12, Q12).
-7. The unsaved check changes the profile (device names) and is heavy (R14, Q18, Q19).
+7. The unsaved check changes the profile (device names) and is heavy (R14, Q18, Q19). Q19 part done: `edits.py` edit count skips the rebuild while nothing changed.
 8. Dead "converted" re-save branch still in `backend.py:648`, `:656-657`, though tracker AU-65 says a dead "converted" branch was fixed (R15).
 9. Time and sleep outside `gremlin.clock` in the script timer loop and the pulse helper (R6, R7).
-10. A script's top-level code runs unbounded on the main thread at load/add (R8, Q13).
+10. ~~A script's top-level code runs unbounded on the main thread at load/add (R8, Q13).~~ Fixed in batch 2 (GL-040, D-04-Q13-TIMELIMIT): worker thread with a time limit.
 11. Startup Mode box raises on a startup mode it doesn't list (Q10). `ui/profile.py:1092`.
 12. Profiles with no modes, duplicate mode names, or inputs in unlisted modes load without a word (Q8, Q9). `profile.py:1737-1767`, `:1235-1246`.
 13. `mode_exists("")` is True (the hidden root is named ""); `put_input` and `set_parent` accept "" (`profile.py:1735`, `:1714`). Blank names are blocked only in the UI.
-14. Unknown action type refuses the whole profile (Q7). `profile.py:642-646`.
+14. ~~Unknown action type refuses the whole profile (Q7).~~ Fixed: `gremlin/unknown_action.py` keeps it (05 G20).
 15. Script removal does not remove its variables from `Script.variable_registry` (`profile.py:1825-1834`); `ScriptListModel.renameScript` signals rows 0..rowCount (one past the end, `ui/script.py:421-423`; AU-65 left Scripts dataChanged "not reproduced").
 16. `Settings.set_initial_vjoy_axis_value` does not clamp (load does). `profile.py:294-304`.
 17. Two "drop unused actions" paths (R4) and the Library looking up the current profile (R2); covered by the Actions redesign in `system-maps.md` § 2.
 18. Logical Device / OSC rows live in global singletons that any `Profile()` resets (R3).
 19. The Load Profile action reaches into the UI Backend from the event pipeline (R11) and runs the new profile even if the load failed and a blank profile is open (`load_profile/__init__.py:79-80`).
 20. Glossary N20 lists file-picker titles in sentence case ("Open profile", "Save profile as"); the dialogs say "Open Profile" / "Save Profile As" (GLOSSARY-4 Title Case later). Minor; confirm which wins.
+21. Recovery copy of unsaved edits (S94, to-do 55): built 2026-10-09 (`gremlin/profile_recovery.py`, offer in `Main.qml`; tests `test_profile_recovery.py`, `profile_recovery_smoke.py`); in Help (configuration-actions-safety-net, 2026-10-09).
+22. Undo Delete Mode: a deleted mode's own Change Mode action naming a mode renamed since comes back with the old name (to-do 55, not covered).
 
 Open tracker items touching this subsystem
 - AU-118 (open): OK on a shared Merge Axis splits it; a Device Pack import that fails partway leaves the modes and Logical Device inputs it created, with no Undo (Actions map, decision A3).
@@ -347,12 +356,11 @@ Things nothing owns
 - Which profile is "current": `Backend.profile` and `shared_state.current_profile` are two copies set at different times (R1).
 - The mode stack's life across Stop/Run (no owner resets it).
 - Script globals (`callback_registry`, `periodic_registry`, `variable_registry`, `sys.path`) shared by every profile and Run.
-- A recovery copy of unsaved profile edits (none exists, Q14).
-- Undo for Manage Modes and Swap Devices (none exists, Q6, S80).
+- Undo for Manage Modes beyond Undo Delete Mode (S46a), and for Swap (Q6, S80; Swap now goes through History in the Device Library, page 10).
 
 ## 11. Size and test coverage
 
-Size: about 9,000 lines. Python about 7,300 (`profile.py` 1913, `user_script.py` 1426, `ui/profile.py` 1399, `backend.py` 704, `base_classes.py` 682, `ui/script.py` 451, `mode_manager.py` 368, `tree.py` 250, `swap_devices.py` 162, plus parts of `tools.py`, `config.py`, `process_monitor.py`, `joystick_gremlin.py`). QML/JS about 1,700 (Manage Modes 249, Scripts 248 + 374, Profile Settings 256, Auto-load option 237, Swap Devices 164, the profile parts of `Main.qml` about 300, `main_commands.js` 119).
+Size: about 11,000 lines. Python about 9,000 (`profile.py` 2722, `user_script.py` 1725, `ui/profile.py` 1540, `backend.py` 901, `base_classes.py` 737, `ui/script.py` 467, `mode_manager.py` 435, `swap_devices.py` 265, `tree.py` 250, `profile_recovery.py` 200, `edits.py` 52, plus parts of `tools.py`, `config.py`, `process_monitor.py`, `joystick_gremlin.py`). QML/JS about 1,700 (Manage Modes 288, Scripts 252 + 370, Profile Settings 256, Auto-load option 276, Swap Devices 164, the profile parts of `Main.qml` about 300, `main_commands.js` 119).
 
 Covered well
 - Mode tree and run-time stack: `test_tree.py`, `test_modes.py` (15), `action_interaction/test_modes.py` (7), `test_audit_profile.py`, `test_audit2_modes.py`, `test_audit3_modes.py`.
@@ -361,6 +369,8 @@ Covered well
 - Auto-load and the Load Profile action: `test_autoload_and_mode_prompts.py`, `test_audit_saving.py`, `test_audit2_saving.py`, `test_audit2_coverage.py` (all with a fake Backend).
 - Scripts: `test_user_script.py` (21), `test_user_script_load_errors.py` (5), `integration/test_e2e_user_script.py`.
 - Settings: `test_profile_settings.py` (6), `test_write_less.py` (last mode).
+- Undo Delete Mode: `test_undo_delete_mode.py`; Manage Modes delete question and Undo bar: `test_tools2_shared_pieces.py`. Recovery copy: `test_profile_recovery.py`, `profile_recovery_smoke.py`.
+- Shared pieces here: `test_main_shared_pieces.py::test_profile_choosers_remember_the_folder`, `::test_remove_script_asks_the_shared_question`; auto-load remove and choosers: `test_options_shared_pieces.py`.
 
 Thin or untested
 - The real Backend wiring on Load / New: the order of `ModeManager.reset`, `setCurrentMode` and `shared_state` (gap 1). Tests replace Backend with fakes.

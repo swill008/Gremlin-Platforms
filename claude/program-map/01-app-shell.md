@@ -2,6 +2,8 @@
 
 Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift: re-check them before a step starts.
 
+Sections 2-6, 10 and 11 brought up to date 9 Oct (catch-up batches 1-3, the Device Library, one Help, the shared pieces).
+
 ## 1. Purpose
 
 This is the frame around everything else. It starts the program (and stops a second copy), keeps the program settings (`configuration.json`) and shows them in Options. It also draws the main window's menus, toolbar, Mode box and status bar, and quits cleanly, with the tray, updates, logs, crash and freeze records, the Live Log Reader and the User Guide.
@@ -9,37 +11,62 @@ This is the frame around everything else. It starts the program (and stops a sec
 ## 2. Files
 
 Python
-- `joystick_gremlin.py` (1138 lines): start-up (`main`, `JoystickGremlinApp`), the Windows-scaling check before Qt loads, second-copy check and `gremlin.lock`, the "could not start" box, `running_offscreen()`, registration of about 60 settings (`register_config_options`), loggers, `--profile/--enable/--start-minimized`, `shutdown_cleanup`, restart and install-on-exit.
-- `gremlin/config.py` (551): `Configuration` singleton: loads, checks, saves `configuration.json`, handles a damaged file, settings version, removes unused settings, History records for settings, and auto-load profile lookup (`get_profile`, `get_profile_with_regex`).
+- `joystick_gremlin.py` (1257 lines): start-up (`main`, `JoystickGremlinApp`), the Windows-scaling check before Qt loads, second-copy check and `gremlin.lock`, the "could not start" box, `running_offscreen()`, registration of about 60 settings (`register_config_options`), loggers, `--profile/--enable/--start-minimized`, `shutdown_cleanup`, restart and install-on-exit.
+- `gremlin/config.py` (673): `Configuration` singleton: loads, checks, saves `configuration.json`, handles a damaged file, settings version, removes unused settings, History records for settings, and auto-load profile lookup (`get_profile`, `get_profile_with_regex`).
 - `gremlin/deferred_write.py` (121): "write once, a second after the last change" for settings and the activity log; flushes on quit and atexit.
-- `gremlin/threads.py` (160): the only way to start threads and timers. Each one is named and listed, and has a stop request. `shutdown()` stops them all, and `main_timer` runs a timer's function on the main thread.
-- `gremlin/clock.py` (24): `now()` / `sleep()` for timed loops, so tests can step time.
+- `gremlin/threads.py` (193): the only way to start threads and timers. Each one is named and listed, and has a stop request. `shutdown()` stops them all, and `main_timer` runs a timer's function on the main thread (main timers are kept in `_main_timers` too).
+- `gremlin/clock.py` (31): `now()` / `sleep()` (and a monotonic time) for timed loops, so tests can step time.
 - `gremlin/qt_log.py` (153): Qt's own messages and stderr go to `logs/qt.log` through a pipe and a copy thread.
 - `gremlin/error_report.py` (76): thread errors go to system.log, top-level errors are passed on to a console, and a hard crash writes `crash.log`.
-- `gremlin/watchdog.py` (117): Log When Not Responding (main-loop tick every 250 ms, a watch thread, 5 s limit).
-- `gremlin/updater.py` (165): release parsing, version compare, install kind, SHA-256 check, setup arguments, feed URL rules.
-- `gremlin/ui/update_model.py` (449): `UpdateModel` (`updater` in QML): check, download, verify, install on exit, failed-update note.
+- `gremlin/watchdog.py` (116): Log When Not Responding (main-loop tick every 250 ms, a watch thread, 5 s limit).
+- `gremlin/updater.py` (357): release parsing, version compare, install kind, SHA-256 check, setup arguments, feed URL rules, the What's new part of release notes (S133).
+- `gremlin/ui/update_model.py` (591): `UpdateModel` (`updater` in QML): check, download, verify, install on exit, failed-update note, release notes kept for the session.
 - `gremlin/util.py` (folder part, lines 813-1003 and 1155-1210): `userprofile_path`, `data_folder`, the `*_dir()` helpers, `ensure_data_folders`, `program_folder`, `resource_path`, `restart_command`, version helpers.
-- `gremlin/ui/option.py` (856): Options models (`ConfigSectionModel`, `ConfigGroupModel`, `ConfigEntryModel`), the Options layout `_LAYOUT`, titles (`entry_title`), `MetaConfigOption` registry for custom option widgets, the Add Action Menu list, auto-load list and TTS voice models.
+- `gremlin/ui/option.py` (1021): Options models (`ConfigSectionModel`, `ConfigGroupModel`, `ConfigEntryModel`), the Options layout `_LAYOUT`, titles (`entry_title`), `MetaConfigOption` registry for custom option widgets, the Add Action Menu list, auto-load list and TTS voice models.
 - `gremlin/ui/log_option.py` (132): Diagnostic logs level (`apply_log_level`, `LogLevelModel`, the shared notifier).
 - `gremlin/ui/ui_scale_option.py` (108), `gremlin/ui/windows_scale_option.py` (68): UI scale and "Ignore Windows display scaling".
 - `gremlin/ui/shell_option.py` (89): Home card options and the Auto Mapper's remembered checkbox (registered when the module loads).
-- `gremlin/ui/live_debug.py` (916): activity log `logs.txt` (`trace`), the Live Log Reader models `LiveLog` (Config tab), `DebugLog` (Debug tab) and `InputMonitor`.
+- `gremlin/ui/live_debug.py` (948): activity log `logs.txt` (`trace`), the Live Log Reader models `LiveLog` (Config tab), `DebugLog` (Debug tab) and `InputMonitor`.
+- `gremlin/input_monitor.py` (162): the Input Monitor tap: while on, every input the running profile handles is recorded with the actions it ran (read only; the tap sits in `EventHandler.process_event`, page 02).
+- `gremlin/diagnostics.py` (325): Help → Save Diagnostics… (S132): collects logs, settings, device list and versions (and the profile when asked), puts `<user>` for the user's name, writes the zip. `gremlin/ui/diagnostics.py` (106): the QML side, `saveAsync` (collect on the main thread, zip on a worker, `saved(ok, message)`).
 - `gremlin/log_feed.py` (165), `gremlin/log_once.py` (36): the Live feed handler and "log once per run".
 - `gremlin/ui/debug_mode.py` (153): red debug mode frame on every window.
-- `gremlin/ui/system_tray.py` (332): Win32 tray icon, its menu, minimize/close to tray, the one-time balloon.
+- `gremlin/ui/system_tray.py` (344): Win32 tray icon, its menu, minimize/close to tray, the one-time balloon.
 - `gremlin/ui/tray_memory.py` (77): unload pages and trim memory while hidden in the tray.
 - `gremlin/ui/window_placement.py` (519): window and tool window size/place memory (`WindowPlacement`, `ToolWindowMemory`).
 - `gremlin/signal.py` (58): the program-wide signals the shell listens to (`configChanged`, `showError`, `showNotification`, `uiScaleChanged`).
+- `gremlin/ui/leave_text.py` (188): leaving a text box (S134, D-01-LEAVE-TEXT): one app-wide event filter (`install`, from `joystick_gremlin.py`); Esc or a press outside leaves the box and keeps the text; `leaveTextOnEscape: false` opts a window out of the Esc part (Module Setup).
+- `gremlin/ui/folder_memory.py` (120): the last folder per kind of file (S143), setting `global/internal/last-folders`; `FolderMemory` for `FilePicker.qml`.
+- `gremlin/ui/highlight_option.py` (84): the Input highlighting speed setting (`ui/general/input-highlight-speed`: Slow / Medium / Fast) and its Options row model.
+- `gremlin/ui/vjoy_status.py` (187): which device tabs the main window's bar shows (`devices/display/vjoy-tabs`, `extra-tabs`: Keyboard, Logical, OSC, Xbox) and the vJoy status the tabs read.
+- `gremlin/validate.py` (489): rule checks over the program's state, report only (`profile()`, `modules()`, `after_stop()`); the tests run them after every test (`test/conftest.py`). Checks spec statements on pages 03, 04, 05 and 06.
 
 QML / JS
-- `qml/Main.qml` (1898): main window: title, toolbar, Mode box, footer, menu bar, shortcuts, palette, dialogs (error, notice, save-before-continue, Save As, Open), quit chain (`quitGremlin`, `guardUnsavedChanges`, `deactivateThenQuit`, `onClosing`), tray hooks `enterTray/leaveTray`, page loaders.
-- `qml/main_commands.js` (119): the main window's command list (id, text, group, shortcut, keywords, enabled, run).
-- `theme/Gremlin/Menus/commands.js` (235), `theme/Gremlin/Menus/CommandPalette.qml` (174): the shared command registry, `trigger`, search, palette.
-- `qml/helpers.js` (167), `qml/window_registry.js` (7): one open-window list for the whole program (`createComponent`, `toggleComponent`, `windowOf`).
-- `qml/DialogOptions.qml` (143), `ConfigSection.qml` (101), `ConfigSectionButton.qml` (55), `ConfigGroup.qml` (348), `OptionEntryCard.qml` (74), and the `Option*.qml` custom rows (log level, UI scale, Windows scaling, auto-load, Add Action Menu, TTS voice, highlight speed, status cards).
-- `qml/DialogUpdate.qml` (154), `qml/DialogHelp.qml` (160), `qml/DialogAbout.qml` (57), `qml/DialogLiveLog.qml` (690), `qml/MainFailure.qml` (55), `qml/EscapeCloses.qml`, `qml/ToolWindowMemory.qml`, `qml/DebugFrame.qml`.
-- `qml/help_topics.js` (509): User Guide topics (`topics()`), and the Button Map's own guide (`buttonMapTopics()`).
+- `qml/Main.qml` (2624): main window: title (ends with the program version, S57), toolbar, the mode bar under it (Mode box, Manage Modes), footer, menu bar, shortcuts, palette, dialogs (error, notice, save-before-continue; Save As and Open are `FilePicker` kind "profile", S143), quit chain (`quitGremlin`, `guardUnsavedChanges`, `deactivateThenQuit`, `onClosing`), tray hooks `enterTray/leaveTray`, Help link targets (`_helpLinkCheck`, `_helpLinkReveal`, `_helpPulse`, S139), page loaders.
+- `qml/DeviceTabBar.qml` (75): the scrolling tab bar of device tabs (`DeviceList.qml`, Main).
+- `qml/main_commands.js` (124): the main window's command list (id, text, group, shortcut, keywords, enabled, run).
+- `theme/Gremlin/Menus/commands.js` (235), `theme/Gremlin/Menus/CommandPalette.qml` (176): the shared command registry, `trigger`, search, palette.
+- `qml/helpers.js` (193), `qml/window_registry.js` (17): one open-window list for the whole program (`createComponent`, `toggleComponent`, `windowOf`).
+- `qml/DialogOptions.qml` (254, builds only the page you open; search is the shared `SearchBox` `optionsSearch` with `_countFound`), `ConfigSection.qml` (132; its old "No setting matches" line is gone, the `SearchBox` says "Nothing matches"), `ConfigSectionButton.qml` (55), `ConfigGroup.qml` (339; a path setting's chooser is one `FilePicker` `optionPathPicker`, kind "log" for the Logs folder and "other" otherwise, starting in the setting's folder), `OptionEntryCard.qml` (74), `DynamicItemLoader.qml` (113: loads a custom row's QML), and the `Option*.qml` custom rows (log level `OptionLogLevel.qml`, UI scale, Windows scaling, auto-load `OptionProfileAutoLoading.qml` (276: Select Profile / Browse Executable are `FilePicker` "profile" / "other"; remove is a `DangerButton` that asks the shared question, `askRemove`), Add Action Menu, TTS voice, highlight speed `OptionHighlightSpeed.qml`, status cards `OptionStatusCards.qml`).
+- `qml/DialogUpdate.qml` (250), `qml/DialogAbout.qml` (57), `qml/MainFailure.qml` (55), `qml/EscapeCloses.qml`, `qml/ToolWindowMemory.qml`, `qml/DebugFrame.qml`.
+- `qml/DialogLiveLog.qml` (718): Live Log Reader. Clear Log asks the shared question (`_askClear` :69) with a red button; the Find boxes are `SearchBox`; Save Feed is a `FilePicker` kind "log".
+- `qml/DialogSaveDiagnostics.qml` (121): its chooser is a `FilePicker` kind "diagnostics" (Desktop by default).
+
+Help (one Help, S128-S139)
+- `qml/help/` (10 files, about 3,500 lines): the Help book. `index.js` (90) puts the chapters together (`topics(chapter)`); one file per chapter: `getting_started.js`, `home_devices.js`, `configuration_actions.js`, `logical_device.js`, `modes.js`, `button_map.js`, `device_library.js`, `tools.js`, `options_profile.js`. Wording follows `claude/help-style.md`.
+- `qml/DialogHelp.qml` (913): the one Help window (F1 everywhere; `chapter` "" for the whole book, `button-map`, `device-library`; View Full Help), the topic list with its drag handle, folding chapters, Expand all / Collapse all, links. Ctrl+F belongs to the search bar's `SearchBox` (no own Ctrl+F); F3 / Shift+F3 kept.
+- `qml/help_search.js` (202): search over topics (S137), pure functions. `qml/HelpSearchBar.qml` (184): the Help window's search row (`SearchBox` `helpSearchBox`, Enter → `next()`, "N topics match", Search all of Help, k of n).
+- `qml/help_links.js` (93): Help's Open › / Show me › links (S139): parsing, the allowed Open list, greying links that can't be shown. `qml/Pulse.qml` (36): the accent pulse a Show me › link puts on its target.
+- `qml/help_topics.js` (24): the old entry points (`topics()`, `buttonMapTopics()`, `deviceLibraryTopics()`) over the book.
+
+Shared pieces (S134-S136, S140-S143; used by many windows, owned here)
+- `qml/RenameField.qml` (64): the one inline Rename box (S135).
+- `theme/GremlinStyle/ToolTip.qml`, `theme/Gremlin/Base/WrappingTooltip.qml`, `Style.tooltipDelayMs` / `tooltipMaxWidth`: the one tooltip (S136).
+- `qml/DangerButton.qml` (37): the red button for a destructive action (S140).
+- `qml/ConfirmDialog.qml` (123), `qml/confirm.js` (82, `Confirm.ask`): the one question before a delete, remove or clear (S140): title, text, last line, red named button, Enter and Esc cancel.
+- `qml/SearchBox.qml` (118): the shared search box (S141).
+- `qml/MessageLine.qml` (89): the shared message line with an Undo link (S142).
+- `qml/SectionHeading.qml` (36), `qml/EmptyState.qml` (48), `qml/UndoBar.qml` (78), `qml/FilePicker.qml` (130): section heading, empty-list message, Undo / Redo bar ("Last change" / "Undone", Undo / Redo tips), file and folder chooser that remembers the last folder per kind (S143). Kinds in use: profile, script, picture, module-file, device-pack, log, diagnostics, other. A save picker with nothing remembered suggests a bare name in Documents.
 
 Tests (unit unless noted)
 - Start-up: `test_could_not_start.py`, `test_second_copy_detection.py`, `test_audit3_startup.py`, `test_audit2_startup_devices.py`, `test_program_imports.py`, `test_modules_import_alone.py`, `test_startup_messages.py`, `test_startup_settings_kept.py`, `test_restart_command.py`, `test_user_data_folder.py`, `test_open_folders.py`, `test_program_fixes.py` (part).
@@ -48,7 +75,10 @@ Tests (unit unless noted)
 - Threads and errors: `test_threads.py`, `test_bounded_waits.py`, `test_error_report.py`, `test_watchdog.py`, `test_qt_log.py`.
 - Logs: `test_live_log_debug.py`, `test_live_log_view.py`, `test_log_feed.py`, `test_input_monitor.py`.
 - Updates: `test_update_check.py`, `test_update_model.py`, `test_program_fixes.py` (update part).
-- Main window: `test_menus.py`, `test_main_window_fits.py`, `test_tool_windows_fit.py`, `test_tray_memory.py`, `test_usability_fixes.py`, `test_data_safety.py`, `test_help_guide.py`, `test_glossary_words.py`.
+- Main window: `test_menus.py`, `test_main_window_fits.py`, `test_tool_windows_fit.py`, `test_tray_memory.py`, `test_usability_fixes.py`, `test_data_safety.py`, `test_glossary_words.py`.
+- Help: `test_help_guide.py`, `test_one_help_window.py`, `test_help_search.py`, `test_help_search_bar.py`, `test_help_list.py`, `test_help_links.py`, `test_help_links_resolve.py`, `test_help_reveal.py`, `test_help_topics_script.py` (smokes: `help_book.py`, `one_help_window_smoke.py`, `help_list_smoke.py`, `help_links_smoke.py`, `help_reveal_smoke.py`).
+- Shared pieces: `test_leave_text.py`, `test_leave_text_windows.py`, `test_leave_text_button_map.py`, `test_leave_text_rig.py`, `test_rename_field.py`, `test_rename_library.py`, `test_rename_rig.py`, `test_one_tooltip.py`, `test_confirm_dialog.py`, `test_search_box.py`, `test_message_line.py`, `test_shared_pieces.py`, `test_options_shared_pieces.py`, `test_tools2_shared_pieces.py`, `test_main_shared_pieces.py` (smoke `main_shared_pieces_smoke.py`), `test_config_pages_shared_pieces.py` (Options Logs folder), `test_folder_memory.py`.
+- Save Diagnostics: `test_diagnostics_zip.py`, `test_diagnostics_ui.py`. Rule checks: `test_validate.py`. Map: `test_program_map_covers_files.py`, `test_spec_line.py`.
 
 ## 3. What it owns
 
@@ -61,7 +91,8 @@ In memory
 - `UpdateModel` state (`idle/checking/upToDate/available/downloading/ready/error/failed`), the release, ready installer path, install-on-exit flag.
 - `Backend.restart_on_exit` (owned by Backend, set by the shell's quit chain).
 - Main.qml: `profileDirty`, `trayed`, `_quitPending`, `lastSaveText`, `shortcutCommands`, the pending action of the save-before-continue dialog.
-- `window_registry.openWindows`: open tool windows by file name (Module Setup is separate: `Main.configureWin`).
+- `window_registry.openWindows`: open tool windows by file name (Module Setup is tracked there too since batch 3, GL-238).
+- `leave_text` filter (one per app), `Confirm` open dialogs (`confirm.js`), `input_monitor` entries (while on), Help's folded chapters (while Help is open).
 - `_scan_cache` (second-copy scan, only during `main`).
 
 Files
@@ -73,10 +104,11 @@ Files
 
 Settings keys this subsystem registers or uses (others register their own; see Gaps)
 - global/general: `check-for-updates`, `minimize-to-tray`, `log-level` (shown as "debug" / Diagnostic logs), `log-when-not-responding`, `device-change-behavior`, `refresh-axis-on-activation`, `refresh-axis-on-mode-change`.
-- global/internal: `last-mode`, `last-mode-per-profile`, `last-profile`, `recent-profiles`, `skipped-update-version`, `last-run-version`, `update-feed-url` (testing only), `update-pending-version`, `update-pending-setup`, `settings-version`, `tray-notice-shown`, `live-start-empty`, `live-log-tab/-file/-level`, `twin-device-names`, `own-xbox-pads`, `button-map-recent-colours`.
+- global/internal: `last-mode`, `last-mode-per-profile`, `last-profile`, `recent-profiles`, `skipped-update-version`, `last-run-version`, `update-feed-url` (testing only), `update-pending-version`, `update-pending-setup`, `settings-version`, `last-folders` (S143), `tray-notice-shown`, `live-start-empty`, `live-log-tab/-file/-level`, `twin-device-names`, `own-xbox-pads`, `button-map-recent-colours`.
 - global/files: `data-folder`, `plugin-directory`, `modules-/logs-/profiles-/scripts-/export-/history-/deleted-devices-folder`.
 - global/history: `keep-days`, `max-megabytes`.
-- ui/general: `dark-mode`, `ui-scale`, `disable-windows-scaling`, `input-highlighting`.
+- ui/general: `dark-mode`, `ui-scale`, `disable-windows-scaling`, `input-highlighting`, `input-highlight-speed`.
+- devices/display: `vjoy-tabs`, `extra-tabs` (which device tabs show). Help's list width is kept with the tool window state (`help-list`, `window_placement`).
 - action/general: `action-priorities` (Add Action Menu order and choice).
 - profile/automation: `enable-auto-loading`, `remain-active-on-focus-loss`, `entries-auto-loading`.
 - devices/display: `aliases`; osc/connection: the OSC keys (OSC parked: mapped, not judged).
@@ -114,21 +146,29 @@ Settings keys this subsystem registers or uses (others register their own; see G
 | Any shortcut | `Shortcut` per command `Main.qml:994` | `Commands.trigger(id)` (does nothing if the command isn't available now) |
 | Tools → … (viewers, device setup, mapping, History, Options) | `openTool` / `openToolWith` / `openConfigureModule` / `openLogicalDevice` / `openBlankButtonMap` | `Helpers.createComponent` (one window per file, shared registry) |
 | Debug → Live Log Reader | `openTool("DialogLiveLog.qml")` | `LiveLog`, `DebugLog`, `InputMonitor`; 400 ms refresh timer |
-| Help → User Guide, F1 | `openTool("DialogHelp.qml")` | `help_topics.js topics()` |
+| Help (F1) in the main window | `main_commands.js:111` | `openToolWith("DialogHelp.qml", { chapter: "" })` → `help/index.js topics("")` (whole book) |
+| Help (F1) in the Button Map / Device Library | `DialogJoystickButtonMap.qml:1113`, `WindowDeviceLibrary.qml:582` | `DialogHelp.qml` with `chapter` `button-map` / `device-library`; View Full Help shows the book |
+| Help search, Ctrl+F / Enter / Esc / F3 | `SearchBox` in `HelpSearchBar.qml` | `_search()` / `next()` / `clear()` → `help_search.js` (filter, counts, matches) |
+| Help link Open › / Show me › | `DialogHelp.qml` → Main | `HelpLinks.parse`, `_helpLinkCheck` (grey or not), `_helpLinkReveal` (open window or Options page, drop a menu, `_helpPulse` with `Pulse.qml`) |
+| Help → Save Diagnostics… (also on the Debug tab) | `main_commands.js:120` | `DialogSaveDiagnostics.qml` → `FilePicker` ("diagnostics") → `Diagnostics.saveAsync` → `diagnostics.collect` / `write_zip` |
+| Esc or a press outside a text box (any window) | `leave_text.LeaveTextFilter.eventFilter` | `_leave` (box loses the focus, saves as it does) |
+| Any delete / remove / clear | `Confirm.ask(host, {...})` | `ConfirmDialog.qml` (red button, Cancel default) |
+| Any file or folder chooser (Save Profile As / Load Profile "profile", Options path settings, auto-load Select Profile / Browse Executable, Live Log Save Feed "log", Save Diagnostics) | `FilePicker.qml` | `FolderMemory.lastFolder` / `remember` |
 | Help → Check for Updates | `main_commands.js:110` | opens DialogUpdate; `updater.check(true)` unless downloading/ready |
 | Help → About | `DialogAbout.qml` | `backend.gremlinVersion` |
 | Toolbar Home | `_homeButton` `:1038` | `closeWorkRoom` |
 | Toolbar Run/Stop | `_toggleButton` `:1048` | `backend.toggleActiveState` → `activate_gremlin` → runner start/stop |
 | Toolbar vJoy Viewer / Xbox Viewer | `:1064`, `:1076` | `Helpers.toggleComponent` (open or close) |
 | Toolbar Button Map / Logical Device / Options | `:1088-1120` | `openBlankButtonMap`, `openLogicalDevice`, `createComponent("DialogOptions.qml")` |
-| Toolbar Mode box | `_modeSelector.onActivated` `:1162` | `backend.selectMode(name)` (edit mode = running mode) |
-| Toolbar Manage Modes | `:1195` | `DialogManageModes.qml` |
+| Mode bar Mode box (under the toolbar since 9 Oct) | `_modeSelector.onActivated` (`_modeBar`, `Main.qml` ~1772) | `backend.selectMode(name)` (edit mode = running mode) |
+| Mode bar Manage Modes | `_modeBar` | `DialogManageModes.qml` |
 | Mode changed elsewhere | `uiState.modeChanged` `:1276` | updates device model, Logical pane, OSC list, Mode box |
 | Window gets focus | `profileDirty` Timer 1.5 s while active `:35` | `backend.profileContainsUnsavedChanges` → title `*`, footer "(unsaved changes)" |
 | Options: switch / number / combo / folder Select or Reset | `ConfigGroup.qml` delegates | `ConfigEntryModel.setData` → `Configuration.set` → `signal.configChanged` |
 | Options: text field | `ConfigGroup.qml:286` | saved on leaving the field, Enter, or window close |
 | Options: custom rows | `MetaConfigOption` widgets | `LogLevelModel.setLevel` (applies at once, tells every copy), `UiScaleModel.setScale` (`uiScaleChanged`), `WindowsScaleModel.setDisabled` (Restart/Later/Cancel → `backend.requestRestart`), `ActionSequenceOrdering.moveAmong/setShown/resetDefaults`, `ProfileAutoLoadingModel.newEntry/removeEntry/setData`, `TTSVoiceSelectionModel.currentIndex` |
-| Options: search box | `ConfigSection`/`ConfigGroup.matches` | filters rows by group title, name, description |
+| Options: search box, Ctrl+F or typing | `SearchBox` `optionsSearch` | `ConfigSection.filterText` / `ConfigGroup.matches` (group title, name, description) + `_countFound` ("N found") |
+| Options: auto-load remove | `autoLoadRemove` → `askRemove` (`OptionProfileAutoLoading.qml`) | `Confirm.ask` → `ProfileAutoLoadingModel.removeEntry` |
 | Options: History button | `DialogOptions.qml:94` | `DialogHistory.qml` filtered to settings |
 | Options closes | `DialogOptions.qml:38` | `backend.emitConfigChanged` (+ audio player refresh) |
 | `signal.configChanged` | `joystick_gremlin.py:900`, `Main.qml:1347` | `watchdog.apply`; dark mode; also module runtime claims, Home model, profile settings, pairing, output choices reload |
@@ -144,7 +184,7 @@ Settings keys this subsystem registers or uses (others register their own; see G
 | Error in a thread | `threading.excepthook` `error_report.py:72` | system.log "Error in <name>" |
 | Native crash | `faulthandler` `error_report.py:66` | `crash.log` |
 | Main loop stuck 5 s (option on) | watchdog thread `watchdog.py:85` | system.log "Not responding…" + stacks; "Responding again…" |
-| Live Log Reader controls | `DialogLiveLog.qml` | `LiveLog.refresh/clear/copyAll`, `DebugLog` setters, `loadWhole`, `clear`, `clearView`, `saveTo`, `openFolder`, `live`, `InputMonitor` |
+| Live Log Reader controls | `DialogLiveLog.qml` | `LiveLog.refresh/copyAll`, `DebugLog` setters, `loadWhole`, `clearView`, `openFolder`, `live`, `InputMonitor`; Clear Log → `_askClear` (`Confirm.ask`) → `LiveLog.clear` / `DebugLog.clear`; Save Feed → `FilePicker` ("log") → `DebugLog.saveTo`; Find → `SearchBox` |
 | Theme colours change | `colorInformation.*Changed` → 0 ms timer `:956` | `ColorInformation.update_colors`, `ui_state.bumpThemeRevision` |
 
 ## 5. Talks to
@@ -161,7 +201,10 @@ Settings keys this subsystem registers or uses (others register their own; see G
 | Home cards, Configuration pages, Logical Device, Button Map, OSC, HidHide, viewers | Main.qml loads their pages and opens their windows; registers their options before purge | they register settings (some on import, some lazily) and call `Configuration.set` |
 | Plugin manager | `PluginManager()` at start; `update_action_priorities` | action list for Options |
 | Audio / TTS / OSC runtime | stopped in `shutdown_cleanup`; TTS voices for Options | none |
-| Window placement | `WindowPlacement.restore/save` in Main.qml | none |
+| Window placement | `WindowPlacement.restore/save` in Main.qml; Help list width (`toolRowState`) | none |
+| Command registry (`commands.js`) | Help links check and run allowed commands | none |
+| Every window with text boxes, deletes, searches, file choosers, undo | the shared pieces (section 2) and `leave_text` | they use them |
+| Device input (page 02) | Save Diagnostics asks for the device list; Input Monitor tap | `EventHandler.process_event` calls `input_monitor.record` |
 | Logging (`logging` system/user/event) | configured at start, level from Options | every subsystem logs into it; `log_feed` for Live |
 | GitHub (network) | `UpdateModel.check/download` via QNetworkAccessManager | none |
 | Windows | message boxes, process scan (PowerShell, Toolhelp), `TerminateProcess`, tray (Shell_NotifyIcon), Explorer, installer via `QProcess.startDetached` | tray messages |
@@ -170,10 +213,12 @@ Settings keys this subsystem registers or uses (others register their own; see G
 
 - Threads (all through `gremlin.threads`): "Qt log" copy thread (`qt_log.py:152`, stopped by giving stderr back); "not-responding watchdog" (`watchdog.py:71`, only while the option is on, waits 1 s at a time).
 - Main-thread Qt timers: Watchdog tick 250 ms; one single-shot timer per deferred-write key (1 s; last mode 1 h); `profileDirty` refresh 1.5 s while the window is active (`Main.qml:35`); theme refresh 0 ms single shot; tray memory release 400 ms after hiding; Live Log Reader refresh 400 ms and a 60 ms redraw (`DialogLiveLog.qml:65,211`); `MainTimer` single shots for action timers (`threads.py:93`).
-- Network: QNetworkAccessManager (no thread of ours); check timeout 10 s, download stall 30 s.
+- Network: QNetworkAccessManager (no thread of ours); check timeout 10 s, download stall 30 s; the start-up check waits up to about 5 s for the notes of skipped versions (S133).
+- Save Diagnostics: one worker thread through `gremlin.threads.start` writes the zip (`ui/diagnostics.py:90`); collecting stays on the main thread.
+- `leave_text` is an app event filter on the main thread (no timer). `Pulse.qml` is a short animation on the target.
 - Bounded waits in the shell: PowerShell process scan 4 s (before Qt), taskkill 3 s, `time.sleep(0.4)` after closing the other copy (before Qt), `QLockFile.tryLock(100 ms)`, stale lock 30 s, `threads.shutdown` 2 s total (1 s after a start failure), `Watchdog.stop` join 2 s.
 - Order at quit: `aboutToQuit` → `shutdown_cleanup` + deferred flush; then after `exec`: `shutdown_cleanup` again → `threads.shutdown()` → `flush_all` → `history.close()` → `flush_all` → unlock → installer or restart → `os._exit(0)`. `os._exit` skips atexit on purpose; anything not stopped by then is cut off.
-- `MainTimer`s are not in the thread list, so `threads.shutdown()` and `threads.running()` don't see them.
+- `MainTimer`s are kept in `threads._main_timers` (batch 1, GL-047), so Stop and quit can cancel them.
 
 ## 7. Rule breaks
 
@@ -268,7 +313,7 @@ Duplicated logic
 - S56 Diagnostic logs Off should still keep errors in system.log. [user decision: APP17 logs Off still keeps errors]
 
 ### Main window
-- S57 The title should read "* name - Gremlin-Platforms R1", with * while there are unsaved changes and "Untitled" before the first save. [tracker: C2] [glossary: program's name]
+- S57 The title should read "* name - Gremlin-Platforms R1 <version>" (e.g. "Flight.xml - Gremlin-Platforms R1 1.0.30"), with * while there are unsaved changes and "Untitled" before the first save. [version added 2026-10-09, user] [tracker: C2] [glossary: program's name]
 - S58 The toolbar, left to right: Home, Run, vJoy Viewer, Xbox Viewer, Button Map, Logical Device, Options. [glossary: Run / Stop, Mode] [tracker: N16] [changed 2026-10-09: D-01-MODE-BAR]
 - S58a Under the toolbar, on every page, a bar holds on its left Mode, its list and Manage Modes (always in the same place), then a thin divider, then the open page's own controls (Home: Device Library…, Compact view, Layout; other pages: theirs, or nothing). When the window is too narrow, the mode list narrows to its minimum and then the page's controls scroll sideways; Mode and Manage Modes never move. [user decision 2026-10-09: D-01-MODE-BAR]
 - S59 The Run button should read Run, and Stop (accent color) while the profile runs. [glossary: Run / Stop] [help: Run and status]
@@ -370,6 +415,10 @@ Duplicated logic
 - **S137** The Help window has a search box above its topic list (Ctrl+F). Typing filters the list live to topics whose title or text hold all the words, in any order, kept under their section headings, each with its match count and a line "N topics match"; "No topic mentions 'xyz'" when none. The open topic highlights every match (the current one stronger), scrolls to the first, and Enter / F3 next, Shift+F3 previous move through them (on into the next topic) with "k of n". Esc or the × clears the search, keeps the topic you were on and (01 S134) leaves the box. When Help shows one chapter, a **Search all of Help** tick box adds the other chapters' matching topics under their chapter's name; choosing one shows it. [user decision 2026-10-09: D-01-GUIDE-SEARCH]
 - **S138** The Help window's topic list sits beside the topic with a drag handle between them: the list is at least about 180 px and at most half the window wide, keeps its width the next time Help opens (one width for all of Help), and a double-click on the handle puts the default width back. Chapter headings stand out (larger, on a shaded band with an accent bar); section headings are small capitals in the accent colour with a thin line above; topics are single-spaced rows. A chapter heading folds and unfolds its topics (▸ / ▾); in the whole book only the open topic's chapter starts unfolded, opening a topic (link, Related topics, search) unfolds its chapter, and while searching every chapter with a match is unfolded (clearing the search goes back to how they were). **Expand all** / **Collapse all** above the list unfold or fold every chapter (shown when the whole book is shown). Folds last while Help is open. [user decision 2026-10-09: D-01-HELP-LIST]
 - **S139** Help topics have two kinds of link to the program besides links to other topics, shown after the bold label as a small **Open ›** or **Show me ›**. **Open ›** opens a window or an Options page (only windows and pages on an allowed list; never anything that changes data, runs, deletes, clears or restores). **Show me ›** points without choosing: it drops a main-window menu down and pulses the item, pulses a toolbar or mode-bar button, or opens Options on a setting and pulses it. Help stays open beside the window it points at. A link whose target can't be shown now (no main window, a window that needs a device) is greyed out with a tooltip saying why. A test checks that every link in the book leads to a real menu item, button, window or setting. [user decision 2026-10-09: D-01-HELP-LINKS]
+- **S140** Every delete, remove or clear asks with one shared question (qml/ConfirmDialog.qml, Confirm.ask): its title names the action ("Delete mode Combat?"), its text says exactly what goes ("12 bindings go with it."), its last line says "You can restore it from Tools › History." or "This can't be undone.", and its buttons are a red one named for the action (never "OK") and **Cancel**. Cancel has the focus; Enter and Esc both cancel, so only a click on the red button goes ahead. One exception: a window that already lists exactly what goes is its own question (Tidy Library, 10 S38): red button named for the action, Cancel focused, Enter and Esc cancel, no second question [user 2026-10-09]. A second exception: a clear inside an editor whose Undo takes it back and where nothing is kept until Save (the Button Map's Clear Photo, Clear Guides, Clear Print Area while editing) doesn't ask [user 2026-10-09]. Every destructive button in a window is the shared red button (qml/DangerButton.qml: red fill, white text, darker on hover). [user decision 2026-10-09: D-01-CONFIRM]
+- **S141** Every search box (Help, History, Options, the Logical Device page, Layers, the Device Library) is the shared one (qml/SearchBox.qml): **Ctrl+F** goes to it, **×** clears it, **Esc** clears it and leaves the box (01 S134), and a line under it says "N found" or "Nothing matches". [user decision 2026-10-09: D-01-SEARCH-BOX]
+- **S142** Windows report what just happened on one shared message line (qml/MessageLine.qml, the Device Library's): plain for done, red for failed, with an **Undo** link where the change can be taken back; a message stays until the next one. The Device Library, Button Map, Module Setup, Calibration and Device Pack use it. [user decision 2026-10-09: D-01-MESSAGE-LINE]
+- **S143** Shared pieces: one section heading style inside windows (bold title, thin line; qml/SectionHeading.qml); one empty-list message with one button for the next step (qml/EmptyState.qml); every file and folder chooser opens in the last folder used for that kind of file (Device Packs, pictures, profiles, scripts, exports, module files, logs), remembered between sessions in the program settings (qml/FilePicker.qml); and the windows with their own undo (Calibration, Module Setup, Button Map, Manage Modes, Logical Device, Binding catalog) show the same Undo / Redo pair with the last change beside it (qml/UndoBar.qml, as the Device Library). [user decision 2026-10-09: D-01-SHARED-PIECES] (Device Pack keeps its one-way **Undo Import** button, 08 S80/S81, with an Undo Import link on its message line.)
 
 ## 9. Questions for the user
 
@@ -392,44 +441,49 @@ Duplicated logic
 
 ## 10. Known gaps
 
-Code differs from the spec or a rule
-- K1 The X can leave the program running with no main window while a tool window is open (Q1). SUSPECTED (`Main.qml:1366-1388`, `helpers.js:47`).
-- K2 Exit with Minimize to tray on may be refused by the tray's close filter (Q2). SUSPECTED; not covered by any test.
-- K3 The window place isn't saved when the X hides to the tray (Q3). SUSPECTED (W-21 open in the test plan).
-- K4 Start-up failures before `main()` bypass the box and the logs (S16, Q8). CONFIRMED (`joystick_gremlin.py:44-125`).
-- K5 Logs folder change mid-session splits writers (fixed at start: `joystick_gremlin.py:821-836`, `qt_log.install :1079`, `error_report.install :897`) from readers (`live_debug.py:351-356` call `logs_dir()` each time). CONFIRMED.
-- K6 The chosen data folder falls back silently (Q5). In `_configured_child` the fallback `mkdir` is unguarded (`util.py:890-891`), so a data folder that can't be written can raise. CONFIRMED.
-- K7 A failed settings write is only logged (Q6). CONFIRMED (`deferred_write.py:100-105`).
-- K8 History Restore doesn't re-apply settings that act at once (Q7). SUSPECTED (`history_model.py:294-316`; `apply_log_level` isn't tied to `configChanged`).
-- K9 `MainTimer` isn't tracked by `gremlin.threads` (Q10, AU-116). CONFIRMED (`threads.py:93-126`).
-- K10 No owner for the list of setting keys; `purge_unused` depends on everything being registered first (rule break, AU-47 class). CONFIRMED.
-- K11 Keys defined twice: `ui-scale`, `disable-windows-scaling`, `live-start-empty`. CONFIRMED.
-- K12 History Restore reaches into `Configuration._data`. CONFIRMED (`history_model.py:307`).
-- K13 `config.py` imports UI and module code. CONFIRMED (`config.py:22,101,261`).
-- K14 `shutdown_cleanup` runs twice and may build singletons (Q11). CONFIRMED / SUSPECTED.
-- K15 Second copy, Yes with the lock still held starts silently without it (Q9). CONFIRMED.
-- K16 The help Options topic is out of date (Q13). CONFIRMED.
-- K17 Option wording against the glossary (Q14). CONFIRMED.
-- K18 Time not through `gremlin.clock` in `watchdog.py`, `config.py` and `joystick_gremlin.py`. CONFIRMED (low).
-- K19 The Live Log Reader's 400 ms refresh calls `logs_dir()` (reads settings and runs `mkdir`). When any file changed under All logs, it reads up to 4 × 512 KB on the main thread. [code only], not measured.
-- K20 `Configuration.register` logs a Warning at every start when the PC's IP list changed (the OSC host choices: `joystick_gremlin.py:775-789`, `config.py:300-305`). OSC parked: mapped only.
+Code differs from the spec or a rule (the 6 Oct list; status 9 Oct from claude/gap-list.md: all but K20 done)
+- K1 The X can leave the program running with no main window while a tool window is open (Q1). SUSPECTED (`Main.qml:1366-1388`, `helpers.js:47`). **Done (GL-110, batch 2).**
+- K2 Exit with Minimize to tray on may be refused by the tray's close filter (Q2). SUSPECTED; not covered by any test. **Done (GL-111, batch 2).**
+- K3 The window place isn't saved when the X hides to the tray (Q3). SUSPECTED (W-21 open in the test plan). **Done (GL-112, batch 2).**
+- K4 Start-up failures before `main()` bypass the box and the logs (S16, Q8). CONFIRMED (`joystick_gremlin.py:44-125`). **Done (GL-034, batch 2).**
+- K5 Logs folder change mid-session splits writers (fixed at start: `joystick_gremlin.py:821-836`, `qt_log.install :1079`, `error_report.install :897`) from readers (`live_debug.py:351-356` call `logs_dir()` each time). CONFIRMED. **Done (GL-113, batch 2).**
+- K6 The chosen data folder falls back silently (Q5). In `_configured_child` the fallback `mkdir` is unguarded (`util.py:890-891`), so a data folder that can't be written can raise. CONFIRMED. **Done (GL-033, GL-114, batch 2).**
+- K7 A failed settings write is only logged (Q6). CONFIRMED (`deferred_write.py:100-105`). **Done (GL-026, batch 2).**
+- K8 History Restore doesn't re-apply settings that act at once (Q7). SUSPECTED (`history_model.py:294-316`; `apply_log_level` isn't tied to `configChanged`). **Done (GL-115, batch 2).**
+- K9 `MainTimer` isn't tracked by `gremlin.threads` (Q10, AU-116). CONFIRMED (`threads.py:93-126`). **Done (GL-047, batch 1).**
+- K10 No owner for the list of setting keys; `purge_unused` depends on everything being registered first (rule break, AU-47 class). CONFIRMED. **Done (GL-117, batch 2).**
+- K11 Keys defined twice: `ui-scale`, `disable-windows-scaling`, `live-start-empty`. CONFIRMED. **Done (GL-234, batch 3).**
+- K12 History Restore reaches into `Configuration._data`. CONFIRMED (`history_model.py:307`). **Done (GL-235, batch 3).**
+- K13 `config.py` imports UI and module code. CONFIRMED (`config.py:22,101,261`). **Done (GL-236, batch 3).**
+- K14 `shutdown_cleanup` runs twice and may build singletons (Q11). CONFIRMED / SUSPECTED. **Done (GL-063, batch 1).**
+- K15 Second copy, Yes with the lock still held starts silently without it (Q9). CONFIRMED. **Done (GL-116, batch 2).**
+- K16 The help Options topic is out of date (Q13). CONFIRMED. **Done (GL-202, batch 3).**
+- K17 Option wording against the glossary (Q14). CONFIRMED. **Done (GL-203, batch 3).**
+- K18 Time not through `gremlin.clock` in `watchdog.py`, `config.py` and `joystick_gremlin.py`. CONFIRMED (low). **Done (GL-002/GL-265: `gremlin.clock` has a monotonic time).**
+- K19 The Live Log Reader's 400 ms refresh calls `logs_dir()` (reads settings and runs `mkdir`). When any file changed under All logs, it reads up to 4 × 512 KB on the main thread. [code only], not measured. **Done (GL-118, batch 2).**
+- K20 `Configuration.register` logs a Warning at every start when the PC's IP list changed (the OSC host choices: `joystick_gremlin.py:775-789`, `config.py:300-305`). OSC parked: mapped only. **Open, OSC parked (GL-282).**
 
 Open tracker items for this subsystem
 - AU-56 (open, on hold): at 200% UI scale on a small screen, contents are cut off, including Options search and the main toolbar.
-- AU-119 (open): about 20 tests wait a fixed short time, including the watchdog test.
-- AU-116 (open, Run lifecycle map): Tempo, Double Tap and Smart Toggle timers aren't cancelled at Stop; K9 is the shell's side of it.
+- AU-119 (open, GL-001): about 20 tests wait a fixed short time, including the watchdog test.
+- AU-116: done in batch 1 (GL-047); K9 was the shell's side of it.
 - AU-74 (won't fix, your choice): no Run/Stop in a menu, the palette or a shortcut.
 - C4 (won't fix): menus hide rather than grey out. C19 (won't fix): Close buttons and Esc differ between tool windows.
-- Test plan W-21 / S-21 (window place when closing to the tray): never ticked.
+- Tray in real use has no test (GL-007, needs hands-on); restart, folder changes and update skip have no tests (GL-008).
+
+Open to-do items (claude/todo.md) for this page
+- 45 (parked, D-01-CANVAS-EXEMPT): the Button Map canvas editor (chip names, text boxes, table cells) and the Layers panel rename are not yet the shared Rename box (S135).
+- 52 (being built 9 Oct): the shared pieces of S140-S143 are made; moving every delete/clear question, search box, message line, heading, empty state, file chooser and Undo bar onto them is in progress.
+- 53, 54: Help gap fill and Show me links: built (384891fb, ec5a042b); keep `test_help_guide.py` and `test_help_links_resolve.py` passing as the program changes.
+- Test housekeeping owned by `gremlin.threads` / the test runner: 42 (test teardown hang after atexit, Home models left alive), 43 (exit-hang check: built, a warning until 42 is fixed), 44 (tests never load the real vJoy driver: `test/vjoy_guard.py`), 47 (order-dependent failures: a test leaves `log-when-not-responding` unregistered), 50 (silent test-process death in unit-3).
 
 Things nothing owns
-- The list of settings keys, their defaults and who may write each one (see K10).
 - What `signal.configChanged` means: it is used for "any setting changed" and as a general reload trigger (Q12).
-- Module Setup's window is kept in `Main.configureWin` (`Main.qml:165`), outside the shared window list in `window_registry.js`.
+- (owned now) the list of settings keys (GL-117) and Module Setup's place in the window list (GL-238).
 
 ## 11. Size and test coverage
 
-Size: about 9,500 lines across ~45 files. Python is ~6,300 lines (`joystick_gremlin.py` 1138, `option.py` 856, `live_debug.py` 916, `config.py` 551, `window_placement.py` 519, `update_model.py` 449, `system_tray.py` 332, the rest under 200 each, plus the folder part of `util.py` ~250). QML/JS is ~5,000 lines: `Main.qml` 1898 (roughly a third is shell; the rest is page loaders and room switching owned by other subsystems), `DialogLiveLog.qml` 690, `help_topics.js` 509, `ConfigGroup.qml` 348, the other Options and dialog files 30-240 each.
+Size (9 Oct): about 17,000 lines across ~85 files. Python is ~8,600 lines (`joystick_gremlin.py` 1257, `option.py` 1021, `live_debug.py` 948, `config.py` 673, `update_model.py` 591, `window_placement.py` 519, `validate.py` 489, `updater.py` 357, `system_tray.py` 344, `diagnostics.py` 325, the rest under 200 each, plus the folder part of `util.py` ~250). QML/JS is ~8,400 lines: `Main.qml` 2624 (roughly a third is shell), the Help book `qml/help/` 3,531, `DialogHelp.qml` 913, `DialogLiveLog.qml` 718, the shared pieces ~800, the Options and dialog files 30-360 each.
 
 Covered by tests (about 40 files, ~250 tests):
 - Start-up, second copy, could not start, off-screen and imports: `test_could_not_start.py` (3), `test_second_copy_detection.py` (10), `test_audit3_startup.py` (12), `test_audit2_startup_devices.py` (part), `test_program_imports.py`, `test_modules_import_alone.py`, `test_startup_messages.py` (9), `test_startup_settings_kept.py` (2), `test_restart_command.py` (2), `test_user_data_folder.py` (2), `test_open_folders.py` (4).
@@ -438,18 +492,18 @@ Covered by tests (about 40 files, ~250 tests):
 - Threads, errors, freeze: `test_threads.py` (9), `test_bounded_waits.py` (5), `test_error_report.py` (5), `test_watchdog.py` (4), `test_qt_log.py` (4).
 - Logs: `test_live_log_debug.py` (9), `test_live_log_view.py` (3), `test_log_feed.py` (5).
 - Updates: `test_update_check.py` (13), `test_update_model.py` (4), `test_program_fixes.py` (update and start-up part).
-- Main window: `test_menus.py` (5), `test_main_window_fits.py` (4), `test_tray_memory.py` (3, off-screen), `test_help_guide.py` (6), `test_usability_fixes.py`, `test_data_safety.py`.
+- Main window: `test_menus.py` (5), `test_main_window_fits.py` (4), `test_final_01.py` (title ends with the version, S57), `test_tray_memory.py` (3, off-screen), `test_usability_fixes.py`, `test_data_safety.py`.
+- Help (S128-S139): `test_help_guide.py`, `test_one_help_window.py`, `test_help_search.py`, `test_help_search_bar.py`, `test_help_list.py`, `test_help_links.py`, `test_help_links_resolve.py` (every link leads to something real), `test_help_reveal.py`, `test_help_topics_script.py`.
+- Shared pieces (S134-S136, S140-S143): leave text, rename and tooltip (`test_leave_text*.py`, `test_rename_*.py`, `test_one_tooltip.py`); `test_confirm_dialog.py` (the shared question; also a Window declared inside another object: `confirm.js` knows a Window by its `visibility` property), `test_search_box.py`, `test_message_line.py`, `test_shared_pieces.py` (DangerButton, SectionHeading, EmptyState, UndoBar, FilePicker), `test_folder_memory.py` (incl. `test_save_picker_keeps_a_bare_name_with_nothing_remembered`); per window: `test_options_shared_pieces.py` (S140, S141, S143), `test_help_search_bar.py` (S137, S141), `test_leave_text_windows.py::test_options_first_esc_leaves_box_second_closes` (S134, S141), `test_tools2_shared_pieces.py` (Live Log, Save Diagnostics), `test_main_shared_pieces.py` + `main_shared_pieces_smoke.py` (Save As / Open, Delete Device, Scripts, Screen Background, OSC Clear), `test_config_pages_shared_pieces.py` (Options Logs folder).
+- Save Diagnostics (S132): `test_diagnostics_zip.py`, `test_diagnostics_ui.py`. Input Monitor: `test_input_monitor.py`. Rule checks: `test_validate.py`. Map and change control: `test_program_map_covers_files.py`, `test_spec_line.py`.
 
 Obvious untested paths
 - The tray in real use: Minimize to tray, the X hiding the window, the one-time balloon (`minimize-to-tray`, `tray-notice-shown`: no test names them), tray Exit, and Exit with Minimize to tray on (K2). Off-screen runs make no tray icon, so tests can't reach these.
-- Closing the main window with a tool window open (K1).
 - `main()`'s restart path (`QProcess.startDetached` after quit); only `restart_command` is tested.
 - Changing the data folder or the logs folder (`data-folder`: no test), `ensure_data_folders`, and the silent fallback.
-- A settings file that can't be written (K7); `_keep_damaged_file` when the rename itself fails.
-- `threads.main_timer` / `MainTimer` (one indirect reference, no direct test).
-- `UpdateModel.skipVersion` and `openReleasePage` (no test calls them; `should_offer` is tested).
-- History Restore of a setting that acts at once (K8).
-- Failures before `main()` (K4).
+- `_keep_damaged_file` when the rename itself fails.
+- `UpdateModel.skipVersion` and `openReleasePage` (no test calls them; `should_offer` is tested; GL-008).
+- Help links that open a window needing a device, checked only off-screen; the Help window at 200% UI scale.
 
 ## 12. Review (user, 2026-10-06)
 

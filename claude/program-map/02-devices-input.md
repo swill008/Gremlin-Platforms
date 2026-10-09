@@ -1,6 +1,6 @@
 # Devices and raw input
 
-Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them before a step starts.
+Mapped against code at 4f6bdfa4 (6 Oct); sections 2-6, 10 and 11 brought up to date 9 Oct (after catch-up batches 1-3 and the Device Library). Line numbers drift; re-check them before a step starts.
 
 ## 1. Purpose
 
@@ -12,33 +12,39 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 |---|---|
 | `dill/__init__.py` (394) | ctypes wrapper for `dill.dll` (DirectInput): `GUID`, `DeviceSummary` (name, VID/PID, axis/button/hat counts, axis map, `vjoy_id`), `InputEvent`, `DILL` static API (`init`, `get_device_count`, `get_device_information_by_index/guid`, `device_exists`, `get_axis/button/hat`, `set_input_event_callback`, `set_device_change_callback`). Fixed ids: `UUID_Keyboard`, `UUID_Virtual`, `UUID_LogicalDevice`, `UUID_Invalid`. |
 | `dill/dill.dll` | Native DirectInput listener; runs its own thread and calls back into Python. |
-| `gremlin/device_initialization.py` (377) | The device list: scan (`joystick_devices_initialization`), twin naming (`_name_twins`), vJoy-to-DirectInput matching and "vJoy left out" messages, list getters (`joystick_devices`, `physical_devices`, `vjoy_devices`, `input_devices`, `output_vjoy_devices`, `device_for_uuid`, `device_name`). |
-| `gremlin/event_handler.py` (754) | `Event` (one input event), `EventListener` (singleton: DLL callbacks, keyboard/mouse hooks, calibration, hot-plug timer, unplug let-go, Qt signals), `EventHandler` (singleton: callback table per device/mode/input, `known_modes`, pause/resume, `process_event`). |
-| `gremlin/input_cache.py` (537) | `DeviceDatabase` (input labels from `device_db.json` by VID/PID), `JoystickWrapper` (last value of every axis/button/hat of one stick, `let_go`), `Joystick` (singleton cache of wrappers, plus the Logical Device), `Keyboard` (pressed-key cache). |
-| `gremlin/windows_event_hook.py` (363) | Low-level Windows keyboard and mouse hooks (`KeyboardHook`, `MouseHook`), each with its own thread and message loop; `enabled` switch (off in tests and off-screen). |
-| `gremlin/keyboard.py` (414) | `Key` (name, scan code, extended flag, virtual key), key tables (`g_name_to_key`, `g_scan_code_to_key`), `key_from_name`, `key_from_code`, `modifier_keys`, `send_key_down/up` (keybd_event). |
-| `gremlin/input_refresh.py` (38) | `RefreshPhysicalInputs.refresh_axes`: re-sends cached axis values (Run start, mode change). |
+| `gremlin/device_initialization.py` (570) | The device list: scan (`joystick_devices_initialization`), twin naming (`_name_twins`), vJoy-to-DirectInput matching and "vJoy left out" messages, list getters (`joystick_devices`, `physical_devices`, `vjoy_devices`, `input_devices`, `output_vjoy_devices`, `device_for_uuid`, `device_name`). |
+| `gremlin/event_handler.py` (825) | `Event` (one input event), `EventListener` (singleton: DLL callbacks, keyboard/mouse hooks, calibration, hot-plug timer, unplug let-go, Qt signals), `EventHandler` (singleton: callback table per device/mode/input, `known_modes`, pause/resume, `process_event`, which also feeds the Input Monitor tap, `gremlin/input_monitor.py`, page 01). |
+| `gremlin/input_cache.py` (581) | `DeviceDatabase` (input labels from `device_db.json` by VID/PID), `JoystickWrapper` (last value of every axis/button/hat of one stick, `let_go`), `Joystick` (singleton cache of wrappers, plus the Logical Device), `Keyboard` (pressed-key cache). |
+| `gremlin/windows_event_hook.py` (479) | Low-level Windows keyboard and mouse hooks (`KeyboardHook`, `MouseHook`), each with its own thread and message loop; `enabled` switch (off in tests and off-screen). The mouse hook has a start/stop count (Listen and macro Record share it); a slow key (`SLOW_KEY_MS` 200) is noticed. |
+| `gremlin/keyboard.py` (439) | `Key` (name, scan code, extended flag, virtual key), key tables (`g_name_to_key`, `g_scan_code_to_key`), `key_from_name`, `key_from_code`, `modifier_keys`, `send_key_down/up` (keybd_event). |
+| `gremlin/input_refresh.py` (43) | `RefreshPhysicalInputs.refresh_axes`: re-sends cached axis values (Run start, mode change). |
 | `gremlin/device_helpers.py` (157) | `JoystickInputSignificant` (is an axis move big enough to count; used by highlight and Listen), `AxisChangeSignificanceTracker` (macro recording). |
-| `gremlin/process_monitor.py` (131) | `ProcessMonitor` (polls the foreground program once a second, emits its path), `list_current_processes` (WMI list for the auto-load picker). |
-| `gremlin/modules/hardware.py` (40) | The UI's door to the driver: `device_info` (raises for an unplugged stick), `device_connected`. |
+| `gremlin/process_monitor.py` (135) | `ProcessMonitor` (polls the foreground program once a second, emits its path), `list_current_processes` (WMI list for the auto-load picker). |
+| `gremlin/modules/hardware.py` (48) | The UI's door to the driver: `device_info` (raises for an unplugged stick), `device_connected`. |
 | `gremlin/modules/runtime.py` (first ~140 lines) | `InputModuleRuntime`: the only consumer allowed to turn raw events into profile events (claims gate). Owned by the Input modules page; listed here as the first stop after raw input. |
-| `gremlin/ui/hidhide.py` (1808) | HidHide driver client (IOCTLs on `\\.\HidHide`), HID device enumeration (SetupAPI/cfgmgr32/hid.dll), saved HidHide choices, `HidHideModel` (QML), `apply_on_start`, `apply_saved_list`. |
+| `gremlin/hidhide_driver.py` (980) | HidHide driver client, split out of the screen (D-02-Q10): control device calls (IOCTLs on `\\.\HidHide`: `get/set_active`, `get/set_inverse`, black and white lists, `driver_version`, `driver_present`), the HID device list (SetupAPI, cfgmgr32, hid.dll: `list_hid_devices`, gaming-only filter, names, container grouping), program image paths, `last_error`. Does not ship or install the driver. |
+| `gremlin/ui/hidhide.py` (1015) | The HidHide screen side: saved HidHide choices (games, photos, module links, hidden devices), `HidHideModel` (QML), `apply_on_start`, `apply_saved_list`. |
 | `gremlin/ui/util.py` (lines 50-292, 294-435) | `InputListenerModel` ("Listen for input", Esc-hold abort), `MacroRecorder` (records raw key/mouse/stick events), `ProcessListModel` (running programs for auto-load). |
 | `gremlin/ui/device.py` (lines 182-298) | `DeviceListModel` (Device Information table, device pickers). Also `DeviceAxisSeries` and `AxisCalibration` (raw axis readers, Calibration page). |
-| `gremlin/ui/device_names.py` (96) | `DeviceNames`: user aliases for devices (setting `devices/display/aliases`). |
+| `gremlin/device_aliases.py` (134) | The names the user gives devices (Home card name, 10 S7), kept in the setting `devices/display/aliases`; not UI. The Device Library reads and renames through it. |
+| `gremlin/ui/device_names.py` (79) | `DeviceNames`: relays alias changes to QML. |
 | `gremlin/ui/backend.py` (lines 240-420) | Starts `ProcessMonitor`; `_device_change` (Device change behavior: Reload / Ignore / Disable); `_active_process_changed_cb` (auto-load); `_highlight_input` (raw input highlighting). |
 | `joystick_gremlin.py` | Start-up order (`_no_hooks_offscreen` 880s, `hidhide.apply_on_start` 893, `DILL.init` 902, first scan 905, `MainFailure.qml` on scan error 909-918, `announce_vjoy_problems` 943), `shutdown_cleanup` 240 (listener, hooks, process monitor), option `device-change-behavior` 667. |
 | `vigem/ids.py`, `vigem/own_pads.py` | Tell Gremlin's own virtual Xbox pads from real ones so the scan and hot-plug ignore them (owned by the Xbox output page). |
-| `qml/DialogHardwareHide.qml` (539) | Tools > Device Setup > HidHide window. |
-| `qml/InputListener.qml` (139) | The "Listen" button used by Keyboard list and Script settings. |
-| `qml/KeyboardInputList.qml` (192) | Keyboard device page; adds keys with InputListener. |
+| `qml/DialogHardwareHide.qml` (563) | Tools > Device Setup > HidHide window. Remove program asks the shared question (`confirmRemoveGame` :54); headings are `SectionHeading`, empty lists `EmptyState`; its choosers are `FilePicker` kinds "picture" (device photo) and "other" (program). |
+| `qml/InputListener.qml` (137) | The "Listen" button used by Keyboard list and Script settings. |
+| `qml/KeyboardInputList.qml` (219) | Keyboard device page; adds keys with InputListener. |
 | `qml/DialogDeviceInformation.qml` (208) | Tools > Device Setup > Device Information (DeviceListModel "all"). |
 | `qml/DialogInputViewer.qml` (103) | vJoy Viewer (reads the claimed feed, not raw; listed for completeness). |
-| `qml/OptionProfileAutoLoading.qml` (237) | Options > Profiles > Auto-load (program list, profiles, Keep running). |
+| `gremlin/ui/viewer_devices.py` (228) | The vJoy Viewer's device list and pairing labels (`Gremlin.Device`); re-reads on `device_change_event`; reads vJoy through the output module. |
+| `qml/InputViewerCard.qml` (320), `qml/AxesStateSeries.qml` (133) | One device card in the vJoy Viewer (axes, buttons, hats), and its scrolling axis graph. |
+| `gremlin/ui/xbox_viewer.py` (413) | The Xbox Viewer's model: Gremlin's Xbox pads through the output module, their pairing and state (`xbox_maps`). |
+| `qml/DialogXboxViewer.qml` (107), `qml/XboxViewerCard.qml` (243), `qml/Xbox360Face.qml` (153) | Tools > Viewers > Xbox Viewer window, one pad card, the pad picture. |
+| `qml/OptionProfileAutoLoading.qml` (276) | Options > Profiles > Auto-load (program list, profiles, Keep running). |
 | `qml/MainFailure.qml` | Window shown when the first device scan fails. |
 | `device_db.json` | Built-in input labels per VID/PID. |
-| `test/fake_hardware.py` (116), `test/fake_input.py` (47) | Fake dill.dll and vJoy queries; fake keyboard/mouse so tests never touch the PC. |
-| Tests | `test_device_scan.py`, `test_twin_devices.py`, `test_device_reconnect.py` (+ `device_reconnect_smoke.py`), `test_startup_messages.py`, `test_raw_input_listeners.py`, `test_keyboard_gate.py`, `test_hidhide_group.py`, `test_hidhide_log.py`, `test_dill.py`, `test_device_fixes.py`, `test_xbox_pads_told_apart.py`, `test_threads.py`, `test_bounded_waits.py`, `test_audit3_startup.py`, `test_audit_runtime.py`, `test_audit3_run_stop.py`, `test_mode_refresh_and_add_key.py`, `test_audit2_modes.py`, `test_audit3_modes.py`. |
+| `test/fake_hardware.py` (125), `test/fake_input.py` (47) | Fake dill.dll and vJoy queries; fake keyboard/mouse so tests never touch the PC. |
+| Tests | `test_device_scan.py`, `test_twin_devices.py`, `test_device_reconnect.py` (+ `device_reconnect_smoke.py`), `test_startup_messages.py`, `test_raw_input_listeners.py`, `test_keyboard_gate.py`, `test_hidhide_group.py`, `test_hidhide_log.py`, `test_dill.py`, `test_device_fixes.py`, `test_xbox_pads_told_apart.py`, `test_threads.py`, `test_bounded_waits.py`, `test_audit3_startup.py`, `test_audit_runtime.py`, `test_audit3_run_stop.py`, `test_mode_refresh_and_add_key.py`, `test_audit2_modes.py`, `test_audit3_modes.py`, viewers: `test_viewer_pair_label.py`, `test_vjoy_viewer_reads_output_module.py`, `test_xbox_viewer_driver_check.py`. |
 
 ## 3. What it owns
 
@@ -102,6 +108,8 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | Input highlighting | `Backend._highlight_input` | raw `joystick_event` -> `setInputIndex` | main |
 | Macro `JoystickAction`, `refresh_axes`, OSC, Hat as Buttons | `macro.py:596`, `input_refresh.py`, `osc.py:455,507`, `hat_buttons` | emit `joystick_event` / `virtual_event` themselves (synthetic events into the raw feed) | various |
 | Tools > Device Setup > HidHide | `DialogHardwareHide.qml` -> `HidHideModel` | `reload`, `setGremlinControl`, `setCloak`, `setInverse`, `setDeviceHidden`, `addGame`, `removeGame`, `setGamingOnly`, `setDevicePhoto`, `openGameControllers`, `openDownload`, window size | main |
+| HidHide: Remove program | `removeGame` -> `confirmRemoveGame` (`DialogHardwareHide.qml:54`) -> `Confirm.ask` (red Remove Program) | `HidHideModel.removeGame` | main |
+| HidHide: Add Program / device photo choosers | `FilePicker` ("other" / "picture") | `FolderMemory`; `addGame` / `setDevicePhoto` | main |
 | Options "Turn HidHide on at start" | `ui/option.py:83` | same setting as "Automatically Start" | main |
 | Foreground program changes | `ProcessMonitor._update` (1 s poll) | emit `process_changed(path)` -> `Backend._active_process_changed_cb` | monitor thread -> main |
 | Options auto-load "Select Executable" | `ProcessListModel.refresh` | `list_current_processes` (WMI) | main |
@@ -120,25 +128,25 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | Modes (`mode_manager.py`) | both | `Event.mode` stamped from `ModeManager.current`; `known_modes`, `rename_mode`, `drop_mode` |
 | Settings (`config.py`) | calls out | twin names, HidHide choices, aliases, device-change behaviour |
 | Profile (`shared_state.current_profile.settings.vjoy_as_input`) | reads | `input_devices`, `output_vjoy_devices` |
-| Home / Configuration / Calibration / Module Setup / viewers / Auto Mapper | called by | ~17 listeners on `device_change_event`; device getters |
+| Home / Configuration / Calibration / Module Setup / viewers / Auto Mapper / Device Library | called by | ~17 listeners on `device_change_event`; device getters |
 | Live Log Reader Input Monitor (`input_monitor.py`) | calls out | `process_event` records every event when on |
 | Errors (`signal.display_error`) | calls out | vJoy left out, hot-plug failure, VJoyError |
 | Logical Device | shares | `Joystick` cache holds the Logical Device under `UUID_LogicalDevice` |
 | OSC (parked) | called by | OSC emits on `joystick_event` with `OSC_DEVICE_UUID` |
 | Auto-load (Backend) | called by | `process_changed` |
-| Windows | calls out | DirectInput (dill.dll), SetWindowsHookEx, HidHide IOCTLs, SetupAPI/hid.dll, `keybd_event`, `joy.cpl`, WMI |
+| Windows | calls out | DirectInput (dill.dll), SetWindowsHookEx, HidHide IOCTLs and SetupAPI/hid.dll (all in `hidhide_driver.py`), `keybd_event`, `joy.cpl`, WMI |
 
 ## 6. Threads and timers
 
 | Thread / timer | Started by | Runs | Stops |
 |---|---|---|---|
 | dill.dll internal thread | `DILL.init` (native, not via `gremlin.threads`) | input and device-change callbacks into Python | never; callbacks swapped to no-ops at `terminate` |
-| "event listener" | `threads.start` (`event_handler.py:257`) | sets the two DLL callbacks, then waits on `_stop_event` | `_ask_to_stop` / `terminate` |
-| "device list update" timer, 0.2 s, restarted per device event | `threads.timer` (`event_handler.py:388`) | scan, settings write, module file read, `reset_vjoy`, let-go events, `device_change_event` | cancelled by a newer event, `terminate`, `shutdown_cleanup` |
-| "keyboard hook" | `threads.start` (`windows_event_hook.py:274`), at listener creation | message loop; every key in Windows passes through Python | WM_QUIT, `stop()` waits up to 2 s |
-| "mouse hook" | only while Listen or macro Record wants mouse | message loop | `stop()` (unconditional, see section 7) |
+| "event listener" | `threads.start` (`event_handler.py:267`) | sets the two DLL callbacks, then waits on `_stop_event` | `_ask_to_stop` / `terminate` |
+| "device list update" timer, 0.2 s, restarted per device event | `threads.timer` (`event_handler.py:414`) | scan, settings write, module file read, `reset_vjoy`, let-go events, `device_change_event` | cancelled by a newer event, `terminate`, `shutdown_cleanup` |
+| "keyboard hook" | `threads.start` (`windows_event_hook.py:317`), at listener creation | message loop; every key in Windows passes through Python | WM_QUIT, `stop()` waits up to 2 s |
+| "mouse hook" | only while Listen or macro Record wants mouse | message loop | when the last user stops it (start/stop count, `windows_event_hook.py` 442-473; GL-120) |
 | "process monitor" | `threads.start`, from `Backend.__init__` (always, even with auto-load off) | `GetForegroundWindow` every 1 s (`_stop.wait(1.0)`) | `stop()` joins 2 s |
-| "input listening abort" timer, 1 s | `threads.timer` (`ui/util.py:200`) on Esc press | `_abort_listening` (disconnects signals, stops mouse hook, emits) | cancelled by `_listening_done` |
+| "input listening abort" timer, 1 s | `threads.main_timer` (`ui/util.py:236`) on Esc press, on the main thread (GL-037) | `_abort_listening` (disconnects signals, stops mouse hook, emits) | cancelled by `_listening_done` |
 | Scan lock `_joystick_init_lock` | | waits at most `SCAN_WAIT_S` = 10 s, then raises | |
 | Signals crossing threads | `joystick_event`, `keyboard_event`, `mouse_event`, `device_change_event` are emitted off the main thread; receivers are QObjects on the main thread, so Qt queues them | | |
 
@@ -319,53 +327,51 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 
 ## 10. Known gaps
 
-**Code differs from the spec or a rule**
+**Code differs from the spec or a rule** (the 6 Oct list; catch-up batches 1-3 fixed all but G6 and G13, see Status)
 
-| # | Gap | Where |
-|---|---|---|
-| G1 | "vJoy as input" tick fakes a device change; can stop or restart a Run (RB6, Q1) | `ui/profile.py:1162` -> `ui/backend.py:305-315` |
-| G2 | Device list cleared and refilled while other threads read it (AU-64, RB5) | `device_initialization.py:270-272` |
-| G3 | Mouse hook has no owner count: Listen stopping it cuts off a macro recording of mouse and the other way round (RB7) | `ui/util.py:113`, `ui/util.py:370` |
-| G4 | Mouse "injected" filter is dead (RB15); mouse events carry a GUID object instead of the keyboard UUID (RB16) | `windows_event_hook.py:207`, `event_handler.py:504-508` |
-| G5 | Program's own keys come back as input (Q4) | `event_handler.py:467-469` |
-| G6 | Refresh axes sends 0 for axes not moved since start (Q7) | `input_cache.py:237-244`, `input_refresh.py:26-35` |
-| G7 | `Joystick.devices` never drops an unplugged stick; a stick that comes back with a different layout (same id) keeps the old wrapper, and an event for an input it doesn't know raises inside the DLL callback and is lost without a log line | `input_cache.py:477-507`, `event_handler.py:321,336,351` |
-| G8 | `JoystickWrapper.name` returns the driver's name, not the twin name (RB9) | `input_cache.py:298-304` |
-| G9 | Four separate naming paths (driver, twin, aliases, vJoy "name N") (RB9) | see RB9 |
-| G10 | `DeviceDatabase` returns early without `_device_db` when `device_db.json` is missing, so any later lookup raises AttributeError; it also opens the file without closing it | `input_cache.py:116-122` |
-| G11 | Device Information leaves out left-out vJoy devices and own Xbox pads (Q6) | `ui/device.py:262-272` |
-| G12 | HidHide device tick is saved even when the driver refuses (Q14) | `ui/hidhide.py:1668-1673` |
-| G13 | HidHide full list scan and driver calls on the main thread at every device change (RB14) | `ui/hidhide.py:1449-1485` |
-| G14 | Esc-abort of Listen runs Qt disconnects and a 2 s mouse-hook wait on a timer thread (RB11) | `ui/util.py:200-202`, `122-125` |
-| G15 | `time.monotonic` instead of `gremlin.clock` (RB1, RB2) | `windows_event_hook.py:288`, `vigem/own_pads.py` |
-| G16 | Twin names written to settings from the hot-plug timer thread (RB12) | `device_initialization.py:90` |
-| G17 | A key release lost by Windows (e.g. Ctrl+Alt+Del, a hook timeout) leaves the key "pressed" in the cache, so its next press is treated as a repeat and dropped once | `event_handler.py:473-477` |
-| G18 | The keyboard hook runs Python for every key in Windows the whole time the program is open; if the main thread holds Python too long, Windows silently removes a slow low-level hook and nothing notices or reinstalls it | `windows_event_hook.py:133-167`, `305-322` | 
-| G19 | An exception in a hook callback skips `CallNextHookEx` for that key (other programs' hooks miss it) | `windows_event_hook.py:161-167` |
-| G20 | Numpad Enter is sent with `VK_SEPARATOR`, not `VK_RETURN` with the extended flag | `keyboard.py:359` |
-| G21 | `ProcessMonitor` starts before `process_changed` is connected; the first foreground program can be missed | `ui/backend.py:253` vs `262` |
-| G22 | Listen does not ignore vJoy or Xbox echo events (only Logical/virtual), so while a profile runs it may catch the output of the press instead of the stick | `ui/util.py:158-166` |
-| G23 | Two switches for one HidHide setting (Q16) | `ui/option.py:83`, `DialogHardwareHide.qml:185` |
-| G24 | Glossary: "Device GUID" in Device Information, "restart Gremlin-Platforms" in a sentence (Q12, Q17) | `DialogDeviceInformation.qml`, `device_initialization.py:309` |
+| # | Gap | Where | Status (9 Oct, claude/gap-list.md) |
+|---|---|---|---|
+| G1 | "vJoy as input" tick fakes a device change; can stop or restart a Run (RB6, Q1) | `ui/profile.py:1162` -> `ui/backend.py:305-315` | done GL-119 |
+| G2 | Device list cleared and refilled while other threads read it (AU-64, RB5) | `device_initialization.py:270-272` | done GL-035 |
+| G3 | Mouse hook has no owner count: Listen stopping it cuts off a macro recording of mouse and the other way round (RB7) | `ui/util.py:113`, `ui/util.py:370` | done GL-120 |
+| G4 | Mouse "injected" filter is dead (RB15); mouse events carry a GUID object instead of the keyboard UUID (RB16) | `windows_event_hook.py:207`, `event_handler.py:504-508` | done GL-239 |
+| G5 | Program's own keys come back as input (Q4) | `event_handler.py:467-469` | done GL-121 |
+| G6 | Refresh axes sends 0 for axes not moved since start (Q7) | `input_cache.py:237-244`, `input_refresh.py:26-35` | won't fix GL-122 (D-02-AXIS-START) |
+| G7 | `Joystick.devices` never drops an unplugged stick; a stick that comes back with a different layout (same id) keeps the old wrapper, and an event for an input it doesn't know raises inside the DLL callback and is lost without a log line | `input_cache.py:477-507`, `event_handler.py:321,336,351` | done GL-123 |
+| G8 | `JoystickWrapper.name` returns the driver's name, not the twin name (RB9) | `input_cache.py:298-304` | done GL-124 |
+| G9 | Four separate naming paths (driver, twin, aliases, vJoy "name N") (RB9) | see RB9 | done GL-124 |
+| G10 | `DeviceDatabase` returns early without `_device_db` when `device_db.json` is missing, so any later lookup raises AttributeError; it also opens the file without closing it | `input_cache.py:116-122` | done GL-036 |
+| G11 | Device Information leaves out left-out vJoy devices and own Xbox pads (Q6) | `ui/device.py:262-272` | done GL-136 |
+| G12 | HidHide device tick is saved even when the driver refuses (Q14) | `ui/hidhide.py:1668-1673` | done GL-133 |
+| G13 | HidHide full list scan and driver calls on the main thread at every device change (RB14) | `ui/hidhide.py:1449-1485` | checked GL-134: no change needed; hands-on timing check left |
+| G14 | Esc-abort of Listen runs Qt disconnects and a 2 s mouse-hook wait on a timer thread (RB11) | `ui/util.py:200-202`, `122-125` | done GL-037 |
+| G15 | `time.monotonic` instead of `gremlin.clock` (RB1, RB2) | `windows_event_hook.py:288`, `vigem/own_pads.py` | done GL-265 |
+| G16 | Twin names written to settings from the hot-plug timer thread (RB12) | `device_initialization.py:90` | done GL-045 |
+| G17 | A key release lost by Windows (e.g. Ctrl+Alt+Del, a hook timeout) leaves the key "pressed" in the cache, so its next press is treated as a repeat and dropped once | `event_handler.py:473-477` | done GL-125 |
+| G18 | The keyboard hook runs Python for every key in Windows the whole time the program is open; if the main thread holds Python too long, Windows silently removes a slow low-level hook and nothing notices or reinstalls it | `windows_event_hook.py:133-167`, `305-322` | done GL-126 |
+| G19 | An exception in a hook callback skips `CallNextHookEx` for that key (other programs' hooks miss it) | `windows_event_hook.py:161-167` | done GL-127 |
+| G20 | Numpad Enter is sent with `VK_SEPARATOR`, not `VK_RETURN` with the extended flag | `keyboard.py:359` | done GL-128 |
+| G21 | `ProcessMonitor` starts before `process_changed` is connected; the first foreground program can be missed | `ui/backend.py:253` vs `262` | done GL-129 |
+| G22 | Listen does not ignore vJoy or Xbox echo events (only Logical/virtual), so while a profile runs it may catch the output of the press instead of the stick | `ui/util.py:158-166` | done GL-131 |
+| G23 | Two switches for one HidHide setting (Q16) | `ui/option.py:83`, `DialogHardwareHide.qml:185` | done GL-135 |
+| G24 | Glossary: "Device GUID" in Device Information, "restart Gremlin-Platforms" in a sentence (Q12, Q17) | `DialogDeviceInformation.qml`, `device_initialization.py:309` | done GL-206, GL-209 |
 
 **Open tracker items for this subsystem**
 
-- AU-64 (open): suspected races and mismatched lookups; the device-list race (G2) is still unverified.
+- AU-64: the device-list race (G2) is fixed (GL-035: the new list is built aside and swapped in one step).
 - AU-58 (in progress): card menus offering things that don't apply; only OSC empty-state text left (OSC parked).
 - DEV12 (wont-fix): HidHide may leave devices hidden after control is turned off or the program is uninstalled; user decision, kept as S69.
 - APP5, APP13 (open): OSC listener port; OSC is parked, mapped only.
 
 **Things nothing owns**
 
-- The mouse hook (Listen and macro Record both start/stop it).
-- `device_change_event` emission (the scan and Profile Settings both emit it).
-- Device naming (four places, no single "shown name" owner).
-- Stale entries: `twin-device-names`, `devices/display/aliases`, `Joystick.devices` and HidHide photo links are never cleaned.
+- (owned now) The mouse hook has a start/stop count (GL-120); only the scan emits `device_change_event` (GL-119); one shown name per device (GL-124, `device_aliases.py`); a device with no module file that isn't plugged in is forgotten (GL-243, D-02-GL243-FORGET), and Remove from Library forgets its settings (`gremlin/device_forget.py`, page 10).
+- Stale entries: HidHide photo links of devices never seen again are still kept.
 - Synthetic events: macros, OSC, refresh axes and Hat as Buttons all emit on the raw `joystick_event`/`virtual_event`; nothing marks them as synthetic.
 
 ## 11. Size and test coverage
 
-**Size**: about 7,500 lines of Python and QML in the files above (largest: `ui/hidhide.py` 1,808; `event_handler.py` 754; `input_cache.py` 537; `DialogHardwareHide.qml` 539), plus the native `dill.dll`.
+**Size** (9 Oct): about 9,000 lines of Python and QML in the files above (largest: `ui/hidhide.py` 1,015 and `hidhide_driver.py` 980, once one 1,808-line file; `event_handler.py` 825; `input_cache.py` 581; `device_initialization.py` 570; `DialogHardwareHide.qml` 563; the viewers about 1,600), plus the native `dill.dll`.
 
 **Covered by tests** (37 pass in the files run for this map: `test_device_scan`, `test_twin_devices`, `test_raw_input_listeners`, `test_hidhide_group`, `test_hidhide_log`, `test_keyboard_gate`, `test_dill`, `test_startup_messages`):
 
@@ -380,19 +386,21 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 - Hooks off in tests and off-screen; hook stop does not hang: `test_bounded_waits.py`, `test_threads.py`, `test_audit3_startup.py`.
 - Process path read: `test_audit_runtime.py::test_the_program_path_is_read_in_full`. Auto-load: `test_audit_saving.py`, `test_audit2_saving.py`, `test_autoload_and_mode_prompts.py`.
 - Modes known/renamed: `test_audit2_modes.py`, `test_modes.py`, `test_audit3_modes.py`.
+- Catch-up batch 2 fixes (hook keeps passing keys on, hook put back, own keys marked and ignored, lost release, Numpad Enter, missing `device_db.json`, Esc-hold Listen on the main thread, mouse hook count, Listen ignores vJoy/own pads, stick back with more buttons, unknown input logged, shown name in the cache): `test_batch2_b2a_input_events.py` (21), `test_batch2_b2b.py`, `test_batch2_b4.py`, `test_stage1_app_profile.py`.
+- Viewers: `test_viewer_pair_label.py`, `test_vjoy_viewer_reads_output_module.py`, `test_xbox_viewer_driver_check.py`. Highlight holders (Listen, Record): `test_handson_T36_highlight_holders.py`.
+- HidHide window shared pieces (Remove program question, SectionHeading, EmptyState, choosers): `test_tools2_shared_pieces.py`; it fits: `test_pages_fit.py`.
 
 **Obvious untested paths**
 
-- `windows_event_hook.process_keyboard_event` / `process_mouse_event` (repeat filter, AltGr, extended keys, injected flag): no test calls them (tests fake the hook).
-- `keyboard.key_from_code`, `send_key_down/up`, key table correctness (Numpad Enter, Right Shift twins).
+- `windows_event_hook.process_mouse_event`, AltGr and the repeat filter of `process_keyboard_event` (the batch 2 tests drive the injected mark, the failing callback and the put-back; GL-009 is still open for the rest).
+- `keyboard.key_from_code`, key table correctness (Right Shift twins); Numpad Enter is now tested.
 - `EventListener._joystick_event_handler` and `_apply_calibration` on real DLL data; `JoystickWrapper` bounds; an event for an unknown device.
-- `InputListenerModel`: single vs several inputs, Esc hold/tap, mouse wheel; only one screen test touches it.
-- `MacroRecorder` with mouse plus Listen at the same time (G3).
+- `InputListenerModel`: several inputs, mouse wheel (Esc hold/tap and the vJoy/own-pad filter are now tested).
 - HidHide: `apply_saved_list`, `apply_on_start` with the driver present, `setDeviceHidden` failure path, whitelist building, Allow/Block switch. All need the real driver (test-plan section 13 is [U]).
 - `ProcessMonitor._update` loop and signal timing (G21); WMI `list_current_processes`.
-- `DeviceDatabase` with a missing or damaged `device_db.json` (G10).
+- `DeviceDatabase` with a damaged `device_db.json` (missing is tested).
 - `EventHandler.build_event_lookup` (parent-mode copy) directly; covered only through action tests.
-- Device-list race under hot-plug (G2); nothing drives scans and reads in parallel.
+- Device-list race under hot-plug (G2 fixed by swapping the list in one step).
 - Real twin sticks and real DirectInput: only the fake driver is tested (test-plan TWIN-DEVICES says so).
 
 ## 12. Review (user, 2026-10-06)

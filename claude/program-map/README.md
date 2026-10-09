@@ -3,7 +3,7 @@
 One page per subsystem: what it owns, entry points, what it talks to,
 threads, rule breaks, the behaviour spec ("It should ..." statements S1..,
 each with its source), questions for the user (Q1..), known gaps and test
-coverage. Written read-only from the code at 4f6bdfa4 (2026-10-06).
+coverage. Written read-only from the code at 4f6bdfa4 (2026-10-06); sections 2-6, 10 and 11 brought up to date 2026-10-09, with each gap's status from `claude/gap-list.md`. Counts: S and Q are the numbered statements and questions (retired ones included); Gaps is the number of gap items listed in section 10, fixed or not.
 
 **The behaviour spec is approved (user, 2026-10-06)**: pages 06, 05 and 03
 reviewed answer by answer, the rest approved as recommended. On each page,
@@ -21,17 +21,17 @@ spec change. See "The plan" in `claude/system-maps.md`.
 
 | Page | Subsystem | S | Q | Gaps | Review |
 |---|---|---|---|---|---|
-| [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads | 131 | 16 | 20 | reviewed 2026-10-06 (all as recommended) |
+| [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads, Help, shared pieces | 143 | 16 | 20 | reviewed 2026-10-06 (all as recommended) |
 | [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide | 94 | 19 | 24 | reviewed 2026-10-06 (all as recommended) |
-| [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device | 122 | 18 | 34 | reviewed 2026-10-06 (all as recommended) |
-| [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 93 | 21 | 27 | reviewed 2026-10-06 (all as recommended) |
-| [05-actions-editors](05-actions-editors.md) | Action plugins, Configuration page, Keyboard page | 108 | 20 | 22 | reviewed 2026-10-06 (all as recommended) |
+| [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device | 122 | 18 | 37 | reviewed 2026-10-06 (all as recommended) |
+| [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 93 | 21 | 29 | reviewed 2026-10-06 (all as recommended) |
+| [05-actions-editors](05-actions-editors.md) | Action plugins, Configuration page, Keyboard page | 108 | 20 | 23 | reviewed 2026-10-06 (all as recommended) |
 | [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device | 85 | 19 | 18 | reviewed 2026-10-06 (all as recommended) |
-| [07-button-map](07-button-map.md) | Button Map editor, photos, recovery, print/export | 100 | 19 | 23 | reviewed 2026-10-06 (all as recommended) |
-| [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper | 103 | 21 | 30 | reviewed 2026-10-06 (all as recommended) |
-| [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (parked), sound, speech, tray, theme, help; leftover files | 89 | 20 | 27 | reviewed 2026-10-06 (all as recommended) |
-| [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 50 | 1 | S1-S41 built; S42-S50 approved, being built | approved 2026-10-08 |
-| **Total** | | **975** | **174** | **225** | |
+| [07-button-map](07-button-map.md) | Button Map editor, photos, recovery, print/export | 102 | 19 | 23 | reviewed 2026-10-06 (all as recommended) |
+| [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper | 111 | 21 | 30 | reviewed 2026-10-06 (all as recommended) |
+| [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (parked), sound, speech, tray, theme; shared widgets and foundations | 89 | 20 | 27 | reviewed 2026-10-06 (all as recommended) |
+| [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 58 | 1 | S1-S56 (+S20a, S53a) built; open items: to-dos 47, 50, 51, 52 | approved 2026-10-08 |
+| **Total** | | **1005** | **174** | **231** (+ page 10) | |
 
 ## Most serious findings (to confirm first)
 

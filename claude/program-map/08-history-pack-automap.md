@@ -10,27 +10,28 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 
 | Path | What it holds |
 |---|---|
-| `gremlin/history.py` (419) | The store: `AREAS` (profile, modules, button-map, settings), `record` / `write_now` / `later` (queue), writer thread `_run`, `flush`, `close` (quit), `_append` (one JSON line, starts a new line after a cut one), `entries` / `entry` (read, newest first, damaged lines skipped), `keep_file` / `kept_file` / `restore_file` (pictures by SHA-1 in `history\files`), `prune` (days, MB, snapshots, unused pictures), limits `KEEP_DAYS` 90, `MAX_MEGABYTES` 20, `SNAPSHOTS` 20. |
-| `gremlin/history_modules.py` (234) | Module-file entries: `text_before`, `note_write` (after a write), `delete_before` / `note_delete` / `deleting()` (around a delete), picture refs and keeping, `_record` (title, area Button Map vs Module files, skip view-only `ui` saves). Remembers each file's last pictures in `_last_pictures`. |
+| `gremlin/history.py` (787) | The store: `AREAS` (profile, modules, button-map, settings), `record` / `write_now` / `later` (queue), writer thread `_run`, `flush`, `close` (quit), `_append` (one JSON line, starts a new line after a cut one), `entries` / `entry` (read, newest first, damaged lines skipped), `keep_file` / `kept_file` / `restore_file` (pictures by SHA-1 in `history\files`), `prune` (days, MB, snapshots, unused pictures), limits `KEEP_DAYS` 90, `MAX_MEGABYTES` 20, `SNAPSHOTS` 20. Groups (`begin_group` / `end_group` / `group_entry`: several records as one entry, e.g. Remove from Library, Clear Setup, Delete Device). Clear History (08 S12b): `summary`, `clear_all` (refused while running), the red "History cleared" record (`CLEARED_KIND`), `add_cleared_listener` (the Device Library's Undo steps empty). |
+| `gremlin/history_modules.py` (275) | Module-file entries: `text_before`, `note_write` (after a write), `delete_before` / `note_delete` / `deleting()` (around a delete), picture refs and keeping, `_record` (title, area Button Map vs Module files, skip view-only `ui` saves). Remembers each file's last pictures in `_last_pictures`. |
 | `gremlin/history_profile.py` (262) | Profile entries: `changes()` compares two profile texts input by input (actions resolved by content, ids ignored) and by section (settings, logical-device, osc-device, modes, scripts); `record_save` queues it; `_record` writes one entry per change plus one "Saved X.xml" entry with both whole profiles packed (zlib + base64). |
-| `gremlin/ui/history_model.py` (436) | `HistoryModel` (QML `Gremlin.UI`): list, filter (JSON), search, `detail`, `restore`. `describe()` makes Before/After text; `_restore_input`, `_restore_profile`, `_restore_module`, `_restore_settings`. |
-| `qml/DialogHistory.qml` (326) | Tools > History window: Show (area), Search, Refresh, "Only ..." line with Show All, list, Before/After with Restore Before / Restore After behind a confirm. |
+| `gremlin/ui/history_model.py` (730) | `HistoryModel` (QML `Gremlin.UI`): list, filter (JSON), search, `detail` (Before/After lined up by `text_diff`, change blocks for Previous / Next Change), `restore`, `summary` / `clearAll` (Clear History). Device Library entries: text and Restore through `device_library` (10 S51). `describe()` makes Before/After text; `_restore_input`, `_restore_profile`, `_restore_module`, `_restore_settings`. |
+| `qml/DialogHistory.qml` (597) | Tools > History window: Show (area), Search, Refresh, "Only ..." line with Show All, list, Before/After side by side with changed words marked, Previous Change / Next Change, Restore Before / Restore After behind a confirm, Clear History… (red `DangerButton`, asks first with the shared question `Confirm.ask`). Search is the shared `SearchBox` (`historySearch`, "N found" / "Nothing matches"); an empty list shows `EmptyState`. |
+| `gremlin/text_diff.py` (124) | What changed between two texts, line by line and word by word, for the History window's Before and After (S104, D-08-HISTORY-DIFF): `rows` (same / removed / added / changed, with changed word ranges), `blocks` (first row of each change). |
 | `gremlin/config.py` (lines 97-106, 177-226, 265) | `settings_history_title`, `_settings_view` (user-facing settings only), `_record_history` (called from `save_now`). |
 | `gremlin/profile.py` (lines 904-927, 1126-1180) | `to_xml` calls `history_profile.record_save` when the text changed; `put_input` (used by Restore and Undo). |
 | `gremlin/modules/module_file.py` (lines 64-100, 107) | `write_text` (safe write; calls `history_modules.note_write`); `start_fresh` (no History). |
-| `gremlin/ui/device_pack.py` (1893) | Export: `assemble`, `pack_modes`, `_collect_wires`, `_rewrite_images`, `_output_doc`, `_pack_label`. Read: `_read_zip`, `describe_zip`, `_stage_images` (temp folder), `_too_new`. Import: `preview_import`, `apply_zip`, `_merge_module`, `_write_pictures`, `_write_module`, `_plan_wires`, `_apply_wires`, `_ensure_modes`, vJoy moves, Logical checks, `driver_notes`. Undo: `_last_import`, `undo_import`, `drop_import_undo`, `_put_back`. |
-| `gremlin/ui/hardware_profile.py` (parts) | Slots on `HardwareProfile` used by the pack window: `packDevices`, `peekPackDevice:1872`, `peekPackZip:1893`, `exportPack:1908`, `importPack:1957`, `previewPackImport:1991`, `undoPackImport:2007`, `keepPackImport:2013`, `canUndoPackImport:2020`, `showFolder`. Helpers the pack imports: `_replace_file:592` (second safe writer, calls History), `_unique_archive:1342`, `_match_pack_device:1308`, `_suggest_pack_name:1318`, `_known_pack_devices:1258`, `_read_json_dict:1238`. Deleted-devices backups: `delete_module_file:865`, `_keep_deleted_copy:908`, `_deleted_pack_path:935`, `delete_device:1099` (writes a pack with `assemble`), `_save_profile_wires:1033`. Module Setup import and its own Undo: `import_module_file:691`, `undo_last_import:661`. |
-| `qml/DialogDevicePack.qml` (952) | Tools > Device Setup > Device Pack: Export tab (device, photo, size, Wires in these modes, Made by, Note, Export..., Show Folder), Import tab (Choose Zip..., notes, driver line, Put this pack on, sections with tick boxes, Open All / Close All, Import, Undo Import), Replace warning with "Create the missing Logical Device inputs". |
-| `gremlin/auto_mapper.py` (257) | `AutoMapperOptions` (mode, combine, overwrite, claim outputs), `AutoMapper.generate_module_mappings`, skip report, `_source_uuid`, `_vjoy_limits`, `_get_used_vjoy_inputs`, `_create_new_mapping`. |
-| `gremlin/modules/auto_map.py` (145) | Input and output modules as the Auto Mapper sees them (`input_modules` collapses one device's several files to the bound one; `output_modules` = `output.vjoy_modules`); `merge_claim_into_output` (writes the output module's claim). |
+| `gremlin/ui/device_pack.py` (2420) | Export: `assemble`, `pack_modes`, `_collect_wires`, `_rewrite_images`, `_output_doc`, `_pack_label`. Read: `_read_zip`, `describe_zip`, `_stage_images` (temp folder), `_too_new`. Import: `preview_import`, `apply_zip`, `_merge_module`, `_write_pictures`, `_write_module`, `_plan_wires`, `_apply_wires`, `_ensure_modes`, vJoy moves, Logical checks, `driver_notes`. Undo: `_last_import`, `undo_import`, `drop_import_undo`, `_put_back`. |
+| `gremlin/ui/hardware_profile.py` (2398, parts) | Slots on `HardwareProfile` used by the pack window: `packDevices:1393`, `peekPackDevice:1402`, `peekPackZip:1454`, `exportPack:1499`, `importPack:1574`, `previewPackImport:1611`, `undoPackImport:1628`, `keepPackImport:1636`, `canUndoPackImport:1650`, `showFolder:1656`. Helpers the pack imports (now names kept from other modules, 479-496): `_replace_file`, `_unique_archive`, `_match_pack_device`, `_suggest_pack_name`, `_known_pack_devices`, `_read_json_dict`. Autosaves in the Device Library instead of the deleted devices folder (D-10-NO-DELETED-FOLDER): `_autosave_before_pack:557`, `delete_module_file:576`, `delete_device:679`. Module Setup import and its own Undo moved to `gremlin/modules/store.py` (`_file_import_undo`, `drop_file_import_undo`). |
+| `qml/DialogDevicePack.qml` (1041) | Tools > Device Setup > Device Pack: Export tab (device, photo, size, Wires in these modes, Made by, Note, Export..., Show Folder), Import tab (Choose Zip..., notes, driver line, Put this pack on, sections with tick boxes, Open All / Close All, Import, Undo Import), Replace warning with "Create the missing Logical Device inputs". Messages go on the shared `MessageLine` (`say()`, with an Undo Import link; the button is kept); Export… / Choose Zip… are `FilePicker` kind "device-pack" (`_save`, `_pick`), opening in the last device-pack folder. |
+| `gremlin/auto_mapper.py` (338) | `AutoMapperOptions` (mode, combine, overwrite, claim outputs), `AutoMapper.generate_module_mappings`, skip report, `_source_uuid`, `_vjoy_limits`, `_get_used_vjoy_inputs`, `_create_new_mapping`. |
+| `gremlin/modules/auto_map.py` (147) | Input and output modules as the Auto Mapper sees them (`input_modules` collapses one device's several files to the bound one; `output_modules` = `output.vjoy_modules`); `merge_claim_into_output` (writes the output module's claim). |
 | `gremlin/ui/auto_map_modules.py` (80) | `AutoMapInputModel`, `AutoMapOutputModel` (QML `Gremlin.Device`); reload on profileChanged, configChanged, device change. |
 | `gremlin/ui/tools.py` (lines 31-62) | `Tools.createMappings` (slot), `lastOverwriteUsedInputs`; remembers Overwrite (`automap/mapper/overwrite-used-inputs`). |
-| `qml/DialogAutoMapper.qml` (269) | Tools > Mapping > Auto Mapper: input and output lists, Select Mode, Overwrite used inputs (asks first), Combine onto selected outputs, Also claim the matching outputs, Create 1:1 Actions, result line, help tip, RunningNote. |
+| `qml/DialogAutoMapper.qml` (298) | Tools > Mapping > Auto Mapper: input and output lists, Select Mode, Overwrite used inputs (asks first with the shared question, red Replace Actions), Combine onto selected outputs, Also claim the matching outputs, Create 1:1 Actions, result line, help tip, RunningNote. |
 | `qml/main_commands.js` (84-99) | Menu commands `tools.devicePack`, `tools.autoMapper`, `tools.history`. |
 | History buttons in editors | `qml/BindingCatalog.qml:1583` (Configuration row), `qml/LogicalPage.qml:1215` (Logical control menu), `qml/DialogConfigureModule.qml:401` (Module Setup), `qml/DialogCalibration.qml:235`, `qml/DialogJoystickButtonMap.qml:2495` (File > History), `qml/DialogOptions.qml:99`. |
-| `gremlin/util.py:929-937` | `history_dir()` (option `history-folder`), `deleted_devices_dir()` (option `deleted-devices-folder`), `export_dir()`. |
-| `joystick_gremlin.py` | Folder options 643-660; History options `keep-days` / `max-megabytes` 726-737; quit: `threads.shutdown`, `deferred_write.flush_all`, `history.close()` 1107. |
-| Tests | History: `test_history_store.py` (6), `test_history_recording.py` (8), `test_history_restore.py` (6), `test_history_window.py` (5, with `history_window_smoke.py`), parts of `test_audit_saving.py`, `test_audit2_saving.py`, `test_audit3_saving.py`, `test_audit2_coverage.py`, `test_audit3_module_files.py`. Device Pack: `test_device_pack_import.py` (24), `test_device_pack_window.py` (7, with `device_pack_window_smoke.py`), `test_audit3_modes.py::test_undo_import_deletes_a_mode_everywhere`, `test_audit3_saving.py` (Undo Import), `test_usability_fixes.py::test_device_pack_has_no_layout_loop`. Auto Mapper: `test_auto_mapper.py` (3), `test_auto_mapper_claims.py` (4), `test_profile_unused_actions.py::test_auto_mapper_overwrite_leaves_nothing_behind`, `test_audit3_module_files.py::test_calibration_and_auto_mapper_open_on_the_cards_file`. Deleted devices: `test_data_safety.py`, `test_deleted_devices_folder.py`. |
+| `gremlin/util.py:995-1002` | `export_dir()`, `history_dir()` (option `history-folder`). `deleted_devices_dir()` is gone (D-10-NO-DELETED-FOLDER). |
+| `joystick_gremlin.py` | Folder options (`history-folder` 720); History options `keep-days` / `max-megabytes` 796-806; quit: `threads.shutdown`, `deferred_write.flush_all`, `history.close()` 1107. |
+| Tests | History: `test_history_store.py` (6), `test_history_recording.py` (8), `test_history_restore.py` (6), `test_history_window.py` (5, with `history_window_smoke.py`), parts of `test_audit_saving.py`, `test_audit2_saving.py`, `test_audit3_saving.py`, `test_audit2_coverage.py`, `test_audit3_module_files.py`. Device Pack: `test_device_pack_import.py` (24), `test_device_pack_window.py` (7, with `device_pack_window_smoke.py`; incl. `::test_messages_are_on_the_shared_message_line`, `::test_the_choosers_open_in_the_last_device_pack_folder`), `test_audit3_modes.py::test_undo_import_deletes_a_mode_everywhere`, `test_audit3_saving.py` (Undo Import), `test_usability_fixes.py::test_device_pack_has_no_layout_loop`. Auto Mapper: `test_auto_mapper.py` (3), `test_auto_mapper_claims.py` (4), `test_handson_G4_automap_keep.py`, `test_tools2_shared_pieces.py` (Overwrite question), `test_profile_unused_actions.py::test_auto_mapper_overwrite_leaves_nothing_behind`, `test_audit3_module_files.py::test_calibration_and_auto_mapper_open_on_the_cards_file`. Deleted devices: `test_data_safety.py`, `test_deleted_devices_folder.py`. |
 
 ## 3. What it owns
 
@@ -44,7 +45,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 | Module files and pictures | `<modules>\<slug>.json`, `<modules>\<slug>\` | Device Pack import and Undo (`_write_module`, `_write_pictures`, `_put_back`, `undo_import`), History Restore (`_restore_module`), Auto Mapper claim (`merge_claim_into_output`) | Owned by the module-file system (map 1); many other writers |
 | Backups of replaced module files and pictures | `<modules>\imported\<stem>.<stamp>[_n].json` and `.<ext>` | Device Pack `_write_module`, `_write_pictures`; Module Setup `import_module_file` | Listed by Module Setup "Import from"; never cleaned |
 | Device packs | anywhere outside the modules folder (default `<data>\export\<slug>_map.zip`) | `exportPack` | The user |
-| Deleted-device backups | `<deleted devices>\<name>\<name>.<stamp>.zip` (Delete Device, "Save a copy"); `<deleted devices>\<stem> <date time>.json` (Delete File) | `delete_device`, `_keep_deleted_copy` | The user; never cleaned |
+| Autosaves before Delete Device, Delete File and a Device Pack import | the Device Library (10 S16-S21); the deleted devices folder is gone (D-10-NO-DELETED-FOLDER) | `hardware_profile._autosave` → `device_library.autosave` | The Device Library (limit, Tidy) |
 | Pack preview pictures | `%TEMP%\gremlin-pack-*` | `device_pack._stage_images`; the previous one is removed when the next pack is opened | Never removed at quit |
 
 **In memory**
@@ -55,10 +56,11 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 | Last pictures per module file `_last_pictures` | `history_modules.py:53` | `_record` (writer thread, or UI thread through `flush`) | Nobody; no lock |
 | Settings view `_history_view` (last saved user-facing settings) | `Configuration` | `reload`, `_record_history` | Nobody |
 | `_saved_snapshot` (last loaded/saved profile text, the "before" of the next save) | `Profile` | `from_xml`, `to_xml` | Owned by Profile |
-| History window rows `_all`, `_rows`, `_filter`, `_search` | `HistoryModel` | the window | Nobody |
+| History window rows `_all`, `_rows`, `_filter`, `_search`; the change `detail()` last read, row for row, and its change blocks | `HistoryModel` | the window | Nobody |
+| Open History groups and the cleared listeners | `history.py` (`begin_group`, `add_cleared_listener`) | Device Library model, Delete Device, Clear Setup | Nobody |
 | Last Device Pack import `_last_import` = {files: [(path, previous bytes or None)], wires: {profile, uid, removed, added, modes, logical}} | `device_pack.py:1538` | `apply_zip`; cleared by `undo_import`, `drop_import_undo` | Holds live `InputItem` objects of the profile; the user can edit them in between |
 | `_preview_dir` | `device_pack.py:733` | `_stage_images` | Nobody |
-| Module Setup's own import undo `_import_undo` | `hardware_profile.py:649` | `import_module_file`, `undo_last_import` | A separate system with a same-named `drop_import_undo` |
+| Module Setup's own import undo `_file_import_undo` | `modules/store.py:1372` | Module Setup "Import from" | A separate system (`drop_file_import_undo`) |
 | Auto Mapper run state (`_created_mappings`, `_num_retained_bindings`, `_skipped`) | `AutoMapper` | one run | Nobody |
 
 **Settings keys**
@@ -68,7 +70,6 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 | `global/history/keep-days` (90, 1-3650) | Days to keep changes | Options > General > History |
 | `global/history/max-megabytes` (20, 1-500) | Largest history file (MB) | Options > General > History |
 | `global/files/history-folder` | History folder | Options > Folders |
-| `global/files/deleted-devices-folder` | Deleted devices folder | Options > Folders |
 | `global/files/export-folder` | Where packs are saved by default | Options > Folders |
 | `automap/mapper/overwrite-used-inputs`, `automap/mapper/remember-overwrite` | Auto Mapper's Overwrite switch remembered | `Tools.createMappings` |
 | `global/internal/module-file-bindings` | Module-file bindings (read by the pack's file rule; not a History setting because it is internal) | Module-file system |
@@ -86,7 +87,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 | Calibration "History" | `DialogCalibration.qml:235` | filter `{fileName}` |
 | Button Map File > History | `DialogJoystickButtonMap.qml:2495` | filter `{area: "button-map", device: targetName}` |
 | Options "History" | `DialogOptions.qml:99` | filter `{area: "settings"}` |
-| History: Show / Search / Refresh / Show All | `DialogHistory.qml:156-193` | `setArea` -> `setFilter`; `setSearch`; `reload`; `showAll` |
+| History: Show / Search / Refresh / Show All | `DialogHistory.qml`; Search is the `SearchBox` `historySearch` | `setArea` -> `setFilter`; `_model.setSearch`; `reload`; `showAll` |
 | History: window comes to the front | `DialogHistory.qml:136` `onActiveChanged` | `reload` (reads every file again) |
 | History: pick an entry | `pick` -> `shown` | `HistoryModel.detail` -> `describe` |
 | History: Restore Before / After | `DialogHistory.qml:117` confirm (`_gate.confirmThen`) | `HistoryModel.restore` -> `history_model.restore` -> `_restore_input` / `_restore_profile` / `_restore_module` / `_restore_settings` |
@@ -98,19 +99,21 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 | Quit | `joystick_gremlin.py:1107` | `history.close()` (flush, bounded join, flush) |
 | Tools > Device Setup > Device Pack | `main_commands.js:85` | `DialogDevicePack.qml` `reloadDevices` -> `packDevices` -> `_known_pack_devices`; `refreshExport` -> `peekPackDevice` -> `assemble` + `pack_modes` |
 | Export: choose device | `_exportDevice` change -> `refreshExport` | `peekPackDevice` (builds the whole zip to get its size) |
-| Export: Export... -> file dialog OK | `DialogDevicePack.qml:353` | `exportPack` -> `assemble(name, resolve, modes, notes)` -> `dest.write_bytes` |
+| Export: Export... -> `FilePicker` ("device-pack", `_save`) `picked` | `startExport` | `exportPack` -> `assemble(name, resolve, modes, notes)` -> `dest.write_bytes` |
 | Export: Show Folder | `showFolder` | `QDesktopServices.openUrl` |
-| Import: Choose Zip... -> OK | `DialogDevicePack.qml:367` | `keepPackImport` (drops Undo) -> `peekPackZip` -> `describe_zip` -> `_read_zip`, `_stage_images`, `_pack_drivers` |
+| Import: Choose Zip... -> `FilePicker` ("device-pack", `_pick`) `picked` | `peek` | `keepPackImport` (drops Undo) -> `peekPackZip` -> `describe_zip` -> `_read_zip`, `_stage_images`, `_pack_drivers` |
 | Import: tick / untick, Open All / Close All, Put this pack on | QML state only (`checks`, `targets`, `folded`) | `selectionJson` |
 | Import button | `askImport` | `previewPackImport` -> `preview_import` (plan, counts, left out, moves, drivers) -> Replace warning |
 | Replace (in the warning) | `runImport` | `importPack` -> `apply_zip` -> `_merge_module`, `_write_pictures`, `_write_module` (per target), `_plan_wires`, `_apply_wires`, `drop_import_undo` (keeps the previous import for good), sets `_last_import`; signals configChanged, profileChanged, reloadUi |
-| Undo Import | `undoImport` | `undoPackImport` -> `undo_import` |
+| Undo Import (button, or the Undo Import link on the `MessageLine`, `say()`) | `undoImport` | `undoPackImport` -> `undo_import` |
 | Close the Device Pack window | `onClosing` | `keepPackImport` -> `drop_import_undo` (replaced actions leave the profile) |
 | `importPack` with an empty selection (no caller in QML) | `hardware_profile.py:1972-1987` | imports every row ticked by default |
-| Home card > Delete Device, "Save a copy in deleted devices" | `StatusPage.qml:454` -> `ModuleModel.deleteDevice` | `delete_device` -> `assemble` -> `_deleted_pack_path` -> write, read back (`_zip_readable`), then `_save_profile_wires` (saves the profile), `_delete_own_module_files` |
-| Module Setup > Delete File | `delete_module_file` | `_keep_deleted_copy` then delete inside `deleting()` |
+| Home card > Delete Device | `StatusPage.qml` -> `ModuleModel.deleteDevice` | `hardware_profile.delete_device:679`: refused while running; the "stick deleted" autosave in the Device Library first (10 S16-S21, refused when it can't be kept); one History entry (group) |
+| Module Setup > Delete File | `hardware_profile.delete_module_file:576` | the "module file deleted" autosave first, then delete inside `deleting()` |
+| History: Clear History… (S12b) | `DialogHistory.qml` `askClear` -> `Confirm.ask` (red Clear History) | `HistoryModel.clearAll` -> `history.clear_all` (refused while running; writes the red "History cleared" record; tells the cleared listeners, e.g. the Device Library's Undo steps) |
+| History: Previous Change / Next Change (S104) | `DialogHistory.qml` ~521 | jump between the change blocks of `text_diff.blocks` |
 | Tools > Mapping > Auto Mapper; card menu > Auto Mapper | `main_commands.js:94`; `Main.qml:1432` (`initialSlug` = the card's module) | `AutoMapInputModel` / `AutoMapOutputModel` -> `auto_map.input_modules` / `output_modules` |
-| Auto Mapper: Create 1:1 Actions | `DialogAutoMapper.qml:209` (asks first when Overwrite is on) | `Tools.createMappings` -> `AutoMapper.generate_module_mappings` -> (`merge_claim_into_output`) -> `_create_new_mapping`; then profileChanged, reloadCurrentInputItem, configChanged; remembers Overwrite |
+| Auto Mapper: Create 1:1 Actions | `DialogAutoMapper.qml:231` (asks first with `Confirm.ask` when Overwrite is on, red Replace Actions) | `Tools.createMappings` -> `AutoMapper.generate_module_mappings` -> (`merge_claim_into_output`) -> `_create_new_mapping`; then profileChanged, reloadCurrentInputItem, configChanged; remembers Overwrite |
 | Auto Mapper lists refresh | profileChanged, configChanged, `EventListener.device_change_event` | `_SlugListModel.reload` |
 
 ## 5. Talks to
@@ -128,7 +131,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 | Threads (`gremlin.threads`), `gremlin.clock` | `threads.start("History", ..., stop=)`, `clock.now()` | `threads.shutdown` at quit stops the writer |
 | Live debug trace | `trace("SAVE"/"READ", "History"/"Device Pack"/"Auto Mapper", ...)` | none |
 | Options window (`gremlin/ui/option.py`) | `entry_title` (History setting names) | Options "History" button opens the window |
-| Delete Device / Module Setup (card, StatusPage) | `assemble` for the backup pack | `delete_device`, `delete_module_file` |
+| Device Library (10) | `device_library.history_text` / `restore_history` (Library entries), `library_undo` on Clear History | `history.begin_group` / `end_group` (one entry per Library action), `device_pack.assemble` and the pack import (saved setups, autosaves before Delete Device, Delete File and a pack import) |
 | Configuration page Undo | shares `Profile.input_snapshot` / `put_input` with Restore | none |
 
 ## 6. Threads and timers
@@ -138,7 +141,8 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **Quit**: `threads.shutdown()` asks the writer to stop, then `history.close(timeout=2.0)` sets `_closing`, flushes on the main thread, joins the writer (bounded), flushes again. From then on `record`/`later` write at once on the caller's thread.
 - **Clock**: entries use `clock.now()`; `prune` uses `clock.now()`. Display uses `datetime.fromtimestamp`. Restored profile copy names and archive stamps use `datetime.now()` (local time, names only).
 - **Settings entries** come from `Configuration.save_now`, run by `deferred_write`'s QTimer about 1 s after the last change (main thread), and at quit.
-- **Device Pack and Auto Mapper**: no threads or timers. Everything (zip building for the size preview, reading the zip, staging pictures, writing) runs on the UI thread inside slots.
+- **Device Pack and Auto Mapper**: Device Pack Export writes the zip on a program thread (`threads.start("Device Pack export")`, `hardware_profile.py` ~1542; the window shows it is busy, S107). Everything else (the size preview, reading the zip, staging pictures, import) and the Auto Mapper run on the UI thread inside slots.
+- **History groups**: `begin_group` / `end_group` hold the records of one action (Remove from Library, Clear Setup, Delete Device) and write them as one entry; the Device Library closes a group left open after 60 s (10 section 6).
 - **History window**: no timer; it re-reads all files whenever it becomes the active window.
 - **Off the main thread reading settings**: `history._limits()` and `util.history_dir()` call `Configuration()` from the writer thread.
 
@@ -296,7 +300,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S101** The lists should follow sticks being plugged in or out, keeping ticks. [user confirmed 2026-10-06; was code only]
 - **S102** Esc should not close the Auto Mapper or Device Pack windows (a stick can send Esc). [test-plan: USABILITY-FIXES] [user confirmed 2026-10-06; was code only for Device Pack]
 - **S103** The result line should say what was made in glossary words (actions, not mappings or bindings). [glossary] [test-plan: GLOSSARY-2] (code doesn't: Q8)
-- **S104** Before and After should show what changed: changed lines get a soft tint (red on Before, green on After, from the theme so both themes read well) and a thin bar on the left edge; inside a changed line the changed words get a stronger tint; unchanged lines stay plain. The two sides line up row for row. "Previous change" / "Next change" move both sides together to the previous or next change. [user decision 2026-10-07: D-08-HISTORY-DIFF]
+- **S104** Before and After should show what changed: changed lines get a soft tint (red on Before, green on After, from the theme so both themes read well) and a thin bar on the left edge; inside a changed line the changed words get a stronger tint; unchanged lines stay plain. The two sides line up row for row. "Previous Change" / "Next Change" move both sides together to the previous or next change. [user decision 2026-10-07: D-08-HISTORY-DIFF]
 - **S105** After Create 1:1 Actions the Auto Mapper keeps the ticked modules ticked and selected, so Create again works on the same modules (what is shown is what Create uses). [user decision 2026-10-07: D-08-AUTOMAP-KEEP]
 - **S106** Device Pack should open on the first device that can be exported; a device whose module file can't be read stays in the list marked "(file damaged)". [user decision 2026-10-07: D-08-PACK-START]
 - **S107** Device Pack Export should be written in the background: the window stays usable, shows it is busy, Export is disabled until it is done (one at a time), and the result is reported when done (failures name the file, folder and reason). The device photo preview loads in the background at preview size. [user decision 2026-10-07: D-08-PACK-BG]
@@ -352,7 +356,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 19. `assert` in production (`auto_mapper.py:228`).
 20. Device Pack edits `profile.inputs` and `device_database` directly (`device_pack.py:1498, 1501, 1606`).
 21. Restore reads `cfg._data` (`history_model.py:307`).
-22. Two Undo Import systems, same function name (`hardware_profile.py:649-688`, `device_pack.py:1538-1633`).
+22. Two Undo Import systems (Module Setup's `modules/store.py` `_file_import_undo`, Device Pack's `device_pack.py` `_last_import`).
 23. No running note or guard in the Device Pack and History windows. Q4.
 24. Undo Import overwrites later edits (`device_pack.py:1578-1589` puts back old bytes without checking). Q5.
 25. Output modules in a pack get no vJoy size limits (`device_pack.py:1836` calls `_merge_module` without `limits`). Q18.
@@ -366,6 +370,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 
 - AU-118 (open): Device Pack partial failure leaves inputs, modes and Logical inputs; also OK on a shared Merge Axis (action map).
 - AU-64 (open, part): photo folders follow the module file; only the pack export file name still goes by the device's own name, so a renamed or twin stick's pack file name can differ.
+- To-do 56: S104 spells "Previous change" / "Next change"; the buttons say "Previous Change" / "Next Change" (glossary Title Case). Wording to settle with the user.
 - AU-41 (won't fix): two running copies could lose History entries; the lock file prevents it.
 - Decisions waiting in `system-maps.md`: F1 (pack onto a damaged file), F3 (Start Fresh in History), A2 (History restore of a shared action), A3 (pack failing partway).
 
@@ -373,22 +378,21 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 
 - Profile copies written by Restore (next to the profile): no list, no clean-up.
 - `modules\imported\` backups (module files and pictures): grow forever; Module Setup lists them as import sources.
-- The deleted devices folder (packs and copies): grows forever; no help topic.
 - `history\files\` is cleaned only by `prune`; a picture referenced only by an entry in a moved history folder is lost to the new one.
 - The pack's `%TEMP%\gremlin-pack-*` folder.
 - History of the module-file binding store (`module-file-bindings`): internal, so a Restore of a deleted module file doesn't bring back its bindings.
 
 ## 11. Size and test coverage
 
-**Size**: about 5,000 lines in this page's own files (history 915 Python + 436 model + 326 QML; Device Pack 1,893 Python + 952 QML + about 250 lines of slots and helpers in `hardware_profile.py`; Auto Mapper 257 + 145 + 80 + 30 Python + 269 QML). Tests: about 2,100 lines in the files named below plus parts of 6 audit test files.
+**Size** (2026-10-09): about 7,400 lines in this page's own files (History 787 + 275 + 262 + 124 Python, 730 model, 597 QML; Device Pack 2,420 Python + 1,041 QML + about 250 lines of slots in `hardware_profile.py`; Auto Mapper 338 + 147 + 80 + 30 Python + 298 QML). Tests: about 5,200 lines in the files named below plus parts of 6 audit test files.
 
-**Covered**: the six main test files for this page (51 tests) pass when run alone (`test/run_tests.py` on `test_history_store`, `test_history_recording`, `test_history_restore`, `test_device_pack_import`, `test_auto_mapper`, `test_auto_mapper_claims`). Off-screen window tests: `test_history_window.py`, `test_device_pack_window.py`, `test_tool_windows_fit.py`, `test_usability_fixes.py::test_device_pack_has_no_layout_loop`.
+**Covered**: the six main test files for this page (51 tests) pass when run alone (`test/run_tests.py` on `test_history_store`, `test_history_recording`, `test_history_restore`, `test_device_pack_import`, `test_auto_mapper`, `test_auto_mapper_claims`). Off-screen window tests: `test_history_window.py`, `test_device_pack_window.py`, `test_tool_windows_fit.py`, `test_usability_fixes.py::test_device_pack_has_no_layout_loop`. Since 2026-10-06: Clear History `test_history_clear.py` (5), `test_history_clear_ui.py` (6 + search, with `history_clear_ui_smoke.py`); Device Pack message line and choosers in `test_device_pack_window.py`; Auto Mapper Overwrite question `test_tools2_shared_pieces.py`, `test_handson_G4_automap_keep.py`; Before/After diff `test_history_diff.py` (6, `text_diff`), `test_history_diff_window.py` (6, with `history_diff_window_smoke.py`); `test_stage1_history_pack.py` (28 journeys), `test_handson_G2_history_heading.py`, `test_handson_G3_device_pack.py` (7), `test_handson_F6_log_level_history.py`; Library entries `test_library_in_history.py` (5), `test_library_show_in_history.py`.
 
 **Not covered (obvious)**
 
 - History: two threads running the queue at once (`entries` while the writer runs); the "before" pictures of a file's first save in a session; a Save As entry; restore of an input into a deleted mode; restore of a settings key that no longer exists ("Settings put back." with nothing applied); the window's Search and the editor filters other than Module Setup (Configuration row, Logical, Button Map, Calibration, Options); a large history file (speed).
 - Device Pack: `exportPack` slot itself (path checks, inside-modules refusal, .zip suffix); import onto a damaged file; failure inside `_apply_wires` (AU-118); Undo Import after the profile changed or after a later Button Map save; Undo Import's "another profile is open" path; output modules past the vJoy's size; a zip with a bad `wires.json` or `outputs/*.json`; `importPack` with an empty selection.
-- Deleted devices: `delete_device(..., save_copy=True)` (pack written, read back, refused when unreadable) has no test; importing such a pack back.
+- Deleted devices: the folder is gone; Delete Device's and Delete File's autosaves are covered on page 10 (`test_device_library_DD_delete.py`, `test_device_library_FD_autosave_gaps.py`).
 - Auto Mapper: Combine onto selected outputs with more inputs than outputs (mapping result, not just the message); Overwrite on with nested actions; twin sticks (`_source_uuid` by name picks the first); "Also claim" when the output file is damaged or can't be written; the dialog's tick handling after Create (only checked by hand, test-plan AM-05).
 
 ## 12. Review (user, 2026-10-06)

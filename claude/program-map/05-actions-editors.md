@@ -10,14 +10,14 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 
 | Path | What it holds |
 |---|---|
-| `gremlin/plugin_manager.py` (314) | `PluginManager` (singleton): finds plugins in `action_plugins/` and the user plugin folder, checks them (`_check_plugin`), registers each model as a QML type in `Gremlin.ActionPlugins`, lookup tables by name, tag and input type; `create_instance` (the one "new action" call, adds to `current_profile.library`). |
-| `gremlin/base_classes.py` (682) | `AbstractActionData` (id, label, press/release mode, `from_xml`/`to_xml`, `is_valid` from `user_feedback`, containers, `clone`, `copy_unfinished`), `AbstractFunctor` (builds child functors, `_process_event`, `_pulse_event` 50 ms pulses, `_should_execute`), `flush_pulses` (Stop). |
-| `gremlin/profile.py` (1913; `Library` 337-771, `InputItem` 1328, `InputItemBinding` 1415, `Profile` 844-1326) | The library of action objects, `clone_action` (drafts), `pick_list`, `remove_unused`, `drop_unused_actions`, `input_snapshot`/`put_input` (Undo), `drop_invalid_actions`/`unfinished_actions` (Save). Owned by the Profile page; map 2 covers it. |
-| `gremlin/ui/action_model.py` (425) | `ActionModel` (QML base for every action editor: label, press/release, `compatibleActions`, `appendAction`, `removeAction`, `dropAction`), `SequenceIndex`, unused `ActionPriorityListModel`. |
+| `gremlin/plugin_manager.py` (320) | `PluginManager` (singleton): finds plugins in `action_plugins/` and the user plugin folder, checks them (`_check_plugin`), registers each model as a QML type in `Gremlin.ActionPlugins`, lookup tables by name, tag and input type; `create_instance` (the one "new action" call, adds to `current_profile.library`). |
+| `gremlin/base_classes.py` (737) | `AbstractActionData` (id, label, press/release mode, `from_xml`/`to_xml`, `is_valid` from `user_feedback`, containers, `clone`, `copy_unfinished`), `AbstractFunctor` (builds child functors, `_process_event`, `_pulse_event` 50 ms pulses, `_should_execute`), `flush_pulses` (Stop). |
+| `gremlin/profile.py` (2722; `Library` 337-771, `InputItem` 1328, `InputItemBinding` 1415, `Profile` 844-1326) | The library of action objects, `clone_action` (drafts), `pick_list`, `remove_unused`, `drop_unused_actions`, `input_snapshot`/`put_input` (Undo), `drop_invalid_actions`/`unfinished_actions` (Save). Owned by the Profile page; map 2 covers it. |
+| `gremlin/ui/action_model.py` (473) | `ActionModel` (QML base for every action editor: label, press/release, `compatibleActions`, `appendAction`, `removeAction`, `dropAction`), `SequenceIndex`, unused `ActionPriorityListModel`. |
 | `gremlin/ui/profile.py` (lines 55-770) | `VirtualButtonModel` (axis/hat used as a button), `HatDirectionModel`, `InputItemBindingModel` (one binding: action tree models, move/remove/append, Treat as), `InputItemModel` (an input's bindings; delete, reorder). |
-| `gremlin/ui/binding_catalog.py` (1275) | `BindingCatalogModel`: Configuration page rows (parent per input, child per binding), Type/Output filters, the action pane draft (`beginPane`, `paneDirty`, `commitPane`, `discardPane`, `endPane`), list Delete (`removeSequence`), Undo/Redo (50 steps). Row text helpers `summarize_action`, `collect_leaves`, `_TYPE_LABELS`. |
+| `gremlin/ui/binding_catalog.py` (1208) | `BindingCatalogModel`: Configuration page rows (parent per input, child per binding), Type/Output filters, the action pane draft (`beginPane`, `paneDirty`, `commitPane`, `discardPane`, `endPane`), list Delete (`removeSequence`), Undo/Redo (50 steps; each step carries a label, read by the Undo bar through `lastChange`, `undone`, `undoTip`, `redoTip`, signal `undoChanged`). Row text helpers `summarize_action`, `collect_leaves`, `_TYPE_LABELS`. |
 | `gremlin/ui/device.py` (lines 48-97, 773-958) | `KeyboardManagerModel` (Keyboard page list: keys once, this mode's actions, Add Key, Delete), row icon text `_generate_action_sequence_descriptor`. |
-| `gremlin/action_label.py` (179) | Input names ("Rename" on Keyboard/OSC/Logical rows): monkey-patches `InputItem.__init__/from_xml/to_xml` and the `data()` of `Device`, `KeyboardManagerModel`, OSC and Logical models; `ActionNames` QML helper. |
+| `gremlin/action_label.py` (119) | Input names ("Rename" on Keyboard/OSC/Logical rows): monkey-patches `InputItem.__init__/from_xml/to_xml` and the `data()` of `Device`, `KeyboardManagerModel`, OSC and Logical models; `ActionNames` QML helper. |
 | `gremlin/action_analysis.py` (183) | Binding-level warnings (Map to Mouse/vJoy followed by more actions; Response Curve plus Dual Axis Deadzone). |
 | `gremlin/code_runner.py` (lines 174-260, 502-527) | Run side: `CallbackObject` builds the root functor of each binding; `_setup_profile`. Owned by Run lifecycle. |
 | `gremlin/ui/backend.py` (451-487) | `getInputItem` (editor model for the selected input, used by the Keyboard page), action fold state `isActionExpanded`/`setIsActionExpanded`. |
@@ -25,22 +25,54 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | `gremlin/ui/window_placement.py` (27-28, 435-450) | Pane settings `close-pane-after-ok`, `action-pane-width`. |
 | `gremlin/ui/util.py` (294-435) | `MacroRecorder` (Macro editor Record). |
 | `joystick_gremlin.py` (663-666, 840-862, 924-926) | Registers `action-priorities`; `update_action_priorities` at start; plugin manager start. |
-| `qml/BindingCatalog.qml` (2251) | Configuration page: filters, Undo/Redo, rows, Delete/History/Add Action buttons, pane (title, X, OK, "Close pane after OK", width grip), leave/discard prompts, Appearance panel (owned by the Configuration Appearance page). |
-| `qml/InputConfiguration.qml` (177) | Shows an `InputItemModel`: list of `InputItemBinding` (pane, Keyboard page) or inline mode. |
-| `qml/InputItemBinding.qml` (120), `qml/InputItemBindingConfigurationHeader.qml` (268) | One binding: Note field (root action label), ActionSelector, warnings icon, Remove binding, axis/hat-as-button settings, "Activate on". |
-| `qml/InputBehavior.qml` (89) | "Treat as" Button/Axis/Hat (asks when actions would go). |
+| `qml/BindingCatalog.qml` (2225) | Configuration page: filters, Undo/Redo (the shared `UndoBar` `catalogUndoBar`: "Last change" / "Undone", named steps), rows, Delete (red `DangerButton` `catalogDelete`, asks the shared question "Delete Action")/History/Add Action buttons, picture chooser `FilePicker` kind "picture", pane (title, X, OK, "Close pane after OK", width grip), leave/discard prompts, Appearance panel (owned by the Configuration Appearance page). |
+| `qml/InputConfiguration.qml` (301) | Shows an `InputItemModel`: list of `InputItemBinding` (pane, Keyboard page) or inline mode. |
+| `qml/InputItemBinding.qml` (120), `qml/InputItemBindingConfigurationHeader.qml` (269) | One binding: Note field (root action label), ActionSelector, warnings icon, Remove binding (shared question, red Remove Binding), axis/hat-as-button settings, "Activate on". |
+| `qml/InputBehavior.qml` (92) | "Treat as" Button/Axis/Hat (asks the shared question when actions would go: "Change and Remove", "This can't be undone."). |
 | `qml/ActionSelector.qml` (60) | Combo of `compatibleActions` + **Add Action** button. |
-| `qml/ActionNode.qml` (374), `qml/RootActionNode.qml` (60), `qml/ActionDragDropArea.qml` (10), `qml/TriggerMode.qml` | One action: fold, icon, label field, press/release, "Off: never runs", warnings, Remove, right-click menu (quick adds, Add by kind, Delete), drag and drop; loads the plugin's editor QML. |
-| `qml/action_kinds.js` (88) | Kinds for the right-click Add sections and Options list (map / axis / logic / other). |
+| `qml/ActionNode.qml` (387), `qml/RootActionNode.qml` (60), `qml/ActionDragDropArea.qml` (10), `qml/TriggerMode.qml` | One action: fold, icon, label field, press/release, "Off: never runs", warnings, Remove, right-click menu (quick adds, Add by kind, Delete), drag and drop; loads the plugin's editor QML. |
+| `qml/action_kinds.js` (28) | Kinds for the right-click Add sections and Options list (map / axis / logic / other). |
 | `qml/OptionActionSequenceOrdering.qml` (224) | Options list of actions by kind, drag to reorder, tick to show. |
-| `qml/KeyboardInputList.qml` (192) | Keyboard page list: rows, Rename, Delete Key (asks), Add Key (Listen). |
+| `qml/KeyboardInputList.qml` (223) | Keyboard page list: rows, Rename, Delete Key (asks the shared question, red Delete Key), Add Key (Listen). |
 | `qml/Main.qml` (1868-1892) | Loads `KeyboardInputList` and the full-height `InputConfiguration` for the Keyboard (and OSC) tab. |
 | `qml/VJoySelector.qml`, `qml/HatDirectionSelector*.qml`, `qml/LogicalDeviceSelector.qml` | Shared pickers used by editors ("Output not claimed" note). |
 | `action_plugins/AGENTS.md` | How a plugin is built (data class, model class, functor). |
-| `action_plugins/common.py` (28) | Shared helper for plugins. |
-| `action_plugins/<name>/__init__.py` + `<Name>Action.qml` | 25 plugins, listed in section 3 table B. |
-| `qml/help_topics.js` (99-176) | Help: Adding actions, Choosing an action, one topic per action. |
+| `action_plugins/common.py` (160) | Shared helpers: `joystick_label`, `RelativeAxisLoop` (the Relative axis loop of Map to vJoy and Map to Logical Device, registered with `run_scope`). |
+| `action_plugins/axis_pair.py` (143) | What Merge Axis and Dual Axis Deadzone share: the two axes kept as plain values (RB7) and the editor's instance pick list, "+" and switching (RB14). |
+| `gremlin/unknown_action.py` (149), `qml/UnknownAction.qml` (28) | An action of a type this program doesn't have (user plugin removed or failed): kept as the file had it, saved back, does nothing at Run (04 Q7). |
+| `gremlin/spline.py` (559) | Curve maths for Response Curve: piecewise linear, cubic spline, cubic Bezier. |
+| `qml/ButtonStateSelector.qml` (14), `qml/NumericalRangeSlider.qml` (149) | Shared editor pieces: press/release picker (Macro, Condition); two-handle range slider (Response Curve deadzone, binding header). |
+| `action_plugins/<name>/__init__.py` + `<Name>Action.qml` | 26 plugin folders (25 actions + Root), listed below and in section 3 table B. |
+| `qml/help/configuration_actions.js` | Help chapter: adding actions, choosing an action, one topic per action (the Help book is on page 01). |
 | Tests | see section 11. |
+
+**Plugin folders** (lines: Python + QML/JS)
+- `action_plugins/map_to_vjoy/` (499): send an axis, button or hat to a vJoy output; Relative axis mode.
+- `action_plugins/map_to_xbox/` (477): send to a button, trigger, stick or D-pad of an Xbox 360 output.
+- `action_plugins/map_to_logical_device/` (467): send to a Logical Device input; Relative axis mode.
+- `action_plugins/map_to_keyboard/` (252): press keys while the input is held.
+- `action_plugins/map_to_mouse/` (693): mouse button, wheel or motion.
+- `action_plugins/response_curve/` (1259): reshape an axis with a curve and deadzones (curve editor, handle and point controls).
+- `action_plugins/split_axis/` (339): send each half of an axis to its own action list.
+- `action_plugins/merge_axis/` (671): combine two axes into one (shared, Reuse by default).
+- `action_plugins/dual_axis_deadzone/` (652): round inner / square outer deadzone over two axes.
+- `action_plugins/axis_delta/` (358): run Positive or Negative actions each time an axis moves by a step.
+- `action_plugins/hat_buttons/` (443): each hat direction runs its own action list (4 or 8 way).
+- `action_plugins/condition/` (1963): run the TRUE or FALSE list by the state of inputs, keys, vJoy or Logical Device.
+- `action_plugins/chain/` (337): each press runs the next sequence; timeout back to the first.
+- `action_plugins/double_tap/` (514): single tap and double tap run different lists.
+- `action_plugins/tempo/` (506): short press and long press run different lists.
+- `action_plugins/smart_toggle/` (293): quick press latches, hold acts while held.
+- `action_plugins/macro/` (1948): play a recorded or built sequence of keys, buttons, axes, mouse and pauses.
+- `action_plugins/change_mode/` (563): switch, cycle, go back or hold a mode.
+- `action_plugins/reference/` (267): placeholder that picks an existing action to share or duplicate; never runs or saves.
+- `action_plugins/load_profile/` (261): open another profile and run it.
+- `action_plugins/pause_resume/` (239): pause, resume or toggle the running profile.
+- `action_plugins/play_sound/` (287): play a sound file.
+- `action_plugins/text_to_speech/` (383): speak a text.
+- `action_plugins/run_command/` (295): start a program with arguments.
+- `action_plugins/description/` (202): a note; does nothing.
+- `action_plugins/root/` (175): internal top of every binding; runs its children in order.
 
 ## 3. What it owns
 
@@ -133,11 +165,11 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | Pick an action and **Add Action** in the pane (ActionSelector) | `InputItemBindingConfigurationHeader.qml:131` | `ActionModel.appendAction` -> `PluginManager.create_instance` (Merge Axis: Reuse returns an in-use one) -> `insert_action` -> `sync_data`; `inputItemChanged` later |
 | Right-click an action header: quick add / Add by kind / Delete | `ActionNode.qml:291-317` | `appendAction`, `removeAction` / `deleteActionSequnce` |
 | Remove action (trash icon) | `ActionNode.qml:246` | `InputItemBindingModel.remove_action` -> `Library.remove_unused` (no confirm) |
-| Remove binding (header trash, asks if it has actions) | `InputItemBindingConfigurationHeader.qml:161` | `InputItemModel.deleteActionSequnce` -> `Profile.drop_unused_actions` |
+| Remove binding (header trash, asks if it has actions) | `InputItemBindingConfigurationHeader.qml` -> `Confirm.ask` (red Remove Binding) | `InputItemModel.deleteActionSequnce` -> `Profile.drop_unused_actions` |
 | Drag an action onto another | `ActionNode.qml:370`, `RootActionNode.qml:56` | `ActionModel.dropAction` -> `move_action` (no library removal) |
 | Drag a binding onto another | `InputItemBinding.qml:104` | `InputItemModel.dropAction` |
 | Edit an action label, Note, press/release | header text fields, TriggerMode | `ActionModel.actionLabel`, `activateOnPress/Release` (root label change emits `inputItemChanged`) |
-| Treat as Button/Axis/Hat | `InputBehavior.qml:20` (asks if actions) | `InputItemBindingModel._set_behavior`: removes all children, `remove_unused`, new virtual button |
+| Treat as Button/Axis/Hat | `InputBehavior.qml` (asks if actions: `Confirm.ask`, "Change and Remove") | `InputItemBindingModel._set_behavior`: removes all children, `remove_unused`, new virtual button |
 | Any editor field | plugin QML -> plugin model setter | writes the action object (draft in pane, live on Keyboard page) |
 | Merge Axis / Deadzone pick list, "+", Reference pick/Duplicate | plugin models | `_set_merge_action:236`, `newMergeAxis:289`, `_set_deadzone:178`, `newDeadzone:133`, `referenceAction`, `duplicateAction:111` (map 2) |
 | Macro Record / Stop | Macro editor | `MacroRecorder.start/stop` (raw `EventListener` key/mouse/joystick signals) |
@@ -146,12 +178,12 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | Leaving the page, Load, New, Quit with a dirty pane | `requestLeave` (`BindingCatalog.qml:748`), Main | same prompt, then continues |
 | Mode renamed / deleted (Manage Modes) | `signal.modeRenamed/modeDeleted` | `_on_mode_renamed` (steps and pane follow), `_on_mode_deleted` (steps dropped; pane closed with a notification, `paneLost`) |
 | Another profile loaded | `signal.profileChanged` | `reload`, `_forget_steps` |
-| Child row **Delete** (asks) | `BindingCatalog.qml:1560` | `removeSequence` (`binding_catalog.py:904`): refused for the input open in the pane; `remove_item_binding`, `drop_unused_actions`, `_step` |
-| **Undo / Redo** buttons, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z | `BindingCatalog.qml:51-59, 1295-1306` | `undo`/`redo` -> `_play` -> `Profile.put_input`; waits while the pane is open or the profile runs |
+| Child row **Delete** (red `catalogDelete`, asks with `Confirm.ask` "Delete Action") | `BindingCatalog.qml` | `removeSequence` (`binding_catalog.py`): refused for the input open in the pane; `remove_item_binding`, `drop_unused_actions`, `_step` (labelled) |
+| **Undo / Redo** (`UndoBar` `catalogUndoBar`), Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z | `BindingCatalog.qml` | `undo`/`redo` -> `_play` -> `Profile.put_input`; waits while the pane is open or the profile runs. The bar reads `lastChange`, `undone`, `undoTip`, `redoTip` (`undoChanged`); each step carries a label (model step labels) |
 | Row **History** | `BindingCatalog.qml:1579` | opens `DialogHistory.qml` filtered to this input and mode (History page) |
 | Keyboard page: **Add Key** | `KeyboardInputList.qml` InputListener | `KeyboardManagerModel.addKey` -> `get_input_item(create)`; row selected |
 | Keyboard page: select a key | `onCurrentIndexChanged` -> `uiState.setCurrentInput` | Main `InputConfiguration` -> `backend.getInputItem` (creates the input if missing) -> live `InputItemModel` |
-| Keyboard page: **Delete** key (asks) | `deleteKey` | `KeyboardManagerModel.deleteInput` -> `Profile.drop_inputs` (this mode only) |
+| Keyboard page: **Delete** key | `deleteKey` -> `Confirm.ask` (red Delete Key) | `KeyboardManagerModel.deleteInput` -> `Profile.drop_inputs` (this mode only) |
 | Keyboard page: **Rename** | `_renameDialog` | `ActionNames.setOnModel` -> `action_label.apply_action_name` |
 | Options > Actions > Add Action Menu | `OptionActionSequenceOrdering.qml` | `ActionSequenceOrdering.move/moveAmong/setShown` -> `action-priorities` |
 | File > Save | Main `saveProfileChecked` | asks if `unfinished_actions()` is not empty; `Profile.to_xml` -> `drop_invalid_actions` -> `Library.to_xml(used)` |
@@ -308,7 +340,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 
 - **S57** The Merge Axis and Deadzone lists should offer the one being edited, the new one from "+", and those an input uses; never deleted or replaced ones; a pane copy hides its original. [tracker: AU-110] [test: test_audit3_actions_undo.py::test_merge_axis_list_shows_the_one_being_edited] [test: test_audit3_actions_undo.py::test_reference_list_offers_the_pane_copy_not_the_original]
 - **S58** "+" should make a new instance, select it, and leave a shared one finished. [test: test_audit3_actions_undo.py::test_new_merge_axis_leaves_a_shared_one_finished] [test: test_action_editor_fixes.py::test_a_new_merge_axis_gets_the_next_free_name]
-- **S59** Merge Axis "Reuse" should keep the shared action's own name. [tracker: ACT18] [test: test_action_editor_fixes.py::test_reuse_keeps_the_shared_actions_name]
+- **S59** Merge Axis (and Deadzone): choosing an existing one to share it should keep the shared action's own name. [reworded 2026-10-09, user approved: "Reuse" never appears on screen] [tracker: ACT18] [test: test_action_editor_fixes.py::test_reuse_keeps_the_shared_actions_name]
 - **S60** Reference should let you share an existing action of the same input type (both inputs use the same action) or Duplicate it (an independent copy of it and everything inside). [help: Reference] [test: test_audit3_actions_undo.py::test_reference_duplicate_copies_every_nested_action]
 - **S61** Reference picked then Cancel should keep the profile loadable; picked then OK replaces the placeholder. [tracker: AU-110] [test: test_audit3_actions_undo.py::test_reference_picked_in_the_pane_then_ok_replaces_the_placeholder]
 - **S62** OK on an action two inputs share should change it for both. [user decision: pending A1, recommended] (today it splits them: AU-118, `test_audit3_actions_undo.py:478-498` asserts the split)
@@ -403,7 +435,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | G1 | OK on a shared action splits it (AU-118, S62) | `binding_catalog.py:138, 1125`; `test_audit3_actions_undo.py:478-498` |
 | G2 | Add Action -> Merge Axis puts a live shared action into the draft (RB2, Q1) | `merge_axis/__init__.py:451-459` |
 | G3 | Pick list / "+" / Reference put live library actions into the draft (map 2) | `merge_axis:236`, `dual_axis_deadzone:178`, `reference:119` |
-| G4 | Map to vJoy not registered without vJoy; its profiles won't open (RB20, Q2) | `plugin_manager.py:203` |
+| G4 | Map to vJoy not registered without vJoy; its profiles won't open (RB20, Q2). Fixed in code: built-in actions always register, Add Action leaves them out | `plugin_manager.py:203` |
 | G5 | "Unmapped", "assignments", "Sequence"/"Empty", sentence-case type labels on screen (Q6) | `binding_catalog.py:157-185, 280-283, 304-311, 601-602`; `BindingCatalog.qml:1265` |
 | G6 | Run runs unfinished actions; Reference has no functor (RB19, Q3) | `code_runner.py:205`, `reference/__init__.py:141` |
 | G7 | Tempo/Double Tap/Smart Toggle timers outlive Stop (AU-116, S91) | `tempo:174`, `double_tap:191`, `smart_toggle:84` |
@@ -419,9 +451,10 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | G17 | Stale comment says the Xbox output module "passes only the controls it claims" (Xbox has no claims) | `map_to_xbox/__init__.py:121` |
 | G18 | Output filter hides itself ("No output module claimed") when no vJoy device is valid, even if Xbox or keyboard destinations exist | `BindingCatalog.qml:1275-1290` |
 | G19 | `compatibleActions` sorts with `list.index`: an action missing from `action-priorities` (settings damaged after start) raises and the combo is empty | `action_model.py:200-206` |
-| G20 | Profile-level unknown action type aborts the whole load (no "open, keep the rest" like ACT11/ACT12) | `profile.py:642-646` |
-| G21 | Help says Merge Axis operation "Prefercenter"; the editor shows "Prefer Center" | `help_topics.js:143`, `merge_axis:198` |
-| G22 | Chain and binding warnings use `time.time()` (RB11, Q19) | `chain:70-77`, `ui/profile.py:565` |
+| G20 | Profile-level unknown action type aborts the whole load (no "open, keep the rest" like ACT11/ACT12). Fixed in code: `gremlin/unknown_action.py` keeps it (04 Q7; `test_data_safety.py`) | `profile.py:642-646` |
+| G21 | Help says Merge Axis operation "Prefercenter"; the editor shows "Prefer Center". Fixed: the Help book says "Prefer Center" | `help_topics.js:143`, `merge_axis:198` |
+| G22 | Binding warnings use `time.time()` (RB11, Q19); Chain no longer does | `ui/profile.py:570` |
+| G23 | "Reuse" (S59) never appears on screen (to-do 56) | `merge_axis`, `MergeAxisAction.qml` |
 
 **Open tracker items for this part**
 
@@ -445,7 +478,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 
 ## 11. Size and test coverage
 
-**Size** (lines, roughly): plugins 9,700 Python + 4,800 QML/JS in 25 folders (largest: Macro 1,940, Condition 1,940, Response Curve 1,540); core of this part about 6,300 (`binding_catalog.py` 1,275, `BindingCatalog.qml` 2,251, `action_model.py` 425, `plugin_manager.py` 314, `ui/profile.py` binding/item models 490, `KeyboardManagerModel` 190, `action_label.py` 179, editor QML about 1,100). Shares `Library` (435) and `Profile` snapshot code with map 2.
+**Size** (lines, roughly): plugins about 14,600 Python + QML/JS in 26 folders plus `common.py` 160 and `axis_pair.py` 143 (largest: Condition 1,963, Macro 1,948, Response Curve 1,259); core of this part about 6,300 (`binding_catalog.py` 1,208, `BindingCatalog.qml` 2,225, `action_model.py` 473, `plugin_manager.py` 320, `ui/profile.py` binding/item models 490, `KeyboardManagerModel` 190, `action_label.py` 119, editor QML about 1,100). Shares `Library` (435) and `Profile` snapshot code with map 2.
 
 **Tests that cover it**
 
@@ -453,9 +486,10 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - Every plugin round trip: `test_action_xml_round_trip.py` (15 cases skipped: new action not valid until set up).
 - Per action (unit): `test_action_axis_delta`, `_chain_sequences`, `_condition`, `_description`, `_dual_axis_deadzone`, `_macro`, `_map_to_vjoy`, `_merge`, `_root`, `_run_command`, `_tempo`, `_tts`, `_warnings`, `test_map_to_xbox`, `test_map_to_xbox_inputs`, `test_play_sound_missing_file`, `test_action_fixes`, `test_action_editor_fixes`, `test_audit2_macros`.
 - Per action at Run (`test/action_interaction/`, 2,300 lines): axis delta, auto-release, chain, condition, double tap, tempo, hat to buttons, macro, map to keyboard, merge axis, modes, pause/resume, smart toggle, split axis, treat as button.
-- Configuration page: `test_binding_catalog`, `test_catalog_actions`, `test_catalog_display`, `test_catalog_undo`, `test_pane_draft`, `test_audit_editing`, `test_audit2_undo`, `test_audit3_actions_undo`, `test_profile_unused_actions`, `test_library_invalid_children`, `test_profile_missing_child_action`.
+- Configuration page: `test_binding_catalog`, `test_catalog_actions`, `test_catalog_display`, `test_catalog_undo`, `test_undo_bar_labels` (catalog step labels), `test_config_pages_shared_pieces` (Keyboard Delete Key asks the shared question), `test_pane_draft`, `test_audit_editing`, `test_audit2_undo`, `test_audit3_actions_undo`, `test_profile_unused_actions`, `test_library_invalid_children`, `test_profile_missing_child_action`.
 - Editing models: `test_input_item_binding_model` (Treat as), `test_vjoy_selector_loads`.
 - Keyboard page: `test_mode_refresh_and_add_key`, `test_audit2_keyboard_calibration`, `test_keyboard_gate`.
+- Unknown action type kept: `test_data_safety`; curves: `test_splines`; Merge Axis fit: `test_handson_G2_merge_axis_fit`.
 - Options list: `test_option_list_saving`, `test_options_layout`; text: `test_glossary_words`, `test_help_guide`.
 
 **Obvious untested paths**

@@ -9,7 +9,7 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 ## 2. Files
 
 **Python**
-- `gremlin/ui/hardware_profile.py` (2656 lines). Button Map part, `HardwareProfile` (1511-2656): `load` / `save` / `saveUi` (2294-2391), photo (`copyImage`, `keepPhoto`, `clearImage`, `stashPhoto`, `restorePhoto`, `hasPhotoStash`, `dropPhotoStash`, `profilePhotoUrl`, `imageUrl`, `adjustedPhotoUrl`), pictures (`copyOverlay`, `importPictureFiles`, `pasteClipboardPictures`, `savePastedImage`, `imageAspect`, `_pack_assets`), recovery copies (`saveRecovery` / `loadRecovery` / `clearRecovery`, 2245-2292), templates (2119-2243), copy layout (`savedLayouts`, `layoutNodes`, 2083-2117), labels (`actionLabels`, `profileModes`, `profileLabelsChanged`), colours (`recentColours`, `noteColour`, `colorAt`), print and export (`saveArea`, `printImage`, module functions `exact_page`, `save_area`, `print_image`, `adjust_photo`), pool rows (`chips` -> `chips_for_guid` 1480).
+- `gremlin/ui/hardware_profile.py` (2398 lines). Button Map part, `HardwareProfile` (962-2398): `load` / `save` / `saveUi`, photo (`copyImage`, `keepPhoto`, `clearImage`, `stashPhoto`, `restorePhoto`, `hasPhotoStash`, `dropPhotoStash`, `profilePhotoUrl`, `imageUrl`, `adjustedPhotoUrl`), pictures (`copyOverlay`, `importPictureFiles`, `pasteClipboardPictures`, `savePastedImage`, `imageAspect`, `_pack_assets`), recovery copies (`saveRecovery` / `loadRecovery` / `clearRecovery`), templates, copy layout (`savedLayouts`, `layoutNodes`), labels (`actionLabels`, `profileModes`, `profileLabelsChanged`), colours (`recentColours`, `noteColour`, `colorAt`), print and export (`saveArea`, `printImage`, module functions `exact_page`, `save_area`, `print_image`, `adjust_photo`), pool rows (`chips` -> `chips_for_guid`).
 - `gremlin/ui/button_map_labels.py` (178): `action_labels` (what each control does in a mode, with parent-mode inheritance), `mode_order`.
 - `gremlin/ui/button_map_options.py` (391): Button Map Options (config section `button-map`), saved styles, `ButtonMapOptions` QML object.
 - `gremlin/ui/pair_live.py` (`PairLiveThrottle`), `gremlin/ui/input_pairing.py` (`MappedButtonModel` etc.): the live press feed and wire labels the map shows (shared with the viewers; mapped there).
@@ -17,20 +17,22 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 - `gremlin/util.py` `copy_legacy_modules` (939): copies the old `qml/maps` folder into the modules folder at start (the folder is not in the repo any more).
 
 **QML window and editor**
-- `qml/DialogJoystickButtonMap.qml` (4081): the window. Device choice, Edit / Save / Cancel, dirty check, recovery offer, photo menu and Adjust Photo popup, print setup (`printSetup`, `printArea`, `exportPixels`), export and print jobs, copy layout, templates dialogs, saved-style dialog, labels mode, tool rows (`_tools`), command palette, colour picker, menus and shortcuts.
-- `qml/JoystickButtonMapCard.qml` (93): one device's live feed (`PairLiveThrottle`, mapped models) and pool rows (`_inventory.chips`), wraps `VkbRigFace`.
+- `qml/DialogJoystickButtonMap.qml` (4428): the window. Device choice, Edit / Save / Cancel, dirty check, recovery offer, photo menu and Adjust Photo popup, print setup (`printSetup`, `printArea`, `exportPixels`), export and print jobs, copy layout, templates dialogs, saved-style dialog, labels mode, tool rows (`_tools`), command palette, colour picker, menus and shortcuts. Built on the shared pieces: results go on a `MessageLine` (window `say(text, failed)`; the Templates window's `templatesMessage`), no Saved / Save Failed boxes; an `UndoBar` above the top tool row while editing; Reset Layout (`askResetLayout`) and Delete Template ask the shared question (`confirm.js`) with red `DangerButton`s; seven `FilePicker`s (picture ×2: Choose Photo, Import Picture; export ×3: PDF / PNG / JPG; template ×2: import, export). The `QtQuick.Dialogs` import is gone.
+- `qml/JoystickButtonMapCard.qml` (108): one device's live feed (`PairLiveThrottle`, mapped models) and pool rows (`_inventory.chips`), wraps `VkbRigFace`.
 - `qml/VkbRigFace.qml` (913): photo, zoom and pan, rulers, wire labels (`labelBtn/Axis/Hat`), loads the editor.
-- `qml/VkbRigEditor.qml` (1665): the editor item. All node data (`nodes`), selection, undo history (`hist`, `pushHist`, `undo`, `redo`, `seedHist`, `replaceHistTop`), timers; one-line forwarders into the `rig_*.js` files. Also a hard-coded EVO R name list `physNames` (1006-1040).
-- `qml/rig_*.js` (27 files, about 9,700 lines): `rig_coords` (page fractions to pixels), `rig_chips` (chip text, pool catalog, `addChiplet`, rename), `rig_groups` (groups, 5-way formats, `_uid`), `rig_selection` (delete, copy/paste, duplicate, nudge, return to pool), `rig_menu` (right-click menu model), `rig_leaders`, `rig_hotspot`, `rig_draw`, `rig_shapes`, `rig_path`, `rig_transform`, `rig_text`, `rig_tables`, `rig_callout`, `rig_overlays` (pictures), `rig_photo`, `rig_layers`, `rig_props`, `rig_align`, `rig_grouprot`, `rig_mirror`, `rig_find` (press to find), `rig_snap`, `rig_rulers`, `rig_print_area`, `rig_style`, `rig_styles` (saved styles), `rig_hit`, `rig_pointer`.
-- `qml/Rig*.qml` (17 files): `RigChipItem`, `RigChipLabel`, `RigMiniChip`, `RigGroupItem`, `RigDrawItem`, `RigLeaderLayer`, `RigPhotoLayer`, `RigGrid`, `RigGuides`, `RigSelRing`, `RigPointerArea`, `RigPrintArea`, `RigLayersPanel`, `RigPropsPanel`, `RigOptionsPanel`, `RigRenderer` (hidden copy that draws every print, export and preview).
-- `qml/PrintExportWindow.qml` (525): Print & Export window (paper, orientation, margins, background, scale, Freeform, preview, buttons).
-- `qml/DialogButtonMapGuide.qml` (12), `qml/help_topics.js` `buttonMapTopics()` (the Button Map Guide), `qml/OptionButtonMapLibrary.qml` (164, styles and templates library).
+- `qml/VkbRigEditor.qml` (1703): the editor item. All node data (`nodes`), selection, undo history (`hist`, `pushHist`, `undo`, `redo`, `seedHist`, `replaceHistTop`), timers; one-line forwarders into the `rig_*.js` files. Also a hard-coded EVO R name list `physNames` (1006-1040).
+- `qml/rig_*.js` (29 files, about 9,800 lines): `rig_coords` (page fractions to pixels), `rig_chips` (chip text, pool catalog, `addChiplet`, rename), `rig_groups` (groups, 5-way formats, `_uid`), `rig_selection` (delete, copy/paste, duplicate, nudge, return to pool), `rig_menu` (right-click menu model), `rig_leaders`, `rig_hotspot`, `rig_draw`, `rig_shapes`, `rig_path`, `rig_transform`, `rig_text`, `rig_tables`, `rig_callout`, `rig_overlays` (pictures), `rig_photo`, `rig_layers`, `rig_props`, `rig_align`, `rig_grouprot`, `rig_mirror`, `rig_find` (press to find), `rig_snap`, `rig_rulers`, `rig_print_area`, `rig_style`, `rig_styles` (saved styles), `rig_hit`, `rig_pointer`.
+- `qml/Rig*.qml` (16 files): `RigChipItem`, `RigChipLabel`, `RigMiniChip`, `RigGroupItem`, `RigDrawItem`, `RigLeaderLayer`, `RigPhotoLayer`, `RigGrid`, `RigGuides`, `RigSelRing`, `RigPointerArea`, `RigPrintArea`, `RigLayersPanel`, `RigPropsPanel`, `RigOptionsPanel`, `RigRenderer` (hidden copy that draws every print, export and preview). `RigLayersPanel.qml` (675): the Layers search is the shared `SearchBox` (`layersSearch`, ×, Esc; its own Ctrl+F is off, the window's Ctrl+F opens Layers first); its own "12 of 148" / "No layers match" line is kept.
+- `qml/ToolDock.qml` (468), `qml/ToolRow.qml` (474), `qml/ToolPane.qml` (551): the window's tool rows (used only by the Button Map). ToolDock holds each tool's state and which row (top, bottom, left, right) its tab is on: open/hide, pinned, locked, dragged tabs, kept sizes (Reset Tool Rows forgets them). ToolRow draws one row's tabs; ToolPane is a tool's panel joined to its tab, resizable on its free edges when unlocked.
+- `qml/PrintExportWindow.qml` (543): Print & Export window (paper, orientation, margins, background, scale, Freeform, preview, buttons).
+- The Button Map Guide is now the Button Map chapter of the one Help book (`qml/help/button_map.js`; page 01 owns the book). `qml/OptionButtonMapLibrary.qml` (183, styles and templates library: `SectionHeading`, `EmptyState`, red `DangerButton` Delete Style / Delete Template asking the shared question `Confirm.ask`).
 - `qml/vkb_evo_l_face_map.md`, `qml/vkb_evo_r_face_map.md`: pixel notes for the EVO photos.
 - Callers: `qml/Main.qml` 556-650 (open, open blank, quit check), 484-493 (Delete Device closes it); `qml/main_commands.js:92`.
 - Other users of `HardwareProfile`: `DialogConfigureModule.qml` (Module Setup photo), `DialogDevicePack.qml`, `Xbox360Face.qml`, `gremlin/ui/hidhide.py:493`.
 
 **Tests**
 - Python-level: `test_button_map_templates.py` (4), `test_button_map_recovery.py` (3), `test_button_map_copy_layout.py` (2), `test_button_map_save_keeps.py` (3), `test_photo_pose.py` (3), `test_button_map_photo_look.py` (6), `test_button_map_export.py` (9), `test_button_map_colours.py` (3), `test_button_map_labels.py` (6), `test_button_map_options.py` (7), `test_paste_picture.py` (3), `test_group_member_kind.py` (4), `test_audit2_button_map.py` (1), `test_data_safety.py::test_cancel_puts_the_starting_photo_back`, `test_module_file_damage.py::test_button_map_save_is_refused`, `test_twin_devices.py::test_the_button_map_of_the_second_twin_opens_its_own_file`, `test_audit3_module_files.py` (2 renamed-stick photo tests), `test_history_recording.py` (Button Map area, view-only not kept).
+- Shared pieces: `test_button_map_shared_pieces.py` (with `button_map_shared_pieces_smoke.py`: message line, Undo bar, Reset Layout and Delete Template questions, choosers, Layers search); updated for them: `test_stage1_button_map.py`, `test_final_07.py`, `test_leave_text_button_map.py`, `test_print_export_window.py`.
 - Window smokes (own process, off-screen): `button_map_window_smoke.py` / `test_button_map_window.py`, `button_map_devices_smoke.py` / `test_button_map_devices.py` (7), `button_map_fixes_smoke.py` / `test_button_map_fixes.py` (10), `button_map_lifecycle_smoke.py` / `test_button_map_lifecycle.py`, `button_map_print_area_smoke.py` / `test_button_map_print_area.py` (9), `button_map_tool_row_smoke.py` / `test_button_map_tool_row.py` (14), `button_map_options_pane_smoke.py` / `test_button_map_options_pane.py` (9), `print_export_window_smoke.py` / `test_print_export_window.py` (12), `test_audit3_screens.py::test_button_map_recovery_offer_and_device_switch`, `test_audit3_modes.py::test_button_map_labels_mode_follows_a_rename`.
 - Golden: `rig_editor_harness.py` (2228) drives `VkbRigFace` + `VkbRigEditor` (not the window) through 31 scenarios; `test_rig_editor_golden.py` compares states and screenshots with `test/unit/rig_editor_golden/*.json|png` (layouts `layouts/evo_l.json`, `evo_r.json`, `legacy.json`). Also `test_rig_shapes.py` (26), `test_rig_stacking.py` (2), `test_rig_uid.py` (1).
 
@@ -64,7 +66,7 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 | File → Device → a device | `_inputDeviceItems` (177) | `openForDevice` → ask if dirty → `finishSwitch` (821) |
 | Stick plugged in / out | `_devices.onModelReset` (93) | `devTick++`; reconnect → `loadLive` (not while editing) |
 | File → Edit Mapping | menu (2485) | `enterEdit` (384) → `offerRecovery` or `_startEdit` (395) |
-| File → Save, Ctrl+S | menu (2489), Shortcut | `saveEdit` (433) → `_hw.save` → read back `_hw.load` → `clearRecovery`, `dropPhotoStash` |
+| File → Save, Ctrl+S | menu, Shortcut | `saveEdit` → `_hw.save` → read back `_hw.load` → `clearRecovery`, `dropPhotoStash`; result → `say` (message line) |
 | File → Cancel | menu (2490) | `cancelEdit` (708) → `askLeave("cancel")` or `discardEdit` (677) → `restorePhoto`, `seedHist` |
 | Window close (X), File → Close | `onClosing` (37) | `askLeave("close")` when dirty |
 | Program quit | `Main.offerButtonMapLeaveThenQuit` (636), `Main` onClosing (1384) | `requestLeaveForAppQuit` (716) |
@@ -72,17 +74,17 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 | Recovery prompt Restore / Discard / Not now | `_recoverGate` (893) | `restoreRecovery` (640) / `clearRecovery` + `putPhotoBack` (617) / `putOffRecovery` (626) |
 | Autosave timer (every N s while editing) | `_autosaveTimer` (669) | `autosaveNow` (558) → `_hw.saveRecovery` / `clearRecovery` |
 | File → History | menu (2493) | `DialogHistory.qml` for this device |
-| File → Reset Layout | `_resetDlg` (918) | `resetLayout` (1088) → `pushHist`, `clearLayout` |
+| File → Reset Layout | `askResetLayout` → `Confirm.ask` (red Reset Layout) | `resetLayout` → `pushHist`, `clearLayout` |
 | File → Fit to Photo Frame | menu (2506) | `fitToPhotoFrame` (1666) → `sceneShiftList` (259) |
 | File → Print & Export…, Ctrl+P | menu (2512) | `openPrintExport` (2327) → `PrintExportWindow` |
 | Print & Export: paper, orientation, margins, background, scale, Freeform | `PrintExportWindow.qml` 384-471 | `host.setPrint` (1453) → `reshapePrintArea`, `persistUi` |
 | Print & Export: Print… | `PrintExportWindow.qml:497` | `printNow` (1874) → `RigRenderer` job → `_hw.printImage` (QPrintDialog) |
-| Print & Export: Export PDF / PNG / JPG | `openExportFile` (2335) → FileDialogs | `exportTo` (1859) → `RigRenderer` → `_hw.saveArea` |
+| Print & Export: Export PDF / PNG / JPG | `openExportFile` → `FilePicker` (export) `picked` | `exportTo` (1859) → `RigRenderer` → `_hw.saveArea` |
 | Print & Export preview drag / wheel | `PrintExportWindow.qml` | editor `shiftPrintArea` → `printAreaEdited` → `persistUi` |
 | File → Templates → Save Layout as Template… | `_templateNameDlg` (2150) | `saveTemplateAs` (2128) → `_hw.saveTemplate` |
 | File → Templates → Apply Template → name | menu (2536) | `openCopyLayout({template})` → `_copyDlg` → `copyLayoutFrom` (1945) → `_hw.templateNodes` → `_replaceLayout` (1968) |
-| File → Templates → Manage Templates… (Rename, Export…, Delete, Import…) | `_templatesDlg` (2201) | `_hw.renameTemplate`, `exportTemplate`, `deleteTemplate` (asks first), `importTemplate` |
-| Edit → Undo / Redo, Ctrl+Z / Ctrl+Y | menu (2561), Shortcut, right-click header | editor `undo` / `redo` (946/961) → `applySnap` |
+| File → Templates → Manage Templates… (Rename, Export…, Delete, Import…) | `_templatesDlg` (2201) | `_hw.renameTemplate`; Export… / Import… → `FilePicker` (template) → `exportTemplate` / `importTemplate`; Delete → `Confirm.ask` (red Delete Template) → `_hw.deleteTemplate`; results on `templatesMessage` |
+| Edit → Undo / Redo, Ctrl+Z / Ctrl+Y, `UndoBar` buttons while editing | menu, Shortcut, right-click header, `UndoBar` | `_ed().undo()` / `redo()` → `applySnap` |
 | Edit → Duplicate / Copy / Paste, Ctrl+D/C/V | menu, Shortcuts | `rig_selection` `duplicateSelection`, `copySelection`, `pasteClipboard` |
 | Edit → Paste Picture, Ctrl+Shift+V | menu (2593) | `pastePicture` (1298) → `_hw.pasteClipboardPictures` → `addPictures` |
 | Drop picture files on the map | `_pictureDrop` (3107) | `dropPictures` (1328) → `_hw.importPictureFiles` (refused outside Edit) |
@@ -96,14 +98,16 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 | Profile edited, modes changed | `signal.profileChanged`, `signal.modesChanged` → `profileLabelsChanged` | `onProfileLabelsChanged` (1561) |
 | Mode renamed / deleted | `signal.modeRenamed/modeDeleted` (1572) | `labelMode` follows / resets |
 | View → Layers, Properties, Print Area, Reset Tool Rows, Command Palette (Ctrl+K) | menu 2717-2750 | `_tools.toggle`, `_palette.open` |
+| Ctrl+F (window) / Layers search | opens Layers first, then `SearchBox` `layersSearch` (RigLayersPanel) | filters the Layers list |
+| Options › Button Map library: Delete Style / Delete Template | `OptionButtonMapLibrary.qml` → `Confirm.ask` (red) | `button_map_options` style delete / `_hw.deleteTemplate` |
 | View → Zoom to Fit Page (Ctrl+1), Zoom to Selection (Ctrl+2), Reset View (Ctrl+0) | menu 2754-2767 | `zoomToPage`, `zoomToSelection`, `resetViewNow` → `persistUi` |
 | View → Rulers, Show Guides, Clear Guides, drag guide from ruler | menu 2771-2791, `rig_rulers` | `_opts.set("rulers")`; `rulerGuidesEdited` → `guidesFromEditor` (1505) → `persistUi` |
 | View → Grid → Show / Snap / Snap to Entities / Size | menu 2793-2886 | `setGridPref` (1718) → `persistUi` |
-| Photo → Choose Photo… | `_imageDialog` (1799) | `_hw.stashPhoto` → `_hw.copyImage` (writes module file `image` now) → `applyImage`, `resetPhoto` |
+| Photo → Choose Photo… | `FilePicker` (picture) `picked` | `_hw.stashPhoto` → `_hw.copyImage` (writes module file `image` now) → `applyImage`, `resetPhoto` |
 | Photo → Clear Photo | menu (2897) | `_hw.stashPhoto` → `_hw.clearImage` (deletes files now) → `applyImage(stockImage)` |
 | Photo → Move Photo / Adjust Photo… / Reset Photo | menu 2915-2937, `_photoAdj` | `applyPhotoToEditor`, `setPhotoScale/Off/Rot`, `resetPhoto` (1254) → editor `notePhotoChange` |
 | Adjust Photo look sliders | `_lookTimer` (1240, 150 ms) | `_hw.adjustedPhotoUrl` |
-| Draw → Import Picture… | `_overlayDialog` (1817) | `_hw.copyOverlay` → editor `addOverlay` |
+| Draw → Import Picture… | `FilePicker` (picture) `picked` | `_hw.copyOverlay` → editor `addOverlay` |
 | Colour picker, Recent, Pick from Map | `_colorPop` (3700+) | editor `applyField`; `_hw.noteColour`; `takeEyedrop` → `_hw.colorAt` |
 | Right-click map item | `Menus.ContextMenu` build `rig_menu.menuModel` | the `rig_*.js` action for each row |
 | Pool: drag chip onto map; drag chip back onto pool; filter; Chip only | pool (3200+) | `dropPool` (1069) → `addChiplet`; `rig_selection.returnToPool`; `refreshReservoir` (1047) |
@@ -343,6 +347,11 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - **G22** Tracker AU-64's note says Button Map photo folders still use the device's own name; the code now uses the module-file rule for the photo, pictures, recovery and safety copy (`_module_slug`, 1755). Only the stock-photo choice (2629-2642) and the Device Pack export file name (1864) go by name.
 - **G23** Test plan rows BM-F07..08 / S-24 (Clear image can't be undone, fixed by A3), S-22 / BM-X1 (map pack export, removed), BMAP2-4 (Export modes, removed by BM37), BMAP2-12 and BMAP2-15 (Options → Export → Light page / Print light, replaced by Print & Export Background) describe things that are no longer there.
 
+**From the to-do list**
+- **To-do 45** (parked, D-01-CANVAS-EXEMPT): the canvas chip editor and the Layers panel rename keep their own boxes, not the shared Rename box.
+- **To-do 56**: on a refused save into a damaged file the status line says only "Not written..." (S12); check the dialog's wording against the spec.
+- **To-do 46** (done 2026-10-08): one undo step per command (S55); golden runs end on the condition, not on timing.
+
 **Open tracker items for this subsystem**
 - **AU-27** (open): a mirrored Copy Button Map may take two undos; not verified (S78).
 - **AU-64** (open, part): photo folders follow the module file; only the Device Pack export file name still goes by the device's own name (see G22).
@@ -355,7 +364,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 
 ## 11. Size and test coverage
 
-**Size, roughly:** about 21,000 lines. Python: `hardware_profile.py` 2656 (Button Map part about 1,100), `button_map_labels.py` 178, `button_map_options.py` 391. QML: window 4081, editor 1665, face 913, `Rig*.qml` about 3,900, Print & Export 525, card 93. JavaScript: 27 `rig_*.js` files, about 9,700.
+**Size, roughly (2026-10-09):** about 23,000 lines. Python: `hardware_profile.py` 2398 (Button Map part about 1,100), `button_map_labels.py` 178, `button_map_options.py` 391. QML: window 4428, editor 1703, face 913, `Rig*.qml` about 3,900, tool rows 1,493 (`ToolDock`, `ToolRow`, `ToolPane`), Print & Export 543, card 108. JavaScript: 29 `rig_*.js` files, about 9,800.
 
 **Covered well:** the editor's drawing and selection behaviour (31 golden scenarios plus `test_rig_shapes.py`); print area, Print & Export window and export sizes; templates, recovery store, copy-layout listing, photo pose and look, recent colours, options and styles; labels text and mode inheritance; window devices (unplugged, reconnect, edit survives, entering Edit is not a change); tool rows and Options pane; Save keeps other keys; Cancel puts the photo back; damaged file refused; twin and renamed sticks.
 

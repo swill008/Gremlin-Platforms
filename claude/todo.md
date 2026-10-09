@@ -265,6 +265,12 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     Change" (glossary Title Case); 05 S59 "Reuse" never appears on screen; 07 S12 Button Map status
     line on a refused save into a damaged file says only "Not written..." (check the dialog).
 
+57. DONE 2026-10-09 (with the shared-pieces batch) (user 2026-10-09): show the program version in the main
+    window title bar, e.g. "test profile.xml - Gremlin-Platforms R1 1.0.30" (spec 01 S57 to update).
+
+58. Button Map Undo bar has no "Last change:" text: the editor's history steps carry no names (B-map
+    2026-10-09). Name the steps where they are recorded (rig editor), then bind UndoBar.lastChange.
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).
