@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import time
+import weakref
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -130,7 +131,10 @@ def test_cleared_entries_stay_through_clean_up_and_later_clears(
     assert [e["kind"] for e in _settled()] == ["cleared", "cleared"]
 
 
-def test_library_undo_steps_empty(data: Path) -> None:
+def test_library_undo_steps_empty(data: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Only this test's Steps: an earlier test's Device Library model whose Qt
+    # object is gone but not yet collected would fail first and stop the rest.
+    monkeypatch.setattr(library_undo, "_ALL", weakref.WeakSet())
     steps = library_undo.Steps()
     told: list[int] = []
     steps.on_cleared.append(lambda: told.append(1))

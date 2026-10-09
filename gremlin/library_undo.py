@@ -16,6 +16,7 @@ every Steps (08 S12b) and tells its on_cleared listeners.
 
 from __future__ import annotations
 
+import logging
 import threading
 import weakref
 from collections.abc import Callable
@@ -67,8 +68,12 @@ _ALL: weakref.WeakSet[Steps] = weakref.WeakSet()
 
 
 def _history_cleared() -> None:
+    # One Steps that fails never stops the others being emptied.
     for steps in list(_ALL):
-        steps.clear()
+        try:
+            steps.clear()
+        except Exception:
+            logging.getLogger("system").exception("Library Undo: clear failed")
 
 
 history.add_cleared_listener(_history_cleared)
@@ -91,7 +96,19 @@ class Steps:
             self._done.clear()
             self._undone.clear()
         for listener in list(self.on_cleared):
-            listener()
+            try:
+                listener()
+            except RuntimeError as error:
+                # Its Qt object is gone (a deleted model): drop it.
+                logging.getLogger("system").warning(
+                    "Library Undo: dropped a listener: %s", error
+                )
+                if listener in self.on_cleared:
+                    self.on_cleared.remove(listener)
+            except Exception:
+                logging.getLogger("system").exception(
+                    "Library Undo: a cleared listener failed"
+                )
 
     def note(
         self,
