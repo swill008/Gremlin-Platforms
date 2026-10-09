@@ -619,12 +619,11 @@ run('_root.profileDirty = false')
 
 # S58, S59, S61: the toolbar.
 pump(lambda: run('_optionsButton.x > _logicalButton.x'))
-out['captions'] = run('[_homeButton, _toggleButton, _vjoyViewerButton, '
-                      '_xboxViewerButton, _buttonMapButton, _logicalButton, '
-                      '_optionsButton].map(function(b) { return b.caption })')
-out['order'] = run('(function() { var xs = [_homeButton, _toggleButton, '
-                   '_vjoyViewerButton, _xboxViewerButton, _buttonMapButton, '
-                   '_logicalButton, _optionsButton].map(function(b) { return b.x }); '
+TOOLBAR = ('[_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton, '
+           '_buttonMapButton, _deviceLibraryButton, _logicalButton, _optionsButton]')
+out['captions'] = run(TOOLBAR + '.map(function(b) { return b.caption })')
+out['order'] = run('(function() { var xs = ' + TOOLBAR + '.map(function(b) { '
+                   'return b.x }); '
                    'for (var i = 1; i < xs.length; i++) '
                    'if (!(xs[i] > xs[i-1])) return false; '
                    'return true })()')
@@ -742,20 +741,19 @@ def test_s5_the_data_folders_are_made_at_start(main_window: dict) -> None:
 def test_s57_the_title_names_the_profile_and_marks_unsaved_changes(
     main_window: dict,
 ) -> None:
-    # S57: the title ends with the program version (version.json).
+    # S57: the window's own title is the profile; the title bar puts the
+    # program name and version first (gremlin/ui/window_titles.py).
     version_json = (_ROOT / "version.json").read_text(encoding="utf-8")
     version = json.loads(version_json)["version"]
-    assert main_window["title"] == f"Untitled - Gremlin-Platforms R1 {version}"
-    assert main_window["titleDirty"] == f"* Untitled - Gremlin-Platforms R1 {version}"
-    # Windows appends " - <display name>" unless the title ends with it: it
-    # must, or the name shows twice (seen 2026-10-09).
-    assert main_window["title"].endswith(" - " + main_window["displayName"])
+    assert main_window["title"] == "Untitled"
+    assert main_window["titleDirty"] == "* Untitled"
+    assert main_window["displayName"] == f"Gremlin-Platforms R1 {version}"
 
 
 def test_s58_s59_s61_the_toolbar(main_window: dict) -> None:
     assert main_window["captions"] == [
         "Home", "Run", "vJoy Viewer", "Xbox Viewer", "Button Map",
-        "Logical Device", "Options",
+        "Device Library", "Logical Device", "Options",
     ]
     assert main_window["order"] is True
     assert main_window["modeOnToolbar"] is False  # S58a: on the bar under it

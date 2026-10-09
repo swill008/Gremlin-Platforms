@@ -1110,6 +1110,10 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         from gremlin.ui import leave_text
 
         self.leave_text = leave_text.install(self)
+        # Title bars start with the program name and version (01 S57).
+        from gremlin.ui import window_titles
+
+        self.title_bars = window_titles.install(self)
 
         self.engine = QtQml.QQmlApplicationEngine(parent=self)
         self.engine.addImportPath(gremlin.util.resource_path("theme"))

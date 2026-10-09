@@ -221,7 +221,7 @@ def test_app_start_after_a_crash_offers_and_restore_is_unsaved(run: dict) -> Non
     restored = run["restored"]
     assert restored["mode"] is True and restored["unsaved"] is True
     assert restored["path"].endswith("Flight.xml")
-    assert restored["title"].startswith("* Flight.xml - Gremlin-Platforms R1 ")
+    assert restored["title"] == "* Flight.xml"
 
 
 def test_app_keeps_edits_and_save_removes_the_copy(run: dict) -> None:
