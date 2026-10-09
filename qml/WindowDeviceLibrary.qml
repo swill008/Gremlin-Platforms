@@ -22,8 +22,9 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
     font.family: Style.uiFont
 
-    width: Style.fitWidth(Style.dp(1180), Screen)
-    height: Style.fitHeight(Style.dp(720), Screen)
+    // No width/height binding: ToolWindowMemory sets the size once when
+    // the window opens (saved size, or its default fitted to the screen);
+    // a binding on Screen would re-run on another screen and undo it.
     minimumWidth: Style.fitWidth(Style.dp(860), Screen)
     minimumHeight: Style.fitHeight(Style.dp(520), Screen)
     color: Style.background
@@ -48,8 +49,8 @@ ApplicationWindow {
     ToolWindowMemory {
         host: _lib
         name: "device-library"
-        defaultWidth: Style.dp(1180)
-        defaultHeight: Style.dp(720)
+        defaultWidth: Style.fitWidth(Style.dp(1180), Screen)
+        defaultHeight: Style.fitHeight(Style.dp(720), Screen)
     }
 
     Component.onCompleted: if (lib) lib.refresh()

@@ -23,8 +23,9 @@ Window {
     title: "Print & Export"
     flags: Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
     // Kept inside the screen at any UI scale (as the other tool windows).
-    width: Style.fitWidth(Style.dp(760), Screen)
-    height: Style.fitHeight(Style.dp(720), Screen)
+    // No width/height binding: ToolWindowMemory sets the size once when
+    // the window opens (saved size, or its default fitted to the screen);
+    // a binding on Screen would re-run on another screen and undo it.
     minimumWidth: Style.fitWidth(Style.dp(560), Screen)
     minimumHeight: Style.fitHeight(Style.dp(400), Screen)
     color: Style.background
@@ -33,8 +34,8 @@ Window {
     ToolWindowMemory {
         host: _win
         name: "print-export"
-        defaultWidth: Style.dp(760)
-        defaultHeight: Style.dp(720)
+        defaultWidth: Style.fitWidth(Style.dp(760), Screen)
+        defaultHeight: Style.fitHeight(Style.dp(720), Screen)
     }
 
     readonly property var setup: host ? host.printSetup : ({})

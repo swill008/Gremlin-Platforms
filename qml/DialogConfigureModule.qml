@@ -84,8 +84,9 @@ ApplicationWindow {
         photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
     }
 
-    width: Style.fitWidth(Style.dp(980), Screen)
-    height: Style.fitHeight(Style.dp(640), Screen)
+    // No width/height binding: ToolWindowMemory sets the size once when
+    // the window opens (saved size, or its default fitted to the screen);
+    // a binding on Screen would re-run on another screen and undo it.
     minimumWidth: Style.fitWidth(Style.dp(800), Screen)
     minimumHeight: Style.fitHeight(Style.dp(480), Screen)
     title: direction === "dest" ? "Output Module Setup" : "Input Module Setup"

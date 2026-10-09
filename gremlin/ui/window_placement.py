@@ -131,13 +131,6 @@ def _intersects_enough(rect: QtCore.QRect, screen: QtGui.QScreen) -> bool:
     return visible.width() * visible.height() >= 0.35 * rect.width() * rect.height()
 
 
-def _target_screen(saved: QtCore.QRect) -> QtGui.QScreen | None:
-    for screen in _available_screens():
-        if _intersects_enough(saved, screen):
-            return screen
-    return _screen_at(QtGui.QCursor.pos())
-
-
 def _centered(size: QtCore.QSize, screen: QtGui.QScreen) -> QtCore.QRect:
     avail = screen.availableGeometry()
     width = min(max(size.width(), 900), avail.width())
@@ -288,15 +281,6 @@ def _tool_map(cfg: Configuration) -> dict:
     return data
 
 
-def _clamp_on_screen(rect: QtCore.QRect, screen: QtGui.QScreen) -> QtCore.QRect:
-    avail = screen.availableGeometry()
-    width = min(max(rect.width(), 1), avail.width())
-    height = min(max(rect.height(), 1), avail.height())
-    x = min(max(rect.x(), avail.x()), avail.x() + avail.width() - width)
-    y = min(max(rect.y(), avail.y()), avail.y() + avail.height() - height)
-    return QtCore.QRect(x, y, width, height)
-
-
 def _set_maximized(window: QtGui.QWindow, maximized: bool) -> None:
     """Windowed or maximized, without showing a hidden window: setting the
     visibility shows it (Print & Export, made hidden with the Button Map,
@@ -314,7 +298,68 @@ def _set_maximized(window: QtGui.QWindow, maximized: bool) -> None:
         )
 
 
+def _best_screen(rect: QtCore.QRect) -> QtGui.QScreen | None:
+    """The screen showing the largest part of rect, or None when none shows enough."""
+    best, best_area = None, 0
+    for screen in _available_screens():
+        if not _intersects_enough(rect, screen):
+            continue
+        visible = rect.intersected(screen.availableGeometry())
+        area = visible.width() * visible.height()
+        if area > best_area:
+            best, best_area = screen, area
+    return best
+
+
+def _margins_on(window: QtGui.QWindow, screen: QtGui.QScreen) -> QtCore.QMargins:
+    """The window's frame in the target screen's units (mixed-DPI screens)."""
+    margins = _frame_margins(window)
+    try:
+        ratio = float(window.devicePixelRatio()) / float(screen.devicePixelRatio())
+    except (AttributeError, TypeError, ZeroDivisionError):
+        return margins
+    if ratio <= 0 or abs(ratio - 1.0) < 0.01:
+        return margins
+    return QtCore.QMargins(
+        round(margins.left() * ratio), round(margins.top() * ratio),
+        round(margins.right() * ratio), round(margins.bottom() * ratio),
+    )
+
+
+def _limit_minimum(
+    window: QtGui.QWindow, screen: QtGui.QScreen, margins: QtCore.QMargins
+) -> None:
+    """A smallest size larger than the work area minus the frame would push
+    the frame off the screen; lower it to what fits."""
+    avail = screen.availableGeometry()
+    max_w = max(1, avail.width() - margins.left() - margins.right())
+    max_h = max(1, avail.height() - margins.top() - margins.bottom())
+    minimum = window.minimumSize()
+    if minimum.width() > max_w:
+        window.setMinimumWidth(max_w)
+    if minimum.height() > max_h:
+        window.setMinimumHeight(max_h)
+
+
+def _centered_frame(
+    size: QtCore.QSize, screen: QtGui.QScreen, margins: QtCore.QMargins
+) -> QtCore.QRect:
+    """Client rect whose frame is centred in (and fits) the work area."""
+    avail = screen.availableGeometry()
+    frame_w = min(size.width() + margins.left() + margins.right(), avail.width())
+    frame_h = min(size.height() + margins.top() + margins.bottom(), avail.height())
+    rect = QtCore.QRect(
+        avail.x() + max(0, (avail.width() - frame_w) // 2) + margins.left(),
+        avail.y() + max(0, (avail.height() - frame_h) // 2) + margins.top(),
+        size.width(),
+        size.height(),
+    )
+    return _fit_client(rect, screen, margins)
+
+
 def restore_tool(window: QtGui.QWindow, name: str, default_w: int, default_h: int) -> None:
+    """Reopen a tool window where it was left, its whole frame inside the work
+    area of the screen showing most of it; centre it when that spot is gone."""
     entry = _tool_map(_ensure()).get(str(name)) or {}
     if not isinstance(entry, dict):
         entry = {}
@@ -326,33 +371,30 @@ def restore_tool(window: QtGui.QWindow, name: str, default_w: int, default_h: in
     minimum = window.minimumSize()
     width = max(200, width, minimum.width())
     height = max(160, height, minimum.height())
-    app = QtGui.QGuiApplication.instance()
     saved = None
     try:
         if "x" in entry and "y" in entry:
             saved = QtCore.QRect(int(entry["x"]), int(entry["y"]), width, height)
     except (TypeError, ValueError):
         saved = None
-    screen = _target_screen(saved) if saved is not None else None
-    if saved is not None and screen is not None and _intersects_enough(saved, screen):
+    screen = _best_screen(saved) if saved is not None else None
+    if saved is not None and screen is not None:
+        margins = _margins_on(window, screen)
+        _limit_minimum(window, screen, margins)
         _set_maximized(window, False)
-        window.setGeometry(_clamp_on_screen(saved, screen))
+        window.setGeometry(_fit_client(saved, screen, margins))
         if entry.get("max"):
             _set_maximized(window, True)
         return
-    if screen is None and app is not None:
-        screen = app.screenAt(QtGui.QCursor.pos()) or app.primaryScreen()
+    screen = _screen_at(QtGui.QCursor.pos())
     if screen is None:
         window.setWidth(width)
         window.setHeight(height)
         return
-    avail = screen.availableGeometry()
-    width = min(width, avail.width())
-    height = min(height, avail.height())
-    x = avail.x() + max(0, (avail.width() - width) // 2)
-    y = avail.y() + max(0, (avail.height() - height) // 2)
+    margins = _margins_on(window, screen)
+    _limit_minimum(window, screen, margins)
     _set_maximized(window, False)
-    window.setGeometry(QtCore.QRect(x, y, width, height))
+    window.setGeometry(_centered_frame(QtCore.QSize(width, height), screen, margins))
 
 
 def save_tool(window: QtGui.QWindow, name: str) -> None:
