@@ -71,3 +71,6 @@ a time to the user.
 | 2026-10-09 | Import by id: window (IM-window) | fix | ~15 min | 2 min | 11:53–11:55 |
 | 2026-10-09 | Import by id: Python (IM-py) | fix | ~12 min | 6 min | 11:53–11:59 |
 | 2026-10-09 | Full run (twins + import by id) | test | ~5 min | 5 min | 11:59–12:04, all green |
+| 2026-10-09 | Class table tidy-up + vJoy by id (CT-table) | refactor | ~10 min | 4 min | 12:13–12:17 |
+| 2026-10-09 | Class table: Copy/Swap one rule (CT-callers) | refactor | ~10 min | 3 min | 12:13–12:16 |
+| 2026-10-09 | Full run (class-table tidy-up) | test | ~5 min | 5 min | 12:16–12:21, green except the 2 import test errors fixed after |

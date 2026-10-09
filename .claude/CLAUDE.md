@@ -48,6 +48,13 @@ Every piece of work, not only big batches:
    log. Update it at every step (agents started/finished, test runs, commits,
    pushes, CI). Show results the user should look at (screenshots, reports)
    as artifacts too.
+   **Issue tracker (user, 2026-10-09).** Keep
+   https://claude.ai/artifact/QTmzBoHqL8rDerX41Wa9EN (ArtifactData collection
+   `issues`) a running copy: at every commit, add an item for each new fix,
+   feature or gap (ref, title, group, severity, status, evidence: commit and
+   spec line) and set the status of items it fixes. The progress page links to
+   it and shows its counts. It was left un-updated 2026-10-06 to 10-09; never
+   again.
 3. **Live output.** Every agent pipes every shell command through
    `tools/agent_log.py <AGENT>`, with `PYTHONUNBUFFERED=1` in front and
    pytest `-v`:

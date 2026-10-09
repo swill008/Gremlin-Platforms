@@ -272,6 +272,11 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 58. Button Map Undo bar has no "Last change:" text: the editor's history steps carry no names (B-map
     2026-10-09). Name the steps where they are recorded (rig editor), then bind UndoBar.lastChange.
 
+59. PLAN NEXT (user 2026-10-09: yes, plan separately): the Logical Device in the Device Library's
+    Built-in inputs section, beside Keyboard and OSC: Save to Device Library, Restore, Export of its
+    controls, names, groups and actions. Needs the Library's save/restore/export to handle the
+    Logical Device's data (~30-40 min). Spec 10 S6 and the class table's library_builtin change.
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).
