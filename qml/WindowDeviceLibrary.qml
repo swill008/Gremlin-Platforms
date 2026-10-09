@@ -328,8 +328,12 @@ ApplicationWindow {
             lib.deleteMany(keys)
     }
 
+    // One History entry, "Cleared the setup of X" (S52).
     function runClearSetup(key) {
-        if (!toMain("deleteDevice", key).ok)
+        lib.beginClearSetup(key)
+        var ok = toMain("deleteDevice", key).ok
+        lib.endRemove()
+        if (!ok)
             return
         lib.refresh()
         showMessage("Setup cleared. An autosave was kept in the Device Library first.", false)

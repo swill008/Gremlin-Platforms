@@ -91,6 +91,11 @@ def runs(tmp_path_factory: pytest.TempPathFactory) -> dict[str, tuple[int, str, 
         folder = tmp_path_factory.mktemp(name)
         sample = folder / "test_sample.py"
         sample.write_text(code, encoding="utf-8")
+        # Its own ini and root, so collection looks only in this folder, never
+        # at the shared temp folder another test may be emptying (to-do 47).
+        (folder / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+        own = ["-c", str(folder / "pytest.ini"), "--rootdir", str(folder),
+               "--confcutdir", str(folder)]
         env = dict(
             os.environ,
             PYTHONPATH=os.pathsep.join([str(_ROOT / "test"), str(_ROOT)]),
@@ -104,7 +109,7 @@ def runs(tmp_path_factory: pytest.TempPathFactory) -> dict[str, tuple[int, str, 
         with log.open("w", encoding="utf-8") as out:
             process = subprocess.Popen(
                 [sys.executable, "-m", "pytest", "-p", "conftest", "-q",
-                 "-p", "no:cacheprovider", "-s", str(sample)],
+                 "-p", "no:cacheprovider", *own, "-s", str(sample)],
                 cwd=_ROOT, env=env, stdout=out, stderr=subprocess.STDOUT,
             )
         started[name] = (process, log, time.monotonic())

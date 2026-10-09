@@ -35,7 +35,10 @@ _MODULE = {
 
 
 def _run(
-    tmp_path: pathlib.Path, bindings: dict | None = None, history: bool = False
+    tmp_path: pathlib.Path,
+    bindings: dict | None = None,
+    history: bool = False,
+    clear: bool = False,
 ) -> dict:
     home = tmp_path / "home"
     modules = home / "Gremlin Platforms" / "modules"
@@ -49,6 +52,7 @@ def _run(
         GREMLIN_OFFLINE="1",
         PYTHONIOENCODING="utf-8",
         GREMLIN_SMOKE_HISTORY="1" if history else "0",
+        GREMLIN_SMOKE_CLEAR="1" if clear else "0",
     )
     args = [sys.executable, str(_SMOKE), _NAME, str(module)]
     if bindings is not None:
@@ -110,3 +114,17 @@ def test_remove_is_one_history_entry_and_restore_puts_it_all_back(
     assert out["rowRestored"]["count"] == out["before"]["count"], out
     assert out["bindingsRestored"].get(other) == "hid_remapper_achb", out
     assert out["aliasAfter"] == "" and out["aliasRestored"] == "Left Box", out
+
+
+def test_clear_setup_is_one_history_entry_and_restore_puts_the_file_back(
+    tmp_path: pathlib.Path,
+) -> None:
+    # 10 S52 (D-10-ONE-ENTRY-TITLES): Clear Setup's autosave and module
+    # file delete are one entry, "Cleared the setup of X"; Restore puts the
+    # module file back. The device stays in the Library.
+    out = _run(tmp_path, history=True, clear=True)
+    assert out["fileBefore"] and not out["fileAfter"], out
+    shown = out["plan"]["shown"] or _NAME
+    assert out["titles"] == [f"Cleared the setup of {shown}"], out
+    assert out["restore"]["ok"], out
+    assert out["fileRestored"], out

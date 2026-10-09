@@ -1172,6 +1172,22 @@ class DeviceLibraryModel(QtCore.QObject):
         token = self._group
         QtCore.QTimer.singleShot(_GROUP_LIMIT_MS, self, lambda: self._end(token))
 
+    @QtCore.Slot(str)
+    def beginClearSetup(self, key: str) -> None:
+        """S52 (D-10-ONE-ENTRY-TITLES): Clear Setup's autosave and module
+        file delete (Home's Delete Device, run by the window) are one
+        History entry, until endRemove()."""
+        hist = getattr(self.api, "history", None)
+        if hist is None:
+            return
+        self.endRemove()
+        plan = self.removalPlan(str(key))
+        what = str(plan.get("shown") or plan.get("name") or "a device")
+        self._group = hist.begin_group(f"Cleared the setup of {what}")
+        self._choices = self._file_choices() if self._group else None
+        token = self._group
+        QtCore.QTimer.singleShot(_GROUP_LIMIT_MS, self, lambda: self._end(token))
+
     @QtCore.Slot()
     def endRemove(self) -> None:
         self._end(self._group)

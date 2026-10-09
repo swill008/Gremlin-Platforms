@@ -1523,8 +1523,17 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, str, result=str)
     def deleteDevice(self, device_name: str, guid: str) -> str:
         """Delete Device: always keeps a "stick deleted" autosave in the
-        Device Library first (no "Save a copy" question, 10 S21)."""
-        raw = delete_device(device_name, guid)
+        Device Library first (no "Save a copy" question, 10 S21). One
+        History entry, "Deleted X" (03 S94a); inside a group already open
+        (the Library's Remove) it joins that one."""
+        from gremlin import device_aliases, history
+
+        shown = device_aliases.display_name(guid, " ".join(device_name.split()))
+        token = history.begin_group(f"Deleted {shown}")
+        try:
+            raw = delete_device(device_name, guid)
+        finally:
+            history.end_group(token)
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:

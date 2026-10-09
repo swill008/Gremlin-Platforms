@@ -48,6 +48,8 @@ messages: list[str] = []
 # GREMLIN_SMOKE_HISTORY=1: a saved setup first, and after the removal its
 # History entries, then Restore of the newest (10 S51, D-10-IN-HISTORY).
 HISTORY = os.environ.get("GREMLIN_SMOKE_HISTORY") == "1"
+# GREMLIN_SMOKE_CLEAR=1: Clear Setup instead of Remove (S52).
+CLEAR = os.environ.get("GREMLIN_SMOKE_CLEAR") == "1"
 
 
 def _capture(mode, context, text: str) -> None:  # noqa: ANN001
@@ -143,7 +145,11 @@ if before:
         text = ev(lib, f"JSON.stringify(_lib.lib.{call}({key}))")
         out[name] = json.loads(str(text))
     messages.clear()
-    ev(lib, f"_lib.runRemove([{key}])")
+    if CLEAR:
+        ev(lib, f"_lib.runClearSetup({key})")
+        wait_until(lambda: not MODULE.is_file(), 5000)
+    else:
+        ev(lib, f"_lib.runRemove([{key}])")
     wait_until(lambda: row() is None, 5000)
 out["fileAfter"] = MODULE.is_file()
 out["after"] = row()
