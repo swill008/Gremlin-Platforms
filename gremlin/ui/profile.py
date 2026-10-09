@@ -893,6 +893,17 @@ def _undoable_deletes() -> list[dict]:
     return [memo for _, memo in _deleted_modes]
 
 
+def _rename_in_deletes(old_name: str, new_name: str) -> None:
+    """Undo Delete Mode keeps a deleted mode's place: a parent or moved
+    child mode renamed since is found by its new name (04 S46a)."""
+    for memo in _undoable_deletes():
+        if memo["parent"] == old_name:
+            memo["parent"] = new_name
+        memo["children"] = [
+            new_name if child == old_name else child for child in memo["children"]
+        ]
+
+
 def _follow_editor(old_name: str, new_name: str) -> None:
     """The mode shown in the main window follows a renamed or deleted mode."""
     from gremlin.ui.backend import Backend
@@ -915,6 +926,7 @@ def rename_mode(old_name: str, new_name: str) -> None:
     if profile is None:
         return
     profile.modes.rename_mode(old_name, new_name)
+    _rename_in_deletes(old_name, new_name)
     ModeManager().rename_mode(old_name, new_name)
     _follow_editor(old_name, new_name)
     signal.modeRenamed.emit(old_name, new_name)
