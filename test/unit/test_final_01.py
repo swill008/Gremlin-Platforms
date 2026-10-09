@@ -617,17 +617,20 @@ out['footer'] = run('_footer.children[0].children[0].text')
 run('_root.profileDirty = false')
 
 # S58, S59, S61: the toolbar.
-pump(lambda: run('_manageModesButton.x > _optionsButton.x'))
+pump(lambda: run('_optionsButton.x > _logicalButton.x'))
 out['captions'] = run('[_homeButton, _toggleButton, _vjoyViewerButton, '
                       '_xboxViewerButton, _buttonMapButton, _logicalButton, '
                       '_optionsButton].map(function(b) { return b.caption })')
 out['order'] = run('(function() { var xs = [_homeButton, _toggleButton, '
                    '_vjoyViewerButton, _xboxViewerButton, _buttonMapButton, '
-                   '_logicalButton, _optionsButton, _modeLabel, _modeSelector, '
-                   '_manageModesButton].map(function(b) { return b.x }); '
+                   '_logicalButton, _optionsButton].map(function(b) { return b.x }); '
                    'for (var i = 1; i < xs.length; i++) '
                    'if (!(xs[i] > xs[i-1])) return false; '
                    'return true })()')
+# S58a: Mode, its list and Manage Modes are on the bar under the toolbar.
+out['modeOnToolbar'] = run('(function() { for (var p = _manageModesButton; p; '
+                           'p = p.parent) if (p === _toolbarFlick) return true; '
+                           'return false })()')
 out['modeLabel'] = run('_modeLabel.text')
 out['manageModes'] = run('_manageModesButton.text')
 out['homeAccent'] = run('Qt.colorEqual(_homeButton.color, Style.accent)')
@@ -748,6 +751,7 @@ def test_s58_s59_s61_the_toolbar(main_window: dict) -> None:
         "Logical Device", "Options",
     ]
     assert main_window["order"] is True
+    assert main_window["modeOnToolbar"] is False  # S58a: on the bar under it
     assert main_window["modeLabel"] == "Mode"
     assert main_window["manageModes"] == "Manage Modes"
     # Home's page is shown at start; the Logical Device's isn't.

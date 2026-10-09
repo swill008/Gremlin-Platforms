@@ -223,7 +223,7 @@ Who else changes profile data (not single-owner)
 
 ### Modes at run time
 
-- S51. It should have one Mode on the toolbar: the mode you edit is the mode that runs; while running it shows the running mode. [help: Modes] [help: Run and status] [glossary: D10]
+- S51. It should have one Mode box, on the bar under the toolbar (01 S58a; was on the toolbar until D-01-MODE-BAR): the mode you edit is the mode that runs; while running it shows the running mode. [help: Modes] [help: Run and status] [glossary: D10]
 - S52. It should, when a profile is loaded (Load, New, auto-load, start-up), put the toolbar in the Startup Mode: a named mode as itself; Last Active as the mode the profile last ran in (only modes used while running count, GL-149), if that mode still exists; with no such record (a new, moved or renamed profile, or one never run) the top row in Manage Modes (alphabetical, ignoring capitals, child modes included). There is no Use Heuristic: a file that says Use Heuristic, or any unknown value, loads as Last Active, and new profiles start on Last Active. [help: Profile Settings] [test-plan: HELP-BUG] [changed 2026-10-09: D-04-LAST-ACTIVE; was Use Heuristic = alphabetically first parentless mode]
 - S53. It should start Run in the mode shown on the toolbar (not the Startup Mode). [help: Profile Settings] [test-plan: HELP-BUG]
 - S54. It should let the toolbar Mode box switch the running mode while running. [user confirmed 2026-10-06; was code only]

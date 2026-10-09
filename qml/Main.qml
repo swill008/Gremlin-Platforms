@@ -49,27 +49,47 @@ ApplicationWindow {
     }
     // The toolbar's width with or without the captions. When the window is
     // narrower than the toolbar with captions, the buttons show their icons
-    // only (the tooltips still name them), so Mode and Manage Modes stay in
-    // view. Worked out from the parts, not the row, so it can't loop.
+    // only (the tooltips still name them). Worked out from the parts, not the
+    // row, so it can't loop.
     readonly property int _modeListWidth: Style.dp(200)
     readonly property int _modeListMinWidth: Style.dp(120)
     function _toolbarWidth(withCaptions) {
         var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton,
                        _buttonMapButton, _logicalButton, _optionsButton]
-        // The buttons, the spacer, Mode, the mode list (narrowed to its
-        // minimum with icons only) and Manage Modes.
-        var w = _homeButton.rightPadding + _toolbarRow.spacing * (buttons.length + 4)
+        var w = _homeButton.rightPadding + _toolbarRow.spacing * buttons.length
         for (var i = 0; i < buttons.length; i++)
             w += withCaptions ? buttons[i].fullWidth : buttons[i].compactWidth
         return w + Math.max(0, (_toggleButton.fullWidth - _toggleButton.compactWidth) / 2) * (withCaptions ? 1 : 0)
-            + _modeLabel.implicitWidth
-            + (withCaptions ? _modeListWidth : _modeListMinWidth)
-            + _manageModesButton.implicitWidth + Style.dp(30)
     }
     readonly property bool toolbarCompact: width < Math.ceil(_toolbarWidth(true))
-    // Never narrower than the toolbar with icons only (so Manage Modes stays
-    // in the window), and never wider or taller than the screen.
-    minimumWidth: Style.fitWidth(Math.max(Style.dp(1300), Math.ceil(_toolbarWidth(false))), Screen)
+    // The Mode group on the bar under the toolbar (01 S58a): Mode, the mode
+    // list (narrowed to its minimum when short of room), Manage Modes and the
+    // divider, each with its margin. The page's own controls after it scroll
+    // when they don't fit, so they don't count.
+    function _modeBarWidth(fullList) {
+        return Style.dp(12) * 2 + _modeBarRow.spacing * 4
+            + _modeLabel.implicitWidth + Style.dp(10)
+            + (fullList ? _modeListWidth : _modeListMinWidth) + Style.dp(10)
+            + _manageModesButton.implicitWidth + Style.dp(10)
+            + Style.dp(1) + Style.dp(10)
+    }
+    // The open page's item and its own controls for the bar (a page may
+    // declare `property Component pageBar`; none means an empty bar).
+    readonly property Item currentPageItem: {
+        var loaders = [_statusLoader, _outputLoader, _logicalLoader, _configSplitLoader,
+                       _scriptLoader, _settingsLoader]
+        for (var i = 0; i < loaders.length; i++)
+            if (loaders[i].visible && loaders[i].item)
+                return loaders[i].item
+        return null
+    }
+    readonly property Component currentPageBar:
+        currentPageItem && currentPageItem.pageBar ? currentPageItem.pageBar : null
+    // Never narrower than the toolbar with icons only or the bar under it
+    // with the list narrowed (so Manage Modes stays in the window), and
+    // never wider or taller than the screen.
+    minimumWidth: Style.fitWidth(Math.max(Style.dp(1300), Math.ceil(_toolbarWidth(false)),
+                                          Math.ceil(_modeBarWidth(false))), Screen)
     minimumHeight: Style.fitHeight(Style.dp(700), Screen)
     // WindowPlacement sets the saved or default size at startup.
     width: 1400
@@ -1364,198 +1384,263 @@ ApplicationWindow {
         owners: ["main"]
     }
 
-    header: ToolBar {
-        id: _toolbar
+    header: ColumnLayout {
+        spacing: 0
 
-        // Scrolls sideways only when even the icons don't fit (a high UI
-        // scale on a small screen), so every button stays reachable.
-        Flickable {
-            id: _toolbarFlick
-            anchors.fill: parent
-            implicitHeight: _toolbarRow.implicitHeight
-                            + (_toolbarScroll.visible ? _toolbarScroll.height : 0)
-            contentWidth: Math.max(width, Math.ceil(_root._toolbarWidth(false)))
-            contentHeight: height
-            flickableDirection: Flickable.HorizontalFlick
-            boundsBehavior: Flickable.StopAtBounds
-            interactive: contentWidth > width
-            clip: true
+        ToolBar {
+            id: _toolbar
+            Layout.fillWidth: true
 
-            ScrollBar.horizontal: ScrollBar {
-                id: _toolbarScroll
-                visible: _toolbarFlick.contentWidth > _toolbarFlick.width
-                policy: ScrollBar.AlwaysOn
-            }
+            // Scrolls sideways only when even the icons don't fit (a high UI
+            // scale on a small screen), so every button stays reachable.
+            Flickable {
+                id: _toolbarFlick
+                anchors.fill: parent
+                implicitHeight: _toolbarRow.implicitHeight
+                                + (_toolbarScroll.visible ? _toolbarScroll.height : 0)
+                contentWidth: Math.max(width, Math.ceil(_root._toolbarWidth(false)))
+                contentHeight: height
+                flickableDirection: Flickable.HorizontalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                interactive: contentWidth > width
+                clip: true
 
-            RowLayout {
-                id: _toolbarRow
-                x: _homeButton.rightPadding + spacing + _toggleButton.sideSlack
-                width: _toolbarFlick.contentWidth - x
-                height: implicitHeight
-                spacing: Style.dp(8)
-
-                JGToolButton {
-                    id: _homeButton
-                    compact: _root.toolbarCompact
-                    text: "\uF425"
-                    caption: "Home"
-                    color: (!uiState || uiState.currentRoom === "status") ? Style.accent : Style.foreground
-                    tooltip: qsTr("Home screen")
-
-                    onClicked: () => { closeWorkRoom() }
-                }
-                JGToolButton {
-                    id: _toggleButton
-                    compact: _root.toolbarCompact
-                    text: "\uF448"
-                    // Glossary: Run / Stop.
-                    caption: backend && backend.gremlinActive ? "Stop" : "Run"
-                    color: backend && backend.gremlinActive ? Style.accent : Style.foreground
-                    tooltip: backend && backend.gremlinActive ? qsTr("Stop the profile") : qsTr("Run the profile")
-
-                    onClicked: () => { _root.toggleRun() }
+                ScrollBar.horizontal: ScrollBar {
+                    id: _toolbarScroll
+                    visible: _toolbarFlick.contentWidth > _toolbarFlick.width
+                    policy: ScrollBar.AlwaysOn
                 }
 
-                JGToolButton {
-                    id: _vjoyViewerButton
-                    compact: _root.toolbarCompact
-                    text: "\uF3F2"
-                    tooltip: qsTr("Show or hide the vJoy Viewer")
-                    caption: "vJoy Viewer"
+                RowLayout {
+                    id: _toolbarRow
+                    x: _homeButton.rightPadding + spacing + _toggleButton.sideSlack
+                    width: _toolbarFlick.contentWidth - x
+                    height: implicitHeight
+                    spacing: Style.dp(8)
 
-                    onClicked: () => {
-                        Helpers.toggleComponent("DialogInputViewer.qml")
+                    JGToolButton {
+                        id: _homeButton
+                        compact: _root.toolbarCompact
+                        text: "\uF425"
+                        caption: "Home"
+                        color: (!uiState || uiState.currentRoom === "status") ? Style.accent : Style.foreground
+                        tooltip: qsTr("Home screen")
+
+                        onClicked: () => { closeWorkRoom() }
                     }
-                }
+                    JGToolButton {
+                        id: _toggleButton
+                        compact: _root.toolbarCompact
+                        text: "\uF448"
+                        // Glossary: Run / Stop.
+                        caption: backend && backend.gremlinActive ? "Stop" : "Run"
+                        color: backend && backend.gremlinActive ? Style.accent : Style.foreground
+                        tooltip: backend && backend.gremlinActive ? qsTr("Stop the profile") : qsTr("Run the profile")
 
-                JGToolButton {
-                    id: _xboxViewerButton
-                    compact: _root.toolbarCompact
-                    text: "\uF2D4"
-                    tooltip: qsTr("Show or hide the Xbox Viewer")
-                    caption: "Xbox Viewer"
-
-                    onClicked: () => {
-                        Helpers.toggleComponent("DialogXboxViewer.qml")
-                    }
-                }
-
-                JGToolButton {
-                    id: _buttonMapButton
-                    compact: _root.toolbarCompact
-                    text: "\uF5E7"
-                    tooltip: qsTr("Open a blank Button Map")
-                    caption: "Button Map"
-
-                    onClicked: () => { openBlankButtonMap() }
-                }
-
-                JGToolButton {
-                    id: _logicalButton
-                    compact: _root.toolbarCompact
-                    text: "\uF2D6"
-                    caption: "Logical Device"
-                    color: (uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical") ? Style.accent : Style.foreground
-                    tooltip: qsTr("Open the Logical Device configuration")
-
-                    onClicked: () => { openLogicalDevice() }
-                }
-
-                JGToolButton {
-                    id: _optionsButton
-                    compact: _root.toolbarCompact
-                    text: "\uF3E5"
-                    // Program-wide settings; the profile's own are its Profile Settings tab.
-                    caption: "Options"
-                    tooltip: qsTr("Options: settings for the whole program")
-
-                    onClicked: () => {
-                        Helpers.createComponent("DialogOptions.qml")
-                    }
-                }
-
-                LayoutHorizontalSpacer {}
-
-                Label {
-                    id: _modeLabel
-                    Layout.rightMargin: Style.dp(10)
-
-                    // One mode: the one you edit is the one that runs.
-                    text: "Mode"
-                }
-
-                TooltipComboBox {
-                    id: _modeSelector
-
-                    // Narrows (down to its minimum) only when the toolbar is short of room.
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: _root._modeListWidth
-                    Layout.maximumWidth: _root._modeListWidth
-                    Layout.minimumWidth: _root._modeListMinWidth
-                    Layout.rightMargin: Style.dp(10)
-
-                    model: ModeListModel { id: _modeList }
-                    textRole: "name"
-                    valueRole: "name"
-
-                    background: Rectangle {
-                        implicitWidth: Style.dp(120)
-                        implicitHeight: Style.dp(32)
-                        border.width: Style.dp(1)
-                        border.color: _modeSelector.down || _modeSelector.hovered
-                                ? _modeSelector.U.Universal.baseMediumColor
-                                : _modeSelector.U.Universal.baseMediumLowColor
-                        color: _modeSelector.down
-                                ? _modeSelector.U.Universal.listMediumColor
-                                : (Style.isDarkMode ? _modeSelector.U.Universal.altMediumLowColor : Style._light.item)
+                        onClicked: () => { _root.toggleRun() }
                     }
 
-                    delegate: DropdownRow {
-                        combo: _modeSelector
-                    }
+                    JGToolButton {
+                        id: _vjoyViewerButton
+                        compact: _root.toolbarCompact
+                        text: "\uF3F2"
+                        tooltip: qsTr("Show or hide the vJoy Viewer")
+                        caption: "vJoy Viewer"
 
-                    onActivated: () => {
-                        if (backend)
-                            backend.selectMode(currentText)
-                        else if (uiState)
-                            uiState.setCurrentMode(currentText)
-                    }
-
-                    Connections {
-                        target: _modeList
-                        function onModelReset() {
-                            // After the ComboBox's own reset, or it clears this again and the
-                            // box shows blank (New Profile, Load, Save As).
-                            Qt.callLater(function() {
-                                if (!uiState)
-                                    return
-                                var index = _modeSelector.find(uiState.currentMode)
-                                _modeSelector.currentIndex = index >= 0 ? index : (_modeSelector.count > 0 ? 0 : -1)
-                            })
+                        onClicked: () => {
+                            Helpers.toggleComponent("DialogInputViewer.qml")
                         }
                     }
 
-                    Component.onCompleted: () => {
-                        if (uiState) {
-                            currentIndex = find(uiState.currentMode)
+                    JGToolButton {
+                        id: _xboxViewerButton
+                        compact: _root.toolbarCompact
+                        text: "\uF2D4"
+                        tooltip: qsTr("Show or hide the Xbox Viewer")
+                        caption: "Xbox Viewer"
+
+                        onClicked: () => {
+                            Helpers.toggleComponent("DialogXboxViewer.qml")
                         }
                     }
 
-                    PointerTip {
-                        text: qsTr("Mode: the one you edit is the one that runs.")
-                    }
-                }
+                    JGToolButton {
+                        id: _buttonMapButton
+                        compact: _root.toolbarCompact
+                        text: "\uF5E7"
+                        tooltip: qsTr("Open a blank Button Map")
+                        caption: "Button Map"
 
-                Button {
-                    id: _manageModesButton
-                    text: "Manage Modes"
-                    Layout.rightMargin: Style.dp(10)
-                    onClicked: () => {
-                        Helpers.createComponent("DialogManageModes.qml")
+                        onClicked: () => { openBlankButtonMap() }
+                    }
+
+                    JGToolButton {
+                        id: _logicalButton
+                        compact: _root.toolbarCompact
+                        text: "\uF2D6"
+                        caption: "Logical Device"
+                        color: (uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical") ? Style.accent : Style.foreground
+                        tooltip: qsTr("Open the Logical Device configuration")
+
+                        onClicked: () => { openLogicalDevice() }
+                    }
+
+                    JGToolButton {
+                        id: _optionsButton
+                        compact: _root.toolbarCompact
+                        text: "\uF3E5"
+                        // Program-wide settings; the profile's own are its Profile Settings tab.
+                        caption: "Options"
+                        tooltip: qsTr("Options: settings for the whole program")
+
+                        onClicked: () => {
+                            Helpers.createComponent("DialogOptions.qml")
+                        }
                     }
                 }
             }
         }
+
+        // Under the toolbar on every page (01 S58a): Mode, its list and
+        // Manage Modes always on the left, a divider, then the open page's
+        // own controls (its pageBar, if it has one).
+        Item {
+            id: _modeBar
+            objectName: "modeBar"
+            Layout.fillWidth: true
+            implicitHeight: _modeBarRow.implicitHeight + Style.dp(12)
+
+            RowLayout {
+                id: _modeBarRow
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: Style.dp(12)
+                anchors.rightMargin: Style.dp(12)
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Style.dp(8)
+
+                    Label {
+                        id: _modeLabel
+                        Layout.rightMargin: Style.dp(10)
+
+                        // One mode: the one you edit is the one that runs.
+                        text: "Mode"
+                    }
+
+                    TooltipComboBox {
+                        id: _modeSelector
+
+                        // Narrows (down to its minimum) only when the toolbar is short of room.
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: _root._modeListWidth
+                        Layout.maximumWidth: _root._modeListWidth
+                        Layout.minimumWidth: _root._modeListMinWidth
+                        Layout.rightMargin: Style.dp(10)
+
+                        model: ModeListModel { id: _modeList }
+                        textRole: "name"
+                        valueRole: "name"
+
+                        background: Rectangle {
+                            implicitWidth: Style.dp(120)
+                            implicitHeight: Style.dp(32)
+                            border.width: Style.dp(1)
+                            border.color: _modeSelector.down || _modeSelector.hovered
+                                    ? _modeSelector.U.Universal.baseMediumColor
+                                    : _modeSelector.U.Universal.baseMediumLowColor
+                            color: _modeSelector.down
+                                    ? _modeSelector.U.Universal.listMediumColor
+                                    : (Style.isDarkMode ? _modeSelector.U.Universal.altMediumLowColor : Style._light.item)
+                        }
+
+                        delegate: DropdownRow {
+                            combo: _modeSelector
+                        }
+
+                        onActivated: () => {
+                            if (backend)
+                                backend.selectMode(currentText)
+                            else if (uiState)
+                                uiState.setCurrentMode(currentText)
+                        }
+
+                        Connections {
+                            target: _modeList
+                            function onModelReset() {
+                                // After the ComboBox's own reset, or it clears this again and the
+                                // box shows blank (New Profile, Load, Save As).
+                                Qt.callLater(function() {
+                                    if (!uiState)
+                                        return
+                                    var index = _modeSelector.find(uiState.currentMode)
+                                    _modeSelector.currentIndex = index >= 0 ? index : (_modeSelector.count > 0 ? 0 : -1)
+                                })
+                            }
+                        }
+
+                        Component.onCompleted: () => {
+                            if (uiState) {
+                                currentIndex = find(uiState.currentMode)
+                            }
+                        }
+
+                        PointerTip {
+                            text: qsTr("Mode: the one you edit is the one that runs.")
+                        }
+                    }
+
+                    Button {
+                        id: _manageModesButton
+                        text: "Manage Modes"
+                        Layout.rightMargin: Style.dp(10)
+                        onClicked: () => {
+                            Helpers.createComponent("DialogManageModes.qml")
+                        }
+                    }
+
+                    Rectangle {
+                        id: _modeBarDivider
+                        objectName: "modeBarDivider"
+                        Layout.preferredWidth: Style.dp(1)
+                        Layout.fillHeight: true
+                        Layout.rightMargin: Style.dp(10)
+                        color: Style.line
+                    }
+
+                    // The page's own controls; they scroll sideways only
+                    // when even the narrowed mode list leaves too little room,
+                    // so the Mode group never moves.
+                    Flickable {
+                        id: _pageBarFlick
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        // Takes what the Mode group leaves; the mode list
+                        // narrows first only when there is none.
+                        Layout.preferredWidth: 0
+                        implicitHeight: _pageBarLoader.implicitHeight
+                                        + (_pageBarScroll.visible ? _pageBarScroll.height : 0)
+                        contentWidth: Math.max(width, _pageBarLoader.implicitWidth)
+                        contentHeight: height
+                        flickableDirection: Flickable.HorizontalFlick
+                        boundsBehavior: Flickable.StopAtBounds
+                        interactive: contentWidth > width
+                        clip: true
+
+                        ScrollBar.horizontal: ScrollBar {
+                            id: _pageBarScroll
+                            visible: _pageBarFlick.contentWidth > _pageBarFlick.width
+                            policy: ScrollBar.AlwaysOn
+                        }
+
+                        Loader {
+                            id: _pageBarLoader
+                            objectName: "pageBarLoader"
+                            width: _pageBarFlick.contentWidth
+                            sourceComponent: _root.currentPageBar
+                        }
+                    }
+                }
+            }
     }
 
     footer: Rectangle {

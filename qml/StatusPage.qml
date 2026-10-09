@@ -603,11 +603,9 @@ Item {
         refreshCards()
     }
 
-    ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: Style.dp(12)
-        spacing: Style.dp(8)
-
+    // Home's controls, shown by Main in the bar under the toolbar (D-01-MODE-BAR).
+    // Built in this file, so its bindings still reach _page.
+    property Component pageBar: Component {
         RowLayout {
             Layout.fillWidth: true
             Button {
@@ -643,6 +641,12 @@ Item {
                 }
             }
         }
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: Style.dp(12)
+        spacing: Style.dp(8)
 
         SplitView {
             id: _splitView

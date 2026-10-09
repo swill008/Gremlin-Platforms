@@ -35,7 +35,7 @@ function topics() {
             + "<p>Updates and uninstalling never touch your profiles, modules or settings; they are kept in your Gremlin Platforms folder (see What is saved where).</p>"),
         topic("Getting Started", "Run and status",
             "<p><b>Run</b> on the toolbar runs the loaded profile; while it runs the button reads <b>Stop</b>. While it is off you are only editing; nothing is sent to vJoy or Xbox. The button uses the accent color while the profile runs.</p>"
-            + "<p>The bottom bar shows <b>Status</b> (Running, Stopped, or Running (Paused), and 'unsaved changes' when the running profile has some) and what the last save wrote. The toolbar's <b>Mode</b> is the mode you edit and the mode that runs; while the profile runs, picking a mode there switches the running profile to it.</p>"
+            + "<p>The bottom bar shows <b>Status</b> (Running, Stopped, or Running (Paused), and 'unsaved changes' when the running profile has some) and what the last save wrote. The <b>Mode</b> box (in the bar under the toolbar) is the mode you edit and the mode that runs; while the profile runs, picking a mode there switches the running profile to it.</p>"
             + "<p>When an action editor has changes that are not saved, Run asks first: <b>Save</b>, <b>Discard</b> or <b>Cancel</b>. The profile runs as saved, and while it runs the action editors are locked (“Profile running: stop it to edit”). Stop never asks.</p>"
             + "<p>When you press <b>Run</b>, the program knows where an axis is only after that axis has moved. Until then it treats the axis as centered, so a throttle, brake pedal or slider resting away from the middle is sent as center at first. After pressing Run, move each of those controls a little and it is sent where it really is. Sticks and rudders that rest at center are not affected.</p>"
             + "<p>Running does not hide controllers from games; use <b>HidHide</b> for that. What happens when a controller is plugged in or removed while running is set by Options → General → Devices → <b>Device change behavior</b> (Stop, Ignore, or Reload).</p>"),
@@ -227,7 +227,7 @@ function topics() {
             "<p>A mode is a set of actions. The same button can do different things in different modes. A mode can <b>inherit</b> from a parent: anything it does not map itself uses the parent's actions.</p>"
             + "<ul>"
             + "<li><b>Manage Modes</b> (toolbar, or Tools → Mapping): add, rename, and remove modes, and set <b>Inherits from</b>. Deleting a mode removes its actions too; <b>Undo Delete Mode</b> brings back the mode deleted last, with its actions, while the same profile is open.</li>"
-            + "<li><b>Mode</b> on the toolbar picks the mode you edit and the mode Run starts in; while running it shows the mode that runs, and picking another mode there switches the running profile to it.</li>"
+            + "<li><b>Mode</b>, in the bar under the toolbar, picks the mode you edit and the mode Run starts in; while running it shows the mode that runs, and picking another mode there switches the running profile to it.</li>"
             + "<li>The <b>Change Mode</b> action switches mode while the profile runs.</li>"
             + "<li>Modes are part of the profile; save the profile to keep them.</li>"
             + "</ul>"),
@@ -255,7 +255,7 @@ function topics() {
             + "<ol>"
             + "<li>Tools → Mapping → <b>Auto Mapper</b> (or a card's menu).</li>"
             + "<li>Tick the input modules and output modules. The first ticked input goes to the first ticked output, the second to the second, and so on.</li>"
-            + "<li>Choose <b>Select Mode</b> (it starts on the toolbar's mode), then <b>Create 1:1 Actions</b>. The result names the mode the actions went into, and says so when the toolbar shows another mode.</li>"
+            + "<li>Choose <b>Select Mode</b> (it starts on the mode shown in the Mode box), then <b>Create 1:1 Actions</b>. The result names the mode the actions went into, and says so when the Mode box shows another mode.</li>"
             + "</ol>"
             + "<ul>"
             + "<li>Only outputs the output module claims are used. Skipped controls are listed with the reason (not claimed, not on the vJoy device, or already used by another input in this mode). When the output module claims none of them, the result says so.</li>"
@@ -311,7 +311,7 @@ function topics() {
         topic("Options and Profile", "Profile Settings",
             "<p>View → <b>Profile Settings</b>. Stored in the profile; save the profile to keep them.</p>"
             + "<ul>"
-            + "<li><b>Startup Mode</b>: the mode the profile is in when it is loaded, including when a program auto-loads it. <b>Last Active</b> (the usual choice) opens the mode the profile last ran in; a profile with no last mode yet (new, moved, renamed or never run) opens in the top mode of the Manage Modes list. A mode by name always opens that mode. <b>Run</b> starts in the mode shown in the toolbar, so change the toolbar mode to start somewhere else.</li>"
+            + "<li><b>Startup Mode</b>: the mode the profile is in when it is loaded, including when a program auto-loads it. <b>Last Active</b> (the usual choice) opens the mode the profile last ran in; a profile with no last mode yet (new, moved, renamed or never run) opens in the top mode of the Manage Modes list. A mode by name always opens that mode. <b>Run</b> starts in the mode shown in the Mode box, so change it there to start somewhere else.</li>"
             + "<li><b>Macro Default Delay</b>: the pause between macro steps.</li>"
             + "<li><b>vJoy Behavior</b>: treat each vJoy device as an output (default) or as an input.</li>"
             + "<li><b>vJoy Initial Values</b>: axis values set when the profile starts.</li>"
@@ -323,7 +323,7 @@ function topics() {
             + "<li>Is the profile running? The toolbar button should read <b>Stop</b> and the bottom bar <b>Running</b>.</li>"
             + "<li>Is the input <b>claimed</b> in its input module? Unclaimed inputs are ignored.</li>"
             + "<li>Does the wire show <b>(not claimed)</b>? Claim that output in Output Module Setup.</li>"
-            + "<li>Is the action in the running <b>Mode</b> (on the toolbar)? Only that mode's actions (and its parents') run.</li>"
+            + "<li>Is the action in the running <b>Mode</b> (the Mode box under the toolbar)? Only that mode's actions (and its parents') run.</li>"
             + "<li><b>system.log</b> in the Logs folder (Options → Folders) notes each blocked output once.</li>"
             + "</ul>"),
         topic("Troubleshooting", "Xbox does nothing",

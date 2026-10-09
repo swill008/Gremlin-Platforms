@@ -269,7 +269,8 @@ Duplicated logic
 
 ### Main window
 - S57 The title should read "* name - Gremlin-Platforms R1", with * while there are unsaved changes and "Untitled" before the first save. [tracker: C2] [glossary: program's name]
-- S58 The toolbar, left to right: Home, Run, vJoy Viewer, Xbox Viewer, Button Map, Logical Device, Options, then Mode and its list, and Manage Modes. [glossary: Run / Stop, Mode] [tracker: N16]
+- S58 The toolbar, left to right: Home, Run, vJoy Viewer, Xbox Viewer, Button Map, Logical Device, Options. [glossary: Run / Stop, Mode] [tracker: N16] [changed 2026-10-09: D-01-MODE-BAR]
+- S58a Under the toolbar, on every page, a bar holds on its left Mode, its list and Manage Modes (always in the same place), then a thin divider, then the open page's own controls (Home: Device Library…, Compact view, Layout; other pages: theirs, or nothing). When the window is too narrow, the mode list narrows to its minimum and then the page's controls scroll sideways; Mode and Manage Modes never move. [user decision 2026-10-09: D-01-MODE-BAR]
 - S59 The Run button should read Run, and Stop (accent color) while the profile runs. [glossary: Run / Stop] [help: Run and status]
 - S60 vJoy Viewer and Xbox Viewer should open the viewer, or close it when it is open. [test-plan: TB-03]
 - S61 Home and Logical Device should use the accent color while their page is shown. [test-plan: TB-01, TB-05]
