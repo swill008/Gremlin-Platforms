@@ -54,6 +54,7 @@ STATE_LABELS = {
     "connected": "Connected",
     "not_connected": "Not connected",
     "deleted": "Deleted",
+    "builtin": "Built-in input",
 }
 FILTERS = ["connected", "not_connected", "deleted", "autosaves"]
 
@@ -154,6 +155,21 @@ def _short_id(guid: str) -> str:
     """A few characters of a device id, to tell twins apart (S22, S26)."""
     clean = "".join(c for c in str(guid or "") if c.isalnum())
     return clean[:8].upper()
+
+
+def _built_in_icon(dev: dict) -> str:
+    """The row icon of a built-in input (10 S6): "keyboard" for Keyboard,
+    "" (the device icon) for the rest."""
+    if not dev.get("builtIn"):
+        return ""
+    from gremlin.modules import ids
+
+    guid = ids.guid_key(dev.get("guid", ""))
+    if guid == ids.guid_key(ids.KEYBOARD):
+        return "keyboard"
+    if not guid and str(dev.get("name", "")).casefold() == "keyboard":
+        return "keyboard"
+    return ""
 
 
 def _twin_label(dev: dict, names: list[str]) -> str:
@@ -417,7 +433,10 @@ class DeviceLibraryModel(QtCore.QObject):
         names = [str(d.get("name", "")).casefold() for d in self._devices]
         for dev in self._devices:
             state = dev.get("state", "not_connected")
-            if not self._filters.get(state, True):
+            built_in = bool(dev.get("builtIn"))
+            # S6: the state filters never hide the built-in inputs; a
+            # search does.
+            if not built_in and not self._filters.get(state, True):
                 continue
             setups = list(dev.get("setups", []))
             if not self._filters["autosaves"]:
@@ -447,6 +466,10 @@ class DeviceLibraryModel(QtCore.QObject):
                     "countText": _count_text(count),
                     "open": opened,
                     "hasChildren": count > 0,
+                    "builtIn": built_in,
+                    "icon": _built_in_icon(dev),
+                    # The list's section: built-ins sit under their heading.
+                    "section": "builtin" if built_in else "",
                 }
             )
             if not opened:
@@ -463,6 +486,8 @@ class DeviceLibraryModel(QtCore.QObject):
                         "date": _date(setup.get("created", "")),
                         "mark": "autosave" if _is_autosave(setup) else "own",
                         "state": state,
+                        "builtIn": built_in,
+                        "section": "builtin" if built_in else "",
                     }
                 )
         self._rows = rows
@@ -586,11 +611,16 @@ class DeviceLibraryModel(QtCore.QObject):
             else _date_time(str(dev.get("seen") or "")),
             # S22: Copy takes its current settings (module file here, or
             # plugged in now); otherwise one of its saved setups.
-            "hasCurrent": bool(dev.get("module")) or state == "connected",
+            "hasCurrent": bool(dev.get("module"))
+            or state == "connected"
+            or bool(dev.get("builtIn")),
             "countText": _count_text(count),
             "count": count,
             "connected": state == "connected",
-            "canDeleteDevice": state != "connected" and not dev.get("module"),
+            "canDeleteDevice": state != "connected"
+            and not dev.get("module")
+            and not dev.get("builtIn"),
+            "builtIn": bool(dev.get("builtIn")),
         }
 
     def _setup_details(self, dev: dict, setup: dict) -> dict:
@@ -658,7 +688,10 @@ class DeviceLibraryModel(QtCore.QObject):
             "connected": state == "connected",
             # Its device's current settings (S12: something to save now).
             "module": dev.get("module", ""),
-            "hasCurrent": bool(dev.get("module")) or state == "connected",
+            "hasCurrent": bool(dev.get("module"))
+            or state == "connected"
+            or bool(dev.get("builtIn")),
+            "builtIn": bool(dev.get("builtIn")),
         }
 
     rows = QtCore.Property(list, fget=_get_rows, notify=changed)

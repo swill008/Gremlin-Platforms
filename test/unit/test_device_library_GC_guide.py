@@ -194,16 +194,18 @@ def test_the_right_click_menus_named_are_the_windows() -> None:
         "Keep This Autosave",
         "Delete…",
     )
+    builtin = ("Restore…",)  # Built-in inputs (10 S6, D-10-BUILTIN-SECTION)
     space = (
         "Import Device Pack…",
         "Expand All",
         "Collapse All",
         "Device Library Settings…",
     )
-    for item in (*device, *setup, *space):
+    for item in (*device, *setup, *builtin, *space):
         assert item in built, item
         assert f"<b>{item}</b>" in _guide_source(), item
-    assert built <= {*device, *setup, *space}, built - {*device, *setup, *space}
+    known = {*device, *setup, *builtin, *space}
+    assert built <= known, built - known
     topic = _run(
         "deviceLibraryTopics().filter(t => t.title === 'Right-click menus')[0].body"
     )

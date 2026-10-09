@@ -120,20 +120,23 @@ ApplicationWindow {
     // | Actions (menus and the details' buttons)
 
     readonly property bool deviceConnected: hasSel && details.connected === true
+    // S6: a built-in input (Keyboard, OSC) offers only Save, Restore,
+    // Export, Rename and Edit Description.
+    readonly property bool builtIn: hasSel && details.builtIn === true
     // Copy takes a saved setup, or a device's current settings (S22): on a
     // device with none here (deleted, from a pack), its newest saved setup.
-    readonly property bool canCopy: !busy && hasSel && !several
+    readonly property bool canCopy: !busy && hasSel && !several && !builtIn
         && (isSetup || details.hasCurrent === true || details.count > 0)
     // S12: what the device has now (a module file, or plugged in: its
     // bindings) can be saved; a Deleted or pack-only device has nothing.
     readonly property bool canSave: !busy && hasSel && !several && details.hasCurrent === true
     // S30: any stick with an id, plugged in or not.
-    readonly property bool canOutput: !busy && hasSel && !several && (details.guid || "").length > 0
+    readonly property bool canOutput: !busy && hasSel && !several && !builtIn && (details.guid || "").length > 0
     // S15: a saved setup; a device not connected (Remove from Library); a
     // connected one's saved setups (Delete Saved Setups). S50: several.
     readonly property var picked: lib ? lib.selectedKeys : []
     readonly property bool several: picked.length > 1
-    readonly property bool canDelete: !busy && hasSel
+    readonly property bool canDelete: !busy && hasSel && !(isDevice && builtIn)
         && (several ? manyAction().length > 0
                     : (isSetup || !deviceConnected || details.count > 0))
 
@@ -235,7 +238,7 @@ ApplicationWindow {
             if (!row)
                 continue
             kind = row.kind
-            if (row.kind === "device" && row.state === "connected")
+            if (row.kind === "device" && (row.state === "connected" || row.builtIn === true))
                 return ""
         }
         return kind === "device" ? "remove" : (kind === "setup" ? "delete" : "")
@@ -340,6 +343,17 @@ ApplicationWindow {
     }
 
     // S48: back on its own stick, as Copy does.
+    // S6: Restore… on a built-in input puts back its newest saved setup.
+    function askRestoreNewest() {
+        if (!hasSel || details.count < 1)
+            return
+        var newest = lib.newestSetup(details.key)
+        if (!newest.length)
+            return
+        lib.select(newest)
+        askRestore()
+    }
+
     function askRestore() {
         var key = details.key
         _deleteDlg.ask("Restore “" + details.name + "” to " + details.deviceName + "?",
@@ -398,9 +412,12 @@ ApplicationWindow {
         }
         if (d.kind === "setup") {
             var autosave = d.origin === "autosave" && !d.own
+            var ownBuiltIn = d.builtIn === true
             return MenuModel.menu("library-setup", d.name, [
-                MenuModel.action("Copy to Another Stick…", function() { _lib.openCopy() }, free),
-                MenuModel.action("Restore to This Stick…", function() { _lib.askRestore() }, free && d.connected === true),
+                ownBuiltIn ? null
+                    : MenuModel.action("Copy to Another Stick…", function() { _lib.openCopy() }, free),
+                MenuModel.action("Restore to This Stick…", function() { _lib.askRestore() },
+                                 free && (d.connected === true || ownBuiltIn)),
                 MenuModel.action("Export…", function() { _lib.exportSaved() }, free),
                 MenuModel.action("Rename…", function() { _lib.startRename() }, free, { hint: "F2" }),
                 MenuModel.action("Edit Description", function() { _lib.editDescription() }, free),
@@ -408,6 +425,14 @@ ApplicationWindow {
                 MenuModel.action("Delete…", function() { _lib.askDelete() }, free, { danger: true })
             ], [])
         }
+        if (d.builtIn === true)
+            return MenuModel.menu("library-builtin", d.name + " · Built-in input", [
+                MenuModel.action("Save to Device Library…", function() { _lib.openSave() }, canSave),
+                MenuModel.action("Restore…", function() { _lib.askRestoreNewest() }, free && d.count > 0),
+                MenuModel.action("Export…", function() { _lib.exportCurrent() }, free),
+                MenuModel.action("Rename…", function() { _lib.startRename() }, free, { hint: "F2" }),
+                MenuModel.action("Edit Description", function() { _lib.editDescription() }, free)
+            ], [])
         var connected = d.connected === true
         var current = d.hasCurrent === true
         // It has a card on Home: plugged in, or a module file here.
@@ -708,6 +733,33 @@ ApplicationWindow {
                             boundsBehavior: Flickable.StopAtBounds
                             ScrollBar.vertical: ScrollBar {}
 
+                            // S6: the built-in inputs' heading, under a thin
+                            // divider after the last device; not clickable.
+                            section.property: "section"
+                            section.delegate: Item {
+                                required property string section
+                                width: ListView.view.width
+                                height: section === "builtin" ? Style.dp(30) : 0
+                                visible: section === "builtin"
+                                Rectangle {
+                                    objectName: "libraryBuiltInDivider"
+                                    width: parent.width
+                                    height: 1
+                                    color: Style.line
+                                }
+                                Label {
+                                    objectName: "libraryBuiltInHeading"
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: Style.dp(10)
+                                    anchors.bottom: parent.bottom
+                                    anchors.bottomMargin: Style.dp(5)
+                                    text: "BUILT-IN INPUTS"
+                                    font.pixelSize: Style.dp(11)
+                                    font.letterSpacing: Style.dp(1)
+                                    color: Style.fgMuted
+                                }
+                            }
+
                             delegate: Rectangle {
                                 id: _row
                                 required property var modelData
@@ -743,7 +795,8 @@ ApplicationWindow {
                                             _lib.lib.toggleOpen(_row.modelData.key)
                                         } else {
                                             _lib.lib.select(_row.modelData.key)
-                                            _lib.openCopy()
+                                            if (_row.modelData.builtIn !== true)
+                                                _lib.openCopy()
                                         }
                                     }
                                 }
@@ -772,7 +825,7 @@ ApplicationWindow {
                                     }
                                     // Device, saved setup (save mark) or autosave (S10).
                                     Text {
-                                        text: _row.isDev ? "" : (_row.modelData.mark === "autosave" ? "" : "")
+                                        text: _row.isDev ? (_row.modelData.icon === "keyboard" ? "\uF451" : "\uF448") : (_row.modelData.mark === "autosave" ? "" : "")
                                         font.family: Style.iconFont
                                         font.pixelSize: Style.dp(_row.isDev ? 17 : 14)
                                         color: _row.isDev ? Style.fgSoft : (_row.modelData.mark === "autosave" ? Style.fgMuted : Style.info)
@@ -810,7 +863,8 @@ ApplicationWindow {
                                         color: Style.fgMuted
                                     }
                                     Rectangle {
-                                        visible: _row.isDev
+                                        // S6: no Connected / Not connected badge on a built-in.
+                                        visible: _row.isDev && _row.modelData.builtIn !== true
                                         implicitWidth: _state.implicitWidth + Style.dp(14)
                                         implicitHeight: Style.dp(20)
                                         radius: height / 2
@@ -838,7 +892,8 @@ ApplicationWindow {
                             acceptedButtons: Qt.RightButton
                             onClicked: (mouse) => {
                                 var row = _list.itemAt(mouse.x + _list.contentX, mouse.y + _list.contentY)
-                                _lib.rightClickAt(row ? String(row.modelData.key) : "", _listMenuArea, mouse.x, mouse.y)
+                                // The built-in heading is no row (S6).
+                                _lib.rightClickAt(row && row.modelData ? String(row.modelData.key) : "", _listMenuArea, mouse.x, mouse.y)
                             }
                         }
                     }
@@ -1058,9 +1113,19 @@ ApplicationWindow {
                                 onClicked: _lib.openSave()
                             }
                             Button {
+                                // S6: a built-in input's Restore (its newest saved
+                                // setup, or the selected one).
+                                visible: _lib.builtIn && !_lib.several
+                                objectName: "libraryRestoreButton"
+                                Layout.fillWidth: true
+                                text: "Restore…"
+                                enabled: !_lib.busy && (_lib.isSetup || _lib.details.count > 0)
+                                onClicked: _lib.isSetup ? _lib.askRestore() : _lib.askRestoreNewest()
+                            }
+                            Button {
                                 objectName: "libraryCopyButton"
                                 // S50: one row only; hidden with several.
-                                visible: !_lib.several
+                                visible: !_lib.several && !_lib.builtIn
                                 Layout.fillWidth: true
                                 text: "Copy to Another Stick…"
                                 highlighted: true
@@ -1069,7 +1134,7 @@ ApplicationWindow {
                             }
                             RowLayout {
                                 Layout.fillWidth: true
-                                visible: !_lib.several
+                                visible: !_lib.several && !_lib.builtIn
                                 Button {
                                     objectName: "librarySwapButton"
                                     Layout.fillWidth: true
@@ -1092,8 +1157,12 @@ ApplicationWindow {
                                     visible: !_lib.several
                                     Layout.fillWidth: true
                                     text: "Export…"
-                                    enabled: !_lib.busy && !_lib.several && _lib.isSetup
+                                    enabled: !_lib.busy && !_lib.several && (_lib.isSetup || _lib.builtIn)
                                     onClicked: {
+                                        if (_lib.isDevice) {
+                                            _lib.exportCurrent()
+                                            return
+                                        }
                                         _exportFile.selectedFile = _lib.details.name.replace(/[\\/:*?"<>|]/g, "_") + ".zip"
                                         _exportFile.open()
                                     }
@@ -1101,6 +1170,7 @@ ApplicationWindow {
                                 Button {
                                     id: _deleteButton
                                     objectName: "libraryDeleteButton"
+                                    visible: !(_lib.isDevice && _lib.builtIn)
                                     Layout.fillWidth: true
                                     // S15: a device's delete follows its state.
                                     text: _lib.isDevice && !_lib.several

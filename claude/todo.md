@@ -207,6 +207,9 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     s44 again 2026-10-09 (full run, unit-3): "No parameter with key ('global', 'general',
     'log-when-not-responding') exists" - an earlier test leaves the Configuration without that
     setting registered (order-dependent; passes alone). Find the test that resets it.
+    Also order-dependent 2026-10-09 (pass alone): test_device_library_FX2_fixes::
+    test_a_twins_pack_lands_under_that_twin, test_handson_F6_log_level_history::
+    test_diagnostic_logs_from_options_is_recorded_and_restored.
 48. vJoy loopback stand-in for the integration tests (VG idea, user 2026-10-08: to-do).
     Today test/integration (219 tests) skips unless run_tests.py --real-vjoy, and on CI it
     always skipped (no vJoy there). A stand-in vJoy that records what the program writes
@@ -220,6 +223,9 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     no summary and no error, last at test_device_library_GC_guide.py::test_the_delete_topic_
     follows_the_states (passes alone; same-seed rerun all green). Looks like a native crash;
     see 38. If it happens again, capture the exit code and a faulthandler dump for the part.
+51. Device Library ideas (2026-10-09, not started): drag a saved setup onto a stick row to start
+    Copy to Another Stick; sort the device list by name / last seen / saved setups (View, remembered);
+    highlight the search match in names and descriptions.
 
 ## On hold / parked (user's choice)
 

@@ -595,7 +595,14 @@ def _connected() -> list[tuple[str, str]]:
 
 
 def _set_up() -> list[tuple[str, str, str]]:
-    """(name, guid, slug) of each input module file here (S6)."""
+    """(name, guid, slug) of each input module file here, the built-in
+    inputs too (S6)."""
+    return [(name, guid, slug) for name, guid, slug, _built in _modules()]
+
+
+def _modules() -> list[tuple[str, str, str, bool]]:
+    """(name, guid, slug, built-in) of each input module file here (S6):
+    Keyboard and OSC are built-in inputs (D-10-BUILTIN-SECTION)."""
     from gremlin.modules import registry
 
     found = []
@@ -603,12 +610,31 @@ def _set_up() -> list[tuple[str, str, str]]:
         doc = module.doc or {}
         if doc.get("kind") not in (None, "control.hardware"):
             continue
-        # Keyboard and OSC are the program's own inputs, not devices
-        # (D-10-NO-BUILTINS).
-        if registry.is_built_in_input(module):
-            continue
-        found.append((module.name, module.bound_guid, module.slug))
+        found.append(
+            (
+                module.name,
+                module.bound_guid,
+                module.slug,
+                registry.is_built_in_input(module),
+            )
+        )
     return found
+
+
+def is_built_in_guid(guid: str) -> bool:
+    """True for the device id of a built-in input, Keyboard or OSC (S6)."""
+    from gremlin.modules import ids
+
+    want = stored_guid_key(guid)
+    return bool(want) and want in (
+        stored_guid_key(str(ids.KEYBOARD)),
+        stored_guid_key(str(ids.OSC)),
+    )
+
+
+def built_in_refusal(name: str, what: str) -> str:
+    """Why an action isn't offered for a built-in input (S6)."""
+    return f"{name or 'This'} is a built-in input: {what} isn't offered for it."
 
 
 def _alias(guid: str, default: str) -> str:
@@ -744,6 +770,7 @@ def _view(doc: dict) -> list[dict]:
                 "state": "",
                 "guid": (rec or {}).get("guid") or guid,
                 "module": "",
+                "builtIn": False,
                 # The device's own name (the module file's, or the plugged-in
                 # stick's): with the guid it finds the stick (S7).
                 "ownName": (rec or {}).get("ownName")
@@ -759,12 +786,14 @@ def _view(doc: dict) -> list[dict]:
             row["guid"] = guid
         return row
 
-    for name, guid, slug in _set_up():
+    for name, guid, slug, built in _modules():
         row = row_for(_match(records, name, guid), name, guid)
         row["module"] = slug
         row["ownName"] = name
         row["name"] = _alias(row["guid"], name)
-        row["state"] = row["state"] or "not_connected"
+        # A built-in input is never plugged in or unplugged (S6).
+        row["builtIn"] = row["builtIn"] or built
+        row["state"] = "builtin" if row["builtIn"] else row["state"] or "not_connected"
     for name, guid in _connected():
         row = row_for(_match(records, name, guid), name, guid)
         if not row["module"]:
@@ -774,6 +803,9 @@ def _view(doc: dict) -> list[dict]:
         row["seen"] = "now"
     for rec in records:
         row = row_for(rec, rec.get("name", ""), rec.get("guid", ""))
+        if is_built_in_guid(row["guid"]):
+            row["builtIn"] = True
+            row["state"] = "builtin"
         if not row["state"]:
             row["state"] = (
                 "deleted" if rec.get("kind") == "deleted" else "not_connected"
@@ -791,7 +823,8 @@ def _view(doc: dict) -> list[dict]:
         setups = _newest_first(setups)
         row["setups"] = [_setup_out(row, s) for s in setups]
         out.append(row)
-    out.sort(key=lambda r: _collapsed(r["name"]))
+    # The built-in inputs come after every device (S6).
+    out.sort(key=lambda r: (r["builtIn"], _collapsed(r["name"])))
     return out
 
 
@@ -1700,6 +1733,14 @@ def _delete(key: str, setups_only: bool = False) -> dict:
             row = next((r for r in _view(doc) if r["key"] == key), None)
             if row is None:
                 return _result(False, "That is no longer in the Device Library.")
+            if row["builtIn"]:
+                return _result(
+                    False,
+                    built_in_refusal(
+                        row["name"],
+                        "Delete Saved Setups" if setups_only else "Remove from Library",
+                    ),
+                )
             if row["state"] == "connected" and not setups_only:
                 return _result(False, _plugged_in(row["name"]))
             label = shown(row["name"], row["guid"]) or row["name"]
@@ -1753,6 +1794,10 @@ def removal_plan(key: str) -> dict:
     row = device(key)
     if row is None:
         return _result(False, "That device is no longer in the Device Library.")
+    if row.get("builtIn"):
+        return _result(
+            False, built_in_refusal(str(row.get("name") or ""), "Remove from Library")
+        )
     return _result(
         True,
         "",
@@ -1790,6 +1835,10 @@ def delete_saved_setups(key: str) -> dict:
     row = device(key)
     if row is None:
         return _result(False, "That device is no longer in the Device Library.")
+    if row.get("builtIn"):
+        return _result(
+            False, built_in_refusal(str(row.get("name") or ""), "Delete Saved Setups")
+        )
     if row.get("state") != "connected" and not row.get("module"):
         return _result(
             False,

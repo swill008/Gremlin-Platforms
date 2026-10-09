@@ -220,9 +220,14 @@ def _copy_checks(
     current = None if found is not None else _find_device(source_key)
     if found is None and current is None:
         return _fail("This saved setup isn't in the Device Library.")
+    source = current if current is not None else (found[0] if found else {})
+    if source.get("builtIn"):
+        return _fail(library.built_in_refusal(str(source.get("name") or ""), "Copy"))
     target = " ".join(str(target_name or "").split())
     if not target:
         return _fail("Choose the stick to copy to.")
+    if library.is_built_in_guid(target_guid):
+        return _fail(library.built_in_refusal(target, "Copy"))
     if not _connected(target_guid):
         return _fail(
             f"{target} isn't plugged in. A setup can only be copied to a stick "
@@ -799,6 +804,8 @@ def plan_output(
     """What Change vJoy Output would do (S30-S31): a row per vJoy the stick
     sends to ("changes" or "stays"), the other sticks on the target vJoys,
     and warnings."""
+    if library.is_built_in_guid(guid):
+        return _fail(library.built_in_refusal(device_name, "Change vJoy Output"))
     uid = _uid(guid)
     if uid is None:
         return _fail(f"{device_name} has no device id.")
@@ -913,6 +920,8 @@ def change_output(
     """Changes which vJoy the stick's Map to vJoy actions send to (S30-S32),
     and with swap_other the other sticks on the target vJoys the other way.
     Each stick that changes is autosaved first."""
+    if library.is_built_in_guid(guid):
+        return _fail(library.built_in_refusal(device_name, "Change vJoy Output"))
     uid = _uid(guid)
     if uid is None:
         return _fail(f"{device_name} has no device id.")
