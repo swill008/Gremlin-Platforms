@@ -116,7 +116,7 @@ class TestModeHierarchy:
         mh.rename_mode("Combat", "Fight")
         assert p.settings.startup_mode == "Fight"
         mh.delete_mode("Fight")
-        assert p.settings.startup_mode == "Use Heuristic"
+        assert p.settings.startup_mode == "Last Active"
 
     def test_complex_modifications(self, xml_dir: pathlib.Path) -> None:
         p = Profile()
@@ -272,9 +272,16 @@ class TestStartMode:
 
         monkeypatch.setattr(Configuration, "value", value)
 
-    def test_heuristic_is_first_parentless_mode(self) -> None:
+    def test_use_heuristic_loads_as_last_active(self) -> None:
+        # 04 S52 (D-04-LAST-ACTIVE): no Use Heuristic; with no stored last
+        # mode, the first mode in the mode list, nested or not.
         p = self._profile("Use Heuristic")
-        assert gremlin.mode_manager.resolve_start_mode(p) == "Combat"
+        assert gremlin.mode_manager.resolve_start_mode(p) == "Alpha"
+
+    def test_last_active_without_a_record_is_the_first_listed_mode(self) -> None:
+        p = self._profile("Last Active")
+        assert p.fpath is None
+        assert gremlin.mode_manager.resolve_start_mode(p) == "Alpha"
 
     def test_named_mode(self) -> None:
         p = self._profile("Alpha")
@@ -292,7 +299,7 @@ class TestStartMode:
         p = self._profile("Last Active")
         p.fpath = pathlib.Path("C:/profiles/test.xml")
         self._stored_last_mode(monkeypatch, {str(p.fpath): "Gone"})
-        assert gremlin.mode_manager.resolve_start_mode(p) == "Combat"
+        assert gremlin.mode_manager.resolve_start_mode(p) == "Alpha"
 
     def test_reset_uses_startup_mode(self) -> None:
         p = self._profile("Alpha")

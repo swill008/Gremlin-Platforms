@@ -1158,20 +1158,14 @@ class StartupModeModel(QtCore.QAbstractListModel):
         super().__init__(parent)
 
         self._profile = cast(gremlin.profile.Profile, shared_state.current_profile)
-        self._valid_names = [
-            "Use Heuristic",
-            "Last Active",
-        ] + self._profile.modes.mode_names()
+        self._valid_names = ["Last Active"] + self._profile.modes.mode_names()
         signal.profileChanged.connect(self._reset)
         signal.modesChanged.connect(self._reset)
 
     def _reset(self) -> None:
         self.beginResetModel()
         self._profile = cast(gremlin.profile.Profile, shared_state.current_profile)
-        self._valid_names = [
-            "Use Heuristic",
-            "Last Active",
-        ] + self._profile.modes.mode_names()
+        self._valid_names = ["Last Active"] + self._profile.modes.mode_names()
         self.endResetModel()
         self.selectionChanged.emit()
 
@@ -1197,12 +1191,13 @@ class StartupModeModel(QtCore.QAbstractListModel):
         return self.roles
 
     def _get_current_selection_index(self) -> int:
-        # A Startup Mode that isn't listed shows as Use Heuristic (GL-039).
+        # A Startup Mode that isn't listed (Use Heuristic, unknown) shows as
+        # Last Active (D-04-LAST-ACTIVE).
         name = self._profile.settings.startup_mode
         return self._valid_names.index(name) if name in self._valid_names else 0
 
     def _set_current_selection_index(self, index: int) -> None:
-        if index != self._get_current_selection_index():
+        if self._valid_names[index] != self._profile.settings.startup_mode:
             self._profile.settings.startup_mode = self._valid_names[index]
             self.selectionChanged.emit()
 

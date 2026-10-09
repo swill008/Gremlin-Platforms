@@ -170,19 +170,20 @@ def _profile_running() -> bool:
 def resolve_start_mode(active_profile: Profile) -> str:
     """Returns the mode a profile is put in when it is loaded.
 
-    A named startup mode is used as itself. Last Active uses the mode this
-    profile was running the last time it was on, when that mode still exists.
-    Use Heuristic uses the alphabetically first mode that has no parent.
+    A named startup mode is used as itself. Anything else is Last Active:
+    the mode the profile was last on (running or not), when that mode still
+    exists; with no such record, the top row of the mode list (04 S52,
+    D-04-LAST-ACTIVE).
     """
     mode_names = active_profile.modes.mode_names()
     startup_mode = active_profile.settings.startup_mode
     if startup_mode in mode_names:
         return startup_mode
-    if startup_mode == "Last Active" and active_profile.fpath is not None:
+    if active_profile.fpath is not None:
         last_mode = _last_mode_of(_stored_last_modes(), active_profile.fpath)
         if last_mode in mode_names:
             return last_mode
-    return active_profile.modes.first_mode
+    return active_profile.modes.top_listed_mode()
 
 
 def _known_modes() -> set[str]:

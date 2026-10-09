@@ -200,7 +200,7 @@ def _notes(item: Any) -> list[str]:  # noqa: ANN401
     ]
 
 
-def _profile_file(path: Path, start: str = "Use Heuristic") -> Path:
+def _profile_file(path: Path, start: str = "Last Active") -> Path:
     p = Profile()
     p.modes.add_mode("Alpha")
     p.modes.add_mode("Bravo")
@@ -398,12 +398,15 @@ def test_s41_modes_are_listed_alphabetically_whatever_the_capitals(
     assert _listed(model) == ["alpha", "bravo", "Charlie", "Default"]
 
 
-def test_s52_use_heuristic_is_alphabetical_whatever_the_capitals(
+def test_s52_last_active_with_no_record_is_the_first_listed_mode(
     profile: Profile,
 ) -> None:
-    """S52: Use Heuristic is the alphabetically first mode without a parent."""
+    """S52: new profiles start on Last Active; with no record it is the first
+    mode in the mode list (alphabetical ignoring capitals, nested or not)."""
+    profile.modes.add_mode("Bravo")
     profile.modes.add_mode("alpha")
-    assert profile.settings.startup_mode == "Use Heuristic"
+    profile.modes.set_parent("alpha", "Bravo")
+    assert profile.settings.startup_mode == "Last Active"
     assert mode_manager.resolve_start_mode(profile) == "alpha"
 
 
@@ -508,11 +511,11 @@ def test_s53_run_starts_in_the_toolbar_mode_not_the_startup_mode(
 # --- Profile Settings ----------------------------------------------------------
 
 
-def test_s63_startup_mode_offers_heuristic_last_active_and_every_mode(
+def test_s63_startup_mode_offers_last_active_and_every_mode(
     profile: Profile,
 ) -> None:
-    """S63: Startup Mode offers Use Heuristic, Last Active and every mode by
-    name; picking one sets the profile's Startup Mode."""
+    """S63: Startup Mode offers Last Active and every mode by name (no Use
+    Heuristic); picking one sets the profile's Startup Mode."""
     from gremlin.ui.profile import StartupModeModel
 
     profile.modes.add_mode("Space")
@@ -520,7 +523,7 @@ def test_s63_startup_mode_offers_heuristic_last_active_and_every_mode(
     model = StartupModeModel()
     _KEEP.append(model)
     labels = _listed(model)
-    assert labels == ["Use Heuristic", "Last Active", "Default", "Ground", "Space"]
+    assert labels == ["Last Active", "Default", "Ground", "Space"]
     for index, label in enumerate(labels):
         model.setProperty("currentSelectionIndex", index)
         assert profile.settings.startup_mode == label

@@ -65,7 +65,10 @@ Every piece of work, not only big batches:
    or share the same files, and say why in one line. Don't hand a second,
    unrelated problem to an agent busy with the first: start another agent.
    Stay within about 8–10 agents at once on the user's PC. Put rules 2–3 and
-   5 in every agent's prompt.
+   5 in every agent's prompt. This holds for small jobs too (user
+   2026-10-09): always divide the work when feasible to cut the time a
+   change takes, with tight time budgets; don't divide it when doing so
+   would certainly cause errors.
 5. **Test runs (agents; user 2026-10-07).**
    - The full run is `python test/run_tests.py --random-order` (6 parts, ~3
      min): once, at the end, after the targeted tests pass.

@@ -137,7 +137,7 @@ def test_undo_delete_mode_brings_back_the_mode_and_its_bindings(
         model.deleteMode("Mid")
         assert not modes.mode_exists("Mid")
         assert modes.find_mode("Kid").parent.value == "Parent"
-        assert profile.settings.startup_mode == "Use Heuristic"
+        assert profile.settings.startup_mode == "Last Active"
         assert model.canUndoDelete and model.undoDeleteName == "Mid"
 
         assert model.undoDelete() == ""
@@ -209,16 +209,18 @@ def test_a_mode_listed_twice_is_warned_about(profile: Profile, tmp_path: Path) -
     assert any("more than once" in w for w in back.load_warnings)
 
 
-def test_an_unknown_startup_mode_loads_as_use_heuristic(
-    profile: Profile, tmp_path: Path
+@pytest.mark.parametrize("stored", ["Gone", "Use Heuristic"])
+def test_an_unknown_startup_mode_loads_as_last_active(
+    profile: Profile, tmp_path: Path, stored: str
 ) -> None:
     path = tmp_path / "odd.xml"
     text = _saved(profile, path).replace(
-        "<startup-mode>Use Heuristic</startup-mode>",
-        "<startup-mode>Gone</startup-mode>",
+        "<startup-mode>Last Active</startup-mode>",
+        f"<startup-mode>{stored}</startup-mode>",
     )
+    assert f"<startup-mode>{stored}</startup-mode>" in text
     back = _reload(path, text)
-    assert back.settings.startup_mode == "Use Heuristic"
+    assert back.settings.startup_mode == "Last Active"
 
 
 # --- GL-074: the Logical Device and OSC rows belong to the profile ----------

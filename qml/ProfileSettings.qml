@@ -45,6 +45,7 @@ Item {
 
                 RowLayout {
                     ComboBox {
+                        objectName: "startupModeBox"
                         Layout.alignment: Qt.AlignTop
                         Layout.preferredWidth: userEntryColumnWidth
                         Layout.rightMargin: userEntryColumnPadding
@@ -61,9 +62,10 @@ Item {
                     }
 
                     UIText {
+                        objectName: "startupModeHelp"
                         Layout.fillWidth: true
 
-                        text: "The mode the profile is in when it is loaded. Use Heuristic picks the first mode, in alphabetical order, that has no parent. Last Active picks the mode this profile was using the last time it ran. Choosing a mode by name picks that mode. Run starts in the mode shown in the toolbar."
+                        text: "The mode the profile opens in when it is loaded. Last Active opens the mode the profile last ran in, or, if there is none yet, the top mode in Manage Modes. Choosing a mode by name opens that mode. Run starts in the mode shown in the toolbar."
                     }
                 }
 

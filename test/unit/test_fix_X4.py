@@ -19,15 +19,21 @@ import pytest
 
 from gremlin import code_runner, event_handler, profile, user_script, util
 
-# --- D-04-ALPHA-CASEFOLD (04 S52): Use Heuristic ignores capitals ----------
+# --- D-04-ALPHA-CASEFOLD, D-04-LAST-ACTIVE (04 S52): the first listed mode
+# (Last Active with no record) ignores capitals ------------------------------
 
 
 def test_first_mode_is_alphabetical_ignoring_capitals() -> None:
-    modes = profile.Profile().modes
+    from gremlin import mode_manager
+
+    p = profile.Profile()
     for name in ("Bravo", "alpha"):
-        modes.add_mode(name)
-    # "Default" < "alpha" by code point; ignoring capitals, alpha comes first.
-    assert modes.first_mode == "alpha"
+        p.modes.add_mode(name)
+    p.modes.set_parent("alpha", "Bravo")
+    # "Default" < "alpha" by code point; ignoring capitals, alpha comes first,
+    # nested or not.
+    assert p.settings.startup_mode == "Last Active"
+    assert mode_manager.resolve_start_mode(p) == "alpha"
 
 
 # --- D-04-Q13-RUNLIMIT (04 Q13, S87): Run's reload has the time limit -----

@@ -210,7 +210,7 @@ class Settings(EditNoted):
         self.parent = parent
         self.vjoy_as_input = {}
         self.vjoy_initial_values = {}
-        self.startup_mode: str = "Use Heuristic"
+        self.startup_mode: str = "Last Active"
         # None: use the Options default (Action > Macro > Default delay).
         self.macro_default_delay: float | None = None
 
@@ -234,6 +234,9 @@ class Settings(EditNoted):
         self.startup_mode = read_subelement_custom(
             settings_node, "startup-mode", lambda x: str(x.text)
         )
+        # Use Heuristic is gone: it loads as Last Active (D-04-LAST-ACTIVE).
+        if self.startup_mode == "Use Heuristic":
+            self.startup_mode = "Last Active"
 
         delay = read_subelement_custom(
             settings_node, "macro-default-delay", lambda x: float(x.text)
@@ -1545,17 +1548,17 @@ class Profile:
         self._set_saved(self._xml_text())
 
     def _check_startup_mode(self) -> None:
-        """A Startup Mode that is neither a mode nor Use Heuristic / Last
-        Active (a damaged or hand-edited file) is Use Heuristic (GL-039,
-        04 Q10)."""
+        """A Startup Mode that is neither a mode nor Last Active (a damaged
+        or hand-edited file) is Last Active (GL-039, 04 S52,
+        D-04-LAST-ACTIVE)."""
         name = self.settings.startup_mode
-        if name in ("Use Heuristic", "Last Active") or self.modes.mode_exists(name):
+        if name == "Last Active" or self.modes.mode_exists(name):
             return
         logging.getLogger("system").warning(
             f"Startup Mode '{name}' isn't a mode of this profile; "
-            "Use Heuristic is used instead."
+            "Last Active is used instead."
         )
-        self.settings.startup_mode = "Use Heuristic"
+        self.settings.startup_mode = "Last Active"
 
     def _warn_unlisted_modes(self) -> None:
         """Inputs saved in a mode the mode list doesn't have never show and
@@ -2235,6 +2238,14 @@ class ModeHierarchy:
             return "Default"
         return min(roots, key=str.casefold)
 
+    def top_listed_mode(self) -> str:
+        """The top row of the mode list (Manage Modes): alphabetical,
+        capitals not first, child modes included (04 S52)."""
+        names = [str(node.value) for node in self.mode_list()]
+        if not names:
+            return "Default"
+        return min(names, key=lambda n: (n.casefold(), n))
+
     def mode_names(self) -> list[str]:
         """Returns a list containing the names of all modes.
 
@@ -2377,7 +2388,7 @@ class ModeHierarchy:
             )
 
         if self._profile.settings.startup_mode == mode_name:
-            self._profile.settings.startup_mode = "Use Heuristic"
+            self._profile.settings.startup_mode = "Last Active"
         return memo
 
     def _parent_name(self, node: TreeNode) -> str:
@@ -2411,7 +2422,7 @@ class ModeHierarchy:
                     self.set_parent(child, name)
             for device_id, input_type, input_id, snapshot in memo["inputs"]:
                 profile.put_input(device_id, input_type, input_id, name, snapshot)
-            if memo["startup"] and profile.settings.startup_mode == "Use Heuristic":
+            if memo["startup"] and profile.settings.startup_mode == "Last Active":
                 profile.settings.startup_mode = name
 
     def rename_mode(self, old_name: str, new_name: str) -> None:

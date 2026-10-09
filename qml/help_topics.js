@@ -311,7 +311,7 @@ function topics() {
         topic("Options and Profile", "Profile Settings",
             "<p>View → <b>Profile Settings</b>. Stored in the profile; save the profile to keep them.</p>"
             + "<ul>"
-            + "<li><b>Startup Mode</b>: the mode the profile is in when it is loaded, including when a program auto-loads it. <b>Use Heuristic</b> picks the first mode, in alphabetical order, that has no parent; <b>Last Active</b> picks the mode the profile was using the last time it ran; a mode by name picks that mode. <b>Run</b> starts in the mode shown in the toolbar, so change the toolbar mode to start somewhere else.</li>"
+            + "<li><b>Startup Mode</b>: the mode the profile is in when it is loaded, including when a program auto-loads it. <b>Last Active</b> (the usual choice) opens the mode the profile last ran in; a profile with no last mode yet (new, moved, renamed or never run) opens in the top mode of the Manage Modes list. A mode by name always opens that mode. <b>Run</b> starts in the mode shown in the toolbar, so change the toolbar mode to start somewhere else.</li>"
             + "<li><b>Macro Default Delay</b>: the pause between macro steps.</li>"
             + "<li><b>vJoy Behavior</b>: treat each vJoy device as an output (default) or as an input.</li>"
             + "<li><b>vJoy Initial Values</b>: axis values set when the profile starts.</li>"

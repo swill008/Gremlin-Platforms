@@ -204,6 +204,19 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     inner pytest runs failed at collection with FileNotFoundError on a %TEMP%\gremlin-pack-*
     folder another test removed meanwhile; test_final_01.py::test_s44 failed in the same run
     (cause not logged). Make the inner runs collect only their own folder; find s44's cause.
+48. vJoy loopback stand-in for the integration tests (VG idea, user 2026-10-08: to-do).
+    Today test/integration (219 tests) skips unless run_tests.py --real-vjoy, and on CI it
+    always skipped (no vJoy there). A stand-in vJoy that records what the program writes
+    (axes, buttons, hats per vJoy device) and feeds it back as the matching joystick input
+    through test/fake_hardware.py (FakeDill events) would let them run in every normal run
+    and on CI without the driver. Real-vJoy runs stay opt-in.
+49. Calibration: the "Raw" value box (qml/DialogCalibration.qml ~353) accepts typing but
+    saves nothing; it should be read-only (found by LT-windows 2026-10-08). Check the
+    calibration spec page first.
+50. Silent test-process death (2026-10-09, full run, unit-3): the part ended about 60 s in with
+    no summary and no error, last at test_device_library_GC_guide.py::test_the_delete_topic_
+    follows_the_states (passes alone; same-seed rerun all green). Looks like a native crash;
+    see 38. If it happens again, capture the exit code and a faulthandler dump for the part.
 
 ## On hold / parked (user's choice)
 

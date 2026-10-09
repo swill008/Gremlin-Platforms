@@ -32,13 +32,13 @@ def _roundtrip_profile(profile: Profile) -> Profile:
 
 def test_settings_defaults_roundtrip() -> None:
     p = Profile()
-    assert p.settings.startup_mode == "Use Heuristic"
+    assert p.settings.startup_mode == "Last Active"
     assert p.settings.macro_default_delay is None  # Follows Options.
     assert p.settings.vjoy_as_input == {}
     assert p.settings.vjoy_initial_values == {}
 
     p2 = _roundtrip_profile(p)
-    assert p2.settings.startup_mode == "Use Heuristic"
+    assert p2.settings.startup_mode == "Last Active"
     assert p2.settings.macro_default_delay == p.settings.macro_default_delay
     assert p2.settings.vjoy_as_input == {}
     assert p2.settings.vjoy_initial_values == {}

@@ -1100,7 +1100,7 @@ def test_load_signal_order_and_the_open_profile(
 ) -> None:
     from gremlin.signal import signal
 
-    path = _profile_with_modes(tmp_path / "flight.xml", "Use Heuristic")
+    path = _profile_with_modes(tmp_path / "flight.xml", "Last Active")
     order: list[str] = []
     seen_profile: list[object] = []
     links = [
@@ -1151,7 +1151,7 @@ def test_new_puts_the_toolbar_in_default(
 
 
 def test_select_mode(real_backend: Any, tmp_path: Path) -> None:  # noqa: ANN401
-    path = _profile_with_modes(tmp_path / "flight.xml", "Use Heuristic")
+    path = _profile_with_modes(tmp_path / "flight.xml", "Last Active")
     real_backend.loadProfile(str(path))
     real_backend.selectMode("Bravo")
     assert mode_manager.ModeManager().current.name == "Bravo"
@@ -1163,7 +1163,7 @@ def test_select_mode(real_backend: Any, tmp_path: Path) -> None:  # noqa: ANN401
 def test_new_profile_replaces_the_open_one(
     real_backend: Any, tmp_path: Path  # noqa: ANN401
 ) -> None:
-    path = _profile_with_modes(tmp_path / "flight.xml", "Use Heuristic")
+    path = _profile_with_modes(tmp_path / "flight.xml", "Last Active")
     real_backend.loadProfile(str(path))
     old = real_backend.profile
     order: list[str] = []
@@ -1198,18 +1198,22 @@ def test_save_writes_the_file_and_records_it(
     assert real_backend.saveProfile("") is False
 
 
-def test_unknown_startup_mode_resolves_like_use_heuristic(tmp_path: Path) -> None:
+@pytest.mark.parametrize("stored", ["Gone", "Use Heuristic"])
+def test_unknown_startup_mode_resolves_like_last_active(
+    tmp_path: Path, stored: str
+) -> None:
     path = _profile_with_modes(tmp_path / "odd.xml", "Bravo")
     text = path.read_text(encoding="utf-8").replace(
-        "<startup-mode>Bravo</startup-mode>", "<startup-mode>Gone</startup-mode>"
+        "<startup-mode>Bravo</startup-mode>", f"<startup-mode>{stored}</startup-mode>"
     )
     path.write_text(text, encoding="utf-8")
     p = Profile()
     p.from_xml(path)
+    assert p.settings.startup_mode == "Last Active"
     assert mode_manager.resolve_start_mode(p) == "Alpha"
 
 
-def test_unknown_startup_mode_shows_as_use_heuristic(
+def test_unknown_startup_mode_shows_as_last_active(
     profile: Profile, tmp_path: Path
 ) -> None:
     from gremlin.ui.profile import StartupModeModel
@@ -1222,7 +1226,7 @@ def test_unknown_startup_mode_shows_as_use_heuristic(
     profile.from_xml(path)
     model = StartupModeModel()
     _KEEP.append(model)
-    assert model.currentSelectionIndex == 0
+    assert model.currentSelectionIndex == 0  # Last Active, the first option
 
 
 def test_swap_onto_a_device_with_bindings_swaps_both_ways(
@@ -1408,7 +1412,7 @@ def test_load_profile_action_end_to_end(
     from gremlin.signal import signal
     from gremlin.ui import backend
 
-    target = _profile_with_modes(tmp_path / "next.xml", "Use Heuristic")
+    target = _profile_with_modes(tmp_path / "next.xml", "Last Active")
     monkeypatch.setattr(backend.Backend, "instance", real_backend)
     switches: list[bool] = []
     monkeypatch.setattr(real_backend, "activate_gremlin", switches.append)
