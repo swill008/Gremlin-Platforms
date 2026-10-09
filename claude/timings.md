@@ -51,3 +51,4 @@ a time to the user.
 | 2026-10-09 | Journey j02 to shared question (J-modes) | test | ~10 min | 1 min | 10:27–10:28 |
 | 2026-10-09 | Journey j05 + layers golden (J-map) | test | ~15 min | 2 min | 10:27–10:29 |
 | 2026-10-09 | Final full run + lint for the batch | test | ~5 min | 5 min | 10:29–10:34, all green |
+| 2026-10-09 | Full run (chipRows + View Full Help) | test | ~5 min | 6 min | 10:49–10:55, all green |
