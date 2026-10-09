@@ -679,15 +679,13 @@ def _input_label(item: object) -> str:
 
 
 def _special(uid: uuid.UUID) -> bool:
+    """Not a stick: an internal input (03 S90b) or a placeholder id."""
     import dill
-    from gremlin import osc
+    from gremlin.modules import device_class
 
-    return uid in (
-        dill.UUID_Keyboard,
-        dill.UUID_LogicalDevice,
+    return device_class.is_internal_input(uid) or uid in (
         dill.UUID_Invalid,
         dill.UUID_Virtual,
-        osc.OSC_DEVICE_UUID,
     )
 
 

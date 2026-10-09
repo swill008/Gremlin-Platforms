@@ -5,21 +5,19 @@ from __future__ import annotations
 
 from PySide6 import QtCore
 
-import dill
+import gremlin.ui.type_aliases as ta
 from gremlin import device_initialization, event_handler, shared_state
+from gremlin.modules import device_class, output, wiring
+from gremlin.modules.ids import guid_key
+from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui import input_pairing as pairing
 from gremlin.ui import xbox_maps
-import gremlin.ui.type_aliases as ta
-from gremlin.modules.ids import guid_key
-from gremlin.modules import ids, output, wiring
-from gremlin.modules.runtime import InputModuleRuntime
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
-OSC_GUID = str(ids.OSC)
 
 
 
@@ -38,7 +36,7 @@ def _connected_keys() -> set[str]:
             key = guid_key(getattr(device, "device_guid", ""))
             if key:
                 keys.add(key)
-    for guid in (dill.UUID_Keyboard, dill.UUID_LogicalDevice, OSC_GUID):
+    for guid in device_class.INTERNAL_INPUTS:
         keys.add(guid_key(guid))
     return keys
 

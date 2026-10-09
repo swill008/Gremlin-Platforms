@@ -61,6 +61,9 @@ _ALLOWED = {
     # Profile recovery copies (04 S94) live in the data folder's recovery
     # folder, not the modules folder; they are not module files.
     ("gremlin/profile_recovery.py", "builds a path in the modules folder from a name"),
+    # Device classes (03 S90b) compare a file's slug with the built-in slugs;
+    # they build no path.
+    ("gremlin/modules/device_class.py", "builds a module file name from a device name"),
     # Saved profiles that aren't open, changed by Copy / Swap (10 S33).
     ("gremlin/library_profiles.py", "writes with module_file directly"),
 }

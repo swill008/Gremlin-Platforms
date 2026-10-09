@@ -85,15 +85,11 @@ def _device_name(device_id: str, names: dict[str, str]) -> str:
     if names.get(device_id):
         return names[device_id]
     try:
-        import dill
-        from gremlin.modules import ids
+        from gremlin.modules.device_class import INTERNAL_INPUTS
 
-        if device_id == str(ids.LOGICAL_DEVICE).lower():
-            return "Logical Device"
-        if device_id == str(ids.OSC).lower():
-            return "OSC"
-        if device_id == str(dill.UUID_Keyboard).lower():
-            return "Keyboard"
+        for guid, (name, _slug) in INTERNAL_INPUTS.items():
+            if device_id == str(guid).lower():
+                return name
     except Exception:
         pass
     return "A device"

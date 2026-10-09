@@ -41,27 +41,16 @@ def device_connected(device_id: str | uuid.UUID) -> bool:
 
 
 def plugged_in(guid: str | uuid.UUID | None, name: str = "") -> bool:
-    """Whether a device is there now (03 S90a). Built-ins are always there:
-    vJoy and Gremlin's Xbox output (registry.is_output_name), and Keyboard,
-    OSC, Logical Device and the Xbox tab by their fixed ids (or, with no id,
-    their fixed names). Any other device
-    only while its id is in the live device list; never by its name, and a
-    device with no id is not plugged in."""
-    from gremlin.modules import ids
-    from gremlin.modules.registry import is_output_name
+    """Whether a device is there now (03 S90a). Internal devices (03 S90b:
+    Keyboard, OSC, the Logical Device, vJoy, the Xbox pad) are always there.
+    Any other device only while its id is in the live device list; never by
+    its name, and a device with no id is not plugged in."""
+    from gremlin.modules import device_class, ids
 
-    if is_output_name(name):
+    if device_class.can("always_present", guid, name):
         return True
-    key = ids.guid_key(guid)
-    if not key:
-        # A built-in card may carry no id: Keyboard, OSC and the Logical
-        # Device are known by their fixed names, which no stick can have
-        # here (a stick with its own id is always checked by its id).
-        plain = " ".join(str(name or "").split()).casefold()
-        return plain in {"keyboard", "osc", "logical device"}
-    built_in = (ids.KEYBOARD, ids.OSC, ids.LOGICAL_DEVICE, ids.XBOX)
-    if key in {ids.guid_key(g) for g in built_in}:
-        return True
+    if not ids.guid_key(guid):
+        return False
     try:
         return device_connected(str(guid))
     except Exception:  # noqa: BLE001 - an id the driver can't read isn't listed

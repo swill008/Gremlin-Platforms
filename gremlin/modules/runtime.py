@@ -10,7 +10,7 @@ from PySide6 import QtCore
 
 from gremlin.common import SingletonDecorator
 from gremlin.event_handler import Event, EventListener
-from gremlin.modules import ids, registry
+from gremlin.modules import device_class, registry
 from gremlin.modules.gate import should_forward
 from gremlin.modules.ids import guid_key
 from gremlin.signal import signal
@@ -24,7 +24,12 @@ def always_forwarded() -> set[str]:
     Logical Device, whose inputs are created on the Logical Device page. Without
     this, events re-emitted by Map to Logical Device were dropped here and
     nothing wired from a Logical Device input ever ran."""
-    return {guid_key(ids.OSC), guid_key(ids.LOGICAL_DEVICE)}
+    # 03 S90b: the built-in devices that need no claim.
+    return {
+        guid_key(guid)
+        for guid in (*device_class.INTERNAL_INPUTS, *device_class.INTERNAL_OUTPUTS)
+        if device_class.can("no_claim_needed", guid=guid)
+    }
 
 
 def _vjoy_as_input_ids() -> set[int]:

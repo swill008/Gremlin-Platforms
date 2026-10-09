@@ -90,19 +90,13 @@ def module_direction(doc: dict | None, slug: str = "", name: str = "") -> str:
     return "source"
 
 
-_BUILT_IN_SLUGS = ("keyboard", "osc")
-
-
 def is_built_in_input(module: Module) -> bool:
     """True for the module file of a built-in input (Keyboard, OSC): not a
     device (10 S6). Its bound id decides; a stick named "Keyboard" is a stick.
-    A file with no bound id is built-in by its name."""
-    from gremlin.modules import ids
+    A file with no bound id is built-in by its name (03 S90b)."""
+    from gremlin.modules import device_class
 
-    bound = guid_key(module.bound_guid)
-    if bound:
-        return bound in (guid_key(ids.KEYBOARD), guid_key(ids.OSC))
-    return module.slug in _BUILT_IN_SLUGS or plain_slug(module.name) in _BUILT_IN_SLUGS
+    return device_class.can("library_builtin", module=module)
 
 
 def vjoy_id_from_name(name: str) -> int:

@@ -14,7 +14,7 @@ import uuid
 from pathlib import Path
 
 from gremlin import shared_state, swap_devices
-from gremlin.modules import ids, store
+from gremlin.modules import device_class, store
 from gremlin.modules.claim import kind_of
 from gremlin.profile import Profile
 
@@ -28,12 +28,16 @@ _BUCKET = {"button": "buttons", "axis": "axes", "hat": "hats"}
 # print settings.
 _MAP_KEYS = ("nodes", "image", "photo", "ui")
 _APPEARANCE_KEYS = ("view", "catalog")
-_REFUSED: dict[uuid.UUID, str] = {
-    ids.KEYBOARD: "the Keyboard",
-    ids.LOGICAL_DEVICE: "the Logical Device",
-    ids.OSC: "OSC",
-    ids.XBOX: "the Xbox controller",
-}
+
+
+def _refused_word(ident: uuid.UUID) -> str:
+    """What the refusal calls a device that isn't a stick (S26, S29): "the
+    Keyboard", "the Logical Device", "OSC", "the Xbox controller". By id
+    only (03 S90b)."""
+    if device_class.is_internal_output(ident):
+        return "the Xbox controller"
+    name = device_class.display_name(device_class.device_kind(ident))
+    return name if name.isupper() else f"the {name}"
 
 
 def _result(ok: bool = True, error: str = "", **extra: object) -> dict:
@@ -75,8 +79,8 @@ def _refusal(first: Stick, second: Stick) -> str:
                 f"{name or 'This device'} has no device id: only a stick "
                 "plugged in now can be swapped."
             )
-        if ident in _REFUSED:
-            return f"Swap can't be used with {_REFUSED[ident]}."
+        if not device_class.can("swap", ident):
+            return f"Swap can't be used with {_refused_word(ident)}."
     if _uuid(first[1]) == _uuid(second[1]):
         return "A stick can't be swapped with itself."
     for name, guid in (first, second):

@@ -12,11 +12,10 @@ from typing import Any
 
 from gremlin.config import Configuration
 from gremlin.device_initialization import physical_devices
-from gremlin.modules import registry, store
+from gremlin.modules import device_class, registry, store
 from gremlin.modules.ids import guid_key
 
 _DEFAULT = (-32768, 0, 0, 32767, True)
-_SKIP_SLUGS = {"keyboard", "osc"}
 
 
 def curve_problem(values: tuple[int, int, int, int, bool]) -> str:
@@ -74,7 +73,19 @@ def _source_modules() -> list[dict]:
         # No module, or an output one: Run passes none of its inputs, so
         # there is nothing to calibrate (another file bound to the stick's
         # id used to be shown and saved instead).
-        if module is None or module.is_output or module.slug in _SKIP_SLUGS:
+        # Keyboard / OSC files can't be calibrated (03 S90b); judged by the
+        # file's slug alone, as before, even for a stick with its own id.
+        # Only the internal-input names count here: can("calibrate") would
+        # also skip a real pad whose slug reads as an output name
+        # ("xbox_360_controller").
+        if (
+            module is None
+            or module.is_output
+            or (
+                device_class.is_internal_input(name=module.slug)
+                and not device_class.can("calibrate", name=module.slug)
+            )
+        ):
             continue
         found.append((device, module, guid_key(module.bound_guid) != key))
     per_file: dict[str, int] = {}

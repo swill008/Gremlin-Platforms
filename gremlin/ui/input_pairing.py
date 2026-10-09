@@ -7,12 +7,11 @@ import uuid
 
 from PySide6 import QtCore
 
-import dill
+import gremlin.ui.type_aliases as ta
 from gremlin import device_initialization, shared_state
 from gremlin.modules import wiring
 from gremlin.signal import signal
 from gremlin.types import InputType
-import gremlin.ui.type_aliases as ta
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -148,16 +147,11 @@ def device_name(guid: str) -> str:
 def device_label(guid: str) -> str:
     """Name to show for a device. DILL only knows hardware, so the built-in
     devices are named here; _device_name stays for module file lookups."""
-    from gremlin.osc import OSC_DEVICE_UUID
+    from gremlin.modules.device_class import INTERNAL_INPUTS
 
     uid = _guid(guid)
-    builtin = {
-        dill.UUID_LogicalDevice: "Logical Device",
-        dill.UUID_Keyboard: "Keyboard",
-        OSC_DEVICE_UUID: "OSC",
-    }
-    if uid in builtin:
-        return builtin[uid]
+    if uid in INTERNAL_INPUTS:
+        return INTERNAL_INPUTS[uid][0]
     if uid is not None:
         # The name every screen shows (alias, twin name, vJoy number).
         from gremlin.ui import device_names

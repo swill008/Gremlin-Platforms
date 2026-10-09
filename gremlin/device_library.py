@@ -665,14 +665,12 @@ def _modules() -> list[tuple[str, str, str, bool]]:
 
 
 def is_built_in_guid(guid: str) -> bool:
-    """True for the device id of a built-in input, Keyboard or OSC (S6)."""
-    from gremlin.modules import ids
+    """True for the device id of a built-in input, Keyboard or OSC (S6). By
+    id only: a name never makes a device built-in here (03 S90b)."""
+    from gremlin.modules import device_class, ids
 
-    want = stored_guid_key(guid)
-    return bool(want) and want in (
-        stored_guid_key(str(ids.KEYBOARD)),
-        stored_guid_key(str(ids.OSC)),
-    )
+    want = ids.guid_key(guid)
+    return bool(want) and device_class.can("library_builtin", want)
 
 
 def built_in_refusal(name: str, what: str) -> str:
