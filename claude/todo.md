@@ -315,6 +315,17 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 69. OSC (to-do): encoder acceleration (bigger steps when the knob turns fast).
 70. OSC (to-do): OSC inputs in the live Input Viewer, like stick inputs.
 
+71. OSC (to-do, 2026-10-09): Export Companion Page. Not built: Companion v5.0.7's page import doesn't
+    validate buttons or actions (a wrong option shape imports silently with empty values; format version
+    12 vs wrapped options {value,isExpression}; undocumented). Safest known shape recorded in the CEXP
+    report (version 12, type page, button steps with action_sets down/up send_int, options wrapped,
+    one generic-osc instance). Needs a manual import test in a real Companion v5 before shipping.
+    Copy for Companion is the supported route meanwhile.
+
+72. QUESTION (found 2026-10-09 by PAGE): on a device page (OSC, maybe Keyboard) an input that is
+    selected but has no actions shows a blank right side with no way to add a first action there.
+    Decide the text (e.g. "No actions on this input yet") and how a first action is added. Not built.
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).

@@ -195,3 +195,17 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | Companion v5 core OSC API (COMP-recv) | research | ~10 min | 2 min | 16:00–16:02 |
 | 2026-10-09 | Companion v5 Generic OSC module (COMP-send) | research | ~10 min | 2 min | 16:00–16:02 |
 | 2026-10-09 | OSC features: final full run (lead) | test | ~6 min | 6 min | 16:02–16:08, all green |
+| 2026-10-09 | Real OSC window screenshots (SHOT) | review | ~10 min | 2 min | 16:11–16:13 |
+| 2026-10-09 | OSC look: Button Map style guide (STYLE step 1) | docs | ~6 min | 4 min | 16:18–16:22 |
+| 2026-10-09 | Companion export research: not safe (CEXP) | research | ~25 min | 2 min | 16:18–16:20 |
+| 2026-10-09 | OSC tabs/Companion/Help spec (DOC) | docs | ~20 min | 3 min | 16:18–16:21 |
+| 2026-10-09 | OSC Monitor columns + hover + look (MON) | fix | ~15 min | 4 min | 16:18–16:22 |
+| 2026-10-09 | OSC functional check: Companion-style, 88 checks (E2E) | test | ~25 min | 5 min | 16:19–16:24 |
+| 2026-10-09 | OSC Help chapter, 33 topics incl. technical reference (HELP) | docs | ~25 min | 7 min | 16:18–16:25 |
+| 2026-10-09 | OSC Module Setup tabs + Add Companion (TABS) | feature | ~25 min | 8 min | 16:19–16:27 |
+| 2026-10-09 | OSC Companion templates, off/on values, 2 case fixes (CFB) | feature | ~25 min | 8 min | 16:19–16:27 |
+| 2026-10-09 | OSC page: OSC Setup…, Copy for Companion, empty text (PAGE) | feature | ~20 min | 9 min | 16:19–16:28 |
+| 2026-10-09 | OSC polish pass to Button Map look (STYLE step 2) | feature | ~20 min | 2 min | 16:29–16:31 |
+| 2026-10-09 | Help vs code audit, 27 Help fixes (HELP-CHECK) | docs | ~15 min | 6 min | 16:29–16:35 |
+| 2026-10-09 | 5 small OSC code fixes from the Help audit (lead) | fix | ~8 min | 6 min | 16:36–16:42 |
+| 2026-10-09 | Final full runs + 2 small fixes (lead) | test | ~13 min | 20 min | 16:42–17:02 |
