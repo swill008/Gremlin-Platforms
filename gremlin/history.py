@@ -275,7 +275,15 @@ def group_entry(area: str, title: str, parts: list[dict]) -> dict:
             for p in parts
         ]
 
-    subject = {"parts": [str(p.get("title") or "") for p in parts]}
+    subject: dict = {"parts": [str(p.get("title") or "") for p in parts]}
+    # The devices its parts name, once each (10 S56: Show in History).
+    devices: list[dict] = []
+    for part in parts:
+        for dev in (part.get("subject") or {}).get("devices") or []:
+            if isinstance(dev, dict) and dev not in devices:
+                devices.append(dev)
+    if devices:
+        subject["devices"] = devices
     return _make(area, title, subject, side("before"), side("after"), GROUP_KIND)
 
 

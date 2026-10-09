@@ -86,8 +86,10 @@ def test_s23_the_open_profile_is_offered_ticked(run: dict) -> None:
     assert got["chosen"] == ["C:/p/DCS.xml"]
 
 
-def test_s41_undo_once(run: dict) -> None:
-    assert run["fm-copy-twin-go"]["undo"] == "Undo Copy to Right stick"
+def test_s53_undo_names_the_copy(run: dict) -> None:
+    assert run["fm-copy-twin-go"]["undo"] == (
+        "Undo Copied Autosave: stick deleted to Right stick"
+    )
 
 
 def test_s30_only_the_vjoys_that_exist(run: dict) -> None:

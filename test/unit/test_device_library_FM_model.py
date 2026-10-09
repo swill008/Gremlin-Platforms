@@ -29,7 +29,6 @@ import pytest
 from pytestqt.qtbot import QtBot
 
 from gremlin import threads
-from gremlin.ui import device_library_model
 from gremlin.ui.device_library_model import DeviceLibraryModel
 
 _HERE = pathlib.Path(__file__).parent
@@ -226,22 +225,24 @@ def test_s11_setup_wording(model: DeviceLibraryModel) -> None:
     assert model.details["holdsLabels"][0] == "Setup (claims, friendly names)"
 
 
-def test_s41_undo_says_undo_once(model: DeviceLibraryModel, lib: Fake) -> None:
-    lib.last = {
-        "op": "copy",
-        "autosaves": ["a"],
-        "label": "Copy DCS F-16 to Right stick",
-    }
+def test_s53_undo_and_redo_are_separate(
+    qtbot: QtBot, model: DeviceLibraryModel, lib: Fake
+) -> None:
+    """S53 (replaces S41's single "Undo"/"Redo" item): Undo names the
+    newest step, Redo the one undone; the Library's last change alone is
+    no step."""
+    lib.last = {"op": "copy", "autosaves": ["a"], "label": "Copy DCS F-16"}
     model.refresh()
-    assert model.undoText == "Undo Copy DCS F-16 to Right stick"
-    lib.last = {
-        "op": "undo",
-        "autosaves": ["b"],
-        "label": "Undo Copy DCS F-16 to Right stick",
-    }
-    model.refresh()
-    assert model.undoText == "Undo Copy DCS F-16 to Right stick"
-    assert device_library_model.undo_text(None) == ""
+    assert model.undoText == "" and model.redoText == ""
+    _run(
+        qtbot,
+        model,
+        lambda: model.copy("set-00000001", "dev-00000002", ["setup"], [], ["Default"]),
+    )
+    assert model.undoText.startswith("Undo Copied ")
+    _run(qtbot, model, model.undo)
+    assert model.undoText == ""
+    assert model.redoText.startswith("Redo Copied ")
 
 
 def test_a_model_gone_mid_change_lets_its_thread_end(qtbot: QtBot, lib: Fake) -> None:

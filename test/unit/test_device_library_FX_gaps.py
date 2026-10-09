@@ -385,10 +385,9 @@ def test_move_into_its_own_subfolder_is_refused(
 def test_undo_then_redo_keep_the_changes_label(
     lib: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """S41, D-10-REDO-LABEL: "Undo <change>", right after an Undo "Redo
-    <change>"; never "Undo Undo" or "Undo putting back"."""
-    from gremlin.ui.device_library_model import undo_text
-
+    """The change record keeps its label across Undo and Redo (never "Undo
+    Undo"); the Edit items' names are test_library_undo_redo.py's (S53,
+    D-10-UNDO-REDO, which replaced D-10-REDO-LABEL)."""
     _real_library(lib, monkeypatch)
     profile, uid = lib["profile"], lib["uid"]
     path = _saved_open(lib)
@@ -399,17 +398,14 @@ def test_undo_then_redo_keep_the_changes_label(
     copied = f"Copy {imported['setup']['name']} to {lib['name']}"
     last = library.last_change()
     assert last["label"] == copied and not last.get("undone")
-    assert undo_text(last) == f"Undo {copied}"
     assert library_copy.undo_last()["ok"]
     last = library.last_change()
     assert last["label"] == copied and last["undone"] is True
-    assert undo_text(last) == f"Redo {copied}"
     assert _targets(profile, uid, "Default") == {3: (1, 3)}
     # Redo: the copy again, and the item reads Undo again.
     assert library_copy.undo_last()["ok"]
     last = library.last_change()
     assert last["label"] == copied and not last["undone"]
-    assert undo_text(last) == f"Undo {copied}"
     assert _targets(profile, uid, "Default") == {1: (2, 1)}
 
 

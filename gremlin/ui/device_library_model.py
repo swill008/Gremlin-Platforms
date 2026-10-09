@@ -5,8 +5,9 @@
 QML talks to.
 
 It reads the Library through its owner (gremlin.device_library) and runs
-Copy, Swap, Change vJoy Output and Undo through theirs (library_copy,
-library_swap, library_profiles). One change runs at a time and the window
+Copy, Swap and Change vJoy Output through theirs (library_copy,
+library_swap, library_profiles). Undo and Redo walk through this session's
+Library actions (library_undo, S53). One change runs at a time and the window
 shows it is busy (section 6). Results come back as result(map).
 
 Threads (section 6, program thread rules): the owners run on the main
@@ -63,6 +64,9 @@ _PLAN_SETTLE_MS = 150
 
 # How long a Remove from Library's History group waits for its end.
 _GROUP_LIMIT_MS = 60_000
+
+# Changes that are not steps for Undo (S53): Undo and Redo themselves.
+_NOT_STEPS = ("undo", "redo")
 
 _BUSY_TEXT = "Another change is still running: wait for it to finish."
 
@@ -137,18 +141,6 @@ def inputs_text(counts: dict) -> str:
         n = int(counts.get(key) or 0)
         words.append(f"no {many}" if n == 0 else f"{n} {one if n == 1 else many}")
     return ", ".join(words)
-
-
-def undo_text(last: dict | None) -> str:
-    """Edit › Undo's text (S41, D-10-REDO-LABEL): "Undo <change>", and
-    "Redo <change>" right after an Undo ("" when there is nothing to undo)."""
-    if not last:
-        return ""
-    word = "Redo" if last.get("undone") else "Undo"
-    label = " ".join(str(last.get("label") or "").split())
-    while label.lower().startswith(("undo ", "redo ")):
-        label = label[5:].lstrip()
-    return f"{word} {label}" if label else word
 
 
 def _short_id(guid: str) -> str:
@@ -256,6 +248,8 @@ class DeviceLibraryModel(QtCore.QObject):
     changed = QtCore.Signal()
     result = QtCore.Signal(dict)
     busyChanged = QtCore.Signal()
+    # Undo or Redo changed (undoText, redoText).
+    stepsChanged = QtCore.Signal()
     planningChanged = QtCore.Signal()
     # A plan's Result, from a worker thread or the main thread.
     _planned = QtCore.Signal(str, int, object)
@@ -289,7 +283,14 @@ class DeviceLibraryModel(QtCore.QObject):
         self._sizing = False
         self._resize = False
         self._settings: dict[str, Any] = {"keep": 10, "default_parts": [], "folder": ""}
-        self._undo = ""
+        from gremlin import library_undo
+
+        # This session's Library actions, for Undo and Redo (S53).
+        self._steps = library_undo.Steps()
+        # When the action being recorded started (None: none is), and what
+        # undoes / redoes it when History can't (Copy, Swap, Output, Restore).
+        self._since: float | None = None
+        self._action: dict | None = None
         self._rows: list[dict] = []
         # Read once per refresh: a device's inputs (S8), a setup's photo (S11).
         self._inputs: dict[str, str] = {}
@@ -350,11 +351,6 @@ class DeviceLibraryModel(QtCore.QObject):
             self._settings = dict(lib.settings())
         except Exception:
             logging.getLogger("system").exception("Device Library: settings failed")
-        try:
-            last = lib.last_change()
-        except Exception:
-            last = None
-        self._undo = undo_text(last)
         if self._search:
             self._matches = self._search_keys(self._search)
         keys = {d["key"] for d in self._devices} | {
@@ -561,7 +557,10 @@ class DeviceLibraryModel(QtCore.QObject):
         return list(self._busy_keys)
 
     def _get_undo(self) -> str:
-        return self._undo
+        return self._steps.undo_text()
+
+    def _get_redo(self) -> str:
+        return self._steps.redo_text()
 
     def _get_status(self) -> str:
         devices = len(self._devices)
@@ -704,7 +703,8 @@ class DeviceLibraryModel(QtCore.QObject):
     busy = QtCore.Property(bool, fget=_get_busy, notify=busyChanged)
     selectedKeys = QtCore.Property(list, fget=_get_picked, notify=changed)
     busyKeys = QtCore.Property(list, fget=_get_busy_keys, notify=busyChanged)
-    undoText = QtCore.Property(str, fget=_get_undo, notify=changed)
+    undoText = QtCore.Property(str, fget=_get_undo, notify=stepsChanged)
+    redoText = QtCore.Property(str, fget=_get_redo, notify=stepsChanged)
 
     @QtCore.Property(list, constant=True)
     def partList(self) -> list:
@@ -866,11 +866,13 @@ class DeviceLibraryModel(QtCore.QObject):
         if self._busy:
             self.result.emit(_result(op, {"ok": False, "error": _BUSY_TEXT}))
             return False
+        since = self._step_start()
         try:
             res = _result(op, fn(*args))
         except Exception as e:
             logging.getLogger("system").exception("Device Library: %s failed", op)
             res = _result(op, {"ok": False, "error": str(e)})
+        self._take_step(since)
         self.refresh()
         self.result.emit(res)
         return bool(res["ok"])
@@ -885,6 +887,7 @@ class DeviceLibraryModel(QtCore.QObject):
         change: bool = True,
         main: bool = False,
         keys: list[str] | tuple[str, ...] = (),
+        title: str = "",
     ) -> int:
         """Runs fn(*args) on a program thread; its Result comes back as
         result(map) with op and the returned ticket. A change (change=True)
@@ -894,7 +897,11 @@ class DeviceLibraryModel(QtCore.QObject):
         profile, devices, module files, settings) runs on the main thread
         instead, after the window has shown it is busy, inside
         library_profiles.responsive(): its file work runs in the background
-        while the event loop keeps going (section 6)."""
+        while the event loop keeps going (section 6).
+
+        A change other than Undo / Redo is a step for Undo (S53). title:
+        Copy, Swap, Change vJoy Output and Restore, one History entry named
+        title, undone from its autosaves and redone by running it again."""
         if change and self._busy:
             self.result.emit(_result(op, {"ok": False, "error": _BUSY_TEXT}))
             return 0
@@ -905,6 +912,12 @@ class DeviceLibraryModel(QtCore.QObject):
             self._busy_op = op
             self._busy_keys = [str(k) for k in keys if k]
             self.busyChanged.emit()
+            if op not in _NOT_STEPS:
+                if self._since is None:
+                    self._since = self._step_start()
+                if title:
+                    self._action = {"title": title, "fn": fn, "args": args}
+                    fn = self._grouped(title, fn)
 
         def work() -> None:
             try:
@@ -950,6 +963,12 @@ class DeviceLibraryModel(QtCore.QObject):
             self._busy_op = ""
             self._busy_keys = []
             self.busyChanged.emit()
+            if op in _NOT_STEPS:
+                self.stepsChanged.emit()
+            else:
+                action, self._action = self._action, None
+                since, self._since = self._since, None
+                self._take_step(since, action if res["ok"] else None)
             self.refresh()
         self.result.emit(res)
         if change:
@@ -1085,6 +1104,7 @@ class DeviceLibraryModel(QtCore.QObject):
             self._paths(profiles),
             list(modes),
             main=True,
+            title=f"Copied {self._shown(sourceKey)} to {self._shown(targetKey)}",
         )
 
     @QtCore.Slot(str, str, list, list, result=int)
@@ -1110,6 +1130,7 @@ class DeviceLibraryModel(QtCore.QObject):
             list(parts),
             self._paths(profiles),
             main=True,
+            title=f"Swapped {self._shown(firstKey)} with {self._shown(secondKey)}",
         )
 
     @staticmethod
@@ -1141,14 +1162,102 @@ class DeviceLibraryModel(QtCore.QObject):
             bool(swapOther),
             self._paths(profiles),
             main=True,
+            title=f"Changed the vJoy output of {self._shown(key)}",
         )
 
     @QtCore.Slot(result=int)
     def undo(self) -> int:
-        """S41: puts the last Copy, Swap or Change vJoy Output back."""
-        if not self._undo:
+        """S53: puts the newest Library action of this session back."""
+        if not self._steps.undo_text():
             return 0
-        return self._start("undo", self.api.copy.undo_last, main=True)
+        return self._start("undo", self._steps.undo, main=True)
+
+    @QtCore.Slot(result=int)
+    def redo(self) -> int:
+        """S53: does the last undone Library action again."""
+        if not self._steps.redo_text():
+            return 0
+        return self._start("redo", self._steps.redo, main=True)
+
+    # | Undo and Redo steps (S53)
+
+    @staticmethod
+    def _step_start() -> float:
+        from gremlin import library_undo
+
+        return library_undo.started()
+
+    def _grouped(self, title: str, fn: Callable[..., object]) -> Callable[..., object]:
+        """fn as one History entry named title (S51)."""
+        hist = getattr(self.api, "history", None)
+        if hist is None:
+            return fn
+
+        def run(*args: object) -> object:
+            token = hist.begin_group(title)
+            try:
+                return fn(*args)
+            finally:
+                hist.end_group(token)
+
+        return run
+
+    def _last_change(self) -> dict | None:
+        try:
+            return self.api.library.last_change()
+        except Exception:  # noqa: BLE001 - nothing to undo it with
+            logging.getLogger("system").exception("Device Library: no last change")
+            return None
+
+    def _take_step(self, since: float | None, action: dict | None = None) -> None:
+        """The action that started at since has ended: what it recorded is
+        a step for Undo (S53). Copy, Swap, Change vJoy Output and Restore
+        (action) change the open profile too, which History doesn't hold
+        (S33): they undo from the autosaves they kept and redo by running
+        again."""
+        if since is None:
+            return
+        undo: Callable[[], dict] | None = None
+        redo: Callable[[], dict] | None = None
+        if action is not None:
+            kept = {"change": self._last_change()}
+            copy = self.api.copy
+            title = str(action["title"])
+            fn, args = action["fn"], action["args"]
+
+            def undo_it() -> dict:
+                put_back = getattr(copy, "undo_change", None)
+                if put_back is None:
+                    run = self._grouped(f"Undid {title}", copy.undo_last)
+                    return run()  # type: ignore[return-value]
+                run = self._grouped(f"Undid {title}", put_back)
+                return run(kept["change"])  # type: ignore[return-value]
+
+            def redo_it() -> dict:
+                out = self._grouped(title, fn)(*args)
+                if isinstance(out, dict) and out.get("ok"):
+                    kept["change"] = self._last_change()
+                return out  # type: ignore[return-value]
+
+            undo, redo = undo_it, redo_it
+        try:
+            self._steps.note(
+                since,
+                title=str(action["title"]) if action else "",
+                undo=undo,
+                redo=redo,
+            )
+        except Exception:  # noqa: BLE001 - the action is done either way
+            logging.getLogger("system").exception("Device Library: no Undo step")
+        self.stepsChanged.emit()
+
+    def _shown(self, key: str) -> str:
+        """A row's name for a step's title: a device's, or a saved setup's."""
+        dev = self._device(key)
+        if dev is not None:
+            return str(dev.get("name") or "")
+        _dev, setup = self._setup(key)
+        return str((setup or {}).get("name") or "a saved setup")
 
     @QtCore.Slot(str, str, result=int)
     def exportSetup(self, key: str, url: str) -> int:
@@ -1200,6 +1309,7 @@ class DeviceLibraryModel(QtCore.QObject):
         else:
             what = f"{len(clean)} devices"
         self._group = hist.begin_group(f"Removed {what} from the Device Library")
+        self._since = self._step_start()
         self._choices = self._file_choices() if self._group else None
         # A window that never ends it doesn't hold History's records.
         token = self._group
@@ -1217,6 +1327,7 @@ class DeviceLibraryModel(QtCore.QObject):
         plan = self.removalPlan(str(key))
         what = str(plan.get("shown") or plan.get("name") or "a device")
         self._group = hist.begin_group(f"Cleared the setup of {what}")
+        self._since = self._step_start()
         self._choices = self._file_choices() if self._group else None
         token = self._group
         QtCore.QTimer.singleShot(_GROUP_LIMIT_MS, self, lambda: self._end(token))
@@ -1232,6 +1343,10 @@ class DeviceLibraryModel(QtCore.QObject):
         self._group = ""
         self._note_choices(hist)
         hist.end_group(token)
+        if not self._busy:
+            # Clear Setup ends here, with no change of the model's own.
+            since, self._since = self._since, None
+            self._take_step(since)
 
     def _file_choices(self) -> str | None:
         read = getattr(self.api, "file_choices", None)
@@ -1326,8 +1441,15 @@ class DeviceLibraryModel(QtCore.QObject):
     def restoreToStick(self, key: str) -> int:
         """S48: a saved setup back on its own stick, as Copy does
         (autosave first, Undo)."""
+        dev, _setup = self._setup(key)
         return self._start(
-            "restore", self.api.copy.restore_to_stick, key, main=True, keys=[key]
+            "restore",
+            self.api.copy.restore_to_stick,
+            key,
+            main=True,
+            keys=[key],
+            title=f"Restored {self._shown(key)} to "
+            + str((dev or {}).get("name") or "its stick"),
         )
 
     @QtCore.Slot(str, str, result=int)

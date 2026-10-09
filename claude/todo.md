@@ -210,6 +210,9 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     Also order-dependent 2026-10-09 (pass alone): test_device_library_FX2_fixes::
     test_a_twins_pack_lands_under_that_twin, test_handson_F6_log_level_history::
     test_diagnostic_logs_from_options_is_recorded_and_restored.
+    CI-only stall 2026-10-09 (run 37926996958, seed 134804): test_stage1_modules::
+    test_module_setup_cancel_puts_the_old_picture_back stalled 10 s waiting on the event
+    handler thread (passes locally in 1.5 s). Watch; dig in if it repeats.
 48. vJoy loopback stand-in for the integration tests (VG idea, user 2026-10-08: to-do).
     Today test/integration (219 tests) skips unless run_tests.py --real-vjoy, and on CI it
     always skipped (no vJoy there). A stand-in vJoy that records what the program writes

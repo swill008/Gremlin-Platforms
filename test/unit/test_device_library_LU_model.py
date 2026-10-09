@@ -164,11 +164,13 @@ def test_one_change_at_a_time_and_busy(
     assert done["ok"] and done["ticket"] == ticket
     call = next(c for c in lib.calls if c[0] == "copy")
     assert call[2] == "Right stick" and call[4] == [str(pathlib.Path("C:/p/DCS.xml"))]
-    # S41: the change can be undone, through the owner's undo_last.
-    assert model.undoText == "Undo Copy to Right stick"
+    # S53: the Copy is a step; its Undo goes through the autosaves (the
+    # owner's undo, S33), then Redo names it.
+    assert model.undoText == "Undo Copied DCS F-16, Viper layout to Right stick"
     res = _run(qtbot, model, model.undo)
     assert res["ok"] and ("undo_last",) in lib.calls
     assert model.undoText == ""
+    assert model.redoText == "Redo Copied DCS F-16, Viper layout to Right stick"
     assert model.undo() == 0
 
 

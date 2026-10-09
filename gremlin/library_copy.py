@@ -1156,14 +1156,21 @@ def undo_last() -> dict:
     """Puts the last Copy, Swap or Change vJoy Output back from the
     autosaves it kept (S41). Undo is a change too: each stick is autosaved
     first ("Autosave: before Undo"). Never raises: refused with a message."""
+    return undo_change(None)
+
+
+def undo_change(last: dict | None) -> dict:
+    """Puts one Copy, Swap, Change vJoy Output or Restore back from the
+    autosaves it kept: last is the change as library.last_change() gave it
+    right after it (10 S53: the window's Undo steps), None the last one.
+    Never raises: refused with a message."""
     try:
-        return _undo_last()
+        return _undo_last(library.last_change() if last is None else dict(last))
     except Exception as e:  # noqa: BLE001 - refused, said
         return _fail(f"Undo couldn't put the change back ({e}).")
 
 
-def _undo_last() -> dict:
-    last = library.last_change()
+def _undo_last(last: dict | None) -> dict:
     if not last or not last.get("autosaves"):
         return _fail("There is nothing to undo.")
     found = []

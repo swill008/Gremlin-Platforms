@@ -48,6 +48,37 @@ def _norm(value: object) -> str:
     return " ".join(str(value or "").split()).strip("{}").lower()
 
 
+def _subjects(entry: dict) -> list[dict]:
+    """The entry's subject and, for a group, each part's."""
+    found = [entry.get("subject") or {}]
+    if entry.get("kind") == "group":
+        for side in (entry.get("after"), entry.get("before")):
+            for part in side if isinstance(side, list) else []:
+                if isinstance(part, dict) and isinstance(part.get("subject"), dict):
+                    found.append(part["subject"])
+    return found
+
+
+def _about_device(subject: dict, want: dict) -> bool:
+    """10 S56: a change to the device's module file, or a Device Library
+    change that lists it (subject "devices": [{guid, name}]), by its id
+    (by name only when either has no id)."""
+    file_name = _norm(want.get("fileName"))
+    if file_name and _norm(subject.get("fileName")) == file_name:
+        return True
+    guid, name = _norm(want.get("guid")), _norm(want.get("name"))
+    for dev in subject.get("devices") or []:
+        if not isinstance(dev, dict):
+            continue
+        theirs = _norm(dev.get("guid"))
+        if guid and theirs:
+            if theirs == guid:
+                return True
+        elif name and _norm(dev.get("name")) == name:
+            return True
+    return False
+
+
 def _matches(entry: dict, wanted: dict) -> bool:
     subject = entry.get("subject") or {}
     for key, value in wanted.items():
@@ -58,6 +89,11 @@ def _matches(entry: dict, wanted: dict) -> bool:
         if key == "profile":
             # A path however written (case, slashes, relative): GL-194.
             if not _same_file(subject.get("profile"), value):
+                return False
+            continue
+        if key == "ofDevice":
+            want = value if isinstance(value, dict) else {}
+            if not any(_about_device(s, want) for s in _subjects(entry)):
                 return False
             continue
         if _norm(subject.get(key, "")) != _norm(value):
@@ -581,7 +617,7 @@ class HistoryModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str)
     def setFilter(self, text: str) -> None:
         """Which entries show: {"area", "device", "inputType", "inputId",
-        "mode"}, each optional."""
+        "mode", "ofDevice"}, each optional."""
         try:
             wanted = json.loads(text) if text else {}
         except ValueError:

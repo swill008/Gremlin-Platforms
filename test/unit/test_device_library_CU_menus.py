@@ -100,6 +100,7 @@ def test_s44_s15_connected_device_menu(run: dict) -> None:
         "Open Module Setup…",
         "Open Button Map",
         "Show on Home",
+        "Show in History",  # 10 S56
         "Expand",
         "Clear Setup… [tip: Its settings go; the stick stays plugged in]",
         "Delete Saved Setups… [tip: Only the saved setups go; its settings stay]",
@@ -120,6 +121,7 @@ def test_s44_s15_not_connected_and_deleted_device_menus(run: dict) -> None:
         "Open Module Setup…",
         "Open Button Map",
         "Show on Home",
+        "Show in History",  # 10 S56
         "Remove from Library… [tip: Gone from the Library, with its saved setups]",
     ]
     assert got["danger"] == ["Remove from Library…"]
@@ -129,6 +131,7 @@ def test_s44_s15_not_connected_and_deleted_device_menus(run: dict) -> None:
         "Change vJoy Output…",
         "Rename… (F2)",
         "Edit Description",
+        "Show in History",
         "Expand",
         "Remove from Library… [tip: Gone from the Library, with its saved setups]",
     ]
@@ -143,6 +146,7 @@ def test_s45_saved_setup_menus(run: dict) -> None:
         "Export…",
         "Rename… (F2)",
         "Edit Description",
+        "Show in History",
         "Delete…",
     ]
     assert got["danger"] == ["Delete…"]
@@ -213,7 +217,9 @@ def test_s48_restore_with_busy_mark_and_undo(run: dict) -> None:
     assert busy and mark
     assert ["restore_to_stick", "set-00000001"] in run["calls"]
     after = run["restore-after"]
-    assert after["undo"] == "Undo Restore DCS F-16 to Left throttle"
+    # S53: named for the change (its History entry's title).
+    assert after["undo"].startswith("Undo Restore")
+    assert "DCS F-16" in after["undo"] and "Left throttle" in after["undo"]
     assert after["busyMark"] is False
 
 

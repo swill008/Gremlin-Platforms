@@ -179,6 +179,7 @@ def test_the_right_click_menus_named_are_the_windows() -> None:
         "Open Module Setup…",
         "Open Button Map",
         "Show on Home",
+        "Show in History",  # 10 S56
         "Expand",
         "Collapse",
         "Remove from Library…",
@@ -191,6 +192,7 @@ def test_the_right_click_menus_named_are_the_windows() -> None:
         "Export…",
         "Rename…",
         "Edit Description",
+        "Show in History",  # 10 S56
         "Keep This Autosave",
         "Delete…",
     )
@@ -212,6 +214,10 @@ def test_the_right_click_menus_named_are_the_windows() -> None:
     for words in ("Menu", "Shift+F10", "selects it first", "left out", "red"):
         assert words in str(topic), words
     assert '"Menu", "Shift+F10"' in _WINDOW
+    # S53: Undo and Redo beside every menu's title, named in the guide.
+    assert 'label: "Undo"' in _WINDOW and 'label: "Redo"' in _WINDOW
+    assert "beside its title" in str(topic)
+    assert "<b>Undo</b>" in _guide_source() and "<b>Redo</b>" in _guide_source()
     # The delete question quoted is the window's.
     assert "from the Library?" in text and '" from the Library?"' in _WINDOW
 

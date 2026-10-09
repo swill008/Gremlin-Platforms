@@ -39,6 +39,8 @@ ApplicationWindow {
     // The last change's outcome, shown above the status bar.
     property string message: ""
     property bool messageBad: false
+    // S54: after Remove, Delete or Clear Setup the line ends with Undo.
+    property bool messageUndo: false
     // The shared Rename box is open (01 S135).
     readonly property bool renaming: _nameField.open
 
@@ -72,9 +74,47 @@ ApplicationWindow {
             openOutput()
     }
 
-    function showMessage(text, bad) {
+    function showMessage(text, bad, undoable) {
         message = text
         messageBad = bad
+        messageUndo = undoable === true
+    }
+
+    // S53: Edit › Undo / Redo, the menus' buttons and the message line's
+    // link: this session's Library changes, newest first.
+    readonly property string undoText: lib && lib.undoText ? lib.undoText : ""
+    readonly property string redoText: lib && lib.redoText ? lib.redoText : ""
+    function undo() {
+        if (lib && !busy && undoText.length) {
+            messageUndo = false
+            lib.undo()
+        }
+    }
+    function redo() {
+        if (lib && !busy && redoText.length)
+            lib.redo()
+    }
+    function _undoHeader() {
+        return [
+            { label: "Undo", enabled: !busy && undoText.length > 0, run: function() { _lib.undo() } },
+            { label: "Redo", enabled: !busy && redoText.length > 0, run: function() { _lib.redo() } }
+        ]
+    }
+
+    // A text box with the focus keeps its own keys (Delete, Ctrl+Z).
+    function _typing() {
+        var f = activeFocusItem
+        return !!f && ("cursorPosition" in f)
+    }
+
+    // S55: Delete… on a saved setup, Remove from Library… on a device not
+    // plugged in; nothing on a plugged-in stick or a built-in input.
+    function deleteKey() {
+        if (_typing() || _deleteDlg.opened || renaming || !canDelete)
+            return
+        if (isDevice && !several && (deviceConnected || builtIn))
+            return
+        askDelete()
     }
 
     // What each change says when it is done.
@@ -82,7 +122,8 @@ ApplicationWindow {
         "copy": "Copied. An autosave of the stick was kept first; Edit › Undo puts it back.",
         "swap": "Swapped. An autosave of each stick was kept first; Edit › Undo puts them back.",
         "output": "vJoy output changed. Edit › Undo puts it back.",
-        "undo": "Put back from the autosave.",
+        "undo": "Undone.",
+        "redo": "Redone.",
         "import": "Device Pack added as a saved setup.",
         "export": "Saved setup exported.",
         "delete": "Deleted.",
@@ -113,7 +154,8 @@ ApplicationWindow {
             var more = (res.warnings || []).concat(res.notes || [])
             if (more.length)
                 text += "  " + more.join("  ")
-            _lib.showMessage(text, (res.warnings || []).length > 0)
+            _lib.showMessage(text, (res.warnings || []).length > 0,
+                             ["remove", "delete", "deleteMany", "deleteSetups"].indexOf(op) >= 0)
         }
     }
 
@@ -339,7 +381,7 @@ ApplicationWindow {
         if (!ok)
             return
         lib.refresh()
-        showMessage("Setup cleared. An autosave was kept in the Device Library first.", false)
+        showMessage("Setup cleared. An autosave was kept in the Device Library first.", false, true)
     }
 
     // S48: back on its own stick, as Copy does.
@@ -392,7 +434,7 @@ ApplicationWindow {
                 MenuModel.action("Expand All", function() { _lib.lib.setAllOpen(true) }),
                 MenuModel.action("Collapse All", function() { _lib.lib.setAllOpen(false) }),
                 MenuModel.action("Device Library Settings…", function() { _settingsDlg.openNow() }, free)
-            ], [])
+            ], [], _lib._undoHeader())
         var d = details
         var row = _rowOf(menuKey)
         if (several) {
@@ -408,7 +450,7 @@ ApplicationWindow {
                           shownOff: true,
                           tip: "Remove from Library works only on devices that aren't plugged in" })
                     : null
-            ], [])
+            ], [], _lib._undoHeader())
         }
         if (d.kind === "setup") {
             var autosave = d.origin === "autosave" && !d.own
@@ -421,9 +463,10 @@ ApplicationWindow {
                 MenuModel.action("Export…", function() { _lib.exportSaved() }, free),
                 MenuModel.action("Rename…", function() { _lib.startRename() }, free, { hint: "F2" }),
                 MenuModel.action("Edit Description", function() { _lib.editDescription() }, free),
+                MenuModel.action("Show in History", function() { _lib.toMain("history", d.deviceKey) }),
                 autosave ? MenuModel.action("Keep This Autosave", function() { _lib.lib.keep(d.key) }, free) : null,
                 MenuModel.action("Delete…", function() { _lib.askDelete() }, free, { danger: true })
-            ], [])
+            ], [], _lib._undoHeader())
         }
         if (d.builtIn === true)
             return MenuModel.menu("library-builtin", d.name + " · Built-in input", [
@@ -432,7 +475,7 @@ ApplicationWindow {
                 MenuModel.action("Export…", function() { _lib.exportCurrent() }, free),
                 MenuModel.action("Rename…", function() { _lib.startRename() }, free, { hint: "F2" }),
                 MenuModel.action("Edit Description", function() { _lib.editDescription() }, free)
-            ], [])
+            ], [], _lib._undoHeader())
         var connected = d.connected === true
         var current = d.hasCurrent === true
         // It has a card on Home: plugged in, or a module file here.
@@ -451,6 +494,7 @@ ApplicationWindow {
             MenuModel.action("Open Module Setup…", function() { _lib.toMain("moduleSetup", d.key) }, card),
             MenuModel.action("Open Button Map", function() { _lib.toMain("buttonMap", d.key) }, card),
             MenuModel.action("Show on Home", function() { _lib.toMain("home", d.key) }, card),
+            MenuModel.action("Show in History", function() { _lib.toMain("history", d.key) }),
             row && row.hasChildren
                 ? MenuModel.action(row.open ? "Collapse" : "Expand", function() { _lib.lib.toggleOpen(d.key) })
                 : null,
@@ -465,7 +509,7 @@ ApplicationWindow {
                 ? MenuModel.action("Delete Saved Setups…", function() { _lib.askDeleteSetups() }, free,
                                    { danger: true, tip: "Only the saved setups go; its settings stay" })
                 : null
-        ], [])
+        ], [], _lib._undoHeader())
     }
 
     // A right-click on the list: on a row, it is selected first (unless it
@@ -504,6 +548,10 @@ ApplicationWindow {
 
     Shortcut { sequence: "F1"; onActivated: _lib.openGuide() }
     Shortcut { sequence: "F2"; onActivated: _lib.startRename() }
+    // S53: a text box being typed in keeps its own Ctrl+Z.
+    Shortcut { sequences: [StandardKey.Undo]; enabled: !_lib._typing(); onActivated: _lib.undo() }
+    Shortcut { sequences: ["Ctrl+Y", "Ctrl+Shift+Z"]; enabled: !_lib._typing(); onActivated: _lib.redo() }
+    Shortcut { sequence: StandardKey.Delete; onActivated: _lib.deleteKey() }
     // S43: the selected row's menu from the keyboard.
     Shortcut { sequences: ["Menu", "Shift+F10"]; onActivated: _lib.openMenuOnSelection() }
 
@@ -593,9 +641,17 @@ ApplicationWindow {
                 title: "Edit"
                 ThemedMenuItem {
                     objectName: "libraryUndoItem"
-                    text: _lib.lib && _lib.lib.undoText.length ? _lib.lib.undoText : "Undo"
-                    enabled: !_lib.busy && _lib.lib && _lib.lib.undoText.length > 0
-                    onTriggered: _lib.lib.undo()
+                    text: _lib.undoText.length ? _lib.undoText : "Undo"
+                    hint: "Ctrl+Z"
+                    enabled: !_lib.busy && _lib.undoText.length > 0
+                    onTriggered: _lib.undo()
+                }
+                ThemedMenuItem {
+                    objectName: "libraryRedoItem"
+                    text: _lib.redoText.length ? _lib.redoText : "Redo"
+                    hint: "Ctrl+Y"
+                    enabled: !_lib.busy && _lib.redoText.length > 0
+                    onTriggered: _lib.redo()
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem { text: "Rename…"; hint: "F2"; enabled: _lib.hasSel && !_lib.busy && !_lib.several; onTriggered: _lib.startRename() }
@@ -1209,6 +1265,19 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     text: _lib.message
                     color: _lib.messageBad ? Style.dangerTextSoft : Style.fg
+                }
+                // S54: does what Edit › Undo does.
+                Label {
+                    objectName: "libraryMessageUndo"
+                    visible: _lib.messageUndo && _lib.undoText.length > 0 && !_lib.busy
+                    text: "Undo"
+                    font.underline: true
+                    color: Style.accent
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: _lib.undo()
+                    }
                 }
                 ToolButton {
                     text: ""

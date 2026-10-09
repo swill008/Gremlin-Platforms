@@ -865,6 +865,21 @@ ApplicationWindow {
             } catch (err) {}
             return raw
         }
+        if (action === "history") {
+            // 10 S56: Tools > History on this device, card or not: its
+            // module file's changes (as Module Setup's History, 08 Q15)
+            // and the Device Library's changes that list it.
+            var guid = String(target.guid || "")
+            Helpers.createComponent("DialogHistory.qml", {
+                "filter": JSON.stringify({ "ofDevice": {
+                    "fileName": String(_moduleModel.moduleFileFor(guid, name) || "") + ".json",
+                    "guid": guid,
+                    "name": name
+                } }),
+                "filterLabel": String(target.shown || name)
+            })
+            return JSON.stringify({ "ok": true })
+        }
         if (!card || !card.slug)
             return JSON.stringify({ "ok": false, "error": (target.shown || name) + " has no card on Home." })
         if (action === "moduleSetup")

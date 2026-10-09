@@ -577,7 +577,7 @@ function deviceLibraryTopics() {
             + "<p>The menus:</p>"
             + "<ul>"
             + "<li><b>File</b>: <b>Import Device Pack…</b>, <b>Export Saved Setup…</b>, <b>Open Library Folder</b>, <b>Close</b>.</li>"
-            + "<li><b>Edit</b>: <b>Undo</b> (named for the change, see Undo and Redo), <b>Rename…</b> (F2), <b>Delete…</b>, <b>Tidy Library…</b>.</li>"
+            + "<li><b>Edit</b>: <b>Undo</b> (Ctrl+Z) and <b>Redo</b> (Ctrl+Y), each named for the change (see Undo and Redo), <b>Rename…</b> (F2), <b>Delete…</b>, <b>Tidy Library…</b>.</li>"
             + "<li><b>Device</b>: <b>Save to Device Library…</b>, <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>.</li>"
             + "<li><b>View</b>: <b>Connected</b>, <b>Not Connected</b>, <b>Deleted</b> and <b>Autosaves</b> (the same as the filters), <b>Expand All</b>, <b>Collapse All</b>, <b>Search…</b> (Ctrl+F).</li>"
             + "<li><b>Settings</b>: <b>Device Library Settings…</b>.</li>"
@@ -592,11 +592,13 @@ function deviceLibraryTopics() {
             + "<li><b>Copy to Another Stick…</b> (from its current settings), <b>Swap with Another Stick…</b> (when it is plugged in), <b>Change vJoy Output…</b>, <b>Save to Device Library…</b> and <b>Export Current Setup…</b> (see Export a saved setup).</li>"
             + "<li><b>Rename…</b> (F2) and <b>Edit Description</b>, which puts the cursor in its description.</li>"
             + "<li><b>Open Module Setup…</b>, <b>Open Button Map</b> and <b>Show on Home</b>, for a stick with a card on Home (plugged in, or set up here): they open in the main window.</li>"
+            + "<li><b>Show in History</b>: Tools › History, showing only this device's changes.</li>"
             + "<li><b>Expand</b> or <b>Collapse</b>, when it has saved setups.</li>"
             + "<li>The delete items, by its state: <b>Remove from Library…</b> when it isn't connected; <b>Clear Setup…</b> and <b>Delete Saved Setups…</b> when it is (see Delete and Remove from Library).</li>"
             + "</ul>"
-            + "<p>A saved setup's menu: <b>Copy to Another Stick…</b>, <b>Restore to This Stick…</b> (when its stick is plugged in), <b>Export…</b>, <b>Rename…</b>, <b>Edit Description</b>, <b>Keep This Autosave</b> (autosaves only) and <b>Delete…</b>.</p>"
+            + "<p>A saved setup's menu: <b>Copy to Another Stick…</b>, <b>Restore to This Stick…</b> (when its stick is plugged in), <b>Export…</b>, <b>Rename…</b>, <b>Edit Description</b>, <b>Show in History</b> (its device's changes), <b>Keep This Autosave</b> (autosaves only) and <b>Delete…</b>.</p>"
             + "<p>The program's built-in inputs, Keyboard and OSC, are listed last under the BUILT-IN INPUTS heading. They are never plugged in or removed, so their menu has only <b>Save to Device Library…</b>, <b>Restore…</b> (puts back their newest saved setup), <b>Export Current Setup…</b>, <b>Rename…</b> and <b>Edit Description</b>.</p>"
+            + "<p>Every menu has small <b>Undo</b> and <b>Redo</b> buttons beside its title, as Edit › Undo and Redo.</p>"
             + "<p>The empty space's menu: <b>Import Device Pack…</b>, <b>Expand All</b>, <b>Collapse All</b> and <b>Device Library Settings…</b>.</p>"
             + "<p>A menu shows only what you can do now: an item that doesn't apply, or that has to wait while a change runs, is left out. The delete items are red, and each asks first, naming exactly what goes, for example \"Remove Old Warthog stick and its 4 saved setups from the Library?\".</p>"
             + "<p>To know which one you will get, look at the menu's title: it names the device and its state, for example \"Left throttle · Connected\" or \"Old Warthog stick · Deleted\". Rest the pointer on a delete item and its tooltip says what it does: <b>Clear Setup…</b> \"Its settings go; the stick stays plugged in\", <b>Delete Saved Setups…</b> \"Only the saved setups go; its settings stay\", <b>Remove from Library…</b> \"Gone from the Library, with its saved setups\".</p>"),
@@ -720,14 +722,15 @@ function deviceLibraryTopics() {
             + "<li>A row that is being changed shows a small busy mark until the change is done.</li>"
             + "</ul>"),
         topic("Undo and Redo", "Undo and Redo",
-            "<p>Edit › <b>Undo</b> puts the last Copy, Swap, Change vJoy Output or Restore back, by copying the autosaves it kept onto their sticks: every part they hold, into the profiles they came from.</p>"
+            "<p>Edit › <b>Undo</b> (Ctrl+Z) puts the last change made in the Device Library back; Edit › <b>Redo</b> (Ctrl+Y) makes it again. They work on every Library change: Copy, Swap, Change vJoy Output, Restore, Save, Remove from Library, Delete, Clear Setup, Rename and the others.</p>"
             + "<ul>"
-            + "<li>The menu item names the change, for example \"Undo Copy DCS F-16 to Right stick\".</li>"
-            + "<li>Right after an Undo it reads \"Redo Copy DCS F-16 to Right stick\": choose it to make the change again.</li>"
-            + "<li>Undo keeps its own autosave first (\"Autosave: before Undo\").</li>"
-            + "<li>It still works after you close the window or restart the program, until another change replaces it.</li>"
+            + "<li>Each item names the change, for example \"Undo Remove HID Remapper ACHB\" or \"Redo Copy to Another Stick\". An item shows only when there is something to undo or redo.</li>"
+            + "<li>Undo again to go further back through this session's Library changes, newest first; Redo goes forward again. A new change clears Redo.</li>"
+            + "<li>The same <b>Undo</b> and <b>Redo</b> sit beside the title of every right-click menu.</li>"
+            + "<li>After Remove from Library…, Delete… or Clear Setup… the message line ends with an <b>Undo</b> link that does the same.</li>"
+            + "<li>While you type in a box, Ctrl+Z and Ctrl+Y undo the typing instead.</li>"
             + "</ul>"
-            + "<p>Only the last change can be undone here. For an older one, right-click the autosave it kept and choose <b>Restore to This Stick…</b>, or use <b>Copy to Another Stick…</b>.</p>"),
+            + "<p>Each change is one entry in Tools › History, so older changes, and those from before the program started, can be put back there (right-click a row and choose <b>Show in History</b>).</p>"),
         topic("Finding things", "Search",
             "<p>Type in the search box (<b>Ctrl+F</b> or View › <b>Search…</b> goes there; <b>Esc</b> clears it). It finds, in any case:</p>"
             + "<ul>"
@@ -776,9 +779,10 @@ function deviceLibraryTopics() {
             + "<li>A device that isn't connected (unplugged, deleted, or from a pack): <b>Remove from Library…</b> removes the device and all its saved setups. If its module file is still here, that goes first, as Delete Device on Home does. Tools › History can put it back. If Delete Device can't run, nothing is removed and the message says why.</li>"
             + "<li>A connected stick: <b>Clear Setup…</b> is Delete Device on Home: an autosave is kept in the Device Library first, then its module file and its bindings go, and the stick stays plugged in with no setup. <b>Delete Saved Setups…</b> removes only its saved setups; the stick keeps its settings.</li>"
             + "</ul>"
+            + "<p>The <b>Delete</b> key on a selected row asks the same: Delete… on a saved setup, Remove from Library… on a device that isn't connected. It does nothing on a connected stick or a built-in input, or while you type in a box.</p>"
             + "<p>Edit › <b>Delete…</b> and the red button under the details follow the same rules. On a device the button reads Remove from Library… or Delete Saved Setups… by its state, and Edit › Delete… does the same. Clear Setup… is only in the device's right-click menu.</p>"
             + "<p>To delete several rows with one question, see Selecting several rows.</p>"
-            + "<p>Removing and deleting from the Library is in Tools › History, like every saved change: Restore there puts the saved setups and the Library's list back. Clear Setup… also keeps an autosave under the stick, ready for <b>Restore to This Stick…</b>.</p>"),
+            + "<p>Right after, the <b>Undo</b> link in the message line (or Edit › Undo) puts it back. Removing and deleting from the Library is in Tools › History, like every saved change: Restore there puts the saved setups and the Library's list back. Clear Setup… also keeps an autosave under the stick, ready for <b>Restore to This Stick…</b>.</p>"),
         topic("Renamed and twin sticks", "Renamed and twin sticks",
             "<p>A stick's name in the Device Library is its name on Home. Rename it in either place and both change; dialogs, autosave names and the Undo item use that name.</p>"
             + "<p>Two sticks with the same name (twins) are told apart by a short id after the name, in the list and in the To lists: for example \"Right stick [EEEE0006]\". Rename one of them to tell them apart more easily.</p>"),
@@ -795,10 +799,10 @@ function deviceLibraryTopics() {
             + "<li>Clear Setup… keeps \"Autosave: stick deleted\" under the stick: right-click it and choose Restore to This Stick….</li>"
             + "<li>Copy, Swap, Change vJoy Output, Restore and a Device Pack import keep an autosave first; search for the change (\"before Restore\").</li>"
             + "<li>Only the newest autosaves per stick are kept (Device Library Settings…). Choose <b>Keep This Autosave</b>, or rename or describe one, to keep it for good.</li>"
-            + "<li>Saved setups removed with Delete…, Delete Saved Setups… or Remove from Library… are gone for good.</li>"
+            + "<li>Saved setups removed with Delete…, Delete Saved Setups… or Remove from Library…: Edit › Undo puts them back, or Tools › History for an older one.</li>"
             + "</ul>"),
         topic("Common questions", "I made a mistake: how do I go back?",
-            "<p>Edit › <b>Undo</b> puts the last Copy, Swap, Change vJoy Output or Restore back, even after a restart. For an older change, right-click the autosave it kept and choose <b>Restore to This Stick…</b> (the stick must be plugged in), or copy it onto the stick with Copy to Another Stick…. After Clear Setup…, restore its \"Autosave: stick deleted\" the same way. A profile that wasn't open was saved, so History can also restore the whole file.</p>"),
+            "<p>Edit › <b>Undo</b> (Ctrl+Z) puts back the last Library change, and again for the one before (see Undo and Redo). For a change from before the program started, use Tools › History (right-click the row, <b>Show in History</b>). For a stick's earlier settings, right-click the autosave it kept and choose <b>Restore to This Stick…</b> (the stick must be plugged in), or copy it onto the stick with Copy to Another Stick…. After Clear Setup…, restore its \"Autosave: stick deleted\" the same way. A profile that wasn't open was saved, so History can also restore the whole file.</p>"),
         topic("Common questions", "Why are the buttons greyed out?",
             "<p>The window is busy: a dialog shows <b>Checking…</b>, or the status bar shows <b>Working…</b> while a change runs. Wait for it to finish. Otherwise the selection doesn't allow it: Swap with Another Stick… needs a stick that is plugged in, Export… needs a saved setup, and Save to Device Library… needs a stick set up here or plugged in. With several rows selected only delete works.</p>"
             + "<p>The right-click menus leave out what doesn't apply instead of greying it out.</p>")

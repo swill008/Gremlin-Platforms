@@ -329,8 +329,50 @@ def _finish(act: dict) -> None:
     subject = {
         "library": str(folder()),
         "files": [f["file"] for f in after["files"]],
+        "devices": _devices_changed(
+            before.get("text"), after.get("text"), [f["file"] for f in after["files"]]
+        ),
     }
     history.record("modules", title, subject, before, after, kind=HISTORY_KIND)
+
+
+def _records(text: str | None) -> list[dict]:
+    try:
+        doc = json.loads(text) if text else None
+    except ValueError:
+        return []
+    found = doc.get("devices") if isinstance(doc, dict) else None
+    return [r for r in found or [] if isinstance(r, dict)]
+
+
+def _devices_changed(
+    before: str | None, after: str | None, files: list[str]
+) -> list[dict]:
+    """The devices an entry is about (S56: Show in History): each record
+    the list changed, and each whose saved setups are the packs touched,
+    as {"guid", "name"} (its own name)."""
+    was = {str(r.get("key") or ""): r for r in _records(before)}
+    now = {str(r.get("key") or ""): r for r in _records(after)}
+    touched = set(files)
+    found: list[dict] = []
+    for key in list(was) + [k for k in now if k not in was]:
+        old, new = was.get(key), now.get(key)
+        rec = new or old or {}
+        packs = {
+            str(s.get("file") or "")
+            for r in (old, new)
+            for s in (r or {}).get("setups") or []
+            if isinstance(s, dict)
+        }
+        if old == new and not packs & touched:
+            continue
+        dev = {
+            "guid": str(rec.get("guid") or ""),
+            "name": str(rec.get("ownName") or rec.get("name") or ""),
+        }
+        if dev not in found:
+            found.append(dev)
+    return found
 
 
 def history_text(side: dict | None) -> str:

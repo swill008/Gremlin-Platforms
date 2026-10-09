@@ -115,7 +115,7 @@ def test_s7_s8_s11_s13_details_names_descriptions(run: dict) -> None:
     assert dev["state"] == "Not connected" and not dev["swap"] and dev["del"]
 
 
-def test_s23_s25_s41_copy_and_undo(run: dict) -> None:
+def test_s23_s25_s53_copy_and_undo(run: dict) -> None:
     copy = run["copy"]
     assert copy["from"] == "Left throttle  ›  DCS F-16, Viper layout"
     assert copy["to"] == "Right stick"
@@ -128,9 +128,9 @@ def test_s23_s25_s41_copy_and_undo(run: dict) -> None:
         "Elite.xml:false",
     ]
     assert copy["warnings"] == 3
-    assert run["copy-go"]["undo"] == "Undo Copy to Right stick"
+    assert run["copy-go"]["undo"] == "Undo Copied DCS F-16, Viper layout to Right stick"
     assert _call(run, "copy")[0][2] == "Right stick"
-    assert run["undo"]["undo"] == "" and _call(run, "undo_last")
+    assert run["undo"]["undo"] == "" and _call(run, "undo_last")  # S53, S33
 
 
 def test_s40_double_click_opens_copy(run: dict) -> None:
