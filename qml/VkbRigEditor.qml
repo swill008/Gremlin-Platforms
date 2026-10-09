@@ -966,6 +966,11 @@ Item {
 
     // Photo changes from the Adjust photo sliders come many per drag: one undo
     // step once they stop.
+    // The pause that ends such a run; tests set it to end runs when they
+    // choose, whatever the machine's speed.
+    property alias stepPauseMs: _photoHist.interval
+    readonly property bool stepWaiting: _photoHist.running
+
     function notePhotoChange() {
         _photoHist.restart()
     }
@@ -1328,7 +1333,7 @@ Item {
     ToolTip {
         visible: _ed.hoverHwLabel.length > 0 && !_ed.dragKind && !_ed.renameId
         text: _ed.hoverHwLabel
-        delay: 400
+        delay: Style.tooltipDelayMs
         timeout: 4000
         x: _ed.hoverTipX - width / 2
         y: _ed.hoverTipY - height - Style.dp(8)

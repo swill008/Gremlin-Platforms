@@ -36,6 +36,8 @@ from PySide6 import (  # noqa: E402
 )
 
 ROOT = Path(__file__).resolve().parents[2]
+# Longer than any scenario: a run of edits ends only at Session.end_run().
+_RUN_HELD_MS = 3_600_000
 QML = ROOT / "qml"
 # Fixed copies of the two Gladiator layouts, so the goldens never move with
 # the user's own module files.
@@ -404,6 +406,21 @@ class Session:
     def set_prop(self, name: str, value: object) -> None:
         self.js("setProp", name, json.dumps(value))
         self.wait(30)
+
+    def hold_runs(self) -> None:
+        """A run of nudges, photo or color changes ends when it pauses
+        (400 ms). A slow machine pauses between the harness's own steps, so
+        runs are held open until end_run()."""
+        self.set_prop("stepPauseMs", _RUN_HELD_MS)
+
+    def end_run(self) -> None:
+        """The pause that ends the current run: its undo step lands."""
+        self.set_prop("stepPauseMs", 1)
+        deadline = QtCore.QDeadlineTimer(5000)
+        while self.call_prop("stepWaiting"):
+            assert not deadline.hasExpired(), "the run's undo step never landed"
+            QtTest.QTest.qWait(10)
+        self.hold_runs()
 
     def point(self, fx: float, fy: float) -> QtCore.QPoint:
         x, y = json.loads(self.js("pagePt", fx, fy))
@@ -1136,7 +1153,7 @@ def scenario_transform(s: Session) -> None:
     # The photo: a change is one undo step, and undo puts it back.
     s.call("applyPhotoPose", {"scale": 1.2, "offX": 0.2, "offY": 0.1, "rot": 20})
     s.call("notePhotoChange")
-    s.wait(600)
+    s.end_run()
     s.record("photo-changed")
     s.call("undo")
     s.record("photo-undone")
@@ -1704,7 +1721,7 @@ def scenario_photo_look(s: Session) -> None:
     s.call("setPhotoLook", "grey", 1)
     s.call("setPhotoLook", "bright", 0.3)
     s.call("setPhotoLook", "fade", 0.5)
-    s.wait(500)
+    s.end_run()
     s.record("adjusted", image=True)
     s.steps[-1]["state"]["bag"] = s.call("photoBag")
     s.key(QtCore.Qt.Key.Key_Z, QtCore.Qt.KeyboardModifier.ControlModifier)
@@ -1712,7 +1729,7 @@ def scenario_photo_look(s: Session) -> None:
     s.steps[-1]["state"]["bag"] = s.call("photoBag")
     s.call("setPhotoLook", "contrast", 0.5)
     s.call("resetPhotoLook")
-    s.wait(500)
+    s.end_run()
     s.record("reset")
     s.steps[-1]["state"]["bag"] = s.call("photoBag")
 
@@ -2146,7 +2163,7 @@ def scenario_live_color(s: Session) -> None:
     before = s.call_prop("histAt")
     for i in range(25):
         s.call("applyFieldLive", "color", f"#20{i:02X}40")
-    s.wait(700)
+    s.end_run()
     after = s.call_prop("histAt")
     assert after - before == 1, (before, after)
     assert s.node("b3")["color"] == "#201840", s.node("b3")["color"]
@@ -2219,6 +2236,7 @@ def main() -> None:
     name, out_dir = sys.argv[1], Path(sys.argv[2])
     out_dir.mkdir(parents=True, exist_ok=True)
     session = Session(out_dir, name)
+    session.hold_runs()
     SCENARIOS[name](session)
     session.finish()
     os._exit(0)
