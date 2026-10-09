@@ -305,4 +305,5 @@ def test_menu_tips_use_the_programs_tooltip_not_menu_text() -> None:
     assert "tip: o.tip" in model
     assert "ToolTip.text: it && it.tip" in menu
     assert "ToolTip.visible: !!(it && it.tip) && _rowArea.containsMouse" in menu
-    assert "ToolTip.delay: Style.tooltipDelayMs" in menu
+    # The shared tooltip gives the one delay (S136); no per-use delay line.
+    assert "ToolTip.delay" not in menu

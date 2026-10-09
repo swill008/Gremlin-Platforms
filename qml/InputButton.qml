@@ -268,7 +268,6 @@ Button {
 
     ToolTip {
         visible: _hover.hovered && actionSequenceDisplayMode === "Full" && _actionTruncated
-        delay: 400
 
         x: _hover.point.position.x - width / 2
         y: _hover.point.position.y - height - Style.dp(8)

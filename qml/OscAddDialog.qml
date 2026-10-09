@@ -243,7 +243,6 @@ Popup {
                 text: "Bulk capture"
                 PointerTip {
                     text: "Bulk capture mode is intended for simple devices such as the Stream Deck to capture manual button presses."
-                    delay: 400
                     show: true
                 }
                 onCheckedChanged: {

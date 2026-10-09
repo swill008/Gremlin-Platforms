@@ -2,12 +2,14 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""01 S134 (D-01-LEAVE-TEXT) for the Button Map's rename boxes (saved style
-and template renames in Options > Library, the template rename in Manage
-Templates), end to end: the real program off-screen with the program-wide
-leave-text owner in place (leave_text_button_map_smoke.py), real clicks and
-keys. These boxes have no cancel, so a click away or Esc saves the rename
-as Enter does, ends rename mode, and a rename is saved once."""
+"""01 S134/S135 (D-01-LEAVE-TEXT, D-01-ONE-RENAME) for the Button Map's
+rename boxes (saved style and template renames in Options > Library, the
+template rename in Manage Templates), end to end: the real program
+off-screen with the program-wide leave-text owner in place
+(leave_text_button_map_smoke.py), real clicks and keys. Rename opens the box
+focused with the whole name selected, so typing replaces it with no click
+into the box; Enter or a click away saves the rename once and ends rename
+mode; Esc cancels: the old name stays and nothing is saved."""
 
 from __future__ import annotations
 
@@ -51,8 +53,11 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     return results
 
 
-def _left_and_saved(res: dict) -> None:
-    assert res["row"] and res["shown"] and res["focused"], res
+def _left(res: dict) -> None:
+    # Opened by Rename alone: focused, whole name selected (S135).
+    assert res["row"] and res["shown"], res
+    assert res["focused"] is True, res
+    assert res["selected"] is True, res
     assert res["focus"] is False
     assert res["renaming"] == ""
     assert res["window"] is True
@@ -63,40 +68,41 @@ def test_runs_without_errors(run: dict) -> None:
 
 
 @pytest.mark.parametrize("how", ["click-away", "esc", "enter"])
-def test_library_style_rename_saved_once(run: dict, how: str) -> None:
+def test_library_style_rename(run: dict, how: str) -> None:
     res = run[f"style-{how}"]
-    _left_and_saved(res)
-    old, new = {"click-away": ("Style A", "Style B"), "esc": ("Style B", "Style C"),
-                "enter": ("Style C", "Style D")}[how]
+    _left(res)
+    if how == "esc":
+        assert res["names"] == ["Style B"]
+        assert res["calls"] == []
+        return
+    old, new = {"click-away": ("Style A", "Style B"),
+                "enter": ("Style B", "Style D")}[how]
     assert res["names"] == [new]
     assert res["calls"] == [[old, new]]
 
 
 @pytest.mark.parametrize("how", ["click-away", "esc", "enter"])
-def test_library_template_rename_saved_once(run: dict, how: str) -> None:
+def test_library_template_rename(run: dict, how: str) -> None:
     res = run[f"lib-template-{how}"]
-    _left_and_saved(res)
-    new = {"click-away": "Tmpl B", "esc": "Tmpl C", "enter": "Tmpl D"}[how]
-    assert new in res["names"]
-    assert not any(n.startswith("Tmpl") and n != new for n in res["names"])
+    _left(res)
+    # Esc keeps the old name (Tmpl B from the click away).
+    kept = {"click-away": "Tmpl B", "esc": "Tmpl B", "enter": "Tmpl D"}[how]
+    assert kept in res["names"]
+    assert not any(n.startswith("Tmpl") and n != kept for n in res["names"])
     # Saved twice would try the old name again and say the rename failed.
     assert res["failed"] is False
 
 
-@pytest.mark.parametrize(
-    "how",
-    [
-        "esc",
-        "enter",
-        "click-away",
-    ],
-)
-def test_manage_templates_rename_saved_once(run: dict, how: str) -> None:
+@pytest.mark.parametrize("how", ["esc", "enter", "click-away"])
+def test_manage_templates_rename(run: dict, how: str) -> None:
     res = run[f"dlg-template-{how}"]
-    _left_and_saved(res)
+    _left(res)
     old, new = {"esc": ("Esc A", "Esc B"), "enter": ("Enter A", "Enter B"),
                 "click-away": ("Away A", "Away B")}[how]
-    assert new in res["names"] and old not in res["names"]
+    if how == "esc":
+        assert old in res["names"] and new not in res["names"]
+    else:
+        assert new in res["names"] and old not in res["names"]
     assert res["failed"] is False
     # Esc only leaves the box: the dialog (closed by Esc) stays open.
     assert res["open"] is True

@@ -62,7 +62,6 @@ Item {
             text: "\u21bb"
             PointerTip {
                 text: "Rescan this PC's IP addresses"
-                delay: 400
                 show: true
             }
             onClicked: () => { _model.refresh() }

@@ -49,6 +49,7 @@ Item {
         Repeater {
             model: _opts.styles
             RowLayout {
+                id: _styleRow
                 required property var modelData
                 readonly property string key: "style:" + modelData.kind + ":" + modelData.name
                 Layout.fillWidth: true
@@ -58,17 +59,22 @@ Item {
                     color: Style.fgMuted
                     Layout.preferredWidth: Style.dp(48)
                 }
-                TextField {
-                    visible: _library.renaming === parent.key
+                // The shared Rename box (01 S135): Enter or a click away
+                // saves once, Esc cancels.
+                RenameField {
                     Layout.fillWidth: true
-                    text: modelData.name
-                    // Enter, Esc or a click away (01 S134) saves the rename
-                    // once; hiding the box ends the edit.
-                    onEditingFinished: {
-                        if (_library.renaming !== parent.key)
-                            return
+                    name: modelData.name
+                    open: _library.renaming === _styleRow.key
+                    // Saved after the edit ends: the save rebuilds this row.
+                    property string _newName: ""
+                    onRenamed: (newName) => _newName = newName
+                    onEnded: {
                         _library.renaming = ""
-                        _opts.renameStyle(modelData.name, modelData.kind, text)
+                        open = Qt.binding(() => _library.renaming === _styleRow.key)
+                        var to = _newName
+                        _newName = ""
+                        if (to.length)
+                            _opts.renameStyle(modelData.name, modelData.kind, to)
                     }
                 }
                 Label {
@@ -111,25 +117,26 @@ Item {
         Repeater {
             model: _library.templateList
             RowLayout {
+                id: _templateRow
                 required property var modelData
                 readonly property string key: "template:" + modelData.name
                 Layout.fillWidth: true
                 spacing: Style.dp(6)
-                TextField {
-                    visible: _library.renaming === parent.key
+                // As the style rename.
+                RenameField {
                     Layout.fillWidth: true
-                    text: modelData.name
-                    // As the style rename: saved once, however it is left.
-                    onEditingFinished: {
-                        if (_library.renaming !== parent.key)
-                            return
-                        _library.renaming = ""
-                        var to = text.trim()
-                        if (to.length && to !== modelData.name && !_hw.renameTemplate(modelData.name, to)) {
-                            _failNotice.announce(false, "Could not rename " + modelData.name + " to " + to
+                    name: modelData.name
+                    open: _library.renaming === _templateRow.key
+                    onRenamed: (newName) => {
+                        if (!_hw.renameTemplate(modelData.name, newName)) {
+                            _failNotice.announce(false, "Could not rename " + modelData.name + " to " + newName
                                 + ". A template may have that name already, or its file could not be written.")
                             _failNotice.titleText = "Rename Failed"
                         }
+                    }
+                    onEnded: {
+                        _library.renaming = ""
+                        open = Qt.binding(() => _library.renaming === _templateRow.key)
                         _library.refreshTemplates()
                     }
                 }

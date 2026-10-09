@@ -112,7 +112,6 @@ Item {
 
                 PointerTip {
                     text: name
-                    delay: 400
                     show: visible && _root.isRenamed(model.guid, name)
                 }
 
@@ -151,7 +150,6 @@ Item {
 
             PointerTip {
                 text: "Keyboard"
-                delay: 400
                 show: visible && _root.isRenamed("keyboard", "Keyboard")
             }
 
@@ -189,7 +187,6 @@ Item {
 
             PointerTip {
                 text: "Logical Device"
-                delay: 400
                 show: visible && _root.isRenamed("logical", "Logical Device")
             }
 
@@ -227,7 +224,6 @@ Item {
 
             PointerTip {
                 text: "OSC"
-                delay: 400
                 show: visible && _root.isRenamed("osc", "OSC")
             }
 
@@ -265,7 +261,6 @@ Item {
 
             PointerTip {
                 text: "Xbox 360 Controller"
-                delay: 400
                 show: visible && _root.isRenamed("xbox", "Xbox 360 Controller")
             }
 

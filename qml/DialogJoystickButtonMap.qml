@@ -2561,20 +2561,19 @@ ApplicationWindow {
                     required property var modelData
                     width: ListView.view.width
                     spacing: Style.dp(6)
-                    TextField {
+                    // The shared Rename box (01 S135): Enter or a click
+                    // away saves once, Esc cancels.
+                    RenameField {
                         Layout.fillWidth: true
-                        visible: _templatesDlg.renaming === modelData.name
-                        text: modelData.name
-                        // Enter, Esc or a click away (01 S134) saves the
-                        // rename once; hiding the box ends the edit.
-                        onEditingFinished: {
-                            if (_templatesDlg.renaming !== modelData.name)
-                                return
-                            var from = modelData.name
-                            var to = text.trim()
-                            _templatesDlg.renaming = ""
-                            if (to.length && to !== from && !_hw.renameTemplate(from, to))
+                        name: modelData.name
+                        open: _templatesDlg.renaming === modelData.name
+                        onRenamed: (newName) => {
+                            if (!_hw.renameTemplate(modelData.name, newName))
                                 _buttonMap.tellFailure("Rename Failed", _hw.templateError())
+                        }
+                        onEnded: {
+                            _templatesDlg.renaming = ""
+                            open = Qt.binding(() => _templatesDlg.renaming === modelData.name)
                             _buttonMap.refreshTemplates()
                         }
                     }
@@ -3622,7 +3621,6 @@ ApplicationWindow {
                                 checked: _opts.values["chip-only"] === true
                                 onToggled: _opts.set("chip-only", checked)
                                 ToolTip.visible: hovered
-                                ToolTip.delay: 500
                                 ToolTip.text: "Add chips with no leader and no hotspot"
                             }
                         }
@@ -3667,7 +3665,6 @@ ApplicationWindow {
                                             font.pixelSize: Style.dp(11)
                                         }
                                         PointerTip {
-                                            delay: 400
                                             show: !_buttonMap.poolDrag && _poolChipHover.containsMouse
                                             timeout: 4000
                                             text: {
@@ -3923,7 +3920,6 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     HoverHandler { id: _fileHover }
                     ToolTip.visible: _fileHover.hovered && _fileLabel.truncated
-                    ToolTip.delay: 500
                     ToolTip.text: _hw.path
                 }
                 Shortcut {
@@ -4243,7 +4239,6 @@ ApplicationWindow {
                         onClicked: _colorPop.pinned = !_colorPop.pinned
                     }
                     ToolTip.visible: _pickPinArea.containsMouse
-                    ToolTip.delay: 600
                     ToolTip.text: _colorPop.pinned ? "Unpin: a click outside closes the picker" : "Pin: keep the picker open"
                 }
             }

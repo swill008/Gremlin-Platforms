@@ -291,7 +291,6 @@ Item {
                 color: _pane.pinned ? Style.accent : (area.containsMouse ? Style.fg : Style.fgMuted)
                 onClicked: _pane.dock.setPinned(_pane.toolId, !_pane.pinned)
                 ToolTip.visible: area.containsMouse
-                ToolTip.delay: 600
                 ToolTip.text: _pane.pinned ? "Unpin: hides when you click the map" : "Pin: stays open when you click the map"
             }
             TitleIcon {
@@ -300,7 +299,6 @@ Item {
                 color: _pane.locked ? Style.accent : (area.containsMouse ? Style.fg : Style.fgMuted)
                 onClicked: _pane.dock.setLocked(_pane.toolId, !_pane.locked)
                 ToolTip.visible: area.containsMouse
-                ToolTip.delay: 600
                 ToolTip.text: _pane.locked ? "Unlock: can be moved and resized" : "Lock: can't be moved or resized"
             }
             Label {
@@ -317,7 +315,6 @@ Item {
                     onClicked: _pane.dock.setOpen(_pane.toolId, false)
                 }
                 ToolTip.visible: _closeArea.containsMouse
-                ToolTip.delay: 600
                 ToolTip.text: "Close (it floats here again next time)"
             }
         }

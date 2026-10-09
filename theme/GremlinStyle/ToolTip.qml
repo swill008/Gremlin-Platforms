@@ -15,10 +15,22 @@ T.ToolTip {
     x: parent ? (parent.width - implicitWidth) / 2 : 0
     y: -implicitHeight - Style.dp(16)
 
-    implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset,
-                            implicitContentWidth + leftPadding + rightPadding)
+    // Text wraps at the program's one tooltip width (S136); a tooltip that
+    // shows something else (an image) keeps its own size.
+    implicitWidth: {
+        const w = Math.max(implicitBackgroundWidth + leftInset + rightInset,
+                           implicitContentWidth + leftPadding + rightPadding)
+        return contentItem && contentItem.wrapMode !== undefined
+            ? Math.min(w, Style.tooltipMaxWidth) : w
+    }
     implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset,
                              implicitContentHeight + topPadding + bottomPadding)
+
+    // The program's one delay (S136). The attached ToolTip sets the shared
+    // tooltip's delay to its own (0 unless set) on every show, so "no delay
+    // set" (0) is turned into Style.tooltipDelayMs here, before it opens.
+    delay: Style.tooltipDelayMs
+    onDelayChanged: if (delay <= 0) delay = Style.tooltipDelayMs
 
     margins: Style.dp(8)
     padding: Style.dp(8)

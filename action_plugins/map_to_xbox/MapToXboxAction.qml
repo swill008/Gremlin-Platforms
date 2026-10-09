@@ -75,7 +75,6 @@ Item {
                 onActivated: _root.action.triggerRange = currentValue
                 PointerTip {
                     text: "Full axis: -1 is 0%, +1 is 100%. Upper half: center is 0%, +1 is 100%."
-                    delay: 300
                     show: true
                 }
             }

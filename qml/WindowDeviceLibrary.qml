@@ -39,7 +39,8 @@ ApplicationWindow {
     // The last change's outcome, shown above the status bar.
     property string message: ""
     property bool messageBad: false
-    property bool renaming: false
+    // The shared Rename box is open (01 S135).
+    readonly property bool renaming: _nameField.open
 
     ToolWindowMemory {
         host: _lib
@@ -152,25 +153,15 @@ ApplicationWindow {
     function openSwap() { if (hasSel) _swapDlg.openFor(details) }
     function openOutput() { if (hasSel) _outputDlg.openFor(details) }
     function openSave() { if (hasSel) _saveDlg.openFor(details) }
+    // F2 / Rename…: the shared Rename box (01 S135) on the selected item;
+    // what it saves goes to that item (10 S7: a device's Home card too).
     property string renameKey: ""
-    property string renameFrom: ""
     function startRename() {
-        if (!hasSel || busy || several)
+        if (!hasSel || busy || several || _nameField.open)
             return
         renameKey = details.key
-        renameFrom = details.name
-        _nameField.text = details.name
-        renaming = true
-        _nameField.forceActiveFocus()
-        _nameField.selectAll()
-    }
-    function finishRename(keep) {
-        if (!renaming)
-            return
-        renaming = false
-        var text = _nameField.text.trim()
-        if (keep && text.length && renameKey.length && text !== renameFrom)
-            lib.rename(renameKey, text)
+        _nameField.name = details.name
+        _nameField.start()
     }
     // Edit › Delete… and the details' Delete…: what S15 gives the
     // selection (on a connected device, its saved setups).
@@ -877,15 +868,17 @@ ApplicationWindow {
                                 color: Style.fgStrong
                                 elide: Text.ElideRight
                             }
-                            TextField {
+                            RenameField {
                                 id: _nameField
                                 objectName: "libraryNameField"
-                                visible: _lib.renaming
                                 Layout.fillWidth: true
                                 font.pixelSize: Style.dp(18)
-                                onAccepted: _lib.finishRename(true)
-                                onActiveFocusChanged: if (!activeFocus) _lib.finishRename(true)
-                                Keys.onEscapePressed: (event) => { _lib.finishRename(false); event.accepted = true }
+                                // A refusal comes back as the model's result
+                                // and shows in the message line.
+                                onRenamed: (newName) => {
+                                    if (_lib.renameKey.length)
+                                        _lib.lib.rename(_lib.renameKey, newName)
+                                }
                             }
                             ToolButton {
                                 objectName: "libraryRenameButton"

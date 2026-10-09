@@ -559,7 +559,6 @@ Rectangle {
                                     onClicked: _panel.deleteRow(_row.row)
                                 }
                                 ToolTip.visible: _trashArea.containsMouse
-                                ToolTip.delay: 500
                                 ToolTip.text: _row.row.part === "hot" ? "Hide hotspot"
                                     : (_row.row.type === "chip" || _row.row.type === "group") ? "Delete (back to the pool)"
                                     : "Delete"

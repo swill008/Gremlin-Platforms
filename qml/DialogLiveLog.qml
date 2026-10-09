@@ -124,7 +124,6 @@ ApplicationWindow {
 
         checkable: true
         ToolTip.visible: hovered
-        ToolTip.delay: 500
         ToolTip.text: checked ? tipOn : tipOff
         contentItem: Label {
             text: (_toggle.checked ? "● " : "○ ") + _toggle.caption
@@ -395,7 +394,6 @@ ApplicationWindow {
                         checked: _debug.startEmpty
                         onToggled: _debug.startEmpty = checked
                         ToolTip.visible: hovered
-                        ToolTip.delay: 500
                         ToolTip.text: "When Live starts, clear the view first "
                             + "(otherwise it keeps what is shown and adds to it)"
                     }
@@ -661,7 +659,6 @@ ApplicationWindow {
                         checked: _monitor.showUnbound
                         onToggled: _monitor.showUnbound = checked
                         ToolTip.visible: hovered
-                        ToolTip.delay: 500
                         ToolTip.text: "Also show inputs that have no actions (dimmed)"
                     }
 

@@ -2,12 +2,13 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""01 S134 (D-01-LEAVE-TEXT) for the Button Map's rename boxes, off-screen
-in the real program (started as joystick_gremlin.py starts it, so the
-program-wide leave-text owner is in place): the saved style and template
-renames in Options > Library and the template rename in File > Templates >
-Manage Templates. Real clicks and keys: Rename, a click in the box, typing,
-then a click away, Esc or Enter. Prints "RESULT name json" per check and
+"""01 S134/S135 (D-01-LEAVE-TEXT, D-01-ONE-RENAME) for the Button Map's
+rename boxes, off-screen in the real program (started as joystick_gremlin.py
+starts it, so the program-wide leave-text owner is in place): the saved style
+and template renames in Options > Library and the template rename in File >
+Templates > Manage Templates. Real clicks and keys: Rename (the box opens
+focused with the whole name selected, no click into it), typing, then a
+click away, Esc or Enter. Prints "RESULT name json" per check and
 "done". test_leave_text_button_map.py runs it.
 
     python test/unit/leave_text_button_map_smoke.py
@@ -145,24 +146,34 @@ def main() -> None:
         return None
 
     def start_rename(scope: QtQuick.QQuickItem, name: str, new: str) -> dict:
-        """Rename on the row, a click in its box, the old name replaced by
-        typing the new one."""
+        """Rename on the row, then the new name typed straight away: the box
+        opens focused with the whole old name selected (S135), so typing
+        replaces it with no click into the box."""
         row = row_of(scope, name)
         if row is None:
             return {"row": False}
         button = next(
-            c for c in row.childItems()
+            c for c in items(row)
             if c.inherits("QQuickAbstractButton") and c.property("text") == "Rename"
         )
-        box = next(c for c in row.childItems() if c.inherits("QQuickTextInput"))
         click(centre(button))
-        shown = box.isVisible()
-        click(centre(box))
-        focused = bool(wait_until(box.hasActiveFocus, 3))
-        QtTest.QTest.keyClick(win, Key.Key_A, Ctrl)
+
+        def open_box():  # noqa: ANN202
+            return next(
+                (c for c in items(row)
+                 if c.inherits("QQuickTextInput") and c.isVisible()),
+                None,
+            )
+
+        box = wait_until(open_box, 3)
+        if box is None:
+            return {"row": True, "shown": False, "focused": False}
+        QtTest.QTest.qWait(100)
+        focused = bool(box.hasActiveFocus())
+        selected = box.property("selectedText") == name
         type_text(new)
-        return {"row": True, "shown": shown, "focused": focused,
-                "typed": box.property("text"), "box": box}
+        return {"row": True, "shown": True, "focused": focused,
+                "selected": selected, "typed": box.property("text"), "box": box}
 
     def outcome(started: dict, renaming: object) -> dict:
         box = started.pop("box", None)
@@ -224,15 +235,16 @@ def main() -> None:
     QtTest.QTest.qWait(200)
     result("style-click-away", outcome(s, library.property("renaming"))
            | {"names": style_names(), "calls": list(style_calls)})
-    # Style: Esc saves (this box has no cancel) and the window stays.
+    # Style: Esc cancels (S135): the old name stays, nothing is saved.
     style_calls.clear()
     s = start_rename(library, "Style B", "Style C")
     key(Key.Key_Escape)
     result("style-esc", outcome(s, library.property("renaming"))
-           | {"names": style_names(), "calls": list(style_calls)})
+           | {"names": style_names(), "calls": list(style_calls),
+              "window": win.isVisible()})
     # Style: Enter saves once.
     style_calls.clear()
-    s = start_rename(library, "Style C", "Style D")
+    s = start_rename(library, "Style B", "Style D")
     key(Key.Key_Return)
     result("style-enter", outcome(s, library.property("renaming"))
            | {"names": style_names(), "calls": list(style_calls)})
@@ -241,7 +253,8 @@ def main() -> None:
     for tag, new, how in (("click-away", "Tmpl B", None),
                           ("esc", "Tmpl C", Key.Key_Escape),
                           ("enter", "Tmpl D", Key.Key_Return)):
-        old = {"Tmpl B": "Tmpl A", "Tmpl C": "Tmpl B", "Tmpl D": "Tmpl C"}[new]
+        # Esc cancels, so Enter starts from the name Esc left.
+        old = {"Tmpl B": "Tmpl A", "Tmpl C": "Tmpl B", "Tmpl D": "Tmpl B"}[new]
         s = start_rename(library, old, new)
         if how is None:
             click(blank)

@@ -4,15 +4,7 @@
 import QtQuick
 import QtQuick.Controls
 
-import Gremlin.Style
-
-ToolTip {
-    id: root
-
-    property int maxWidth: Style.tooltipMaxWidth
-
-    // The width is clamped to force word-wrap on long text with padding added
-    // to have space on the end of the tooltip box.
-    width: contentWidth > maxWidth ? maxWidth : contentWidth + Style.dp(20)
-    delay: Style.tooltipDelayMs
-}
+// The program's one tooltip (GremlinStyle/ToolTip.qml) already waits
+// Style.tooltipDelayMs and wraps at Style.tooltipMaxWidth; kept as a name
+// for the dropdowns that use it.
+ToolTip {}

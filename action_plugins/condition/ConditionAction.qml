@@ -379,7 +379,6 @@ Item {
             ToolTip {
                 visible: _iconHover.hovered && conditionName !== ""
                 text: conditionName
-                delay: 500
             }
         }
 

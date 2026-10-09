@@ -149,9 +149,7 @@ Item {
 
             ToolTip {
                 text: _path.text
-                width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
                 visible: _hoverPath.hovered
-                delay: 500
                 x: _hoverPath.point.position.x - width / 2
                 y: _hoverPath.point.position.y - height - Style.dp(8)
             }
@@ -197,11 +195,7 @@ Item {
                 x: _hoverName.point.position.x - width / 2
                 y: _hoverName.point.position.y - height - Style.dp(8)
                 text: _name.text
-                // Set an upper width of the tooltip to force word wrap on
-                // long texts.
-                width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
                 visible: _hoverName.hovered
-                delay: 500
             }
 
             HoverHandler {

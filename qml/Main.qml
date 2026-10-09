@@ -1268,7 +1268,6 @@ ApplicationWindow {
                         text: _root.fileNameOf(modelData)
                         PointerTip {
                             text: modelData
-                            delay: 400
                             show: true
                         }
                         onTriggered: () => { _root.loadRecent(modelData) }
@@ -1544,7 +1543,6 @@ ApplicationWindow {
 
                     PointerTip {
                         text: qsTr("Mode: the one you edit is the one that runs.")
-                        delay: 500
                     }
                 }
 
@@ -1599,7 +1597,6 @@ ApplicationWindow {
                 }
                 PointerTip {
                     text: _savedLine.text
-                    delay: 400
                     show: _savedLine.text.length > 0
                 }
             }
@@ -1886,7 +1883,6 @@ ApplicationWindow {
                             onClicked: configDirection === "dest" ? _root.cycleOutput(-1) : _root.cycleConfiguration(-1)
                             PointerTip {
                                 text: configDirection === "dest" ? "Previous output module" : "Previous input module"
-                                delay: 400
                                 show: true
                             }
                         }
@@ -1899,7 +1895,6 @@ ApplicationWindow {
                             onClicked: configDirection === "dest" ? _root.cycleOutput(1) : _root.cycleConfiguration(1)
                             PointerTip {
                                 text: configDirection === "dest" ? "Next output module" : "Next input module"
-                                delay: 400
                                 show: true
                             }
                         }
@@ -1959,7 +1954,6 @@ ApplicationWindow {
                     }
                     PointerTip {
                         text: "When checked, controls with no actions are listed together under No actions."
-                        delay: 400
                         show: true
                     }
                 }

@@ -201,7 +201,6 @@ ColumnLayout {
                                     HoverHandler { id: _hwHover }
                                     PointerTip {
                                         text: "Hardware " + label
-                                        delay: 200
                                         show: true
                                     }
                                 }
@@ -218,7 +217,6 @@ ColumnLayout {
                                     HoverHandler { id: _xbHover }
                                     PointerTip {
                                         text: xboxLabel
-                                        delay: 200
                                         show: true
                                     }
                                 }

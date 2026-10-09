@@ -282,7 +282,6 @@ ColumnLayout {
                                     HoverHandler { id: _hwHover }
                                     PointerTip {
                                         text: "Input " + label
-                                        delay: 200
                                         show: true
                                     }
                                 }
@@ -308,7 +307,6 @@ ColumnLayout {
                                     HoverHandler { id: _vjHover }
                                     PointerTip {
                                         text: destClaimed ? vjoyLabel : "Output not claimed"
-                                        delay: 200
                                         show: true
                                     }
                                 }

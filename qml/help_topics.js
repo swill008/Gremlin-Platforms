@@ -48,6 +48,7 @@ function topics() {
             + "<li><b>Dropdown lists</b> of ten or more entries have a search box: type part of a name, Up and Down move, Enter picks.</li>"
             + "<li><b>Command Palette</b>: Ctrl+K (or View → <b>Command Palette…</b>) lists every menu command you can use now. Type part of a name and press Enter. Shortcuts show beside the commands.</li>"
             + "<li><b>Text boxes</b>: to leave a box you are typing in, press Esc or click anywhere outside it. What you typed is kept. (In Module Setup, Esc does nothing, as sticks can send it; click away instead.)</li>"
+            + "<li><b>Renaming</b>: F2 or <b>Rename</b> puts the cursor in the name with all of it selected, so you can type the new one straight away. Enter or a click elsewhere saves it; Esc keeps the old name.</li>"
             + "<li><b>Shortcuts</b>: Ctrl+N new profile, Ctrl+O load, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+K command palette, F1 this guide.</li>"
             + "</ul>"),
         topic("Getting Started", "Profiles",

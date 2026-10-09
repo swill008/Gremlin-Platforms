@@ -61,7 +61,6 @@ ApplicationWindow {
             text: "Include the open profile"
             checked: false
             ToolTip.visible: hovered
-            ToolTip.delay: 500
             ToolTip.text: "Add the open profile as it is now, unsaved changes included"
         }
 

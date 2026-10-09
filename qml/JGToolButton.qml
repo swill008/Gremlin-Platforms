@@ -69,7 +69,6 @@ ToolButton {
     ToolTip {
         id: _tooltip
         visible: _tipHover.hovered && text.length > 0
-        delay: 500
         x: _tipHover.point.position.x - width / 2
         y: _tipHover.point.position.y - height - Style.dp(8)
     }

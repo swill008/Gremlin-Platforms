@@ -279,7 +279,6 @@ ApplicationWindow {
                         + "Overwrite used inputs: replaces the actions those controls already have in the selected mode. Leave it off, and those actions stay as they are.\n\n"
                         + "Combine onto selected outputs: This should stay off when each input should have its own output. Turn it on when you check more inputs than outputs.\n\n"
                         + "Also claim the matching outputs: off, actions are made only for outputs the output module already claims; the rest are listed as skipped. On, the outputs the new actions need are claimed on the output module first."
-                    delay: 500
                 }
             }
         }

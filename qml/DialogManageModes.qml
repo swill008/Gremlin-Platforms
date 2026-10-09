@@ -169,7 +169,6 @@ ApplicationWindow {
                 enabled: modeHierarchy.canUndoDelete
 
                 ToolTip.visible: hovered && enabled
-                ToolTip.delay: 500
                 ToolTip.text: "Brings back " + modeHierarchy.undoDeleteName + " and its bindings."
 
                 onClicked: () => { modeHierarchy.undoDelete() }

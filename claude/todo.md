@@ -184,6 +184,19 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     to-do 42 (exit hang may be vJoy unloading) and 43 (exit-hang check). Until done:
     one test process per agent, no kill-and-retry loops, the hanging pair off-limits.
     The vJoy driver version itself is the user's decision.
+45. Button Map canvas editor into the shared Rename box (parked by the user 2026-10-08,
+    D-01-CANVAS-EXEMPT). Plan: RenameField gets a row limit (Shift+Enter adds a row; chips 2),
+    a per-place empty rule (keep / default label / allow empty) and a plain canvas look; the
+    canvas keeps placing it over the chip (chipScreenRect, rotation, font size). Text boxes and
+    table cells too (user to decide). Also the Layers panel rename (kept on its own box; its empty
+    name resets to the default, like chips). Add a "click on another control saves once" check.
+46. test_rig_editor_golden flakes on CI only (histAt one short: callout, photo_look; runs
+    37861168239, 37863448848). Fixed 2026-10-08 (RG): the harness ends undo runs on the
+    condition (stepPauseMs/stepWaiting), no fixed waits. Next (user go 2026-10-08, S55 gaps):
+    (a) a waiting nudge/photo/colour run merges into the next command's undo step if it
+    comes within 400 ms: push the run's own step first (session_r, callout goldens change);
+    (b) Add callout makes two undo steps (rig_callout.js addCalloutFor: addDrawFree + bump);
+    (c) button_map_fixes_smoke.py nudge test depends on 5 nudges within 400 ms.
 
 ## On hold / parked (user's choice)
 

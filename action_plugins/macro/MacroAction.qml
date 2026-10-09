@@ -726,7 +726,6 @@ Item {
         ToolTip {
             visible: _iconHover.hovered && label !== ""
             text: label
-            delay: 500
         }
     }
 

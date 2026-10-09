@@ -352,7 +352,6 @@ Item {
                                 onClicked: _btn.dock.setPinned(_btn.modelData, !_btn.pinned)
                             }
                             ToolTip.visible: _pinArea.containsMouse
-                            ToolTip.delay: 600
                             ToolTip.text: _btn.pinned ? "Unpin: hides when you click the map" : "Pin: stays open when you click the map"
                         }
                         // Lock: can't be dragged or resized.
@@ -372,7 +371,6 @@ Item {
                                 onClicked: _btn.dock.setLocked(_btn.modelData, !_btn.locked)
                             }
                             ToolTip.visible: _lockArea.containsMouse
-                            ToolTip.delay: 600
                             ToolTip.text: _btn.locked ? "Unlock: can be moved and resized" : "Lock: can't be moved or resized"
                         }
                     }
@@ -469,7 +467,6 @@ Item {
                     }
                 }
                 ToolTip.visible: _main.containsMouse && !!(_btn.tool && _btn.tool.tip)
-                ToolTip.delay: 700
                 ToolTip.text: _btn.tool && _btn.tool.tip ? _btn.tool.tip : ""
             }
         }

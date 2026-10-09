@@ -132,9 +132,7 @@ ApplicationWindow {
 
                                     ToolTip {
                                         text: parent.text
-                                        width: contentWidth > Style.dp(500) ? Style.dp(500) : contentWidth + Style.dp(20)
                                         visible: _hoverHandler.hovered
-                                        delay: 500
                                         x: _hoverHandler.point.position.x - width / 2
                                         y: _hoverHandler.point.position.y - height - Style.dp(8)
                                     }

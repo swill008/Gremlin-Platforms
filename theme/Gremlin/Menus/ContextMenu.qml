@@ -530,7 +530,6 @@ Popup {
                             onClicked: _menu.pinned = !_menu.pinned
                         }
                         ToolTip.visible: _pinArea.containsMouse
-                        ToolTip.delay: 600
                         ToolTip.text: _menu.pinned ? "Unpin: a click outside closes the menu" : "Pin: keep the menu open"
                     }
                     Repeater {
@@ -702,7 +701,6 @@ Popup {
             // What it does, as the program's usual tooltip (like the pin's);
             // a greyed-out row shows it too.
             ToolTip.visible: !!(it && it.tip) && _rowArea.containsMouse
-            ToolTip.delay: Style.tooltipDelayMs
             ToolTip.text: it && it.tip ? it.tip : ""
             MouseArea {
                 id: _rowArea

@@ -146,7 +146,6 @@ Item {
                                 hoverEnabled: true
                             }
                             ToolTip.visible: _info.containsMouse
-                            ToolTip.delay: 300
                             ToolTip.text: _row.modelData.description
                         }
 
