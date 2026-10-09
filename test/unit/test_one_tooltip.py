@@ -188,12 +188,16 @@ def test_plain_tooltip_waits_and_wraps(tmp_path: pathlib.Path) -> None:
         encoding="utf-8",
         timeout=120,
         cwd=str(tmp_path),
-        env={**os.environ, "QT_QPA_PLATFORM": "offscreen", "PYTHONIOENCODING": "utf-8"},
+        env={**os.environ, "QT_QPA_PLATFORM": "offscreen", "PYTHONIOENCODING": "utf-8",
+             "QT_LOGGING_RULES": "qt.qml.binding.removal.info=true"},
     )
     lines = result.stdout.splitlines()
     assert "done" in lines, (result.stderr or "")[-2000:]
     problems = [line for line in lines if line.startswith(("ERROR", "WARN"))]
     assert problems == []
+    # The shared delay is set without overwriting its own binding (the
+    # program logged "Overwriting binding on ToolTip ... delay").
+    assert "Overwriting binding" not in (result.stderr or ""), result.stderr[-2000:]
     results = {
         line.split(" ", 2)[1]: line.split(" ", 2)[2]
         for line in lines

@@ -29,7 +29,9 @@ T.ToolTip {
     // The program's one delay (S136). The attached ToolTip sets the shared
     // tooltip's delay to its own (0 unless set) on every show, so "no delay
     // set" (0) is turned into Style.tooltipDelayMs here, before it opens.
-    delay: Style.tooltipDelayMs
+    // Set by code, never bound: a binding here would be overwritten by the
+    // line below (Qt logs "Overwriting binding on ToolTip ... delay").
+    Component.onCompleted: if (delay <= 0) delay = Style.tooltipDelayMs
     onDelayChanged: if (delay <= 0) delay = Style.tooltipDelayMs
 
     margins: Style.dp(8)
