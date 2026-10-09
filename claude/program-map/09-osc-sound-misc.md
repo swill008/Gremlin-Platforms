@@ -1,6 +1,6 @@
 # OSC, sound and speech, tray, look and help (and the leftovers)
 
-Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 11 brought up to date 9 Oct. Line numbers drift; re-check them before a step starts. **OSC was parked** (todo.md, 2 Oct) and was picked up 2026-10-09: decisions D-09-OSC-FILE (OSC's own module file, permanent ids, server settings in OSC's Module Setup), D-09-OSC-INPUT (per-input settings) and D-09-OSC-FAULTS (small faults) change the OSC statements below; the batch is being built 2026-10-09. Sound and speech are mapped here only at the system level (the player and the speech engine); the Play Sound and Text to Speech editors belong to the Actions page. The last part of section 2 lists every file in `gremlin/` and `qml/` that no other page names, so nothing is unmapped.
+Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 11 brought up to date 9 Oct. Line numbers drift; re-check them before a step starts. **OSC was parked** (todo.md, 2 Oct) and was picked up 2026-10-09: decisions D-09-OSC-FILE (OSC's own module file, permanent ids, server settings in OSC's Module Setup), D-09-OSC-INPUT (per-input settings), D-09-OSC-FAULTS (small faults), D-09-OSC-LOCK (no Axis/button switch with actions) and D-09-OSC-STOP (held buttons released at Stop) change the OSC statements below; the batch is being built 2026-10-09. Sound and speech are mapped here only at the system level (the player and the speech engine); the Play Sound and Text to Speech editors belong to the Actions page. The last part of section 2 lists every file in `gremlin/` and `qml/` that no other page names, so nothing is unmapped.
 
 ## 1. Purpose
 
@@ -113,7 +113,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 | OSC Module Setup → Server: host, port, output host/port, Enabled, auto-release, delay | Server section (03 S53a; D-09-OSC-FILE) | `osc_device_file.write_server` → `oscServerSettingsChanged` → `OscRuntime` rebinds, starts or stops at once |
 | Options → OSC | one line + button "OSC settings are in OSC › Module Setup" (01 S40a) | opens OSC's Module Setup |
 | Run | `CodeRunner.start` (code_runner.py 390) | `OscRuntime.start()`: reads settings, binds UDP, or shows an error |
-| Stop / quit | `CodeRunner.stop` 428; `shutdown_cleanup` (joystick_gremlin.py 284) | `OscRuntime.stop()` |
+| Stop / quit | `CodeRunner.stop` 428; `shutdown_cleanup` (joystick_gremlin.py 284) | CUT_INPUT "OSC releases": `OscRuntime.release_held()` (held buttons released while actions still run, S40a), then `OscRuntime.stop()` |
 | UDP packet arrives | python-osc thread → `OscListener._on_message` → `_from_thread` | `incoming` signal (queued to main) → `_on_main`: Listen capture; matched address → `EventListener.joystick_event` |
 | Address-only button packet (auto-release on) | `_on_main` 495-501 | `QTimer.singleShot(delay)` → `_release_button` with the mode at press time |
 | Profile load / New profile | `Profile.from_xml` / `__init__` | OSC inputs stay (one shared list); a version 14/15 profile's `<osc-device>` → `osc_device_file.merge_profile_rows` (one-time note, references follow the uid map) |
@@ -237,6 +237,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 - **S14** Adding an input that already exists (same address, and in Message + data the same values) should select the existing input, not make a second one; several inputs may share an address when their data or value source differ. [changed 2026-10-09, user: D-09-OSC-INPUT] (was: one input per address)
 - **S15** Addresses should match without regard to case (`/Deck/1` = `/deck/1`) and are stored in lower case. [user confirmed 2026-10-06; was code only]
 - **S16** Each input should keep its own settings, set in the Add window and saved in OSC's file: mode (Button, Axis, Change; Encoder reserved, not offered), Message only / Message + data (with the values captured or typed), value source (P1..Pn, P1 first), axis range (default 0 to 1), Trigger on message and its delay (left blank = the server default). They work at run time as S38-S39d say. [changed 2026-10-09, user: D-09-OSC-INPUT] (was: work per input or be hidden; Q2)
+- **S16a** An OSC input that has actions (in the open profile, any mode) should not switch between Axis and the button modes (Button, Change, Message + data); the change is refused with "Remove this input's actions first: an axis and a button use different actions." Switching among the button modes is allowed (as GremlinEx). [changed 2026-10-09, user: D-09-OSC-LOCK]
 - **S17** Listen (single capture) should fill the address from the next message that arrives, offer its values as sources (P1..Pn), bind it with the window's settings and close the dialog; it ends on that message by design. [changed 2026-10-09, user: D-09-OSC-INPUT] [changed 2026-10-09, user: D-09-OSC-FAULTS]
 - **S18** Listen should tell the user if OSC is off or the port can't be opened ("Could not start OSC listener."). [user confirmed 2026-10-06; was code only]
 - **S19** Bulk capture should add one input per new address, each with the window's settings, until Bulk capture is unticked; the same address twice within 0.3 s counts once. [OscAddDialog tip: "intended for simple devices such as the Stream Deck"] [changed 2026-10-09, user: D-09-OSC-INPUT]
@@ -267,6 +268,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 - **S39c** Message + data: a message whose address and values equal the input's data (numbers compared as numbers, else as text) presses, then releases after the delay. [changed 2026-10-09, user: D-09-OSC-INPUT]
 - **S39d** A message should go to every input that matches it (address in any case; data and source as above). [changed 2026-10-09, user: D-09-OSC-INPUT]
 - **S40** The auto-release should release in the mode the press happened in. [user confirmed 2026-10-06; was code only]
+- **S40a** At Stop, every OSC button still held should be released (in the mode it was pressed in) before the run's actions stop, like the Logical Device's neutral at Stop; then the auto-release timers are cancelled (S39b). [changed 2026-10-09, user: D-09-OSC-STOP]
 - **S41** Axis: the number at the input's source, scaled from its range (default 0 to 1; axes from older profiles -1 to 1, so they behave as before) to -1.0 … 1.0 and limited to it; no value or text is ignored. [changed 2026-10-09, user: D-09-OSC-INPUT] (was: the first value limited to -1..1; no value gives 0.0)
 - **S42** Listen may suggest a type from the first message (no value, 0, 1 or beyond ±1 → Button; anything else → Axis); the mode chosen in the window is what is saved. [changed 2026-10-09, user: D-09-OSC-INPUT]
 - **S43** Server settings changed in OSC's Module Setup should apply at once, also while running, without a new Run (S4). [changed 2026-10-09, user: D-09-OSC-FILE] (was: Options, read per packet)
@@ -377,6 +379,8 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 - **G-OSC17** `tools_osc/README.md` describes the old flow (lower-case "osc" section, port 9000, "Activate the profile").
 - **G-OSC18** OSC Module Setup claims are read for the card but ignored at run time. (R1, Q4)
 - **G-OSC19** OSC inputs were kept in each profile and the server settings in program settings, with references by number. (S44, S44a, S48) Fixed by D-09-OSC-FILE (being built 2026-10-09).
+- **G-OSC20** An OSC input with actions can be switched between Axis and a button mode in Edit Settings. (S16a) Fixed 2026-10-09 (D-09-OSC-LOCK): built in d7eaa746 (`osc_device_model.updateInputSettings` refuses; `inputSettings` "locked" greys the other type; test_osc_uimodel::test_type_change_refused_while_the_input_has_actions).
+- **G-OSC21** At Stop, an OSC button still held was not released; Stop only cancelled the auto-release timers. (S40a) Fixed 2026-10-09 (D-09-OSC-STOP): `OscRuntime.release_held()` runs in the CUT_INPUT stage before "input off" (code_runner), so actions see each release once; `stop()` calls it too (test_osc_run::test_stop_releases_held_buttons_while_callbacks_still_run).
 
 **Sound, speech, tray, look** (status 9 Oct, from claude/gap-list.md)
 - **G1** Text to Speech engine may be called off the main thread when a timer-run action speaks. (R10) Done (GL-042, batch 2).
@@ -433,6 +437,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | S51 | 2026-10-07 (D-09-S51-NEXTSOUND): a playback mode change applies from the next sound the player starts |
 | Q19 | 2026-10-07 (D-09-Q19-SUPERSEDED): fsm.py is used and stays |
 | S2-S4, S6, S8-S10, S12-S14, S16, S17, S19-S26, S38-S48, Q1-Q3, Q6 | 2026-10-09 (D-09-OSC-FILE, D-09-OSC-INPUT, D-09-OSC-FAULTS): OSC's own module file shared by every profile, permanent ids, server settings in OSC's Module Setup, per-input settings, small faults fixed |
+| S16a, S40a | 2026-10-09 (D-09-OSC-LOCK, D-09-OSC-STOP): an input with actions can't switch between Axis and a button mode; held OSC buttons are released at Stop |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

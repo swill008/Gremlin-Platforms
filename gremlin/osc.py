@@ -311,6 +311,8 @@ class OscRuntime(QtCore.QObject):
         self._settings: dict[str, Any] = dict(SERVER_DEFAULTS)
         self._timers: dict[str, QtCore.QTimer] = {}
         self._last: dict[str, Any] = {}
+        # Buttons pressed and not yet released: uid -> the mode pressed in.
+        self._held: dict[str, str] = {}
         self.incoming.connect(self._on_main)
         from gremlin.signal import signal as ui_signal
 
@@ -417,12 +419,23 @@ class OscRuntime(QtCore.QObject):
             self._settings = server_settings()
             log.info("OSC port not opened: the profile has no OSC inputs")
 
-    def stop(self) -> None:
-        """The profile stopped: pending auto-releases cancelled, port closed."""
-        self._running = False
-        self._uses_osc = False
+    def release_held(self) -> None:
+        """Stop, while the profile's callbacks still run: every held button
+        (a press not yet released, or waiting on its auto-release) gets one
+        release; pending auto-releases are cancelled."""
         for uid in list(self._timers):
             self._cancel_release(uid)
+        held, self._held = self._held, {}
+        for uid, mode in held.items():
+            row = OscDevice().rows.by_uid(uid)
+            if row is not None:
+                self._emit_button(row, False, mode)
+
+    def stop(self) -> None:
+        """The profile stopped: held buttons released, port closed."""
+        self._running = False
+        self._uses_osc = False
+        self.release_held()
         self._last.clear()
         self._hold_learn = False
         self._learn = False
@@ -449,6 +462,10 @@ class OscRuntime(QtCore.QObject):
     def _emit_button(self, row: OscRow, pressed: bool, mode: str) -> None:
         from gremlin.event_handler import Event, EventListener
 
+        if pressed:
+            self._held[row.uid] = mode
+        else:
+            self._held.pop(row.uid, None)
         EventListener().joystick_event.emit(
             Event(
                 event_type=InputType.JoystickButton,

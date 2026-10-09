@@ -183,7 +183,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | TTS engine | Qt object on the main thread | `stop()` stops speech; the engine stays | Qt |
 | Event listener, device update timer | event_handler (other subsystem) | `shutdown_cleanup` | - |
 
-Every Run timer, loop and held output registers with `run_scope`; `run_scope.stop()` lets go of them in stage order (CUT_INPUT, CANCEL, FIRE_PENDING, END_WORK, RELEASE_HELD, NEUTRAL, ...), each step once, errors logged and the rest go on.
+Every Run timer, loop and held output registers with `run_scope`; `run_scope.stop()` lets go of them in stage order (CUT_INPUT, CANCEL, FIRE_PENDING, END_WORK, RELEASE_HELD, NEUTRAL, ...), each step once, errors logged and the rest go on. CUT_INPUT also has "OSC releases" (`OscRuntime.release_held()`, before "input off"; 09 S40a, D-09-OSC-STOP, 2026-10-09).
 
 Event callbacks run on the main thread (queued Qt signals from the listener thread). Macro steps run on macro threads, so a vJoy or Logical Device write can come from a macro thread, a relative-axis thread, a script-timer thread and the main thread at the same time.
 

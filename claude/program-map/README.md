@@ -29,7 +29,7 @@ spec change. See "The plan" in `claude/system-maps.md`.
 | [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device | 85 | 19 | 19 | reviewed 2026-10-06 (all as recommended) |
 | [07-button-map](07-button-map.md) | Button Map editor, photos, recovery, print/export | 102 | 19 | 23 | reviewed 2026-10-06 (all as recommended) |
 | [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper | 112 | 21 | 30 | reviewed 2026-10-06 (all as recommended) |
-| [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (picked up 2026-10-09: own module file, per-input settings), sound, speech, tray, theme; shared widgets and foundations | 94 | 20 | 28 | reviewed 2026-10-06 (all as recommended) |
+| [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (picked up 2026-10-09: own module file, per-input settings), sound, speech, tray, theme; shared widgets and foundations | 96 | 20 | 30 | reviewed 2026-10-06 (all as recommended) |
 | [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 59 | 1 | S1-S56 (+S20a, S53a) built; S6a (D-04-LD-FILE) building; open items: to-dos 47, 50, 51, 52 | approved 2026-10-08 |
 | **Total** | | **1008** | **174** | **232** (+ page 10) | |
 

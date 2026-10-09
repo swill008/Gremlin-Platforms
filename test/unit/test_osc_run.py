@@ -143,14 +143,87 @@ def test_new_press_restarts_the_release_timer(run: tuple) -> None:
     assert events.count(("button", 1, False)) == 1
 
 
-def test_stop_cancels_pending_releases(run: tuple) -> None:
+def test_stop_releases_a_pending_auto_release_once(run: tuple) -> None:
+    """The auto-release timer is cancelled; Stop sends the release itself."""
     runtime, rows, events, _ = run
     rows.create(BUTTON, "/b", delay_ms=50)
     runtime.start()
     runtime._on_main("/b", ())
     runtime.stop()
+    assert events == [("button", 1, True), ("button", 1, False)]
     _wait(150)
-    assert events == [("button", 1, True)]
+    assert events == [("button", 1, True), ("button", 1, False)]
+
+
+def test_stop_releases_held_buttons_while_callbacks_still_run(
+    run: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Approved 2026-10-09: at Stop every held OSC button gets one release
+    before the Run's input is cut (CodeRunner's real Stop order), so the
+    profile's actions see it. Released buttons and axes are left alone."""
+    from unittest import mock
+
+    from gremlin import code_runner, run_scope
+
+    runtime, rows, events, _ = run
+    held = rows.create(BUTTON, "/held")
+    trig = rows.create(BUTTON, "/trig", trigger=True, delay_ms=5000)
+    noarg = rows.create(BUTTON, "/noarg", delay_ms=5000)
+    done = rows.create(BUTTON, "/done")
+    axis = rows.create(AXIS, "/x", range_min=0.0, range_max=1.0)
+    for name in ("macro", "sendinput", "mode_manager", "audio_player", "tts",
+                 "output"):
+        monkeypatch.setattr(code_runner, name, mock.MagicMock())
+    seen_by_profile: list[tuple] = []
+    cut = {"done": False}
+
+    def profile_callback(event: Any) -> None:  # noqa: ANN401
+        if event.device_guid == osc.OSC_DEVICE_UUID and not cut["done"]:
+            seen_by_profile.append(
+                (event.identifier, event.event_type, event.is_pressed)
+            )
+
+    def cut_input() -> None:
+        cut["done"] = True
+
+    EventListener().joystick_event.connect(profile_callback)
+    fake_runner = SimpleNamespace(
+        _cut_input=cut_input,
+        _drop_release_actions=lambda: None,
+        _end_scripts=lambda: None,
+        _flush_pulses=lambda: None,
+        _logical_device_neutral=lambda: None,
+    )
+    try:
+        run_scope.stop()
+        run_scope.begin()
+        code_runner.CodeRunner._register_stop(fake_runner)
+        runtime.start()
+        runtime._on_main("/held", (1.0,))
+        runtime._on_main("/trig", (1.0,))
+        runtime._on_main("/noarg", ())
+        runtime._on_main("/done", (1.0,))
+        runtime._on_main("/done", (0.0,))
+        runtime._on_main("/x", (0.75,))
+        events.clear()
+        seen_by_profile.clear()
+        run_scope.stop()
+        _wait(50)
+    finally:
+        EventListener().joystick_event.disconnect(profile_callback)
+        run_scope._reset_for_tests()
+    released = sorted(e for e in events if e[0] == "button")
+    assert released == sorted(
+        ("button", r.input_id, False) for r in (held, trig, noarg)
+    )
+    assert not [e for e in events if e[0] == "axis"]
+    assert ("button", done.input_id, False) not in events
+    assert sorted(seen_by_profile) == sorted(
+        (r.input_id, BUTTON, False) for r in (held, trig, noarg)
+    )
+    assert runtime._timers == {} and axis.input_id == 1
+    runtime.stop()
+    assert len(events) == 3
 
 
 def test_axis_scales_range_and_clamps(run: tuple) -> None:

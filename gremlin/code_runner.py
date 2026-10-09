@@ -470,6 +470,9 @@ class CodeRunner:
         """
         on = run_scope.on_stop
         stage = run_scope.Stage
+        # OSC buttons held at Stop are released first, while the profile's
+        # callbacks still see them (like the Logical Device's neutral, R1).
+        on(stage.CUT_INPUT, "OSC releases", lambda: OscRuntime().release_held())
         on(stage.CUT_INPUT, "input off", self._cut_input)
         on(stage.CANCEL, "release actions", self._drop_release_actions)
         on(stage.CANCEL, "script state", self._end_scripts)
