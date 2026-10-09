@@ -299,6 +299,18 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     display only, nothing created on disk. Spec addition to 10 S6. ~10-15 min + full run (agents:
     Library rows py, empty line QML, spec/Help, one test). Found by LIB-audit; tracker T-lib-builtin-no-file-row.
 
+62. OSC idea (user 2026-10-09: to-do): OSC in conditions and macros. Today an OSC condition always reads
+    "not present" (input_cache has no OSC device); macros can't capture OSC. ~20 min.
+63. OSC idea (to-do): sender allow-list. Accept OSC only from chosen IP addresses (shared networks).
+    Setting in OSC's Module Setup Server section; travels with packs. Small.
+64. OSC idea (to-do): per-input axis shaping on the OSC input itself: invert, deadzone, curve, before
+    any action.
+65. OSC idea (to-do): address patterns. OSC wildcards (`/fader/*`, `?`, `[..]`, `{a,b}`) so one input
+    covers several controls.
+66. OSC idea (to-do): import a TouchOSC layout (.tosc) to create all its controls as inputs with the right
+    modes.
+67. OSC idea (to-do): OSC from user scripts. Scripts can send and receive OSC (script API).
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).

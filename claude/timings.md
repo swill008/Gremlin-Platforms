@@ -168,3 +168,11 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | OSC: no OSC file on fresh install (OSC-file fix) | fix | ~8 min | 1 min | 15:06–15:07 |
 | 2026-10-09 | OSC: backend start test for the fresh-install rule (lead) | test | ~3 min | 3 min | 15:07–15:10 |
 | 2026-10-09 | OSC: final full run (lead) | test | ~6 min | 6 min | 15:10–15:16, all green |
+| 2026-10-09 | OSC WHOLE BATCH (audit+history 6 agents, build 10+3+5 agents, 2 full runs) | feature | ~60-70 min | 50 min | 14:26–15:18 (build 14:42–15:18) |
+| 2026-10-09 | OSC hands-on sender tool (OSC-sender) | feature | ~8 min | 2 min | 15:15–15:17 |
+| 2026-10-09 | OSC functional check: 27 real loopback checks (OSC-func) | test | ~15 min | 3 min | 15:15–15:18 |
+| 2026-10-09 | OSC spec: lock + Stop release (OSC-spec) | docs | ~6 min | 1 min | 15:17–15:18 |
+| 2026-10-09 | OSC: Stop releases held buttons (OSC-stop) | feature | ~12 min | 2 min | 15:17–15:19 |
+| 2026-10-09 | OSC functional check: Stop checks + re-run (OSC-func follow-up) | test | ~6 min | 1 min | 15:19 |
+| 2026-10-09 | OSC functional report page (lead) | docs | ~3 min | 2 min | 15:21–15:23 |
+| 2026-10-09 | Full run (OSC Stop release) (lead) | test | ~6 min | 6 min | 15:20–15:26, all green |
