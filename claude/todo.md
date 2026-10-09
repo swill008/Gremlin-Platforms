@@ -326,6 +326,15 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     selected but has no actions shows a blank right side with no way to add a first action there.
     Decide the text (e.g. "No actions on this input yet") and how a first action is added. Not built.
 
+73. QUESTION (found 2026-10-09 from your run, GEOM): "Unable to set geometry" when Module Setup (and any
+    tool window with ToolWindowMemory) reopens. Old gap (window_placement.py restore_tool since
+    550ce2fb): the saved size is clamped to the screen without the title bar/frame, the first screen
+    showing 35% is picked (not the one showing most), and the QML width/height bindings resize it again
+    when it lands on another screen. Fix proposed: use the main window's _fit_client + frame margins for
+    tool windows, pick the screen with the largest overlap, size bindings only on first creation.
+    Needs a new 01 spec statement ("tool windows reopen with their whole frame inside the work area of
+    the screen they land on") - your OK first.
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).

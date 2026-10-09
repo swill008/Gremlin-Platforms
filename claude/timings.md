@@ -209,3 +209,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | Help vs code audit, 27 Help fixes (HELP-CHECK) | docs | ~15 min | 6 min | 16:29–16:35 |
 | 2026-10-09 | 5 small OSC code fixes from the Help audit (lead) | fix | ~8 min | 6 min | 16:36–16:42 |
 | 2026-10-09 | Final full runs + 2 small fixes (lead) | test | ~13 min | 20 min | 16:42–17:02 |
+| 2026-10-09 | Fix your QML warnings (binding, _targetForm) + guard test (lead) | fix | ~10 min | 20 min | 17:05–17:25 |
+| 2026-10-09 | Window size warnings traced: old tool-window restore gap (GEOM) | review | ~12 min | 1 min | 17:04–17:05 |
