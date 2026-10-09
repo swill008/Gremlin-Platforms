@@ -60,3 +60,14 @@ a time to the user.
 | 2026-10-09 | Id not name: Auto Mapper + Device Pack (ID-misc) | fix | ~12 min | 6 min | 11:24–11:30 |
 | 2026-10-09 | Map entries for the id batch (MAP-id) | docs | ~8 min | 3 min | 11:30–11:33 |
 | 2026-10-09 | Full run (plugged-in by id batch) | test | ~5 min | 5 min | 11:30–11:35, all green |
+| 2026-10-09 | Device classes: Library callers (CLS-lib) | refactor | ~20 min | 5 min | 11:40–11:45 |
+| 2026-10-09 | Device classes core + guard (CLS-core) | refactor | ~25 min | 6 min | 11:40–11:46 |
+| 2026-10-09 | Twins: export by id (TW-export) | fix | ~15 min | 3 min | 11:45–11:48 |
+| 2026-10-09 | Twins: device list by id (TW-list) | fix | ~15 min | 3 min | 11:45–11:48 |
+| 2026-10-09 | Device classes: other callers (CLS-rest) | refactor | ~20 min | 9 min | 11:40–11:49 |
+| 2026-10-09 | Twins: Device Pack window (TW-window) | fix | ~20 min | 6 min | 11:44–11:50 |
+| 2026-10-09 | Map entries classes + twins (MAP-cls) | docs | ~8 min | 2 min | 11:50–11:52 |
+| 2026-10-09 | Full run (classes + twins export) | test | ~5 min | 5 min | 11:50–11:55, all green |
+| 2026-10-09 | Import by id: window (IM-window) | fix | ~15 min | 2 min | 11:53–11:55 |
+| 2026-10-09 | Import by id: Python (IM-py) | fix | ~12 min | 6 min | 11:53–11:59 |
+| 2026-10-09 | Full run (twins + import by id) | test | ~5 min | 5 min | 11:59–12:04, all green |

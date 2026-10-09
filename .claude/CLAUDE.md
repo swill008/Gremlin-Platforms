@@ -75,6 +75,13 @@ Every piece of work, not only big batches:
    2026-10-09): always divide the work when feasible to cut the time a
    change takes, with tight time budgets; don't divide it when doing so
    would certainly cause errors.
+   Before saying work can't be split (user, 2026-10-09: "you first said you
+   couldn't split it, and now you can"), do the analysis and show it: list
+   the files the change touches, group them by owner, write the shared
+   contract (function names, data shapes, option keys) so groups can work
+   to it at once, and stagger an agent that must wait for a file another
+   agent holds. Only call it one agent's job when that analysis shows the
+   pieces really share the same files or must happen in order, and say which.
 5. **Test runs (agents; user 2026-10-07).**
    - The full run is `python test/run_tests.py --random-order` (6 parts, ~3
      min): once, at the end, after the targeted tests pass.

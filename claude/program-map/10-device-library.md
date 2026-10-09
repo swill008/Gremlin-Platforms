@@ -36,9 +36,9 @@ On disk:
 
 Code (built 2026-10-08/09):
 
-- `gremlin/device_library.py` (2249 lines): the library owner (connected = `_connected`: a device with an id and `hardware.plugged_in`, 03 S90a; `_view` joins a plugged-in stick to the row / record with the same id only, never by name), the one writer of `library.json` and the packs: folder, devices, save_setup, autosave (S16-S21) and its limit, rename/describe/delete, import_pack/export_setup, tidy, size, search, settings, last change, History text and Restore for Library entries (S51).
-- `gremlin/library_copy.py` (1331): `_connected` -> `hardware.plugged_in` (by live id). Copy to Another Stick, Restore to This Stick, Change vJoy Output (renumbers Map to vJoy, nested actions too) and undo_change/undo_last (S22-S25, S30-S33, S48).
-- `gremlin/library_swap.py` (525): Swap with Another Stick (S26-S29): module-file parts through `modules/store.py`, bindings through `swap_devices` per ticked profile; autosave of both sticks first.
+- `gremlin/device_library.py` (2247 lines): the library owner (`is_built_in_guid` -> `device_class.can('library_builtin', guid)`, by id only, 03 S90b; connected = `_connected`: a device with an id and `hardware.plugged_in`, 03 S90a; `_view` joins a plugged-in stick to the row / record with the same id only, never by name), the one writer of `library.json` and the packs: folder, devices, save_setup, autosave (S16-S21) and its limit, rename/describe/delete, import_pack/export_setup, tidy, size, search, settings, last change, History text and Restore for Library entries (S51).
+- `gremlin/library_copy.py` (1329): `_connected` -> `hardware.plugged_in` (by live id). `_copy_checks` / `plan_output` / `change_output` use `is_built_in_guid`; `_special` uses `device_class.is_internal_input` (03 S90b), so a stick named "Keyboard" is a normal device. Copy to Another Stick, Restore to This Stick, Change vJoy Output (renumbers Map to vJoy, nested actions too) and undo_change/undo_last (S22-S25, S30-S33, S48).
+- `gremlin/library_swap.py` (529): Swap with Another Stick (S26-S29; `_refusal` -> `device_class.can('swap', id)`, `_refused_word` from `display_name`, the Xbox text kept "the Xbox controller", 03 S90b): module-file parts through `modules/store.py`, bindings through `swap_devices` per ticked profile; autosave of both sticks first.
 - `gremlin/library_profiles.py` (496): profiles that aren't open (S33-S34): profiles_using, read_profile, Batch (one change across several profiles; the open one changed in memory), responsive()/background() (section 6).
 - `gremlin/library_undo.py` (176): Undo and Redo steps for this session's Library actions (S53); emptied by Clear History (08 S12b) through on_cleared.
 - `gremlin/device_forget.py` (133): Remove from Library forgets the device's settings: friendly name, Home card settings (hidden, order, size, compact), calibration kept in the settings (S52, D-10-REMOVE-ALL).
@@ -74,6 +74,7 @@ profile owner, and module files only through `modules/store.py`.
 |---|---|
 | Toolbar **Device Library** button (`Main.qml _deviceLibraryButton`, every page; tests `test_device_library_DD_menus.py::test_the_toolbar_has_the_device_library_button_not_home`, `test_mode_bar.py::test_the_toolbar_device_library_button_opens_the_window`); Tools › Device Setup › **Device Library…** (`tools.deviceLibrary`) | `Main.qml openDeviceLibrary` → `device_library_open.js` opens the window or brings it to the front. |
 | Card menu: **Copy Setup to Another Stick…**, **Swap with Another Stick…**, **Change vJoy Output…** (`StatusCard.qml` 493-497) | Open the window on that card's device and the matching dialog (`openOn(name, guid, action)`). |
+| Built-in or not, may it swap / copy (03 S90b) | `device_library.is_built_in_guid`, `library_copy._special`, `library_swap._refusal` → `device_class.can` / `is_internal_input` (by id). |
 | Device plugged in / out | `device_library._connected` / `_view`, `library_copy._connected` → `hardware.plugged_in` (by id, 03 S90a); rows join by id only. |
 | Window menus, right-click menus, double-click (S40), shortcuts | `DeviceLibraryModel` slots: `copy`, `swap`, `changeOutput`, `restoreToStick`, `saveToLibrary`, `rename`, `describe`, `keep`, `deleteItem` / `deleteMany`, `beginRemove` / `removeDevice` / `endRemove`, `beginClearSetup`, `deleteSavedSetups`, `importPack`, `exportSetup` / `exportCurrent`, `tidyPreview` / `tidy`, `setSettings`, `undo` / `redo`. |
 | Row menu: Delete Device, Module Setup, Button Map, Show on Home | `device_library_open.js toMain` → `Main.qml libraryAction`. |
@@ -234,8 +235,8 @@ Built 2026-10-08/09 (S1-S56). Swap Devices (04 S77-S83), Delete Device's
 
 ## 11. Size and test coverage
 
-Code: about 6,600 lines of Python (device_library 2249, device_library_model
-1584, library_copy 1331, library_swap 525, library_profiles 496,
+Code: about 6,600 lines of Python (device_library 2247, device_library_model
+1584, library_copy 1329, library_swap 529, library_profiles 496,
 library_undo 176, device_aliases 134, device_forget 133) and 2,688 of QML/JS
 (WindowDeviceLibrary 1515, five dialogs 1146, device_library_open.js 27).
 
@@ -252,7 +253,12 @@ window and menus (LU_window, CU_menus, DD_menus, FM_window, FM2_window,
 test_library_menu_refresh), the Guide (GC_guide) and built-in inputs
 (test_library_builtin_section, test_library_no_builtins). Plugged in by id
 (03 S90a): `test_library_plugged_in.py` (4: twins, double-spaced name, pack
-device not on this PC, Copy / Restore by live id). Shared pieces
+device not on this PC, Copy / Restore by live id). Device classes (03 S90b):
+`test_library_device_class.py` (`::test_built_in_guid_is_keyboard_and_osc_only`,
+`::test_stick_named_keyboard_is_a_normal_library_device`,
+`::test_copy_skips_internal_inputs_and_placeholders_only`,
+`::test_swap_refuses_non_sticks_with_the_same_words`), `test_library_no_builtins.py`,
+`test_device_library_LW_swap.py`. Shared pieces
 (questions, red buttons, SearchBox, MessageLine, UndoBar, EmptyState, Device
 Pack choosers): `test_library_shared_pieces.py` (with
 `library_shared_pieces_smoke.py`), plus `test_device_library_CU_menus.py`,

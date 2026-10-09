@@ -12,7 +12,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 |---|---|
 | `dill/__init__.py` (394) | ctypes wrapper for `dill.dll` (DirectInput): `GUID`, `DeviceSummary` (name, VID/PID, axis/button/hat counts, axis map, `vjoy_id`), `InputEvent`, `DILL` static API (`init`, `get_device_count`, `get_device_information_by_index/guid`, `device_exists`, `get_axis/button/hat`, `set_input_event_callback`, `set_device_change_callback`). Fixed ids: `UUID_Keyboard`, `UUID_Virtual`, `UUID_LogicalDevice`, `UUID_Invalid`. |
 | `dill/dill.dll` | Native DirectInput listener; runs its own thread and calls back into Python. |
-| `gremlin/device_initialization.py` (570) | The device list: scan (`joystick_devices_initialization`), twin naming (`_name_twins`), vJoy-to-DirectInput matching and "vJoy left out" messages, list getters (`joystick_devices`, `physical_devices`, `vjoy_devices`, `input_devices`, `output_vjoy_devices`, `device_for_uuid`, `device_name`). |
+| `gremlin/device_initialization.py` (576) | The device list: scan (`joystick_devices_initialization`), twin naming (`_name_twins`; `stored_twins()` is public, read by `store.known_devices` for 08 S106a), vJoy-to-DirectInput matching and "vJoy left out" messages, list getters (`joystick_devices`, `physical_devices`, `vjoy_devices`, `input_devices`, `output_vjoy_devices`, `device_for_uuid`, `device_name`). |
 | `gremlin/event_handler.py` (825) | `Event` (one input event), `EventListener` (singleton: DLL callbacks, keyboard/mouse hooks, calibration, hot-plug timer, unplug let-go, Qt signals), `EventHandler` (singleton: callback table per device/mode/input, `known_modes`, pause/resume, `process_event`, which also feeds the Input Monitor tap, `gremlin/input_monitor.py`, page 01). |
 | `gremlin/input_cache.py` (581) | `DeviceDatabase` (input labels from `device_db.json` by VID/PID), `JoystickWrapper` (last value of every axis/button/hat of one stick, `let_go`), `Joystick` (singleton cache of wrappers, plus the Logical Device), `Keyboard` (pressed-key cache). |
 | `gremlin/windows_event_hook.py` (479) | Low-level Windows keyboard and mouse hooks (`KeyboardHook`, `MouseHook`), each with its own thread and message loop; `enabled` switch (off in tests and off-screen). The mouse hook has a start/stop count (Listen and macro Record share it); a slow key (`SLOW_KEY_MS` 200) is noticed. |
@@ -36,9 +36,9 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | `qml/KeyboardInputList.qml` (219) | Keyboard device page; adds keys with InputListener. |
 | `qml/DialogDeviceInformation.qml` (208) | Tools > Device Setup > Device Information (DeviceListModel "all"). |
 | `qml/DialogInputViewer.qml` (103) | vJoy Viewer (reads the claimed feed, not raw; listed for completeness). |
-| `gremlin/ui/viewer_devices.py` (202) | The vJoy Viewer's device list and pairing labels (`Gremlin.Device`); re-reads on `device_change_event`; reads vJoy through the output module. |
+| `gremlin/ui/viewer_devices.py` (198) | The vJoy Viewer's device list and pairing labels (`Gremlin.Device`; `available` -> `hardware.plugged_in`; `_connected_keys` built-ins from `device_class.INTERNAL_INPUTS`, 03 S90b; `input_pairing.device_label` likewise); re-reads on `device_change_event`; reads vJoy through the output module. |
 | `qml/InputViewerCard.qml` (320), `qml/AxesStateSeries.qml` (133) | One device card in the vJoy Viewer (axes, buttons, hats), and its scrolling axis graph. |
-| `gremlin/ui/xbox_viewer.py` (413) | The Xbox Viewer's model: Gremlin's Xbox pads through the output module, their pairing and state (`xbox_maps`). |
+| `gremlin/ui/xbox_viewer.py` (411) | The Xbox Viewer's model (`_connected_keys` built-ins from `device_class.INTERNAL_INPUTS`, 03 S90b): Gremlin's Xbox pads through the output module, their pairing and state (`xbox_maps`). |
 | `qml/DialogXboxViewer.qml` (107), `qml/XboxViewerCard.qml` (243), `qml/Xbox360Face.qml` (153) | Tools > Viewers > Xbox Viewer window, one pad card, the pad picture. |
 | `qml/OptionProfileAutoLoading.qml` (276) | Options > Profiles > Auto-load (program list, profiles, Keep running). |
 | `qml/MainFailure.qml` | Window shown when the first device scan fails. |
@@ -371,7 +371,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 
 ## 11. Size and test coverage
 
-**Size** (9 Oct): about 9,000 lines of Python and QML in the files above (largest: `ui/hidhide.py` 1,015 and `hidhide_driver.py` 980, once one 1,808-line file; `event_handler.py` 825; `input_cache.py` 581; `device_initialization.py` 570; `DialogHardwareHide.qml` 563; the viewers about 1,600), plus the native `dill.dll`.
+**Size** (9 Oct): about 9,000 lines of Python and QML in the files above (largest: `ui/hidhide.py` 1,015 and `hidhide_driver.py` 980, once one 1,808-line file; `event_handler.py` 825; `input_cache.py` 581; `device_initialization.py` 576; `DialogHardwareHide.qml` 563; the viewers about 1,600), plus the native `dill.dll`.
 
 **Covered by tests** (37 pass in the files run for this map: `test_device_scan`, `test_twin_devices`, `test_raw_input_listeners`, `test_hidhide_group`, `test_hidhide_log`, `test_keyboard_gate`, `test_dill`, `test_startup_messages`):
 
