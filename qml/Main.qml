@@ -26,10 +26,9 @@ import "help_links.js" as HelpLinks
 ApplicationWindow {
     font.pixelSize: Style.fontSize
 
-    // "* name - Gremlin-Platforms R1 1.0.30"; the * means unsaved changes
-    // (01 S57). The version comes from version.json.
+    // "* name" (the * means unsaved changes); the title bar shows
+    // "Gremlin-Platforms R1 1.0.30 - * name" (gremlin/ui/window_titles.py, 01 S57).
     title: (profileDirty ? "* " : "") + (backend ? backend.windowTitle : "Untitled")
-           + " - Gremlin-Platforms R1" + (backend && backend.gremlinVersion ? " " + backend.gremlinVersion : "")
 
     // Unsaved changes, checked while the window is in front (edits only
     // happen then) and right after a load or save. The cheap check: it
@@ -90,7 +89,7 @@ ApplicationWindow {
     readonly property int _modeListMinWidth: Style.dp(120)
     function _toolbarWidth(withCaptions) {
         var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton,
-                       _buttonMapButton, _logicalButton, _optionsButton]
+                       _buttonMapButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         var w = _homeButton.rightPadding + _toolbarRow.spacing * buttons.length
         for (var i = 0; i < buttons.length; i++)
             w += withCaptions ? buttons[i].fullWidth : buttons[i].compactWidth
@@ -191,7 +190,7 @@ ApplicationWindow {
     function _helpToolbarButton(name) {
         var want = _helpNorm(name)
         var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton,
-                       _buttonMapButton, _logicalButton, _optionsButton]
+                       _buttonMapButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         for (var i = 0; i < buttons.length; ++i) {
             var b = buttons[i]
             var names = [b.caption, b.tooltip]
@@ -1742,6 +1741,17 @@ ApplicationWindow {
                         onClicked: () => { openBlankButtonMap() }
                     }
 
+                    // Every page (01 S58, 10 S2): the window on no device.
+                    JGToolButton {
+                        id: _deviceLibraryButton
+                        compact: _root.toolbarCompact
+                        text: "\uF1A5"
+                        tooltip: qsTr("Every device and its saved setups")
+                        caption: "Device Library"
+
+                        onClicked: () => { _root.openDeviceLibrary("", "", "") }
+                    }
+
                     JGToolButton {
                         id: _logicalButton
                         compact: _root.toolbarCompact
@@ -2173,8 +2183,8 @@ ApplicationWindow {
                 onOpenDeviceInformation: function(card) {
                     Helpers.createComponent("DialogDeviceInformation.qml", {"initialGuid": card.guid || ""})
                 }
-                // Home's Device Library… button (no card) and the card
-                // menu's Copy / Swap / Change vJoy Output (10 S2, 03 S88).
+                // The card menu's Copy / Swap / Change vJoy Output (10 S2,
+                // 03 S88).
                 onOpenDeviceLibrary: function(card, action) {
                     // _root's function: here a bare openDeviceLibrary is this
                     // page's own signal, which would fire itself.

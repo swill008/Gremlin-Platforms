@@ -22,7 +22,7 @@ function topics() {
         t("device-library-open", "Getting started", "Open the Device Library",
             "<p>The Device Library opens in its own window. Open it in one of these ways:</p>"
             + "<ul>"
-            + "<li>Select the <b>Device Library…</b> button on Home.</li>"
+            + "<li>Choose <b>Device Library</b> on the toolbar <a href=\"show:toolbar/Device Library\">Show me ›</a>.</li>"
             + "<li>In the main window, choose <b>Tools › Device Setup › Device Library…</b> <a href=\"open:tools.deviceLibrary\">Open ›</a>.</li>"
             + "<li>Right-click a stick's card on Home and, in its Device section, choose <b>Copy Setup to Another Stick…</b>, <b>Swap with Another Stick…</b> or <b>Change vJoy Output…</b>. The window opens on that stick, with that dialog.</li>"
             + "</ul>"

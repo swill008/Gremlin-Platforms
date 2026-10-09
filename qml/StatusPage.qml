@@ -72,8 +72,8 @@ Item {
     signal openPairing(var card)
     signal openCalibration(var card)
     signal openDeviceInformation(var card)
-    // The Device Library (10 S2): card null for Home's button, else the
-    // card's device with "copy", "swap" or "output".
+    // The Device Library (10 S2) on the card's device, with "copy", "swap"
+    // or "output".
     signal openDeviceLibrary(var card, string action)
     signal ignoreDevice(var card)
     signal deviceDeleted(var card)
@@ -620,11 +620,6 @@ Item {
     property Component pageBar: Component {
         RowLayout {
             Layout.fillWidth: true
-            Button {
-                objectName: "homeDeviceLibraryButton"
-                text: "Device Library…"
-                onClicked: _page.openDeviceLibrary(null, "")
-            }
             Item { Layout.fillWidth: true }
             CheckBox {
                 text: "Compact view"
@@ -637,6 +632,7 @@ Item {
             Label { text: "Layout"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
             ComboBox {
                 id: _split
+                objectName: "homeLayoutCombo"
                 // The same names as View → Home layout.
                 model: ["Single list", "Side by side", "Stacked"]
                 implicitWidth: Style.dp(140)

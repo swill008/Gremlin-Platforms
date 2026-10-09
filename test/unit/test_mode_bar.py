@@ -5,9 +5,10 @@
 """The bar under the toolbar (01 S58, S58a; 04 S51; D-01-MODE-BAR).
 
 The toolbar holds only Home, Run, vJoy Viewer, Xbox Viewer, Button Map,
-Logical Device and Options. Mode, its list and Manage Modes sit on the left
-of a bar under it on every page; after a divider the bar shows the open
-page's own controls (Home: Device Library…, Compact view, Layout).
+Device Library, Logical Device and Options. Mode, its list and Manage Modes
+sit on the left of a bar under it on every page; after a divider the bar
+shows the open page's own controls (Home: Compact view, Layout; its Device
+Library… button moved to the toolbar 2026-10-09).
 
 Runs the real main window off-screen in its own process (fake hardware, no
 update check, a temp USERPROFILE), with real mouse and key events.
@@ -97,6 +98,7 @@ def bar_state():
                'modeLeftThenPage: xs[0] < xs[1] && xs[1] < xs[2] && xs[2] < lx, '
                'loaderInBar: !!loader && inside(loader, bar), '
                'loaderItem: !!(loader && loader.item), '
+               'layoutCombo: ' + find('homeLayoutCombo') + ' !== null, '
                'libraryButton: ' + find('homeDeviceLibraryButton') + ' !== null } })()')
 
 def click(code):
@@ -115,7 +117,8 @@ out['toolbarHasMode'] = run('(function() { var inside = ' + INSIDE + '; '
                             '|| inside(_manageModesButton, _toolbarFlick) })()')
 # The toolbar buttons sit on the left, one row-spacing apart (not spread out).
 GAPS = ('(function() { var b = [_homeButton, _toggleButton, _vjoyViewerButton, '
-        '_xboxViewerButton, _buttonMapButton, _logicalButton, _optionsButton]; '
+        '_xboxViewerButton, _buttonMapButton, _deviceLibraryButton, _logicalButton, '
+        '_optionsButton]; '
         'var g = []; for (var i = 1; i < b.length; i++) '
         'g.push(Math.round(b[i].x - (b[i-1].x + b[i-1].width))); '
         'var end = _optionsButton.x + _optionsButton.width; '
@@ -133,7 +136,7 @@ out['minW'] = run('_root.minimumWidth')
 out['screen'] = app.primaryScreen().availableGeometry().width()
 out['fit'] = run('(function() { var right = function(b) { '
                  'return b.mapToItem(null, b.width, 0).x }; '
-                 'var lib = ' + find('homeDeviceLibraryButton') + '; '
+                 'var lib = ' + find('homeLayoutCombo') + '; '
                  'var loader = ' + find('pageBarLoader') + '; '
                  'return { width: _root.width, '
                  'manage: right(_manageModesButton), '
@@ -149,10 +152,9 @@ out['fit'] = run('(function() { var right = function(b) { '
                  'loader: loader ? right(loader) : -1, '
                  'toolbarScroll: _toolbarScroll.visible } })()')
 
-if out['scale'] == 100 and out['home'] and out['home']['libraryButton']:
+if out['scale'] == 100 and out['home'] and out['home']['layoutCombo']:
     run('_root.width = 1600')
     pump(lambda: False, 0.5)
-    lib = find('homeDeviceLibraryButton')
     loader = find('pageBarLoader')
     # Compact view: a real click toggles the Home model.
     out['compactBefore'] = run('_moduleModel.compactView')
@@ -173,8 +175,8 @@ if out['scale'] == 100 and out['home'] and out['home']['libraryButton']:
             kind, QtCore.Qt.Key.Key_Down, QtCore.Qt.KeyboardModifier.NoModifier))
     pump(lambda: run('_moduleModel.splitMode') != out['splitBefore'], 2.0)
     out['splitAfter'] = run('_moduleModel.splitMode')
-    # Device Library…: a real click opens the window.
-    click(lib)
+    # The toolbar's Device Library (01 S58, 10 S2): a real click opens the window.
+    click('_deviceLibraryButton')
     pump(lambda: run('Helpers.windowOf("WindowDeviceLibrary.qml") !== null'), 5.0)
     out['libraryOpen'] = run('Helpers.windowOf("WindowDeviceLibrary.qml") !== null')
     # Another page: Profile Settings. The bar stays, its page part is empty.
@@ -241,13 +243,18 @@ def test_home_shows_the_bar_with_mode_left_then_its_controls(normal: dict) -> No
     assert home["visible"] and home["belowToolbar"]
     assert home["holdsMode"] and home["modeShown"]
     assert home["loaderInBar"] and home["loaderItem"]
-    assert home["libraryButton"]
+    assert home["layoutCombo"]
+    assert not home["libraryButton"]  # moved to the toolbar (01 S58a)
     assert home["modeLeftThenPage"]
 
 
 def test_homes_controls_work_from_the_bar(normal: dict) -> None:
     assert normal["compactAfter"] is (not normal["compactBefore"])
     assert normal["splitAfter"] != normal["splitBefore"]
+
+
+def test_the_toolbar_device_library_button_opens_the_window(normal: dict) -> None:
+    # 01 S58, 10 S2: a real click on the toolbar button.
     assert normal["libraryOpen"] is True
 
 
@@ -256,9 +263,9 @@ def test_another_page_keeps_the_mode_bar_without_page_controls(normal: dict) -> 
     assert settings is not None, "no modeBar"
     assert settings["visible"] and settings["holdsMode"] and settings["modeShown"]
     assert settings["loaderInBar"] and not settings["loaderItem"]
-    assert not settings["libraryButton"]
+    assert not settings["layoutCombo"]
     back = normal["backHome"]
-    assert back["loaderItem"] and back["libraryButton"]
+    assert back["loaderItem"] and back["layoutCombo"]
 
 
 @pytest.mark.parametrize("which", ["normal", "large"])

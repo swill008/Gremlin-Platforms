@@ -134,12 +134,18 @@ def test_the_card_routes_to_main_s_open_device_library() -> None:
     assert "DeviceLibraryOpen.openDeviceLibrary(" in main
 
 
-def test_home_has_a_device_library_button() -> None:
+def test_the_toolbar_has_the_device_library_button_not_home() -> None:
+    # 01 S58, S58a; 10 S2: the toolbar button (moved from Home 2026-10-09).
     page = _text("qml/StatusPage.qml")
-    block = page[page.index('objectName: "homeDeviceLibraryButton"') - 200:]
+    main = _text("qml/Main.qml")
+    assert "homeDeviceLibraryButton" not in page
+    assert 'text: "Device Library…"' not in page
+    block = main[main.index("id: _deviceLibraryButton"):]
     block = block[: block.index("}") + 1]
-    assert 'text: "Device Library…"' in block
-    assert '_page.openDeviceLibrary(null, "")' in block
+    assert 'caption: "Device Library"' in block
+    assert r'text: "\uF1A5"' in block  # Bootstrap Icons bookshelf
+    assert 'qsTr("Every device and its saved setups")' in block
+    assert '_root.openDeviceLibrary("", "", "")' in block
 
 
 def test_tools_device_setup_has_device_library_not_swap_devices() -> None:
