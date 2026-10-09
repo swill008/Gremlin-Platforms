@@ -134,3 +134,37 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | History clear flake: cause found, test fixed (FLAKE-hc) | test | ~15 min | 3 min | 14:07–14:10 |
 | 2026-10-09 | Clear History reaches every Library Undo (FIX-lu) | fix | ~8 min | 2 min | 14:11–14:13 |
 | 2026-10-09 | Full run (Library undo fix) (lead) | test | ~5 min | 6 min | 14:14–14:20, all green |
+| 2026-10-09 | OSC audit: 3 read-only agents + Add window pictures | review | ~10-12 min | 3 min | 14:26–14:29 |
+| 2026-10-09 | OSC audit report page (lead) | docs | ~5 min | 4 min | 14:30–14:34 |
+| 2026-10-09 | OSC history: Add window controls (OSC-hist-ui) | review | ~12 min | 2 min | 14:33–14:35 |
+| 2026-10-09 | OSC history: runtime (OSC-hist-run) | review | ~12 min | 2 min | 14:33–14:35 |
+| 2026-10-09 | OSC history: upstream GremlinEx design (OSC-hist-up) | review | ~12 min | 2 min | 14:34–14:36 |
+| 2026-10-09 | CI Button Map stall: known CI-only stall (CI-bmap) | review | ~15 min | 2 min | 14:33–14:35 |
+| 2026-10-09 | CI unsaved-after-plug: test leak in test_validate (CI-b4) | fix | ~15 min | 7 min | 14:33–14:40 |
+| 2026-10-09 | OSC: rows + per-input settings (OSC-store) | feature | ~15 min | ~5 min | 14:45–14:50 |
+| 2026-10-09 | OSC: module file IO + store reload (OSC-file) | feature | ~15 min | 3 min | 14:42–14:45 |
+| 2026-10-09 | OSC: signals, *, Discard, note (OSC-backend) | feature | ~15 min | 3 min | 14:43–14:45 |
+| 2026-10-09 | OSC: page model, Add/Import/Listen (OSC-uimodel) | feature | ~20 min | 5 min | 14:43–14:48 |
+| 2026-10-09 | OSC: server + per-input behaviour (OSC-run) | feature | ~20 min | 6 min | 14:42–14:48 |
+| 2026-10-09 | OSC: windows wiring (OSC-qml) | feature | ~20 min | 7 min | 14:43–14:50 |
+| 2026-10-09 | OSC: server settings in Module Setup (OSC-opts) | feature | ~20 min | 7 min | 14:43–14:50 |
+| 2026-10-09 | OSC: references by id, packs, Restore (OSC-refs) | feature | ~20 min | 7 min | 14:43–14:50 |
+| 2026-10-09 | OSC: profile v16 + move (OSC-profile) | feature | ~20 min | 8 min | 14:43–14:51 |
+| 2026-10-09 | OSC: spec, decisions, Help, INTERNAL INPUTS (OSC-doc) | docs | ~20 min | 8 min | 14:43–14:51 |
+| 2026-10-09 | OSC: Options button opens OSC Module Setup (OSC-backend follow-up) | fix | ~5 min | 1 min | 14:50–14:51 |
+| 2026-10-09 | OSC: Options layout (OSC-opts follow-up) | fix | ~5 min | 2 min | 14:50–14:52 |
+| 2026-10-09 | OSC: friendly names by uid (OSC-file follow-up) | fix | ~8 min | 2 min | 14:50–14:52 |
+| 2026-10-09 | OSC: port only when profile uses OSC (OSC-run follow-up) | fix | ~8 min | 1 min | 14:51–14:52 |
+| 2026-10-09 | OSC: profile v16 + missing bindings never fire (OSC-profile incl. follow-up) | feature | ~20 min | 11 min | 14:43–14:54 |
+| 2026-10-09 | OSC: carry-through tests (OSC-carry) | test | ~15 min | 2 min | 14:52–14:54 |
+| 2026-10-09 | OSC: Listen TypeError fix in osc_bulk (lead) | fix | ~3 min | 2 min | 14:55–14:57 |
+| 2026-10-09 | OSC: end-to-end tests, found Listen bug (OSC-e2e) | test | ~15 min | 5 min | 14:51–14:56 |
+| 2026-10-09 | OSC: Device Pack honours pending OSC rows (OSC-refs follow-up) | fix | ~5 min | 2 min | 14:54–14:56 |
+| 2026-10-09 | OSC: old tests to new behaviour (OSC-oldtests) | test | ~15 min | 8 min | 14:50–14:58 |
+| 2026-10-09 | OSC: ThemedMenu in OscDevice.qml (OSC-qml fix) | fix | ~4 min | 1 min | 15:04–15:05 |
+| 2026-10-09 | OSC: e2e test made order-proof (OSC-e2e fix) | test | ~10 min | 2 min | 15:04–15:06 |
+| 2026-10-09 | OSC: Module Setup failures traced (OSC-opts) | review | ~10 min | 1 min | 15:04–15:05 |
+| 2026-10-09 | OSC: Swap/S106 test setups (FIX-swap) | test | ~10 min | 2 min | 15:04–15:06 |
+| 2026-10-09 | OSC: no OSC file on fresh install (OSC-file fix) | fix | ~8 min | 1 min | 15:06–15:07 |
+| 2026-10-09 | OSC: backend start test for the fresh-install rule (lead) | test | ~3 min | 3 min | 15:07–15:10 |
+| 2026-10-09 | OSC: final full run (lead) | test | ~6 min | 6 min | 15:10–15:16, all green |
