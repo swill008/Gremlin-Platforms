@@ -206,17 +206,210 @@ def _load() -> dict:
 
 def _save(doc: dict) -> None:
     data = (json.dumps(doc, indent=2) + "\n").encode("utf-8")
-    module_file.write_bytes(_list_path(), data)
+    with _action():
+        _note_list()
+        module_file.write_bytes(_list_path(), data)
 
 
 @contextlib.contextmanager
-def _editing() -> Iterator[dict]:
+def _editing(title: str = "", quiet: bool = False) -> Iterator[dict]:
     """The list to change, under the lock; written when the block ends
-    without an error."""
-    with _LOCK:
+    without an error. title/quiet: its History entry (_action)."""
+    with _LOCK, _action(title, quiet):
         doc = _load()
         yield doc
         _save(doc)
+
+
+# --- History (S51, 08 S12a) --------------------------------------------------------
+#
+# Every write of the list and every pack written or removed is noted
+# (_note_list, _note_file) inside an _action: one user action is one History
+# entry (area "modules", kind "library") holding the list and each pack it
+# touched as they were before and after, so Restore puts them back.
+
+HISTORY_KIND = "library"
+# The action being recorded; set only while _LOCK is held (a pack written by
+# _bg on a program thread notes into it while the caller waits).
+_current: dict | None = None
+
+
+@contextlib.contextmanager
+def _action(title: str = "", quiet: bool = False) -> Iterator[dict]:
+    """One History entry for what the block changes. Nested: part of the
+    outer one (its title offered to it). quiet: bookkeeping (when sticks
+    were seen, Undo's last change, a saved setup's own log), no entry."""
+    global _current
+    with _LOCK:
+        if _current is not None:
+            _name_action(title)
+            yield _current
+            return
+        act: dict = {"title": title, "titles": [], "files": {}, "quiet": quiet}
+        _current = act
+        try:
+            yield act
+        finally:
+            _current = None
+            if not quiet:
+                try:
+                    _finish(act)
+                except Exception:  # noqa: BLE001 - History never stops a change
+                    syslog.exception("Device Library: the change was not recorded")
+
+
+def _name_action(title: str) -> None:
+    """What the action open now did (its title when it was given none)."""
+    if _current is not None and title:
+        _current["titles"].append(title)
+
+
+def _list_text() -> str | None:
+    try:
+        return _list_path().read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _note_list() -> None:
+    if _current is not None and "list" not in _current:
+        _current["list"] = _list_text()
+
+
+def _rel(path: Path) -> str | None:
+    try:
+        return Path(path).resolve().relative_to(folder().resolve()).as_posix()
+    except (OSError, ValueError):
+        return None
+
+
+def _kept(path: Path) -> dict:
+    from gremlin import history
+
+    if not Path(path).is_file():
+        return {"exists": False, "keptFile": ""}
+    return {"exists": True, "keptFile": history.keep_file(Path(path))}
+
+
+def _note_file(path: Path) -> None:
+    """A pack about to be written or removed: kept as it is now."""
+    if _current is None:
+        return
+    rel = _rel(path)
+    if rel and rel != LIST_NAME and rel not in _current["files"]:
+        _current["files"][rel] = _kept(folder() / rel)
+
+
+def _finish(act: dict) -> None:
+    from gremlin import history
+
+    before: dict = {"files": []}
+    after: dict = {"files": []}
+    changed = False
+    if "list" in act:
+        now = _list_text()
+        before["text"], after["text"] = act["list"], now
+        changed = act["list"] != now
+    for rel, was in sorted(act["files"].items()):
+        now = _kept(folder() / rel)
+        before["files"].append({"file": rel, **was})
+        after["files"].append({"file": rel, **now})
+        changed = changed or now != was
+    if not changed:
+        return
+    titles = list(dict.fromkeys(act["titles"]))
+    if act["title"]:
+        title = act["title"]
+    elif len(titles) == 1:
+        title = titles[0]
+    elif titles:
+        title = f"Changed {len(titles)} things in the Device Library"
+    else:
+        title = "Changed the Device Library"
+    subject = {
+        "library": str(folder()),
+        "files": [f["file"] for f in after["files"]],
+    }
+    history.record("modules", title, subject, before, after, kind=HISTORY_KIND)
+
+
+def history_text(side: dict | None) -> str:
+    """A Library entry's side as the History window shows it: each device
+    with its saved setups, then the packs."""
+    if not side:
+        return "Not there."
+    lines: list[str] = []
+    if "text" in side:
+        text = side.get("text")
+        try:
+            doc = json.loads(text) if text is not None else None
+        except ValueError:
+            doc = None
+        if text is None:
+            lines.append("No Device Library list.")
+        elif not isinstance(doc, dict):
+            lines.append("The Device Library list can't be read.")
+        else:
+            for rec in doc.get("devices") or []:
+                if not isinstance(rec, dict):
+                    continue
+                lines.append(_clean(rec.get("name") or rec.get("ownName") or "?"))
+                for setup in rec.get("setups") or []:
+                    if isinstance(setup, dict):
+                        lines.append(f"    {_clean(setup.get('name') or '?')}")
+            if not lines:
+                lines.append("No devices.")
+    for item in side.get("files") or []:
+        state = "" if item.get("exists") else " (not there)"
+        lines.append(f"File {item.get('file')}{state}")
+    return "\n".join(lines)
+
+
+def restore_history(entry: dict, side: dict | None) -> tuple[bool, str]:
+    """Restore of a Library entry: the list and each pack it touched as
+    they were on that side. Recorded as a new entry."""
+    from gremlin import history
+
+    if not side:
+        return False, "There is nothing to put back."
+    base = folder()
+    title = str(entry.get("title") or "a Device Library change")
+    missing: list[str] = []
+    with _action(f"Put back from History: {title}"):
+        for item in side.get("files") or []:
+            rel = str(item.get("file") or "")
+            path = base / rel
+            if not rel or rel == LIST_NAME or not _inside(path, base):
+                continue
+            _note_file(path)
+            try:
+                if item.get("exists"):
+                    kept = history.kept_file(str(item.get("keptFile") or ""))
+                    if kept is None:
+                        missing.append(rel)
+                        continue
+                    module_file.write_bytes(path, kept.read_bytes())
+                elif path.is_file():
+                    path.unlink()
+            except OSError as exc:
+                return False, f"{path.name} could not be put back. {exc}"
+        if "text" in side:
+            _note_list()
+            text = side.get("text")
+            try:
+                if text is None:
+                    _list_path().unlink(missing_ok=True)
+                else:
+                    module_file.write_bytes(_list_path(), str(text).encode("utf-8"))
+            except OSError as exc:
+                return False, f"The Device Library list could not be put back. {exc}"
+    _drop_empty_folders()
+    if missing:
+        return True, (
+            "Put back the Device Library, without these saved setups (no copy "
+            f"was kept): {', '.join(missing)}."
+        )
+    return True, "Put back the Device Library as it was."
 
 
 def _read() -> dict:
@@ -256,7 +449,7 @@ def set_settings(values: dict) -> None:
         _move_to(Path(target))
     if not values:
         return
-    with _editing() as doc:
+    with _editing("Changed the Device Library's settings") as doc:
         stored = doc.setdefault("settings", {})
         if "keep" in values:
             stored["keep"] = max(1, int(values["keep"]))
@@ -409,6 +602,10 @@ def _set_up() -> list[tuple[str, str, str]]:
     for module in registry.inputs():
         doc = module.doc or {}
         if doc.get("kind") not in (None, "control.hardware"):
+            continue
+        # Keyboard and OSC are the program's own inputs, not devices
+        # (D-10-NO-BUILTINS).
+        if registry.is_built_in_input(module):
             continue
         found.append((module.name, module.bound_guid, module.slug))
     return found
@@ -907,6 +1104,7 @@ def _same_entry(dest: Path, entry: tuple[str, bytes] | None) -> bool:
 def _write_pack(dest: Path, data: bytes, entry: tuple[str, bytes] | None = None) -> str:
     """Writes the pack and reads it back (and entry's bytes, when given);
     "" or why it failed (S20)."""
+    _note_file(dest)
     try:
         module_file.write_bytes(dest, data)
     except OSError as exc:
@@ -922,6 +1120,7 @@ def _write_pack(dest: Path, data: bytes, entry: tuple[str, bytes] | None = None)
 
 def _remove_files(paths: list[Path]) -> None:
     for path in paths:
+        _note_file(path)
         try:
             path.unlink()
         except OSError:
@@ -948,7 +1147,13 @@ def _keep(
     if not device_name:
         return _result(False, "Choose a device.")
     wanted = [p for p in PARTS if p in (parts if parts is not None else PARTS)]
-    with _LOCK:
+    entry_title = (
+        f"Autosave: {reason}"
+        if origin == "autosave"
+        else f"Saved {shown(device_name, guid) or device_name} to the Device Library"
+    )
+    # One History entry: the new packs, the list and any autosave pruned.
+    with _LOCK, _action(entry_title):
         try:
             doc = _load()
         except LibraryDamaged as exc:
@@ -1171,7 +1376,7 @@ def note_seen(guids: list[str]) -> None:
     if not keys:
         return
     try:
-        with _editing() as doc:
+        with _editing(quiet=True) as doc:
             kept = doc.get("seen")
             seen: dict = kept if isinstance(kept, dict) else {}
             now = _iso()
@@ -1340,7 +1545,7 @@ def set_last_change(
     while undone (right after an Undo, D-10-REDO-LABEL). detail (JSON) is what
     Undo needs beyond the autosaves (a swap: the sticks, parts, profiles and
     controls, to swap back)."""
-    with _editing() as doc:
+    with _editing(quiet=True) as doc:
         doc["lastChange"] = {
             "op": str(op),
             "autosaves": [str(k) for k in autosave_keys],
@@ -1377,6 +1582,9 @@ def rename(key: str, name: str) -> dict:
                 found = _find_setup(doc, key)
                 if found:
                     _rec, setup = found
+                    _name_action(
+                        f"Renamed saved setup {_clean(setup.get('name', ''))} to {name}"
+                    )
                     setup["name"] = name
                     setup["own"] = True
                     _history(setup, f"Renamed to {name}")
@@ -1387,6 +1595,7 @@ def rename(key: str, name: str) -> dict:
                 if row["state"] == "connected" or row["module"]:
                     if row["guid"]:
                         _set_alias(row["guid"], name)
+                _name_action(f"Renamed {row['name']} to {name} in the Device Library")
                 rec = _record(doc, row["name"], row["guid"])
                 rec["name"] = name
         except KeyError:
@@ -1404,6 +1613,10 @@ def describe(key: str, text: str) -> dict:
                 found = _find_setup(doc, key)
                 if found:
                     _rec, setup = found
+                    _name_action(
+                        "Edited the description of saved setup "
+                        f"{_clean(setup.get('name', ''))}"
+                    )
                     setup["description"] = text
                     setup["own"] = True
                     _history(setup, "Description edited")
@@ -1411,6 +1624,7 @@ def describe(key: str, text: str) -> dict:
                 row = next((r for r in _view(doc) if r["key"] == key), None)
                 if row is None:
                     raise KeyError(key)
+                _name_action(f"Edited the description of {row['name']}")
                 rec = _record(doc, row["name"], row["guid"])
                 rec["description"] = text
         except KeyError:
@@ -1421,7 +1635,7 @@ def describe(key: str, text: str) -> dict:
 
 
 def add_history(setup_key: str, text: str) -> None:
-    with _editing() as doc:
+    with _editing(quiet=True) as doc:
         found = _find_setup(doc, setup_key)
         if found:
             _history(found[1], str(text))
@@ -1469,7 +1683,7 @@ def _plugged_in(name: str) -> str:
 def _delete(key: str, setups_only: bool = False) -> dict:
     """delete(); setups_only: a device keeps its record, plugged in or not
     (Delete Saved Setups…, S15)."""
-    with _LOCK:
+    with _LOCK, _action():
         try:
             doc = _load()
         except LibraryDamaged as exc:
@@ -1481,12 +1695,19 @@ def _delete(key: str, setups_only: bool = False) -> dict:
             rec, setup = found
             rec["setups"] = [s for s in rec["setups"] if s is not setup]
             files.append(folder() / setup.get("file", ""))
+            _name_action(f"Deleted saved setup {_clean(setup.get('name', ''))}")
         else:
             row = next((r for r in _view(doc) if r["key"] == key), None)
             if row is None:
                 return _result(False, "That is no longer in the Device Library.")
             if row["state"] == "connected" and not setups_only:
                 return _result(False, _plugged_in(row["name"]))
+            label = shown(row["name"], row["guid"]) or row["name"]
+            _name_action(
+                f"Deleted the saved setups of {label}"
+                if setups_only or row["module"]
+                else f"Removed {label} from the Device Library"
+            )
             rec = _find_record(doc, key)
             if rec is not None:
                 files.extend(
@@ -1591,6 +1812,9 @@ def keep(setup_key: str) -> dict:
                 if setup.get("origin") != "autosave":
                     return _result(False, "Only an autosave can be kept this way.")
                 if not setup.get("own"):
+                    _name_action(
+                        f"Kept autosave {_clean(setup.get('name', ''))} as your own"
+                    )
                     setup["own"] = True
                     _history(setup, "Kept as your own")
         except KeyError:
@@ -1610,12 +1834,14 @@ def delete_many(keys: list[str]) -> dict:
     setups = [k for k in wanted if _find_setup(doc, k)]
     removed: list[str] = []
     refused: list[dict] = []
-    for key in setups + [k for k in wanted if k not in setups]:
-        out = delete(key) if key in setups else remove_device(key)
-        if out["ok"]:
-            removed.append(key)
-        else:
-            refused.append({"key": key, "error": str(out["error"])})
+    # One History entry for the lot (each removal names itself in it).
+    with _action():
+        for key in setups + [k for k in wanted if k not in setups]:
+            out = delete(key) if key in setups else remove_device(key)
+            if out["ok"]:
+                removed.append(key)
+            else:
+                refused.append({"key": key, "error": str(out["error"])})
     warnings = [r["error"] for r in refused]
     if not removed:
         return _result(
@@ -1749,6 +1975,14 @@ def tidy(keys: list[str]) -> dict:
             by_key[setup["key"]] = ("setup", setup)
     warnings = []
     removed = 0
+    with _action("Tidied the Device Library"):
+        removed, warnings = _tidy(wanted, by_key)
+    return _result(True, "", warnings=warnings, removed=removed)
+
+
+def _tidy(wanted: set[str], by_key: dict) -> tuple[int, list[str]]:
+    warnings: list[str] = []
+    removed = 0
     for key in wanted:
         kind, item = by_key.get(key, ("", None))
         allowed = (
@@ -1765,7 +1999,7 @@ def tidy(keys: list[str]) -> dict:
             removed += 1
         else:
             warnings.append(out["error"])
-    return _result(True, "", warnings=warnings, removed=removed)
+    return removed, warnings
 
 
 def size_bytes() -> int:
@@ -1832,7 +2066,7 @@ def import_pack(path: Path) -> dict:
     author = _clean(label.get("author") or "")
     note = str(label.get("note") or "").strip()
     held, modes, actions, vjoys = _contents(pack)
-    with _LOCK:
+    with _LOCK, _action(f"Imported {path.name} into the Device Library"):
         try:
             doc = _load()
         except LibraryDamaged as exc:

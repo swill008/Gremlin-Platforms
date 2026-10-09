@@ -233,12 +233,15 @@ def test_the_delete_topic_follows_the_states() -> None:
         "autosave is kept",
         "stays plugged in with no setup",
         "keeps its settings",
-        "can't be undone",
+        "Tools › History can put it back",  # D-10-IN-HISTORY
         "Restore to This Stick…",
     ):
         assert words in body, words
     assert '"Delete Saved Setups…" : "Remove from Library…"' in _WINDOW
-    for gone in ("deleted with Delete Device on Home. The stick itself",):
+    for gone in (
+        "deleted with Delete Device on Home. The stick itself",
+        "can't be undone",
+    ):
         assert gone not in body
 
 

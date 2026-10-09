@@ -173,7 +173,7 @@ ApplicationWindow {
         else if (isSetup) {
             var key = details.key
             _deleteDlg.ask("Delete the saved setup “" + details.name + "”?",
-                           "It is removed from the Device Library. This can't be undone.",
+                           "It is removed from the Device Library. Tools › History can put it back.",
                            "Delete", function() { _lib.lib.deleteItem(key) })
         }
         else if (!deviceConnected)
@@ -198,9 +198,9 @@ ApplicationWindow {
         var heading = "Remove " + details.name
             + (details.count > 0 ? " and " + _setupsText(details.count) : "")
             + " from the Library?"
-        // Nothing is kept: Delete Device's autosave goes with the rest.
+        // Delete Device's autosave goes too; History keeps it all (S51).
         var body = (plan.module_file ? "Its module file here goes too. " : "")
-            + "Nothing is kept: this can't be undone."
+            + "Tools › History can put it back."
         _deleteDlg.ask(heading, body, "Remove", function() { _lib.runRemove([key]) })
     }
 
@@ -219,7 +219,7 @@ ApplicationWindow {
         _deleteDlg.ask("Delete " + details.name + "'s "
                        + (details.count === 1 ? "saved setup" : details.count + " saved setups") + "?",
                        "They are removed from the Device Library. The stick keeps its settings. "
-                       + "This can't be undone.",
+                       + "Tools › History can put it back.",
                        "Delete", function() { _lib.lib.deleteSavedSetups(key) })
     }
 
@@ -269,7 +269,7 @@ ApplicationWindow {
         }
         if (what === "delete")
             _deleteDlg.ask("Delete these " + keys.length + " saved setups?",
-                           lines.join("\n") + "\n\nThey are removed from the Device Library. This can't be undone.",
+                           lines.join("\n") + "\n\nThey are removed from the Device Library. Tools › History can put it back.",
                            "Delete", function() { _lib.lib.deleteMany(keys) })
         else
             _deleteDlg.ask("Remove these " + keys.length + " devices"
@@ -278,7 +278,7 @@ ApplicationWindow {
                            lines.join("\n") + "\n\n"
                            + (files ? "A module file still here goes too, as Delete Device on Home "
                                       + "does: an autosave is kept first. " : "")
-                           + "This can't be undone.",
+                           + "Tools › History can put it back.",
                            "Remove", function() { _lib.runRemove(keys) })
     }
 
@@ -302,8 +302,19 @@ ApplicationWindow {
     function runRemove(keys) {
         for (var i = 0; i < keys.length; i++) {
             var plan = lib.removalPlan(keys[i])
-            if (plan.module_file && !toMain("deleteDevice", keys[i]).ok)
+            if (!plan.module_file)
+                continue
+            // Delete Device's reason when it fails (S47, D-10-REMOVE-ERROR);
+            // and when it kept the file (another stick uses it), say so.
+            var res = toMain("deleteDevice", keys[i])
+            if (!res.ok)
                 return
+            if (lib.removalPlan(keys[i]).module_file) {
+                showMessage((plan.shown || plan.name) + "'s module file is still here"
+                            + (res.keptFile ? ": another stick uses it." : ".")
+                            + " Nothing was removed from the Library.", true)
+                return
+            }
         }
         if (keys.length === 1)
             lib.removeDevice(keys[0])

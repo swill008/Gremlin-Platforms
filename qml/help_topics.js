@@ -772,12 +772,12 @@ function deviceLibraryTopics() {
             "<p>Every delete asks first and names exactly what goes. What it does depends on what is selected:</p>"
             + "<ul>"
             + "<li>A saved setup: <b>Delete…</b> removes it from the Device Library.</li>"
-            + "<li>A device that isn't connected (unplugged, deleted, or from a pack): <b>Remove from Library…</b> removes the device and all its saved setups. If its module file is still here, that goes first, as Delete Device on Home does. Nothing is kept: removing can't be undone. If Delete Device can't run, nothing is removed and the message says why.</li>"
+            + "<li>A device that isn't connected (unplugged, deleted, or from a pack): <b>Remove from Library…</b> removes the device and all its saved setups. If its module file is still here, that goes first, as Delete Device on Home does. Tools › History can put it back. If Delete Device can't run, nothing is removed and the message says why.</li>"
             + "<li>A connected stick: <b>Clear Setup…</b> is Delete Device on Home: an autosave is kept in the Device Library first, then its module file and its bindings go, and the stick stays plugged in with no setup. <b>Delete Saved Setups…</b> removes only its saved setups; the stick keeps its settings.</li>"
             + "</ul>"
             + "<p>Edit › <b>Delete…</b> and the red button under the details follow the same rules. On a device the button reads Remove from Library… or Delete Saved Setups… by its state, and Edit › Delete… does the same. Clear Setup… is only in the device's right-click menu.</p>"
             + "<p>To delete several rows with one question, see Selecting several rows.</p>"
-            + "<p>Removing and deleting from the Library can't be undone. Clear Setup… can: its autosave is under the stick, ready for <b>Restore to This Stick…</b>.</p>"),
+            + "<p>Removing and deleting from the Library is in Tools › History, like every saved change: Restore there puts the saved setups and the Library's list back. Clear Setup… also keeps an autosave under the stick, ready for <b>Restore to This Stick…</b>.</p>"),
         topic("Renamed and twin sticks", "Renamed and twin sticks",
             "<p>A stick's name in the Device Library is its name on Home. Rename it in either place and both change; dialogs, autosave names and the Undo item use that name.</p>"
             + "<p>Two sticks with the same name (twins) are told apart by a short id after the name, in the list and in the To lists: for example \"Right stick [EEEE0006]\". Rename one of them to tell them apart more easily.</p>"),

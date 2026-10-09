@@ -200,6 +200,16 @@ def describe(entry: dict) -> dict:
         texts = (_settings_text(before), _settings_text(after))
         can = (bool(before), bool(after))
         note = "Saved at once."
+    elif kind == "library":
+        # The Device Library's list and saved setups (10 S51, 08 S12a).
+        from gremlin import device_library
+
+        texts = (
+            device_library.history_text(before),
+            device_library.history_text(after),
+        )
+        can = (before is not None, after is not None)
+        note = "Saved at once, with its saved setups."
     else:
         parts = list((entry.get("subject") or {}).get("parts") or [])
         texts = (_module_text(before, parts), _module_text(after, parts))
@@ -418,6 +428,10 @@ def restore(entry_id: str, which: str) -> dict:
             ok, message = _restore_profile(entry, side, which)
         elif area == "settings":
             ok, message = _restore_settings(side)
+        elif kind == "library":
+            from gremlin import device_library
+
+            ok, message = device_library.restore_history(entry, side)
         else:
             ok, message = _restore_module(entry, side)
     except Exception as exc:

@@ -112,6 +112,8 @@ QtObject {
         _bridge.note(action, target.name || "", target.slug || "")
         if (action === "deleteDevice" && refuse.length)
             return JSON.stringify({ ok: false, error: refuse })
+        if (action === "deleteDevice")
+            _bridge.dropModule(target.key || "")
         return JSON.stringify({ ok: true })
     }
 }
@@ -472,6 +474,13 @@ def main() -> None:
         @QtCore.Slot(str, str, str)
         def note(self, action: str, name: str, slug: str) -> None:
             lib.calls.append(("main." + action, name, slug))
+
+        @QtCore.Slot(str)
+        def dropModule(self, key: str) -> None:
+            # Delete Device done: the device has no module file here now.
+            dev = lib.device(key)
+            if dev is not None:
+                dev["module"] = ""
 
         @QtCore.Slot(str, str, str)
         def click(self, name: str, which: str, modifier: str) -> None:
