@@ -1092,7 +1092,12 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         app_id = "joystick.gremlin"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
         self.setWindowIcon(QtGui.QIcon(gremlin.util.resource_path("gfx/icon.png")))
-        self.setApplicationDisplayName("Gremlin-Platforms R1")
+        # Windows adds " - <display name>" to a window title that doesn't end
+        # with it: the main title ends with the version (01 S57), so the
+        # display name carries it too, or the name showed twice.
+        self.setApplicationDisplayName(
+            f"Gremlin-Platforms R1 {gremlin.util.get_code_version()}"
+        )
         self.setOrganizationName("H2IK")
         self.setOrganizationDomain("https://whitemagic.github.io/JoystickGremlin/")
         self.setApplicationName("Gremlin-Platforms R1")

@@ -610,6 +610,7 @@ out['folders'] = sorted(n for n in os.listdir(root)
 # S57: the title.
 run('_root.profileDirty = false')
 out['title'] = run('_root.title')
+out['displayName'] = QtGui.QGuiApplication.applicationDisplayName()
 run('_root.profileDirty = true')
 out['titleDirty'] = run('_root.title')
 # S64: the footer while stopped (unsaved changes are named only while it runs).
@@ -746,6 +747,9 @@ def test_s57_the_title_names_the_profile_and_marks_unsaved_changes(
     version = json.loads(version_json)["version"]
     assert main_window["title"] == f"Untitled - Gremlin-Platforms R1 {version}"
     assert main_window["titleDirty"] == f"* Untitled - Gremlin-Platforms R1 {version}"
+    # Windows appends " - <display name>" unless the title ends with it: it
+    # must, or the name shows twice (seen 2026-10-09).
+    assert main_window["title"].endswith(" - " + main_window["displayName"])
 
 
 def test_s58_s59_s61_the_toolbar(main_window: dict) -> None:
