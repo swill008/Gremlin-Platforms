@@ -23,7 +23,7 @@ import subprocess
 import sys
 
 import pytest
-from PySide6 import QtCore, QtQml
+from PySide6 import QtCore
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = "layers_search_window_smoke.py"
@@ -82,15 +82,13 @@ def test_closing_the_button_map_resets_them(run: dict) -> None:
 
 
 def _layers_help() -> str:
-    source = "\n".join(
-        "" if line.startswith(".") else line
-        for line in _HELP.read_text(encoding="utf-8").splitlines()
+    """The Button Map chapter's Layers topics, from the one Help book."""
+    from test.unit import help_book  # noqa: PLC0415
+
+    return " ".join(
+        t["body"] for t in help_book.chapter_topics("button-map")
+        if "layer" in t["title"].lower()
     )
-    engine = QtQml.QJSEngine()
-    result = engine.evaluate(source + "\nJSON.stringify(buttonMapTopics())", str(_HELP))
-    assert not result.isError(), result.toString()
-    topics = json.loads(result.toString())
-    return next(t["body"] for t in topics if t["title"] == "Layers panel")
 
 
 def test_help_describes_the_search(qapp: QtCore.QCoreApplication) -> None:

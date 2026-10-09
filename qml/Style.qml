@@ -100,6 +100,9 @@ Item {
     readonly property color photoButton: "#99000000"
     readonly property color photoButtonHover: "#CC000000"
     readonly property color onLight: "#111111"
+    // Help search highlights, as a browser's find: the same in both themes.
+    readonly property color findMatch: "#FDE68A"
+    readonly property color findCurrent: "#F59E0B"
     readonly property color clear: "#00000000"
     // A sheet of paper (Print & Export's preview): white in either theme.
     readonly property color paper: "#FFFFFF"

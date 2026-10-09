@@ -319,6 +319,6 @@ def test_the_command_palette_lists_the_usable_menu_commands(seen: dict) -> None:
     for wanted in ("Save", "Cancel", "Reset Layout", "Fit to Photo Frame",
                    "Print & Export…", "Mirror Layout", "Button Map Options…",
                    "Zoom to Fit Page", "Show Grid", "Choose Photo…",
-                   "Adjust Photo…", "Button Map Guide"):
+                   "Adjust Photo…", "Help"):
         assert wanted in texts
     assert "Edit Mapping" not in texts

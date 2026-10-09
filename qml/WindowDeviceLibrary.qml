@@ -557,9 +557,9 @@ ApplicationWindow {
         rightClickAt(key, item || _list, Style.dp(40), item ? item.height / 2 : Style.dp(12))
     }
 
-    // The Device Library Guide: only the Device Library's topics (S42).
+    // Help (F1): the one Help window on the Device Library chapter (S42).
     function openGuide() {
-        Helpers.createComponent("DialogDeviceLibraryGuide.qml")
+        Helpers.createComponent("DialogHelp.qml", { chapter: "device-library" })
     }
 
     Shortcut { sequence: "F1"; onActivated: _lib.openGuide() }
@@ -754,7 +754,7 @@ ApplicationWindow {
             ThemedMenu {
                 id: _helpMenu
                 title: "Help"
-                ThemedMenuItem { text: "Device Library Guide"; hint: "F1"; onTriggered: _lib.openGuide() }
+                ThemedMenuItem { text: "Help"; hint: "F1"; onTriggered: _lib.openGuide() }
             }
         }
 

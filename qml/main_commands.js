@@ -107,8 +107,8 @@ function commandList() {
           run: function() { openTool("DialogLiveLog.qml") } },
 
         // Help
-        { id: "help.guide", text: "User Guide", group: "Help", shortcut: "F1",
-          run: function() { openTool("DialogHelp.qml") } },
+        { id: "help.guide", text: "Help", group: "Help", shortcut: "F1",
+          run: function() { openToolWith("DialogHelp.qml", { chapter: "" }) } },
         { id: "help.updates", text: "Check for Updates", group: "Help",
           run: function() {
               openTool("DialogUpdate.qml")

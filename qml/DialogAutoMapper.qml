@@ -273,7 +273,7 @@ ApplicationWindow {
                 font.pixelSize: Style.dp(24)
 
                 PointerTip {
-                    text: "Full guide: Help → User Guide → Tools → Auto Mapper. This tool builds starting 1:1 Map to vJoy actions.\n\n"
+                    text: "More in Help (F1): Tools › Auto Mapper. This tool builds starting 1:1 Map to vJoy actions.\n\n"
                         + "Select Mode starts on the toolbar's mode; pick another to make actions there.\n\n"
                         + "This tool does not match devices by name. It uses the order shown in the lists. The first checked input gets an action to the first checked output, the second input to the second output, and so on.\n\n"
                         + "Overwrite used inputs: replaces the actions those controls already have in the selected mode. Leave it off, and those actions stay as they are.\n\n"

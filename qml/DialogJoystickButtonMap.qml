@@ -1139,9 +1139,9 @@ ApplicationWindow {
         onRejected: close()
     }
 
-    // The Button Map Guide: only the Button Map's topics.
+    // Help (F1): the one Help window on the Button Map chapter (01 S128).
     function openGuide() {
-        Helpers.createComponent("DialogButtonMapGuide.qml")
+        Helpers.createComponent("DialogHelp.qml", { chapter: "button-map" })
     }
 
     function _ed() {
@@ -3284,7 +3284,7 @@ ApplicationWindow {
             ThemedMenu {
                 title: "Help"
                 ThemedMenuItem {
-                    text: "Button Map Guide"
+                    text: "Help"
                     hint: "F1"
                     onTriggered: _buttonMap.openGuide()
                 }

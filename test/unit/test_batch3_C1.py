@@ -7,36 +7,38 @@ say what the program does now."""
 
 from __future__ import annotations
 
-import html
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+from PySide6 import QtCore
+
+from test.unit import help_book
+
 _ROOT = Path(__file__).resolve().parents[2]
-_GUIDE_SRC = (_ROOT / "qml" / "help_topics.js").read_text(encoding="utf-8")
 
 
 def _read(rel: str) -> str:
     return (_ROOT / rel).read_text(encoding="utf-8")
 
 
-def _text(source: str) -> str:
-    joined = re.sub(r'"\s*\+\s*"', "", source)
-    return html.unescape(re.sub(r"<[^>]+>", "", joined))
+def _topic(*titles: str) -> str:
+    """One Help topic's title and text, by its title (any of these)."""
+    topic = help_book.find(*titles)
+    return topic["title"] + "\n" + help_book.text(topic["body"])
 
 
-def _topic(title: str) -> str:
-    """One User Guide topic's text (main guide or Button Map guide)."""
-    match = re.search(
-        r'topic\("[^"]+", "' + re.escape(title) + r'",(.*?)\),\n', _GUIDE_SRC, re.S
-    )
-    assert match, title
-    return _text(match.group(1))
+# The whole book's text, loaded by the QML engine (needs the application).
+_GUIDE = ""
 
 
-_GUIDE = _text(_GUIDE_SRC)
+@pytest.fixture(autouse=True)
+def _book(qapp: QtCore.QCoreApplication) -> None:
+    global _GUIDE
+    _GUIDE = help_book.book_text()
 
 
 # | GL-202: the Options topic follows the Options window's layout.
@@ -62,7 +64,10 @@ def test_help_says_stop_for_device_change_behavior() -> None:
     assert "Reload, Ignore, or Disable" not in _GUIDE
     assert _GUIDE.count("Stop, Ignore, or Reload") == 2  # Run and status, Options
     assert "Turn HidHide on at start" not in _GUIDE
-    assert "Automatically Start in Tools → Device Setup → HidHide" in _topic("Options")
+    assert re.search(
+        "Automatically Start in Tools [→›] Device Setup [→›] HidHide",
+        _topic("General options", "Options"),
+    )
 
 
 # | GL-206: Device ID, not Device GUID.
@@ -103,7 +108,11 @@ def test_text_to_speech_help_names_keyboard_keys() -> None:
 # | matches what each card leaves out.
 
 def test_home_help_lists_every_card_and_what_each_leaves_out() -> None:
-    home = _topic("Home")
+    # Home and its card menus (one subject each in the book).
+    home = (
+        _topic("Home and its cards", "Home") + _topic("Card menus")
+        + _topic("Delete a device")
+    )
     for card in ("Keyboard", "OSC", "Logical Device", "vJoy", "Xbox"):
         assert card in home, card
     assert (
@@ -126,17 +135,18 @@ def test_home_help_lists_every_card_and_what_each_leaves_out() -> None:
 # | GL-214: the toolbar Mode box switches the running mode.
 
 def test_help_says_the_mode_box_switches_the_running_mode() -> None:
-    assert "switches the running profile to it" in _topic("Modes")
-    assert "switches the running profile to it" in _topic("Run and status")
-    assert "Undo Delete Mode" in _topic("Modes")
+    # Written once, under Modes (01 S128); Run links to it.
+    modes = "".join(t["body"] for t in help_book.chapter_topics("modes"))
+    assert "switches the running profile to it" in modes
+    assert "Undo Delete Mode" in modes
 
 
 # | Batch 2: Run asks about an open edit; the Keyboard page has OK/Cancel/Undo.
 
 def test_help_covers_run_asking_and_the_keyboard_draft() -> None:
-    run = _topic("Run and status")
+    run = _topic("Run and stop the profile", "Run and status")
     assert "Run asks first" in run and "Stop never asks" in run
-    adding = _topic("Adding actions")
+    adding = (_topic("Add an action to an input") + _topic("Set up keyboard keys"))
     for word in ("Add Key", "OK", "Cancel", "Undo", "Redo"):
         assert word in adding, word
 
@@ -159,13 +169,17 @@ def test_button_map_help_on_clear_photo_and_save() -> None:
     options = _topic("Button Map Options")
     assert "written to the module file only by Save" in options
     assert "kept with the device's map at once" in options
-    assert "one Undo puts the old layout back" in _topic("File menu and export")
+    assert "one undo puts the old layout back" in _topic(
+        "Copy a Button Map from another device"
+    ).casefold()
 
 
 # | GL-226: Restore is not always a new History entry.
 
 def test_history_help_says_when_a_restore_shows() -> None:
-    history = _topic("History")
+    history = _topic("See saved changes in History") + _topic(
+        "Restore an earlier version"
+    )
     assert "and is itself a new change in the History" not in history
     assert "shows in the History at that Save Profile" in history
     assert "not a change in the History" in history
@@ -178,7 +192,7 @@ def test_history_help_says_when_a_restore_shows() -> None:
 # | ends on another pack; backups are explained.
 
 def test_device_pack_and_backup_help() -> None:
-    pack = _topic("Module files and Device Pack")
+    pack = (_topic("Module files") + _topic("Share a setup with a Device Pack"))
     assert "adds the pack's checked controls" in pack
     assert "open another pack" in pack
     backups = _topic("Deleted devices and backups")

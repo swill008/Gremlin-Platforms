@@ -13,7 +13,6 @@ import sys
 sys.path.append(".")
 
 import json
-import re
 from pathlib import Path
 from typing import cast
 
@@ -177,15 +176,19 @@ def test_delete_device_steps_say_an_autosave_is_kept() -> None:
     assert "deleted devices" not in page
 
 
-def test_help_follows_the_device_library() -> None:
-    guide = re.sub(r'"\s*\+\s*"', "", _text("qml/help_topics.js"))
-    assert 'topic("Tools", "Swap Devices"' not in guide
-    assert 'topic("Tools", "Device Library"' in guide
+def test_help_follows_the_device_library(qapp: QtCore.QCoreApplication) -> None:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import help_book
+
+    guide = help_book.book_html()
+    titles = [t["title"] for t in help_book.load()[1]]
+    assert "Swap Devices" not in titles
+    assert "Open the Device Library" in titles
     assert "Swap Device…" not in guide and "<b>Swap Devices</b>" not in guide
     assert "deleted devices folder" not in guide
     assert "Save a copy" not in guide
     assert "history, deleted devices and plugins" not in guide
     for words in (*_LIBRARY_ITEMS, "Autosave: stick deleted",
                   "Autosave: module file deleted",
-                  "Tools → Device Setup → <b>Device Library…</b>"):
+                  "<b>Tools › Device Setup › Device Library…</b>"):
         assert words in guide, words

@@ -17,11 +17,13 @@ import subprocess
 import sys
 
 import pytest
+from PySide6 import QtCore
+
+from test.unit import help_book
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _COMMANDS = (_ROOT / "qml" / "main_commands.js").read_text(encoding="utf-8")
 _LIVE_LOG = (_ROOT / "qml" / "DialogLiveLog.qml").read_text(encoding="utf-8")
-_GUIDE = (_ROOT / "qml" / "help_topics.js").read_text(encoding="utf-8")
 _GLOSSARY = (_ROOT / "claude" / "glossary.md").read_text(encoding="utf-8")
 
 
@@ -43,8 +45,8 @@ def test_the_debug_tab_has_the_button() -> None:
     assert "DialogSaveDiagnostics.qml" in _LIVE_LOG
 
 
-def test_the_guide_and_glossary_name_it() -> None:
-    assert "Help → <b>Save Diagnostics…</b>" in _GUIDE
+def test_the_guide_and_glossary_name_it(qapp: QtCore.QCoreApplication) -> None:
+    assert re.search(r"Help [→›] Save Diagnostics…", help_book.book_text())
     assert "**Save Diagnostics…**" in _GLOSSARY
 
 

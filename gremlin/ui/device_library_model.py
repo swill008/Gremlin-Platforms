@@ -287,6 +287,8 @@ class DeviceLibraryModel(QtCore.QObject):
 
         # This session's Library actions, for Undo and Redo (S53).
         self._steps = library_undo.Steps()
+        # Clear History empties the steps: Edit › Undo / Redo follow (08 S12b).
+        self._steps.on_cleared.append(self.stepsChanged.emit)
         # When the action being recorded started (None: none is), and what
         # undoes / redoes it when History can't (Copy, Swap, Output, Restore).
         self._since: float | None = None

@@ -154,7 +154,7 @@ works on files and the profile through their owners.
 
 ### L. Guide
 
-- **S42** Help › Device Library Guide (and F1 in the window) should open the User Guide window showing only the Device Library's own topics, as the Button Map Guide does for the Button Map (07): what the Library is, devices and saved setups, autosaves, Copy, Swap, Change vJoy Output, Undo and Redo, profiles that aren't open, search and filters, packs (import, export, sharing), settings and Tidy, Delete Device and Delete File, renamed and twin sticks, and common questions. The program's User Guide keeps its Device Library topic and points to the guide. [D-10-GUIDE]
+- **S42** Help › Help (F1) in the Device Library opens the one Help window on its Device Library chapter only, with View Full Help (01 S128). [changed 2026-10-09: D-01-ONE-HELP]
 
 ### M. Right-click menu and selection
 

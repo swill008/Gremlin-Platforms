@@ -2,25 +2,26 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Device Library Guide content (10 S42, D-10-GUIDE): deviceLibraryTopics()
-in qml/help_topics.js covers the Device Library, names only menu items,
-buttons and labels the window really has, uses the glossary's words, and
-the User Guide's Device Library topic points to it."""
+"""Device Library chapter of Help (10 S42, 01 S128, D-01-ONE-HELP):
+qml/help/device_library.js covers the Device Library, names only menu items,
+buttons and labels the window really has, uses the glossary's words, and the
+rest of the book links to it instead of repeating it."""
 
 from __future__ import annotations
 
 import html
-import json
 import re
+import sys
 from pathlib import Path
-from typing import cast
 
-from PySide6 import QtCore, QtQml
+from PySide6 import QtCore
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import help_book  # noqa: E402
 
 _ROOT = Path(__file__).resolve().parents[2]
-_SCRIPT = _ROOT / "qml" / "help_topics.js"
+_SCRIPT = _ROOT / "qml" / "help" / "device_library.js"
 _SOURCE = _SCRIPT.read_text(encoding="utf-8")
-_TOPIC = re.compile(r'topic\("([^"]+)", "([^"]+)",')
 
 # What the Device Library shows: its window, its dialogs, the model's text,
 # and the Home card and button that open it.
@@ -42,9 +43,8 @@ _WINDOW = (_ROOT / "qml" / "WindowDeviceLibrary.qml").read_text(encoding="utf-8"
 
 
 def _guide_source() -> str:
-    start = _SOURCE.index("function deviceLibraryTopics()")
-    end = _SOURCE.find("\nfunction ", start + 1)
-    return _SOURCE[start:] if end < 0 else _SOURCE[start:end]
+    start = _SOURCE.index("function topics()")
+    return _SOURCE[start:]
 
 
 def _text(source: str) -> str:
@@ -53,29 +53,18 @@ def _text(source: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", joined))
 
 
-def _user_guide_library_topic() -> str:
-    start = _SOURCE.index('topic("Tools", "Device Library"')
-    end = _SOURCE.index("topic(", start + 1)
-    return _SOURCE[start:end]
+def _topics() -> list[dict]:
+    return help_book.chapter_topics("device-library")
 
 
-def _run(call: str) -> object:
-    """The call's value, read while its engine is alive (a string from a
-    dead engine reads as "undefined")."""
-    source = "\n".join(
-        "" if line.startswith(".") else line for line in _SOURCE.splitlines()
-    )
-    engine = QtQml.QJSEngine()
-    result = cast(QtQml.QJSValue, engine.evaluate(source + "\n" + call, str(_SCRIPT)))
-    assert not result.isError(), result.toString()
-    return result.toVariant()
+def _body(title: str) -> str:
+    return str(help_book.find(title)["body"])
 
 
 def test_the_guide_builds_with_every_part(qapp: QtCore.QCoreApplication) -> None:
-    names = "deviceLibraryTopics().map(t => t.section + '|' + t.title)"
-    sections = json.loads(str(_run(f"JSON.stringify({names})")))
-    assert len(sections) >= 25
-    found = {line.split("|")[0] for line in sections}
+    topics = _topics()
+    assert len(topics) >= 25
+    found = {t["section"] for t in topics}
     for section in (
         "Getting started",
         "Devices and saved setups",
@@ -85,44 +74,45 @@ def test_the_guide_builds_with_every_part(qapp: QtCore.QCoreApplication) -> None
         "Finding things",
         "Sharing",
         "Settings and tidying",
-        "Renamed and twin sticks",
         "Common questions",
     ):
         assert section in found, section
-    titles = {line.split("|")[1] for line in sections}
-    # S42's list of what the guide covers.
+    titles = {t["title"] for t in topics}
+    # S42's list of what the chapter covers.
     for title in (
         "What the Device Library is",
         "Saved setups",
+        "Built-in inputs",  # 10 S6
         "When autosaves are kept",
-        "Copy to Another Stick",
-        "Swap with Another Stick",
-        "Change vJoy Output",
-        "Undo and Redo",
+        "Copy a setup to another stick",
+        "Swap two sticks",
+        "Change which vJoy a stick sends to",
+        "Undo and redo a change",  # 10 S53-S54
+        "See a device's changes in History",  # 10 S56
         "Profiles that aren't open",
-        "Search",
-        "Filters and the list",
+        "Search the Device Library",
+        "Filter the list",
         "Import a Device Pack",
         "Export a saved setup",
         "Device Library Settings",
-        "Tidy Library",
+        "Tidy the Device Library",
         "Delete Device and Delete File",
         "Renamed and twin sticks",
         # The right-click menus and what came with them (S43-S50).
         "Right-click menus",
-        "Restore to This Stick",
-        "Keep This Autosave",
-        "Selecting several rows",
-        "Delete and Remove from Library",
+        "Restore a saved setup to its stick",
+        "Keep an autosave",
+        "Select several rows",
+        "Delete or remove from the Device Library",
     ):
         assert title in titles, title
-    every_body = _run("deviceLibraryTopics().every(t => t.body.length > 80)")
-    assert every_body
+    assert all(len(t["body"]) > 80 for t in topics)
+    assert all(t["id"].startswith("device-library-") for t in topics)
 
 
-def test_topics_are_unique_across_the_guides() -> None:
-    topics = _TOPIC.findall(_SOURCE)
-    assert len(set(topics)) == len(topics), "duplicate topic"
+def test_topics_are_unique_in_the_chapter(qapp: QtCore.QCoreApplication) -> None:
+    titles = [t["title"] for t in _topics()]
+    assert len(set(titles)) == len(titles), "duplicate topic"
 
 
 def test_the_menu_items_named_are_the_windows() -> None:
@@ -163,7 +153,9 @@ def _row_menu_items() -> set[str]:
     return items
 
 
-def test_the_right_click_menus_named_are_the_windows() -> None:
+def test_the_right_click_menus_named_are_the_windows(
+    qapp: QtCore.QCoreApplication,
+) -> None:
     """S43-S47: the guide names every item of the three right-click menus,
     with the window's exact labels, and the keys that open them."""
     text = _text(_guide_source())
@@ -208,9 +200,7 @@ def test_the_right_click_menus_named_are_the_windows() -> None:
         assert f"<b>{item}</b>" in _guide_source(), item
     known = {*device, *setup, *builtin, *space}
     assert built <= known, built - known
-    topic = _run(
-        "deviceLibraryTopics().filter(t => t.title === 'Right-click menus')[0].body"
-    )
+    topic = _body("Right-click menus")
     for words in ("Menu", "Shift+F10", "selects it first", "left out", "red"):
         assert words in str(topic), words
     assert '"Menu", "Shift+F10"' in _WINDOW
@@ -222,16 +212,13 @@ def test_the_right_click_menus_named_are_the_windows() -> None:
     assert "from the Library?" in text and '" from the Library?"' in _WINDOW
 
 
-def test_the_delete_topic_follows_the_states() -> None:
+def test_the_delete_topic_follows_the_states(
+    qapp: QtCore.QCoreApplication,
+) -> None:
     """S15 as built: Remove from Library (not connected, Delete Device first
     for a module file still here), Clear Setup and Delete Saved Setups
     (connected), Delete… on a saved setup; the details button's labels."""
-    body = str(
-        _run(
-            "deviceLibraryTopics().filter(t => t.title === "
-            "'Delete and Remove from Library')[0].body"
-        )
-    )
+    body = _body("Delete or remove from the Device Library")
     for words in (
         "Remove from Library…",
         "Clear Setup…",
@@ -283,20 +270,28 @@ def test_every_bold_label_is_on_screen() -> None:
         "Device Pack",
         "Undo",
         "Esc",
+        "Enter",
         "F1",
         "F2",
         "Ctrl+F",
-        "Device Library Guide",  # the Help menu (agent GW's wiring)
+        "View Full Help",  # the Help window's button (01 S128)
+        "BUILT-IN INPUTS",
         "Keep the newest … autosaves per stick",
     }
     bold = set(re.findall(r"<b>([^<]+)</b>", _guide_source()))
     assert len(bold) > 40
+    # A menu path (Edit › Delete…) counts when every step of it is shown;
+    # the main window's Tools menu lives in main_commands.js / Main.qml.
+    shown = _SHOWN + (_ROOT / "qml" / "main_commands.js").read_text(encoding="utf-8")
+    shown += (_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+    shown += (_ROOT / "qml" / "DialogHistory.qml").read_text(encoding="utf-8")
     missing = [
         word
         for word in sorted(bold)
-        if word not in concepts
-        and f'"{word}' not in _SHOWN
-        and f'{word}"' not in _SHOWN
+        for part in word.split(" › ")
+        if part not in concepts
+        and f'"{part}' not in shown
+        and f'{part}"' not in shown
     ]
     assert missing == []
 
@@ -382,19 +377,32 @@ def test_glossary_words_and_nothing_removed() -> None:
     assert not re.search(r"\bS\d+\b", text)
 
 
-def test_the_user_guide_points_to_the_guide() -> None:
-    topic = _user_guide_library_topic()
-    assert "Device Library Guide" in topic
-    assert "F1" in topic
-    # The User Guide keeps its one Device Library topic (S42).
-    main = _SOURCE[: _SOURCE.index("function buttonMapTopics()")]
-    titles = [title for _s, title in _TOPIC.findall(main)]
-    assert titles.count("Device Library") == 1
+def test_the_book_links_to_the_chapter_instead_of_repeating_it(
+    qapp: QtCore.QCoreApplication,
+) -> None:
+    """D-01-ONE-HELP: the Device Library is written once, in its chapter."""
+    others = [t for t in help_book.load()[1] if t["chapterId"] != "device-library"]
+    assert not [t["title"] for t in others if t["title"] == "Device Library"]
+    ids = {t["id"] for t in help_book.load()[1]}
+    for topic in _topics():
+        for target in topic["related"]:
+            assert target in ids, (topic["id"], target)
+        for target in re.findall(r'href="topic:([^"]+)"', topic["body"]):
+            assert target in ids, (topic["id"], target)
 
 
-def test_the_guide_is_outside_the_button_map_guide() -> None:
-    """test_help_guide reads the Button Map Guide as the text from
-    buttonMapTopics() to topic(): the Device Library's must not land there."""
-    start = _SOURCE.index("function buttonMapTopics()")
-    end = _SOURCE.index("function topic(section, title, body)")
-    assert "deviceLibraryTopics" not in _SOURCE[start:end]
+def test_the_new_library_features_are_in_the_chapter(
+    qapp: QtCore.QCoreApplication,
+) -> None:
+    """10 S6, S52-S56: built-in inputs, Undo/Redo with Last change, Show in
+    History, the Delete key, Remove as one History entry."""
+    undo = _body("Undo and redo a change")
+    for words in ("Ctrl+Z", "Ctrl+Y", "Last change:", "Undone:", "Undo</b> link"):
+        assert words in undo, words
+    assert '"Last change: "' in _WINDOW and '"Undone: "' in _WINDOW
+    assert "Show in History" in _body("See a device's changes in History")
+    delete = _body("Delete or remove from the Device Library")
+    assert "<b>Delete</b> key" in delete and "built-in input" in delete
+    assert "one entry in <b>Tools › History</b>" in delete
+    assert "from the Device Library" in delete
+    assert "BUILT-IN INPUTS" in _body("Built-in inputs")

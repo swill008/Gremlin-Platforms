@@ -229,6 +229,13 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 51. Device Library ideas (2026-10-09, not started): drag a saved setup onto a stick row to start
     Copy to Another Stick; sort the device list by name / last seen / saved setups (View, remembered);
     highlight the search match in names and descriptions.
+52. AFTER THE 1.0.30 RELEASE (user 2026-10-09: remind me): streamline shared pieces. First the
+    destructive pair: DangerButton (one red button) + ConfirmDialog / Confirm.ask (names what goes,
+    red go button, Cancel default, Enter/Esc cancel, "History can put it back" or "can't be undone");
+    move every delete/clear question onto it (Library, History Clear, Delete Device, Delete File,
+    Button Map, Manage Modes). Then 1 shared search box (from HelpSearchBar) and 2 shared message line
+    (Library's, with Undo link). Later: section divider/heading, empty state, file/folder picker that
+    remembers folders, shared Undo/Redo bar. Estimates: pair ~30 min (3 agents), 1+2 ~30 min.
 
 ## On hold / parked (user's choice)
 
