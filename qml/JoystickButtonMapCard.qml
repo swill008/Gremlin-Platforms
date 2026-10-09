@@ -58,7 +58,9 @@ Item {
     // The pool rows. A live press only checks a cheap key (module file time,
     // profile generation, what the device reports); the module file and the
     // profile are read again only when it changed (07 RB8).
-    property var chipRows: []
+    // No [] here: an array literal is a binding, and refreshChipRows()
+    // assigns it (qt.qml.binding.removal). Set in Component.onCompleted.
+    property var chipRows: null
     property string _rowsKey: "\u0000"
 
     function refreshChipRows() {
@@ -100,7 +102,7 @@ Item {
         buttons: _buttons
         axes: _axes
         hats: _hats
-        chipRows: _root.chipRows
+        chipRows: _root.chipRows || []
         editing: _root.editing
         editorNodes: _root.editorNodes
         photoOverride: _root.photoOverride

@@ -234,7 +234,8 @@ def test_the_card_reads_rows_by_the_key() -> None:
     card = (_ROOT / "qml" / "JoystickButtonMapCard.qml").read_text(encoding="utf-8")
     assert "_inventory.chipsKey(deviceGuid)" in card
     binding = card[card.find("property var chipRows"):]
-    assert binding.startswith("property var chipRows: []")
+    # Not a binding: refreshChipRows() assigns it (no "Overwriting binding").
+    assert binding.startswith("property var chipRows: null")
 
 
 # --- GL-181: a template's missing pictures ------------------------------------
