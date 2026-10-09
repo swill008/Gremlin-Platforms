@@ -33,7 +33,16 @@ QML_IMPORT_MAJOR_VERSION = 1
 _UUID = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
-_ROLES = ("entryId", "when", "areaName", "title")
+_ROLES = ("entryId", "when", "areaName", "title", "danger")
+# 08 S12b: a Device Library entry's area, and what Restore of one does.
+LIBRARY_AREA = "Device Library"
+LIBRARY_NOTE = (
+    "Restoring puts back the Device Library's list and its saved setups together."
+)
+CLEARED_NOTE = (
+    "Everything in History before this point was deleted. "
+    "Nothing before it can be restored or undone."
+)
 
 
 def _when(at: float) -> str:
@@ -202,6 +211,31 @@ def _title(entry: dict) -> str:
     return str(entry.get("title", ""))
 
 
+def _is_library(entry: dict) -> bool:
+    """A Device Library entry, or a group with one among its parts."""
+    if entry.get("kind") == "library":
+        return True
+    if entry.get("kind") == history.GROUP_KIND:
+        return any(p.get("kind") == "library" for p in _parts(entry))
+    return False
+
+
+def _area_name(entry: dict) -> str:
+    """The area the window shows: "Device Library" for its entries."""
+    if _is_library(entry):
+        return LIBRARY_AREA
+    area = str(entry.get("area") or "")
+    return history.AREAS.get(area, area)
+
+
+def _size_text(size: int) -> str:
+    if size >= 1024 * 1024:
+        return f"{round(size / (1024 * 1024))} MB"
+    if size >= 1024:
+        return f"{round(size / 1024)} KB"
+    return f"{size} bytes"
+
+
 def describe(entry: dict) -> dict:
     """What the window shows for an entry, and what can be put back."""
     kind = entry.get("kind")
@@ -209,7 +243,20 @@ def describe(entry: dict) -> dict:
     before, after = entry.get("before"), entry.get("after")
     note = ""
     panes = False
-    if kind == history.GROUP_KIND:
+    danger = False
+    if kind == history.CLEARED_KIND:
+        # 08 S12b: what was deleted; nothing to put back.
+        subject = entry.get("subject") or {}
+        count = int(subject.get("entries") or 0)
+        deleted = (
+            f"{count} change{'' if count == 1 else 's'} and "
+            f"{_size_text(int(subject.get('bytes') or 0))} of kept copies deleted."
+        )
+        texts = (deleted, deleted)
+        can = (False, False)
+        note = CLEARED_NOTE
+        danger = True
+    elif kind == history.GROUP_KIND:
         # One action of several steps (10 S51): each step under its title.
         parts = [describe(part) for part in _parts(entry)]
         texts = tuple(
@@ -221,6 +268,8 @@ def describe(entry: dict) -> dict:
             any(p["canRestoreAfter"] for p in parts),
         )
         note = "Puts back every part of it at once."
+        if _is_library(entry):
+            note = LIBRARY_NOTE
         panes = any(p["closesPanes"] for p in parts)
     elif area == "profile" and kind == "input":
         texts = (_input_text(before), _input_text(after))
@@ -259,7 +308,7 @@ def describe(entry: dict) -> dict:
             device_library.history_text(after),
         )
         can = (before is not None, after is not None)
-        note = "Saved at once, with its saved setups."
+        note = LIBRARY_NOTE
     else:
         parts = list((entry.get("subject") or {}).get("parts") or [])
         texts = (_module_text(before, parts), _module_text(after, parts))
@@ -273,7 +322,8 @@ def describe(entry: dict) -> dict:
     return {
         "title": _title(entry),
         "when": _when(entry.get("at", 0)),
-        "area": history.AREAS.get(str(area or ""), str(area or "")),
+        "area": _area_name(entry),
+        "danger": danger,
         "before": texts[0],
         "after": texts[1],
         "canRestoreBefore": can[0],
@@ -590,7 +640,9 @@ class HistoryModel(QtCore.QAbstractListModel):
         if name == "when":
             return _when(entry.get("at", 0))
         if name == "areaName":
-            return history.AREAS.get(str(entry.get("area") or ""), "")
+            return _area_name(entry)
+        if name == "danger":
+            return entry.get("kind") == history.CLEARED_KIND
         if name == "title":
             return _title(entry)
         return None
@@ -644,6 +696,21 @@ class HistoryModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, str, result=str)
     def restore(self, entry_id: str, which: str) -> str:
         result = restore(entry_id, which)
+        return json.dumps(result)
+
+    @QtCore.Slot(result=str)
+    def summary(self) -> str:
+        """What Clear History would delete (08 S12b): {"entries", "bytes",
+        "size"} with size in words ("38 MB")."""
+        found = history.summary()
+        return json.dumps({**found, "size": _size_text(int(found["bytes"]))})
+
+    @QtCore.Slot(result=str)
+    def clearAll(self) -> str:
+        """Clear History (08 S12b): {"ok", "error", "entries", "bytes"}; the
+        list is read again."""
+        result = history.clear_all()
+        self.reload()
         return json.dumps(result)
 
     def _filter_text(self) -> str:

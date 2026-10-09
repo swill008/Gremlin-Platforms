@@ -24,6 +24,7 @@ import hashlib
 import json
 import logging
 import queue
+import re
 import shutil
 import threading
 import time
@@ -39,7 +40,11 @@ AREAS = {
     "modules": "Module files",
     "button-map": "Button Map",
     "settings": "Settings",
+    # Tools › History's own: the "History cleared" entries (08 S12b).
+    "history": "History",
 }
+# A clearing of History (08 S12b): never removed by the clean-up.
+CLEARED_KIND = "cleared"
 # Options › History: how long entries are kept and how big a file may grow.
 KEEP_DAYS = 90
 MAX_MEGABYTES = 20
@@ -592,19 +597,26 @@ def prune() -> None:
             path = _file(area)
             if not path.is_file():
                 continue
+            # A "History cleared" entry stays whatever its age or size (S12b).
             kept = [
-                e for e in _lines(area, fresh=True) if float(e.get("at") or 0) >= oldest
+                e
+                for e in _lines(area, fresh=True)
+                if float(e.get("at") or 0) >= oldest or _is_cleared(e)
             ]
             _trim_snapshots(kept)
             lines = [json.dumps(e, ensure_ascii=False) + "\n" for e in kept]
             # The oldest go first until the file fits (sizes added once: the
             # old way re-added every line for each one dropped).
             total = sum(len(line.encode("utf-8")) for line in lines)
-            first = 0
-            while first < len(lines) and total > limit:
-                total -= len(lines[first].encode("utf-8"))
-                first += 1
-            lines = lines[first:]
+            dropped: set[int] = set()
+            for index, item in enumerate(kept):
+                if total <= limit:
+                    break
+                if _is_cleared(item):
+                    continue
+                total -= len(lines[index].encode("utf-8"))
+                dropped.add(index)
+            lines = [line for i, line in enumerate(lines) if i not in dropped]
             text = "".join(lines)
             if text != _text(path):
                 module_file.write_text(path, text, newline="")
@@ -646,3 +658,130 @@ def _file_refs(value: Any) -> set[str]:  # noqa: ANN401
         for item in value:
             found |= _file_refs(item)
     return found
+
+
+# --- Clear History (08 S12b, D-08-CLEAR-HISTORY) -------------------------------
+
+# History's own kept copies: named by their content (keep_file()).
+_KEPT_NAME = re.compile(r"^[0-9a-f]{40}(\.[0-9A-Za-z]{1,10})?$")
+# Told after a clearing (the Device Library's Undo steps empty).
+_cleared_listeners: list[Callable[[], None]] = []
+REFUSED_RUNNING = "Stop the running profile before clearing History."
+
+
+def _is_cleared(entry: dict) -> bool:
+    return entry.get("kind") == CLEARED_KIND
+
+
+def add_cleared_listener(listener: Callable[[], None]) -> None:
+    """listener() runs after every clearing of History."""
+    if listener not in _cleared_listeners:
+        _cleared_listeners.append(listener)
+
+
+def remove_cleared_listener(listener: Callable[[], None]) -> None:
+    if listener in _cleared_listeners:
+        _cleared_listeners.remove(listener)
+
+
+def _kept_files() -> list[Path]:
+    """History's own kept copies; nothing else in its files folder."""
+    files = folder() / "files"
+    if not files.is_dir():
+        return []
+    return [p for p in files.iterdir() if p.is_file() and _KEPT_NAME.match(p.name)]
+
+
+def _size(path: Path) -> int:
+    try:
+        return path.stat().st_size
+    except OSError:
+        return 0
+
+
+def summary() -> dict:
+    """What Clear History would delete: {"entries", "bytes"} (every entry
+    but the "History cleared" ones, and the kept copies)."""
+    _settle()
+    count = 0
+    size = 0
+    for area in AREAS:
+        path = _file(area)
+        if not path.is_file():
+            continue
+        size += _size(path)
+        count += sum(1 for e in _lines(area) if not _is_cleared(e))
+    size += sum(_size(p) for p in _kept_files())
+    return {"entries": count, "bytes": size}
+
+
+def _profile_running() -> bool:
+    try:
+        from gremlin import run_scope, shared_state
+
+        return bool(run_scope.running() or shared_state.runtime_active())
+    except Exception:  # noqa: BLE001 - not known: not running
+        return False
+
+
+def clear_all() -> dict:
+    """Deletes every History entry and kept copy (only History's own files:
+    the area files and the kept copies), refused while a profile runs. Then
+    records one "History cleared" entry. {"ok", "error", "entries", "bytes"}:
+    what was deleted."""
+    if _profile_running():
+        return {"ok": False, "error": REFUSED_RUNNING, "entries": 0, "bytes": 0}
+    from gremlin.modules import module_file
+
+    found = summary()
+    errors: list[str] = []
+    with _handle_lock, _write_lock:
+        for area in AREAS:
+            path = _file(area)
+            if not path.is_file():
+                continue
+            # The earlier "History cleared" entries stay (S12b).
+            kept = [e for e in _lines(area, fresh=True) if _is_cleared(e)]
+            try:
+                if kept:
+                    text = "".join(
+                        json.dumps(e, ensure_ascii=False) + "\n" for e in kept
+                    )
+                    module_file.write_text(path, text, newline="")
+                else:
+                    path.unlink()
+            except OSError as exc:
+                errors.append(f"{path.name}: {exc}")
+        for path in _kept_files():
+            try:
+                path.unlink()
+            except OSError as exc:
+                errors.append(f"{path.name}: {exc}")
+        _kept_now.clear()
+    with _read_lock:
+        _read.clear()
+    if errors:
+        syslog.warning(f"History: not all of it could be cleared: {errors}")
+    _append(
+        _make(
+            "history",
+            "History cleared",
+            {"entries": found["entries"], "bytes": found["bytes"]},
+            None,
+            None,
+            CLEARED_KIND,
+        )
+    )
+    for listener in list(_cleared_listeners):
+        try:
+            listener()
+        except Exception:  # noqa: BLE001 - one listener never stops the rest
+            syslog.exception("History: a clear listener failed")
+    if errors:
+        return {
+            "ok": False,
+            "error": "Some of History couldn't be deleted: " + "; ".join(errors),
+            "entries": found["entries"],
+            "bytes": found["bytes"],
+        }
+    return {"ok": True, "error": "", **found}

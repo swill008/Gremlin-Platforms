@@ -46,6 +46,9 @@ ApplicationWindow {
         return selected ? JSON.parse(_model.detail(selected)) : ({})
     }
     property string message: ""
+    // 08 S12b: a "History cleared" entry is selected (no Restore, no
+    // Previous/Next Change).
+    readonly property bool isCleared: selected.length > 0 && shown.danger === true
 
     readonly property var areas: [
         { key: "", label: "All" },
@@ -135,6 +138,47 @@ ApplicationWindow {
                 else
                     put()
             }, null, false)
+    }
+
+    // 08 S12b: "38 MB", "0.4 MB".
+    function sizeText(bytes) {
+        var mb = Math.max(0, Number(bytes) || 0) / (1024 * 1024)
+        var shown = mb >= 10 ? Math.round(mb) : Math.round(mb * 10) / 10
+        return shown + " MB"
+    }
+
+    // 08 S12b: what Clear History deletes, asked first (Cancel the default).
+    function clearQuestion(summary) {
+        var n = Number(summary.entries) || 0
+        var what = n === 1 ? "The 1 change in History is deleted"
+                           : "All " + n + " changes in History are deleted"
+        return what + ", along with the " + sizeText(summary.bytes)
+            + " of kept copies used to restore them. You won't be able to restore"
+            + " or undo any earlier change, including the Device Library's Undo"
+            + " for this session. Your profiles, module files and Device Library"
+            + " stay as they are. This can't be undone."
+    }
+
+    function askClear() {
+        var summary = {}
+        try {
+            summary = JSON.parse(_model.summary()) || {}
+        } catch (e) {
+            summary = {}
+        }
+        _clearDlg.ask(clearQuestion(summary))
+    }
+
+    function clearAll() {
+        var result = {}
+        try {
+            result = JSON.parse(_model.clearAll()) || {}
+        } catch (e) {
+            result = { ok: false, error: String(e) }
+        }
+        _model.reload()
+        pick("")
+        message = result.ok ? "History cleared." : (result.error || "History couldn't be cleared.")
     }
 
     // A new filter drops the old one's label (whoever opens it sets its own).
@@ -307,6 +351,53 @@ ApplicationWindow {
 
     DismissibleDialog { id: _gate }
 
+    // 08 S12b: the Library's delete question (WindowDeviceLibrary _deleteDlg):
+    // a red Clear History button, Cancel the default.
+    Dialog {
+        id: _clearDlg
+        objectName: "historyClearDialog"
+        title: "Clear History?"
+        property string body: ""
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(_root.width - Style.dp(40), Style.dp(520))
+        modal: true
+        function ask(text) {
+            body = text
+            open()
+        }
+        onOpened: _clearCancel.forceActiveFocus()
+        Label {
+            objectName: "historyClearText"
+            width: parent.width
+            wrapMode: Text.Wrap
+            text: _clearDlg.body
+        }
+        footer: DialogButtonBox {
+            Button {
+                id: _clearCancel
+                objectName: "historyClearCancel"
+                text: "Cancel"
+                DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+                // Enter on the default answers Cancel.
+                Keys.onReturnPressed: _clearDlg.reject()
+                Keys.onEnterPressed: _clearDlg.reject()
+            }
+            Button {
+                id: _clearGo
+                objectName: "historyClearGo"
+                text: "Clear History"
+                DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+                contentItem: Label {
+                    text: _clearGo.text
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    color: Style.dangerText
+                }
+            }
+        }
+        onAccepted: _root.clearAll()
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Style.dp(12)
@@ -340,6 +431,25 @@ ApplicationWindow {
                     _root.pick("")
                 }
             }
+            // 08 S12b: refused while the profile runs.
+            Button {
+                id: _clearButton
+                objectName: "historyClear"
+                text: "Clear History\u2026"
+                focusPolicy: Qt.NoFocus
+                enabled: !(backend && backend.gremlinActive)
+                contentItem: Label {
+                    text: _clearButton.text
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    color: _clearButton.enabled ? Style.dangerText : Style.fgDisabled
+                }
+                ToolTip.visible: hovered
+                ToolTip.text: _clearButton.enabled
+                    ? "Deletes every change in History and its kept copies"
+                    : "Stop the profile to clear History"
+                onClicked: _root.askClear()
+            }
         }
 
         RowLayout {
@@ -371,10 +481,15 @@ ApplicationWindow {
                 SplitView.minimumWidth: Style.dp(280)
                 model: _model
                 delegate: Rectangle {
+                    id: _entryRow
+                    required property var model
                     required property string entryId
                     required property string when
                     required property string areaName
                     required property string title
+                    // 08 S12b: "History cleared" in the danger colour.
+                    readonly property bool danger: model.danger === true
+                    objectName: "historyEntry:" + entryId
                     width: ListView.view.width
                     height: _rowText.implicitHeight + Style.dp(12)
                     color: _root.selected === entryId ? Style.alpha(Style.accent, 0.25) : "transparent"
@@ -388,7 +503,7 @@ ApplicationWindow {
                         spacing: 0
                         Label {
                             text: title
-                            color: Style.fg
+                            color: _entryRow.danger ? Style.dangerText : Style.fg
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
@@ -424,7 +539,7 @@ ApplicationWindow {
                 Label {
                     visible: _root.selected.length > 0
                     text: _root.shown.title || ""
-                    color: Style.fg
+                    color: _root.isCleared ? Style.dangerText : Style.fg
                     font.bold: true
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
@@ -439,8 +554,10 @@ ApplicationWindow {
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
-                    // 08 S104: both sides move together to a change.
+                    // 08 S104: both sides move together to a change;
+                    // 08 S12b: not for "History cleared".
                     Button {
+                        visible: !_root.isCleared
                         objectName: "historyPreviousChange"
                         text: "Previous Change"
                         focusPolicy: Qt.NoFocus
@@ -448,6 +565,7 @@ ApplicationWindow {
                         onClicked: _root.goToChange(_root.diffAt - 1)
                     }
                     Button {
+                        visible: !_root.isCleared
                         objectName: "historyNextChange"
                         text: "Next Change"
                         focusPolicy: Qt.NoFocus
@@ -455,9 +573,31 @@ ApplicationWindow {
                         onClicked: _root.goToChange(_root.diffAt + 1)
                     }
                 }
+                // 08 S12b: what a clearing deleted, and that nothing
+                // before it can be restored.
+                Label {
+                    objectName: "historyClearedWhat"
+                    visible: _root.isCleared
+                    text: _root.shown.after || ""
+                    color: Style.fg
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+                Label {
+                    objectName: "historyClearedNote"
+                    visible: _root.isCleared
+                    text: _root.shown.note || ""
+                    color: Style.dangerText
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+                Item {
+                    visible: _root.isCleared
+                    Layout.fillHeight: true
+                }
                 RowLayout {
                     id: _sides
-                    visible: _root.selected.length > 0
+                    visible: _root.selected.length > 0 && !_root.isCleared
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     spacing: Style.dp(8)
@@ -477,7 +617,8 @@ ApplicationWindow {
                     Layout.fillHeight: true
                 }
                 Label {
-                    visible: _root.selected.length > 0 && (_root.shown.note || "").length > 0
+                    visible: _root.selected.length > 0 && !_root.isCleared
+                             && (_root.shown.note || "").length > 0
                     text: "Restore: " + (_root.shown.note || "")
                     color: Style.fgMuted
                     wrapMode: Text.WordWrap

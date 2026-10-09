@@ -10,12 +10,14 @@ change the open profile in memory, which History doesn't hold (S33): their
 Undo puts the sticks back from the autosaves the action kept
 (library_copy.undo_change) and their Redo runs the action again. A new
 action clears Redo. An Undo or Redo is in History as usual but is never a
-step itself. Older changes stay in Tools › History.
+step itself. Older changes stay in Tools › History. Clear History empties
+every Steps (08 S12b) and tells its on_cleared listeners.
 """
 
 from __future__ import annotations
 
 import threading
+import weakref
 from collections.abc import Callable
 
 from gremlin import clock, history
@@ -60,6 +62,18 @@ def put_back(ids: list[str], which: str, title: str) -> dict:
     return {"ok": True, "notes": notes}
 
 
+# Every live Steps: Clear History empties them all (08 S12b).
+_ALL: weakref.WeakSet[Steps] = weakref.WeakSet()
+
+
+def _history_cleared() -> None:
+    for steps in list(_ALL):
+        steps.clear()
+
+
+history.add_cleared_listener(_history_cleared)
+
+
 class Steps:
     """One session's Undo and Redo steps (the Device Library model's)."""
 
@@ -67,6 +81,17 @@ class Steps:
         self._lock = threading.Lock()
         self._done: list[dict] = []
         self._undone: list[dict] = []
+        # Told when clear() emptied the steps (the model's stepsChanged).
+        self.on_cleared: list[Callable[[], None]] = []
+        _ALL.add(self)
+
+    def clear(self) -> None:
+        """No Undo or Redo any more: History was cleared."""
+        with self._lock:
+            self._done.clear()
+            self._undone.clear()
+        for listener in list(self.on_cleared):
+            listener()
 
     def note(
         self,
