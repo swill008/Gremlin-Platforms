@@ -376,6 +376,49 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
             if ConfigGroupModel(self._scope, groups=groups).matches(needle)
         ]
 
+    def _settings(self) -> list[tuple[int, str, str, str]]:
+        """(section row, group title, on-screen label, History-style label)
+        of every setting, in page order."""
+        name_role = QtCore.Qt.ItemDataRole.UserRole + 5
+        out = []
+        for row, (_title, groups) in enumerate(self._sections()):
+            group_model = ConfigGroupModel(self._scope, groups=groups)
+            for title, keys, stored in group_model._combined_groups():
+                entries = ConfigEntryModel(self._scope, stored, keys=keys)
+                for index, key in enumerate(entries._keys):
+                    label = str(entries.data(entries.index(index), name_role) or "")
+                    if label:
+                        full = entry_title(key[2], "/".join(key))
+                        out.append((row, title, label, full))
+        return out
+
+    @QtCore.Slot(result=list)
+    def settingLabels(self) -> list[str]:  # noqa: N802 (QML)
+        """Every setting's on-screen label, once each, in page order (Help's
+        show:option/<label> links)."""
+        labels: list[str] = []
+        for _row, _group, label, _full in self._settings():
+            if label not in labels:
+                labels.append(label)
+        return labels
+
+    @QtCore.Slot(str, result=list)
+    def findSetting(self, label: str) -> list:  # noqa: N802 (QML)
+        """[section row, group title, on-screen label] of the setting with
+        this label (any case; a repeated label such as "Duration" also by its
+        group's name, "Tempo duration"), else []."""
+        needle = _js_trim(label).lower()
+        if not needle:
+            return []
+        settings = self._settings()
+        for row, group, shown, _full in settings:
+            if shown.lower() == needle:
+                return [row, group, shown]
+        for row, group, shown, full in settings:
+            if full.lower() == needle:
+                return [row, group, shown]
+        return []
+
     def _sections(self) -> list[tuple[str, list | None]]:
         if self._scope:
             return [(SECTION_DISPLAY_NAMES.get(self._scope, self._scope), None)]

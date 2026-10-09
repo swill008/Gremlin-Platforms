@@ -44,6 +44,83 @@ ApplicationWindow {
     }
 
     property int currentSection: 0
+    // The page's title ("General"), or "Search" while searching.
+    readonly property string sectionTitle: _search.text.trim().length
+        ? "Search"
+        : String(_sectionModel.data(_sectionModel.index(currentSection, 0), Qt.UserRole + 1) || "")
+
+    // Every setting's on-screen label (Help's show:option/<label> links).
+    function settingLabels() {
+        return _sectionModel.settingLabels()
+    }
+
+    // Help's "Show me ›" (01 S139): show the page holding the setting with
+    // this label (any case), scroll it into view and pulse it. false if no
+    // setting has that label.
+    function revealSetting(label) {
+        var hit = _sectionModel.findSetting(String(label || ""))
+        if (!hit || hit.length < 3)
+            return false
+        _search.text = ""
+        currentSection = hit[0]
+        var card = _settingCard(hit[1], hit[2])
+        if (!card)
+            return false
+        _scrollTo(card)
+        // Again once the page has laid out (it may have just been built).
+        Qt.callLater(_scrollTo, card)
+        _pulse.createObject(card)
+        return true
+    }
+
+    // The row (OptionEntryCard) titled name in the group titled group.
+    function _settingCard(group, name) {
+        var stack = [_page.contentItem]
+        var inGroup = null
+        while (stack.length) {
+            var it = stack.pop()
+            if (it.entryModel !== undefined && it.groupName === group && it.visible) {
+                inGroup = it
+                break
+            }
+            var kids = it.children || []
+            for (var i = 0; i < kids.length; i++)
+                stack.push(kids[i])
+        }
+        if (!inGroup)
+            return null
+        stack = [inGroup]
+        while (stack.length) {
+            var row = stack.pop()
+            if (row.explanation !== undefined && row.title === name)
+                return row
+            var rows = row.children || []
+            for (var j = 0; j < rows.length; j++)
+                stack.push(rows[j])
+        }
+        return null
+    }
+
+    function _scrollTo(card) {
+        var flick = _page.contentItem
+        if (!card || !flick || flick.contentY === undefined)
+            return
+        var top = card.mapToItem(flick.contentItem, 0, 0).y
+        var margin = Style.dp(24)
+        var y = flick.contentY
+        if (top - margin < y)
+            y = top - margin
+        else if (top + card.height + margin > y + flick.height)
+            y = top + card.height + margin - flick.height
+        var most = Math.max(0, flick.contentHeight - flick.height)
+        flick.contentY = Math.max(0, Math.min(most, y))
+    }
+
+    // The pulse Help's other links use (Pulse.qml).
+    Component {
+        id: _pulse
+        Pulse {}
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -118,9 +195,7 @@ ApplicationWindow {
 
                 Label {
                     Layout.fillWidth: true
-                    text: _search.text.trim().length
-                        ? "Search"
-                        : String(_sectionModel.data(_sectionModel.index(_options.currentSection, 0), Qt.UserRole + 1) || "")
+                    text: _options.sectionTitle
                     color: Style.fgStrong
                     font.pixelSize: Style.dp(20)
                 }
@@ -132,6 +207,7 @@ ApplicationWindow {
             }
 
             ConfigSection {
+                id: _page
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 sectionModel: _sectionModel

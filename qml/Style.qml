@@ -219,4 +219,9 @@ Item {
     // Various shared dimensions.
     property int tooltipMaxWidth: dp(500)
     property int tooltipDelayMs: 500
+
+    // Help's Open › / Show me › links (01 S139). The main window sets this to
+    // an object with check(link) -> "" or why it can't be shown now, and
+    // reveal(link) -> "" or why. null until the main window is up.
+    property var helpLinks: null
 }

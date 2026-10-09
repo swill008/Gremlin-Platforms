@@ -21,6 +21,7 @@ import "helpers.js" as Helpers
 import "window_registry.js" as Registry
 import "main_commands.js" as MainCommands
 import "device_library_open.js" as DeviceLibraryOpen
+import "help_links.js" as HelpLinks
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -131,6 +132,219 @@ ApplicationWindow {
         refreshSourceModuleCount()
         // Tool windows reach closeActionPanes() through Helpers.
         Helpers.setMainWindow(_root)
+        Style.helpLinks = { check: _helpLinkCheck, reveal: _helpLinkReveal }
+    }
+
+    Component.onDestruction: () => {
+        if (Style.helpLinks && Style.helpLinks.check === _helpLinkCheck)
+            Style.helpLinks = null
+    }
+
+    // Help's "Open ›" and "Show me ›" links (01 S139, D-01-HELP-LINKS).
+    // check(link) and reveal(link) return "" or why it can't be shown now.
+    // Show me points without choosing: a menu drops down with the item
+    // pulsing, a button pulses; nothing is triggered.
+
+    // Visible text compared without "…", "&" or case.
+    function _helpNorm(text) {
+        return String(text || "").replace(/…/g, "").replace(/\.\.\./g, "")
+                                 .replace(/&/g, "").trim().toLowerCase()
+    }
+
+    // Toolbar buttons by caption, tooltip and other names (Run and Stop
+    // are one button).
+    function _helpToolbarButton(name) {
+        var want = _helpNorm(name)
+        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton,
+                       _buttonMapButton, _logicalButton, _optionsButton]
+        for (var i = 0; i < buttons.length; ++i) {
+            var b = buttons[i]
+            var names = [b.caption, b.tooltip]
+            if (b === _toggleButton)
+                names = names.concat(["Run", "Stop", "Run the profile", "Stop the profile"])
+            for (var j = 0; j < names.length; ++j)
+                if (_helpNorm(names[j]) === want)
+                    return b
+        }
+        return null
+    }
+
+    function _helpModeBarControl(name) {
+        var want = _helpNorm(name)
+        if (want === "" || want === "mode")
+            return _modeSelector
+        if (want === "manage modes")
+            return _manageModesButton
+        return null
+    }
+
+    // A row of a menu: available now if shown and enabled; a submenu if it
+    // has something in it.
+    function _helpRowUsable(item) {
+        if (item.subMenu) {
+            if (typeof item.subMenu.compactNow === "function")
+                item.subMenu.compactNow()
+            return item.subMenu.enabled
+                    && (typeof item.subMenu.hasShown !== "function" || item.subMenu.hasShown())
+        }
+        if (typeof item.refresh === "function")
+            item.refresh()
+        return item.shown !== false && item.enabled
+    }
+
+    // {chain: [menus], rows: [row in each menu], error} for a menu path:
+    // chain[0] is the menu bar's menu, rows[k] the row picked in chain[k].
+    function _helpMenuPath(parts) {
+        var bar = _root.menuBar
+        var path = parts.join("/")
+        if (!bar || parts.length < 2)
+            return { error: "No such menu item: " + path }
+        var top = null
+        var topIndex = -1
+        for (var i = 0; i < bar.count; ++i) {
+            var m = bar.menuAt(i)
+            if (m && _helpNorm(m.title) === _helpNorm(parts[0])) {
+                top = m
+                topIndex = i
+                break
+            }
+        }
+        if (!top)
+            return { error: "No such menu item: " + path }
+        var chain = [top]
+        var rows = []
+        var menu = top
+        for (var p = 1; p < parts.length; ++p) {
+            var found = null
+            for (var r = 0; r < menu.count; ++r) {
+                var row = menu.itemAt(r)
+                if (row && row.text !== undefined && _helpNorm(row.text) === _helpNorm(parts[p])) {
+                    found = row
+                    break
+                }
+            }
+            if (!found)
+                return { error: "No such menu item: " + path }
+            rows.push(found)
+            if (p < parts.length - 1) {
+                if (!found.subMenu)
+                    return { error: "No such menu item: " + path }
+                menu = found.subMenu
+                chain.push(menu)
+            }
+        }
+        return { chain: chain, rows: rows, topIndex: topIndex, error: "" }
+    }
+
+    // Options' settings by label, without opening Options (findSetting
+    // ignores case; a repeated label also matches with its group).
+    ConfigSectionModel { id: _helpOptionLabels }
+
+    function _helpLinkCheck(link) {
+        var parsed = HelpLinks.parse(link)
+        var parts = parsed.parts
+        if (parsed.kind === "open") {
+            var id = parts[0]
+            if (!HelpLinks.isAllowedOpen(id) || !Commands.get(id))
+                return "Help can't open this: " + id
+            // Not enabled means that page is the one showing already:
+            // reveal brings the main window to the front.
+            return ""
+        }
+        if (parsed.kind !== "show" || !parts.length)
+            return "Not a link to the program: " + link
+        var rest = parts.slice(1)
+        if (parts[0] === "menu") {
+            var found = _helpMenuPath(rest)
+            if (found.error)
+                return found.error
+            for (var k = 0; k < found.rows.length; ++k)
+                if (!_helpRowUsable(found.rows[k]))
+                    return rest.join(" › ") + " can't be used now."
+            return ""
+        }
+        if (parts[0] === "toolbar")
+            return _helpToolbarButton(rest.join("/")) ? "" : "No such toolbar button: " + rest.join("/")
+        if (parts[0] === "modebar")
+            return _helpModeBarControl(rest.join("/")) ? "" : "No such mode bar control: " + rest.join("/")
+        if (parts[0] === "option") {
+            var hit = _helpOptionLabels.findSetting(rest.join("/"))
+            return hit && hit.length ? "" : "No such setting in Options: " + rest.join("/")
+        }
+        return "Not a link to the program: " + link
+    }
+
+    function _helpFront() {
+        if (_root.visibility === Window.Minimized || !_root.visible)
+            _root.showNormal()
+        _root.raise()
+        _root.requestActivate()
+    }
+
+    function _helpPulse(item) {
+        var component = Qt.createComponent("Pulse.qml")
+        return component.status === Component.Ready ? component.createObject(item) : null
+    }
+
+    // Scrolls a toolbar or page-bar flick so the control shows.
+    function _helpScrollTo(item, flick) {
+        if (!flick || !flick.interactive)
+            return
+        var at = item.mapToItem(flick.contentItem, 0, 0)
+        if (at.x < flick.contentX)
+            flick.contentX = at.x
+        else if (at.x + item.width > flick.contentX + flick.width)
+            flick.contentX = Math.min(flick.contentWidth - flick.width, at.x + item.width - flick.width)
+    }
+
+    function _helpLinkReveal(link) {
+        var why = _helpLinkCheck(link)
+        if (why !== "")
+            return why
+        var parsed = HelpLinks.parse(link)
+        var parts = parsed.parts
+        if (parsed.kind === "open") {
+            if (!Commands.trigger(parts[0]))
+                _helpFront()
+            return ""
+        }
+        var rest = parts.slice(1)
+        if (parts[0] === "option") {
+            Commands.trigger("tools.options")
+            var win = Helpers.windowOf("DialogOptions.qml")
+            if (!win || typeof win.revealSetting !== "function")
+                return "Options didn't open."
+            return win.revealSetting(rest.join("/")) ? "" : "No such setting in Options: " + rest.join("/")
+        }
+        _helpFront()
+        if (parts[0] === "toolbar") {
+            var button = _helpToolbarButton(rest.join("/"))
+            _helpScrollTo(button, _toolbarFlick)
+            _helpPulse(button)
+            return ""
+        }
+        if (parts[0] === "modebar") {
+            _helpPulse(_helpModeBarControl(rest.join("/")))
+            return ""
+        }
+        // A menu: drop each menu down in turn, mark the last row and pulse
+        // it. Nothing is chosen.
+        var found = _helpMenuPath(rest)
+        var bar = _root.menuBar
+        var barItem = bar.itemAt(found.topIndex)
+        found.chain[0].popup(barItem, 0, barItem.height)
+        for (var k = 0; k < found.rows.length; ++k) {
+            var menu = found.chain[k]
+            var row = found.rows[k]
+            for (var r = 0; r < menu.count; ++r)
+                if (menu.itemAt(r) === row)
+                    menu.currentIndex = r
+            if (row.subMenu)
+                row.subMenu.popup(row, row.width, 0)
+            else
+                _helpPulse(row)
+        }
+        return ""
     }
 
     U.Universal.theme: Style.theme

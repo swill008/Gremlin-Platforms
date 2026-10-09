@@ -4,6 +4,7 @@
 // The one Help window (01 S128, S137; D-01-ONE-HELP): the book of chapters
 // from help/index.js. chapter "" shows the whole book; an area's Help (F1)
 // opens it on that area's chapter only, with View Full Help to widen it.
+// Open › / Show me › links (S139) go to the program through Style.helpLinks.
 
 import QtQuick
 import QtQuick.Controls
@@ -15,6 +16,7 @@ import Gremlin.Style
 import Gremlin.UI
 import "help/index.js" as Book
 import "help_search.js" as HelpSearch
+import "help_links.js" as HelpLinks
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -71,6 +73,14 @@ ApplicationWindow {
 
     // Folded chapters (S138), {chapterId: true}, kept while Help is open.
     property var _folded: null
+
+    // Program links (S139): why each open:/show: link of the open topic
+    // can't be shown now ({href: reason}; none = it can), and the reason
+    // from the last click that failed, shown under the title.
+    property var _linkReasons: ({})
+    property string _linkNote: ""
+    readonly property string hoverReason: _body.hoveredLink.length
+                                          ? (_linkReasons[_body.hoveredLink] || "") : ""
 
     WindowPlacement { id: _place }
 
@@ -171,7 +181,19 @@ ApplicationWindow {
     }
     onTopicIdChanged: if (topicId.length) showTopic(topicId)
 
+    on_CurrentIdChanged: {
+        _linkNote = ""
+        recheckLinks()
+    }
+    onActiveChanged: if (active) recheckLinks()
+
+    Connections {
+        target: Style
+        function onHelpLinksChanged() { _win.recheckLinks() }
+    }
+
     Component.onCompleted: {
+        recheckLinks()
         _results = []
         _folded = {}
         _restoreListWidth()
@@ -366,9 +388,10 @@ ApplicationWindow {
             return { html: "", total: 0 }
         var css = "<style>a { color: " + String(Style.accent) + "; text-decoration: none; }"
                 + " h3 { margin-top: 14px; }</style>"
+        var body = HelpLinks.decorate(_current.body, _linkReasons, String(Style.fgDisabled))
         if (!_searching)
-            return { html: css + _current.body, total: 0 }
-        var h = _highlight(_current.body, _match)
+            return { html: css + body, total: 0 }
+        var h = _highlight(body, _match)
         return { html: css + h.html, total: h.total }
     }
     readonly property int _bodyTotal: _shown.total
@@ -423,12 +446,56 @@ ApplicationWindow {
         return n < kept.length ? kept[n] : (kept.length ? kept[kept.length - 1] : -1)
     }
 
+    // Why a program link can't be shown now; "" when it can.
+    function linkReason(link) {
+        var p = HelpLinks.parse(link)
+        if (p.kind === "open" && !HelpLinks.isAllowedOpen(p.parts[0]))
+            return qsTr("Help can't open this window.")
+        var bridge = Style.helpLinks
+        if (!bridge)
+            return qsTr("The main window isn't open.")
+        try {
+            return String(bridge.check(String(link)) || "")
+        } catch (e) {
+            return qsTr("This can't be shown now.")
+        }
+    }
+
+    // Checks the open topic's program links again (topic opened, Help
+    // activated, the bridge changed).
+    function recheckLinks() {
+        var reasons = {}
+        // Book.find, not _current: that binding may not have updated yet.
+        var topic = _currentId.length ? Book.find(_currentId) : null
+        var links = topic ? HelpLinks.programLinks(topic.body) : []
+        for (var i = 0; i < links.length; ++i) {
+            var r = linkReason(links[i])
+            if (r.length)
+                reasons[links[i]] = r
+        }
+        _linkReasons = reasons
+    }
+
     function _openLink(link) {
         var s = String(link)
-        if (s.indexOf("topic:") === 0)
+        if (s.indexOf("topic:") === 0) {
             showTopic(s.substring(6))
-        else if (s.length)
+        } else if (HelpLinks.isProgramLink(s)) {
+            // Help stays open; the program shows the target beside it.
+            var reason = linkReason(s)
+            if (!reason.length) {
+                try {
+                    reason = String(Style.helpLinks.reveal(s) || "")
+                } catch (e) {
+                    reason = qsTr("This can't be shown now.")
+                }
+            }
+            _linkNote = reason
+            if (reason.length)
+                recheckLinks()
+        } else if (s.length) {
             Qt.openUrlExternally(s)
+        }
     }
 
     Shortcut { sequences: [StandardKey.Find]; onActivated: _search.focusField() }
@@ -729,6 +796,17 @@ ApplicationWindow {
                     font.bold: true
                     wrapMode: Text.WordWrap
                 }
+                // Why the last Open › / Show me › click showed nothing.
+                Label {
+                    objectName: "linkNote"
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: Style.dp(4)
+                    visible: _win._linkNote.length > 0
+                    text: _win._linkNote
+                    color: Style.fgMuted
+                    font.pixelSize: Style.dp(13)
+                    wrapMode: Text.WordWrap
+                }
 
                 Rectangle {
                     Layout.fillWidth: true
@@ -768,6 +846,11 @@ ApplicationWindow {
                                 onLinkActivated: (link) => _win._openLink(link)
                                 HoverHandler {
                                     cursorShape: _body.hoveredLink.length ? Qt.PointingHandCursor : Qt.IBeamCursor
+                                }
+                                // A greyed link says why on hover (S139).
+                                PointerTip {
+                                    objectName: "linkTip"
+                                    text: _win.hoverReason
                                 }
                             }
 
