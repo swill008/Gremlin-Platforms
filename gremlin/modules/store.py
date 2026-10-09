@@ -536,7 +536,12 @@ def _reload_osc(path: Path) -> None:
 
     # Screens drop their Undo steps and redraw; the server applies the
     # settings at once.
-    for name in ("oscDeviceReloaded", "oscDeviceModified", "oscServerSettingsChanged"):
+    for name in (
+        "oscDeviceReloaded",
+        "oscDeviceModified",
+        "oscServerSettingsChanged",
+        "oscFeedbackChanged",
+    ):
         sig = getattr(signal, name, None)
         if sig is not None:
             sig.emit()

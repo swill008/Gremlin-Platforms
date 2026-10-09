@@ -60,7 +60,7 @@ function leafKind(kind) {
     return kind || "btn"
 }
 
-function hardwareLabel(kind, hwId) {
+function genericLabel(kind, hwId) {
     var lk = leafKind(kind)
     if (lk === "axis")
         return "Axis " + hwId
@@ -69,8 +69,36 @@ function hardwareLabel(kind, hwId) {
     return "Button " + hwId
 }
 
+// Names the device gives its inputs (OSC: the address), from the pool rows'
+// hwName; kept until the rows change.
+var _namesRows = null
+var _names = ({})
+
+function inputNames() {
+    var f = typeof face !== "undefined" ? face : null
+    var rows = (f && f.chipRows) ? f.chipRows : null
+    if (rows === _namesRows)
+        return _names
+    var out = ({})
+    for (var i = 0; rows && i < rows.length; i++) {
+        var r = rows[i]
+        if (r && r.hwName)
+            out[leafKind(r.kind || "btn") + ":" + r.hwId] = String(r.hwName)
+    }
+    _namesRows = rows
+    _names = out
+    return out
+}
+
+function hardwareLabel(kind, hwId) {
+    var named = inputNames()[leafKind(kind) + ":" + hwId]
+    return named ? named : genericLabel(kind, hwId)
+}
+
+// What a new chip stores as its name: the generic one, so a later address
+// change still shows (a stored address would read as the user's name).
 function defaultFriendly(kind, hwId) {
-    return hardwareLabel(kind, hwId)
+    return genericLabel(kind, hwId)
 }
 
 function isClearedFriendly(v) {
@@ -83,7 +111,7 @@ function isUserFriendly(kind, hwId, v) {
     var t = String(v).trim()
     if (!t.length)
         return false
-    if (t === hardwareLabel(kind, hwId))
+    if (t === hardwareLabel(kind, hwId) || t === genericLabel(kind, hwId))
         return false
     // A typed name is always the user's (07 Q10).
     return true
@@ -194,7 +222,7 @@ function catalog() {
         seen[key] = true
         var pid = placedId(kind, hwId)
         var lk = leafKind(kind)
-        var hwName = lk === "axis" ? ("Axis " + hwId) : (lk === "hat" ? ("Hat " + hwId) : ("Button " + hwId))
+        var hwName = hardwareLabel(lk, hwId)
         items.push({
             kind: kind,
             hwId: hwId,

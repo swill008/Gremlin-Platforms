@@ -9,6 +9,9 @@ OscRuntime (python-osc server thread), off-screen, in a temp USERPROFILE.
 Binds and sends on 127.0.0.1 only (never 0.0.0.0). Events are taken from
 the signal the runtime emits (EventListener().joystick_event); a stand-in
 EventListener carries it so no hardware, hooks or vJoy are touched.
+Part 2 adds a phone stand-in (a UDP socket on 127.0.0.1, registered as a
+target) for Send OSC, reply, the output switch, feedback (change, rate
+limit, mode change, sync), the encoder and the Monitor's traffic/hold_open.
 Exit code 0 only when every check passes."""
 
 from __future__ import annotations
@@ -77,7 +80,15 @@ class _Listener(QtCore.QObject):
 
 
 _LISTENER = _Listener()
-event_handler.EventListener = lambda: _LISTENER  # type: ignore[assignment,misc]
+_LISTENER.gremlin_active = False  # type: ignore[attr-defined]
+
+
+def _listener_singleton() -> _Listener:
+    return _LISTENER
+
+
+_listener_singleton.instance = _LISTENER  # type: ignore[attr-defined]  (ModeManager reads it)
+event_handler.EventListener = _listener_singleton  # type: ignore[assignment,misc]
 
 from gremlin import osc_bulk  # noqa: E402,F401  (patches the page model)
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime  # noqa: E402
@@ -88,13 +99,20 @@ from gremlin.ui.osc_device_model import OscDeviceManagementModel  # noqa: E402
 AXIS = InputType.JoystickAxis
 BUTTON = InputType.JoystickButton
 HOST = "127.0.0.1"
-OVERALL_S = 60.0
+OVERALL_S = 90.0
 _T0 = time.monotonic()
 
 # -- helpers ------------------------------------------------------------------
 
 events: list[dict[str, Any]] = []
 results: list[dict[str, Any]] = []
+# Open phone stand-ins, read on every pump so arrival times are true.
+_PHONES: list[Any] = []
+
+
+def _drain_phones() -> None:
+    for phone in list(_PHONES):
+        phone.drain()
 
 
 def _on_event(event: Any) -> None:  # noqa: ANN401
@@ -116,6 +134,7 @@ def pump(seconds: float) -> None:
     end = time.monotonic() + min(seconds, 2.0)
     while time.monotonic() < end:
         APP.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 10)
+        _drain_phones()
         time.sleep(0.005)
 
 
@@ -123,10 +142,11 @@ def wait_for(pred: Any, timeout: float = 1.5) -> bool:  # noqa: ANN401
     end = time.monotonic() + min(timeout, 2.0)
     while time.monotonic() < end:
         APP.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 10)
+        _drain_phones()
         if pred():
             return True
         if time.monotonic() - _T0 > OVERALL_S:
-            raise TimeoutError("overall 60 s timeout")
+            raise TimeoutError(f"overall {OVERALL_S:.0f} s timeout")
         time.sleep(0.005)
     return bool(pred())
 
@@ -468,19 +488,412 @@ def run_checks() -> None:
             client.close()
 
 
+# -- part 2: output, feedback, encoder, monitor (D-09-OSC-*) --------------------
+
+
+def _parse(data: bytes) -> dict[str, Any]:
+    from pythonosc.osc_message import OscMessage
+    from pythonosc.parsing import osc_types
+
+    msg = OscMessage(data)
+    _, idx = osc_types.get_string(data, 0)
+    tags, _ = osc_types.get_string(data, idx)
+    return {"t": time.monotonic(), "address": msg.address,
+            "args": list(msg.params), "types": tags.lstrip(",")}
+
+
+class Phone:
+    """A phone stand-in: an OSC receiver on 127.0.0.1 that also sends from
+    its own socket (so "reply" comes back to it)."""
+
+    def __init__(self) -> None:
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((HOST, 0))
+        self.sock.setblocking(False)
+        self.port: int = self.sock.getsockname()[1]
+        self.got: list[dict[str, Any]] = []
+        _PHONES.append(self)
+
+    def drain(self) -> None:
+        while True:
+            try:
+                data, _ = self.sock.recvfrom(65536)
+            except BlockingIOError:
+                return
+            except ConnectionResetError:  # Windows: an earlier ICMP reply
+                continue
+            except OSError:
+                return
+            self.got.append(_parse(data))
+
+    def send_args(self, port: int, address: str, *args: Any) -> None:  # noqa: ANN401
+        builder = OscMessageBuilder(address=address)
+        for arg in args:
+            builder.add_arg(arg)
+        self.sock.sendto(builder.build().dgram, (HOST, port))
+
+    def since(self, n: int, address: str | None = None) -> list[dict[str, Any]]:
+        self.drain()
+        return [m for m in self.got[n:] if address is None or m["address"] == address]
+
+    def wait(self, n: int, count: int, address: str | None = None,
+             timeout: float = 1.5) -> list[dict[str, Any]]:
+        wait_for(lambda: len(self.since(n, address)) >= count, timeout)
+        return self.since(n, address)
+
+    def quiet(self, n: int, seconds: float = 0.3) -> list[dict[str, Any]]:
+        pump(seconds)
+        return self.since(n)
+
+    def close(self) -> None:
+        if self in _PHONES:
+            _PHONES.remove(self)
+        self.sock.close()
+
+
+def msgs(found: list[dict[str, Any]]) -> list[tuple]:
+    out = []
+    for m in found:
+        args = [round(a, 3) if isinstance(a, float) else a for a in m["args"]]
+        out.append((m["address"], args, m["types"]))
+    return out
+
+
+def run_checks2() -> None:
+    from action_plugins.send_osc import SendOscData, SendOscFunctor
+    from gremlin import osc_feedback, osc_output, osc_traffic, run_scope
+    from gremlin.base_classes import Value
+    from gremlin.event_handler import Event
+    from gremlin.mode_manager import Mode, ModeManager
+    from gremlin.osc import input_name
+
+    port = free_port()
+    srv: dict[str, Any] = {
+        "enabled": True, "host": HOST, "port": port,
+        "autorelease_no_arg": True, "autorelease_delay_ms": 300,
+        "output_enabled": True, "reply_to_sender": True,
+        "feedback_enabled": True, "resend_run": True, "resend_mode": True,
+        "resend_profile": True, "sync_enabled": True,
+        "sync_address": "/gremlin/sync", "feedback_rate": 10,
+    }
+
+    def set_server(**changes: Any) -> None:  # noqa: ANN401
+        srv.update(changes)
+        odf.write_server(dict(srv))
+        pump(0.05)
+
+    set_server()
+    rows = OscDevice().rows
+    rows.load_dict({"inputs": []})
+    fbtn = rows.create(BUTTON, "/fbtn")
+    fax = rows.create(AXIS, "/fax", range_min=0.0, range_max=1.0)
+    enc = rows.create(AXIS, "/enc", mode="encoder", enc_output="axis", enc_step=0.1)
+    encp = rows.create(BUTTON, "/encp", mode="encoder", enc_output="pulse_cw",
+                       delay_ms=60)
+    encn = rows.create(BUTTON, "/encn", mode="encoder", enc_output="pulse_ccw",
+                       delay_ms=60)
+    syncrow = rows.create(BUTTON, "/gremlin/sync")  # sync must never reach it
+    odf.save()
+
+    phone, phone2 = Phone(), Phone()
+    phone_id = odf.new_id()
+    odf.write_targets([{"id": phone_id, "name": "Phone", "host": HOST,
+                        "port": phone.port}])
+    odf.write_feedback([
+        {"id": "fbmode", "source": {"kind": "mode"}, "target": phone_id,
+         "address": "/fb/mode", "type": "auto"},
+        {"id": "fbbtn", "source": {"kind": "osc_input", "input": fbtn.uid},
+         "target": phone_id, "address": "/fb/btn", "min": 0, "max": 1,
+         "type": "int"},
+        {"id": "fbax", "source": {"kind": "osc_input", "input": fax.uid},
+         "target": phone_id, "address": "/fb/ax", "min": 0, "max": 1,
+         "type": "float"},
+    ])
+    check("targets + feedback written",
+          (phone_id, 3), (odf.read_targets()[0]["id"], len(odf.read_feedback())))
+
+    profile = profile_with([fbtn, fax, enc, encp, encn, syncrow])
+    profile.modes.add_mode("Flight")
+    first = profile.modes.first_mode
+    shared_state.current_profile = profile
+
+    runtime = OscRuntime()
+    client = Client(port)
+    osc_traffic.clear()
+    osc_output.reset()
+    event = Event(BUTTON, 1, OSC_DEVICE_UUID, first, is_pressed=True)
+
+    def action(target: str, address: str, values: list[dict]) -> SendOscFunctor:
+        data = SendOscData(BUTTON)
+        data.target, data.address, data.values = target, address, values
+        return SendOscFunctor(data)
+
+    def fixed(value: str, kind: str) -> dict:
+        return {"source": "fixed", "value": value, "type": kind}
+
+    send_go = action(phone_id, "/out/go", [
+        fixed("7", "int"), fixed("1.5", "float"), fixed("hi", "text"),
+        fixed("true", "bool"), {"source": "input", "value": "", "type": "auto"},
+    ])
+    reply = action("reply", "/out/reply", [fixed("ok", "text")])
+    full_set = ["/fb/ax", "/fb/btn", "/fb/mode"]
+    running = False
+    try:
+        # A Run as CodeRunner does it: begin, mode, OSC, feedback; Stop stages.
+        n = len(phone.got)
+        run_scope.begin()
+        running = True
+        run_scope.on_stop(run_scope.Stage.CUT_INPUT, "OSC feedback",
+                          lambda: osc_feedback.stop())
+        run_scope.on_stop(run_scope.Stage.CUT_INPUT, "OSC releases",
+                          lambda: runtime.release_held())
+        run_scope.on_stop(run_scope.Stage.CANCEL, "OSC", lambda: runtime.stop())
+        ModeManager().start_run(first)
+        runtime.start()
+        osc_feedback.start(None)
+        got = phone.wait(n, 3)
+        check("run start: full resend to the phone",
+              sorted([("/fb/ax", [0.5], "f"), ("/fb/btn", [0], "i"),
+                      ("/fb/mode", [first], "s")]), sorted(msgs(got)))
+
+        # (1) Send OSC to a target: values and types.
+        n = len(phone.got)
+        send_go(event, Value(True))
+        got = phone.wait(n, 1, "/out/go")
+        check("Send OSC: phone gets address/values/types",
+              [("/out/go", [7, 1.5, "hi", True, 1.0], "ifsTf")], msgs(got))
+        n = len(phone.got)
+        send_go(event, Value(False))
+        check("Send OSC on press only: release sends nothing", [],
+              msgs(phone.quiet(n)))
+
+        # Auto type: the type last received on that address.
+        phone.send_args(port, "/out/auto", 3)
+        wait_for(lambda: osc_output.received_type("/out/auto", 0) is not None)
+        n = len(phone.got)
+        action(phone_id, "/out/auto",
+               [{"source": "input", "value": "", "type": "auto"}])(event, Value(True))
+        check("Send OSC Auto: int after an int came in",
+              [("/out/auto", [1], "i")], msgs(phone.wait(n, 1, "/out/auto")))
+
+        # "reply": to the sender of the last incoming packet.
+        phone2.send_args(port, "/hello", 1)
+        wait_for(lambda: osc_output.last_sender() == (HOST, phone2.port))
+        n1, n2 = len(phone.got), len(phone2.got)
+        reply(event, Value(True))
+        got2 = phone2.wait(n2, 1, "/out/reply")
+        check("reply goes to the last sender (phone 2)",
+              ([("/out/reply", ["ok"], "s")], []),
+              (msgs(got2), msgs(phone.since(n1, "/out/reply"))))
+        phone.send_args(port, "/hello", 1)
+        wait_for(lambda: osc_output.last_sender() == (HOST, phone.port))
+        n1, n2 = len(phone.got), len(phone2.got)
+        reply(event, Value(True))
+        got1 = phone.wait(n1, 1, "/out/reply")
+        check("reply follows a new sender (phone)",
+              ([("/out/reply", ["ok"], "s")], []),
+              (msgs(got1), msgs(phone2.since(n2, "/out/reply"))))
+        set_server(reply_to_sender=False)
+        n = len(phone.got)
+        reply(event, Value(True))
+        check("Reply to sender off: reply sends nothing", [],
+              msgs(phone.quiet(n)))
+        set_server(reply_to_sender=True)
+
+        # (2) Feedback on change.
+        n = len(phone.got)
+        client.send_args("/fbtn", 1.0)
+        on = phone.wait(n, 1, "/fb/btn")
+        n = len(phone.got)
+        client.send_args("/fbtn", 0.0)
+        off = phone.wait(n, 1, "/fb/btn")
+        check("feedback: OSC input echo on change",
+              [("/fb/btn", [1], "i"), ("/fb/btn", [0], "i")], msgs(on + off))
+
+        # Output master switch off: no Send OSC, no feedback.
+        set_server(output_enabled=False)
+        n = len(phone.got)
+        send_go(event, Value(True))
+        client.send_args("/fbtn", 1.0)
+        pump(0.2)
+        client.send_args("/fbtn", 0.0)
+        check("output off: nothing (Send OSC + feedback)", [],
+              msgs(phone.quiet(n, 0.4)))
+        set_server(output_enabled=True)
+        n = len(phone.got)
+        send_go(event, Value(True))
+        check("output back on: Send OSC sends again", 1,
+              len(phone.wait(n, 1, "/out/go")))
+
+        # Rate limit (10/s per address): 21 changes 20 ms apart (~420 ms)
+        # coalesce to a few sends; the latest value wins.
+        pump(0.2)
+        n = len(phone.got)
+        for i in range(21):
+            client.send_args("/fax", i / 20)
+            pump(0.02)
+        wait_for(lambda: bool(phone.since(n, "/fb/ax"))
+                 and phone.since(n, "/fb/ax")[-1]["args"] == [1.0], 1.5)
+        pump(0.3)
+        got = phone.since(n, "/fb/ax")
+        gaps = [round((b["t"] - a["t"]) * 1000) for a, b in zip(got, got[1:])]
+        check("rate limit: 21 changes in ~420 ms coalesce, last value 1.0",
+              "3..7 msgs, last [1.0]",
+              f"{len(got)} msgs {[m['args'] for m in got]}",
+              3 <= len(got) <= 7 and bool(got) and got[-1]["args"] == [1.0])
+        check("rate limit: >= ~100 ms between sends", ">= 85 ms", f"{gaps} ms",
+              all(g >= 85 for g in gaps))
+
+        # Mode change: the mode row and a full resend.
+        pump(0.15)
+        n = len(phone.got)
+        ModeManager().switch_to(Mode("Flight", first))
+        got = phone.wait(n, 3)
+        pump(0.2)
+        got = phone.since(n)
+        check("mode change: phone gets mode name + full set",
+              (["Flight"], full_set),
+              ([m["args"][0] for m in got if m["address"] == "/fb/mode"][:1],
+               sorted({m["address"] for m in got})))
+
+        # Sync: phone asks, gets the full set; no input sees it.
+        pump(0.15)
+        n, k = len(phone.got), len(events)
+        phone.send_args(port, "/gremlin/sync")
+        got = phone.wait(n, 3)
+        pump(0.2)
+        check("sync: phone gets the full set", full_set,
+              sorted(m["address"] for m in phone.since(n)))
+        check("sync never reaches inputs (row on /gremlin/sync)", [],
+              short(take(k)))
+
+        # (3) Encoder axis: auto format, step 0.1, accumulates, clamps.
+        def enc_send(address: str, value: Any, want: int = 1) -> list:  # noqa: ANN401
+            k = len(events)
+            client.send_args(address, value)
+            wait_for(lambda: len(events) >= k + want)
+            return short(take(k))
+
+        got = []
+        for v in (1, 1, 0):
+            got += enc_send("/enc", v)
+        check("encoder auto=direction: 1,1,0 -> 0.1,0.2,0.1",
+              [("A", enc.input_id, 0.1), ("A", enc.input_id, 0.2),
+               ("A", enc.input_id, 0.1)], got)
+        check("encoder: -2 switches to signed -> -0.1",
+              [("A", enc.input_id, -0.1)], enc_send("/enc", -2))
+        k = len(events)
+        client.send_args("/enc", 0)
+        pump(0.3)
+        check("encoder signed after a negative: 0 is no turn", [], short(take(k)))
+        check("encoder signed: 1 -> 0.0", [("A", enc.input_id, 0.0)],
+              enc_send("/enc", 1))
+        check("encoder clamps: 30 -> 1.0", [("A", enc.input_id, 1.0)],
+              enc_send("/enc", 30))
+
+        # Encoder pulses: press/release pairs per tick in that direction.
+        pair_p = [("B", encp.input_id, True), ("B", encp.input_id, False)]
+        pair_n = [("B", encn.input_id, True), ("B", encn.input_id, False)]
+        k = len(events)
+        client.send_args("/encp", 0)  # direction: counter-clockwise
+        pump(0.25)
+        check("pulse_cw ignores a ccw tick (0)", [], short(take(k)))
+        check("pulse_cw: 1 -> one press/release", pair_p,
+              enc_send("/encp", 1, 2))
+        pump(0.1)
+        check("pulse_cw signed 3 -> three pairs", pair_p * 3,
+              enc_send("/encp", 3, 6))
+        pump(0.1)
+        k = len(events)
+        client.send_args("/encp", -1)
+        pump(0.25)
+        check("pulse_cw ignores -1", [], short(take(k)))
+        check("pulse_ccw: -2 -> two pairs", pair_n * 2, enc_send("/encn", -2, 4))
+        pump(0.1)
+
+        # (4) Monitor: in and out with peers and matched names.
+        entries = osc_traffic.recent()
+        cport = client._sock.getsockname()[1]
+        ins = [e for e in entries if e["direction"] == "in"
+               and e["address"] == "/fbtn"]
+        outs = [e for e in entries if e["direction"] == "out"
+                and e["address"] == "/out/go"]
+        hello = [e for e in entries if e["direction"] == "in"
+                 and e["address"] == "/hello"]
+        check("monitor: in /fbtn with peer and matched name",
+              (f"{HOST}:{cport}", [input_name(fbtn)]),
+              (ins[0]["peer"], ins[0]["matched"]) if ins else None)
+        check("monitor: out /out/go with the phone as peer",
+              (f"{HOST}:{phone.port}", [7, 1.5, "hi", True, 1.0]),
+              (outs[0]["peer"], outs[0]["args"]) if outs else None)
+        check("monitor: unmatched in has no input", [],
+              hello[0]["matched"] if hello else None)
+        fb_out = [e for e in entries if e["direction"] == "out"
+                  and e["address"].startswith("/fb/")]
+        check("monitor: feedback sends noted as out", True, bool(fb_out))
+
+        # Stop: everything through the Stop stages.
+        run_scope.stop()
+        running = False
+        ModeManager().end_run()
+        pump(0.1)
+        n = len(phone.got)
+        sent = osc_output.send(phone_id, "/out/go", [1])
+        send_go(event, Value(True))
+        client.send_args("/fbtn", 1.0)
+        check("after Stop: Send OSC and feedback send nothing", (False, []),
+              (sent, msgs(phone.quiet(n))))
+        check("after Stop: port closed", True,
+              runtime._listener is None and port_free(port))
+
+        # hold_open: the Monitor keeps the port open with no Run.
+        osc_traffic.clear()
+        k = len(events)
+        opened = runtime.hold_open("monitor")
+        check("hold_open opens the port with no Run", True,
+              opened and not port_free(port))
+        client.send_args("/fbtn", 1.0)
+        wait_for(lambda: any(e["address"] == "/fbtn" for e in osc_traffic.recent()))
+        seen = [e for e in osc_traffic.recent() if e["address"] == "/fbtn"]
+        check("held open: traffic noted with matched name, no input event",
+              ([input_name(fbtn)], []),
+              (seen[0]["matched"] if seen else None, short(take(k))))
+        runtime.release_open("monitor")
+        pump(0.1)
+        check("release_open closes the port", True,
+              runtime._listener is None and port_free(port))
+        before = len(osc_traffic.recent())
+        client.send_args("/fbtn", 0.0)
+        pump(0.3)
+        check("released: packets not seen", before, len(osc_traffic.recent()))
+    finally:
+        try:
+            if running:
+                run_scope.stop()
+            runtime.release_open("monitor")
+            runtime.stop()
+            osc_feedback.stop()
+            osc_output.reset()
+        finally:
+            client.close()
+            phone.close()
+            phone2.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", help="write the results as JSON here")
     args = parser.parse_args()
     start = time.strftime("%H:%M:%S")
-    try:
-        run_checks()
-    except Exception as exc:  # noqa: BLE001 - reported as a failed check
-        import traceback
+    for part in (run_checks, run_checks2):
+        try:
+            part()
+        except Exception as exc:  # noqa: BLE001 - reported as a failed check
+            import traceback
 
-        traceback.print_exc()
-        got = f"{type(exc).__name__}: {exc}"
-        check("script ran to the end", "no error", got, False)
+            traceback.print_exc()
+            got = f"{type(exc).__name__}: {exc}"
+            check(f"{part.__name__} ran to the end", "no error", got, False)
     end = time.strftime("%H:%M:%S")
 
     w1 = max(len(r["check"]) for r in results)

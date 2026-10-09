@@ -92,7 +92,7 @@ def test_update_validates_settings_and_keeps_uid() -> None:
     row = rows.create(BUTTON, "/a")
     rows.mark_saved()
     for bad in (
-        {"mode": "encoder"},
+        {"mode": "spin"},
         {"cmd_mode": "both"},
         {"data": "1"},
         {"source": -1},
@@ -135,6 +135,7 @@ def test_dict_round_trip_keeps_uids_numbers_and_settings() -> None:
     assert set(data["inputs"][0]) == {
         "uid", "type", "id", "label", "mode", "cmd_mode", "data", "source",
         "range_min", "range_max", "trigger", "delay_ms",
+        "enc_format", "enc_step", "enc_output",
     }
     assert data["inputs"][1]["type"] == "axis" and data["inputs"][2]["id"] == 7
     other = OscRows()
@@ -151,7 +152,7 @@ def test_load_dict_fills_defaults_and_skips_bad_entries() -> None:
         {"uid": "u2", "type": "button", "id": 2, "label": "no-slash"},
         {"uid": "u3", "type": "button", "id": 3, "label": "/a"},
         {"uid": "u1", "type": "button", "id": 4, "label": "/b"},
-        {"uid": "u5", "type": "axis", "id": 1, "label": "/x", "mode": "encoder"},
+        {"uid": "u5", "type": "axis", "id": 1, "label": "/x", "mode": "spin"},
     ], "server": {"port": 9}})
     assert [r.uid for r in rows.rows()] == ["u1"]
     assert rows.rows()[0].cmd_mode == "message"

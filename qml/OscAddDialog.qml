@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // The OSC Add window (D-09-OSC-INPUT): one OSC input with its settings.
-// Typed, Listen and Bulk capture all use the settings chosen here. Opened
+// Typed, Listen and Bulk capture all use the settings chosen here. Encoder
+// mode (D-09-OSC-ENCODER) adds format, output and step size / pulse delay. Opened
 // with openForEdit() it changes an existing input's settings instead.
 
 import QtQuick
@@ -38,6 +39,7 @@ Popup {
     readonly property string buttonHelpText: "The input presses when the value at the source is not zero (0) and releases when it is zero (0).\nA message with no value presses, then releases after the delay.\nUse this mode to trigger button presses from OSC messages."
     readonly property string axisHelpText: "The value at the source is used as an axis value.\nValues from Min to Max are scaled to the range -1.0 to 1.0."
     readonly property string changeHelpText: "The input presses when the value at the source changes, then releases after the delay."
+    readonly property string encoderHelpText: "Each message is one turn of the encoder.\nAxis: each turn moves the axis by the step size (clockwise up, counter-clockwise down).\nPulses: each turn in the chosen direction presses the button, then releases it after the delay.\nAuto works out the format from the values received."
 
     signal accepted(var settings)
 
@@ -83,6 +85,10 @@ Popup {
         _rangeMax.text = "1"
         _triggerOn.checked = false
         _delay.text = "250"
+        _encFormatAuto.checked = true
+        _encStep.text = "0.05"
+        _encOutAxis.checked = true
+        _encDelay.text = "100"
         _message.clear()
     }
 
@@ -92,9 +98,24 @@ Popup {
         editUid = uid
         var st = s || {}
         _cmd.text = st.address || ""
+        var encAxis = st.mode === "encoder" && (st.enc_output || "axis") === "axis"
         if (st.locked)
-            lockedKind = st.mode === "axis" ? "axis" : "button"
-        if (st.mode === "axis")
+            lockedKind = (st.mode === "axis" || encAxis) ? "axis" : "button"
+        if (st.enc_format === "direction")
+            _encFormatDirection.checked = true
+        else if (st.enc_format === "signed")
+            _encFormatSigned.checked = true
+        if (st.enc_step !== undefined && st.enc_step !== null)
+            _encStep.text = String(st.enc_step)
+        if (st.enc_output === "pulse_cw")
+            _encOutCw.checked = true
+        else if (st.enc_output === "pulse_ccw")
+            _encOutCcw.checked = true
+        if (st.mode === "encoder") {
+            _modeEncoder.checked = true
+            if (st.delay_ms !== undefined && st.delay_ms !== null)
+                _encDelay.text = String(st.delay_ms)
+        } else if (st.mode === "axis")
             _modeAxis.checked = true
         else if (st.mode === "change")
             _modeChange.checked = true
@@ -120,7 +141,44 @@ Popup {
             return "axis"
         if (_modeChange.checked)
             return "change"
+        if (_modeEncoder.checked)
+            return "encoder"
         return "button"
+    }
+
+    function encoderFormat() {
+        if (_encFormatDirection.checked)
+            return "direction"
+        if (_encFormatSigned.checked)
+            return "signed"
+        return "auto"
+    }
+
+    function encoderOutput() {
+        if (_encOutCw.checked)
+            return "pulse_cw"
+        if (_encOutCcw.checked)
+            return "pulse_ccw"
+        return "axis"
+    }
+
+    readonly property bool encoderPulses: _modeEncoder.checked && !_encOutAxis.checked
+
+    // An encoder on a locked input keeps its kind: axis output, or pulses.
+    function fitEncoderOutput() {
+        if (lockedKind === "axis")
+            _encOutAxis.checked = true
+        else if (lockedKind === "button" && _encOutAxis.checked)
+            _encOutCw.checked = true
+    }
+
+    function stepError() {
+        if (!_modeEncoder.checked)
+            return ""
+        var v = Number(_encStep.text)
+        if (!_encStep.text.trim().length || isNaN(v) || v <= 0)
+            return "The step size must be a number above 0."
+        return ""
     }
 
     function rangeError() {
@@ -137,7 +195,12 @@ Popup {
     }
 
     function delayError() {
-        if (!_triggerOn.checked)
+        if (encoderPulses) {
+            if (!/^\d+$/.test(_encDelay.text.trim()))
+                return "The delay must be a whole number of milliseconds."
+            return ""
+        }
+        if (!_triggerOn.checked || !_modeButton.checked)
             return ""
         var t = _delay.text.trim()
         if (!/^\d+$/.test(t))
@@ -149,6 +212,11 @@ Popup {
         var trigger = _triggerOn.checked ? true
             : (_loadedTrigger === false ? false : null)
         var dataMode = _messageData.checked
+        var delay = null
+        if (encoderPulses)
+            delay = delayError() === "" ? parseInt(_encDelay.text.trim()) : null
+        else if (_triggerOn.checked && delayError() === "")
+            delay = parseInt(_delay.text.trim())
         return {
             "address": _cmd.text.trim(),
             "mode": selectedMode(),
@@ -158,7 +226,10 @@ Popup {
             "range_min": Number(_rangeMin.text) || 0.0,
             "range_max": _rangeMax.text.trim().length ? Number(_rangeMax.text) : 1.0,
             "trigger": trigger,
-            "delay_ms": _triggerOn.checked && delayError() === "" ? parseInt(_delay.text.trim()) : null
+            "delay_ms": delay,
+            "enc_format": encoderFormat(),
+            "enc_step": stepError() === "" ? Number(_encStep.text) : 0.05,
+            "enc_output": encoderOutput()
         }
     }
 
@@ -167,6 +238,8 @@ Popup {
             return axisHelpText
         if (_modeChange.checked)
             return changeHelpText
+        if (_modeEncoder.checked)
+            return encoderHelpText
         return buttonHelpText
     }
 
@@ -207,7 +280,7 @@ Popup {
 
     // OK: adds the input, or saves the edited input's settings.
     function accept() {
-        var err = rangeError() || delayError()
+        var err = rangeError() || stepError() || delayError()
         if (err.length) {
             _message.show(err, true)
             return false
@@ -334,12 +407,18 @@ Popup {
                 text: "Axis"
                 enabled: _root.lockedKind !== "button"
             }
+            RadioButton {
+                id: _modeEncoder
+                objectName: "oscModeEncoder"
+                text: "Encoder"
+                onCheckedChanged: if (checked) _root.fitEncoderOutput()
+            }
             Item { Layout.fillWidth: true }
             RadioButton { id: _messageOnly; objectName: "oscMessageOnly"; text: "Message only"; checked: true }
             RadioButton { id: _messageData; objectName: "oscMessageData"; text: "Message + data" }
         }
 
-        ButtonGroup { buttons: [_modeChange, _modeButton, _modeAxis] }
+        ButtonGroup { buttons: [_modeChange, _modeButton, _modeAxis, _modeEncoder] }
         ButtonGroup { buttons: [_messageOnly, _messageData] }
 
         RowLayout {
@@ -427,6 +506,91 @@ Popup {
             }
         }
 
+        // Encoder (D-09-OSC-ENCODER): format, output, step size or pulse delay.
+        RowLayout {
+            objectName: "oscEncoderFormatRow"
+            visible: _modeEncoder.checked
+            spacing: Style.dp(8)
+            Label { text: "Format:" }
+            RadioButton { id: _encFormatAuto; objectName: "oscEncFormatAuto"; text: "Auto"; checked: true }
+            RadioButton { id: _encFormatDirection; objectName: "oscEncFormatDirection"; text: "1 = clockwise, 0 = counter-clockwise" }
+            RadioButton { id: _encFormatSigned; objectName: "oscEncFormatSigned"; text: "+n and −n" }
+        }
+        ButtonGroup { buttons: [_encFormatAuto, _encFormatDirection, _encFormatSigned] }
+
+        RowLayout {
+            objectName: "oscEncoderOutputRow"
+            visible: _modeEncoder.checked
+            spacing: Style.dp(8)
+            Label { text: "Output:" }
+            RadioButton {
+                id: _encOutAxis
+                objectName: "oscEncOutAxis"
+                text: "Axis"
+                checked: true
+                enabled: _root.lockedKind !== "button"
+            }
+            RadioButton {
+                id: _encOutCw
+                objectName: "oscEncOutCw"
+                text: "Pulses clockwise"
+                enabled: _root.lockedKind !== "axis"
+            }
+            RadioButton {
+                id: _encOutCcw
+                objectName: "oscEncOutCcw"
+                text: "Pulses counter-clockwise"
+                enabled: _root.lockedKind !== "axis"
+            }
+        }
+        ButtonGroup { buttons: [_encOutAxis, _encOutCw, _encOutCcw] }
+
+        RowLayout {
+            objectName: "oscEncoderStepRow"
+            visible: _modeEncoder.checked && _encOutAxis.checked
+            spacing: Style.dp(8)
+            Label { text: "Step size:" }
+            TextField {
+                id: _encStep
+                objectName: "oscEncStep"
+                text: "0.05"
+                implicitWidth: Style.dp(80)
+            }
+            Label {
+                text: _root.stepError()
+                color: Style.dangerText
+            }
+        }
+
+        RowLayout {
+            objectName: "oscEncoderDelayRow"
+            visible: _root.encoderPulses
+            spacing: Style.dp(6)
+            Label { text: "Release after:" }
+            TextField {
+                id: _encDelay
+                objectName: "oscEncDelay"
+                text: "100"
+                implicitWidth: Style.dp(60)
+            }
+            Label { text: "ms" }
+            Repeater {
+                model: [
+                    {"label": "1/10s", "ms": "100"},
+                    {"label": "1/4s", "ms": "250"},
+                    {"label": "1/2s", "ms": "500"}
+                ]
+                Button {
+                    text: modelData.label
+                    onClicked: _encDelay.text = modelData.ms
+                }
+            }
+            Label {
+                text: _root.delayError()
+                color: Style.dangerText
+            }
+        }
+
         Item {
             Layout.fillWidth: true
             implicitHeight: _helpMeasure.implicitHeight + Style.dp(16)
@@ -491,7 +655,8 @@ Popup {
                 objectName: "oscOk"
                 text: "OK"
                 enabled: _cmd.text.trim().length > 0
-                         && _root.rangeError() === "" && _root.delayError() === ""
+                         && _root.rangeError() === "" && _root.stepError() === ""
+                         && _root.delayError() === ""
                 onClicked: _root.accept()
             }
             Button {

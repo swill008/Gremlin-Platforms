@@ -19,7 +19,12 @@ from typing import Any
 from gremlin.error import GremlinError
 from gremlin.types import InputType
 
-MODES = ("button", "axis", "change")
+MODES = ("button", "axis", "change", "encoder")
+# Encoder (D-09-OSC-ENCODER): how a message gives its turn, and what the
+# input does with it.
+ENC_FORMATS = ("auto", "direction", "signed")
+ENC_OUTPUTS = ("axis", "pulse_cw", "pulse_ccw")
+MAX_ENC_STEP = 2.0
 CMD_MODES = ("message", "data")
 MAX_DELAY_MS = 10000
 
@@ -34,6 +39,9 @@ _DEFAULTS: dict[str, Any] = {
     "range_max": 1.0,
     "trigger": None,
     "delay_ms": None,
+    "enc_format": "auto",
+    "enc_step": 0.05,
+    "enc_output": "axis",
 }
 SETTING_KEYS = tuple(_DEFAULTS)
 
@@ -52,6 +60,9 @@ class OscRow:
     range_max: float = 1.0
     trigger: bool | None = None
     delay_ms: int | None = None
+    enc_format: str = "auto"
+    enc_step: float = 0.05
+    enc_output: str = "axis"
 
     @property
     def identifier(self) -> Identifier:
@@ -69,8 +80,11 @@ class OscRow:
         return (self.label.casefold(), self.cmd_mode, data, self.source)
 
 
-def type_of_mode(mode: str) -> InputType:
-    return InputType.JoystickAxis if mode == "axis" else InputType.JoystickButton
+def type_of_mode(mode: str, enc_output: str = "axis") -> InputType:
+    """An encoder's type follows its output: axis, or a button for pulses."""
+    if mode == "axis" or (mode == "encoder" and enc_output == "axis"):
+        return InputType.JoystickAxis
+    return InputType.JoystickButton
 
 
 def check_address(label: object) -> str:
@@ -141,6 +155,21 @@ def check_settings(settings: dict[str, object]) -> dict[str, Any]:
                 or not 0 <= value <= MAX_DELAY_MS
             ):
                 raise GremlinError(f"Invalid OSC delay: {value!r}")
+        elif key == "enc_format":
+            if value not in ENC_FORMATS:
+                raise GremlinError(f"Invalid OSC encoder format: {value!r}")
+        elif key == "enc_output":
+            if value not in ENC_OUTPUTS:
+                raise GremlinError(f"Invalid OSC encoder output: {value!r}")
+        elif key == "enc_step":
+            try:
+                if isinstance(value, bool):
+                    raise TypeError
+                value = float(value)
+            except (TypeError, ValueError):
+                raise GremlinError(f"Invalid OSC encoder step: {value!r}") from None
+            if not (math.isfinite(value) and 0.0 < value <= MAX_ENC_STEP):
+                raise GremlinError(f"Invalid OSC encoder step: {value!r}")
         out[key] = value
     return out
 
@@ -257,7 +286,7 @@ class OscRows:
         values["data"] = []
         values["mode"] = "axis" if input_type == InputType.JoystickAxis else "button"
         values.update(check_settings(settings))
-        if type_of_mode(values["mode"]) != input_type:
+        if type_of_mode(values["mode"], values["enc_output"]) != input_type:
             raise GremlinError(f"OSC mode {values['mode']} doesn't fit {input_type}")
         if values["range_min"] == values["range_max"]:
             raise GremlinError("OSC range needs two different ends")
@@ -294,7 +323,7 @@ class OscRows:
         new.data = list(new.data)
         if new.range_min == new.range_max:
             raise GremlinError("OSC range needs two different ends")
-        new_type = type_of_mode(new.mode)
+        new_type = type_of_mode(new.mode, new.enc_output)
         if new_type != row.input_type:
             new.input_type = new_type
             new.input_id = self._lowest_free(new_type, skip=row)
@@ -325,6 +354,9 @@ class OscRows:
                     "range_max": row.range_max,
                     "trigger": row.trigger,
                     "delay_ms": row.delay_ms,
+                    "enc_format": row.enc_format,
+                    "enc_step": row.enc_step,
+                    "enc_output": row.enc_output,
                 }
                 for row in self._rows
             ]
@@ -341,8 +373,12 @@ class OscRows:
                 if isinstance(kind, str):
                     kind = InputType.to_enum(kind)
                 settings = {k: entry[k] for k in SETTING_KEYS if k in entry}
-                if "mode" in settings and type_of_mode(settings["mode"]) != kind:
-                    kind = type_of_mode(settings["mode"])
+                if "mode" in settings:
+                    wanted = type_of_mode(
+                        settings["mode"], settings.get("enc_output", "axis")
+                    )
+                    if wanted != kind:
+                        kind = wanted
                 raw_id = entry.get("id")
                 self.create(
                     kind,

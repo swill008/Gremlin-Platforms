@@ -83,6 +83,22 @@ def _logical_device_kept() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _osc_rows_kept() -> Iterator[None]:
+    """OSC's address list is shared too (D-09-OSC-FILE): a test that adds or
+    changes OSC inputs must not leave them, or their unsaved mark, behind."""
+    from gremlin.osc import OscDevice
+
+    rows = OscDevice().rows
+    kept, dirty = rows.to_dict(), rows.dirty
+    yield
+    rows = OscDevice().rows
+    if rows.to_dict() != kept or rows.dirty != dirty:
+        rows.load_dict(kept)
+        if dirty:
+            rows._changed()  # noqa: SLF001 - put the unsaved mark back
+
+
+@pytest.fixture(autouse=True)
 def _no_settings_notice_left() -> Iterator[None]:
     """A test that reads a damaged settings file must not leave the
     'Settings Reset' notice for a later test that builds the app."""

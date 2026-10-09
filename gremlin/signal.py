@@ -52,6 +52,14 @@ class Signal(QtCore.QObject):
     # Options' "OSC settings are in OSC › Module Setup" button: the main
     # window opens OSC's Module Setup, as its card does.
     openOscModuleSetup = QtCore.Signal()
+    # OSC's feedback rows (its file's "feedback" part) changed
+    # (D-09-OSC-FEEDBACK).
+    oscFeedbackChanged = QtCore.Signal()
+    # An OSC message went in or out (D-09-OSC-MONITOR); the Monitor reads
+    # osc_traffic.recent().
+    oscTraffic = QtCore.Signal()
+    # "Find OSC devices" found or lost a device (D-09-OSC-DISCOVERY).
+    oscDevicesFound = QtCore.Signal()
 
     # An input's actions changed where inputItemChanged isn't sent (the
     # Logical Device's action editor): summaries of the profile's actions,

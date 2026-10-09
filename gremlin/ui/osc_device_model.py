@@ -39,11 +39,18 @@ TYPE_LOCKED = (
     "Remove this input's actions first: an axis and a button use different "
     "actions."
 )
-MODES = ("button", "axis", "change")
+MODES = ("button", "axis", "change", "encoder")
 SETTING_KEYS = (
     "mode", "cmd_mode", "data", "source",
     "range_min", "range_max", "trigger", "delay_ms",
+    "enc_format", "enc_step", "enc_output",
 )
+# Encoder settings (D-09-OSC-ENCODER).
+ENC_FORMATS = ("auto", "direction", "signed")
+ENC_OUTPUTS = ("axis", "pulse_cw", "pulse_ccw")
+ENC_DEFAULTS: dict[str, Any] = {
+    "enc_format": "auto", "enc_step": 0.05, "enc_output": "axis",
+}
 
 _IMPORT_LINE = re.compile(r"^(?P<addr>/[^\s,]+)\s*(?:[,\s]\s*(?P<rest>.*))?$")
 
@@ -54,7 +61,7 @@ _SUFFIXES: dict[str, tuple[dict[str, Any], str | None]] = {
     "B": ({"mode": "button"}, None),
     "BNP": ({"mode": "button", "trigger": True}, None),
     "C": ({"mode": "change"}, None),
-    "E": ({"mode": "button"}, "encoder not supported yet, added as a button"),
+    "E": ({"mode": "encoder", "enc_format": "auto", "enc_output": "axis"}, None),
 }
 
 
@@ -122,11 +129,23 @@ def normalize_settings(raw: object) -> dict[str, Any]:
             )
         except (TypeError, ValueError):
             out["delay_ms"] = None
+    if "enc_format" in src:
+        fmt = str(src["enc_format"] or "").strip().lower()
+        out["enc_format"] = fmt if fmt in ENC_FORMATS else "auto"
+    if "enc_step" in src:
+        step = _opt_float(src["enc_step"], ENC_DEFAULTS["enc_step"])
+        out["enc_step"] = step if step > 0 else ENC_DEFAULTS["enc_step"]
+    if "enc_output" in src:
+        output = str(src["enc_output"] or "").strip().lower()
+        out["enc_output"] = output if output in ENC_OUTPUTS else "axis"
     return out
 
 
-def _type_for_mode(mode: str) -> InputType:
-    return InputType.JoystickAxis if mode == "axis" else InputType.JoystickButton
+def _type_for_mode(mode: str, enc_output: str = "axis") -> InputType:
+    """Axis for axis mode and an encoder that drives an axis; else button."""
+    if mode == "axis" or (mode == "encoder" and enc_output == "axis"):
+        return InputType.JoystickAxis
+    return InputType.JoystickButton
 
 
 def _address_error(address: str) -> str:
@@ -252,6 +271,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
             "range_max": row.range_max,
             "trigger": row.trigger,
             "delay_ms": row.delay_ms,
+            **{key: getattr(row, key, value) for key, value in ENC_DEFAULTS.items()},
         }
 
     @staticmethod
@@ -306,7 +326,10 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         if existing is not None:
             return existing, f"{address} is already in the list."
         try:
-            row = _rows().create(_type_for_mode(fields["mode"]), address, **fields)
+            input_type = _type_for_mode(
+                fields["mode"], fields.get("enc_output", "axis")
+            )
+            row = _rows().create(input_type, address, **fields)
         except GremlinError as err:
             return None, str(err)
         return row, ""
@@ -458,10 +481,10 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         error = _address_error(address)
         if error:
             return error
-        new_type = _type_for_mode(fields.get("mode", row.mode))
+        merged = {**self._settings_of(row), **fields}
+        new_type = _type_for_mode(merged["mode"], merged["enc_output"])
         if new_type != row.input_type and self._has_actions(row):
             return TYPE_LOCKED
-        merged = {**self._settings_of(row), **fields}
         if self._duplicate(address, merged, skip_uid=uid) is not None:
             return f"{address} is already in the list."
         try:

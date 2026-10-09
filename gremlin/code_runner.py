@@ -26,6 +26,7 @@ from gremlin import (
     logical_device,
     macro,
     mode_manager,
+    osc_feedback,
     profile,
     run_scope,
     sendinput,
@@ -310,6 +311,12 @@ def __getattr__(name: str) -> object:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
+def _profile_path(running: Any) -> str | None:  # noqa: ANN401
+    """The running profile's file, for OSC feedback's profile-switch resend."""
+    path = getattr(running, "fpath", None)
+    return str(path) if path else None
+
+
 def _where(item: Any) -> str:  # noqa: ANN401
     """"<device> <control> (<mode>)" for an input, for the log."""
     device = str(item.device_id)
@@ -457,6 +464,8 @@ class CodeRunner:
         sendinput.MouseController().start()
         OscRuntime().start()
         self._refresh_axes()
+        # After the Initial Values: the first resend shows them (D-09-OSC-FEEDBACK).
+        osc_feedback.start(_profile_path(running))
 
     def stop(self) -> None:
         """Ends the Run: run_scope runs the Stop stages. Safe to call twice."""
@@ -472,6 +481,7 @@ class CodeRunner:
         stage = run_scope.Stage
         # OSC buttons held at Stop are released first, while the profile's
         # callbacks still see them (like the Logical Device's neutral, R1).
+        on(stage.CUT_INPUT, "OSC feedback", lambda: osc_feedback.stop())
         on(stage.CUT_INPUT, "OSC releases", lambda: OscRuntime().release_held())
         on(stage.CUT_INPUT, "input off", self._cut_input)
         on(stage.CANCEL, "release actions", self._drop_release_actions)

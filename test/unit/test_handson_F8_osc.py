@@ -56,8 +56,6 @@ def test_osc_server_boxes_save_to_the_file_when_module_setup_closes(
     typed = {
         "host": "studio-pc",
         "port": "9123",
-        "output_host": "127.0.0.5",
-        "output_port": "9124",
         "autorelease_delay_ms": "400",
     }
     for key, text in typed.items():

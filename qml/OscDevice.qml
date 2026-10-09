@@ -12,6 +12,7 @@ import Gremlin.Menus
 import Gremlin.Style
 
 import "confirm.js" as Confirm
+import "helpers.js" as Helpers
 
 Item {
     id: _root
@@ -106,6 +107,21 @@ Item {
             return
         }
         _addDialog.openForEdit(uid, _inputList.model.inputSettings(uid))
+    }
+
+    // The Add window filled in from a settings map (the OSC Monitor's
+    // "Add as input…", OscMonitorModel.addSettings): adds, never edits.
+    function openAddWith(settings) {
+        if (editorLocked || !settings || !settings.address)
+            return false
+        _addDialog.openForEdit("", settings)
+        _addDialog.lastParameters = settings.values || ""
+        return true
+    }
+
+    // Tools › OSC Monitor (D-09-OSC-MONITOR); one window, shared with the menu.
+    function openMonitor() {
+        return Helpers.createComponent("WindowOscMonitor.qml")
     }
 
     OscImportDialog {
@@ -262,6 +278,11 @@ Item {
 
             Item { Layout.fillWidth: true }
 
+            Button {
+                objectName: "oscMonitor"
+                text: "Monitor"
+                onClicked: _root.openMonitor()
+            }
             Button {
                 text: "Sort"
                 onClicked: _inputList.model.sortInputs()

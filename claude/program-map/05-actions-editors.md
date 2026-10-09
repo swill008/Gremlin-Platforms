@@ -70,6 +70,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - `action_plugins/pause_resume/` (239): pause, resume or toggle the running profile.
 - `action_plugins/play_sound/` (287): play a sound file.
 - `action_plugins/text_to_speech/` (383): speak a text.
+- `action_plugins/send_osc/` (new 2026-10-09, D-09-OSC-OUTPUT): Send OSC, send one OSC message to a target (09 S98-S101); the functor calls `gremlin/osc_output.send`. Spec here: S109-S111.
 - `action_plugins/run_command/` (295): start a program with arguments.
 - `action_plugins/description/` (202): a note; does nothing.
 - `action_plugins/root/` (175): internal top of every binding; runs its children in order.
@@ -403,6 +404,12 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S107** Damaged: a profile with a broken action reference opens; a Undo step that can't be read is kept and reported. [tracker: ACT1] [test-plan: AUDIT2-B-UNDO]
 - **S108** Crash: OK'd edits not saved are lost on a crash (no recovery copy for profiles). [user confirmed 2026-10-06; was code only]
 
+### K. Send OSC
+
+- **S109** Send OSC should be offered on buttons, keys and axes. [changed 2026-10-09, user: D-09-OSC-OUTPUT]
+- **S110** Its editor should have: **Target** (OSC's Targets list, or **Reply to sender**), **Address** (starts with "/"), **Values** (**Fixed**, a list built with **Add Value**, or **Input value**: a button 1/0, an axis scaled from -1..1 to **Min**..**Max**), a type per value (**Auto**, **Int**, **Float**, **Bool**, **Text**; Auto = the type last received on that address, else Float), and send on press, release or both (the action's usual activation setting). (09 S98-S100) [changed 2026-10-09, user: D-09-OSC-OUTPUT]
+- **S111** At Run it should send only while the profile runs and OSC output is on; each send shows in the OSC Monitor as Out. (09 S94, S101) [changed 2026-10-09, user: D-09-OSC-OUTPUT]
+
 ## 9. Questions for the user
 
 - **Q1** OK on an action two inputs share (Merge Axis, Dual Axis Deadzone, a shared Reference) splits them today. Map 2 decisions A1 (OK changes it for both) and A4 (picking a shared action edits a copy until OK) are still open. *Recommend:* A1 (a) and A4 as in map 2; add Add Action -> Merge Axis "Reuse" to A4's scope, since it also puts the live shared object into the draft (RB2).
@@ -532,6 +539,7 @@ are replaced by Q5 and Q10 below. Every question answered as recommended:
 | Q19 | Chain moves to gremlin.clock; the UI rate limit stays |
 | Q20 | Catalog Delete asks (as the code does); test-plan IC-06 marked superseded |
 | S43 | 2026-10-07 (D-05-S43-BOTHROWS): the Note shows on the Configuration list's input row and the Keyboard page's key row |
+| S109-S111 | 2026-10-09 (D-09-OSC-OUTPUT; user: "go with your recommendations, approved, go ahead"): the Send OSC action |
 
 The section 8 statements (with the replacements above) are now the
 definition of correct for this subsystem.

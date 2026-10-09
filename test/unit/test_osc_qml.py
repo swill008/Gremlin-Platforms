@@ -533,7 +533,8 @@ def test_osc_add_import_and_rows_reach_the_model(tmp_path: pathlib.Path) -> None
     assert got["rename-error"] == "An OSC address must start with /."
 
     help_text = got["import-help"]
-    for piece in ("A: axis", "BNP", "C: change", "E: encoder, not supported yet",
+    for piece in ("A: axis", "BNP", "C: change",
+                  "E: encoder, added as an encoder axis",
                   "unknown suffix", "space or a comma"):
         assert piece in help_text, piece
     assert got["import-call"] == ["/a A\n/b, BNP"]

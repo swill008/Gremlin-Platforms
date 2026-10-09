@@ -8,6 +8,8 @@ import QtQuick.Layouts
 import Gremlin.Config
 import Gremlin.Style
 
+import "confirm.js" as Confirm
+
 // OSC's Module Setup "Server" section (D-09-OSC-FILE point 4). Each change
 // is checked and written to OSC's file at once, and takes effect at once.
 Frame {
@@ -20,8 +22,6 @@ Frame {
     function commit() {
         _host.save()
         _port.save()
-        _outHost.save()
-        _outPort.save()
         _delay.save()
     }
     Component.onDestruction: commit()
@@ -95,33 +95,32 @@ Frame {
                 Layout.preferredWidth: Style.dp(80)
                 inputMethodHints: Qt.ImhDigitsOnly
             }
-
-            Label { text: "Output host" }
-            SettingField {
-                id: _outHost
-                objectName: "oscServerOutputHost"
-                key: "output_host"
-                saved: _model.outputHost
-                Layout.fillWidth: true
-            }
-            Label { text: "Port" }
-            SettingField {
-                id: _outPort
-                objectName: "oscServerOutputPort"
-                key: "output_port"
-                saved: _model.outputPort
-                Layout.preferredWidth: Style.dp(80)
-                inputMethodHints: Qt.ImhDigitsOnly
-            }
         }
 
+        // This PC's addresses and the port, for the app that sends here.
         Label {
-            text: "The output host and port are used once OSC output is built."
+            text: "Use one of these in your app:"
             color: Style.fgMuted
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
         }
-
+        Repeater {
+            model: _model.pcAddresses
+            delegate: RowLayout {
+                required property string modelData
+                required property int index
+                readonly property string address: modelData + ":" + _model.port
+                spacing: Style.dp(8)
+                Label {
+                    objectName: "oscPcAddress" + index
+                    text: parent.address
+                    font.family: Style.monoFont
+                }
+                Button {
+                    objectName: "oscCopyAddress" + index
+                    text: "Copy"
+                    onClicked: _model.copyText(parent.address)
+                }
+            }
+        }
         RowLayout {
             spacing: Style.dp(8)
             CheckBox {
@@ -146,6 +145,230 @@ Frame {
             text: "Pad address-only messages (treat them as value 1.0)"
             checked: _model.padArgs
             onClicked: _model.setValue("pad_args", checked)
+        }
+
+        SectionHeading {
+            text: "Output"
+            Layout.fillWidth: true
+            Layout.topMargin: Style.dp(8)
+        }
+
+        CheckBox {
+            objectName: "oscOutputEnabled"
+            text: "OSC output (Send OSC actions and feedback)"
+            checked: _model.outputEnabled
+            onClicked: _model.setValue("output_enabled", checked)
+        }
+
+        CheckBox {
+            objectName: "oscReplyToSender"
+            text: "Reply to sender"
+            checked: _model.replyToSender
+            onClicked: _model.setValue("reply_to_sender", checked)
+            PointerTip {
+                text: "The \"Reply\" target sends to the computer the last "
+                      + "OSC message came from."
+                show: parent.hovered
+            }
+        }
+
+        Label {
+            text: "Targets"
+            font.bold: true
+        }
+
+        EmptyState {
+            objectName: "oscTargetsEmpty"
+            visible: _model.targets.length === 0
+            text: "No targets yet. Add one below."
+            Layout.fillWidth: true
+        }
+
+        Repeater {
+            id: _targetRows
+            model: _model.targets
+            delegate: RowLayout {
+                required property var modelData
+                required property int index
+                objectName: "oscTarget" + index
+                spacing: Style.dp(8)
+                Layout.fillWidth: true
+                Label {
+                    objectName: "oscTargetName" + index
+                    text: modelData.name
+                    font.bold: true
+                    Layout.preferredWidth: Style.dp(120)
+                    elide: Text.ElideRight
+                }
+                Label {
+                    objectName: "oscTargetAddress" + index
+                    text: modelData.host + ":" + modelData.port
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+                Button {
+                    objectName: "oscTargetEdit" + index
+                    text: "Edit"
+                    onClicked: _targetForm.edit(modelData)
+                }
+                DangerButton {
+                    objectName: "oscTargetRemove" + index
+                    text: "Remove"
+                    onClicked: {
+                        var target = modelData
+                        Confirm.ask(_root, {
+                            title: "Remove target " + target.name + "?",
+                            text: "Send OSC actions and feedback rows that "
+                                  + "use it will have no target.",
+                            undoable: true,
+                            action: "Remove",
+                            onAccept: function() {
+                                _model.removeTarget(target.id)
+                                if (_targetForm.editId === target.id)
+                                    _targetForm.reset()
+                            }
+                        })
+                    }
+                }
+            }
+        }
+
+        // Add a target, or change the one being edited.
+        RowLayout {
+            id: _targetForm
+            property string editId: ""
+            spacing: Style.dp(8)
+            Layout.fillWidth: true
+
+            function edit(target) {
+                editId = target.id
+                _targetName.text = target.name
+                _targetHost.text = target.host
+                _targetPort.text = String(target.port)
+                _targetName.forceActiveFocus()
+            }
+            function reset() {
+                editId = ""
+                _targetName.text = ""
+                _targetHost.text = ""
+                _targetPort.text = "8000"
+            }
+            function submit() {
+                var done = editId.length
+                    ? _model.editTarget(editId, _targetName.text, _targetHost.text,
+                                        _targetPort.text)
+                    : _model.addTarget(_targetName.text, _targetHost.text,
+                                       _targetPort.text)
+                if (done)
+                    reset()
+            }
+
+            TextField {
+                id: _targetName
+                objectName: "oscTargetNameField"
+                placeholderText: "Name"
+                selectByMouse: true
+                Layout.preferredWidth: Style.dp(120)
+                onAccepted: _targetForm.submit()
+            }
+            TextField {
+                id: _targetHost
+                objectName: "oscTargetHostField"
+                placeholderText: "IP address or computer name"
+                selectByMouse: true
+                Layout.fillWidth: true
+                onAccepted: _targetForm.submit()
+            }
+            TextField {
+                id: _targetPort
+                objectName: "oscTargetPortField"
+                text: "8000"
+                selectByMouse: true
+                inputMethodHints: Qt.ImhDigitsOnly
+                Layout.preferredWidth: Style.dp(70)
+                onAccepted: _targetForm.submit()
+            }
+            Button {
+                objectName: "oscTargetSave"
+                text: _targetForm.editId.length ? "Save Target" : "Add Target"
+                onClicked: _targetForm.submit()
+            }
+            Button {
+                objectName: "oscTargetCancel"
+                visible: _targetForm.editId.length > 0
+                text: "Cancel"
+                onClicked: _targetForm.reset()
+            }
+        }
+
+        SectionHeading {
+            text: "Discovery"
+            Layout.fillWidth: true
+            Layout.topMargin: Style.dp(8)
+        }
+
+        Label {
+            objectName: "oscDiscoveryUnavailable"
+            visible: !_model.discoveryAvailable
+            text: "Discovery is not available on this PC."
+            color: Style.fgMuted
+        }
+
+        CheckBox {
+            objectName: "oscAnnounce"
+            enabled: _model.discoveryAvailable
+            text: "Announce this PC"
+            checked: _model.announce
+            onClicked: _model.setValue("announce", checked)
+            PointerTip {
+                text: "Lets OSC apps on your network find this PC and its port."
+                show: parent.hovered
+            }
+        }
+
+        CheckBox {
+            objectName: "oscFindDevices"
+            enabled: _model.discoveryAvailable
+            text: "Find OSC devices"
+            checked: _model.findDevices
+            onClicked: _model.setValue("find_devices", checked)
+            PointerTip {
+                text: "Lists OSC apps on your network that announce themselves."
+                show: parent.hovered
+            }
+        }
+
+        Label {
+            objectName: "oscFoundEmpty"
+            visible: _model.findDevices && _model.foundDevices.length === 0
+            text: "No OSC devices found yet."
+            color: Style.fgMuted
+        }
+
+        Repeater {
+            model: _model.findDevices ? _model.foundDevices : []
+            delegate: RowLayout {
+                required property var modelData
+                required property int index
+                objectName: "oscFound" + index
+                spacing: Style.dp(8)
+                Label {
+                    objectName: "oscFoundName" + index
+                    text: modelData.name
+                    Layout.preferredWidth: Style.dp(160)
+                    elide: Text.ElideRight
+                }
+                Label {
+                    text: modelData.host + ":" + modelData.port
+                    Layout.fillWidth: true
+                }
+                Button {
+                    objectName: "oscFoundAdd" + index
+                    text: "Add as Target"
+                    onClicked: _model.addFoundTarget(modelData.name, modelData.host,
+                                                     modelData.port)
+                }
+            }
         }
 
         MessageLine {

@@ -376,6 +376,20 @@ def _show_stubs() -> bool:
     return bool(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SHOW_STUBS))
 
 
+def _osc_address(guid: str, kind: str, hid: int) -> str:
+    """An OSC input's address ("/fire"), its name when the user gave none;
+    "" for any other device."""
+    if guid_key(guid) != guid_key(ids.OSC):
+        return ""
+    try:
+        from gremlin.modules.claim import type_of
+        from gremlin.osc_persist import osc_address
+
+        return osc_address(type_of(kind), hid)
+    except Exception:  # noqa: BLE001 - no OSC rows: the plain name
+        return ""
+
+
 def _load_module_doc(device_name: str, guid: str = "") -> dict:
     """The device's module file, from the store ({} when missing or
     damaged). Pass the device's id: twins share a name (decision F4)."""
@@ -1720,9 +1734,13 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     def _set_last(self, row: ModuleRow, kind: str, hid: int, claim: dict | None) -> None:
         hardware = f"{kind} {hid}"
-        friendly = claim_friendly(claim, kind, hid) or hardware.replace(
-            "button", "Button"
-        ).replace("axis", "Axis").replace("hat", "Hat")
+        friendly = (
+            claim_friendly(claim, kind, hid)
+            or _osc_address(row.guid, kind, hid)
+            or hardware.replace("button", "Button")
+            .replace("axis", "Axis")
+            .replace("hat", "Hat")
+        )
         # The same input again (an axis moving): the card already shows it.
         if self._last.get(row.slug) == (friendly, hardware):
             return

@@ -147,6 +147,8 @@ if _startup_failure is None:
         import gremlin.ui.util
         import gremlin.osc
         import gremlin.ui.osc_device_model  # noqa: F401
+        import gremlin.ui.osc_feedback_model  # noqa: F401
+        import gremlin.ui.osc_monitor_model  # noqa: F401
         import gremlin.ui.device_names  # noqa: F401
         import gremlin.ui.highlight_option  # loaded by device_names
         import gremlin.ui.hidhide  # noqa: F401
@@ -352,6 +354,14 @@ def shutdown_cleanup() -> None:
             gremlin.run_scope.stop()  # a Run with no window (tests, scripts)
     except Exception:
         log.exception("Shutdown: backend")
+    try:
+        # OSC discovery: goodbye on the network, zeroconf closed (only when
+        # it was loaded; it never runs with both switches off).
+        discovery = sys.modules.get("gremlin.osc_discovery")
+        if discovery is not None:
+            discovery.shutdown()
+    except Exception:
+        log.exception("Shutdown: OSC discovery")
     try:
         from gremlin.modules import output
 
@@ -1219,6 +1229,14 @@ def main() -> int:
         # Threads started before the failure must not keep the process alive.
         os._exit(1)
     app._instance_lock = lock
+    try:
+        # OSC discovery follows the saved switches (both off: nothing runs).
+        # Returns at once; the network work is on its own thread.
+        from gremlin import osc_discovery
+
+        osc_discovery.start()
+    except Exception:
+        logging.getLogger("system").exception("Could not start OSC discovery")
     app.exec()
     logging.getLogger("system").info("Terminating Gremlin")
     try:

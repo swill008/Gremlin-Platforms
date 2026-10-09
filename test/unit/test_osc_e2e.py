@@ -397,7 +397,7 @@ def test_import_text_with_suffixes_saves_settings(env: Path) -> None:
     result = model.importInputs(text)
     lines = result.splitlines()
     assert lines[0] == "Added 6, skipped 2"
-    assert any("/e E" in line and "encoder" in line for line in lines[1:])
+    assert not any("/e E" in line for line in lines[1:])
     assert any("/f X" in line for line in lines[1:])
     assert any("nope" in line for line in lines[1:])
 
@@ -409,6 +409,7 @@ def test_import_text_with_suffixes_saves_settings(env: Path) -> None:
         "/b": (BUTTON, "button", None),
         "/c": (BUTTON, "button", True),
         "/d": (BUTTON, "change", None),
-        "/e": (BUTTON, "button", None),
+        "/e": (AXIS, "encoder", None),  # D-09-OSC-ENCODER: encoder axis
         "/f": (BUTTON, "button", None),
     }
+    assert (rows["/e"].enc_format, rows["/e"].enc_output) == ("auto", "axis")

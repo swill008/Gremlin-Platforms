@@ -4,9 +4,11 @@
 
 from __future__ import annotations
 
+import importlib
 import logging
 import math
 import socket
+import sys
 import threading
 from collections.abc import Callable
 from typing import Any
@@ -32,7 +34,10 @@ DEFAULT_PORT = 8001
 DEFAULT_OUTPUT_PORT = 8000
 DEFAULT_AUTORELEASE_MS = 250
 
-MessageCallback = Callable[[str, tuple[Any, ...]], None]
+# address, args, peer (host, port) or None.
+MessageCallback = Callable[[str, tuple[Any, ...], "tuple[str, int] | None"], None]
+# Most pulses one encoder message can queue (a wild value can't flood).
+MAX_ENC_TICKS = 32
 
 
 def local_ipv4_addresses() -> list[str]:
@@ -197,7 +202,7 @@ class OscListener:
         from pythonosc.osc_server import ThreadingOSCUDPServer
 
         dispatcher = Dispatcher()
-        dispatcher.set_default_handler(self._on_message)
+        dispatcher.set_default_handler(self._on_message, needs_reply_address=True)
         self._server = ThreadingOSCUDPServer((self.host, self.port), dispatcher)
         # Stopping waits for the server's next poll (0.5 s at most).
         self._thread = threads.start(
@@ -214,12 +219,17 @@ class OscListener:
         self._thread = None
         log.info("OSC listener stopped")
 
-    def _on_message(self, address: str, *args: Any) -> None:
+    def _on_message(
+        self, client: Any, address: str, *args: Any  # noqa: ANN401
+    ) -> None:
         address = (address or "").casefold()
         if address == "/noop":
             return
+        peer = None
+        if isinstance(client, (tuple, list)) and len(client) >= 2:
+            peer = (str(client[0]), int(client[1]))
         if self.callback is not None:
-            self.callback(address, args)
+            self.callback(address, args, peer)
 
 
 SERVER_DEFAULTS: dict[str, Any] = {
@@ -276,6 +286,50 @@ def scale_axis(value: float, low: float, high: float) -> float:
     return max(-1.0, min(1.0, scaled))
 
 
+_MISSING_HOOKS: set[str] = set()
+
+
+def _hook(module: str, name: str) -> Callable[..., Any] | None:
+    """A function of another OSC module (traffic, output, feedback), or None
+    while that module is missing."""
+    full = f"gremlin.{module}"
+    mod = sys.modules.get(full)
+    if mod is None:
+        if module in _MISSING_HOOKS:
+            return None
+        try:
+            mod = importlib.import_module(full)
+        except ImportError:
+            _MISSING_HOOKS.add(module)
+            return None
+    func = getattr(mod, name, None)
+    return func if callable(func) else None
+
+
+def _call_hook(module: str, name: str, *args: Any) -> Any:  # noqa: ANN401
+    func = _hook(module, name)
+    if func is None:
+        return None
+    try:
+        return func(*args)
+    except Exception:
+        log.exception("OSC %s.%s failed", module, name)
+        return None
+
+
+def input_name(row: OscRow) -> str:
+    kind = "Axis" if row.input_type == InputType.JoystickAxis else "Button"
+    return f"OSC {kind} {row.input_id}"
+
+
+def encoder_turn(fmt: str, value: float) -> float:
+    """Steps turned (+ clockwise, - counter-clockwise) for a format:
+    "direction" is 1 = cw, 0 = ccw; "signed" is +n / -n."""
+    if fmt == "direction":
+        return 1.0 if value != 0.0 else -1.0
+    return value
+
+
 def profile_uses_osc() -> bool:
     """The open profile has a binding or Assign Hardware link on an OSC
     input (any mode); both are input items under OSC's guid."""
@@ -294,7 +348,7 @@ _UNSET = object()
 
 @SingletonDecorator
 class OscRuntime(QtCore.QObject):
-    incoming = QtCore.Signal(str, object)
+    incoming = QtCore.Signal(str, object, object)
     learned = QtCore.Signal(str, object)
     listenChanged = QtCore.Signal()
 
@@ -313,6 +367,12 @@ class OscRuntime(QtCore.QObject):
         self._last: dict[str, Any] = {}
         # Buttons pressed and not yet released: uid -> the mode pressed in.
         self._held: dict[str, str] = {}
+        # Who holds the port open without a Run (the OSC Monitor).
+        self._holders: set[str] = set()
+        # Encoder state per input uid (D-09-OSC-ENCODER).
+        self._enc_format: dict[str, str] = {}
+        self._enc_value: dict[str, float] = {}
+        self._enc_pending: dict[str, int] = {}
         self.incoming.connect(self._on_main)
         from gremlin.signal import signal as ui_signal
 
@@ -354,8 +414,27 @@ class OscRuntime(QtCore.QObject):
             self.listenChanged.emit()
             log.info("OSC listen-once cancelled")
 
+    def hold_open(self, token: str) -> bool:
+        """Keeps the port open for token (the OSC Monitor) until
+        release_open(token), with or without a Run; False when it can't bind."""
+        self._holders.add(str(token))
+        self._bind()
+        return self._listener is not None
+
+    def release_open(self, token: str) -> None:
+        """token no longer needs the port; it closes when nothing else does."""
+        self._holders.discard(str(token))
+        self._close_if_idle()
+
+    def is_open(self) -> bool:
+        return self._listener is not None
+
     def _needs_port(self) -> bool:
-        return self._learn or (self._running and self._uses_osc)
+        return (
+            self._learn
+            or bool(self._holders)
+            or (self._running and self._uses_osc)
+        )
 
     def _close_if_idle(self) -> None:
         if not self._needs_port():
@@ -423,6 +502,7 @@ class OscRuntime(QtCore.QObject):
         """Stop, while the profile's callbacks still run: every held button
         (a press not yet released, or waiting on its auto-release) gets one
         release; pending auto-releases are cancelled."""
+        self._enc_pending.clear()
         for uid in list(self._timers):
             self._cancel_release(uid)
         held, self._held = self._held, {}
@@ -437,10 +517,12 @@ class OscRuntime(QtCore.QObject):
         self._uses_osc = False
         self.release_held()
         self._last.clear()
+        self._enc_format.clear()
+        self._enc_value.clear()
         self._hold_learn = False
         self._learn = False
         self.listenChanged.emit()
-        self._unbind()
+        self._close_if_idle()
 
     def sync_bind(self) -> None:
         """Settings changed: apply them at once while a profile runs or a
@@ -454,8 +536,13 @@ class OscRuntime(QtCore.QObject):
             self._hold_learn = False
             self.listenChanged.emit()
 
-    def _from_thread(self, address: str, args: tuple[Any, ...]) -> None:
-        self.incoming.emit(address, args)
+    def _from_thread(
+        self,
+        address: str,
+        args: tuple[Any, ...],
+        peer: tuple[str, int] | None = None,
+    ) -> None:
+        self.incoming.emit(address, args, peer)
 
     # -- inputs (D-09-OSC-INPUT) ----------------------------------------------
 
@@ -519,9 +606,54 @@ class OscRuntime(QtCore.QObject):
         row = OscDevice().rows.by_uid(uid)
         if row is not None:
             self._emit_button(row, False, mode)
+            # An encoder's queued ticks: one more press + release each.
+            pending = self._enc_pending.get(uid, 0)
+            if pending > 0:
+                self._enc_pending[uid] = pending - 1
+                self._pulse(row, mode)
+            else:
+                self._enc_pending.pop(uid, None)
+
+    def _encoder(self, row: OscRow, value: object, mode: str) -> None:
+        """One encoder message (D-09-OSC-ENCODER). Auto picks the format from
+        what the input has sent: a negative or a value other than 0/1 means
+        signed (from then on), else direction. The axis moves by step per
+        tick, clamped; a pulse output presses and releases once per tick its
+        way, after the input's delay."""
+        number = _number(value)
+        if number is None:
+            return
+        fmt = row.enc_format
+        if fmt == "auto":
+            fmt = self._enc_format.get(row.uid, "direction")
+            if number not in (0.0, 1.0):
+                fmt = "signed"
+            self._enc_format[row.uid] = fmt
+        turn = encoder_turn(fmt, number)
+        if turn == 0.0:
+            return
+        if row.enc_output == "axis":
+            current = self._enc_value.get(row.uid, 0.0) + row.enc_step * turn
+            current = max(-1.0, min(1.0, current))
+            self._enc_value[row.uid] = current
+            self._emit_axis(row, current, mode)
+            return
+        if (turn > 0) != (row.enc_output == "pulse_cw"):
+            return
+        ticks = min(MAX_ENC_TICKS, max(1, round(abs(turn))))
+        if row.uid in self._timers:
+            # A pulse is under way: these follow it.
+            pending = self._enc_pending.get(row.uid, 0) + ticks
+            self._enc_pending[row.uid] = min(MAX_ENC_TICKS, pending)
+            return
+        self._enc_pending[row.uid] = ticks - 1
+        self._pulse(row, mode)
 
     def _apply(self, row: OscRow, args: tuple[Any, ...], mode: str) -> None:
         value = _value_at(args, row.source)
+        if row.mode == "encoder":
+            self._encoder(row, value, mode)
+            return
         if row.input_type == InputType.JoystickAxis:
             number = _number(value)
             if number is not None:
@@ -552,10 +684,37 @@ class OscRuntime(QtCore.QObject):
         self._cancel_release(row.uid)
         self._emit_button(row, is_pressed((value,)), mode)
 
-    def _on_main(self, address: str, args: object) -> None:
+    def _on_main(
+        self,
+        address: str,
+        args: object,
+        peer: tuple[str, int] | None = None,
+    ) -> None:
+        payload = tuple(args) if isinstance(args, (tuple, list)) else ()
+        # Feedback's sync address is answered there and reaches no input.
+        if _call_hook("osc_feedback", "handle_incoming", address, payload, peer):
+            # The Monitor still shows it (all incoming messages, D-09-OSC-MONITOR).
+            _call_hook("osc_traffic", "note", "in", address, payload, peer, ["Sync"])
+            return
+        if peer is not None:
+            _call_hook("osc_output", "note_sender", peer[0], peer[1])
+        _call_hook("osc_output", "note_received_type", address, payload)
+        matched = self._handle(address, payload)
+        _call_hook(
+            "osc_traffic",
+            "note",
+            "in",
+            address,
+            payload,
+            peer,
+            [input_name(row) for row in matched],
+        )
+
+    def _handle(self, address: str, payload: tuple[Any, ...]) -> list[OscRow]:
+        """Listen, then the inputs while a profile runs; returns the inputs
+        matched (also with no Run, for the Monitor)."""
         from gremlin.mode_manager import ModeManager
 
-        payload = tuple(args) if isinstance(args, (tuple, list)) else ()
         if self._learn:
             if not self._hold_learn:
                 self._learn = False
@@ -565,12 +724,12 @@ class OscRuntime(QtCore.QObject):
             # A single Listen ends on its message; with no profile running
             # the port closes.
             self._close_if_idle()
-        if not self._running:
-            return
         rows = OscDevice().rows.matches(address, payload)
+        if not self._running:
+            return rows
         if not rows:
             log.debug("OSC ignored unmatched address %s %s", address, payload)
-            return
+            return rows
         if not payload and self._settings.get("pad_args"):
             payload = (1.0,)
         mode = ModeManager().current.name
@@ -583,3 +742,4 @@ class OscRuntime(QtCore.QObject):
                 row.input_id,
             )
             self._apply(row, payload, mode)
+        return rows

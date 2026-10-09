@@ -549,6 +549,25 @@ function topics() {
             related: ["configuration-actions-play-sound"]
         },
         {
+            id: "configuration-actions-send-osc",
+            section: actions,
+            title: "Send OSC",
+            body: "<p>Sends an OSC message, for example to light a Stream Deck key or move a fader in another program. You can put it on a button, a key or an axis.</p>"
+                + "<ol>"
+                + "<li>Choose the <b>Target</b>: one of OSC's targets, or <b>Reply to sender</b> (whoever sent the last message).</li>"
+                + "<li>Type the <b>Address</b>. It starts with \"/\".</li>"
+                + "<li>Under <b>Values</b>, choose <b>Fixed</b> and add values with <b>Add Value</b>, or <b>Input value</b> to send the input's own value: 1 or 0 for a button, and for an axis a number between <b>Min:</b> and <b>Max:</b>.</li>"
+                + "<li>Choose each value's type: <b>Auto</b> (the type last received on that address, else Float), <b>Int</b>, <b>Float</b>, <b>Bool</b> or <b>Text</b>.</li>"
+                + "<li>On a button or key, choose whether it sends on press, on release or both.</li>"
+                + "</ol>"
+                + _good([
+                    "It sends only while the profile runs, and only while <b>OSC output</b> is on in OSC's Module Setup.",
+                    "Every message it sends shows in the OSC Monitor as <b>Out</b>.",
+                    "Targets are set in the <b>Server</b> section of OSC's Module Setup; see <a href=\"topic:options-profile-osc\">Set up OSC</a>."
+                ]),
+            related: ["options-profile-osc"]
+        },
+        {
             id: "configuration-actions-run-command",
             section: actions,
             title: "Run Command",

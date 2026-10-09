@@ -45,7 +45,7 @@ Python
 QML / JS
 - `qml/Main.qml` (2634): main window: title (the profile only, "* name" / "Untitled"; the title bar puts "Gremlin-Platforms R1 <version> - " first via gremlin/ui/window_titles.py, S57), toolbar, the mode bar under it (Mode box, Manage Modes), footer, menu bar, shortcuts, palette, dialogs (error, notice, save-before-continue; Save As and Open are `FilePicker` kind "profile", S143), quit chain (`quitGremlin`, `guardUnsavedChanges`, `deactivateThenQuit`, `onClosing`), tray hooks `enterTray/leaveTray`, Help link targets (`_helpLinkCheck`, `_helpLinkReveal`, `_helpPulse`, S139), page loaders. Toolbar Device Library button `_deviceLibraryButton` (bookshelf U+F1A5, tooltip "Every device and its saved setups") → `openDeviceLibrary("", "", "")` (S58); tests `test_final_01.py::test_s58_s59_s61_the_toolbar`, `test_mode_bar.py::test_the_toolbar_device_library_button_opens_the_window`.
 - `qml/DeviceTabBar.qml` (75): the scrolling tab bar of device tabs (`DeviceList.qml`, Main).
-- `qml/main_commands.js` (124): the main window's command list (id, text, group, shortcut, keywords, enabled, run).
+- `qml/main_commands.js` (124): the main window's command list (id, text, group, shortcut, keywords, enabled, run). From 2026-10-09 Tools › OSC Monitor (S144; window `qml/WindowOscMonitor.qml`, page 09).
 - `theme/Gremlin/Menus/commands.js` (235), `theme/Gremlin/Menus/CommandPalette.qml` (176): the shared command registry, `trigger`, search, palette.
 - `qml/helpers.js` (193), `qml/window_registry.js` (17): one open-window list for the whole program (`createComponent`, `toggleComponent`, `windowOf`).
 - `qml/DialogOptions.qml` (254, builds only the page you open; search is the shared `SearchBox` `optionsSearch` with `_countFound`), `ConfigSection.qml` (132; its old "No setting matches" line is gone, the `SearchBox` says "Nothing matches"), `ConfigSectionButton.qml` (55), `ConfigGroup.qml` (339; a path setting's chooser is one `FilePicker` `optionPathPicker`, kind "log" for the Logs folder and "other" otherwise, starting in the setting's folder), `OptionEntryCard.qml` (74), `DynamicItemLoader.qml` (113: loads a custom row's QML), and the `Option*.qml` custom rows (log level `OptionLogLevel.qml`, UI scale, Windows scaling, auto-load `OptionProfileAutoLoading.qml` (276: Select Profile / Browse Executable are `FilePicker` "profile" / "other"; remove is a `DangerButton` that asks the shared question, `askRemove`), Add Action Menu, TTS voice, highlight speed `OptionHighlightSpeed.qml`, status cards `OptionStatusCards.qml`).
@@ -147,6 +147,7 @@ Settings keys this subsystem registers or uses (others register their own; see G
 | Any shortcut | `Shortcut` per command `Main.qml:994` | `Commands.trigger(id)` (does nothing if the command isn't available now) |
 | Tools → … (viewers, device setup, mapping, History, Options) | `openTool` / `openToolWith` / `openConfigureModule` / `openLogicalDevice` / `openBlankButtonMap` | `Helpers.createComponent` (one window per file, shared registry) |
 | Debug → Live Log Reader | `openTool("DialogLiveLog.qml")` | `LiveLog`, `DebugLog`, `InputMonitor`; 400 ms refresh timer |
+| Tools › OSC Monitor | `main_commands.js` / `Main.qml` (D-09-OSC-MONITOR) | opens `WindowOscMonitor.qml` (one window; 09 S90-S93) |
 | Help (F1) in the main window | `main_commands.js:111` | `openToolWith("DialogHelp.qml", { chapter: "" })` → `help/index.js topics("")` (whole book) |
 | Help (F1) in the Button Map / Device Library | `DialogJoystickButtonMap.qml:1113`, `WindowDeviceLibrary.qml:582` | `DialogHelp.qml` with `chapter` `button-map` / `device-library`; View Full Help shows the book |
 | Help search, Ctrl+F / Enter / Esc / F3 | `SearchBox` in `HelpSearchBar.qml` | `_search()` / `next()` / `clear()` → `help_search.js` (filter, counts, matches) |
@@ -421,6 +422,7 @@ Duplicated logic
 - **S141** Every search box (Help, History, Options, the Logical Device page, Layers, the Device Library) is the shared one (qml/SearchBox.qml): **Ctrl+F** goes to it, **×** clears it, **Esc** clears it and leaves the box (01 S134), and a line under it says "N found" or "Nothing matches". [user decision 2026-10-09: D-01-SEARCH-BOX]
 - **S142** Windows report what just happened on one shared message line (qml/MessageLine.qml, the Device Library's): plain for done, red for failed, with an **Undo** link where the change can be taken back; a message stays until the next one. The Device Library, Button Map, Module Setup, Calibration and Device Pack use it. [user decision 2026-10-09: D-01-MESSAGE-LINE]
 - **S143** Shared pieces: one section heading style inside windows (bold title, thin line; qml/SectionHeading.qml); one empty-list message with one button for the next step (qml/EmptyState.qml); every file and folder chooser opens in the last folder used for that kind of file (Device Packs, pictures, profiles, scripts, exports, module files, logs), remembered between sessions in the program settings (qml/FilePicker.qml); and the windows with their own undo (Calibration, Module Setup, Button Map, Manage Modes, Logical Device, Binding catalog) show the same Undo / Redo pair with the last change beside it (qml/UndoBar.qml, as the Device Library). [user decision 2026-10-09: D-01-SHARED-PIECES] (Device Pack keeps its one-way **Undo Import** button, 08 S80/S81, with an Undo Import link on its message line.)
+- **S144** The Tools menu should have **OSC Monitor**, opening the OSC Monitor window (also opened by the OSC page's Monitor button; 09 S90-S93). [changed 2026-10-09, user: D-09-OSC-MONITOR]
 
 ## 9. Questions for the user
 
@@ -516,6 +518,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 |---|---|
 | All | As recommended in section 9 |
 | S40a | 2026-10-09 (D-09-OSC-FILE): Options' OSC rows replaced by one line and a button to OSC's Module Setup |
+| S144 | 2026-10-09 (D-09-OSC-MONITOR; user: "go with your recommendations, approved, go ahead"): Tools › OSC Monitor |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

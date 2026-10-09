@@ -44,7 +44,37 @@ SERVER_DEFAULTS: dict[str, Any] = {
     "autorelease_no_arg": True,
     "autorelease_delay_ms": 250,
     "pad_args": False,
+    # Output, feedback and discovery (D-09-OSC-OUTPUT/FEEDBACK/DISCOVERY).
+    "output_enabled": True,
+    "reply_to_sender": True,
+    "announce": False,
+    "find_devices": False,
+    "feedback_enabled": True,
+    "resend_run": True,
+    "resend_mode": True,
+    "resend_profile": True,
+    "sync_enabled": True,
+    "sync_address": "/gremlin/sync",
+    "feedback_rate": 50,
 }
+
+TARGETS_KEY = "targets"
+FEEDBACK_KEY = "feedback"
+REPLY = "reply"
+DEFAULT_TARGET = "Default"
+SOURCE_KINDS = ("mode", "vjoy_button", "vjoy_axis", "logical", "osc_input")
+VALUE_TYPES = ("auto", "int", "float", "bool", "text")
+_BOOL_KEYS = (
+    "output_enabled",
+    "reply_to_sender",
+    "announce",
+    "find_devices",
+    "feedback_enabled",
+    "resend_run",
+    "resend_mode",
+    "resend_profile",
+    "sync_enabled",
+)
 
 # configuration osc/connection/<name> -> server key (first start only).
 _CONFIG_NAMES = {
@@ -157,6 +187,108 @@ def clean_server(raw: object) -> dict:
         given.get("autorelease_delay_ms"), d["autorelease_delay_ms"]
     )
     out["pad_args"] = _flag(given.get("pad_args"), d["pad_args"])
+    for key in _BOOL_KEYS:
+        out[key] = _flag(given.get(key), d[key])
+    address = str(given.get("sync_address") or "").strip()
+    out["sync_address"] = address if address.startswith("/") else d["sync_address"]
+    out["feedback_rate"] = _rate(given.get("feedback_rate"), d["feedback_rate"])
+    return out
+
+
+def _rate(value: object, default: int) -> int:
+    try:
+        rate = int(float(str(value).replace(",", "").strip()))
+    except (TypeError, ValueError):
+        return default
+    return rate if rate >= 1 else default
+
+
+def _float(value: object, default: float) -> float:
+    try:
+        return float(str(value).replace(",", "").strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def new_id() -> str:
+    return uuid.uuid4().hex
+
+
+def default_target(server: dict | None = None) -> dict:
+    """The "Default" target made from the old output_host/output_port."""
+    server = clean_server(server)
+    return {
+        "id": uuid.uuid5(_ORIGIN, "target:default").hex,
+        "name": DEFAULT_TARGET,
+        "host": server["output_host"],
+        "port": server["output_port"],
+    }
+
+
+def clean_targets(raw: object) -> list[dict]:
+    """Targets as {id, name, host, port}: rows that aren't dicts are dropped,
+    a missing id is made, a bad port becomes 8000; ids are unique."""
+    out: list[dict] = []
+    seen: set[str] = set()
+    for entry in raw if isinstance(raw, list) else []:
+        if not isinstance(entry, dict):
+            continue
+        row = dict(entry)
+        tid = str(row.get("id") or "").strip()
+        if not tid or tid in seen or tid == REPLY:
+            tid = new_id()
+        seen.add(tid)
+        row["id"] = tid
+        row["name"] = str(row.get("name") or "").strip()
+        row["host"] = str(row.get("host") or "").strip()
+        row["port"] = _port(row.get("port"), SERVER_DEFAULTS["output_port"])
+        out.append(row)
+    return out
+
+
+def _source(raw: object) -> dict:
+    given = raw if isinstance(raw, dict) else {}
+    kind = str(given.get("kind") or "")
+    if kind not in SOURCE_KINDS:
+        kind = "mode"
+
+    def part(value: object) -> int | str | None:
+        if value is None or value == "":
+            return None
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+        return str(value)
+
+    return {
+        "kind": kind,
+        "device": part(given.get("device")),
+        "input": part(given.get("input")),
+    }
+
+
+def clean_feedback(raw: object) -> list[dict]:
+    """Feedback rows with every key (see the OSC contract); defaults for
+    missing or bad values; unknown keys are kept."""
+    out: list[dict] = []
+    seen: set[str] = set()
+    for entry in raw if isinstance(raw, list) else []:
+        if not isinstance(entry, dict):
+            continue
+        row = dict(entry)
+        fid = str(row.get("id") or "").strip()
+        if not fid or fid in seen:
+            fid = new_id()
+        seen.add(fid)
+        row["id"] = fid
+        row["enabled"] = _flag(row.get("enabled"), True)
+        row["source"] = _source(row.get("source"))
+        row["target"] = str(row.get("target") or REPLY).strip() or REPLY
+        row["address"] = str(row.get("address") or "").strip()
+        row["min"] = _float(row.get("min"), 0.0)
+        row["max"] = _float(row.get("max"), 1.0)
+        kind = str(row.get("type") or "auto").strip().lower()
+        row["type"] = kind if kind in VALUE_TYPES else "auto"
+        out.append(row)
     return out
 
 
@@ -169,6 +301,57 @@ def read_server() -> dict:
     """The file's server settings, defaults filled in (all defaults when the
     file is missing or damaged)."""
     return clean_server(store.read_path(path()).get(SERVER_KEY))
+
+
+def read_targets() -> list[dict]:
+    """The file's targets. A file without "targets" gives one "Default"
+    target from output_host/output_port (written on the next write)."""
+    doc = store.read_path(path())
+    if TARGETS_KEY not in doc:
+        return [default_target(doc.get(SERVER_KEY))]
+    return clean_targets(doc.get(TARGETS_KEY))
+
+
+def read_feedback() -> list[dict]:
+    """The file's feedback rows; empty when there are none."""
+    return clean_feedback(store.read_path(path()).get(FEEDBACK_KEY))
+
+
+def find_target(target_id: str) -> dict | None:
+    for target in read_targets():
+        if target["id"] == target_id:
+            return target
+    return None
+
+
+def _write_key(key: str, value: object, who: str, signal_name: str) -> bool:
+    def change(doc: dict) -> bool:
+        if doc.get(key) == value:
+            return False
+        _put_identity(doc)
+        doc[key] = value
+        return True
+
+    if not store.update_path(path(), change, who or WHO):
+        return False
+    _emit(signal_name)
+    return True
+
+
+def write_targets(targets: list[dict], who: str = "") -> bool:
+    """Writes the targets list, keeping the rest of the file. True when
+    written; False when unchanged or a damaged file was refused. Raises
+    OSError when the write failed. Says oscServerSettingsChanged."""
+    return _write_key(
+        TARGETS_KEY, clean_targets(targets), who, "oscServerSettingsChanged"
+    )
+
+
+def write_feedback(rows: list[dict], who: str = "") -> bool:
+    """Writes the feedback rows, keeping the rest of the file. True when
+    written; False when unchanged or a damaged file was refused. Raises
+    OSError when the write failed. Says oscFeedbackChanged."""
+    return _write_key(FEEDBACK_KEY, clean_feedback(rows), who, "oscFeedbackChanged")
 
 
 def load(rows: OscRows | None = None) -> dict:

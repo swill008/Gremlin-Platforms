@@ -96,12 +96,15 @@ def test_import_suffixes_and_result_text(model: OscDeviceManagementModel) -> Non
     assert by["/b"].mode == "button" and by["/b"].trigger is None
     assert by["/c"].mode == "button" and by["/c"].trigger is True
     assert by["/d"].mode == "change"
-    assert by["/e"].mode == "button"
+    # E: an encoder axis, format Auto (D-09-OSC-ENCODER), with no note.
+    assert by["/e"].mode == "encoder"
+    assert by["/e"].input_type == InputType.JoystickAxis
+    assert (by["/e"].enc_format, by["/e"].enc_output) == ("auto", "axis")
     assert by["/f"].mode == "button"
     assert by["/g"].mode == "button"
     lines = result.splitlines()
     assert lines[0] == "Added 7, skipped 2"
-    assert any("/e E" in line and "encoder" in line for line in lines)
+    assert not any("/e E" in line for line in lines)
     assert any("/f Q" in line for line in lines)
 
 

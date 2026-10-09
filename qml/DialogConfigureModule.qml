@@ -514,15 +514,44 @@ ApplicationWindow {
             }
         }
 
-        // OSC's server settings (its own file, D-09-OSC-FILE point 4);
-        // saved as they are changed, not by Save Module.
-        Loader {
-            id: _oscServer
-            objectName: "oscServerLoader"
+        // OSC's own sections scroll together, so the controls list keeps
+        // room however long they grow.
+        ScrollView {
+            id: _oscSections
+            objectName: "oscSectionsScroll"
             Layout.fillWidth: true
-            active: _driver.isOsc
-            visible: active
-            source: "OscServerSection.qml"
+            Layout.preferredHeight: Math.min(_oscColumn.implicitHeight, _win.height * 0.55)
+            visible: _driver.isOsc
+            clip: true
+            contentWidth: availableWidth
+
+            ColumnLayout {
+                id: _oscColumn
+                width: _oscSections.availableWidth
+                spacing: Style.dp(6)
+
+                // OSC's server settings (its own file, D-09-OSC-FILE point 4);
+                // saved as they are changed, not by Save Module.
+                Loader {
+                    id: _oscServer
+                    objectName: "oscServerLoader"
+                    Layout.fillWidth: true
+                    active: _driver.isOsc
+                    visible: active
+                    source: "OscServerSection.qml"
+                }
+
+                // OSC's feedback settings and rows (D-09-OSC-FEEDBACK), same file,
+                // saved as they are changed.
+                Loader {
+                    id: _oscFeedback
+                    objectName: "oscFeedbackLoader"
+                    Layout.fillWidth: true
+                    active: _driver.isOsc
+                    visible: active
+                    source: "OscFeedbackSection.qml"
+                }
+            }
         }
 
         RowLayout {

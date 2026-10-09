@@ -37,6 +37,7 @@ _FIXED = {
     "play-sound": "Sound",
     "pause-resume": "Pause / resume",
     "map-to-logical-device": "Logical Device",
+    "send-osc": "Send OSC",
 }
 
 

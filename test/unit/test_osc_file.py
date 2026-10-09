@@ -270,7 +270,10 @@ def test_migrate_copies_the_configuration_once_and_drops_this_pcs_address(
     )
     assert odf.migrate_settings_from_config() is True
     server = _doc(modules)["server"]
+    # The settings the configuration never had (output, feedback,
+    # discovery) get their defaults.
     assert server == {
+        **odf.SERVER_DEFAULTS,
         "enabled": False,
         "host": "",
         "port": 9100,

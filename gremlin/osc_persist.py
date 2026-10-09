@@ -72,6 +72,25 @@ def osc_label(input_type: InputType, input_id: int) -> str:
     return f"OSC - {InputType.to_string(input_type).capitalize()} {input_id}"
 
 
+def osc_address(input_type: InputType, input_id: int) -> str:
+    """An OSC input's address by its number ("/fire"); "" when none."""
+    row = osc_rows().by_number(input_type, int(input_id))
+    return str(row.address) if row is not None else ""
+
+
+def osc_addresses() -> dict[str, str]:
+    """{"btn:1": "/fire", "axis:2": "/throttle"}: every OSC input's address,
+    keyed as the Button Map's chips are."""
+    kinds = {InputType.JoystickButton: "btn", InputType.JoystickAxis: "axis",
+             InputType.JoystickHat: "hat"}
+    out: dict[str, str] = {}
+    for row in osc_rows().rows():
+        kind = kinds.get(row.input_type)
+        if kind:
+            out[f"{kind}:{int(row.input_id)}"] = str(row.address)
+    return out
+
+
 def osc_linear_index(input_id: int) -> int:
     return max(int(input_id) - 1, 0)
 

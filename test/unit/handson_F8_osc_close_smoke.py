@@ -25,8 +25,6 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 _FIELDS = {
     "oscServerHost": ("host", "studio-pc"),
     "oscServerPort": ("port", "9123"),
-    "oscServerOutputHost": ("output_host", "127.0.0.5"),
-    "oscServerOutputPort": ("output_port", "9124"),
     "oscServerDelay": ("autorelease_delay_ms", "400"),
 }
 

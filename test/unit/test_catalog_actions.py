@@ -14,6 +14,7 @@ _PLUGIN_TAGS = [
     "map-to-mouse",
     "map-to-xbox",
     "map-to-logical-device",
+    "send-osc",
     "macro",
     "change-mode",
     "load-profile",

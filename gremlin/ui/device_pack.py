@@ -309,7 +309,7 @@ def _logical_lines(doc: dict) -> list[str]:
 
 
 # OSC's inputs and server settings in its module file (D-09-OSC-FILE).
-_OSC_KEYS = ("inputs", "server")
+_OSC_KEYS = ("inputs", "server", "targets", "feedback")
 
 
 def _osc_lines(doc: dict) -> list[str]:

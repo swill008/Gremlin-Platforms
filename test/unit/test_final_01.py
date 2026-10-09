@@ -783,7 +783,7 @@ def test_s65_s66_s67_menus_come_from_the_command_list(main_window: dict) -> None
         "Command Palette… (Ctrl+K)",
     ]
     assert menus["Tools"] == [
-        "Viewers >", "Device Setup >", "Mapping >", "History", "Options"
+        "Viewers >", "Device Setup >", "Mapping >", "OSC Monitor", "History", "Options"
     ]
     assert menus["Debug"] == ["Live Log Reader"]
     assert menus["Help"] == [

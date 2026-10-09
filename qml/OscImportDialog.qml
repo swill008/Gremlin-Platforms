@@ -68,7 +68,7 @@ Popup {
 " +
                       "Add a suffix after a space or a comma to set the type, such as /osc_msg A or /osc_msg, A. " +
                       "A: axis. B: button (0 = released, not 0 = pressed). BNP: button that presses on each message and releases after the delay. " +
-                      "C: change (presses when the value changes). E: encoder, not supported yet, added as a button. " +
+                      "C: change (presses when the value changes). E: encoder, added as an encoder axis (format Auto). " +
                       "No suffix: button. An unknown suffix is added as a button and named in the result.
 " +
                       "Messages already in the list are skipped."

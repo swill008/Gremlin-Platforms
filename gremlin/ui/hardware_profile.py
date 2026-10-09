@@ -922,7 +922,10 @@ def chips_key(guid: str) -> str:
             stamp = f"{stat.st_mtime_ns}:{stat.st_size}"
         except OSError:
             stamp = "missing"
-    return f"{text}|{name}|{stamp}|{_profile_generation}|{_device_input_ids(text)}"
+    # OSC's addresses: a renamed address renames its chips.
+    osc = _osc_names(text)
+    osc_part = f"|{sorted(osc.items())}" if osc else ""
+    return f"{text}|{name}|{stamp}|{_profile_generation}|{_device_input_ids(text)}{osc_part}"
 
 
 def chips_for_guid(guid: str) -> list[dict]:
@@ -942,16 +945,36 @@ def chips_for_guid(guid: str) -> list[dict]:
         ("axis", claim_ids(claim, "axis"), reported[1], stored[1]),
         ("hat", claim_ids(claim, "hat"), reported[2], stored[2]),
     )
+    names = _osc_names(text)
     rows: list[dict] = []
     for kind, claimed, live, saved in groups:
         ids = claimed or live or saved
         for hw_id in ids:
-            rows.append({
+            row = {
                 "kind": kind,
                 "hwId": int(hw_id),
                 "dest": _label_for(text, kind, int(hw_id)),
-            })
+            }
+            # An OSC input is known by its address, not "Button 1".
+            address = names.get(f"{kind}:{int(hw_id)}")
+            if address:
+                row["hwName"] = address
+            rows.append(row)
     return rows
+
+
+def _osc_names(guid: str) -> dict[str, str]:
+    """{"btn:1": "/fire"} for OSC's guid; {} for any other device."""
+    from gremlin.modules import ids
+
+    if ids.guid_key(guid) != ids.guid_key(str(ids.OSC)):
+        return {}
+    try:
+        from gremlin.osc_persist import osc_addresses
+
+        return osc_addresses()
+    except Exception:  # noqa: BLE001 - no OSC rows: plain names
+        return {}
 
 
 @ta.QmlElement
