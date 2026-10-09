@@ -65,6 +65,8 @@ def test_it_asks_first_naming_the_count_and_size(run: dict) -> None:
         question
     )
     assert question.endswith("This can't be undone.")
+    # 01 S140: the shared question, its red button named for the action.
+    assert run["dialog-title"] == "Clear History?"
     assert run["go"] == {"text": "Clear History", "colour": run["danger"]}
 
 
@@ -82,7 +84,7 @@ def test_clearing_leaves_one_red_history_cleared_row(run: dict) -> None:
     assert after["rows"] == 1
     assert after["module-file"], "the module file itself stays"
     assert run["row"]["found"]
-    assert run["row"]["title-colour"] == run["danger"]
+    assert run["row"]["title-colour"] == run["danger-text"]
 
 
 def test_picking_it_explains_with_no_restore(run: dict) -> None:
@@ -93,3 +95,17 @@ def test_picking_it_explains_with_no_restore(run: dict) -> None:
     assert "deleted" in picked["what"]
     for name in ("restore-before", "restore-after", "previous", "next"):
         assert not picked[name], name
+
+
+def test_the_search_box_is_the_shared_one(run: dict) -> None:
+    # 01 S141: Ctrl+F goes to it, "Nothing matches" under it, Esc clears it
+    # (and the window stays open).
+    search = run["search"]
+    assert search["shared"]
+    assert search["ctrl-f"]
+    assert search["rows"] == 0
+    assert search["line-shown"] and search["line"] == "Nothing matches"
+    after = search["after-esc"]
+    assert after["text"] == ""
+    assert after["rows"] >= 1
+    assert after["window-open"]

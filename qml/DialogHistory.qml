@@ -10,6 +10,7 @@ import QtQuick.Window
 import Gremlin.Style
 import Gremlin.UI
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 
 // Tools > History: every saved change, newest first. Pick one to see it
 // before and after, and Restore either. An editor opens it filtered to
@@ -147,7 +148,8 @@ ApplicationWindow {
         return shown + " MB"
     }
 
-    // 08 S12b: what Clear History deletes, asked first (Cancel the default).
+    // 08 S12b: what Clear History deletes, asked first with the shared
+    // question (01 S140), whose last line says "This can't be undone."
     function clearQuestion(summary) {
         var n = Number(summary.entries) || 0
         var what = n === 1 ? "The 1 change in History is deleted"
@@ -156,7 +158,7 @@ ApplicationWindow {
             + " of kept copies used to restore them. You won't be able to restore"
             + " or undo any earlier change, including the Device Library's Undo"
             + " for this session. Your profiles, module files and Device Library"
-            + " stay as they are. This can't be undone."
+            + " stay as they are."
     }
 
     function askClear() {
@@ -166,7 +168,13 @@ ApplicationWindow {
         } catch (e) {
             summary = {}
         }
-        _clearDlg.ask(clearQuestion(summary))
+        Confirm.ask(_root, {
+            title: "Clear History?",
+            text: clearQuestion(summary),
+            undoable: false,
+            action: "Clear History",
+            onAccept: function() { _root.clearAll() }
+        })
     }
 
     function clearAll() {
@@ -351,53 +359,6 @@ ApplicationWindow {
 
     DismissibleDialog { id: _gate }
 
-    // 08 S12b: the Library's delete question (WindowDeviceLibrary _deleteDlg):
-    // a red Clear History button, Cancel the default.
-    Dialog {
-        id: _clearDlg
-        objectName: "historyClearDialog"
-        title: "Clear History?"
-        property string body: ""
-        anchors.centerIn: Overlay.overlay
-        width: Math.min(_root.width - Style.dp(40), Style.dp(520))
-        modal: true
-        function ask(text) {
-            body = text
-            open()
-        }
-        onOpened: _clearCancel.forceActiveFocus()
-        Label {
-            objectName: "historyClearText"
-            width: parent.width
-            wrapMode: Text.Wrap
-            text: _clearDlg.body
-        }
-        footer: DialogButtonBox {
-            Button {
-                id: _clearCancel
-                objectName: "historyClearCancel"
-                text: "Cancel"
-                DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
-                // Enter on the default answers Cancel.
-                Keys.onReturnPressed: _clearDlg.reject()
-                Keys.onEnterPressed: _clearDlg.reject()
-            }
-            Button {
-                id: _clearGo
-                objectName: "historyClearGo"
-                text: "Clear History"
-                DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
-                contentItem: Label {
-                    text: _clearGo.text
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: Style.dangerText
-                }
-            }
-        }
-        onAccepted: _root.clearAll()
-    }
-
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Style.dp(12)
@@ -417,10 +378,14 @@ ApplicationWindow {
                 textRole: "label"
                 onActivated: _root.setArea(_root.areas[currentIndex].key)
             }
-            TextField {
+            // 01 S141: the shared search box (Ctrl+F, the ×, Esc clears).
+            SearchBox {
+                id: _search
                 objectName: "historySearch"
                 Layout.fillWidth: true
-                placeholderText: "Search"
+                Layout.alignment: Qt.AlignTop
+                placeholder: "Search"
+                count: _list.count
                 onTextChanged: _model.setSearch(text)
             }
             Button {
@@ -432,18 +397,12 @@ ApplicationWindow {
                 }
             }
             // 08 S12b: refused while the profile runs.
-            Button {
+            DangerButton {
                 id: _clearButton
                 objectName: "historyClear"
                 text: "Clear History\u2026"
                 focusPolicy: Qt.NoFocus
                 enabled: !(backend && backend.gremlinActive)
-                contentItem: Label {
-                    text: _clearButton.text
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: _clearButton.enabled ? Style.dangerText : Style.fgDisabled
-                }
                 ToolTip.visible: hovered
                 ToolTip.text: _clearButton.enabled
                     ? "Deletes every change in History and its kept copies"
@@ -518,11 +477,11 @@ ApplicationWindow {
                         onClicked: _root.pick(entryId)
                     }
                 }
-                Label {
+                EmptyState {
                     anchors.centerIn: parent
+                    width: _list.width - Style.dp(24)
                     visible: _list.count === 0
                     text: "No saved changes to show."
-                    color: Style.fgMuted
                 }
             }
 

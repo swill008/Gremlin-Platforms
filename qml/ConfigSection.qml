@@ -105,12 +105,8 @@ ScrollView {
             }
         }
 
-        Label {
-            visible: _page.searching && !_page.anyMatch()
-            Layout.topMargin: Style.dp(24)
-            text: "No setting matches “" + _page.filterText.trim() + "”."
-            color: Style.fgMuted
-        }
+        // No "No setting matches" line here: the shared search box says
+        // "Nothing matches" under itself (01 S141).
 
         Item { implicitHeight: Style.dp(20) }
     }

@@ -36,14 +36,63 @@ ApplicationWindow {
     property bool anyUnsaved: false
     function refreshUnsaved() { anyUnsaved = _calib.hasUnsaved() }
 
-    function undoEdit() {
-        _calib.undo()
+    // 01 S143: the Undo / Redo pair says what the last change was.
+    property string lastChangeText: ""
+    property string undoneText: ""
+    // The axis an Undo or Redo put back (its dataChanged, while it runs).
+    property bool _stepping: false
+    property int _steppedRow: -1
+
+    function axisName(row) {
+        if (row < 0 || row >= _calib.rowCount())
+            return ""
+        // The "identifier" role (device.py AxisCalibration.roles).
+        return String(_calib.data(_calib.index(row, 0), Qt.UserRole + 1) || "")
+    }
+
+    function noteChange(row, what) {
+        lastChangeText = "Last change: " + axisName(row) + ", " + what
+        undoneText = ""
+    }
+
+    function forgetChanges() {
+        lastChangeText = ""
+        undoneText = ""
+    }
+
+    function _step(redo) {
+        _stepping = true
+        _steppedRow = -1
+        if (redo)
+            _calib.redo()
+        else
+            _calib.undo()
+        _stepping = false
+        if (_steppedRow >= 0) {
+            var name = axisName(_steppedRow)
+            if (redo) {
+                lastChangeText = "Last change: " + name + ", redone"
+                undoneText = ""
+            } else {
+                undoneText = "Undone: a change to " + name
+            }
+        }
         refreshUnsaved()
     }
 
+    function undoEdit() {
+        if (_calib.canUndo)
+            _step(false)
+    }
+
     function redoEdit() {
-        _calib.redo()
-        refreshUnsaved()
+        if (_calib.canRedo)
+            _step(true)
+    }
+
+    // 01 S142: what a Save or Save All did, on the message line.
+    function report(ok, text) {
+        _message.show(text, !ok)
     }
 
     // A value being typed keeps its own Ctrl+Z.
@@ -53,8 +102,17 @@ ApplicationWindow {
     Shortcut { sequences: [StandardKey.Redo]; onActivated: _calibrationDialog.redoEdit() }
     Connections {
         target: _calib
-        function onDataChanged() { _calibrationDialog.refreshUnsaved() }
+        function onDataChanged(topLeft) {
+            if (_calibrationDialog._stepping && topLeft)
+                _calibrationDialog._steppedRow = topLeft.row
+            _calibrationDialog.refreshUnsaved()
+        }
         function onModelReset() { _calibrationDialog.refreshUnsaved() }
+        // Another module: its steps start again (03 S106).
+        function onUndoChanged() {
+            if (!_calib.canUndo && !_calib.canRedo)
+                _calibrationDialog.forgetChanges()
+        }
     }
 
     function hasUnsavedWork() {
@@ -227,23 +285,21 @@ ApplicationWindow {
                 }
             }
 
-            Item { Layout.fillWidth: true }
-
-            // Undo and Redo for the axes' changes (until the device changes).
-            Button {
-                objectName: "calibrationUndo"
-                text: "Undo"
-                focusPolicy: Qt.NoFocus
+            // Undo and Redo for the axes' changes (until the device changes),
+            // with the last change beside them (01 S143).
+            UndoBar {
+                objectName: "calibrationUndoBar"
+                Layout.fillWidth: true
+                Layout.leftMargin: Style.dp(12)
                 // _calib is made with the list below, after these buttons.
-                enabled: _calib ? _calib.canUndo : false
-                onClicked: _calibrationDialog.undoEdit()
-            }
-            Button {
-                objectName: "calibrationRedo"
-                text: "Redo"
-                focusPolicy: Qt.NoFocus
-                enabled: _calib ? _calib.canRedo : false
-                onClicked: _calibrationDialog.redoEdit()
+                canUndo: _calib ? _calib.canUndo : false
+                canRedo: _calib ? _calib.canRedo : false
+                undoTip: "Undo (Ctrl+Z)"
+                redoTip: "Redo (Ctrl+Y)"
+                lastChange: _calibrationDialog.lastChangeText
+                undone: _calibrationDialog.undoneText
+                onUndo: _calibrationDialog.undoEdit()
+                onRedo: _calibrationDialog.redoEdit()
             }
 
             // This module's saved changes (Tools > History).
@@ -267,7 +323,7 @@ ApplicationWindow {
                     var why = _calib.saveAllRefusedReason()
                     var ok = !why && _calib.saveAll()
                     var where = ok && _calib.moduleFilePath ? _calib.moduleFilePath() : ""
-                    _saveGate.announce(ok, ok ? "Saved every axis to the module file."
+                    _calibrationDialog.report(ok, ok ? "Saved every axis to the module file."
                                               : (why || "Not written. It is still only on this screen."))
                     if (backend)
                         backend.noteSave(ok ? ("Saved the calibration to " + where)
@@ -277,22 +333,29 @@ ApplicationWindow {
             }
         }
 
-        Label {
+        // 01 S142: what Save and Save All did.
+        MessageLine {
+            id: _message
+            objectName: "calibrationMessage"
+            Layout.fillWidth: true
+            Layout.rightMargin: Style.dp(10)
+            Layout.bottomMargin: visible ? Style.dp(8) : 0
+        }
+
+        EmptyState {
+            objectName: "calibrationNoModule"
             visible: _modules && _modules.moduleCount === 0
             text: "No connected input module."
-            color: Style.fgMuted
-            wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
 
-        Label {
+        EmptyState {
+            objectName: "calibrationNotConnected"
             visible: _modules && _axisView
                     && _modules.moduleCount > 0
                     && _calibrationDialog.shownSlug.length > 0
                     && _axisView.count === 0
             text: "This input module is not connected."
-            color: Style.fgMuted
-            wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
 
@@ -371,6 +434,7 @@ ApplicationWindow {
                 checked: model.withCenter
                 onToggled: {
                     model.withCenter = checked
+                    _calibrationDialog.noteChange(index, checked ? "With center on" : "With center off")
                 }
             }
         }
@@ -418,7 +482,10 @@ ApplicationWindow {
                         from: -32768
                         to: _sbCLow.value
 
-                        onValueModified: model.low = Qt.binding(() => value)
+                        onValueModified: {
+                            model.low = Qt.binding(() => value)
+                            _calibrationDialog.noteChange(index, "lowest value")
+                        }
                     }
                     LayoutHorizontalSpacer {
                     }
@@ -430,7 +497,10 @@ ApplicationWindow {
                         from: _sbLow.value
                         to: _sbCHigh.value
 
-                        onValueModified: model.centerLow = Qt.binding(() => value)
+                        onValueModified: {
+                            model.centerLow = Qt.binding(() => value)
+                            _calibrationDialog.noteChange(index, "center")
+                        }
                     }
                     CalibrationSpinBox {
                         id: _sbCHigh
@@ -440,7 +510,10 @@ ApplicationWindow {
                         from: _sbCLow.value
                         to: _sbHigh.value
 
-                        onValueModified: model.centerHigh = Qt.binding(() => value)
+                        onValueModified: {
+                            model.centerHigh = Qt.binding(() => value)
+                            _calibrationDialog.noteChange(index, "center")
+                        }
                     }
                     LayoutHorizontalSpacer {
                     }
@@ -451,7 +524,10 @@ ApplicationWindow {
                         from: _sbCHigh.value
                         to: 32767
 
-                        onValueModified: model.high = Qt.binding(() => value)
+                        onValueModified: {
+                            model.high = Qt.binding(() => value)
+                            _calibrationDialog.noteChange(index, "highest value")
+                        }
                     }
                 }
             }
@@ -470,7 +546,10 @@ ApplicationWindow {
                         font.pixelSize: Style.dp(20)
                         font.bold: true
 
-                        onClicked: () => _axisView.model.reset(index)
+                        onClicked: () => {
+                            _axisView.model.reset(index)
+                            _calibrationDialog.noteChange(index, "reset")
+                        }
                     }
                     Button {
                         Layout.fillWidth: true
@@ -484,7 +563,7 @@ ApplicationWindow {
                             var why = _axisView.model.saveRefusedReason(index)
                             var ok = !why && _axisView.model.save(index)
                             var where = ok && _axisView.model.moduleFilePath ? _axisView.model.moduleFilePath() : ""
-                            _saveGate.announce(ok,
+                            _calibrationDialog.report(ok,
                                 ok ? "Saved to the module file."
                                    : (why || "Not written. It is still only on this screen."))
                             if (backend)
@@ -527,6 +606,8 @@ ApplicationWindow {
                             _axisView.model.calibrateExtrema(index, false)
                         }
                         _axisView.model.calibrateCenter(index, checked)
+                        if (checked)
+                            _calibrationDialog.noteChange(index, "Calibrate Center")
                     }
                 }
                 LayoutVerticalSpacer {
@@ -545,6 +626,8 @@ ApplicationWindow {
                             _axisView.model.calibrateCenter(index, false)
                         }
                         _axisView.model.calibrateExtrema(index, checked)
+                        if (checked)
+                            _calibrationDialog.noteChange(index, "Calibrate Extrema")
                     }
                 }
                 // Undo or Redo stopped this axis's capture: the buttons follow.
@@ -578,7 +661,7 @@ ApplicationWindow {
         onSaveChosen: {
             var why = _calib.saveAllRefusedReason()
             if (why || !_calib.saveAll()) {
-                _saveGate.announce(false, why || "Not written. It is still only on this screen.")
+                _calibrationDialog.report(false, why || "Not written. It is still only on this screen.")
                 if (backend)
                     backend.noteSave("The calibration was not written.")
                 return

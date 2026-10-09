@@ -10,6 +10,8 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Style
 
+import "confirm.js" as Confirm
+
 Item {
     id: _root
 
@@ -54,20 +56,21 @@ Item {
         }
     }
 
-    DismissibleDialog {
-        id: _clearDialog
-
-        titleText: "Clear OSC Inputs"
-        messageText: "This will remove every OSC input in the current profile."
-        confirmText: "Clear"
-        cancelText: "Cancel"
-        destructive: true
-
-        onConfirmed: {
-            if (!editorLocked) {
-                _inputList.model.clearAllInputs()
+    // Clear: the shared question (01 S140).
+    function askClear() {
+        var n = _inputList.count
+        return Confirm.ask(_root, {
+            title: "Clear OSC inputs?",
+            text: n === 1 ? "The one OSC input in this profile goes, with its actions."
+                : "All " + n + " OSC inputs in this profile go, with their actions.",
+            undoable: false,
+            action: "Clear OSC Inputs",
+            onAccept: function() {
+                if (!editorLocked) {
+                    _inputList.model.clearAllInputs()
+                }
             }
-        }
+        })
     }
 
     OscImportDialog {
@@ -193,9 +196,10 @@ Item {
             Layout.rightMargin: Style.dp(10)
             enabled: !editorLocked
 
-            Button {
-                text: "Clear"
-                onClicked: _clearDialog.open()
+            DangerButton {
+                objectName: "oscClear"
+                text: "Clear…"
+                onClicked: _root.askClear()
             }
 
             Item { Layout.fillWidth: true }

@@ -3,7 +3,8 @@
 
 // The Help window's search row (01 S137): the search box, "N topics match",
 // the Search all of Help tick box (only when Help shows one chapter) and
-// "k of n" with previous / next. The window owns Ctrl+F, F3 / Shift+F3,
+// "k of n" with previous / next. The search box (SearchBox) gives Ctrl+F;
+// the window owns F3 / Shift+F3,
 // the topic list and the highlighting (help_search.highlight).
 //
 // topics: the whole book's topics ({title, body, chapterId, chapter}); the
@@ -44,12 +45,11 @@ Item {
     signal previous()
 
     function focusField() {
-        _field.forceActiveFocus(Qt.ShortcutFocusReason)
-        _field.selectAll()
+        _field.focusField()
     }
 
     function clear() {
-        _field.text = ""
+        _field.clear()
     }
 
     function _inScope(topic) {
@@ -97,48 +97,17 @@ Item {
         anchors.right: parent.right
         spacing: Style.dp(4)
 
-        JGTextField {
+        // The shared search box (01 S141): its own Ctrl+F, × and Esc
+        // (clears; the program then leaves the box, 01 S134). Its count line
+        // stays off: the summary below says "N topics match".
+        SearchBox {
             id: _field
-            objectName: "helpSearchField"
+            objectName: "helpSearchBox"
             Layout.fillWidth: true
-            Layout.preferredHeight: Style.dp(28)
-            placeholderText: "Search Help…"
-            selectByMouse: true
-            leftPadding: Style.dp(6)
-            rightPadding: Style.dp(24)
-            topPadding: 0
-            bottomPadding: 0
-            verticalAlignment: TextInput.AlignVCenter
+            placeholder: "Search Help…"
 
             onTextChanged: _bar._search()
             onAccepted: if (_bar.total > 0) _bar.next()
-            // Esc clears the search; the program then leaves the box (01 S134).
-            Keys.onEscapePressed: (event) => {
-                _bar.clear()
-                event.accepted = true
-            }
-
-            Label {
-                id: _clear
-                objectName: "helpSearchClear"
-                anchors.right: parent.right
-                anchors.rightMargin: Style.dp(6)
-                anchors.verticalCenter: parent.verticalCenter
-                visible: _field.text !== ""
-                text: "×"
-                font.pixelSize: Style.dp(16)
-                color: _clearArea.containsMouse ? Style.fgStrong : Style.fgMuted
-                ToolTip.visible: _clearArea.containsMouse
-                ToolTip.text: "Clear the search (Esc)"
-                MouseArea {
-                    id: _clearArea
-                    anchors.fill: parent
-                    anchors.margins: -Style.dp(4)
-                    hoverEnabled: true
-                    cursorShape: Qt.ArrowCursor
-                    onClicked: _bar.clear()
-                }
-            }
         }
 
         RowLayout {

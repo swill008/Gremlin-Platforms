@@ -228,7 +228,7 @@ def test_the_delete_topic_follows_the_states(
         "autosave is kept",
         "stays plugged in with no setup",
         "keeps its settings",
-        "Tools › History can put it back",  # D-10-IN-HISTORY
+        "You can restore it from Tools › History",  # D-10-IN-HISTORY
         "Restore to This Stick…",
     ):
         assert words in body, words

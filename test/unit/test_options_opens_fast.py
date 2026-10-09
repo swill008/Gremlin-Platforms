@@ -126,9 +126,10 @@ for ch in term:
 pump(lambda: False, 0.3)
 out['searchText'] = run(search + '[0].text')
 out['searchShown'] = shown_groups()
-out['noMatchShown'] = run(WALK % ('it.text !== undefined && String(it.text)'
-                                  '.indexOf("No setting matches") === 0')
-                          + '[0].visible')
+# The shared search box's line (01 S141) says "N found" here, not
+# "Nothing matches": the word is in another section.
+out['noMatchShown'] = run(WALK % 'it.objectName === "searchCount"'
+                          + '.some(l => l.visible && l.text === "Nothing matches")')
 run(search + '[0].selectAll()')
 key(QtCore.Qt.Key.Key_Delete)
 pump(lambda: False, 0.3)

@@ -299,10 +299,12 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     out["dirty-on-entering-edit"] = w.ev("_buttonMap.isDirty()")
     w.move(1, 0.05)
     moved = w.chip_fx(1)
+    w.ev("_messageLine.clear()")
     w.ev("_buttonMap.saveEdit(true)")
-    wait_for(lambda: w.opened("_saveGate"))
-    out["save-said"] = [w.ev("_saveGate.titleText"), w.ev("_saveGate.messageText")]
-    w.ok_if_open("_saveGate")
+    # The window's message line says so (01 S142), no box to close.
+    wait_for(lambda: w.ev("_messageLine.text"))
+    out["save-said"] = [w.ev("_messageLine.failed"), w.ev("_messageLine.text"),
+                        w.opened("_saveGate")]
     out["save-wrote"] = file_fx(1) == moved and moved is not None
     out["dirty-after-save"] = w.ev("_buttonMap.isDirty()")
     out["editing-after-save"] = w.ev("_buttonMap.editing")
@@ -336,8 +338,6 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
         "editing": w.ev("_buttonMap.editing"),
         "written": file_fx(2) == want and want is not None,
     }
-    wait_for(lambda: w.opened("_saveGate"))
-    w.ok_if_open("_saveGate")
 
     # Cancel with nothing changed doesn't ask (S19).
     w.enter_edit()
@@ -350,9 +350,9 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     image0 = read_doc(MAP_FILE).get("image")
     h0 = history_count()
     w.enter_edit()
-    w.ev("_imageDialog.selectedFile = "
+    w.ev("_imageDialog._accept("
          + json.dumps(QtCore.QUrl.fromLocalFile(str(chosen)).toString())
-         + "; _imageDialog.accepted(); true")
+         + "); true")
     wait_for(lambda: str(w.ev("_buttonMap.storedImage")).endswith(".jpg"))
     h1 = history_count()
     out["choose-photo"] = {
@@ -376,9 +376,9 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     # Choose Photo, then Save: one History entry, at Save (07 Q2).
     h3 = history_count()
     w.enter_edit()
-    w.ev("_imageDialog.selectedFile = "
+    w.ev("_imageDialog._accept("
          + json.dumps(QtCore.QUrl.fromLocalFile(str(chosen)).toString())
-         + "; _imageDialog.accepted(); true")
+         + "); true")
     wait_for(lambda: str(w.ev("_buttonMap.storedImage")).endswith(".jpg"))
     h4 = history_count()
     w.ev("_buttonMap.saveEdit(false)")
@@ -424,15 +424,14 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     held = (MODULES / SLUG / "photo.jpg").open("rb")
     try:
         w.ev(menu_item("Clear Photo"))
-        wait_for(lambda: w.opened("_failNotice"))
+        wait_for(lambda: w.ev("_messageLine.failed"))
         out["clear-photo-fails"] = {
-            "said": [w.ev("_failNotice.opened"), w.ev("_failNotice.titleText")],
+            "said": [w.ev("_messageLine.failed"), w.ev("_messageLine.text")],
             "photo-kept": (MODULES / SLUG / "photo.jpg").is_file(),
             "shown": w.ev("_buttonMap.storedImage"),
         }
     finally:
         held.close()
-    w.ok_if_open("_failNotice")
     w.leave_edit()
     out["clear-photo-fails"]["after-cancel"] = (MODULES / SLUG / "photo.jpg").is_file()
 
@@ -440,9 +439,9 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     other = make_picture(_HOME / "pictures" / "other photo.png", "#20a0a0")
     saved_image = read_doc(MAP_FILE).get("image")
     w.enter_edit()
-    w.ev("_imageDialog.selectedFile = "
+    w.ev("_imageDialog._accept("
          + json.dumps(QtCore.QUrl.fromLocalFile(str(other)).toString())
-         + "; _imageDialog.accepted(); true")
+         + "); true")
     wait_for(lambda: str(w.ev("_buttonMap.storedImage")).endswith(".png"))
     w.ev("_ed().flushPendingStep()")
     w.ev(menu_item("Clear Photo"))
@@ -525,9 +524,11 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     wait_for(lambda: not w.opened("_copyDlg"))
     file_before = MAP_FILE.read_text(encoding="utf-8")
     old_ids = hw_ids(w.nodes())
+    # The message line keeps the last message until the next (01 S142).
+    w.ev("_messageLine.clear()")
     w.ev("_buttonMap.copyLayoutFrom(" + json.dumps(row) + ", false)")
     wait_for(lambda: 80 in [n.get("hwId") for n in w.nodes()])
-    message = wait_for(lambda: w.ev("_ed().findMsg"))
+    message = wait_for(lambda: w.ev("_messageLine.text"))
     out["copy"] = {
         "editing": w.ev("_buttonMap.editing"),
         "hw-ids": hw_ids(w.nodes()),
@@ -540,9 +541,9 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     out["copy-undo"] = hw_ids(w.nodes()) == old_ids
     # A mirrored copy: one Undo puts the old map back (S78, GL-184).
     old_fx = {n.get("hwId"): n.get("chipFx") for n in w.nodes()}
-    w.ev("_ed().findMsg = ''")
+    w.ev("_messageLine.clear()")
     w.ev("_buttonMap.copyLayoutFrom(" + json.dumps(row) + ", true)")
-    wait_for(lambda: w.ev("_ed().findMsg.length > 0 && _ed().seeded"))
+    wait_for(lambda: w.ev("_messageLine.text.length > 0 && _ed().seeded"))
     w.ev("_ed().flushPendingStep()")
     w.ev("_ed().undo()")
     out["mirror-copy-undo"] = {
@@ -814,9 +815,10 @@ def part_setup(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     if not isinstance(win, QtCore.QObject):
         raise DriveError("Module Setup did not open")
     # Import Image... and a picture picked in the file dialog.
-    ev_in(win, "_imageDialog.selectedFile = "
+    # (A FilePicker, 01 S143: _accept is what its file dialog calls.)
+    ev_in(win, "_imageDialog._accept("
           + json.dumps(QtCore.QUrl.fromLocalFile(str(chosen)).toString())
-          + "; _imageDialog.accepted(); true")
+          + "); true")
     if not wait_for(lambda: "photo.jpg" in str(ev_in(win, "_win.photoUrl"))
                     and ev_in(win, "claimDirty")):
         raise DriveError("Import Image did not show the picture")

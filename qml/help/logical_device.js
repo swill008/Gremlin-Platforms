@@ -64,7 +64,7 @@ function topics() {
                 + "</ol>"
                 + _good([
                     "<b>Hide system name</b> shows only your name.",
-                    "To remove your name, right-click the control and choose <b>Row</b> › <b>Clear Name</b>."
+                    "To remove your name, right-click the control and choose <b>Row</b> › <b>Clear Name</b>. It asks first (\"Clear the name of Button 2?\"); the red <b>Clear Name</b> removes your name, and the system name stays."
                 ]),
             related: ["logical-device-group-controls", "logical-device-menus"]
         },
@@ -76,8 +76,10 @@ function topics() {
                 + "<ol>"
                 + "<li>Select the control. Shift-click to select several; the menu's title then counts them.</li>"
                 + "<li>Right-click and choose <b>Row</b> › <b>Delete</b>.</li>"
+                + "<li>The question \"Delete Button 2?\" (or \"Delete 3 rows?\") says its hardware links and its actions go with it. Choose the red <b>Delete Row</b>; for several rows the button says how many.</li>"
                 + "</ol>"
-                + _good(["To take it back, choose <b>Undo</b> (<b>Ctrl+Z</b>)."]),
+                + _good(["<b>Cancel</b> has the focus: <b>Enter</b> and <b>Esc</b> both cancel.",
+                         "To take it back, choose <b>Undo</b> (<b>Ctrl+Z</b>)."]),
             related: ["logical-device-undo", "logical-device-menus"]
         },
         {
@@ -88,7 +90,7 @@ function topics() {
                 + "<ul>"
                 + "<li>New group: right-click empty space, open <b>Groups</b>, type a name in <b>New Group</b>, then press <b>Enter</b>.</li>"
                 + "<li>Put controls in a group: select them, right-click, open <b>Group</b>, then type a name in <b>Group as</b> or choose <b>Move to</b> a group.</li>"
-                + "<li>Change a group: right-click its header and choose <b>Rename Group</b>, or open <b>Groups</b> for <b>Move Group Up</b>, <b>Move Group Down</b> or <b>Delete Group</b>. A deleted group's controls go to Ungrouped.</li>"
+                + "<li>Change a group: right-click its header and choose <b>Rename Group</b>, or open <b>Groups</b> for <b>Move Group Up</b>, <b>Move Group Down</b> or <b>Delete Group</b>. Delete Group asks first (\"Delete group Throttle?\"); its controls stay, in Ungrouped.</li>"
                 + "<li>Fold a group: click its header.</li>"
                 + "<li>Drag a control by its grey handle onto another control (top half = before, bottom half = after) or onto a group header. Drag a header to move the group.</li>"
                 + "<li>Sort: right-click empty space, open <b>Order</b>, then choose <b>By System Name</b>, <b>By Your Name</b> or <b>Group Names A to Z</b>.</li>"
@@ -101,9 +103,11 @@ function topics() {
             title: "Find a control",
             body: "<p><b>Find</b> filters the list.</p>"
                 + "<ul>"
-                + "<li>Filter by name, type, Ungrouped, <b>No hardware writer</b> or <b>No actions in this mode</b>.</li>"
-                + "<li><b>Clear</b> resets the filter.</li>"
-                + "</ul>",
+                + "<li>Type a system name, your name or a group (<b>Ctrl+F</b> goes to the box). A line under it says \"N found\" or \"Nothing matches\"; <b>×</b> or <b>Esc</b> clears the typing.</li>"
+                + "<li>Filter by type, Ungrouped, <b>No hardware writer</b> or <b>No actions in this mode</b>.</li>"
+                + "<li><b>Clear</b> resets the filter. When nothing is listed, <b>Clear Filters</b> does the same.</li>"
+                + "</ul>"
+                + _good(["The hardware list in <b>Assign Hardware</b> has its own <b>Search</b> box, with the same \"N found\" line and <b>×</b>."]),
             related: ["logical-device-group-controls"]
         },
         {
@@ -112,7 +116,8 @@ function topics() {
             title: "Undo a change on the Logical Device",
             body: "<p><b>Undo</b> and <b>Redo</b> step back and forward through changes to the controls and groups.</p>"
                 + "<ul>"
-                + "<li>Choose <b>Undo</b> or <b>Redo</b> beside the right-click menu's title.</li>"
+                + "<li>Choose <b>Undo</b> or <b>Redo</b> under the Find filters, or beside the right-click menu's title.</li>"
+                + "<li>Beside them, \"Last change: <i>change</i>\" names the newest change, or \"Undone: <i>change</i>\" after an Undo.</li>"
                 + "<li>Or press <b>Ctrl+Z</b>, and <b>Ctrl+Y</b> or <b>Ctrl+Shift+Z</b>.</li>"
                 + "</ul>"
                 + _good([
@@ -148,7 +153,7 @@ function topics() {
                 + "<li>Choose the action, set it up, then choose <b>OK</b>.</li>"
                 + "</ol>"
                 + _good([
-                    "To change an action, click its row. Right-click the row to <b>Open</b> or <b>Delete</b> it.",
+                    "To change an action, click its row. Right-click the row to <b>Open</b> or <b>Delete</b> it. Delete asks first (\"Delete action …?\"); the red <b>Delete Action</b> removes it, and <b>Undo</b> puts it back.",
                     "Actions belong to the current <a href=\"topic:modes-modes\">mode</a>."
                 ]),
             related: ["configuration-actions-add-action", "configuration-actions-choose-action",

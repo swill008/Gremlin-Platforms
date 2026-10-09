@@ -15,6 +15,7 @@ import Gremlin.Profile
 import Gremlin.Menus
 import Gremlin.Style
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 import Gremlin.UI
 
 Item {
@@ -177,10 +178,6 @@ Item {
     }
 
     DismissibleDialog {
-        id: _deleteGate
-    }
-
-    DismissibleDialog {
         id: _paneLeave
         onSaveChosen: {
             var seq = _catalog.commitPane()
@@ -290,12 +287,14 @@ Item {
         }
     }
 
-    FileDialog {
+    FilePicker {
         id: _screenImageDlg
+        objectName: "catalogScreenImagePicker"
+        kind: "picture"
+        mode: "open"
         title: "Screen Background"
         nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp *.webp)"]
-        fileMode: FileDialog.OpenFile
-        onAccepted: screenImage = selectedFile.toString()
+        onPicked: (selected) => { screenImage = String(selected) }
     }
 
     function catalogPayload() {
@@ -1254,24 +1253,26 @@ Item {
                         _catalog.destFilter = currentText === "All devices" ? "all" : currentText
                     }
                 }
-                // Undo and Redo for what OK and Delete changed on this page
-                // (not while an action is open in the pane).
-                Button {
-                    objectName: "catalogUndo"
-                    visible: !isOutput
-                    text: "Undo"
-                    focusPolicy: Qt.NoFocus
-                    enabled: _catalog.canUndo && !editorLocked
-                    onClicked: _catalog.undo()
-                }
-                Button {
-                    objectName: "catalogRedo"
-                    visible: !isOutput
-                    text: "Redo"
-                    focusPolicy: Qt.NoFocus
-                    enabled: _catalog.canRedo && !editorLocked
-                    onClicked: _catalog.redo()
-                }
+            }
+
+            // Undo and Redo for what OK and Delete changed on this page
+            // (not while an action is open in the pane), with the last
+            // change beside them (01 S143).
+            UndoBar {
+                id: _catalogUndoBar
+                objectName: "catalogUndoBar"
+                visible: !isOutput
+                Layout.fillWidth: true
+                Layout.leftMargin: padPx(listPadShape, listPad, listPadLeft)
+                Layout.rightMargin: padPx(listPadShape, listPad, listPadRight)
+                canUndo: _catalog.canUndo && !editorLocked
+                canRedo: _catalog.canRedo && !editorLocked
+                undoTip: _catalog.undoTip
+                redoTip: _catalog.redoTip
+                lastChange: _catalog.lastChange
+                undone: _catalog.undone
+                onUndo: _catalog.undo()
+                onRedo: _catalog.redo()
             }
 
             JGListView {
@@ -1513,7 +1514,8 @@ Item {
                                 Layout.fillWidth: true
                                 wrapMode: Text.NoWrap
                             }
-                            Button {
+                            DangerButton {
+                                objectName: "catalogDelete"
                                 // Not for the control open in the pane: it is
                                 // edited there (OK would bring it back).
                                 visible: isLeaf && !lv.catalogLocked
@@ -1528,9 +1530,14 @@ Item {
                                     var model = lv.catalogModel
                                     var dev = deviceIndex
                                     var seq = sequenceIndex
-                                    _deleteGate.confirmThen("Delete Action?",
-                                        "Delete " + typeLabel + (destLabel ? " → " + destLabel : "") + " from this binding?",
-                                        "Delete", function() { model.removeSequence(dev, seq) }, null, true)
+                                    var name = model.controlLabel(dev)
+                                    Confirm.ask(_root, {
+                                        title: "Delete action " + typeLabel + (destLabel ? " → " + destLabel : "") + "?",
+                                        text: "It goes from " + (name ? name : "this input") + " in this mode.",
+                                        undoable: true,
+                                        action: "Delete Action",
+                                        onAccept: function() { model.removeSequence(dev, seq) }
+                                    })
                                 }
                             }
                             // Its saved changes (Tools > History, only this input).

@@ -108,10 +108,17 @@ def main() -> None:
     def colour(value: object) -> str:
         return value.name(QtGui.QColor.NameFormat.HexArgb) if value is not None else ""
 
-    def label_colour(button: QtQuick.QQuickItem) -> str:
-        return colour(button.property("contentItem").property("color"))
+    def fill_colour(button: QtQuick.QQuickItem) -> str:
+        return colour(button.property("background").property("color"))
 
-    out["danger"] = colour(hv("Style.dangerText"))
+    def asking() -> bool:
+        # 01 S140: the shared question (Confirm.ask).
+        # (confirmDialog is the Popup; its items are in the window.)
+        title = item("confirmTitle")
+        return bool(title is not None and shown(title))
+
+    out["danger"] = colour(hv("Style.danger"))
+    out["danger-text"] = colour(hv("Style.dangerText"))
     out["fg"] = colour(hv("Style.fg"))
     out["rows-before"] = hv("_list.count")
     out["module-file"] = path.is_file()
@@ -124,7 +131,7 @@ def main() -> None:
     refresh = next(i for i in items() if i.property("text") == "Refresh")
     out["button"] = {
         "text": clear.property("text"),
-        "colour": label_colour(clear),
+        "colour": fill_colour(clear),
         "after-refresh": clear.mapToScene(QtCore.QPointF(0, 0)).x()
         > refresh.mapToScene(QtCore.QPointF(0, 0)).x(),
         "same-row": abs(
@@ -138,27 +145,33 @@ def main() -> None:
 
     # Asked first; Enter answers the default, Cancel.
     click(clear)
-    out["asked"] = bool(hv("_clearDlg.opened"))
-    out["question"] = item("historyClearText").property("text")
-    out["dialog-title"] = hv("_clearDlg.title")
-    out["cancel-focused"] = bool(item("historyClearCancel").property("activeFocus"))
-    go = item("historyClearGo")
-    out["go"] = {"text": go.property("text"), "colour": label_colour(go)}
+    QtTest.QTest.qWait(300)
+    out["asked"] = asking()
+    out["question"] = (
+        item("confirmText").property("text")
+        + " "
+        + item("confirmLastLine").property("text")
+    )
+    out["dialog-title"] = item("confirmTitle").property("text")
+    out["cancel-focused"] = bool(item("confirmCancel").property("activeFocus"))
+    go = item("confirmAction")
+    out["go"] = {"text": go.property("text"), "colour": fill_colour(go)}
     QtTest.QTest.keyClick(hist, QtCore.Qt.Key.Key_Return)
     QtTest.QTest.qWait(400)
     out["after-enter"] = {
-        "open": bool(hv("_clearDlg.opened")),
+        "open": asking(),
         "rows": hv("_list.count"),
         "entries": history.summary()["entries"],
     }
 
     # Clear History clicked.
     click(clear)
-    click(item("historyClearGo"))
+    QtTest.QTest.qWait(300)
+    click(item("confirmAction"))
     settle()
     QtTest.QTest.qWait(300)
     out["after-clear"] = {
-        "open": bool(hv("_clearDlg.opened")),
+        "open": asking(),
         "rows": hv("_list.count"),
         "message": hv("message"),
         "module-file": path.is_file(),
@@ -187,6 +200,40 @@ def main() -> None:
         "previous": shown(item("historyPreviousChange")),
         "next": shown(item("historyNextChange")),
     }
+
+    # 01 S141: the shared search box. Ctrl+F goes to it, typing filters,
+    # the line under it counts, Esc clears it.
+    box = item("historySearch")
+    field = next(
+        (i for i in items() if i.objectName() == "searchField"
+         and box is not None and box.isAncestorOf(i)),
+        None,
+    )
+    out["search"] = {"shared": field is not None}
+    if field is not None:
+        QtTest.QTest.keyClick(
+            hist, QtCore.Qt.Key.Key_F, QtCore.Qt.KeyboardModifier.ControlModifier
+        )
+        QtTest.QTest.qWait(100)
+        out["search"]["ctrl-f"] = bool(field.property("activeFocus"))
+        for key in (QtCore.Qt.Key.Key_Z, QtCore.Qt.Key.Key_Z, QtCore.Qt.Key.Key_Q):
+            QtTest.QTest.keyClick(hist, key)
+        QtTest.QTest.qWait(200)
+        count = next(
+            (i for i in items() if i.objectName() == "searchCount"
+             and box.isAncestorOf(i)),
+            None,
+        )
+        out["search"]["rows"] = hv("_list.count")
+        out["search"]["line"] = count.property("text") if count else ""
+        out["search"]["line-shown"] = shown(count)
+        QtTest.QTest.keyClick(hist, QtCore.Qt.Key.Key_Escape)
+        QtTest.QTest.qWait(200)
+        out["search"]["after-esc"] = {
+            "text": field.property("text"),
+            "rows": hv("_list.count"),
+            "window-open": hist.isVisible(),
+        }
     print("RESULT " + json.dumps(out), flush=True)
 
 

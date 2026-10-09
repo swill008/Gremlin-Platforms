@@ -41,6 +41,7 @@ gremlin.util.userprofile_path = unittest.mock.Mock(return_value=tempfile.mkdtemp
 import shiboken6  # noqa: E402
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
 
+import gremlin.ui.folder_memory  # noqa: E402,F401  (FilePicker)
 from gremlin import clock  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location(
@@ -118,6 +119,10 @@ QtObject {
     }
 }
 """
+
+
+# The open question's text and its last line.
+_BODY = "(_lib.asking.bodyText + ' ' + _lib.asking.lastLine)"
 
 
 def _menu() -> str:
@@ -211,31 +216,31 @@ STEPS: list[tuple[str, str, str, str]] = [
         "remove-ask",
         "_bridge.click('libraryRow_dev-00000003', 'right', '');"
         " _rowMenu.activate('Remove from Library…')",
-        "_deleteDlg.opened",
-        "JSON.stringify({title: _deleteDlg.title, body: _deleteDlg.body,"
-        " go: _deleteDlg.goText, red: Qt.colorEqual(_bridge.item("
-        "'libraryDeleteDialogGo').contentItem.color, Style.dangerText)})",
+        "!!_lib.asking",
+        "JSON.stringify({title: _lib.asking.titleText, body: " + _BODY + ","
+        " go: _lib.asking.actionText, red: Qt.colorEqual(_bridge.item("
+        "'confirmAction').background.color, Style.danger)})",
     ),
     (
         "remove-refused",
         "_fakeMain.refuse = 'Stop the profile first: Delete Device changes it.';"
-        " _deleteDlg.accept()",
-        "!_deleteDlg.opened",
+        " _lib.asking.accept()",
+        "!_lib.asking",
         "JSON.stringify({message: _lib.message, bad: _lib.messageBad,"
         " rows: deviceLibrary.rows.map(r => r.key)})",
     ),
     (
         "remove-go",
         "_fakeMain.refuse = ''; _bridge.click('libraryRow_dev-00000003', 'right', '');"
-        " _rowMenu.activate('Remove from Library…'); _deleteDlg.accept()",
+        " _rowMenu.activate('Remove from Library…'); _lib.asking.accept()",
         _gone("dev-00000003"),
         "JSON.stringify({message: _lib.message, selected: deviceLibrary.selected})",
     ),
     (
         "remove-no-module",
         "_bridge.click('libraryRow_dev-00000005', 'right', '');"
-        " _rowMenu.activate('Remove from Library…'); var t = _deleteDlg.title;"
-        " _deleteDlg.accept(); t",
+        " _rowMenu.activate('Remove from Library…'); var t = _lib.asking.titleText;"
+        " _lib.asking.accept(); t",
         _gone("dev-00000005"),
         "",
     ),
@@ -243,16 +248,16 @@ STEPS: list[tuple[str, str, str, str]] = [
         "clear-setup",
         "_bridge.click('libraryRow_dev-00000002', 'right', '');"
         " _rowMenu.activate('Clear Setup…');"
-        " var t = [_deleteDlg.title, _deleteDlg.body];"
-        " _deleteDlg.accept(); JSON.stringify(t)",
+        " var t = [_lib.asking.titleText, " + _BODY + "];"
+        " _lib.asking.accept(); JSON.stringify(t)",
         "",
         "",
     ),
     (
         "delete-setups",
         "_bridge.click('libraryRow_dev-00000002', 'right', '');"
-        " _rowMenu.activate('Delete Saved Setups…'); var t = [_deleteDlg.title,"
-        " _deleteDlg.body]; _deleteDlg.accept(); JSON.stringify(t)",
+        " _rowMenu.activate('Delete Saved Setups…'); var t = [_lib.asking.titleText,"
+        " " + _BODY + "]; _lib.asking.accept(); JSON.stringify(t)",
         "!deviceLibrary.busy && deviceLibrary.rows.filter(r => r.key ==="
         " 'dev-00000002')[0].count === 0",
         "",
@@ -262,8 +267,9 @@ STEPS: list[tuple[str, str, str, str]] = [
         "deviceLibrary.setAllOpen(true);"
         " _bridge.click('libraryRow_set-00000001', 'right', '');"
         " _rowMenu.activate('Restore to This Stick…');"
-        " var t = [_deleteDlg.title, _deleteDlg.goText, _deleteDlg.danger];"
-        " _deleteDlg.accept(); t.push(_bridge.item('libraryRow_set-00000001').isBusy,"
+        " var t = [_restoreDlg.title,"
+        " _bridge.item('libraryRestoreDialogGo').text, false];"
+        " _restoreDlg.accept(); t.push(_bridge.item('libraryRow_set-00000001').isBusy,"
         " _bridge.item('libraryRowBusy_set-00000001').visible); JSON.stringify(t)",
         "!deviceLibrary.busy && _lib.message.indexOf('Restored') === 0",
         "",
@@ -302,12 +308,12 @@ STEPS: list[tuple[str, str, str, str]] = [
     (
         "multi-ask",
         "_rowMenu.activate('Delete…')",
-        "_deleteDlg.opened",
-        "JSON.stringify({title: _deleteDlg.title, body: _deleteDlg.body})",
+        "!!_lib.asking",
+        "JSON.stringify({title: _lib.asking.titleText, body: " + _BODY + "})",
     ),
     (
         "multi-go",
-        "_deleteDlg.accept()",
+        "_lib.asking.accept()",
         _gone("set-00000002"),
         "JSON.stringify(deviceLibrary.rows.map(r => r.key))",
     ),
@@ -334,8 +340,8 @@ STEPS: list[tuple[str, str, str, str]] = [
     ),
     (
         "multi-devices-go",
-        "_rowMenu.activate('Remove from Library…'); var t = [_deleteDlg.title,"
-        " _deleteDlg.body]; _deleteDlg.accept(); JSON.stringify(t)",
+        "_rowMenu.activate('Remove from Library…'); var t = [_lib.asking.titleText,"
+        " " + _BODY + "]; _lib.asking.accept(); JSON.stringify(t)",
         _gone("dev-00000006"),
         "",
     ),

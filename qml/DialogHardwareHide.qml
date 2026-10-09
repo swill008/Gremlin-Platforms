@@ -4,12 +4,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal as U
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+
+import "confirm.js" as Confirm
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -46,25 +47,49 @@ ApplicationWindow {
         return n
     }
 
-    FileDialog {
+    // The open Remove question (01 S140), for tests.
+    property var _question: null
+
+    // 01 S140: asks before a program leaves HidHide's program list.
+    function confirmRemoveGame(row) {
+        var name = row.name || row.path
+        _question = Confirm.ask(_bodyScroll, {
+            title: "Remove " + name + " from the program list?",
+            text: _hh.inverseOn
+                ? name + " is no longer blocked from the hidden controllers."
+                : name + " can no longer see the hidden controllers.",
+            note: "Add Program can put it back.",
+            action: "Remove Program",
+            onAccept: function() {
+                _win._question = null
+                _hh.removeGame(row.path)
+            },
+            onCancel: function() { _win._question = null }
+        })
+    }
+
+    // Choosers open in the last folder used for their kind (01 S143).
+    FilePicker {
         id: _pickPhoto
+        kind: "picture"
+        mode: "open"
         title: "Device Image"
-        fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp *.webp)", "All files (*)"]
         property string targetId: ""
-        onAccepted: {
+        onPicked: (selected) => {
             if (targetId)
-                _hh.setDevicePhoto(targetId, selectedFile.toString())
+                _hh.setDevicePhoto(targetId, selected.toString())
         }
     }
 
-    FileDialog {
+    FilePicker {
         id: _pickExe
+        kind: "other"
+        mode: "open"
         title: "Add a Game or Program"
-        fileMode: FileDialog.OpenFile
         nameFilters: ["Programs (*.exe)", "All files (*)"]
-        onAccepted: {
-            var url = selectedFile
+        onPicked: (selected) => {
+            var url = selected
             var path = url.toString()
             if (path.startsWith("file:///"))
                 path = path.substring(8)
@@ -188,11 +213,9 @@ ApplicationWindow {
                 }
             }
 
-            Label {
+            SectionHeading {
+                Layout.fillWidth: true
                 text: "HidHide"
-                color: Style.fg
-                font.pixelSize: Style.dp(16)
-                font.bold: true
             }
 
             Label {
@@ -281,11 +304,9 @@ ApplicationWindow {
                     SplitView.minimumHeight: Style.dp(96)
                     spacing: Style.dp(6)
 
-                    Label {
-                        text: "DEVICES"
-                        color: Style.fgMuted
-                        font.pixelSize: Style.dp(11)
-                        font.capitalization: Font.AllUppercase
+                    SectionHeading {
+                        Layout.fillWidth: true
+                        text: "Devices"
                     }
 
                     Label {
@@ -297,10 +318,13 @@ ApplicationWindow {
                         text: _hh.lastError
                     }
 
-                    Label {
+                    EmptyState {
+                        id: _noDevices
+                        objectName: "hidHideNoDevices"
                         visible: _hh.deviceCount === 0
+                        Layout.fillWidth: true
                         text: _hh.installed ? "No HID devices reported." : "Device list needs the HidHide driver."
-                        color: Style.fgMuted
+                        // No button: Get HidHide is in the bar at the top.
                     }
 
                     ListView {
@@ -421,11 +445,9 @@ ApplicationWindow {
                     SplitView.minimumHeight: Style.dp(120)
                     spacing: Style.dp(6)
 
-                    Label {
+                    SectionHeading {
+                        Layout.fillWidth: true
                         text: "Programs"
-                        color: Style.fg
-                        font.pixelSize: Style.dp(16)
-                        font.bold: true
                     }
 
                     Button {
@@ -515,23 +537,24 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                     }
                                 }
-                                Button {
+                                DangerButton {
+                                    objectName: "hidHideRemoveProgram"
                                     text: "Remove"
-                                    onClicked: _hh.removeGame(row.path)
+                                    onClicked: _win.confirmRemoveGame(row)
                                 }
                             }
                         }
                     }
 
-                    Label {
+                    EmptyState {
+                        id: _noPrograms
+                        objectName: "hidHideNoPrograms"
                         visible: _hh.gameCount === 0
-                        wrapMode: Text.WordWrap
                         Layout.fillWidth: true
-                        color: Style.fgMuted
-                        font.pixelSize: Style.dp(12)
                         text: _hh.inverseOn
                               ? "Add a program here to block it from the hidden controllers."
                               : "Add a program here to let it see the hidden controllers. Gremlin-Platforms can still see them."
+                        // No button: Add Program is just above.
                     }
                 }
             }

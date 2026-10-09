@@ -168,6 +168,7 @@ if _startup_failure is None:
         import gremlin.ui.module_pairing  # noqa: F401
         import gremlin.ui.module_calibration  # noqa: F401
         import gremlin.ui.shell_option  # noqa: F401
+        import gremlin.ui.folder_memory  # noqa: F401
         import gremlin.osc_persist  # noqa: F401
         import gremlin.windows_event_hook
         # isort: on
@@ -669,6 +670,10 @@ def register_config_options() -> None:
     cfg.register(
         "global", "internal", "button-map-recent-colours", PropertyType.List, [],
         "Colors last applied in the Button Map editor, newest first.", {},
+    )
+    cfg.register(
+        "global", "internal", "last-folders", PropertyType.Dict, {},
+        "The last folder used for each kind of file, by kind.", {},
     )
     cfg.register(
         "global", "internal", "last-run-version", PropertyType.String, "",

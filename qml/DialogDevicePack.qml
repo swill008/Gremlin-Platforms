@@ -4,7 +4,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal as U
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -70,11 +69,21 @@ ApplicationWindow {
         target: _hw
         function onPackExported(raw) {
             var info = _win._parse(raw)
-            _win.status = info.ok
+            _win.say(info.ok
                     ? ("Wrote " + info.path + (info.sizeText ? " (" + info.sizeText + ")." : "."))
-                    : (info.error || "Export failed.")
+                    : (info.error || "Export failed."), !info.ok)
             _win.exportFolder = info.ok ? (info.folderUrl || "") : ""
         }
+    }
+
+    // 01 S142: what just happened, on the shared message line; after an
+    // import its Undo link is Undo Import (08 S80).
+    function say(text, failed, undoable) {
+        status = text
+        if (undoable)
+            _message.show(text, !!failed, "Undo Import", _win.undoImport)
+        else
+            _message.show(text, !!failed)
     }
 
     function _parse(raw) {
@@ -123,10 +132,10 @@ ApplicationWindow {
             return
         var info = _parse(_hw.exportPackAsync(exportDeviceName(), dest, exportOptions()))
         if (!info.ok) {
-            status = info.error || "Export failed."
+            say(info.error || "Export failed.", true)
             return
         }
-        status = ""
+        say("", false)
         exportFolder = ""
     }
 
@@ -141,12 +150,12 @@ ApplicationWindow {
         exportTicks = {}
         exportFolder = ""
         if (!name.length) {
-            status = "Choose a device."
+            say("Choose a device.", false)
             return
         }
         var info = _parse(_hw.peekPackDevice(name))
         if (!info.ok) {
-            status = info.error || "This device has no module file yet."
+            say(info.error || "This device has no module file yet.", false)
             return
         }
         exportName = info.device || name
@@ -158,7 +167,7 @@ ApplicationWindow {
             ticks[exportModes[m].name] = true
         exportTicks = ticks
         exportRev = exportRev + 1
-        status = ""
+        say("", false)
     }
 
     function exportOptions() {
@@ -199,7 +208,7 @@ ApplicationWindow {
         folded = {}
         tickRev = tickRev + 1
         openRev = openRev + 1
-        status = ""
+        say("", false)
     }
 
     function groupState(section) {
@@ -311,9 +320,10 @@ ApplicationWindow {
         // later OK would write a pane's old copy back (05 Q8, GL-098).
         Helpers.closeActionPanes(function() {
             var info = _parse(_hw.importPack(url, target, JSON.stringify(chosen)))
-            status = info.ok ? (info.report || "Imported.") : (info.error || "Import failed.")
             // An import that wrote nothing keeps the one before it undoable.
             canUndo = _hw.canUndoPackImport()
+            say(info.ok ? (info.report || "Imported.") : (info.error || "Import failed."),
+                !info.ok, info.ok && canUndo)
             if (info.ok)
                 reloadDevices()
         })
@@ -334,7 +344,7 @@ ApplicationWindow {
     }
 
     function _showUndo(info) {
-        status = info.ok ? (info.report || "Undid the import.") : (info.error || "Undo failed.")
+        say(info.ok ? (info.report || "Undid the import.") : (info.error || "Undo failed."), !info.ok)
         canUndo = _hw.canUndoPackImport()
         reloadDevices()
     }
@@ -385,7 +395,7 @@ ApplicationWindow {
     function askImport() {
         var p = _parse(_hw.previewPackImport(zipUrl, _saveAs.text, selectionJson()))
         if (!p.ok) {
-            status = p.error || "Could not read that pack."
+            say(p.error || "Could not read that pack.", true)
             return
         }
         preview = p
@@ -402,32 +412,33 @@ ApplicationWindow {
         _hw.dropPackPreview()
     }
 
-    FileDialog {
+    // 01 S143: both open in the last folder used for Device Packs.
+    FilePicker {
         id: _save
+        kind: "device-pack"
+        mode: "save"
         title: "Export Device Pack"
-        fileMode: FileDialog.SaveFile
         defaultSuffix: "zip"
         nameFilters: ["Device packs (*.zip)"]
-        currentFolder: _hw.exportFolderUrl()
-        onAccepted: {
-            startExport(Helpers.fileDialogUrl(_save))
-        }
+        folder: _hw.exportFolderUrl()
+        onPicked: (selected) => startExport(String(selected))
     }
 
-    FileDialog {
+    FilePicker {
         id: _pick
+        kind: "device-pack"
+        mode: "open"
         title: "Open Device Pack"
-        fileMode: FileDialog.OpenFile
         nameFilters: ["Device packs (*.zip)"]
-        currentFolder: _hw.exportFolderUrl()
-        onAccepted: {
-            zipUrl = Helpers.fileDialogUrl(_pick)
+        folder: _hw.exportFolderUrl()
+        onPicked: (selected) => {
+            zipUrl = String(selected)
             // Another pack: the last import stays.
             _hw.keepPackImport()
             canUndo = _hw.canUndoPackImport()
             var info = _parse(_hw.peekPackZip(zipUrl))
             if (!info.ok) {
-                status = info.error || "Could not read that pack."
+                say(info.error || "Could not read that pack.", true)
                 return
             }
             mode = "import"
@@ -676,14 +687,8 @@ ApplicationWindow {
                             enabled: exportName.length > 0 && exportSize.length > 0
                                      && !_hw.packExporting
                             onClicked: {
-                                var name = _win.exportDeviceName()
-                                var folder = _hw.exportFolderUrl()
-                                var hint = _hw.defaultExportUrl(name)
-                                _save.currentFolder = folder
-                                if (hint && hint.length) {
-                                    try { _save.selectedFile = hint } catch (e) {}
-                                    try { _save.currentFile = hint } catch (e) {}
-                                }
+                                var hint = _hw.defaultExportUrl(_win.exportDeviceName())
+                                _save.currentFile = hint || ""
                                 _save.open()
                             }
                         }
@@ -715,7 +720,6 @@ ApplicationWindow {
                         text: "Choose Zip…"
                         focusPolicy: Qt.NoFocus
                         onClicked: {
-                            _pick.currentFolder = _hw.exportFolderUrl()
                             _pick.open()
                         }
                     }
@@ -1027,12 +1031,11 @@ ApplicationWindow {
             }
         }
 
-        Label {
-            text: status
-            wrapMode: Text.WordWrap
+        MessageLine {
+            id: _message
+            objectName: "packMessage"
             Layout.fillWidth: true
-            color: Style.fg
-            visible: status.length > 0
+            busy: _hw.packExporting === true
         }
     }
 }

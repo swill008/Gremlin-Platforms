@@ -39,6 +39,7 @@ gremlin.util.userprofile_path = unittest.mock.Mock(return_value=tempfile.mkdtemp
 import shiboken6  # noqa: E402
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
 
+import gremlin.ui.folder_memory  # noqa: E402,F401  (FilePicker)
 from gremlin import clock  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location(
@@ -98,7 +99,7 @@ STEPS: list[tuple[str, str, str, str]] = [
     ("search", "_search.text = 'landing'", "", _rows()),
     (
         "search-esc",
-        "_search.forceActiveFocus(); _bridge.esc(_search)",
+        "_search.focusField(); _bridge.esc(_search.field)",
         "",
         "JSON.stringify({text: _search.text, rows: deviceLibrary.rows.length})",
     ),
@@ -269,19 +270,20 @@ STEPS: list[tuple[str, str, str, str]] = [
     ),
     (
         "delete",
-        "deviceLibrary.select('set-00000006'); _lib.askDelete(); _deleteDlg.title",
+        "deviceLibrary.select('set-00000006'); _lib.askDelete(); _lib.asking.titleText",
         "",
-        "_deleteDlg.title",
+        "_lib.asking.titleText",
     ),
     (
         "delete-go",
-        "_deleteDlg.accept()",
+        "_lib.asking.accept()",
         "!deviceLibrary.busy && deviceLibrary.selected === ''",
         _rows(),
     ),
     (
         "open-on",
-        "_deleteDlg.close(); _lib.openOn('Right stick', '{BBBB-0002}', 'swap')",
+        "(_lib.asking && _lib.asking.cancel());"
+        " _lib.openOn('Right stick', '{BBBB-0002}', 'swap')",
         "_swapDlg.opened",
         "JSON.stringify({selected: deviceLibrary.selected, first: _swapDlg.firstName})",
     ),

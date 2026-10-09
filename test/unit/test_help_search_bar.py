@@ -167,7 +167,7 @@ def _smoke() -> None:
     report("all-box-unscoped", visible("helpSearchAll"))
     ev("_bar.focusField()")
     QtTest.QTest.qWait(50)
-    report("field-focused", find("helpSearchField").hasActiveFocus())
+    report("field-focused", find("searchField").hasActiveFocus())
     type_text("DEVICE  re")
     QtTest.QTest.qWait(50)
     report("summary-two", summary())
@@ -207,22 +207,36 @@ def _smoke() -> None:
     QtTest.QTest.qWait(50)
     report("nexts", ev("_win.nexts"))
     report("previouses", ev("_win.previouses"))
-    report("field-kept-focus-on-nav", find("helpSearchField").hasActiveFocus())
+    report("field-kept-focus-on-nav", find("searchField").hasActiveFocus())
 
     # Esc clears and leaves the box.
     QtTest.QTest.keyClick(quick, QtCore.Qt.Key.Key_Escape)
     QtTest.QTest.qWait(50)
     report("esc-text", repr(ev("_bar.text")))
-    report("esc-focus", find("helpSearchField").hasActiveFocus())
+    report("esc-focus", find("searchField").hasActiveFocus())
     report("esc-results", results())
+
+    # The box is the shared SearchBox (01 S141): Ctrl+F in the window goes
+    # to it, and its own count line stays off (the summary says it).
+    report("is-search-box", find("helpSearchBox") is not None)
+    click("elsewhere")
+    report("ctrl-f-before", find("searchField").hasActiveFocus())
+    QtTest.QTest.keyClick(
+        quick, QtCore.Qt.Key.Key_F, QtCore.Qt.KeyboardModifier.ControlModifier
+    )
+    QtTest.QTest.qWait(50)
+    report("ctrl-f-focus", find("searchField").hasActiveFocus())
 
     # × clears too.
     ev("_bar.focusField()")
     type_text("mode")
     QtTest.QTest.qWait(50)
-    report("clear-visible", visible("helpSearchClear"))
-    click("helpSearchClear")
+    report("clear-visible", visible("searchClear"))
+    click("searchClear")
     report("clear-text", repr(ev("_bar.text")))
+    type_text("mode")
+    QtTest.QTest.qWait(50)
+    report("count-line-hidden", not visible("searchCount"))
 
     for w in warnings:
         print(f"WARN {w}", flush=True)
@@ -294,6 +308,10 @@ def test_help_search_bar(tmp_path: pathlib.Path) -> None:
     assert r["esc-results"] == "[]"
     assert r["clear-visible"] == "True"
     assert r["clear-text"] == "''"
+    assert r["is-search-box"] == "True"
+    assert r["ctrl-f-before"] == "False"
+    assert r["ctrl-f-focus"] == "True"
+    assert r["count-line-hidden"] == "True"
 
 
 if __name__ == "__main__":

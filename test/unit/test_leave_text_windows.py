@@ -100,10 +100,11 @@ def test_options_click_away_leaves_search(run: dict) -> None:
 def test_options_first_esc_leaves_box_second_closes(run: dict) -> None:
     res = run["options-esc"]
     assert res["focused"]
-    # First Esc: out of the box, typing kept, window still open.
+    # First Esc: out of the box, window still open. The search is the
+    # shared SearchBox, so Esc also clears it (01 S141).
     assert res["focus"] is False
     assert res["visible"] is True
-    assert res["text"] == "scalex"
+    assert res["text"] == ""
     # Second Esc: the window closes (EscapeCloses).
     assert res["visible-after-second"] is False
 

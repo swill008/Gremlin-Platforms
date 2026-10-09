@@ -26,8 +26,10 @@ import "help_links.js" as HelpLinks
 ApplicationWindow {
     font.pixelSize: Style.fontSize
 
-    // "* name - Gremlin-Platforms R1"; the * means unsaved changes.
-    title: (profileDirty ? "* " : "") + (backend ? backend.windowTitle : "Untitled") + " - Gremlin-Platforms R1"
+    // "* name - Gremlin-Platforms R1 1.0.30"; the * means unsaved changes
+    // (01 S57). The version comes from version.json.
+    title: (profileDirty ? "* " : "") + (backend ? backend.windowTitle : "Untitled")
+           + " - Gremlin-Platforms R1" + (backend && backend.gremlinVersion ? " " + backend.gremlinVersion : "")
 
     // Unsaved changes, checked while the window is in front (edits only
     // happen then) and right after a load or save. The cheap check: it
@@ -47,6 +49,38 @@ ApplicationWindow {
         target: backend
         function onWindowTitleChanged() { Qt.callLater(refreshProfileDirty) }
         function onProfileChanged() { Qt.callLater(refreshProfileDirty) }
+    }
+
+    // Unsaved profile edits a crash left (04 S94): Restore / Discard /
+    // Not now, as the Button Map's Autosave. Not now keeps the copy for the
+    // next open of the profile.
+    function offerProfileRecovery() {
+        if (!backend || typeof backend.takeRecoveryOffer !== "function")
+            return
+        var offer = backend.takeRecoveryOffer()
+        if (!offer || offer.name === undefined)
+            return
+        _profileRecoveryGate.recoveryPath = String(offer.path || "")
+        var when = String(offer.savedAt || "").replace("T", " at ")
+        _profileRecoveryGate.choose("Unsaved Edits Found",
+                                    "The profile " + offer.name + " has edits" + (when.length ? " from " + when : "")
+                                    + " that were never saved, probably because the program closed unexpectedly.
+
+"
+                                    + "Restore opens them; save to keep them. Discard deletes them.",
+                                    "Restore", "Discard")
+        _profileRecoveryGate.cancelText = "Not now"
+    }
+    Connections {
+        target: backend
+        function onRecoveryOfferChanged() { Qt.callLater(offerProfileRecovery) }
+    }
+    DismissibleDialog {
+        id: _profileRecoveryGate
+        objectName: "profileRecoveryGate"
+        property string recoveryPath: ""
+        onConfirmed: backend.restoreRecovery(recoveryPath)
+        onDiscarded: backend.discardRecovery(recoveryPath)
     }
     // The toolbar's width with or without the captions. When the window is
     // narrower than the toolbar with captions, the buttons show their icons
@@ -133,6 +167,7 @@ ApplicationWindow {
         // Tool windows reach closeActionPanes() through Helpers.
         Helpers.setMainWindow(_root)
         Style.helpLinks = { check: _helpLinkCheck, reveal: _helpLinkReveal }
+        Qt.callLater(offerProfileRecovery)
     }
 
     Component.onDestruction: () => {
@@ -1422,8 +1457,11 @@ ApplicationWindow {
         confirmText: "OK"
     }
 
-    FileDialog {
+    // 01 S143: opens in the last folder used for profiles.
+    FilePicker {
         id: _saveProfileFileDialog
+        kind: "profile"
+        mode: "save"
         title: "Save Profile As"
 
         // Set by guardUnsavedChanges: runs after a successful save.
@@ -1433,11 +1471,10 @@ ApplicationWindow {
 
         acceptLabel: "Save"
         defaultSuffix: "xml"
-        fileMode: FileDialog.SaveFile
         nameFilters: ["Profile files (*.xml)"]
-        currentFolder: backend.profilesFolderUrl()
+        folder: backend ? backend.profilesFolderUrl() : ""
 
-        onAccepted: () => {
+        onPicked: (file) => {
             if (!backend) {
                 return
             }
@@ -1445,7 +1482,7 @@ ApplicationWindow {
             var wasQuitting = afterSaveQuitting
             afterSave = null
             afterSaveQuitting = false
-            saveProfileChecked(currentFile, function(ok) {
+            saveProfileChecked(file, function(ok) {
                 if (next) {
                     if (ok) {
                         next()
@@ -1464,7 +1501,7 @@ ApplicationWindow {
         }
         // Closing the file window without saving calls off what waited on
         // the save, quit included; the next Save As starts clean.
-        onRejected: () => {
+        onCancelled: () => {
             var wasQuitting = afterSaveQuitting
             afterSave = null
             afterSaveQuitting = false
@@ -1473,18 +1510,18 @@ ApplicationWindow {
         }
     }
 
-    FileDialog {
+    FilePicker {
         id: _loadProfileFileDialog
+        kind: "profile"
+        mode: "open"
         title: "Open Profile"
 
         acceptLabel: "Open"
         defaultSuffix: "xml"
-        fileMode: FileDialog.OpenFile
         nameFilters: ["Profile files (*.xml)"]
-        currentFolder: backend.profilesFolderUrl()
+        folder: backend ? backend.profilesFolderUrl() : ""
 
-        onAccepted: () => {
-            var file = currentFile
+        onPicked: (file) => {
             if (backend)
                 leaveDisplayThen(function() {
                     guardUnsavedChanges(function() { backend.loadProfile(file) })

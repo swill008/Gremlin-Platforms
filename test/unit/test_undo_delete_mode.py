@@ -256,8 +256,9 @@ def items(item):
     yield item
     for child in item.childItems():
         yield from items(child)
+# Undo Delete Mode is the shared Undo / Redo pair's Undo (01 S143).
 button = [b for b in items(dialog.contentItem())
-          if b.property('text') == 'Undo Delete Mode'][0]
+          if b.objectName() == 'undoBarUndo'][0]
 out = {'before': button.property('enabled')}
 delete = QtQml.QQmlExpression(QtQml.qmlContext(dialog), dialog,
                               'modeHierarchy.deleteMode("Flight")')

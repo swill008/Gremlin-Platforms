@@ -196,12 +196,14 @@ Item {
         }
     }
 
-    FileDialog {
+    // Opens in the last folder used for pictures (01 S143).
+    FilePicker {
         id: _screenImageDlg
+        kind: "picture"
+        mode: "open"
         title: "Screen Background"
         nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp *.webp)"]
-        fileMode: FileDialog.OpenFile
-        onAccepted: screenImage = selectedFile.toString()
+        onPicked: (file) => screenImage = String(file)
     }
 
     ListModel { id: _copySources }

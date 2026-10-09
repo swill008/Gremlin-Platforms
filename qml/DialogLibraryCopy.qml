@@ -186,7 +186,7 @@ Dialog {
                 color: _dlg.sticks.length ? Style.fgMuted : Style.warn
             }
 
-            Label { text: "What to copy"; font.bold: true; color: Style.fgStrong; Layout.topMargin: Style.dp(4) }
+            SectionHeading { text: "What to copy"; Layout.fillWidth: true; Layout.topMargin: Style.dp(4) }
             Flow {
                 Layout.fillWidth: true
                 spacing: Style.dp(12)

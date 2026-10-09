@@ -11,6 +11,8 @@ import QtQuick.Layouts
 import Gremlin.Device
 import Gremlin.Style
 
+import "confirm.js" as Confirm
+
 Item {
     id: _library
 
@@ -34,17 +36,16 @@ Item {
         width: parent.width
         spacing: Style.dp(4)
 
-        Label {
-            text: "Styles"
-            font.bold: true
-            color: Style.fg
-        }
-        Label {
-            visible: _opts.styles.length === 0
-            text: "None yet. Right-click a chip, shape, line or text box in the Button Map → Saved styles → Save this style."
-            wrapMode: Text.WordWrap
+        SectionHeading {
+            objectName: "stylesHeading"
             Layout.fillWidth: true
-            color: Style.fgMuted
+            text: "Styles"
+        }
+        EmptyState {
+            objectName: "stylesEmpty"
+            visible: _opts.styles.length === 0
+            Layout.fillWidth: true
+            text: "None yet. Right-click a chip, shape, line or text box in the Button Map → Saved styles → Save this style."
         }
         Repeater {
             model: _opts.styles
@@ -88,31 +89,35 @@ Item {
                     text: "Rename"
                     onClicked: _library.renaming = parent.key
                 }
-                Button {
+                DangerButton {
+                    objectName: "styleDelete"
                     text: "Delete"
                     onClicked: {
                         var name = modelData.name
                         var kind = modelData.kind
-                        _deleteGate.confirmThen("Delete Saved Style",
-                            "Delete the saved style “" + name + "”? Items that use it keep their look.",
-                            "Delete", function() { _opts.deleteStyle(name, kind) }, null, true)
+                        Confirm.ask(_library, {
+                            title: "Delete saved style “" + name + "”?",
+                            text: "Items that use it keep their look.",
+                            undoable: false,
+                            action: "Delete Style",
+                            onAccept: function() { _opts.deleteStyle(name, kind) }
+                        })
                     }
                 }
             }
         }
 
-        Label {
-            text: "Templates"
-            font.bold: true
-            color: Style.fg
-            Layout.topMargin: Style.dp(8)
-        }
-        Label {
-            visible: _library.templateList.length === 0
-            text: "None yet. In the Button Map: File → Templates → Save Layout as Template…. Export and import are there too."
-            wrapMode: Text.WordWrap
+        SectionHeading {
+            objectName: "templatesHeading"
             Layout.fillWidth: true
-            color: Style.fgMuted
+            Layout.topMargin: Style.dp(8)
+            text: "Templates"
+        }
+        EmptyState {
+            objectName: "templatesEmpty"
+            visible: _library.templateList.length === 0
+            Layout.fillWidth: true
+            text: "None yet. In the Button Map: File → Templates → Save Layout as Template…. Export and import are there too."
         }
         Repeater {
             model: _library.templateList
@@ -151,25 +156,25 @@ Item {
                     text: "Rename"
                     onClicked: _library.renaming = parent.key
                 }
-                Button {
+                DangerButton {
+                    objectName: "templateDelete"
                     text: "Delete"
                     onClicked: {
                         var name = modelData.name
-                        _deleteGate.confirmThen("Delete Template",
-                            "Delete the template “" + name + "”? Layouts made from it are not changed.",
-                            "Delete", function() {
+                        Confirm.ask(_library, {
+                            title: "Delete template “" + name + "”?",
+                            text: "Layouts made from it are not changed.",
+                            undoable: false,
+                            action: "Delete Template",
+                            onAccept: function() {
                                 _hw.deleteTemplate(name)
                                 _library.refreshTemplates()
-                            }, null, true)
+                            }
+                        })
                     }
                 }
             }
         }
-    }
-
-    // Asks before a style or template is deleted.
-    DismissibleDialog {
-        id: _deleteGate
     }
 
     DismissibleDialog {

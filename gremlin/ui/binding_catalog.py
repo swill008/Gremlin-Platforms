@@ -322,6 +322,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._park_empty = False
         self._undo: list[dict] = []
         self._redo: list[dict] = []
+        # The newest step was an Undo: the Undo bar says what Redo puts back.
+        self._just_undid = False
         signal.profileChanged.connect(self.reload)
         # Another profile (or one changed under the page): no steps. A mode
         # renamed or deleted: the steps and the open pane follow (adding a
@@ -688,7 +690,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             binding = sequences[seq]
             item.remove_item_binding(binding)
             profile.library.release([binding.root_action])
-            self._step(want, before)
+            name = self._step_name(want)
+            self._step(want, before, label=f"Delete action from {name}" if name else "")
             signal.inputItemChanged.emit(want)
             signal.reloadCurrentInputItem.emit()
             return True
@@ -715,9 +718,22 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         profile, _guid, _kind, _hw, _mode, item = spec
         return profile.library.snapshot(item)
 
+    def _step_name(self, device_index: int) -> str:
+        """The input's name for an Undo step's label ("" when not found)."""
+        want = int(device_index)
+        for i in range(self._claimed.rowCount()):
+            if int(self._claimed.deviceIndexAt(i)) == want:
+                return str(self._claimed.nameAt(i))
+        return ""
+
     def _step(
-        self, device_index: int, before: dict | None, key: tuple | None = None
+        self,
+        device_index: int,
+        before: dict | None,
+        key: tuple | None = None,
+        label: str = "",
     ) -> None:
+        """One Undo step; label names it for the Undo bar (01 S143)."""
         spec = self._spec_for(device_index, key)
         if spec is None:
             return
@@ -727,10 +743,11 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             return
         self._undo.append({
             "hid": device_index, "key": (guid, kind, hw, mode),
-            "before": before, "after": after,
+            "before": before, "after": after, "label": label,
         })
         del self._undo[: -self.UNDO_STEPS]
         self._redo.clear()
+        self._just_undid = False
         self.undoChanged.emit()
 
     def _on_mode_renamed(self, old: str, new: str) -> None:
@@ -796,6 +813,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             step = self._undo.pop()
             if self._play(step, "before"):
                 self._redo.append(step)
+                self._just_undid = True
             else:
                 self._undo.append(step)  # kept, not lost
             # After the step has moved: _play's own signal came too early,
@@ -808,6 +826,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             step = self._redo.pop()
             if self._play(step, "after"):
                 self._undo.append(step)
+                self._just_undid = False
             else:
                 self._redo.append(step)
             self.undoChanged.emit()
@@ -825,6 +844,32 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     canRedo = QtCore.Property(
         bool, fget=lambda self: self._can_redo(), notify=undoChanged
     )
+
+    # 01 S143: the Undo bar's text and tips, from each step's label.
+    @staticmethod
+    def _top_label(steps: list[dict]) -> str:
+        return str(steps[-1].get("label") or "") if steps else ""
+
+    def _get_last_change(self) -> str:
+        label = self._top_label(self._undo)
+        return f"Last change: {label}" if label else ""
+
+    def _get_undone(self) -> str:
+        label = self._top_label(self._redo)
+        return f"Undone: {label}" if label and self._just_undid else ""
+
+    def _get_undo_tip(self) -> str:
+        label = self._top_label(self._undo)
+        return f"Undo {label}" if label else ""
+
+    def _get_redo_tip(self) -> str:
+        label = self._top_label(self._redo)
+        return f"Redo {label}" if label else ""
+
+    lastChange = QtCore.Property(str, fget=_get_last_change, notify=undoChanged)
+    undone = QtCore.Property(str, fget=_get_undone, notify=undoChanged)
+    undoTip = QtCore.Property(str, fget=_get_undo_tip, notify=undoChanged)
+    redoTip = QtCore.Property(str, fget=_get_redo_tip, notify=undoChanged)
 
     def _control_spec(self, device_index: int):
         want = int(device_index)
@@ -956,7 +1001,11 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             self._pane_seq = index
             self._pane_whole = False
             self._retarget_draft(real, index)
-        self._step(self._pane_hid, before, key)
+        name = self._step_name(self._pane_hid)
+        self._step(
+            self._pane_hid, before, key,
+            label=f"Edit actions of {name}" if name else "",
+        )
         signal.inputItemChanged.emit(self._pane_hid)
         return index
 
@@ -1104,6 +1153,9 @@ class KeyboardPaneModel(BindingCatalogModel):
     def _can_redo(self) -> bool:
         return bool(self._redo)
 
+    def _step_name(self, device_index: int) -> str:
+        return self._get_key_name()
+
     @QtCore.Slot()
     def undo(self) -> None:
         """The last OK taken back; an unsaved draft is dropped (the page
@@ -1114,6 +1166,7 @@ class KeyboardPaneModel(BindingCatalogModel):
         step = self._undo.pop()
         if self._play(step, "before"):
             self._redo.append(step)
+            self._just_undid = True
         else:
             self._undo.append(step)
         self.undoChanged.emit()
@@ -1127,6 +1180,7 @@ class KeyboardPaneModel(BindingCatalogModel):
         step = self._redo.pop()
         if self._play(step, "after"):
             self._undo.append(step)
+            self._just_undid = False
         else:
             self._redo.append(step)
         self.undoChanged.emit()
@@ -1140,6 +1194,9 @@ class KeyboardPaneModel(BindingCatalogModel):
 
     @QtCore.Property(str, notify=paneInputChanged)
     def keyName(self) -> str:
+        return self._get_key_name()
+
+    def _get_key_name(self) -> str:
         if self._input is None:
             return ""
         _guid, _kind, hw = self._input

@@ -110,3 +110,22 @@ def test_a_missing_driver_is_told_before_import(run: dict) -> None:
     assert run["drivers-shown"] is True
     assert run["drivers"].startswith("vJoy is not installed or not running:")
     assert "vJoy is not installed or not running:" in run["warning"]
+
+
+def test_messages_are_on_the_shared_message_line(run: dict) -> None:
+    # 01 S142: the import's report with an Undo Import link; a failure red.
+    after = run["message-after"]
+    assert after["shown"] and not after["failed"]
+    assert after["text"] == run["status-after"]
+    assert after["undo"] == "Undo Import"
+    failed = run["message-failed"]
+    assert failed["failed"] and failed["text"] == run["status-failed"]
+    assert failed["undo"] == ""
+    undone = run["message-undone"]
+    assert undone["text"].startswith("Undid the import.") and not undone["failed"]
+
+
+def test_the_choosers_open_in_the_last_device_pack_folder(run: dict) -> None:
+    # 01 S143: picked in Open, Export opens there too (same kind).
+    got = run["remembered"].rstrip("/").lower()
+    assert got == run["remembered-want"].rstrip("/").lower()

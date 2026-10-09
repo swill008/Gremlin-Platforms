@@ -98,8 +98,10 @@ def test_the_editor_has_no_evo_r_part_list() -> None:
 
 def test_delete_file_confirm_says_the_pictures_are_kept() -> None:
     text = (_ROOT / "qml" / "DialogConfigureModule.qml").read_text(encoding="utf-8")
-    start = text.index('_deleteGate.confirmThen("Delete Module File"')
-    confirm = text[start:text.index('"Delete file"', start)]
+    # The shared question (01 S140, Confirm.ask) named for Delete File.
+    button = text.index('objectName: "moduleDeleteFile"')
+    start = text.index("Confirm.ask(_win, {", button)
+    confirm = text[start:text.index('action: "Delete File"', start)]
     assert "The device's pictures are kept." in confirm
 
 

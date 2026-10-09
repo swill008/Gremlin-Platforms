@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import pathlib
 import sys
 import uuid
 from collections.abc import Iterator
@@ -244,6 +245,21 @@ QtTest.QTest.mouseClick(
 QtTest.QTest.qWait(400)
 out["status-after"] = pv("status")
 out["undo-shown"] = child(pack_win, "packUndo").isVisible()
+
+
+# 01 S142: what happened, on the shared message line (Undo Import link).
+def message() -> dict:
+    line = child(pack_win, "packMessage")
+    link = child(pack_win, "messageUndo")
+    return {
+        "shown": bool(line and line.isVisible()),
+        "text": line.property("text") if line else "",
+        "failed": bool(line.property("failed")) if line else None,
+        "undo": link.property("text") if link and link.isVisible() else "",
+    }
+
+
+out["message-after"] = message()
 buttons = sorted(
     item.input_id
     for item in shared_state.current_profile.inputs.get(uid, [])
@@ -267,6 +283,7 @@ pv("runImport()")
 QtTest.QTest.qWait(300)
 device_pack._write_module = _write_module
 out["status-failed"] = pv("status")
+out["message-failed"] = message()
 undo_button = child(pack_win, "packUndo")
 out["undo-after-failed"] = bool(undo_button and undo_button.isVisible())
 out["backend-undo-after-failed"] = device_pack.can_undo_import()
@@ -281,5 +298,16 @@ buttons = sorted(
 out["default-undone"] = buttons
 out["status-undone"] = pv("status")
 out["undo-hidden"] = not child(pack_win, "packUndo").isVisible()
+out["message-undone"] = message()
+
+# 01 S143: the choosers open in the last folder used for Device Packs
+# (the folder is remembered on accept; no native dialog is shown).
+chosen = pathlib.Path(zip_path).parent / "picked"
+chosen.mkdir(exist_ok=True)
+pick_url = QtCore.QUrl.fromLocalFile(str(chosen / "other.zip")).toString()
+pv(f'_pick._accept("{pick_url}")')
+QtTest.QTest.qWait(200)
+out["remembered"] = str(pv("String(_save.prepare().currentFolder)"))
+out["remembered-want"] = QtCore.QUrl.fromLocalFile(str(chosen)).toString()
 print("RESULT " + json.dumps(out), flush=True)
 os._exit(0)  # threads started by the app would keep it alive

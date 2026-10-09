@@ -16,7 +16,7 @@ function topics() {
             body: "<p>Options holds the program's settings, which are not stored in the profile. The profile's own settings are in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>.</p>"
                 + "<ol>"
                 + "<li>Choose <b>Tools › Options</b> <a href=\"open:tools.options\">Open ›</a> (or <b>Options</b> on the toolbar).</li>"
-                + "<li>Pick a section on the left, or type in <b>Search options</b> to find a setting in any section.</li>"
+                + "<li>Pick a section on the left, or type in <b>Search options</b> (<b>Ctrl+F</b>) to find a setting in any section. The line under the box says \"N found\" or \"Nothing matches\".</li>"
                 + "</ol>"
                 + "<ul>"
                 + "<li><b>General</b>: <b>Startup and Tray</b>, <b>Devices</b>, <b>Diagnostics</b> and <b>History</b> (see <a href=\"topic:options-profile-general\">General options</a>).</li>"
@@ -29,6 +29,7 @@ function topics() {
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
+                + "<li>× in the search box clears it; <b>Esc</b> clears the typing and leaves the box.</li>"
                 + "<li>The Device Library's folder is in Device Library Settings.</li>"
                 + "<li>The Button Map's settings are in the Button Map: <b>Edit</b> › <b>Button Map Options…</b>.</li>"
                 + "</ul>",
@@ -155,6 +156,7 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>Rows are saved as you change them.</li>"
+                + "<li>The trash button on a row with a program or a profile asks first, for example \"Remove auto-load entry?\" with \"Profile X will no longer load for Y.\" Choose the red <b>Remove Entry</b> to remove it; <b>Cancel</b>, <b>Enter</b> or <b>Esc</b> keeps it. You can restore it from Tools › History. An empty row goes without asking.</li>"
                 + "<li>A full program path matches that program first. Otherwise a row's text is a pattern matched against the program's path, capitals ignored. Blank or invalid patterns match nothing, and rows turned off are skipped.</li>"
                 + "<li>When the program comes back to the front and its profile is already open, the profile is not loaded again.</li>"
                 + "<li>Auto-load never switches over unsaved changes: it shows \"Auto-load Waited\" once for that profile. Save or discard the changes, and it switches next time.</li>"
@@ -220,13 +222,13 @@ function topics() {
             body: "<p>Scripts are Python files that run with the profile. They are saved with the profile.</p>"
                 + "<ol>"
                 + "<li>Choose <b>View › Scripts</b> <a href=\"open:view.scripts\">Open ›</a>.</li>"
-                + "<li>Choose <b>Add Script</b> and pick a .py file.</li>"
+                + "<li>Choose <b>Add Script</b> and pick a .py file. The chooser opens in the folder you last picked a script from.</li>"
                 + "<li>Rename the script and set its variables on that page, if you like.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>Each script added gets a name, \"Instance 1\" at first. Names are unique per file, so the same file can be added more than once.</li>"
-                + "<li>The trash button removes a script after asking (\"Remove Script?\"). Its settings in this profile go with it.</li>"
+                + "<li>The trash button asks \"Remove script &lt;name&gt;?\": \"It leaves this profile with its settings here. The script file itself is not deleted.\" Choose the red <b>Remove Script</b> to remove it; <b>Cancel</b>, <b>Enter</b> or <b>Esc</b> keeps it. This can't be undone.</li>"
                 + "<li>A script runs only when the variables it requires are set. It is loaded fresh each time you choose <b>Run</b>.</li>"
                 + "<li>A script inside the scripts folder is saved by its place in that folder; others keep their full path.</li>"
                 + "<li>A script's vjoy object can only use outputs the vJoy output modules claim.</li>"
@@ -252,7 +254,7 @@ function topics() {
             id: "options-profile-q-find-setting",
             section: "Common questions",
             title: "How do I find a setting?",
-            body: "<p>Type part of its name in <b>Search options</b>. See <a href=\"topic:options-profile-options\">Options</a>.</p>",
+            body: "<p>Type part of its name in <b>Search options</b> (<b>Ctrl+F</b> in Options). See <a href=\"topic:options-profile-options\">Options</a>.</p>",
             related: ["options-profile-options"]
         },
         {

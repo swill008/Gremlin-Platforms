@@ -14,8 +14,8 @@ asks first and counts its bindings): the next press skips it and goes back
 to Default, and the one after to Ground. Stop, save, open again: the
 Cycle names the renamed mode.
 
-Spec: 04 S44 (rename moves a running Cycle), S45, S46, S49 (mode edits
-while running), S56, S57 (Cycle skips a deleted mode); 06 S34. No known
+Spec: 04 S44 (rename moves a running Cycle), S45, S46, S46a, S49 (mode edits
+while running), S56, S57 (Cycle skips a deleted mode); 06 S34; 01 S140. No known
 gap.
 """
 
@@ -94,14 +94,27 @@ def story(j: Journey) -> None:
     out["modes-after-rename"] = sorted(j.profile.modes.mode_names())
     out["after-press-2"] = tap("Low Orbit")
 
+    # The shared question (01 S140) opens on the window's root item.
     j.ev('confirmDelete("Space")', manage)
-    out["delete-asks"] = j.ev("_deleteGate.titleText", manage)
-    out["delete-says"] = j.ev("_deleteGate.messageText", manage)
-    j.ev("_deleteGate.confirmed()", manage)
+    j.wait_until(lambda: j.item(manage, "confirmAction"), "the delete question")
+    out["delete-asks"] = j.item(manage, "confirmTitle").property("text")
+    out["delete-says"] = j.item(manage, "confirmText").property("text")
+    go = j.item(manage, "confirmAction")
+    out["delete-button"] = go.property("text")
+    out["delete-button-red"] = j.ev(
+        "String(color) === String(Style.danger)",
+        j.item(manage, "dangerButtonFill"),
+    )
+    # A real click on the red button goes ahead.
+    centre = go.mapToScene(QtCore.QPointF(go.width() / 2, go.height() / 2))
+    j.QTest.mouseClick(
+        manage, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, centre.toPoint()
+    )
     j.wait_until(
         lambda: "Space" not in j.profile.modes.mode_names(), "Space to be deleted"
     )
     out["modes-after-delete"] = sorted(j.profile.modes.mode_names())
+    out["undo-after-delete"] = j.item(manage, "undoBarUndo").property("enabled")
     out["still-running"] = j.backend.runner.is_running()
     out["after-press-3"] = tap("Default")
     out["after-press-4"] = tap("Ground")
@@ -146,9 +159,12 @@ def test_a_rename_while_running_moves_the_cycle(run: dict) -> None:
 
 
 def test_a_mode_deleted_while_running_is_skipped(run: dict) -> None:
-    assert step(run, "delete-asks") == 'Delete Mode "Space"?'
-    assert "binding will be deleted too" in step(run, "delete-says")
+    assert step(run, "delete-asks") == "Delete mode Space?"
+    assert step(run, "delete-says").startswith("1 binding goes with it.")
+    assert step(run, "delete-button") == "Delete Mode"
+    assert step(run, "delete-button-red") is True
     assert step(run, "modes-after-delete") == ["Default", "Ground", "Low Orbit"]
+    assert step(run, "undo-after-delete") is True
     assert step(run, "still-running") is True
     assert step(run, "after-press-3") == "Default"
     assert step(run, "after-press-4") == "Ground"

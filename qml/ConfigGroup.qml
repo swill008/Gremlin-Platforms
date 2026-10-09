@@ -3,7 +3,6 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import Qt.labs.qmlmodels
 
@@ -222,17 +221,12 @@ ColumnLayout {
                     }
                     Button {
                         text: "Select"
+                        // 01 S143: the shared chooser, in the last folder
+                        // used (else the setting's own folder).
                         onClicked: () => {
-                            if (properties["is_folder"]) {
-                                var start = _folderUrl(_folderRoot())
-                                if (start)
-                                    _pathFolderDialog.currentFolder = start
-                                _pathFolderDialog.associatedField = _pathVariable
-                                _pathFolderDialog.open()
-                            } else {
-                                _pathVariableFileDialog.associatedField = _pathVariable
-                                _pathVariableFileDialog.open()
-                            }
+                            _pathPicker.folder = properties["is_folder"]
+                                ? _folderUrl(_folderRoot()) : ""
+                            _pathPicker.open()
                         }
                     }
                     Button {
@@ -246,27 +240,15 @@ ColumnLayout {
                     }
                 }
 
-                FileDialog {
-                    id: _pathVariableFileDialog
-
-                    property var associatedField
-
+                FilePicker {
+                    id: _pathPicker
+                    objectName: "optionPathPicker"
+                    // The Logs folder has its own memory; every other setting shares "other".
+                    kind: String(name).toLowerCase() === "logs folder" ? "log" : "other"
+                    mode: properties["is_folder"] ? "folder" : "open"
                     title: _pickerTitle()
-
-                    onAccepted: () => {
-                        model.value = selectedFile.toString().substring("file:///".length)
-                    }
-                }
-
-                FolderDialog {
-                    id: _pathFolderDialog
-
-                    property var associatedField
-
-                    title: _pickerTitle()
-
-                    onAccepted: () => {
-                        model.value = selectedFolder.toString().substring("file:///".length)
+                    onPicked: (selected) => {
+                        model.value = String(selected).substring("file:///".length)
                     }
                 }
             }

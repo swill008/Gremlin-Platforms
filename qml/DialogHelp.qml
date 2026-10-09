@@ -498,7 +498,7 @@ ApplicationWindow {
         }
     }
 
-    Shortcut { sequences: [StandardKey.Find]; onActivated: _search.focusField() }
+    // Ctrl+F: the search box's own (SearchBox, 01 S141).
     Shortcut { sequence: "F3"; onActivated: _win.step(1) }
     Shortcut { sequence: "Shift+F3"; onActivated: _win.step(-1) }
 

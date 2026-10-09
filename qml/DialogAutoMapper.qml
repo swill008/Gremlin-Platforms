@@ -14,6 +14,7 @@ import Gremlin.Menus as Menus
 import Gremlin.Style
 import Gremlin.Config
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 
 ApplicationWindow {
     id: _mapper
@@ -34,9 +35,10 @@ ApplicationWindow {
 
     title: "Auto Mapper"
 
-    Shortcut { sequence: "Esc"; onActivated: {} }
-    Shortcut { sequence: "Return"; onActivated: {} }
-    Shortcut { sequence: "Enter"; onActivated: {} }
+    // Off while the Overwrite question is open: there Enter and Esc cancel.
+    Shortcut { sequence: "Esc"; enabled: !_mapper._question; onActivated: {} }
+    Shortcut { sequence: "Return"; enabled: !_mapper._question; onActivated: {} }
+    Shortcut { sequence: "Enter"; enabled: !_mapper._question; onActivated: {} }
 
     AutoMapInputModel {
         id: _inputModules
@@ -50,6 +52,8 @@ ApplicationWindow {
         id: tools
     }
 
+    // The open Overwrite question (01 S140), for tests.
+    property var _question: null
     property var selectedInputModules: ({})
     property var selectedOutputModules: ({})
     // The card it was opened from: its module starts ticked.
@@ -247,13 +251,21 @@ ApplicationWindow {
                         run()
                         return
                     }
-                    // Overwrite removes every action already on those inputs.
-                    _overwriteGate.confirmThen("Replace Existing Actions",
-                        "Overwrite used inputs is on. Every action already on the selected inputs in the "
-                        + _modeSelector.currentText + " mode, macros included, will be removed and replaced "
-                        + "with the new actions.\n\nNothing is saved yet: to undo, load the profile again "
-                        + "without saving.",
-                        "Replace them", run, null, true)
+                    // Overwrite removes every action already on those inputs
+                    // (08 S95): the shared question (01 S140).
+                    _mapper._question = Confirm.ask(_statusMessage, {
+                        title: "Replace the actions in mode " + _modeSelector.currentText + "?",
+                        text: "Overwrite used inputs is on. Every action already on the selected "
+                            + "inputs in that mode, macros included, is removed and replaced "
+                            + "with the new actions.",
+                        note: "Nothing is saved yet: to undo, load the profile again without saving.",
+                        action: "Replace Actions",
+                        onAccept: function() {
+                            _mapper._question = null
+                            run()
+                        },
+                        onCancel: function() { _mapper._question = null }
+                    })
                 }
             }
 
@@ -282,10 +294,5 @@ ApplicationWindow {
                 }
             }
         }
-    }
-
-    // Asks before Overwrite used inputs replaces existing actions.
-    DismissibleDialog {
-        id: _overwriteGate
     }
 }

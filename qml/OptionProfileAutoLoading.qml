@@ -3,44 +3,77 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Util
 import Gremlin.Style
 
+import "confirm.js" as Confirm
+
 Item {
+    id: _root
+
+    // Removes row index; an entry with a profile or program asks first
+    // (01 S140). Settings changes are in History.
+    function askRemove(index, profile, program) {
+        if (!profile && !program) {
+            _model.removeEntry(index)
+            return
+        }
+        var name = function(path) {
+            var s = String(path)
+            return s.substring(Math.max(s.lastIndexOf("/"), s.lastIndexOf("\\")) + 1)
+        }
+        var what = profile && program
+            ? "Profile " + name(profile) + " will no longer load for " + name(program) + "."
+            : profile ? "Profile " + name(profile) + " goes from the list."
+            : "Program " + name(program) + " goes from the list."
+        Confirm.ask(_root, {
+            title: "Remove auto-load entry?",
+            text: what,
+            undoable: true,
+            action: "Remove Entry",
+            onAccept: function() { _model.removeEntry(index) }
+        })
+    }
+
     ProfileAutoLoadingModel {
         id: _model
     }
 
-    FileDialog {
+    // The choosers open in the last folder used (01 S143): profiles in the
+    // profiles folder at first, programs anywhere.
+    FilePicker {
         id: _profileFileDialog
+        objectName: "autoLoadProfilePicker"
 
         property var associatedField
 
+        kind: "profile"
         nameFilters: ["Profile files (*.xml)"]
         title: "Choose Profile"
-        currentFolder: backend.profilesFolderUrl()
+        folder: backend.profilesFolderUrl()
 
-        onAccepted: () => {
+        onPicked: (selected) => {
             associatedField.text =
-                selectedFile.toString().substring("file:///".length)
+                String(selected).substring("file:///".length)
         }
     }
 
-    FileDialog {
+    FilePicker {
         id: _executableFileDialog
+        objectName: "autoLoadProgramPicker"
 
         property var associatedField
 
+        kind: "other"
         nameFilters: ["Executable files (*.exe)"]
         title: "Choose Program"
 
-        onAccepted: () => {
+        onPicked: (selected) => {
             associatedField.text =
-                selectedFile.toString().substring("file:///".length)
+                String(selected).substring("file:///".length)
         }
     }
 
@@ -190,11 +223,17 @@ Item {
                     onToggled: () => { model.isEnabled = checked }
                 }
 
-                IconButton {
+                // Red (01 S140); asks first when the row holds anything.
+                DangerButton {
+                    objectName: "autoLoadRemove"
                     horizontalPadding: Style.dp(4)
                     text: bsi.icons.remove
+                    font.family: Style.iconFont
+                    font.pixelSize: Style.dp(17)
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Remove this entry"
 
-                    onClicked: () => { _model.removeEntry(index) }
+                    onClicked: () => { _root.askRemove(index, _profile.text, _executable.text) }
                 }
 
             }

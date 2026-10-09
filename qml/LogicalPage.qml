@@ -12,6 +12,7 @@ import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 import Gremlin.UI
 
 Item {
@@ -307,32 +308,36 @@ Item {
                 Layout.rightMargin: Style.dp(8)
                 Layout.topMargin: Style.dp(8)
                 spacing: Style.dp(8)
-                Label { text: "Find"; color: Style.fgMuted }
-                TextField {
+                Label {
+                    text: "Find"
+                    color: Style.fgMuted
+                    Layout.alignment: Qt.AlignTop
+                    Layout.topMargin: Style.dp(5)
+                }
+                // The shared search box (01 S141): Ctrl+F, ×, Esc, "N found".
+                SearchBox {
                     id: _findText
+                    objectName: "logicalFind"
                     Layout.fillWidth: true
                     Layout.minimumWidth: Style.dp(160)
-                    placeholderText: "System name, your name, or group"
-                    color: Style.fg
+                    Layout.alignment: Qt.AlignTop
+                    placeholder: "System name, your name, or group"
+                    count: _layout.parentCount
                     onTextChanged: _root._applyFind()
                 }
                 ComboBox {
                     id: _findType
+                    Layout.alignment: Qt.AlignTop
                     model: ["All types", "Buttons", "Axes", "Hats"]
                     onActivated: _root._applyFind()
                 }
                 Button {
                     text: "Clear"
-                    onClicked: {
-                        _findText.text = ""
-                        _findType.currentIndex = 0
-                        _findUngrouped.checked = false
-                        _findNoWriter.checked = false
-                        _findNoAction.checked = false
-                        _root._applyFind()
-                    }
+                    Layout.alignment: Qt.AlignTop
+                    onClicked: _root._clearFind()
                 }
                 Button {
+                    Layout.alignment: Qt.AlignTop
                     text: _root.displayOpen ? "Hide Appearance" : "Appearance…"
                     // Hiding asks about unsaved display options, like the panel's close.
                     onClicked: {
@@ -358,6 +363,23 @@ Item {
                 CheckBox { id: _findUngrouped; text: "Ungrouped"; onClicked: _root._applyFind() }
                 CheckBox { id: _findNoWriter; text: "No hardware writer"; onClicked: _root._applyFind() }
                 CheckBox { id: _findNoAction; text: "No actions in this mode"; onClicked: _root._applyFind() }
+            }
+
+            // The page's own Undo / Redo with the last change (01 S143);
+            // the same rules as the menu items and Ctrl+Z / Ctrl+Y.
+            UndoBar {
+                objectName: "logicalUndoBar"
+                Layout.fillWidth: true
+                Layout.leftMargin: Style.dp(8)
+                Layout.rightMargin: Style.dp(8)
+                canUndo: _layout.canUndo && !_root.editorLocked && !_root.actionOpen
+                canRedo: _layout.canRedo && !_root.editorLocked && !_root.actionOpen
+                undoTip: _layout.undoTip
+                redoTip: _layout.redoTip
+                lastChange: _layout.lastChange
+                undone: _layout.undone
+                onUndo: _layout.undo()
+                onRedo: _layout.redo()
             }
 
             RowLayout {
@@ -386,18 +408,20 @@ Item {
                         onClicked: (mouse) => _root._openLayoutMenu(false, false, _list, mouse.x, mouse.y)
                     }
 
-                    // Nothing listed: say why, and how to start.
-                    Label {
+                    // Nothing listed: say why, and how to start (01 S143).
+                    EmptyState {
+                        objectName: "logicalEmpty"
+                        readonly property bool filtering: _findText.text.length > 0
+                            || _findType.currentIndex > 0 || _findUngrouped.checked
+                            || _findNoWriter.checked || _findNoAction.checked
                         anchors.centerIn: parent
                         width: Math.min(parent.width - Style.dp(32), Style.dp(360))
                         visible: _list.count === 0
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        color: Style.fgMuted
-                        text: _findText.text.length || _findType.currentIndex > 0
-                              || _findUngrouped.checked || _findNoWriter.checked
+                        text: filtering
                             ? "Nothing matches the Find filters."
                             : "No buttons, axes or hats yet. Right-click here to add some."
+                        actionText: filtering ? "Clear Filters" : ""
+                        onAction: _root._clearFind()
                     }
 
                     delegate: Rectangle {
@@ -1163,6 +1187,48 @@ Item {
     property string _actionTitle: ""
     property bool _menuOnGroup: false
 
+    function _clearFind() {
+        _findText.clear()
+        _findType.currentIndex = 0
+        _findUngrouped.checked = false
+        _findNoWriter.checked = false
+        _findNoAction.checked = false
+        _applyFind()
+    }
+
+    // 01 S140: deleting rows asks first (the page's Undo puts them back).
+    function _askDeleteRows(keys, title) {
+        var n = keys.length
+        Confirm.ask(_root, {
+            title: n === 1 ? "Delete " + title + "?" : "Delete " + n + " rows?",
+            text: (n === 1 ? "Its hardware links and its actions go with it."
+                           : "Their hardware links and their actions go with them."),
+            undoable: true,
+            action: n === 1 ? "Delete Row" : "Delete " + n + " Rows",
+            onAccept: function() { _layout.deleteParents(keys) }
+        })
+    }
+
+    function _askDeleteGroup(name) {
+        Confirm.ask(_root, {
+            title: "Delete group " + name + "?",
+            text: "Its rows stay, in Ungrouped.",
+            undoable: true,
+            action: "Delete Group",
+            onAccept: function() { _layout.removeGroup(name) }
+        })
+    }
+
+    function _askClearName(key, title, user) {
+        Confirm.ask(_root, {
+            title: "Clear the name of " + title + "?",
+            text: "Your name \u201c" + user + "\u201d goes; the system name stays.",
+            undoable: true,
+            action: "Clear Name",
+            onAccept: function() { _layout.setUserName(key, "") }
+        })
+    }
+
     function _applyFind() {
         var types = ["all", "button", "axis", "hat"]
         _layout.setFilter(
@@ -1289,10 +1355,12 @@ Item {
         }
         return MenuModel.menu(kind, title, quick, [
             onRow ? MenuModel.section("row", "Row", [
-                MenuModel.action("Clear Name", function() { _layout.setUserName(_menuKey, "") }, _menuUser.length > 0),
+                MenuModel.action("Clear Name", function() {
+                    _askClearName(_menuKey, _menuTitle, _menuUser)
+                }, _menuUser.length > 0),
                 // Acts on the selection, like Group as and Move to.
                 MenuModel.action(many ? "Delete " + _picked.length + " rows" : "Delete", function() {
-                    _layout.deleteParents(_picked.length > 0 ? _picked : [_menuKey])
+                    _askDeleteRows(_picked.length > 0 ? _picked.slice() : [_menuKey], _menuTitle)
                 }, true, { danger: true })
             ]) : null,
             onRow ? MenuModel.section("group", "Group", [
@@ -1309,7 +1377,7 @@ Item {
                                 { placeholder: "Name, then Enter", keepOpen: true }),
                 onGroup ? MenuModel.action("Move Group Up", function() { _layout.moveGroupUp(_groupName) }) : null,
                 onGroup ? MenuModel.action("Move Group Down", function() { _layout.moveGroupDown(_groupName) }) : null,
-                onGroup ? MenuModel.action("Delete Group", function() { _layout.removeGroup(_groupName) }, true,
+                onGroup ? MenuModel.action("Delete Group", function() { _askDeleteGroup(_groupName) }, true,
                                            { danger: true }) : null
             ]),
             locked ? null : MenuModel.section("order", "Order", [
@@ -1335,7 +1403,7 @@ Item {
                     _root._openPane(_root._actionParent, _root._actionSeq, _root._actionTitle)
                 }),
                 MenuModel.action("Delete", function() {
-                    _root.deleteActionAsked(_root._actionParent, _root._actionSeq)
+                    _root.deleteActionAsked(_root._actionParent, _root._actionSeq, _root._actionTitle)
                 }, true, { danger: true })
             ])
         }
@@ -1390,11 +1458,14 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             Label { id: _hardwareTitle; color: Style.fg; font.bold: true; font.pixelSize: Style.dp(16) }
-            TextField {
+            // The page's Find keeps Ctrl+F (one per window).
+            SearchBox {
                 id: _search
+                objectName: "hardwareSearch"
                 Layout.fillWidth: true
-                placeholderText: "Search"
-                color: Style.fg
+                placeholder: "Search"
+                findShortcut: false
+                count: _root._hardwareCount(_hardware.devices)
                 onTextChanged: _loadHardware()
             }
             Flickable {
@@ -1495,6 +1566,13 @@ Item {
         _loadHardware()
     }
 
+    function _hardwareCount(devices) {
+        var n = 0
+        for (var i = 0; i < (devices || []).length; ++i)
+            n += (devices[i].controls || []).length
+        return n
+    }
+
     function _loadHardware() {
         _hardware.devices = _layout.hardware(_hardwareKey, _search.text)
     }
@@ -1509,27 +1587,25 @@ Item {
         onCancelled: _root._pendingGroup = ""
     }
 
-    // Deleting an action closes the editor open on its input: when that
-    // editor has unsaved changes, ask first.
-    function deleteActionAsked(parentKey, seq) {
+    // 01 S140: deleting an action asks first. It closes the editor open
+    // on its input; that editor's unsaved changes are named too.
+    function deleteActionAsked(parentKey, seq, title) {
         var editing = actionOpen && paneKey === parentKey
-        function go() {
-            if (editing)
-                _finishClose()
-            _layout.deleteAction(parentKey, seq)
-        }
-        if (editing && _layout.paneDirty()) {
-            _deleteGate.confirmThen("Delete Action?",
-                "The action editor is open on this input with changes that are not saved."
-                    + " Deleting the action closes it and drops those changes.",
-                "Delete", go, null, true)
-            return
-        }
-        go()
-    }
-
-    DismissibleDialog {
-        id: _deleteGate
+        var dirty = editing && _layout.paneDirty()
+        Confirm.ask(_root, {
+            title: title ? "Delete action " + title + "?" : "Delete this action?",
+            text: dirty
+                ? "The action editor is open on this input with changes that are not saved."
+                  + " Deleting the action closes it and drops those changes."
+                : "It goes from this row in this mode.",
+            undoable: true,
+            action: "Delete Action",
+            onAccept: function() {
+                if (editing)
+                    _finishClose()
+                _layout.deleteAction(parentKey, seq)
+            }
+        })
     }
 
     DismissibleDialog {

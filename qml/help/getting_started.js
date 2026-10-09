@@ -46,7 +46,7 @@ function topics() {
             title: "The main window",
             body: "<p>The main window shows one page at a time (Home, Configuration and others) under a toolbar and a mode bar.</p>"
                 + "<ul>"
-                + "<li>Title: the profile's name, then \"- Gremlin-Platforms R1\". A <b>*</b> in front means there are unsaved changes; a profile not saved yet is called \"Untitled\".</li>"
+                + "<li>Title: the profile's name, then \"- Gremlin-Platforms R1\" and the program version, for example \"Flight.xml - Gremlin-Platforms R1 1.0.30\". A <b>*</b> in front means there are unsaved changes; a profile not saved yet is called \"Untitled\".</li>"
                 + "<li>Toolbar, left to right: <b>Home</b>, <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> (reads <b>Stop</b> while the profile runs), <b>vJoy Viewer</b> and <b>Xbox Viewer</b> (each opens its viewer, or closes it when it is open), <b>Button Map</b> (a blank Button Map), <b>Logical Device</b> and <b>Options</b> <a href=\"show:toolbar/Options\">Show me ›</a>. In a narrow window the buttons show icons only; rest the pointer on one to see its name.</li>"
                 + "<li>Mode bar, under the toolbar on every page: <b>Mode</b> <a href=\"show:modebar\">Show me ›</a>, its list and <b>Manage Modes</b> <a href=\"show:modebar/Manage Modes\">Show me ›</a> always on the left, then the open page's own controls (on Home: <b>Device Library…</b>, <b>Compact view</b> and <b>Layout</b>). When the window is narrow, the page's controls scroll sideways; Mode and Manage Modes stay put.</li>"
                 + "<li>Bottom bar: the status (Running or Stopped) and what the last save wrote.</li>"
@@ -128,6 +128,9 @@ function topics() {
                 + "<li>Menus show only what you can use now. They leave out what does not apply (<b>View › Home</b> while you are on Home, <b>File › Recent</b> before you have opened a profile). Nothing is greyed out, except now and then an item whose tooltip says why it can't be used yet. Rest the pointer on an item to see its tooltip.</li>"
                 + "<li>Right-click menus start with the name of what you clicked and its most used commands, then sections (▸) that open one at a time. The section you opened last opens again next time. Some show <b>Undo</b> and <b>Redo</b> beside the name.</li>"
                 + "<li>In a menu, <b>Up</b> and <b>Down</b> move, <b>Right</b> and <b>Left</b> open or close a section or step a row of choices, <b>Enter</b> runs, <b>Esc</b> closes.</li>"
+                + "<li>Every question before a delete, remove or clear names what goes and ends \"You can restore it from Tools › History.\" or \"This can't be undone.\" Its red button is named for the action, for example <b>Delete Device</b>; <b>Cancel</b> has the focus, and <b>Enter</b> and <b>Esc</b> both cancel, so only a click on the red button goes ahead.</li>"
+                + "<li>Search boxes (Help, History, Options, the Logical Device page, Layers and the Device Library) work the same way: <b>Ctrl+F</b> goes to the box, × clears it, <b>Esc</b> clears it and leaves the box, and the line under it says \"N found\" or \"Nothing matches\" (in Help, \"N topics match\").</li>"
+                + "<li>A file or folder chooser opens in the folder you last used for that kind of file (profiles, scripts, pictures, Device Packs, module files, exports, logs), even after a restart.</li>"
                 + "<li>Dropdown lists of 10 or more entries have a search box: type part of a name, <b>Up</b> and <b>Down</b> move, <b>Enter</b> picks.</li>"
                 + "<li><b>Command Palette</b>: <b>Ctrl+K</b> (or <b>View › Command Palette…</b> <a href=\"show:menu/View/Command Palette\">Show me ›</a>) lists every menu command you can use now. Type part of a name and press <b>Enter</b>. Shortcuts show beside the commands.</li>"
                 + "<li>To leave a text box you are typing in, press <b>Esc</b> or click anywhere outside it. What you typed is kept. In Module Setup, Esc does nothing, as sticks can send it; click away instead.</li>"
@@ -148,13 +151,14 @@ function topics() {
             body: "<p>A profile holds the modes, the actions on every input, the profile settings, and the list of scripts.</p>"
                 + "<ul>"
                 + "<li><b>File › New Profile</b> (<b>Ctrl+N</b>) starts an empty profile, \"Untitled\", with one mode, \"Default\".</li>"
-                + "<li><b>File › Load Profile…</b> <a href=\"show:menu/File/Load Profile\">Show me ›</a> (<b>Ctrl+O</b>) opens one; <b>File › Recent</b> lists the last 5 you opened or saved.</li>"
-                + "<li><b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>) writes it to disk. The first save of a new profile opens <b>Save Profile As…</b> (<b>Ctrl+Shift+S</b>) in the profiles folder.</li>"
+                + "<li><b>File › Load Profile…</b> <a href=\"show:menu/File/Load Profile\">Show me ›</a> (<b>Ctrl+O</b>) opens one; <b>File › Recent</b> lists the last 5 you opened or saved. The chooser opens in the folder you last used for a profile.</li>"
+                + "<li><b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>) writes it to disk. The first save of a new profile opens <b>Save Profile As…</b> (<b>Ctrl+Shift+S</b>) in the folder you last used for a profile, or the profiles folder the first time.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>New, Load, Recent and closing the program ask <b>Save</b>, <b>Discard</b> or <b>Cancel</b> only when there are unsaved changes. Open Appearance panels with changes ask first.</li>"
                 + "<li>A save that would leave out unfinished actions asks first (see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
+                + "<li>While there are unsaved changes, the program keeps a recovery copy of them about every minute. If it closes unexpectedly, the next time you open that profile it offers them back (\"Unsaved Edits Found\": <b>Restore</b>, <b>Discard</b> or <b>Not now</b>). Save, Discard and a normal close remove the copy.</li>"
                 + "<li>A profile that won't load (damaged or from an unknown version) shows why, and the profile that was open stays open. A Recent file that won't open offers <b>Forget It</b> (off Recent and start-up; the file stays) or <b>Keep</b>.</li>"
                 + "<li>With <b>Load profiles automatically</b> <a href=\"show:option/Load profiles automatically\">Show me ›</a> on in <b>Options</b>, the profile chosen for a program loads and runs when that program comes to the front.</li>"
                 + "</ul>",
@@ -168,6 +172,7 @@ function topics() {
                 + "<ul>"
                 + "<li>A profile given on the command line wins (see <a href=\"topic:getting-started-command-line\">Start the program from a command line</a>).</li>"
                 + "<li>If the last profile won't open, a new, empty profile is open instead and the program says why. Choose <b>Forget It</b> to take that profile off the start-up and <b>Recent</b> lists (the file itself stays), or <b>Keep</b> to try it again next time.</li>"
+                + "<li>If the program closed unexpectedly with unsaved changes, opening the profile offers them back: \"Unsaved Edits Found\" (see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
                 + "<li>The update check, a \"Settings Reset\" notice and the vJoy setup message each come at most once, after the main window is up.</li>"
                 + "</ul>",
             related: ["getting-started-profiles", "getting-started-command-line", "getting-started-wont-start"]
@@ -228,7 +233,7 @@ function topics() {
             title: "Use Help",
             body: "<p>Help is one book in chapters. <b>F1</b> or <b>Help › Help</b> <a href=\"show:menu/Help/Help\">Show me ›</a> in the main window opens the whole book; in the Button Map or the Device Library it opens that chapter only, and <b>View Full Help</b> shows the whole book.</p>"
                 + "<ul>"
-                + "<li>Search: type in <b>Search Help…</b> (<b>Ctrl+F</b>). The list keeps the topics that hold all your words, each with its count, and says \"N topics match\". In the open topic, <b>Enter</b> or <b>F3</b> goes to the next match and <b>Shift+F3</b> to the previous one. <b>Esc</b> clears the search.</li>"
+                + "<li>Search: type in <b>Search Help…</b> (<b>Ctrl+F</b>). The list keeps the topics that hold all your words, each with its count, and says \"N topics match\". In the open topic, <b>Enter</b> or <b>F3</b> goes to the next match and <b>Shift+F3</b> to the previous one. × in the box or <b>Esc</b> clears the search.</li>"
                 + "<li>When Help shows one chapter, <b>Search all of Help</b> adds matching topics from the other chapters.</li>"
                 + "<li>Click a chapter heading to fold or unfold it; <b>Expand all</b> and <b>Collapse all</b> do every chapter. Drag the handle beside the list to widen it; double-click the handle for the default width.</li>"
                 + "<li>An \"Open ›\" link opens that window or Options page. A \"Show me ›\" link points at a menu item, toolbar button or setting without choosing it. A greyed link can't be used now; rest the pointer on it to see why.</li>"
@@ -316,6 +321,7 @@ function topics() {
                 + "<li>Error boxes say what happened; their details wrap, and <b>Copy Details</b> copies them.</li>"
                 + "<li>\"An unhandled exception occurred.\" means something went wrong that the program didn't expect. The details are also written to system.log in the logs folder.</li>"
                 + "<li>If the program closes suddenly, crash.log in the logs folder records where it stopped; earlier crashes are kept in the same file.</li>"
+                + "<li>Unsaved profile changes are not lost in a sudden close: a recovery copy is kept about every minute, and the next open of the profile offers it back with <b>Restore</b>, <b>Discard</b> or <b>Not now</b> (see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
                 + "</ul>"
                 + "<p>To report it, save one zip with <b>Help › Save Diagnostics…</b> <a href=\"show:menu/Help/Save Diagnostics\">Show me ›</a>.</p>",
             related: ["getting-started-save-diagnostics", "tools-live-log"]
@@ -328,7 +334,7 @@ function topics() {
                 + "<ol>"
                 + "<li>Choose <b>Help › Save Diagnostics…</b> <a href=\"show:menu/Help/Save Diagnostics\">Show me ›</a> (or <b>Save Diagnostics…</b> on the Live Log Reader's <b>Debug</b> tab).</li>"
                 + "<li>To add the open profile, tick <b>Include the open profile</b>.</li>"
-                + "<li>Choose <b>Save…</b> and pick where. It starts on the Desktop.</li>"
+                + "<li>Choose <b>Save…</b> and pick where. It opens in the folder you last saved diagnostics to, or on the Desktop the first time.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
@@ -349,7 +355,7 @@ function topics() {
             id: "getting-started-q-not-saved",
             section: "Common questions",
             title: "Why is my change gone after I restart?",
-            body: "<p>Actions, modes and profile settings are kept only when you save the profile with <b>File › Save Profile</b>. See <a href=\"topic:getting-started-saved-where\">What is saved where</a>.</p>",
+            body: "<p>Actions, modes and profile settings are kept only when you save the profile with <b>File › Save Profile</b>. If the program closed unexpectedly, open the profile again and choose <b>Restore</b> in \"Unsaved Edits Found\". See <a href=\"topic:getting-started-saved-where\">What is saved where</a>.</p>",
             related: ["getting-started-saved-where"]
         },
         {

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Module Setup's import notice turns red when the import or its Undo fails.
+"""Module Setup's import message turns red when the import or its Undo fails.
 
 The notice's border was the accent colour whatever happened, so "Import
 Failed" and "Undo Failed" looked like success. Its failed flag is now set
@@ -75,42 +75,99 @@ until(lambda: setup_window() is not None)
 dlg = setup_window()
 assert dlg is not None, 'Module Setup did not open'
 
+from PySide6 import QtCore
+
+def items():
+    found, pending = [], [dlg.contentItem().parentItem() or dlg.contentItem()]
+    while pending:
+        current = pending.pop()
+        found.append(current)
+        pending.extend(current.childItems())
+    return found
+
+def item(name):
+    return next((i for i in items() if i.objectName() == name), None)
+
+def shown(target):
+    while target is not None:
+        if not target.property("visible"):
+            return False
+        target = target.parentItem()
+    return True
+
+def click(target):
+    centre = target.mapToScene(
+        QtCore.QPointF(target.width() / 2, target.height() / 2)).toPoint()
+    QtTest.QTest.mouseClick(dlg, QtCore.Qt.MouseButton.LeftButton, pos=centre)
+    QtTest.QTest.qWait(200)
+
+# 01 S142: the Module File window's message line.
 def notice():
+    line = item("moduleFileMessage")
     return {
-        'title': ev(dlg, '_importNotice.titleText'),
-        'failed': ev(dlg, '_importNotice.failed'),
-        'red': ev(dlg, 'String(_importNotice.background.border.color)'
-                       ' === String(Style.danger)'),
-        'canUndo': ev(dlg, '_importNotice.canUndo'),
+        'shown': bool(line is not None and shown(line)),
+        'text': line.property("text") if line else "",
+        'failed': bool(line.property("failed")) if line else None,
+        'red': ev(dlg, 'String(_fileMessage.color)'
+                       ' === String(Style.alpha(Style.danger, 0.18))'),
+        'canUndo': bool(shown(item("messageUndo"))),
     }
 
 def press_undo():
-    ev(dlg, '''(function () {
-        function find(item) {
-            if (item.text === "Undo" && item.clicked && item.visible)
-                return item
-            for (var i = 0; i < item.children.length; i++) {
-                var hit = find(item.children[i])
-                if (hit) return hit
-            }
-            return null
-        }
-        find(_importNotice.contentItem).clicked()
-    })()''')
+    click(item("messageUndo"))
 
 out = {}
 ev(dlg, 'showImportResult("Import failed. The file is not a module file.")')
+QtTest.QTest.qWait(200)
 out['import-failed'] = notice()
 ev(dlg, 'showImportResult("Imported pjoy_pro.json.")')
+QtTest.QTest.qWait(200)
 out['imported'] = notice()
 undo_answers.append('Undo failed. The previous module file could not be put back.')
 press_undo()
 out['undo-failed'] = notice()
 ev(dlg, 'showImportResult("Imported pjoy_pro.json.")')
+QtTest.QTest.qWait(200)
 undo_answers.append('Undone. The previous module file is back.')
 press_undo()
 out['undone'] = notice()
-ev(dlg, '_importNotice.close()')
+
+# 01 S140: Delete File is the red button and asks the shared question;
+# Enter answers Cancel and nothing is deleted.
+deleted = []
+model = ev(dlg, 'moduleModel')
+out['delete-red'] = item("moduleDeleteFile") is not None and str(
+    item("moduleDeleteFile").property("background").property("color").name()
+) == str(ev(dlg, 'Style.danger').name())
+click(item("moduleDeleteFile"))
+QtTest.QTest.qWait(300)
+title = item("confirmTitle")
+out['delete-asks'] = bool(title is not None and shown(title))
+out['delete-title'] = title.property("text") if title else ""
+action = item("confirmAction")
+out['delete-action'] = action.property("text") if action else ""
+QtTest.QTest.keyClick(dlg, QtCore.Qt.Key.Key_Return)
+QtTest.QTest.qWait(300)
+title = item("confirmTitle")
+out['delete-after-enter'] = bool(title is not None and shown(title))
+out['undone-still'] = notice()['text']
+ev(dlg, '_moduleFileDialog.close()')
+
+# 01 S143: the Undo / Redo pair says what the last change was.
+rows = ev(dlg, '_driver.rowCount()')
+out['rows'] = rows
+if rows:
+    label = ev(dlg, 'rowLabel(0)')
+    claimed = ev(dlg, '_driver.data(_driver.index(0, 0), Qt.UserRole + 4)')
+    ev(dlg, '_driver.setClaimed(0, %s)' % ('false' if claimed else 'true'))
+    QtTest.QTest.qWait(100)
+    bar = item("undoBarText")
+    out['last-change'] = bar.property("text") if bar else ""
+    word = " let go" if claimed else " claimed"
+    out['expected-last'] = "Last change: " + label + word
+    click(item("undoBarUndo"))
+    out['undone-step'] = bar.property("text") if bar else ""
+    out['expected-undone'] = "Undone: " + label + word
 print('RESULT ' + json.dumps(out), flush=True)
 os._exit(0)  # threads started by the app would keep it alive
 """
@@ -143,36 +200,46 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
 
 
 def test_a_failed_import_is_red(run: dict) -> None:
-    assert run["import-failed"] == {
-        "title": "Import Failed",
-        "failed": True,
-        "red": True,
-        "canUndo": False,
-    }
+    got = run["import-failed"]
+    assert got["shown"] and got["failed"] and got["red"]
+    assert got["text"] == "Import failed. The file is not a module file."
+    assert got["canUndo"] is False
 
 
-def test_an_import_is_not_red(run: dict) -> None:
-    assert run["imported"] == {
-        "title": "Imported",
-        "failed": False,
-        "red": False,
-        "canUndo": True,
-    }
+def test_an_import_is_not_red_and_offers_undo(run: dict) -> None:
+    got = run["imported"]
+    assert got["shown"] and not got["failed"] and not got["red"]
+    assert got["text"] == "Imported pjoy_pro.json."
+    assert got["canUndo"] is True
 
 
 def test_a_failed_undo_turns_it_red(run: dict) -> None:
-    assert run["undo-failed"] == {
-        "title": "Undo Failed",
-        "failed": True,
-        "red": True,
-        "canUndo": False,
-    }
+    got = run["undo-failed"]
+    assert got["failed"] and got["red"]
+    assert got["text"].startswith("Undo failed.")
+    assert got["canUndo"] is False
 
 
 def test_an_undo_is_not_red(run: dict) -> None:
-    assert run["undone"] == {
-        "title": "Undone",
-        "failed": False,
-        "red": False,
-        "canUndo": False,
-    }
+    got = run["undone"]
+    assert not got["failed"] and not got["red"]
+    assert got["text"].startswith("Undone.")
+    assert got["canUndo"] is False
+
+
+def test_delete_file_asks_the_shared_question(run: dict) -> None:
+    assert run["delete-red"]
+    assert run["delete-asks"]
+    title = run["delete-title"]
+    assert title.startswith("Delete ") and title.endswith("?")
+    assert run["delete-action"] == "Delete File"
+    # Enter cancels: nothing deleted, the message stays.
+    assert run["delete-after-enter"] is False
+    assert run["undone-still"].startswith("Undone.")
+
+
+def test_the_undo_bar_names_the_last_change(run: dict) -> None:
+    if not run["rows"]:
+        pytest.skip("the fake device lists no controls")
+    assert run["last-change"] == run["expected-last"]
+    assert run["undone-step"] == run["expected-undone"]

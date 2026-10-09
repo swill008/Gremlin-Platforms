@@ -3,13 +3,13 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import Qt.labs.qmlmodels
 
 import Gremlin.Script
 
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 import Gremlin.Style
 
 
@@ -22,29 +22,23 @@ Item {
 
     property ScriptListModel scriptListModel : backend.scriptListModel
 
-    // Dialog to select a script to add
-    FileDialog {
+    // Picks a script to add; opens in the last folder used for scripts (01 S143).
+    FilePicker {
         id: _selectScript
 
+        kind: "script"
+        mode: "open"
         title: "Add Script"
 
         acceptLabel: "Load"
         defaultSuffix: "py"
-        fileMode: FileDialog.OpenFile
         nameFilters: ["Script files (*.py)"]
-        currentFolder: backend.scriptsFolderUrl()
+        folder: backend ? backend.scriptsFolderUrl() : ""
 
-        onAccepted: function()
-        {
-            scriptListModel.addScript(selectedFile)
-        }
+        onPicked: (file) => scriptListModel.addScript(file)
     }
 
     // Dialog to rename a script
-    DismissibleDialog {
-        id: _removeGate
-    }
-
     TextInputDialog {
         id: _renameScriptDialog
 
@@ -236,17 +230,22 @@ Item {
             onClicked: () => {
                 var p = path
                 var n = name
-                _removeGate.confirmThen("Remove Script?",
-                    "Remove " + n + " from this profile? Its settings here go with it."
+                // 04 S85, 01 S140: the shared question.
+                Confirm.ask(_root, {
+                    title: "Remove script " + n + "?",
+                    text: "It leaves this profile with its settings here."
                         + " The script file itself is not deleted.",
-                    "Remove", function() {
+                    undoable: false,
+                    action: "Remove Script",
+                    onAccept: function() {
                         if (_root.shownPath === p && _root.shownName === n) {
                             _config.model = []
                             _root.shownPath = ""
                             _root.shownName = ""
                         }
                         scriptListModel.removeScript(p, n)
-                    }, null, true)
+                    }
+                })
             }
         }
     }

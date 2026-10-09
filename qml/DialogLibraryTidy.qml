@@ -9,7 +9,9 @@ import Gremlin.Style
 
 // Tidy Library (10 S38): lists what it would remove (autosaves older than a
 // number of months, deleted devices with no saved setups) and removes only
-// what is still ticked, after Remove.
+// what is still ticked. The list is its own question (01 S140, user
+// 2026-10-09: one confirmation): a red Remove from Library, Cancel has the
+// focus, Enter and Esc cancel.
 Dialog {
     id: _dlg
     objectName: "libraryTidyDialog"
@@ -86,11 +88,11 @@ Dialog {
                 }
                 Label { text: _dlg.sizeText(modelData.bytes || 0); font.pixelSize: Style.dp(12); color: Style.fgMuted }
             }
-            Label {
-                anchors.centerIn: parent
+            EmptyState {
+                objectName: "libraryTidyEmpty"
+                anchors.fill: parent
                 visible: _dlg.items.length === 0
                 text: "Nothing to tidy."
-                color: Style.fgMuted
             }
         }
         Label {
@@ -99,27 +101,34 @@ Dialog {
             wrapMode: Text.Wrap
             text: _dlg.ticked.length
                   ? _dlg.ticked.length + (_dlg.ticked.length === 1 ? " item" : " items") + " ticked ("
-                    + _dlg.sizeText(_dlg.tickedBytes) + "). Nothing is removed until you press Remove."
+                    + _dlg.sizeText(_dlg.tickedBytes) + "). Nothing is removed until you press Remove from Library."
                   : "Nothing is ticked."
             font.pixelSize: Style.dp(12)
             color: Style.fgMuted
         }
     }
 
+    // Enter cancels, as in the shared question (01 S140).
+    Shortcut {
+        sequences: ["Return", "Enter"]
+        enabled: _dlg.opened
+        onActivated: _dlg.reject()
+    }
+    onOpened: _cancel.forceActiveFocus()
+
     footer: DialogButtonBox {
-        Button { text: "Cancel"; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
         Button {
+            id: _cancel
+            objectName: "libraryTidyCancel"
+            text: "Cancel"
+            DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+        }
+        DangerButton {
             id: _remove
             objectName: "libraryTidyRemove"
-            text: "Remove"
+            text: "Remove from Library"
             enabled: _dlg.ticked.length > 0 && _dlg.lib && !_dlg.lib.busy
-            contentItem: Label {
-                text: _remove.text
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                color: _remove.enabled ? Style.dangerText : Style.fgDisabled
-            }
-            DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+            onClicked: _dlg.accept()
         }
     }
     onAccepted: lib.tidy(ticked.map(i => i.key))

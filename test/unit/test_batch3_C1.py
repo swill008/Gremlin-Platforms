@@ -213,7 +213,7 @@ def test_options_text_and_pickers_use_the_glossary() -> None:
     assert "device without a module" in shell
     group = _read("qml/ConfigGroup.qml")
     assert "Select a File" not in group and "Select a Folder" not in group
-    assert group.count("title: _pickerTitle()") == 2
+    assert group.count("title: _pickerTitle()") == 1  # one FilePicker (01 S143)
 
 
 # | GL-233: the Windows scaling box says what its title says.

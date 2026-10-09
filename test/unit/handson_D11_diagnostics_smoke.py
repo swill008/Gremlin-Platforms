@@ -90,7 +90,7 @@ def main() -> None:
     out["fromMenu"] = wait_until(lambda: window("Save Diagnostics") is not None)
     win = window("Save Diagnostics")
     if win is not None:
-        out["startFolder"] = ev(win, "String(_saveDialog.currentFolder)")
+        out["startFolder"] = ev(win, "String(_saveDialog.startFolder())")
         out["desktop"] = ev(win, "_diag.desktopUrl")
         out["box"] = ev(win, "_includeProfile.text")
         out["boxStarts"] = ev(win, "_includeProfile.checked")

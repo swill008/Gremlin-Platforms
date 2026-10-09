@@ -11,6 +11,8 @@ import Gremlin.Profile
 import Gremlin.Menus as Menus
 import Gremlin.Style
 
+import "confirm.js" as Confirm
+
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _root
@@ -36,17 +38,26 @@ ApplicationWindow {
     property ModeHierarchyModel modeHierarchy : ModeHierarchyModel {}
     property ModeListModel modeList : ModeListModel {}
 
+    // The open delete question (01 S140), for tests.
+    property var _question: null
+
+    // 04 S45: names the mode and how many bindings go with it; Undo Delete
+    // Mode (04 S46a) can bring it back.
     function confirmDelete(mode) {
         var n = modeHierarchy.bindingCount(mode)
         var what = n === 0 ? "It has no bindings."
-            : "Its " + (n === 1 ? "binding" : n + " bindings") + " will be deleted too."
-        _deleteGate.confirmThen("Delete Mode \"" + mode + "\"?",
-            what + " Modes under it move up one level.",
-            "Delete Mode", function() { modeHierarchy.deleteMode(mode) }, null, true)
-    }
-
-    DismissibleDialog {
-        id: _deleteGate
+            : (n === 1 ? "1 binding goes" : n + " bindings go") + " with it."
+        _question = Confirm.ask(_content, {
+            title: "Delete mode " + mode + "?",
+            text: what + " Modes under it move up one level.",
+            undoable: true,
+            action: "Delete Mode",
+            onAccept: function() {
+                _root._question = null
+                modeHierarchy.deleteMode(mode)
+            },
+            onCancel: function() { _root._question = null }
+        })
     }
 
     TextInputDialog {
@@ -162,17 +173,24 @@ ApplicationWindow {
                     _textInput.visible = true
                 }
             }
+        }
 
-            // Brings back the mode deleted last, with its bindings.
-            Button {
-                text: "Undo Delete Mode"
-                enabled: modeHierarchy.canUndoDelete
-
-                ToolTip.visible: hovered && enabled
-                ToolTip.text: "Brings back " + modeHierarchy.undoDeleteName + " and its bindings."
-
-                onClicked: () => { modeHierarchy.undoDelete() }
-            }
+        // Undo Delete Mode (04 S46a) brings back the mode deleted last, with
+        // its bindings; the shared Undo / Redo pair (01 S143). No Redo here.
+        UndoBar {
+            id: _undoBar
+            Layout.fillWidth: true
+            Layout.leftMargin: Style.dp(12)
+            Layout.rightMargin: Style.dp(12)
+            Layout.bottomMargin: Style.dp(6)
+            canUndo: modeHierarchy.canUndoDelete
+            canRedo: false
+            undoTip: modeHierarchy.canUndoDelete
+                ? "Undo Delete Mode: brings back " + modeHierarchy.undoDeleteName
+                    + " and its bindings." : ""
+            lastChange: modeHierarchy.canUndoDelete
+                ? "Last change: Delete mode " + modeHierarchy.undoDeleteName : ""
+            onUndo: modeHierarchy.undoDelete()
         }
     }
 

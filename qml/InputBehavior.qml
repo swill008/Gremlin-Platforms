@@ -8,6 +8,8 @@ import QtQuick.Layouts
 import Gremlin.Profile
 import Gremlin.Style
 
+import "confirm.js" as Confirm
+
 Item {
     id: _root
 
@@ -26,13 +28,18 @@ Item {
             b.behavior = kind
             return
         }
-        _behaviorGate.confirmThen("Treat as " + kind[0].toUpperCase() + kind.slice(1) + "?",
-            "Changing how this input is treated removes its "
+        // 01 S140: the shared question (Enter and Esc cancel).
+        Confirm.ask(_root, {
+            title: "Treat as " + kind[0].toUpperCase() + kind.slice(1) + "?",
+            text: "Changing how this input is treated removes its "
                 + (n === 1 ? "action" : n + " actions") + ".",
-            "Change and remove", function() {
+            undoable: false,
+            action: "Change and Remove",
+            onAccept: function() {
                 if (_root.inputBinding === b)
                     b.behavior = kind
-            }, null, true)
+            }
+        })
     }
 
     implicitWidth: hasChoice ? _content.implicitWidth : 0
@@ -81,9 +88,5 @@ Item {
             Component.onCompleted: checked = shown
             onClicked: _root.treatAs("hat")
         }
-    }
-
-    DismissibleDialog {
-        id: _behaviorGate
     }
 }

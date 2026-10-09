@@ -4,7 +4,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal as U
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -12,6 +11,7 @@ import Gremlin.Device
 import Gremlin.Style
 import Gremlin.Menus
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -551,7 +551,7 @@ ApplicationWindow {
         if (!_hw.save(targetName, payload)) {
             saveOk = false
             if (report) {
-                _saveGate.announce(false, "Not written. It is still only on this screen.")
+                say("Not written. It is still only on this screen.", true)
                 if (backend)
                     backend.noteSave("The module file was not written.")
             }
@@ -561,7 +561,7 @@ ApplicationWindow {
         if (!check || !check.nodes) {
             saveOk = false
             if (report) {
-                _saveGate.announce(false, "Saved to the module file, but it could not be read back.")
+                say("Saved to the module file, but it could not be read back.", true)
                 if (backend)
                     backend.noteSave("Saved the module file to " + _hw.path + ", but it could not be read back.")
             }
@@ -582,7 +582,7 @@ ApplicationWindow {
         hydrateOverlays(liveNodes)
         saveOk = true
         if (report) {
-            _saveGate.announce(true, "Saved to the module file.")
+            say("Saved to the module file.")
             if (backend)
                 backend.noteSave("Saved the module file to " + _hw.path)
         }
@@ -1031,19 +1031,20 @@ ApplicationWindow {
         onCancelled: _buttonMap.putOffRecovery()
     }
 
-    // Asks before a template is deleted.
-    DismissibleDialog {
-        id: _deleteGate
+    // What just happened, on the shared message line (01 S142): plain for
+    // done, red for failed; it stays until the next message.
+    function say(text, failed) {
+        _messageLine.show(text, failed === true)
     }
 
-    // Something the user asked for did not happen: say so.
-    DismissibleDialog {
-        id: _failNotice
-    }
-
+    // Something the user asked for did not happen: say so, in red. Asked
+    // from the Templates window, it says so there.
     function tellFailure(title, message) {
-        _failNotice.announce(false, message)
-        _failNotice.titleText = title
+        var text = message || (title + ".")
+        if (_templatesDlg.opened)
+            _templatesMessage.show(text, true)
+        else
+            say(text, true)
     }
 
     // Leave questions (Save / Discard / Cancel), and Save's question when
@@ -1096,47 +1097,15 @@ ApplicationWindow {
         }
     }
 
-    Dialog {
-        id: _resetDlg
-        title: "Reset Layout"
-        modal: true
-        anchors.centerIn: parent
-        width: Style.dp(460)
-        standardButtons: Dialog.NoButton
-        closePolicy: Popup.CloseOnEscape
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: Style.dp(12)
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                color: Style.warn
-                text: "Clear everything from the map: chips, leaders, hotspots, drawings, text boxes, pictures and tables?"
-            }
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                color: Style.fgMuted
-                text: "Actions are not changed. Ctrl+Z brings the layout back, and File → Cancel leaves editing without keeping the reset. Save to make the empty map the live one."
-            }
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                spacing: Style.dp(8)
-                Button {
-                    text: "Keep Map"
-                    onClicked: _resetDlg.close()
-                }
-                Button {
-                    text: "Reset Layout"
-                    highlighted: true
-                    onClicked: {
-                        _buttonMap.resetLayout()
-                        _resetDlg.close()
-                    }
-                }
-            }
-        }
-        onRejected: close()
+    // Reset Layout (07 S61): the shared question (01 S140).
+    function askResetLayout() {
+        return Confirm.ask(_buttonMap.contentItem, {
+            title: "Reset the layout?",
+            text: "Clears everything from the map: chips, leaders, hotspots, drawings, text boxes, pictures and tables. Actions are not changed. File → Cancel leaves editing without keeping the reset; Save makes the empty map the live one.",
+            note: "Ctrl+Z brings the layout back.",
+            action: "Reset Layout",
+            onAccept: function() { _buttonMap.resetLayout() }
+        })
     }
 
     // Help (F1): the one Help window on the Button Map chapter (01 S128).
@@ -1488,8 +1457,7 @@ ApplicationWindow {
     function addPictures(rels, at) {
         var e = _ed()
         if (!e || !rels || !rels.length) {
-            if (e)
-                e.showFindMessage("Nothing to add: no picture found.")
+            say("Nothing to add: no picture found.", true)
             return
         }
         var ids = []
@@ -1863,8 +1831,7 @@ ApplicationWindow {
         if (editing && e && e.bump) {
             e.bump()
             fitHistAt = e.histAt
-            if (e.showFindMessage)
-                e.showFindMessage("Fitted to the photo frame. Undo puts it back.")
+            say("Fitted to the photo frame. Undo puts it back.")
         } else if (e && e.repaint) {
             e.repaint()
         }
@@ -2036,13 +2003,14 @@ ApplicationWindow {
     }
     Component.onDestruction: Commands.removeOwner("buttonmap")
 
-    FileDialog {
+    // Choosers open in the last folder used for their kind (01 S143).
+    FilePicker {
         id: _imageDialog
+        kind: "picture"
         title: "Choose Photo"
-        fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
-        currentFolder: _hw.imagesFolderUrl()
-        onAccepted: {
+        folder: _hw.imagesFolderUrl()
+        onPicked: (selectedFile) => {
             _hw.notePictureFolder(selectedFile)
             // Cancel can put the current photo back.
             _hw.stashPhoto(targetName)
@@ -2058,13 +2026,13 @@ ApplicationWindow {
         }
     }
 
-    FileDialog {
+    FilePicker {
         id: _overlayDialog
+        kind: "picture"
         title: "Import Picture"
-        fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
-        currentFolder: _hw.imagesFolderUrl()
-        onAccepted: {
+        folder: _hw.imagesFolderUrl()
+        onPicked: (selectedFile) => {
             _hw.notePictureFolder(selectedFile)
             var rel = _hw.copyOverlay(selectedFile, targetName)
             var e = _ed()
@@ -2095,9 +2063,7 @@ ApplicationWindow {
     }
 
     function _say(text) {
-        var e = _ed()
-        if (e && e.showFindMessage)
-            e.showFindMessage(text)
+        say(text, true)
     }
 
     // An export is being drawn or written (07 S101): one at a time, so
@@ -2180,21 +2146,23 @@ ApplicationWindow {
         _renderer.drop(kind)
     }
 
-    FileDialog {
+    FilePicker {
         id: _exportPngDialog
+        kind: "export"
+        mode: "save"
         title: "Export PNG"
-        fileMode: FileDialog.SaveFile
         defaultSuffix: "png"
         nameFilters: ["PNG image (*.png)"]
-        onAccepted: exportTo(selectedFile, "png")
+        onPicked: (selectedFile) => exportTo(selectedFile, "png")
     }
-    FileDialog {
+    FilePicker {
         id: _exportJpgDialog
+        kind: "export"
+        mode: "save"
         title: "Export JPG"
-        fileMode: FileDialog.SaveFile
         defaultSuffix: "jpg"
         nameFilters: ["JPEG image (*.jpg *.jpeg)"]
-        onAccepted: exportTo(selectedFile, "jpg")
+        onPicked: (selectedFile) => exportTo(selectedFile, "jpg")
     }
     // --- mirror, and copy another device's layout ------------------------------
 
@@ -2206,7 +2174,7 @@ ApplicationWindow {
         if (!e || !editing)
             return
         e.mirrorLayout(_opts.values["mirror-pictures"] === true)
-        e.showFindMessage("Mirrored left to right. Undo puts it back.")
+        say("Mirrored left to right. Undo puts it back.")
     }
 
     function openCopyLayout(row) {
@@ -2309,7 +2277,7 @@ ApplicationWindow {
             if (e === before && e.squashHistSince)
                 e.squashHistSince(startAt)
             refreshReservoir()
-            e.showFindMessage("Layout copied. Save to keep it; Undo puts the old one back."
+            say("Layout copied. Save to keep it; Undo puts the old one back."
                               + copyNotes(e.nodes, row))
         })
     }
@@ -2388,9 +2356,7 @@ ApplicationWindow {
         if (!clean.length)
             return
         var ok = _opts.saveStyle(clean, _styleKind, _styleFields)
-        var e = _ed()
-        if (e)
-            e.showFindMessage(ok ? "Saved style " + clean + "." : "The style was not saved.")
+        say(ok ? "Saved style " + clean + "." : "The style was not saved.", !ok)
     }
 
     Dialog {
@@ -2466,9 +2432,7 @@ ApplicationWindow {
         }
         var ok = _hw.saveTemplate(clean, JSON.stringify(layoutNow() || []), targetName)
         refreshTemplates()
-        var e = _ed()
-        if (e)
-            e.showFindMessage(ok ? "Saved as template " + clean + "." : "The template was not saved.")
+        say(ok ? "Saved as template " + clean + "." : "The template was not saved.", !ok)
     }
 
     DismissibleDialog {
@@ -2537,7 +2501,10 @@ ApplicationWindow {
         height: Math.min(Style.dp(520), _buttonMap.height - Style.dp(80))
         standardButtons: Dialog.NoButton
         closePolicy: Popup.CloseOnEscape
-        onOpened: _buttonMap.refreshTemplates()
+        onOpened: {
+            _templatesMessage.clear()
+            _buttonMap.refreshTemplates()
+        }
         property string renaming: ""
         ColumnLayout {
             anchors.fill: parent
@@ -2595,19 +2562,29 @@ ApplicationWindow {
                             _templateExportFile.open()
                         }
                     }
-                    Button {
+                    DangerButton {
+                        objectName: "templateDelete"
                         text: "Delete"
                         onClicked: {
                             var name = modelData.name
-                            _deleteGate.confirmThen("Delete Template",
-                                "Delete the template “" + name + "”? Layouts made from it are not changed.",
-                                "Delete", function() {
+                            Confirm.ask(_buttonMap.contentItem, {
+                                title: "Delete template “" + name + "”?",
+                                text: "Layouts made from it are not changed.",
+                                undoable: false,
+                                action: "Delete Template",
+                                onAccept: function() {
                                     _hw.deleteTemplate(name)
                                     _buttonMap.refreshTemplates()
-                                }, null, true)
+                                }
+                            })
                         }
                     }
                 }
+            }
+            MessageLine {
+                id: _templatesMessage
+                objectName: "templatesMessage"
+                Layout.fillWidth: true
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -2625,30 +2602,30 @@ ApplicationWindow {
         }
     }
 
-    FileDialog {
+    FilePicker {
         id: _templateExportFile
         property string templateName: ""
+        kind: "template"
+        mode: "save"
         title: "Export Template"
-        fileMode: FileDialog.SaveFile
         defaultSuffix: "json"
         nameFilters: ["Button Map template (*.json)"]
-        onAccepted: {
+        onPicked: (selectedFile) => {
             if (!_hw.exportTemplate(templateName, selectedFile))
                 _buttonMap.tellFailure("Export Failed", _hw.templateError())
         }
     }
 
-    FileDialog {
+    FilePicker {
         id: _templateImportFile
+        kind: "template"
         title: "Import Template"
-        fileMode: FileDialog.OpenFile
         nameFilters: ["Button Map template (*.json)"]
-        onAccepted: {
+        onPicked: (selectedFile) => {
             var name = _hw.importTemplate(selectedFile)
             _buttonMap.refreshTemplates()
-            var e = _buttonMap._ed()
-            if (e)
-                e.showFindMessage(name.length ? "Imported template " + name + "." : "That file is not a Button Map template.")
+            _templatesMessage.show(name.length ? "Imported template " + name + "." : "That file is not a Button Map template.",
+                                   !name.length)
         }
     }
 
@@ -2677,13 +2654,14 @@ ApplicationWindow {
         transientParent: _buttonMap
     }
 
-    FileDialog {
+    FilePicker {
         id: _exportPdfDialog
+        kind: "export"
+        mode: "save"
         title: "Export PDF"
-        fileMode: FileDialog.SaveFile
         defaultSuffix: "pdf"
         nameFilters: ["PDF (*.pdf)"]
-        onAccepted: exportTo(selectedFile, "pdf")
+        onPicked: (selectedFile) => exportTo(selectedFile, "pdf")
     }
 
     Popup {
@@ -2838,7 +2816,7 @@ ApplicationWindow {
                     id: _deviceMenu
                     title: "Device"
                 }
-                ThemedMenuItem { text: "Reset Layout"; enabled: editing; onTriggered: _resetDlg.open() }
+                ThemedMenuItem { text: "Reset Layout"; enabled: editing; onTriggered: _buttonMap.askResetLayout() }
                 ThemedMenuItem {
                     text: "Fit to Photo Frame"
                     enabled: editing && !fittedThisEdit
@@ -3289,6 +3267,28 @@ ApplicationWindow {
                     onTriggered: _buttonMap.openGuide()
                 }
             }
+        }
+
+        // The editor's own Undo / Redo (01 S143), while editing; Ctrl+Z /
+        // Ctrl+Y stay the window's shortcuts.
+        UndoBar {
+            id: _undoBar
+            objectName: "buttonMapUndoBar"
+            Layout.fillWidth: true
+            Layout.leftMargin: Style.dp(6)
+            visible: _buttonMap.editing
+            canUndo: { var e = _ed(); return _buttonMap.editing && e ? e.canUndo : false }
+            canRedo: { var e = _ed(); return _buttonMap.editing && e ? e.canRedo : false }
+            undoTip: "Undo the last change (Ctrl+Z)"
+            redoTip: "Redo (Ctrl+Y)"
+            onUndo: { var e = _ed(); if (e) e.undo() }
+            onRedo: { var e = _ed(); if (e) e.redo() }
+        }
+
+        // What just happened: saved, exported, copied, failed (01 S142).
+        MessageLine {
+            id: _messageLine
+            Layout.fillWidth: true
         }
 
         // The top tool row (always shown, empty or not): tools dragged up

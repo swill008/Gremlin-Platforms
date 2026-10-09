@@ -47,9 +47,9 @@ function topics() {
             + "</ol>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>Save reads the layout back and says \"Saved to the module file.\" When it can't write it, it says \"Not written. It is still only on this screen.\"</li>"
+            + "<li>Save reads the layout back and says \"Saved to the module file.\" on the message line under the map. When it can't write it, the line says in red \"Not written. It is still only on this screen.\" A message stays until the next one.</li>"
             + "<li>Cancel and closing ask first when there are unsaved edits; choosing Save there saves and leaves editing.</li>"
-            + "<li>Undo and Redo work only while editing, back as many steps as <b>Undo steps</b> in Button Map Options (80 at first).</li>"
+            + "<li>While editing, <b>Undo</b> and <b>Redo</b> show above the map (\"Undo the last change (Ctrl+Z)\", \"Redo (Ctrl+Y)\"). They work only while editing, back as many steps as <b>Undo steps</b> in Button Map Options (80 at first).</li>"
             + "<li>Most of this chapter is about editing.</li>"
             + "<li>What Save writes, and what is kept at once, is listed in <a href=\"topic:button-map-options\">Button Map Options</a>.</li>"
             + "</ul>",
@@ -94,7 +94,7 @@ function topics() {
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li><b>Reset Layout</b> clears everything from the map: chips go back to the pool, and leaders, hotspots, drawings, text boxes, pictures and tables are removed. It asks first, and actions are not changed. <b>Ctrl+Z</b> brings the layout back; save afterwards to make the empty map the live one.</li>"
+            + "<li><b>Reset Layout</b> clears everything from the map: chips go back to the pool, and leaders, hotspots, drawings, text boxes, pictures and tables are removed. It asks first (\"Reset the layout?\"); the red <b>Reset Layout</b> clears it, and actions are not changed. <b>Ctrl+Z</b> brings the layout back, and <b>File › Cancel</b> leaves editing without keeping the reset; <b>Save</b> makes the empty map the live one.</li>"
             + "<li><b>Fit to Photo Frame</b> shrinks an older, oversized layout to the photo.</li>"
             + "</ul>",
             ["button-map-keys", "button-map-print", "button-map-photo"]),
@@ -107,7 +107,7 @@ function topics() {
             + "<li><b>Autosave</b>: keeps a recovery copy of unsaved edits every <b>Seconds between recovery copies</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy.</li>"
             + "<li><b>View</b>: <b>Zoom speed</b>, how fast the mouse wheel zooms; <b>Rulers</b>, shown or not (also <b>View › Rulers</b>).</li>"
             + "<li><b>Colors</b>: <b>Recent colors</b>, how many the color picker keeps.</li>"
-            + "<li><b>Library</b>: the saved styles and layout templates, to rename or delete.</li>"
+            + "<li><b>Library</b>: the saved styles and layout templates, to rename or delete. Deleting a style asks first (\"Delete saved style “Name”?\", \"Items that use it keep their look.\"); the red <b>Delete Style</b> deletes it.</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
@@ -166,7 +166,7 @@ function topics() {
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>Choose Photo and Clear Photo are steps for Undo, and Cancel puts back the photo you started with.</li>"
+            + "<li>Choose Photo and Clear Photo are steps for Undo, and Cancel puts back the photo you started with. If Clear Photo fails, the reason shows in red on the message line.</li>"
             + "<li>The look is saved with the layout, shows on the live map and in exports, and Undo steps through it.</li>"
             + "<li>The photo has its own row at the bottom of the Layers panel, so it can be hidden or locked like any item.</li>"
             + "</ul>",
@@ -308,7 +308,7 @@ function topics() {
             + "<ul>"
             + "<li><b>Save Layout as Template…</b> keeps this map's layout under a name. A name already used asks before replacing it (<b>Replace Template</b>). An empty map can't be saved as a template.</li>"
             + "<li><b>Apply Template</b> puts one on the device you are editing. It asks first; Undo puts the old layout back.</li>"
-            + "<li><b>Manage Templates…</b> renames, deletes (it asks first), exports a template to a file to share, and imports one. An imported template whose name is taken gets a number.</li>"
+            + "<li><b>Manage Templates…</b> renames, deletes, exports a template to a file to share, and imports one. An imported template whose name is taken gets a number. Delete asks first (\"Delete template “Name”?\", \"Layouts made from it are not changed.\"); the red <b>Delete Template</b> deletes it, and this can't be undone. A rename or export that fails says why in red on the message line.</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
@@ -478,7 +478,7 @@ function topics() {
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>A chip's style holds its chip, text, pressed, hotspot and leader colors and sizes; a shape's its fill and outline; a line's its color, width, outline and arrowheads; a text box's its format.</li>"
-            + "<li>Styles are shared by every device. <b>Edit › Button Map Options…</b> › <b>Library</b> renames and deletes them, and the layout templates too.</li>"
+            + "<li>Styles are shared by every device. <b>Edit › Button Map Options…</b> › <b>Library</b> renames and deletes them (it asks first; items that use a deleted style keep their look), and the layout templates too.</li>"
             + "</ul>",
             ["button-map-templates", "button-map-options"]),
 
@@ -568,7 +568,7 @@ function topics() {
             + "<li>Every print and export takes the print area, whatever the zoom. Selection marks, handles, guides and the grid are left off, and so are hidden items. Lines and text are drawn at the export's size, not enlarged. A PDF goes on the chosen paper, inside its margins.</li>"
             + "<li>While an export is still being written, Print &amp; Export shows <b>Exporting…</b> and the Export buttons wait: one export runs at a time.</li>"
             + "<li>An export's longest side is at most 16384 pixels; a larger Scale is made smaller to fit.</li>"
-            + "<li>When an export can't be written, <b>Export Failed</b> says \"Export failed.\" with the file, the folder and the reason, such as a read-only folder or a file open in another program.</li>"
+            + "<li>When an export can't be written, the message line says why in red, with the file, the folder and the reason, such as a read-only folder or a file open in another program.</li>"
             + "<li>An unplugged stick's map still exports.</li>"
             + "</ul>",
             ["button-map-print-area"]),

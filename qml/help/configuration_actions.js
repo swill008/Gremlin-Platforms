@@ -101,7 +101,7 @@ function topics() {
                 + "<ul>"
                 + "<li>Type a <b>Note</b> in the binding's header. It shows on the input's row.</li>"
                 + "<li>Drag a binding by its handle to change the order.</li>"
-                + "<li>To remove a binding, choose the remove button in its header (\"Remove this binding and all its actions\"). A binding with actions asks first.</li>"
+                + "<li>To remove a binding, choose the remove button in its header (\"Remove this binding and all its actions\"). A binding with actions asks first: \"Remove this binding?\" says how many actions go with it, and the red <b>Remove Binding</b> removes it. This can't be undone.</li>"
                 + "<li>Each action has its own label box. A label you leave blank stays blank.</li>"
                 + "</ul>"
                 + _good([
@@ -120,7 +120,7 @@ function topics() {
                 + "<li>For a hat, pick the directions under <b>Activate on</b>. Any of them presses the button.</li>"
                 + "</ol>"
                 + _good([
-                    "Changing Treat as on a binding that has actions asks first, and removes those actions.",
+                    "Changing Treat as on a binding that has actions asks first (\"Treat as Button?\"). The red <b>Change and Remove</b> changes it and removes those actions. This can't be undone.",
                     "An axis already inside the range when you choose <b>Run</b> gives no press until it leaves and comes back."
                 ]),
             related: ["configuration-actions-bindings", "configuration-actions-choose-action"]
@@ -128,12 +128,20 @@ function topics() {
         {
             id: "configuration-actions-safety-net",
             section: page,
-            title: "Unfinished actions and warnings",
+            title: "Unfinished actions and recovery copies",
             body: "<p>An action with a problem shows a warning or error icon on its row. Point at the icon to see why.</p>"
                 + "<ul>"
                 + "<li>A warning still runs. An error means the action is not finished.</li>"
                 + "<li>Before saving, the program lists the unfinished actions with their first error. Choose <b>Save without them</b> to leave them out, or <b>Cancel</b> to go back and finish them.</li>"
                 + "<li><b>Run</b> skips unfinished actions.</li>"
+                + "</ul>"
+                + "<h4>Unsaved edits after the program closed unexpectedly</h4>"
+                + "<p>While a profile has unsaved changes, the program keeps a recovery copy of them about every minute, in the recovery folder inside the data folder. Saving, <b>Discard</b> and closing the program normally remove it.</p>"
+                + "<p>If the program closed with unsaved changes, the next time that profile opens (or when the program starts again), \"Unsaved Edits Found\" says \"The profile <i>name</i> has edits from <i>date</i> at <i>time</i> that were never saved, probably because the program closed unexpectedly.\"</p>"
+                + "<ul>"
+                + "<li><b>Restore</b> opens the edits. Save the profile to keep them.</li>"
+                + "<li><b>Discard</b> deletes them.</li>"
+                + "<li><b>Not now</b> keeps them to be offered again later.</li>"
                 + "</ul>"
                 + _good([
                     "A Play Sound or Load Profile action whose file is missing is kept with a warning. Pressing it does nothing until the file is back or you choose another.",
@@ -149,10 +157,12 @@ function topics() {
             body: "<p>Deleting an action takes it off the input in the current mode.</p>"
                 + "<ol>"
                 + "<li>Open the device's Configuration page and select the input.</li>"
-                + "<li>Choose <b>Delete</b> on the action's row, then <b>Delete</b> again to confirm.</li>"
+                + "<li>Choose <b>Delete</b> on the action's row.</li>"
+                + "<li>The question \"Delete action <i>type</i> → <i>output</i>?\" says which input it goes from in this mode. Choose the red <b>Delete Action</b>.</li>"
                 + "</ol>"
                 + _good([
-                    "To take the delete back, choose <b>Undo</b> (<b>Ctrl+Z</b>).",
+                    "<b>Cancel</b> has the focus: <b>Enter</b> and <b>Esc</b> both cancel.",
+                    "To take the delete back, choose <b>Undo</b> (<b>Ctrl+Z</b>). Saved deletes can also be put back from History.",
                     "The profile on disk changes only when you save it."
                 ]),
             related: ["configuration-actions-undo", "configuration-actions-add-action"]
@@ -163,7 +173,8 @@ function topics() {
             title: "Undo a change on the Configuration page",
             body: "<p><b>Undo</b> and <b>Redo</b> step back and forward through what <b>OK</b> and <b>Delete</b> changed.</p>"
                 + "<ul>"
-                + "<li>Choose <b>Undo</b> or <b>Redo</b> beside Output, or press <b>Ctrl+Z</b> or <b>Ctrl+Y</b>.</li>"
+                + "<li>Choose <b>Undo</b> or <b>Redo</b> above the list of actions, or press <b>Ctrl+Z</b> or <b>Ctrl+Y</b>.</li>"
+                + "<li>Beside them, \"Last change: <i>change</i>\" names the newest change, or \"Undone: <i>change</i>\" after an Undo. Pointing at a button names the change it takes back or does again.</li>"
                 + "</ul>"
                 + _good([
                     "The steps are kept until you open another device or profile.",
@@ -187,7 +198,7 @@ function topics() {
                 + _good([
                     "<b>Undo</b> and <b>Redo</b> step back through each OK, asking first when the draft has changes.",
                     "Choosing another key, or deleting one, while the draft has changes asks first.",
-                    "<b>Delete</b> on a key asks first and removes only its actions in this mode. It shows only on keys with actions in this mode, or with none in any mode.",
+                    "<b>Delete</b> on a key asks first (\"Delete key A?\", \"Its actions in this mode go with it.\"); the red <b>Delete Key</b> removes only its actions in this mode. This can't be undone. It shows only on keys with actions in this mode, or with none in any mode.",
                     "To give a key a name of your own, double-click it. The name is saved in the profile. The key's <b>Note</b> shows on its row.",
                     "A key binding fires only for keys the Keyboard <a href=\"topic:home-devices-input-modules\">input module</a> claims."
                 ]),
@@ -596,7 +607,7 @@ function topics() {
             id: "configuration-actions-q-unfinished",
             section: questions,
             title: "Why does Save say some actions are not finished?",
-            body: "<p>Those actions have an error, so they can't be saved. Choose <b>Cancel</b> to go back and finish them, or <b>Save without them</b> to leave them out. See <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and warnings</a>.</p>",
+            body: "<p>Those actions have an error, so they can't be saved. Choose <b>Cancel</b> to go back and finish them, or <b>Save without them</b> to leave them out. See <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>.</p>",
             related: ["configuration-actions-safety-net"]
         },
         {

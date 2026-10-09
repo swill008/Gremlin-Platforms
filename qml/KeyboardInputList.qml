@@ -10,6 +10,7 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Style
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 
 Item {
     // The one edit lock (06 S13): nothing is edited while the profile runs.
@@ -19,8 +20,6 @@ Item {
     opacity: editorLocked ? 0.55 : 1.0
 
     ActionNames { id: _actionNames }
-
-    DismissibleDialog { id: _deleteGate }
 
     // Each key is listed once, with the actions of the mode shown.
     Connections {
@@ -86,15 +85,20 @@ Item {
     }
 
     function _confirmDelete(row, label) {
-        _deleteGate.confirmThen("Delete Key?",
-            "Delete " + label + " and its actions in this mode?",
-            "Delete", function() {
+        // 01 S140: the shared question (Enter and Esc cancel).
+        Confirm.ask(_inputList, {
+            title: "Delete key " + label + "?",
+            text: "Its actions in this mode go with it.",
+            undoable: false,
+            action: "Delete Key",
+            onAccept: function() {
                 _inputList.model.deleteInput(row)
                 var count = _inputList.count
                 _inputList.currentIndex = -1
                 if (count > 0)
                     _inputList.currentIndex = Math.min(row, count - 1)
-            }, null, true)
+            }
+        })
     }
 
     TextInputDialog {

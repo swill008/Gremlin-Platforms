@@ -218,7 +218,9 @@ def main() -> None:
         c for c in items(library)
         if c.inherits("QQuickText") and c.property("text") == "Styles"
     )
-    blank = centre(heading)
+    # A blank spot left of the rows' boxes: the heading (now the shared
+    # SectionHeading, full width) near its left end.
+    blank = heading.mapToScene(QtCore.QPointF(8, heading.height() / 2)).toPoint()
 
     def lib_failed() -> bool:
         notice = next(
@@ -283,7 +285,8 @@ def main() -> None:
     scope = win.contentItem()
 
     def dlg_failed() -> bool:
-        shown = "_failNotice.visible && _failNotice.titleText === 'Rename Failed'"
+        # The Templates window's own message line (01 S142).
+        shown = "_templatesMessage.failed"
         return ev(shown) is True
 
     # One template each, so one way of leaving can't upset the next.

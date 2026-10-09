@@ -4,7 +4,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal as U
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -70,7 +69,7 @@ ApplicationWindow {
                 text: qsTr("Save…")
                 enabled: !_diag.busy
                 onClicked: {
-                    _saveDialog.selectedFile = _diag.defaultFileUrl()
+                    _saveDialog.currentFile = _diag.defaultFileUrl()
                     _saveDialog.open()
                 }
             }
@@ -107,13 +106,16 @@ ApplicationWindow {
         }
     }
 
-    FileDialog {
+    // Opens in the last folder diagnostics were saved to, else the
+    // Desktop (01 S132, S143).
+    FilePicker {
         id: _saveDialog
+        kind: "diagnostics"
+        mode: "save"
         title: "Save Diagnostics"
-        fileMode: FileDialog.SaveFile
-        currentFolder: _diag.desktopUrl
+        folder: _diag.desktopUrl
         defaultSuffix: "zip"
         nameFilters: ["Zip files (*.zip)"]
-        onAccepted: _win.saveTo(selectedFile)
+        onPicked: (selected) => _win.saveTo(selected)
     }
 }

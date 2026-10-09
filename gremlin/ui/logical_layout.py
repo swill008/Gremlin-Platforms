@@ -187,6 +187,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._selected: list[str] = []
         self._undo: list[dict] = []
         self._redo: list[dict] = []
+        # The newest step was an Undo: the Undo bar says what Redo puts back.
+        self._just_undid = False
         self._writing = False
         self._pane_model = None
         # The pane's copy (gremlin.profile.Draft); _pane_shadow is its input.
@@ -260,8 +262,9 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         logging.getLogger("system").info("Edit refused: the profile is running")
         return True
 
-    def _apply(self, fn) -> bool:
-        """Runs fn (an edit) as one Undo step. False: refused (running)."""
+    def _apply(self, fn, label: str = "") -> bool:
+        """Runs fn (an edit) as one Undo step named label (the Undo bar's
+        "Last change: <label>"; empty: not named). False: refused (running)."""
         if self._refused():
             return False
         before = self._logical.memento()
@@ -271,7 +274,10 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             # Nothing changed (the same name typed again): no step.
             self._changed()
             return True
-        self._undo.append({"before": before, "after": after, "links": links})
+        self._undo.append(
+            {"before": before, "after": after, "links": links, "label": label}
+        )
+        self._just_undid = False
         if len(self._undo) > 50:
             self._undo.pop(0)
         self._redo.clear()
@@ -335,6 +341,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         entry = self._undo.pop()
         if self._replay(entry, True):
             self._redo.append(entry)
+            self._just_undid = True
         else:
             self._undo.append(entry)
         self._changed()
@@ -346,6 +353,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         entry = self._redo.pop()
         if self._replay(entry, False):
             self._undo.append(entry)
+            self._just_undid = False
         else:
             self._redo.append(entry)
         self._changed()
@@ -840,7 +848,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 "before": before, "after": self._snapshot(real),
             }]
 
-        return self._apply(fn)
+        return self._apply(fn, f"Delete action from {_item.choice_label}")
 
     @QtCore.Slot(str, int, str, str)
     def addMany(self, type_name: str, count: int, group: str, user_name: str) -> None:
@@ -850,7 +858,12 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._logical.create_many(kind, int(count), group, user_name)
             return []
 
-        self._apply(fn)
+        n = int(count)
+        plural = {"axis": "Axes", "button": "Buttons", "hat": "Hats"}
+        word = str(type_name).capitalize() if n == 1 else plural.get(
+            str(type_name).lower(), str(type_name).capitalize() + "s"
+        )
+        self._apply(fn, f"Add {word}" if n == 1 else f"Add {n} {word}")
 
     @QtCore.Slot(str)
     def addGroup(self, name: str) -> None:
@@ -858,7 +871,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._logical.ensure_group(name)
             return []
 
-        self._apply(fn)
+        self._apply(fn, f"New Group {name}")
 
     @QtCore.Slot(str, str)
     def renameGroup(self, old_name: str, new_name: str) -> None:
@@ -867,7 +880,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             return []
 
         try:
-            self._apply(fn)
+            self._apply(fn, f"Rename Group {old_name} to {new_name}")
         except GremlinError as exc:
             signal.showNotification.emit("Rename Group", str(exc))
 
@@ -877,7 +890,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._logical.delete_group(name)
             return []
 
-        self._apply(fn)
+        self._apply(fn, f"Delete Group {name}")
 
     @QtCore.Slot(str, str)
     def setUserName(self, key: str, name: str) -> None:
@@ -901,7 +914,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 current.hide_system = bool(hide_system) and bool(current.second_name)
             return []
 
-        self._apply(fn)
+        self._apply(fn, f"Rename {item.system_name}")
 
     @QtCore.Slot(str)
     def moveSelected(self, group: str) -> None:
@@ -916,7 +929,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     self._logical.place(item.identifier, group)
             return []
 
-        self._apply(fn)
+        self._apply(fn, f"Move to {group or 'Ungrouped'}")
 
     @QtCore.Slot("QStringList")
     def deleteParents(self, keys: list) -> None:
@@ -935,7 +948,12 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 self._logical.delete(item.identifier)
             return links
 
-        self._apply(fn)
+        first = self._item_for(parents[0])
+        if len(parents) == 1 and first is not None:
+            label = f"Delete {first.choice_label}"
+        else:
+            label = f"Delete {len(parents)} rows"
+        self._apply(fn, label)
 
     @QtCore.Slot(str, str)
     def moveRow(self, source: str, target: str) -> None:
@@ -951,7 +969,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 self._logical.move_group_before(name, before or None)
                 return []
 
-            self._apply(fn)
+            self._apply(fn, f"Move Group {name}")
             return
         if not source.startswith("parent:"):
             return
@@ -965,7 +983,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 self._logical.place(item.identifier, group)
                 return []
 
-            self._apply(fn_group)
+            self._apply(fn_group, f"Move {item.choice_label}")
             return
         other = self._item_for(target)
         if other is None:
@@ -975,7 +993,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._logical.place(item.identifier, other.group, other.identifier)
             return []
 
-        self._apply(fn_before)
+        self._apply(fn_before, f"Move {item.choice_label}")
 
     def _next_in_group(self, item):
         seen = False
@@ -1008,7 +1026,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 self._logical.place(item.identifier, group)
                 return []
 
-            self._apply(fn_into)
+            self._apply(fn_into, f"Move {item.choice_label}")
             return
         other = self._item_for(target)
         if other is None:
@@ -1031,7 +1049,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 self._logical.place(item.identifier, other.group, before)
             return []
 
-        self._apply(fn_at)
+        self._apply(fn_at, f"Move {item.choice_label}")
 
     @QtCore.Slot()
     def sortBySystem(self) -> None:
@@ -1039,7 +1057,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._logical.sort_within("system")
             return []
 
-        self._apply(fn)
+        self._apply(fn, "Sort by System Name")
 
     @QtCore.Slot()
     def sortByName(self) -> None:
@@ -1047,7 +1065,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._logical.sort_within("user")
             return []
 
-        self._apply(fn)
+        self._apply(fn, "Sort by Your Name")
 
     @QtCore.Slot()
     def sortGroupNames(self) -> None:
@@ -1055,7 +1073,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._logical.sort_groups()
             return []
 
-        self._apply(fn)
+        self._apply(fn, "Sort Group Names A to Z")
 
     @QtCore.Slot(str)
     def moveGroupUp(self, name: str) -> None:
@@ -1071,7 +1089,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._logical.move_group_before(name, before)
             return []
 
-        self._apply(fn)
+        self._apply(fn, f"Move Group {name} Up")
 
     @QtCore.Slot(str)
     def moveGroupDown(self, name: str) -> None:
@@ -1087,7 +1105,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._logical.move_group_before(name, before or None)
             return []
 
-        self._apply(fn)
+        self._apply(fn, f"Move Group {name} Down")
 
     @QtCore.Slot(str, str, bool, bool, bool)
     def setFilter(self, search: str, type_name: str, ungrouped: bool, no_writer: bool, no_actions: bool) -> None:
@@ -1270,7 +1288,10 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                         delta.append(record)
             return delta
 
-        self._apply(fn)
+        owner = self._item_for(parent_key)
+        self._apply(
+            fn, f"Assign Hardware to {owner.choice_label}" if owner is not None else ""
+        )
 
     def _spec(self, key: str):
         item = self._item_for(key)
@@ -1342,7 +1363,9 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             return self._pane_whole and bool(real and real.action_sequences)
         return bindings_fingerprint(shadow.action_sequences) != self._pane_base
 
-    def _set_sequences(self, real: InputItem, change: Callable[[], object]) -> int:
+    def _set_sequences(
+        self, real: InputItem, change: Callable[[], object], label: str = ""
+    ) -> int:
         """Runs change (it edits real's actions) as one Undo step; returns
         what change returned when it is an index."""
         result: list[object] = []
@@ -1355,7 +1378,7 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                 "before": before, "after": self._snapshot(real),
             }]
 
-        self._apply(fn)
+        self._apply(fn, label)
         value = result[0] if result else 0
         return value if isinstance(value, int) else 0
 
@@ -1384,6 +1407,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             self._pane_real = real
         if real is None:
             return -1
+        owner = self._item_for(self._pane_key)
+        item_label = owner.choice_label if owner is not None else ""
         library = real.library
         if self._pane_new:
             where: int | None = -1
@@ -1393,7 +1418,9 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             where = self._pane_seq
         try:
             index = self._set_sequences(
-                real, lambda: library.commit(draft, real, where)
+                real,
+                lambda: library.commit(draft, real, where),
+                f"Edit actions of {item_label}" if item_label else "",
             )
         except DraftOutdated:
             signal.showNotification.emit(
@@ -1473,6 +1500,35 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
     @QtCore.Property(bool, notify=revisionChanged)
     def canRedo(self) -> bool:
         return bool(self._redo)
+
+    # The rows listed (buttons, axes, hats): the search box's "N found".
+    @QtCore.Property(int, notify=revisionChanged)
+    def parentCount(self) -> int:
+        return sum(1 for row in self._rows if row["rowKind"] == "parent")
+
+    # 01 S143: the Undo bar's text and tips, from each step's label.
+    def _top_label(self, steps: list[dict]) -> str:
+        return str(steps[-1].get("label") or "") if steps else ""
+
+    @QtCore.Property(str, notify=revisionChanged)
+    def lastChange(self) -> str:
+        label = self._top_label(self._undo)
+        return f"Last change: {label}" if label else ""
+
+    @QtCore.Property(str, notify=revisionChanged)
+    def undone(self) -> str:
+        label = self._top_label(self._redo)
+        return f"Undone: {label}" if label and self._just_undid else ""
+
+    @QtCore.Property(str, notify=revisionChanged)
+    def undoTip(self) -> str:
+        label = self._top_label(self._undo)
+        return f"Undo {label}" if label else ""
+
+    @QtCore.Property(str, notify=revisionChanged)
+    def redoTip(self) -> str:
+        label = self._top_label(self._redo)
+        return f"Redo {label}" if label else ""
 
     @QtCore.Property(int, notify=selectionChanged)
     def selectionCount(self) -> int:

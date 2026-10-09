@@ -124,7 +124,7 @@ Dialog {
                 color: _dlg.sticks.length ? Style.fgMuted : Style.warn
             }
 
-            Label { text: "What trades places"; font.bold: true; color: Style.fgStrong; Layout.topMargin: Style.dp(4) }
+            SectionHeading { text: "What trades places"; Layout.fillWidth: true; Layout.topMargin: Style.dp(4) }
             Flow {
                 Layout.fillWidth: true
                 spacing: Style.dp(12)

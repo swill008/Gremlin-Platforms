@@ -176,9 +176,10 @@ def test_s49_keep_and_edit_description(run: dict) -> None:
 def test_s15_s47_remove_asks_and_runs_delete_device_first(run: dict) -> None:
     ask = run["remove-ask"]
     assert ask["title"] == "Remove Rudder pedals from the Library?"
-    assert "module file" in ask["body"] and ask["red"] and ask["go"] == "Remove"
-    # S51 (D-10-IN-HISTORY): History can put it back.
-    assert "Tools › History can put it back." in ask["body"]
+    assert "module file" in ask["body"] and ask["red"]
+    assert ask["go"] == "Remove from Library"
+    # S51 (D-10-IN-HISTORY): You can restore it from Tools › History.
+    assert "You can restore it from Tools › History." in ask["body"]
     assert "can't be undone" not in ask["body"]
     assert "autosave is kept" not in ask["body"]
     # Refused (the profile runs): nothing removed from the Library.

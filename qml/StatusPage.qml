@@ -11,6 +11,7 @@ import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 
 Item {
     id: _page
@@ -420,9 +421,9 @@ Item {
         return lines.join("\n\n")
     }
 
+    // The red confirm's text (step 2 of 3, 03 S90).
     function confirmBody() {
-        var line = "Really delete " + _deleteName + "?"
-        line += " An autosave is kept in the Device Library first."
+        var line = "An autosave is kept in the Device Library first."
         if (_deleteKeepModule)
             line += " The output module file stays. Only this device's actions are removed."
         else if (_deleteShared)
@@ -432,6 +433,18 @@ Item {
         else
             line += " No card will remain."
         return line
+    }
+
+    // Step 2 of 3: the shared red question (01 S140). History's "Deleted X"
+    // entry can put it back (03 S94a).
+    function askConfirm() {
+        return Confirm.ask(_page, {
+            title: "Delete " + _deleteName + "?",
+            text: confirmBody(),
+            undoable: true,
+            action: "Delete Device",
+            onAccept: function() { _page.runDelete() }
+        })
     }
 
     // A damaged module file: move it aside (kept) and set the device up anew.
@@ -498,7 +511,6 @@ Item {
     property bool _deleteListed: true
     property bool _deleteKeepModule: false
     property bool _explainAdvance: false
-    property bool _confirmAdvance: false
     property string _doneTitle: ""
     property string _doneMessage: ""
 
@@ -1069,8 +1081,7 @@ Item {
             if (!_explainAdvance)
                 return
             _explainAdvance = false
-            _confirmAdvance = false
-            _confirmDialog.open()
+            _page.askConfirm()
         }
 
         background: Rectangle {
@@ -1107,72 +1118,6 @@ Item {
                     onClicked: {
                         _explainAdvance = true
                         _explainDialog.close()
-                    }
-                }
-            }
-        }
-    }
-
-    Popup {
-        id: _confirmDialog
-        parent: Overlay.overlay
-        anchors.centerIn: parent
-        modal: true
-        focus: true
-        padding: Style.dp(16)
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        onClosed: {
-            if (!_confirmAdvance)
-                return
-            _confirmAdvance = false
-            _page.runDelete()
-        }
-
-        background: Rectangle {
-            color: Style.background
-            border.color: Style.danger
-            border.width: Style.dp(1)
-            radius: Style.dp(4)
-        }
-
-        contentItem: ColumnLayout {
-            spacing: Style.dp(12)
-            Label {
-                text: "Really delete this device?"
-                font.bold: true
-                font.pixelSize: Style.dp(16)
-                color: Style.dangerText
-                Layout.preferredWidth: Style.dp(440)
-            }
-            Label {
-                text: _page.confirmBody()
-                wrapMode: Text.WordWrap
-                Layout.preferredWidth: Style.dp(440)
-                Layout.fillWidth: true
-            }
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                spacing: Style.dp(8)
-                Button {
-                    text: "Cancel"
-                    onClicked: _confirmDialog.close()
-                }
-                Button {
-                    text: "Delete"
-                    onClicked: {
-                        _confirmAdvance = true
-                        _confirmDialog.close()
-                    }
-                    contentItem: Label {
-                        text: "Delete"
-                        color: Style.onColor
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    background: Rectangle {
-                        color: parent.hovered ? Style.dangerHover : Style.danger
-                        radius: Style.dp(4)
                     }
                 }
             }

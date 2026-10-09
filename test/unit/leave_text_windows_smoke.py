@@ -282,7 +282,8 @@ def options(app, root) -> None:  # noqa: ANN001
         result("options-open", False)
         return
     win = quick(win)
-    box = ev(win, "_search")
+    # The shared SearchBox's text field (01 S141).
+    box = ev(win, "_search.field")
     assert isinstance(box, QtQuick.QQuickItem), box
     spot = blank_point(win, box)
 

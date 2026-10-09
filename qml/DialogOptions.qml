@@ -116,6 +116,36 @@ ApplicationWindow {
         flick.contentY = Math.max(0, Math.min(most, y))
     }
 
+    // Settings the search finds (the search box's "N found"); -1 when
+    // not searching.
+    property int _found: -1
+
+    // Counts the rows the built pages show for the search: every group's
+    // matching rows (ConfigGroup.matches), across all sections.
+    function _countFound() {
+        if (!_search.text.trim().length) {
+            _found = -1
+            return
+        }
+        var n = 0
+        var stack = [_page.contentItem]
+        while (stack.length) {
+            var it = stack.pop()
+            if (it.entryModel !== undefined && typeof it.matches === "function") {
+                var rows = it.entryModel ? it.entryModel.rowCount() : 0
+                for (var i = 0; i < rows; i++) {
+                    if (it.matches(i))
+                        n++
+                }
+                continue
+            }
+            var kids = it.children || []
+            for (var j = 0; j < kids.length; j++)
+                stack.push(kids[j])
+        }
+        _found = n
+    }
+
     // The pulse Help's other links use (Pulse.qml).
     Component {
         id: _pulse
@@ -199,10 +229,15 @@ ApplicationWindow {
                     color: Style.fgStrong
                     font.pixelSize: Style.dp(20)
                 }
-                TextField {
+                // The shared search box (01 S141): Ctrl+F, ×, Esc, "N found".
+                SearchBox {
                     id: _search
+                    objectName: "optionsSearch"
                     Layout.preferredWidth: Style.dp(240)
-                    placeholderText: "Search options"
+                    Layout.alignment: Qt.AlignTop
+                    placeholder: "Search options"
+                    count: _options._found
+                    onTextChanged: Qt.callLater(_options._countFound)
                 }
             }
 

@@ -60,14 +60,15 @@ function topics() {
                 + "<ol>"
                 + "<li>Open " + _manageModes + ".</li>"
                 + "<li>Choose the bin beside the mode.</li>"
-                + "<li>The program says how many bindings go with it. Choose <b>Delete Mode</b>.</li>"
+                + "<li>The question \"Delete mode Combat?\" says how many bindings go with it. Choose the red <b>Delete Mode</b>.</li>"
                 + "</ol>"
                 + _good([
                     "Modes under it move up one level and keep their bindings.",
                     "If the <b>Startup Mode</b> named it, Startup Mode goes back to <b>Last Active</b>.",
                     "An action editor open in that mode closes, with a notice.",
                     "The last mode can't be deleted.",
-                    "To take a delete back, choose <b>Undo Delete Mode</b>; see <a href=\"topic:modes-undo-delete\">Bring back a deleted mode</a>."
+                    "<b>Cancel</b> has the focus: <b>Enter</b> and <b>Esc</b> both cancel, so only a click on <b>Delete Mode</b> deletes.",
+                    "To take a delete back, choose <b>Undo</b> (Undo Delete Mode) at the bottom of Manage Modes; see <a href=\"topic:modes-undo-delete\">Bring back a deleted mode</a>."
                 ]),
             related: ["modes-undo-delete", "modes-manage", "options-profile-profile-settings"]
         },
@@ -75,7 +76,8 @@ function topics() {
             id: "modes-undo-delete",
             section: "Modes",
             title: "Bring back a deleted mode",
-            body: "<p><b>Undo Delete Mode</b> in " + _manageModes + " brings back the mode you deleted last. Choose it again to bring back the one before.</p>"
+            body: "<p>Undo Delete Mode is the <b>Undo</b> button at the bottom of " + _manageModes + ". It brings back the mode you deleted last. Choose it again to bring back the one before.</p>"
+                + "<p>Beside it, \"Last change: Delete mode Combat\" names the mode it brings back. <b>Redo</b> stays greyed here.</p>"
                 + "<p>The mode comes back with:</p>"
                 + "<ul>"
                 + "<li>its bindings,</li>"
@@ -84,7 +86,7 @@ function topics() {
                 + "<li>the <b>Startup Mode</b>, if it named the mode.</li>"
                 + "</ul>"
                 + _good([
-                    "It works while the same profile is open. Pointing at the button shows which mode it brings back.",
+                    "It works while the same profile is open. Pointing at <b>Undo</b> shows \"Undo Delete Mode\" and the mode it brings back.",
                     "If a mode can't come back, a notice says why."
                 ]),
             related: ["modes-delete", "modes-manage"]
@@ -117,7 +119,7 @@ function topics() {
             id: "modes-q-undo-delete",
             section: "Common questions",
             title: "I deleted a mode. Can I get it back?",
-            body: "<p>Yes, while the same profile is open: <b>Undo Delete Mode</b> brings it back with its bindings. See <a href=\"topic:modes-undo-delete\">Bring back a deleted mode</a>.</p>",
+            body: "<p>Yes, while the same profile is open: Undo Delete Mode, the <b>Undo</b> button in Manage Modes, brings it back with its bindings. See <a href=\"topic:modes-undo-delete\">Bring back a deleted mode</a>.</p>",
             related: ["modes-undo-delete"]
         },
         {

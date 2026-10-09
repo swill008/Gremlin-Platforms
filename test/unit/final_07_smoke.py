@@ -420,10 +420,28 @@ def main() -> None:
     def reset() -> dict:
         count = w.ev("_ed().nodes.length")
         w.ev(f"{_ROW}(_fileMenu, 'Reset Layout').triggered()")
-        asked = bool(wait_for(lambda: w.ev("_resetDlg.opened")))
+
+        # The shared question (01 S140), on the window's root item.
+        def asking() -> bool:
+            try:
+                item = w.ev("_buttonMap.contentItem")
+                while isinstance(item, QtCore.QObject) and item.parent() is not None:
+                    item = item.parent()
+                if not isinstance(item, QtCore.QObject):
+                    return False
+                return any(shiboken6.isValid(q) and q.property("opened")
+                           for q in item.findChildren(QtCore.QObject, "confirmDialog"))
+            except RuntimeError:
+                return False
+
+        asked = bool(wait_for(asking))
         unchanged = w.ev("_ed().nodes.length") == count
-        w.ev("_resetDlg.close()")
-        wait_for(lambda: not w.ev("_resetDlg.opened"))
+        # Enter cancels it (Cancel has the focus).
+        QtTest.QTest.keyClick(
+            shiboken6.wrapInstance(shiboken6.getCppPointer(w.win)[0], QtGui.QWindow),
+            QtCore.Qt.Key.Key_Return)
+        wait_for(lambda: not asking())
+        unchanged = unchanged and w.ev("_ed().nodes.length") == count
         w.ev("_buttonMap.resetLayout()")
         cleared = w.ev("_ed().nodes.length")
         w.ev("_ed().undo()")

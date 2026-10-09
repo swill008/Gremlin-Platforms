@@ -303,7 +303,8 @@ def main() -> None:
             "busy": ev("_buttonMap.exportBusy"),
             "enabled": [b.property("enabled") for b in buttons],
             "note": [busy_note.property("visible"), busy_note.property("text")],
-            "failure": [ev("_failNotice.visible"), ev("_failNotice.titleText")],
+            # The Button Map's message line, in red (01 S142).
+            "failure": [ev("_messageLine.failed"), ev("_messageLine.visible")],
             "saved": len(saved),
         }
 
@@ -357,9 +358,9 @@ def main() -> None:
     wait_done(count)
     QtTest.QTest.qWait(100)
     out["failed-after"] = busy_state()
-    out["failed-message"] = ev("_failNotice.messageText")
+    out["failed-message"] = ev("_messageLine.text")
     out["failed-saved"] = saved[-1] if saved else None
-    ev("_failNotice.close()")
+    ev("_messageLine.clear()")
     # The map on screen was never put into export mode.
     out["live-exporting"] = ev("_buttonMap._ed().exporting")
     # Closed (its place kept), then the Button Map opened again: it stays

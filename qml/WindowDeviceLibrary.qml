@@ -4,7 +4,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal as U
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
@@ -12,6 +11,7 @@ import Gremlin.Style
 import Gremlin.Menus
 import "helpers.js" as Helpers
 import "device_library_open.js" as DeviceLibraryOpen
+import "confirm.js" as Confirm
 
 // The Device Library (10 Device Library): every device the program has
 // known and its saved setups, with Copy, Swap and Change vJoy Output. Its
@@ -36,11 +36,12 @@ ApplicationWindow {
     readonly property bool isSetup: hasSel && details.kind === "setup"
     readonly property bool isDevice: hasSel && details.kind === "device"
     readonly property bool busy: lib ? lib.busy : false
-    // The last change's outcome, shown above the status bar.
-    property string message: ""
-    property bool messageBad: false
-    // S54: after Remove, Delete or Clear Setup the line ends with Undo.
-    property bool messageUndo: false
+    // The last change's outcome, shown above the status bar (the shared
+    // message line, 01 S142).
+    readonly property string message: _message.text
+    readonly property bool messageBad: _message.failed
+    // The open delete question (01 S140), or null.
+    property var asking: null
     // The shared Rename box is open (01 S135).
     readonly property bool renaming: _nameField.open
 
@@ -74,10 +75,28 @@ ApplicationWindow {
             openOutput()
     }
 
+    // S54: after Remove, Delete or Clear Setup the line ends with Undo.
     function showMessage(text, bad, undoable) {
-        message = text
-        messageBad = bad
-        messageUndo = undoable === true
+        if (undoable === true)
+            _message.show(text, bad === true, "Undo", function() { _lib.undo() })
+        else
+            _message.show(text, bad === true)
+    }
+
+    // 01 S140: the shared question. History can put every Library delete
+    // back (S51), and the question says where.
+    function askConfirm(title, text, action, run) {
+        var dlg = Confirm.ask(_lib, {
+            title: title,
+            text: text,
+            undoable: true,
+            note: "You can restore it from Tools › History.",
+            action: action,
+            onAccept: function() { _lib.asking = null; run() },
+            onCancel: function() { _lib.asking = null }
+        })
+        if (dlg)
+            asking = dlg
     }
 
     // S53: Edit › Undo / Redo, the menus' buttons and the message line's
@@ -99,7 +118,6 @@ ApplicationWindow {
     }
     function undo() {
         if (lib && !busy && undoText.length) {
-            messageUndo = false
             justUndid = true
             lib.undo()
         }
@@ -126,7 +144,7 @@ ApplicationWindow {
     // S55: Delete… on a saved setup, Remove from Library… on a device not
     // plugged in; nothing on a plugged-in stick or a built-in input.
     function deleteKey() {
-        if (_typing() || _deleteDlg.opened || renaming || !canDelete)
+        if (_typing() || Confirm.isOpen(_lib) || _restoreDlg.opened || renaming || !canDelete)
             return
         if (isDevice && !several && (deviceConnected || builtIn))
             return
@@ -233,9 +251,9 @@ ApplicationWindow {
             askMany()
         else if (isSetup) {
             var key = details.key
-            _deleteDlg.ask("Delete the saved setup “" + details.name + "”?",
-                           "It is removed from the Device Library. Tools › History can put it back.",
-                           "Delete", function() { _lib.lib.deleteItem(key) })
+            askConfirm("Delete the saved setup “" + details.name + "”?",
+                       "It is removed from the Device Library.",
+                       "Delete Saved Setup", function() { _lib.lib.deleteItem(key) })
         }
         else if (!deviceConnected)
             askRemove()
@@ -260,28 +278,26 @@ ApplicationWindow {
             + (details.count > 0 ? " and " + _setupsText(details.count) : "")
             + " from the Library?"
         // Delete Device's autosave goes too; History keeps it all (S51).
-        var body = (plan.module_file ? "Its module file here goes too. " : "")
-            + "Tools › History can put it back."
-        _deleteDlg.ask(heading, body, "Remove", function() { _lib.runRemove([key]) })
+        var body = plan.module_file ? "Its module file here goes too." : ""
+        askConfirm(heading, body, "Remove from Library", function() { _lib.runRemove([key]) })
     }
 
     // A connected device: Clear Setup is Home's Delete Device for it.
     function askClearSetup() {
         var key = details.key
-        _deleteDlg.ask("Clear the setup of " + details.name + "?",
-                       "As Delete Device on Home: an autosave is kept in the Device Library first, "
-                       + "then its module file and its bindings go. The stick stays plugged in "
-                       + "with no setup.",
-                       "Clear Setup", function() { _lib.runClearSetup(key) })
+        askConfirm("Clear the setup of " + details.name + "?",
+                   "As Delete Device on Home: an autosave is kept in the Device Library first, "
+                   + "then its module file and its bindings go. The stick stays plugged in "
+                   + "with no setup.",
+                   "Clear Setup", function() { _lib.runClearSetup(key) })
     }
 
     function askDeleteSetups() {
         var key = details.key
-        _deleteDlg.ask("Delete " + details.name + "'s "
-                       + (details.count === 1 ? "saved setup" : details.count + " saved setups") + "?",
-                       "They are removed from the Device Library. The stick keeps its settings. "
-                       + "Tools › History can put it back.",
-                       "Delete", function() { _lib.lib.deleteSavedSetups(key) })
+        askConfirm("Delete " + details.name + "'s "
+                   + (details.count === 1 ? "saved setup" : details.count + " saved setups") + "?",
+                   "They are removed from the Device Library. The stick keeps its settings.",
+                   "Delete Saved Setups", function() { _lib.lib.deleteSavedSetups(key) })
     }
 
     // S50: what Delete… / Remove from Library… does to several rows ("" when
@@ -329,18 +345,17 @@ ApplicationWindow {
                        + (what === "remove" && row.count ? "  (" + row.countText.toLowerCase() + ")" : ""))
         }
         if (what === "delete")
-            _deleteDlg.ask("Delete these " + keys.length + " saved setups?",
-                           lines.join("\n") + "\n\nThey are removed from the Device Library. Tools › History can put it back.",
-                           "Delete", function() { _lib.lib.deleteMany(keys) })
+            askConfirm("Delete these " + keys.length + " saved setups?",
+                       lines.join("\n") + "\n\nThey are removed from the Device Library.",
+                       "Delete Saved Setups", function() { _lib.lib.deleteMany(keys) })
         else
-            _deleteDlg.ask("Remove these " + keys.length + " devices"
-                           + (setups ? " and their " + (setups === 1 ? "saved setup" : setups + " saved setups") : "")
-                           + " from the Library?",
-                           lines.join("\n") + "\n\n"
-                           + (files ? "A module file still here goes too, as Delete Device on Home "
-                                      + "does: an autosave is kept first. " : "")
-                           + "Tools › History can put it back.",
-                           "Remove", function() { _lib.runRemove(keys) })
+            askConfirm("Remove these " + keys.length + " devices"
+                       + (setups ? " and their " + (setups === 1 ? "saved setup" : setups + " saved setups") : "")
+                       + " from the Library?",
+                       lines.join("\n")
+                       + (files ? "\n\nA module file still here goes too, as Delete Device on Home "
+                                  + "does: an autosave is kept first." : ""),
+                       "Remove from Library", function() { _lib.runRemove(keys) })
     }
 
     // To the main window (Main.qml libraryAction): Home's Delete Device,
@@ -414,10 +429,10 @@ ApplicationWindow {
 
     function askRestore() {
         var key = details.key
-        _deleteDlg.ask("Restore “" + details.name + "” to " + details.deviceName + "?",
-                       "It is put back on the stick as Copy does: an autosave of the stick is "
-                       + "kept first, and Edit › Undo puts it back.",
-                       "Restore", function() { _lib.lib.restoreToStick(key) }, true)
+        _restoreDlg.ask("Restore “" + details.name + "” to " + details.deviceName + "?",
+                        "It is put back on the stick as Copy does: an autosave of the stick is "
+                        + "kept first, and Edit › Undo puts it back.",
+                        function() { _lib.lib.restoreToStick(key) })
     }
 
     function editDescription() {
@@ -425,13 +440,18 @@ ApplicationWindow {
         _description.cursorPosition = _description.text.length
     }
 
+    // The suggested Device Pack name for the selection.
+    function _packName() {
+        return details.name.replace(/[\\/:*?"<>|]/g, "_") + ".zip"
+    }
     function exportSaved() {
-        _exportFile.selectedFile = details.name.replace(/[\\/:*?"<>|]/g, "_") + ".zip"
+        _exportFile.key = details.key
+        _exportFile.currentFile = _packName()
         _exportFile.open()
     }
     function exportCurrent() {
         _exportCurrentFile.key = details.key
-        _exportCurrentFile.selectedFile = details.name.replace(/[\\/:*?"<>|]/g, "_") + ".zip"
+        _exportCurrentFile.currentFile = _packName()
         _exportCurrentFile.open()
     }
 
@@ -605,31 +625,38 @@ ApplicationWindow {
         target: _lib.lib
         function onChanged() { Qt.callLater(_lib._refreshRowMenu) }
     }
-    Shortcut { sequence: "Ctrl+F"; onActivated: { _search.forceActiveFocus(); _search.selectAll() } }
 
-    FileDialog {
+    // 01 S143: Device Pack choosers open in the last Device Pack folder.
+    FilePicker {
         id: _importFile
+        objectName: "libraryImportPicker"
+        kind: "device-pack"
+        mode: "open"
         title: "Import Device Pack"
         nameFilters: ["Device Pack (*.zip)"]
-        fileMode: FileDialog.OpenFile
-        onAccepted: _lib.lib.importPack(Helpers.fileDialogUrl(_importFile))
+        onPicked: (selected) => _lib.lib.importPack(String(selected))
     }
-    FileDialog {
+    FilePicker {
         id: _exportFile
+        objectName: "libraryExportPicker"
+        property string key: ""
+        kind: "device-pack"
+        mode: "save"
         title: "Export Saved Setup"
         nameFilters: ["Device Pack (*.zip)"]
-        fileMode: FileDialog.SaveFile
         defaultSuffix: "zip"
-        onAccepted: _lib.lib.exportSetup(_lib.details.key, Helpers.fileDialogUrl(_exportFile))
+        onPicked: (selected) => _lib.lib.exportSetup(key, String(selected))
     }
-    FileDialog {
+    FilePicker {
         id: _exportCurrentFile
+        objectName: "libraryExportCurrentPicker"
         property string key: ""
+        kind: "device-pack"
+        mode: "save"
         title: "Export Current Setup"
         nameFilters: ["Device Pack (*.zip)"]
-        fileMode: FileDialog.SaveFile
         defaultSuffix: "zip"
-        onAccepted: _lib.lib.exportCurrent(key, Helpers.fileDialogUrl(_exportCurrentFile))
+        onPicked: (selected) => _lib.lib.exportCurrent(key, String(selected))
     }
 
     // S39: a Device Pack dropped on the window is imported.
@@ -669,8 +696,7 @@ ApplicationWindow {
                     text: "Export Saved Setup…"
                     enabled: _lib.isSetup && !_lib.busy && !_lib.several
                     onTriggered: {
-                        _exportFile.selectedFile = _lib.details.name.replace(/[\\/:*?"<>|]/g, "_") + ".zip"
-                        _exportFile.open()
+                        _lib.exportSaved()
                     }
                 }
                 ThemedMenuItem {
@@ -744,7 +770,7 @@ ApplicationWindow {
                 ThemedMenuItem { text: "Expand All"; onTriggered: _lib.lib.setAllOpen(true) }
                 ThemedMenuItem { text: "Collapse All"; onTriggered: _lib.lib.setAllOpen(false) }
                 ThemedMenuSeparator {}
-                ThemedMenuItem { text: "Search…"; hint: "Ctrl+F"; onTriggered: { _search.forceActiveFocus(); _search.selectAll() } }
+                ThemedMenuItem { text: "Search…"; hint: "Ctrl+F"; onTriggered: _search.focusField() }
             }
             ThemedMenu {
                 id: _settingsMenu
@@ -810,13 +836,14 @@ ApplicationWindow {
                         }
                     }
 
-                    TextField {
+                    // S5, 01 S141: the shared search box (Ctrl+F, ×, Esc).
+                    SearchBox {
                         id: _search
                         objectName: "librarySearch"
                         Layout.fillWidth: true
-                        placeholderText: "Search names, descriptions, profiles, modes, vJoy…  (Ctrl+F)"
+                        placeholder: "Search names, descriptions, profiles, modes, vJoy…  (Ctrl+F)"
+                        count: _list.count
                         onTextChanged: if (_lib.lib) _lib.lib.setSearch(text)
-                        Keys.onEscapePressed: (event) => { text = ""; event.accepted = true }
                     }
 
                     Rectangle {
@@ -827,10 +854,11 @@ ApplicationWindow {
                         radius: Style.dp(4)
                         clip: true
 
-                        Label {
-                            anchors.centerIn: parent
+                        EmptyState {
+                            objectName: "libraryEmpty"
+                            anchors.fill: parent
+                            anchors.margins: Style.dp(12)
                             visible: _list.count === 0
-                            color: Style.fgMuted
                             text: _search.text.length ? "Nothing matches the search." : "No devices to show."
                         }
 
@@ -1273,11 +1301,10 @@ ApplicationWindow {
                                             _lib.exportCurrent()
                                             return
                                         }
-                                        _exportFile.selectedFile = _lib.details.name.replace(/[\\/:*?"<>|]/g, "_") + ".zip"
-                                        _exportFile.open()
+                                        _lib.exportSaved()
                                     }
                                 }
-                                Button {
+                                DangerButton {
                                     id: _deleteButton
                                     objectName: "libraryDeleteButton"
                                     visible: !(_lib.isDevice && _lib.builtIn)
@@ -1287,12 +1314,6 @@ ApplicationWindow {
                                           ? (_lib.deviceConnected ? "Delete Saved Setups…" : "Remove from Library…")
                                           : "Delete…"
                                     enabled: _lib.canDelete
-                                    contentItem: Label {
-                                        text: _deleteButton.text
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                        color: _deleteButton.enabled ? Style.dangerText : Style.fgDisabled
-                                    }
                                     onClicked: _lib.askDelete()
                                 }
                             }
@@ -1302,43 +1323,14 @@ ApplicationWindow {
             }
         }
 
-        // The last change's outcome.
-        Rectangle {
+        // The last change's outcome (01 S142); S54's Undo link does what
+        // Edit › Undo does.
+        MessageLine {
+            id: _message
             objectName: "libraryMessage"
             Layout.fillWidth: true
-            visible: _lib.message.length > 0
-            implicitHeight: _msg.implicitHeight + Style.dp(12)
-            color: _lib.messageBad ? Style.alpha(Style.danger, 0.18) : Style.bgRaised
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: Style.dp(12)
-                anchors.rightMargin: Style.dp(6)
-                Label {
-                    id: _msg
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: _lib.message
-                    color: _lib.messageBad ? Style.dangerTextSoft : Style.fg
-                }
-                // S54: does what Edit › Undo does.
-                Label {
-                    objectName: "libraryMessageUndo"
-                    visible: _lib.messageUndo && _lib.undoText.length > 0 && !_lib.busy
-                    text: "Undo"
-                    font.underline: true
-                    color: Style.accent
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: _lib.undo()
-                    }
-                }
-                ToolButton {
-                    text: ""
-                    font.family: Style.iconFont
-                    onClicked: _lib.message = ""
-                }
-            }
+            // The Undo link only while there is something to undo.
+            busy: _lib.busy || _lib.undoText.length === 0
         }
 
         // The status bar (S4).
@@ -1364,19 +1356,20 @@ ApplicationWindow {
                     font.pixelSize: Style.dp(12)
                     color: Style.fgSoft
                 }
-                // S53a: the last change, or what was just undone.
-                Label {
+                // S53a: the last change, or what was just undone, with the
+                // shared Undo / Redo pair (01 S143).
+                UndoBar {
                     id: _lastChange
                     objectName: "libraryLastChange"
-                    visible: text.length > 0
-                    text: _lib.lastChangeText
                     Layout.maximumWidth: _lib.width / 3
-                    elide: Text.ElideRight
-                    font.pixelSize: Style.dp(12)
-                    color: Style.fgSoft
-                    HoverHandler { id: _lastChangeHover }
-                    ToolTip.visible: _lastChangeHover.hovered
-                    ToolTip.text: text
+                    canUndo: !_lib.busy && _lib.undoText.length > 0
+                    canRedo: !_lib.busy && _lib.redoText.length > 0
+                    undoTip: _lib.undoTitle
+                    redoTip: _lib.redoTitle
+                    lastChange: _lib.undoTitle.length ? "Last change: " + _lib.undoTitle : ""
+                    undone: _lib.justUndid && _lib.redoTitle.length ? "Undone: " + _lib.redoTitle : ""
+                    onUndo: _lib.undo()
+                    onRedo: _lib.redo()
                 }
                 Item { Layout.fillWidth: true }
                 Label {
@@ -1398,40 +1391,29 @@ ApplicationWindow {
     DialogLibrarySettings { id: _settingsDlg; lib: _lib.lib }
     DialogLibraryTidy { id: _tidyDlg; lib: _lib.lib }
 
-    // S15, S47: every delete asks first, naming what goes (Restore asks
-    // too, S48). go runs on the button (red for a delete).
+    // S48: Restore asks first (not a delete: the shared red question is
+    // for deletes, 01 S140).
     Dialog {
-        id: _deleteDlg
-        objectName: "libraryDeleteDialog"
+        id: _restoreDlg
+        objectName: "libraryRestoreDialog"
         property string body: ""
-        property string goText: "Delete"
-        property bool danger: true
         property var go: null
         anchors.centerIn: Overlay.overlay
         width: Math.min(_lib.width - Style.dp(40), Style.dp(520))
         modal: true
-        function ask(heading, text, button, run, safe) {
+        function ask(heading, text, run) {
             title = heading
             body = text
-            goText = button
-            danger = safe !== true
             go = run
             open()
         }
-        Label { width: parent.width; wrapMode: Text.Wrap; text: _deleteDlg.body }
+        Label { width: parent.width; wrapMode: Text.Wrap; text: _restoreDlg.body }
         footer: DialogButtonBox {
             Button { text: "Cancel"; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
             Button {
-                id: _deleteGo
-                objectName: "libraryDeleteDialogGo"
-                text: _deleteDlg.goText
+                objectName: "libraryRestoreDialogGo"
+                text: "Restore"
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
-                contentItem: Label {
-                    text: _deleteGo.text
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: _deleteDlg.danger ? Style.dangerText : Style.fg
-                }
             }
         }
         onAccepted: {

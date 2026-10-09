@@ -8,6 +8,7 @@ import QtQuick.Layouts
 
 import Gremlin.Profile
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 import Gremlin.Style
 
 Item {
@@ -166,9 +167,13 @@ Item {
                         model.deleteActionSequnce(binding)
                         return
                     }
-                    _removeGate.confirmThen("Remove Binding?",
-                        "Remove this binding and its " + (n === 1 ? "action" : n + " actions") + "?",
-                        "Remove", function() { model.deleteActionSequnce(binding) }, null, true)
+                    Confirm.ask(_root, {
+                        title: "Remove this binding?",
+                        text: (n === 1 ? "Its action goes" : "Its " + n + " actions go") + " with it.",
+                        undoable: false,
+                        action: "Remove Binding",
+                        onAccept: function() { model.deleteActionSequnce(binding) }
+                    })
                 }
             }
         }
@@ -260,9 +265,5 @@ Item {
             "application/x-gremlin-sequence": (_root.inputBinding && _root.inputBinding.rootAction)
                 ? _root.inputBinding.rootAction.id : ""
         }
-    }
-
-    DismissibleDialog {
-        id: _removeGate
     }
 }

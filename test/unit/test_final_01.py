@@ -741,8 +741,11 @@ def test_s5_the_data_folders_are_made_at_start(main_window: dict) -> None:
 def test_s57_the_title_names_the_profile_and_marks_unsaved_changes(
     main_window: dict,
 ) -> None:
-    assert main_window["title"] == "Untitled - Gremlin-Platforms R1"
-    assert main_window["titleDirty"] == "* Untitled - Gremlin-Platforms R1"
+    # S57: the title ends with the program version (version.json).
+    version_json = (_ROOT / "version.json").read_text(encoding="utf-8")
+    version = json.loads(version_json)["version"]
+    assert main_window["title"] == f"Untitled - Gremlin-Platforms R1 {version}"
+    assert main_window["titleDirty"] == f"* Untitled - Gremlin-Platforms R1 {version}"
 
 
 def test_s58_s59_s61_the_toolbar(main_window: dict) -> None:

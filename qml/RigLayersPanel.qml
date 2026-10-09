@@ -113,8 +113,7 @@ Rectangle {
 
     // Ctrl+F: to the search box, its text selected.
     function focusSearch() {
-        _search.forceActiveFocus()
-        _search.selectAll()
+        _search.focusField()
     }
 
     // Enter in the box: every match selected on the map.
@@ -244,54 +243,28 @@ Rectangle {
             }
         }
 
-        // Search layers: filters the rows as you type; Esc or × clears it,
-        // Enter selects every match on the map.
-        TextField {
+        // Search layers: the shared search box (01 S141). Filters the rows
+        // as you type; Esc or × clears it, Enter selects every match on the
+        // map. The window's own Ctrl+F opens Layers first (07 S102), so the
+        // box's shortcut is off; the count line below covers the kinds too.
+        SearchBox {
             id: _search
             objectName: "layersSearch"
             Layout.fillWidth: true
-            Layout.preferredHeight: Style.dp(26)
-            font.pixelSize: _panel.textPx
-            placeholderText: "Search layers…"
-            selectByMouse: true
-            leftPadding: Style.dp(6)
-            rightPadding: Style.dp(22)
-            topPadding: 0
-            bottomPadding: 0
-            verticalAlignment: TextInput.AlignVCenter
-            Component.onCompleted: text = _panel.searchText
+            placeholder: "Search layers…"
+            findShortcut: false
+            Component.onCompleted: {
+                field.font.pixelSize = Qt.binding(() => _panel.textPx)
+                text = _panel.searchText
+            }
             onTextChanged: if (_panel.searchText !== text) _panel.searchText = text
             onAccepted: _panel.selectMatches()
-            Keys.onEscapePressed: (e) => {
-                if (text === "") {
-                    e.accepted = false
-                    return
-                }
-                _panel.searchText = ""
-            }
+            onCleared: _panel.searchText = ""
             Connections {
                 target: _panel
                 function onSearchTextChanged() {
                     if (_search.text !== _panel.searchText)
                         _search.text = _panel.searchText
-                }
-            }
-            Label {
-                id: _clear
-                anchors.right: parent.right
-                anchors.rightMargin: Style.dp(6)
-                anchors.verticalCenter: parent.verticalCenter
-                visible: _search.text !== ""
-                text: "×"
-                font.pixelSize: Style.dp(16)
-                color: _clearArea.containsMouse ? Style.fgStrong : Style.fgMuted
-                MouseArea {
-                    id: _clearArea
-                    anchors.fill: parent
-                    anchors.margins: -Style.dp(4)
-                    hoverEnabled: true
-                    cursorShape: Qt.ArrowCursor
-                    onClicked: _panel.searchText = ""
                 }
             }
         }
@@ -640,7 +613,7 @@ Rectangle {
                 return _kindRepeater.itemAt(i)
         return null
     }
-    function clearButton() { return _clear }
+    function clearButton() { return _find(_search, "searchClear") }
     function flagButton(i, which) {
         _rowsColumn.forceLayout()
         return _find(_repeater.itemAt(i), "flag_" + which)
@@ -653,8 +626,8 @@ Rectangle {
         return out
     }
     function searchFieldText() { return _search.text }
-    function searchHasFocus() { return _search.activeFocus }
-    function searchSelected() { return _search.selectedText }
+    function searchHasFocus() { return _search.field.activeFocus }
+    function searchSelected() { return _search.field.selectedText }
     function rowLook(i) {
         _rowsColumn.forceLayout()
         var it = _repeater.itemAt(i)

@@ -17,7 +17,8 @@ recovery copy and the kept photo, and the map opened again offers nothing.
 
 Spec: 07 S32, S34 (Restore / Discard / Not now; Not now keeps both and
 offers them next time), S36, S23; the audit 3 decision on the recovery
-offer (AU-115, AU-08). No known gap.
+offer (AU-115, AU-08); 07 S20 and 01 S142, S143 (results on the message
+line, choosers through the shared FilePicker). No known gap.
 """
 
 from __future__ import annotations
@@ -68,7 +69,11 @@ def _state(j: Journey, window: object) -> dict:
 
 
 def _choose_photo(j: Journey, window: object, colour: str) -> None:
-    """Photo > Choose Photo...: the file picked in its file dialog, OK."""
+    """Photo > Choose Photo...: the file picked in its file dialog, OK.
+
+    The chooser is the shared FilePicker (01 S143): its own file dialog is
+    set up as Choose Photo opens it, given the file and accepted.
+    """
     import json
 
     from PySide6 import QtCore, QtGui
@@ -81,7 +86,8 @@ def _choose_photo(j: Journey, window: object, colour: str) -> None:
     image.save(str(path))
     url = QtCore.QUrl.fromLocalFile(str(path)).toString()
     j.ev(
-        f"_imageDialog.selectedFile = {json.dumps(url)}; _imageDialog.accepted(); true",
+        "(function() { var d = _imageDialog.prepare();"
+        f" d.selectedFile = {json.dumps(url)}; d.accepted(); return true }})()",
         window,
     )
     j.wait_until(

@@ -4,13 +4,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal as U
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -111,6 +111,30 @@ ApplicationWindow {
     Connections {
         target: _driver
         function onUserEdited() { claimDirty = true }
+        // One row's tick or name changed: one step (a press ticks too).
+        function onDataChanged(topLeft, bottomRight, roles) {
+            if (_win._stepping || !topLeft || !bottomRight || topLeft.row !== bottomRight.row)
+                return
+            var row = topLeft.row
+            var label = _win.rowLabel(row)
+            if (roles.indexOf(Qt.UserRole + 4) >= 0) {
+                var claimed = _driver.data(topLeft, Qt.UserRole + 4)
+                _win.noteStep(label + (claimed ? " claimed" : " let go"))
+            } else if (roles.indexOf(Qt.UserRole + 5) >= 0) {
+                var name = String(_driver.data(topLeft, Qt.UserRole + 5) || "")
+                _win.noteStep(name.length ? label + " named " + name : label + " name cleared")
+            }
+        }
+        // A key pressed that wasn't listed is added ticked.
+        function onRowsInserted(parent, first) {
+            if (!_win._stepping)
+                _win.noteStep(_win.rowLabel(first) + " claimed")
+        }
+        // Another device (or one loaded again): its steps start again (03 S43).
+        function onUndoChanged() {
+            if (!_driver.canUndo && !_driver.canRedo)
+                _win.forgetSteps()
+        }
     }
 
     Component.onCompleted: {
@@ -204,29 +228,115 @@ ApplicationWindow {
         return true
     }
 
+    // 01 S143: the Undo / Redo pair says what the last change was. Each
+    // step of _driver is one edit of one row (a tick, a name, a key added),
+    // so the names are kept here beside its steps.
+    property var _undoNames: []
+    property var _redoNames: []
+    property string lastChangeText: ""
+    property string undoneText: ""
+    property bool _stepping: false
+
+    function rowLabel(row) {
+        // The "label" role (module_model.py DriverInputModel.roles).
+        return String(_driver.data(_driver.index(row, 0), Qt.UserRole + 3) || "")
+    }
+
+    function noteStep(text) {
+        var names = _undoNames.slice()
+        names.push(text)
+        // As many as the model keeps (DriverInputModel.UNDO_STEPS).
+        _undoNames = names.slice(-100)
+        _redoNames = []
+        lastChangeText = "Last change: " + text
+        undoneText = ""
+    }
+
+    function forgetSteps() {
+        _undoNames = []
+        _redoNames = []
+        lastChangeText = ""
+        undoneText = ""
+    }
+
     function undoEdit() {
         if (!_driver.canUndo)
             return
+        _stepping = true
         _driver.undo()
+        _stepping = false
+        var names = _undoNames.slice()
+        var text = names.pop()
+        _undoNames = names
+        if (text) {
+            _redoNames = _redoNames.concat([text])
+            undoneText = "Undone: " + text
+        }
+        lastChangeText = names.length ? "Last change: " + names[names.length - 1] : ""
     }
 
     function redoEdit() {
         if (!_driver.canRedo)
             return
+        _stepping = true
         _driver.redo()
+        _stepping = false
+        var names = _redoNames.slice()
+        var text = names.pop()
+        _redoNames = names
+        if (text) {
+            _undoNames = _undoNames.concat([text])
+            lastChangeText = "Last change: " + text
+        }
+        undoneText = ""
+    }
+
+    // 01 S142: the Module File window's message line. An import's Undo
+    // link stays until the next message, its × or closing that window
+    // (03 S59: then the import is kept).
+    property bool _importUndoOffered: false
+
+    function showFileMessage(text, failed, undoable) {
+        _dropImportUndo()
+        moduleFileMessage = text
+        moduleFileError = failed
+        if (undoable) {
+            _importUndoOffered = true
+            _fileMessage.show(text, failed, "Undo", _win.undoImport)
+        } else {
+            _fileMessage.show(text, failed)
+        }
+    }
+
+    function _dropImportUndo() {
+        if (!_importUndoOffered)
+            return
+        _importUndoOffered = false
+        if (moduleModel)
+            moduleModel.dropImportUndo(deviceGuid, deviceName)
+    }
+
+    function undoImport() {
+        _importUndoOffered = false
+        if (!moduleModel)
+            return
+        var message = moduleModel.undoLastImport(deviceGuid, deviceName)
+        var ok = message.indexOf("Undone") === 0
+        refreshModuleFileLabel()
+        if (ok)
+            reloadModuleControls()
+        showFileMessage(message, !ok, false)
     }
 
     function showImportResult(message) {
-        moduleFileError = message.indexOf("Imported ") !== 0
+        var failed = message.indexOf("Imported ") !== 0
         refreshModuleFileLabel()
-        moduleFileMessage = moduleFileError ? message : ("Imported into " + moduleFileLabel)
-        if (!moduleFileError)
+        if (!failed)
             reloadModuleControls()
-        _importNotice.failed = moduleFileError
-        _importNotice.titleText = moduleFileError ? "Import Failed" : "Imported"
-        _importNotice.messageText = message
-        _importNotice.canUndo = !moduleFileError && moduleModel && moduleModel.importCanUndo(deviceGuid, deviceName)
-        _importNotice.open()
+        var undoable = !failed && moduleModel && moduleModel.importCanUndo(deviceGuid, deviceName)
+        if (!_moduleFileDialog.opened)
+            _moduleFileDialog.open()
+        showFileMessage(message, failed, !!undoable)
     }
 
     function applyPendingFile() {
@@ -246,20 +356,16 @@ ApplicationWindow {
         _saveGate.ask()
     }
 
-    FileDialog {
+    // 01 S143: opens in the last folder a picture was chosen from.
+    FilePicker {
         id: _imageDialog
+        kind: "picture"
+        mode: "open"
         title: "Import Image"
-        fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
-        currentFolder: _hw.imagesFolderUrl()
-        onAccepted: {
-            var src = ""
-            if (selectedFile)
-                src = selectedFile.toString ? selectedFile.toString() : ("" + selectedFile)
-            if ((!src || !src.length) && selectedFiles && selectedFiles.length)
-                src = selectedFiles[0].toString ? selectedFiles[0].toString() : ("" + selectedFiles[0])
-            if (!src || !src.length)
-                src = currentFile && currentFile.toString ? currentFile.toString() : currentFile
+        folder: _hw.imagesFolderUrl()
+        onPicked: (selected) => {
+            var src = String(selected)
             // The starting photo is kept first (once per session).
             _win.stashPhoto()
             var rel = _hw.copyImage(src, deviceName)
@@ -396,13 +502,11 @@ ApplicationWindow {
                     }
                     ScrollBar.vertical: ScrollBar {}
                 }
-                Label {
+                EmptyState {
+                    objectName: "moduleNoControls"
                     anchors.centerIn: parent
                     visible: _list.count === 0
-                    color: Style.fgMuted
-                    wrapMode: Text.WordWrap
                     width: parent.width - Style.dp(24)
-                    horizontalAlignment: Text.AlignHCenter
                     text: deviceName.toLowerCase() === "keyboard"
                           ? "Press a key to add it."
                           : "No controls reported. For a stick, check that Windows sees it (Set up USB game controllers)."
@@ -417,23 +521,9 @@ ApplicationWindow {
                 focusPolicy: Qt.NoFocus
                 onClicked: {
                     refreshModuleFileLabel()
-                    moduleFileMessage = ""
+                    _win.showFileMessage("", false, false)
                     _moduleFileDialog.open()
                 }
-            }
-            Button {
-                objectName: "moduleUndo"
-                text: "Undo"
-                focusPolicy: Qt.NoFocus
-                enabled: _driver.canUndo
-                onClicked: _win.undoEdit()
-            }
-            Button {
-                objectName: "moduleRedo"
-                text: "Redo"
-                focusPolicy: Qt.NoFocus
-                enabled: _driver.canRedo
-                onClicked: _win.redoEdit()
             }
             // This device's saved changes (Tools > History).
             Button {
@@ -448,8 +538,21 @@ ApplicationWindow {
                     }),
                     filterLabel: deviceName
                 })
+            // 01 S143: Undo / Redo with the last change beside them.
+            UndoBar {
+                id: _undoBar
+                objectName: "moduleUndoBar"
+                Layout.fillWidth: true
+                canUndo: _driver.canUndo
+                canRedo: _driver.canRedo
+                undoTip: "Undo (Ctrl+Z)"
+                redoTip: "Redo (Ctrl+Y)"
+                lastChange: _win.lastChangeText
+                undone: _win.undoneText
+                onUndo: _win.undoEdit()
+                onRedo: _win.redoEdit()
             }
-            Item { Layout.fillWidth: true }
+            }
             Button {
                 text: "Cancel"
                 focusPolicy: Qt.NoFocus
@@ -533,11 +636,7 @@ ApplicationWindow {
             Button {
                 text: "Browse for File"
                 Layout.fillWidth: true
-                onClicked: {
-                    if (moduleModel)
-                        _moduleLoadDialog.currentFolder = moduleModel.importedFolderUrl()
-                    _moduleLoadDialog.open()
-                }
+                onClicked: _moduleLoadDialog.open()
             }
             Button {
                 text: "Open Modules Folder"
@@ -547,136 +646,66 @@ ApplicationWindow {
                         Qt.openUrlExternally(moduleModel.mapsFolderUrl())
                 }
             }
-            Button {
+            // 01 S140: the red button, and the shared question.
+            DangerButton {
+                objectName: "moduleDeleteFile"
                 text: "Delete File"
                 Layout.fillWidth: true
                 onClicked: {
                     if (!moduleModel)
                         return
-                    _deleteGate.confirmThen("Delete Module File",
-                        "Delete " + moduleFileLabel + "? It holds this device's claimed inputs, calibration and Button Map layout.\n\n"
-                        + "An autosave of it (\"Autosave: module file deleted\") is kept in the Device Library first; if it can't be kept, nothing is deleted. "
-                        + "The device's pictures are kept.",
-                        "Delete file", function() {
-                            moduleFileMessage = moduleModel.deleteModuleFile(deviceGuid, deviceName)
-                            moduleFileError = moduleFileMessage.length > 0
+                    Confirm.ask(_win, {
+                        title: "Delete " + moduleFileLabel + "?",
+                        text: "It holds this device's claimed inputs, calibration and Button Map layout. "
+                            + "An autosave of it (\"Autosave: module file deleted\") is kept in the Device Library first; if it can't be kept, nothing is deleted. "
+                            + "The device's pictures are kept.",
+                        undoable: true,
+                        action: "Delete File",
+                        onAccept: function() {
+                            var message = moduleModel.deleteModuleFile(deviceGuid, deviceName)
+                            _win.showFileMessage(message, message.length > 0, false)
                             refreshModuleFileLabel()
-                            if (!moduleFileMessage.length) {
+                            if (!message.length) {
                                 // The file is gone (its pictures stay, 03
                                 // Q14): a kept starting photo must not come
                                 // back later.
                                 dropPhotoStash()
                                 reloadModuleControls()
                             }
-                        }, null, true)
+                        }
+                    })
                 }
             }
-            Label {
+            // 01 S142: what an import, its Undo or Delete File did.
+            MessageLine {
+                id: _fileMessage
+                objectName: "moduleFileMessage"
                 Layout.fillWidth: true
-                visible: moduleFileMessage.length > 0
-                text: moduleFileMessage
-                color: moduleFileError ? Style.dangerText : Style.fgMuted
-                wrapMode: Text.WordWrap
+                // Its × ends an import's Undo, as a new message does.
+                onTextChanged: {
+                    if (text.length === 0)
+                        _win._dropImportUndo()
+                }
             }
         }
+        // Closing it keeps the import: its Undo goes (03 S59).
+        onClosed: _win._dropImportUndo()
     }
 
-    FileDialog {
+    // 01 S143: opens in the last folder a module file was chosen from
+    // (else the imported folder).
+    FilePicker {
         id: _moduleLoadDialog
+        kind: "module-file"
+        mode: "open"
         title: "Choose Module File"
-        fileMode: FileDialog.OpenFile
         nameFilters: ["Module files (*.json)"]
-        onAccepted: {
+        folder: moduleModel ? moduleModel.importedFolderUrl() : ""
+        onPicked: (selected) => {
             if (!moduleModel)
                 return
-            var src = selectedFile
-            if (src && src.toString)
-                src = src.toString()
-            moduleFileMessage = moduleModel.importModuleFile(deviceGuid, deviceName, src || "", direction)
-            showImportResult(moduleFileMessage)
+            showImportResult(moduleModel.importModuleFile(deviceGuid, deviceName, String(selected), direction))
         }
-    }
-
-    Popup {
-        id: _importNotice
-
-        property string titleText: "Imported"
-        property string messageText: ""
-        property bool canUndo: false
-        // The import or its undo failed: the border shows it.
-        property bool failed: false
-
-        parent: Overlay.overlay
-        anchors.centerIn: parent
-        modal: true
-        focus: true
-        closePolicy: Popup.NoAutoClose
-        padding: Style.dp(16)
-
-        background: Rectangle {
-            color: Style.background
-            border.color: _importNotice.failed ? Style.danger : Style.accent
-            border.width: Style.dp(1)
-            radius: Style.dp(4)
-        }
-
-        contentItem: ColumnLayout {
-            spacing: Style.dp(12)
-
-            Label {
-                text: _importNotice.titleText
-                font.bold: true
-                font.pixelSize: Style.dp(16)
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-                Layout.preferredWidth: Style.dp(560)
-            }
-
-            Label {
-                text: _importNotice.messageText
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-                Layout.preferredWidth: Style.dp(560)
-            }
-
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                spacing: Style.dp(8)
-
-                Button {
-                    visible: _importNotice.canUndo
-                    text: "Undo"
-                    onClicked: {
-                        if (!moduleModel)
-                            return
-                        var message = moduleModel.undoLastImport(deviceGuid, deviceName)
-                        var ok = message.indexOf("Undone") === 0
-                        _importNotice.failed = !ok
-                        _importNotice.titleText = ok ? "Undone" : "Undo Failed"
-                        _importNotice.messageText = message
-                        _importNotice.canUndo = false
-                        refreshModuleFileLabel()
-                        if (ok)
-                            reloadModuleControls()
-                    }
-                }
-
-                Button {
-                    text: "OK"
-                    highlighted: true
-                    onClicked: {
-                        if (moduleModel && _importNotice.titleText === "Imported")
-                            moduleModel.dropImportUndo(deviceGuid, deviceName)
-                        _importNotice.close()
-                    }
-                }
-            }
-        }
-    }
-
-    // Asks before Delete file.
-    DismissibleDialog {
-        id: _deleteGate
     }
 
     DismissibleDialog {

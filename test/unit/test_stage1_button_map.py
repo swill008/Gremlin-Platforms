@@ -99,7 +99,8 @@ def outside(tmp_path_factory: pytest.TempPathFactory) -> dict:
 def test_save_writes_reads_back_and_says_so(flows: dict) -> None:
     # S19: entering Edit is no change; S20, S24.
     assert flows["dirty-on-entering-edit"] is False
-    assert flows["save-said"] == ["Saved", "Saved to the module file."]
+    # 01 S142: on the window's message line, plain, no box.
+    assert flows["save-said"] == [False, "Saved to the module file.", False]
     assert flows["save-wrote"] is True
     assert flows["dirty-after-save"] is False
     assert flows["editing-after-save"] is True
@@ -178,7 +179,10 @@ def test_clear_photo_then_cancel_brings_it_back_without_history(flows: dict) -> 
 def test_clear_photo_failure_keeps_the_photo_and_says_so(flows: dict) -> None:
     # S41 (GL-021): the file is open elsewhere.
     failed = flows["clear-photo-fails"]
-    assert failed["said"] == [True, "Clear Photo Failed"]
+    assert failed["said"] == [
+        True,
+        "The photo file could not be removed (it may be open in another program).",
+    ]
     assert failed["photo-kept"] is True
     assert failed["shown"].endswith("/photo.jpg")
     assert failed["after-cancel"] is True

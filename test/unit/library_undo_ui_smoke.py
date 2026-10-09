@@ -98,15 +98,15 @@ _CALLS_JS = "JSON.parse(deviceLibrary.stepCalls())"
 _UNDO = "Undo Remove HID Remapper ACHB"
 _REDO = "Redo Copy to Another Stick"
 _DLG = (
-    "JSON.stringify({open: _deleteDlg.opened,"
-    " title: _deleteDlg.opened ? _deleteDlg.title : ''})"
+    "JSON.stringify({open: !!_lib.asking,"
+    " title: _lib.asking ? _lib.asking.titleText : ''})"
 )
 _IDLE = "!deviceLibrary.busy"
 
 
 def _del_key(select: str, focus: str = "_list") -> str:
     return (
-        "_deleteDlg.close(); deviceLibrary.setAllOpen(true);"
+        "(_lib.asking && _lib.asking.cancel()); deviceLibrary.setAllOpen(true);"
         f" deviceLibrary.select('{select}'); {focus}.forceActiveFocus();"
         " _bridge.key('delete')"
     )
@@ -125,7 +125,7 @@ menus.STEPS = [
     ),
     (
         "keys-in-search",
-        "_search.forceActiveFocus(); _bridge.key('ctrl+z'); _bridge.key('ctrl+y')",
+        "_search.focusField(); _bridge.key('ctrl+z'); _bridge.key('ctrl+y')",
         "",
         "deviceLibrary.stepCalls()",
     ),
@@ -154,36 +154,37 @@ menus.STEPS = [
     (
         "del-key-setup",
         "_rowMenu.close();" + _del_key("set-00000001"),
-        "_deleteDlg.opened",
+        "!!_lib.asking",
         _DLG,
     ),
-    ("del-key-not-connected", _del_key("dev-00000004"), "_deleteDlg.opened", _DLG),
+    ("del-key-not-connected", _del_key("dev-00000004"), "!!_lib.asking", _DLG),
     ("del-key-connected", _del_key("dev-00000001"), "", _DLG),
     ("del-key-builtin", _del_key("dev-0000000b"), "", _DLG),
-    ("del-key-in-search", _del_key("set-00000001", "_search"), "", _DLG),
+    ("del-key-in-search", _del_key("set-00000001", "_search.field"), "", _DLG),
     (
         "remove-link",
-        "_deleteDlg.close(); deviceLibrary.setSteps('Undo Remove Old stick', '');"
+        "(_lib.asking && _lib.asking.cancel());"
+        " deviceLibrary.setSteps('Undo Remove Old stick', '');"
         " _bridge.click('libraryRow_dev-00000003', 'right', '');"
-        " _rowMenu.activate('Remove from Library…'); _deleteDlg.accept()",
+        " _rowMenu.activate('Remove from Library…'); _lib.asking.accept()",
         "!deviceLibrary.busy && deviceLibrary.rows.every(r => r.key !== 'dev-00000003')"
         " && _lib.message.length > 0",
         "JSON.stringify({message: _lib.message,"
-        " link: _bridge.item('libraryMessageUndo') !== null"
-        " && _bridge.item('libraryMessageUndo').visible})",
+        " link: _bridge.item('messageUndo') !== null"
+        " && _bridge.item('messageUndo').visible})",
     ),
     (
         "remove-link-click",
-        "_bridge.clickIn('libraryMessageUndo', 'left', -1, -1)",
+        "_bridge.clickIn('messageUndo', 'left', -1, -1)",
         "",
         "JSON.stringify({calls: " + _CALLS_JS + ", link:"
-        " _bridge.item('libraryMessageUndo').visible})",
+        " _bridge.item('messageUndo').visible})",
     ),
     (
         "export-no-link",
         "deviceLibrary.exportCurrent('dev-00000001', 'file:///C:/x/Left%20throttle')",
         "!deviceLibrary.busy && _lib.message.indexOf('Current setup exported') === 0",
-        "_bridge.item('libraryMessageUndo').visible",
+        "_bridge.item('messageUndo').visible",
     ),
 ]
 # S53a (D-10-STATUS-LAST): Edit's tooltips and the status bar's last change.
@@ -193,11 +194,12 @@ _TIPS = (
     " undo: _undoItem.ToolTip.text, redo: _redoItem.ToolTip.text})"
 )
 _LAST = (
-    "JSON.stringify({text: _lastChange.text, shown: _lastChange.visible,"
-    " cut: _lastChange.truncated, width: _lastChange.width,"
-    " full: _lastChange.implicitWidth, tip: _lastChange.ToolTip.text,"
-    " tipShown: _lastChange.ToolTip.toolTip.visible"
-    " && _lastChange.ToolTip.toolTip.text === _lastChange.text})"
+    "(function() { var l = _bridge.item('undoBarText');"
+    " return JSON.stringify({text: l.text, shown: l.visible,"
+    " cut: l.truncated, width: l.width,"
+    " full: l.implicitWidth, tip: l.ToolTip.text,"
+    " tipShown: l.ToolTip.toolTip.visible"
+    " && l.ToolTip.toolTip.text === l.text}) })()"
 )
 _Z = "_list.forceActiveFocus(); _bridge.key('ctrl+z'); "
 _Y = "_list.forceActiveFocus(); _bridge.key('ctrl+y'); "
@@ -236,8 +238,8 @@ menus.STEPS += [
     (
         "status-long",
         f"deviceLibrary.setSteps('Undo {_LONG}', '');"
-        " _bridge.hover('libraryLastChange')",
-        "_lastChange.ToolTip.toolTip.visible",
+        " _bridge.hover('undoBarText')",
+        "_bridge.item('undoBarText').ToolTip.toolTip.visible",
         _LAST,
     ),
 ]

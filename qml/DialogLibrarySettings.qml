@@ -3,7 +3,6 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import Gremlin.Style
@@ -38,11 +37,16 @@ Dialog {
         open()
     }
 
-    FolderDialog {
+    // 01 S143: opens in the last folder chosen here (else the Library's).
+    FilePicker {
         id: _folderDlg
+        objectName: "librarySettingsFolderPicker"
+        kind: "other"
+        mode: "folder"
         title: "Choose the Library Folder"
-        onAccepted: {
-            var url = String(selectedFolder)
+        folder: _dlg.folder.length ? "file:///" + _dlg.folder.replace(/\\/g, "/") : ""
+        onPicked: (selected) => {
+            var url = String(selected)
             _dlg.folder = decodeURIComponent(url.replace(/^file:\/{3}/, "")).replace(/\//g, "\\")
         }
     }
@@ -71,7 +75,7 @@ Dialog {
             color: Style.fgMuted
         }
 
-        Label { text: "Copy and Swap tick by default"; font.bold: true; color: Style.fgStrong; Layout.topMargin: Style.dp(6) }
+        SectionHeading { text: "Copy and Swap tick by default"; Layout.fillWidth: true; Layout.topMargin: Style.dp(6) }
         Flow {
             Layout.fillWidth: true
             spacing: Style.dp(12)
@@ -91,7 +95,7 @@ Dialog {
             }
         }
 
-        Label { text: "Library folder"; font.bold: true; color: Style.fgStrong; Layout.topMargin: Style.dp(6) }
+        SectionHeading { text: "Library folder"; Layout.fillWidth: true; Layout.topMargin: Style.dp(6) }
         RowLayout {
             Layout.fillWidth: true
             TextField {

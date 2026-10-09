@@ -101,7 +101,8 @@ function topics() {
             body: "<p><b>Delete Device</b> removes a device's module file, its pictures and its actions in every mode.</p>"
                 + "<ol>"
                 + "<li>Stop the profile. Delete Device is refused while the profile runs.</li>"
-                + "<li>Right-click the card and choose <b>Device</b> › <b>Delete Device</b>. It asks twice.</li>"
+                + "<li>Right-click the card and choose <b>Device</b> › <b>Delete Device</b>. A first window says what goes; choose <b>Continue</b>.</li>"
+                + "<li>The question \"Delete &lt;name&gt;?\" starts \"An autosave is kept in the Device Library first.\" and ends \"You can restore it from Tools › History.\" Choose the red <b>Delete Device</b>. <b>Cancel</b>, <b>Enter</b> and <b>Esc</b> keep the device.</li>"
                 + "<li>Save the profile to keep the change. The actions are removed from the open profile, which is left with unsaved changes.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
@@ -271,11 +272,13 @@ function topics() {
                 + "<ul>"
                 + "<li><b>Import from</b>: copy another file into this device's file (see <a href=\"topic:home-devices-import-module-file\">Import a module file</a>).</li>"
                 + "<li><b>Browse for File</b> and <b>Open Modules Folder</b>.</li>"
-                + "<li><b>Delete File</b> (an autosave is kept; see <a href=\"topic:home-devices-backups\">Deleted devices and backups</a>).</li>"
+                + "<li><b>Delete File</b>: it asks \"Delete &lt;file&gt;?\", ending \"You can restore it from Tools › History.\" Choose the red <b>Delete File</b>; <b>Cancel</b>, <b>Enter</b> and <b>Esc</b> keep the file. An autosave is kept (see <a href=\"topic:home-devices-backups\">Deleted devices and backups</a>).</li>"
                 + "</ul>"
+                + "<p>The message line under them says what an import, its Undo or Delete File did: plain when it worked, red when it failed.</p>"
                 + "<p><b>Import Image…</b> sets the device picture.</p>"
                 + "<h4>Good to know</h4>"
-                + "<ul><li>When the stick still opens a file of another name, a note says so; import that file to copy it here.</li></ul>",
+                + "<ul><li>When the stick still opens a file of another name, a note says so; import that file to copy it here.</li>"
+                + "<li><b>Browse for File</b> opens in the folder you last picked a module file from; <b>Import Image…</b> opens in the folder you last picked a picture from.</li></ul>",
             related: ["home-devices-import-module-file", "home-devices-damaged-file", "getting-started-saved-where", "home-devices-device-pack"]
         },
         {
@@ -286,14 +289,15 @@ function topics() {
                 + "<ol>"
                 + "<li>In Module Setup, open <b>Module File</b>.</li>"
                 + "<li>Choose a file under <b>Import from</b>, or <b>Browse for File</b>. With unsaved ticks, it asks first.</li>"
-                + "<li>Read the notice: <b>OK</b> keeps the import; <b>Undo</b> puts the previous file back.</li>"
+                + "<li>Read the message line under <b>Module File</b>: it says what was imported. Its <b>Undo</b> link puts the previous file back.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
-                + "<li>Only the controls this device has are kept; the notice names the ones left out. This device's picture and the profile's wires stay as they are.</li>"
+                + "<li>The <b>Undo</b> link lasts until the next message, until you close the message with its ×, or until you close the window; then the import is kept.</li>"
+                + "<li>Only the controls this device has are kept; the message names the ones left out. This device's picture and the profile's wires stay as they are.</li>"
                 + "<li>It is refused for a file that can't be read or isn't a module file, a vJoy file onto a stick or a stick file onto a vJoy, a device that isn't connected, and a current file that can't be read.</li>"
                 + "<li>The previous file is kept in the imported folder.</li>"
-                + "<li>A failed import or Undo turns the notice red.</li>"
+                + "<li>A failed import or Undo shows its message in red.</li>"
                 + "</ul>",
             related: ["home-devices-module-files", "home-devices-backups"]
         },
@@ -324,7 +328,7 @@ function topics() {
                 + "<li>On the <b>Export</b> tab, pick the device. It opens on the first device that can be exported.</li>"
                 + "<li>Untick modes under <b>Wires in these modes</b> to leave them out.</li>"
                 + "<li>Fill in <b>Made by</b> and <b>Note</b>; they are shown to whoever imports the pack.</li>"
-                + "<li>Choose <b>Export…</b> and pick where to save it. <b>Show Folder</b> then opens that folder.</li>"
+                + "<li>Choose <b>Export…</b> and pick where to save it. The chooser opens in the folder you last used for a Device Pack. <b>Show Folder</b> then opens that folder.</li>"
                 + "</ol>"
                 + "<p>The pack holds the device's module file, pictures, and its wires (with their actions and the output modules they send to).</p>"
                 + "<h4>Good to know</h4>"
@@ -344,14 +348,14 @@ function topics() {
                 + "<li>In <b>Device Pack</b> <a href=\"open:tools.devicePack\">Open ›</a>, open the <b>Import</b> tab and choose <b>Choose Zip…</b>.</li>"
                 + "<li>Pick the device under <b>Put this pack on</b>.</li>"
                 + "<li>Tick the pieces to bring in. Import adds the pack's checked controls and never unchecks one you have. Other pieces replace only what they hold, and each ticked mode under <b>Wires</b> replaces the device's wires in that mode. Other modes and devices are left alone.</li>"
-                + "<li>Choose <b>Import</b>, read the warning, then choose <b>Replace</b>.</li>"
+                + "<li>Choose <b>Import</b>, read the warning, then choose <b>Replace</b>. The message line says what was imported, with an <b>Undo Import</b> link.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>Missing modes are created under their parent, or under Default when the parent isn't here. Tick <b>Create the missing Logical Device inputs</b> to add the ones its wires need.</li>"
                 + "<li>Refused: a stick pack onto a vJoy or the other way round, a damaged module file (use <b>Start Fresh…</b> first), and a pack from a newer version.</li>"
                 + "<li>If it fails partway, everything it did is undone and it says so.</li>"
-                + "<li><b>Undo Import</b> puts back the files, pictures and wires, and removes the modes and Logical Device inputs it created. It lasts until you import again, open another pack, or close the window. With another profile open, only the files go back.</li>"
+                + "<li><b>Undo Import</b> (the button or the link) puts back the files, pictures and wires, and removes the modes and Logical Device inputs it created. It lasts until you import again, open another pack, or close the window. With another profile open, only the files go back.</li>"
                 + "</ul>",
             related: ["home-devices-device-pack", "home-devices-damaged-file", "device-library-import"]
         },

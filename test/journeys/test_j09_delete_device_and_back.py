@@ -164,7 +164,7 @@ def test_delete_device_explains_and_keeps_an_autosave_first(run: dict) -> None:
     assert step(run, "file-had-wires") is True
     assert "module file" in step(run, "explain")
     assert "kept in the Device Library" in step(run, "explain")
-    assert step(run, "confirm").startswith("Really delete pJoy Pro?")
+    assert step(run, "confirm").startswith("An autosave is kept")
     assert "An autosave is kept in the Device Library first." in step(run, "confirm")
     assert step(run, "done-title") == "Device deleted"
     assert "An autosave was kept in the Device Library." in step(run, "done")

@@ -70,8 +70,10 @@ def story(j: Journey) -> None:
     j.ev("_statusMessage.text = ''", win)
     j.ev("_overwriteNonEmpty.checked = true", win)
     create()
-    j.wait_until(lambda: j.ev("_overwriteGate.visible", win), "Overwrite asks")
-    j.press_in("_overwriteGate", "Replace them", win)
+    j.wait_until(
+        lambda: j.ev("_question !== null && _question.opened", win), "Overwrite asks"
+    )
+    j.press_in("_question", "Replace Actions", win)
     out["second"] = j.wait_until(
         lambda: j.ev("_statusMessage.text", win), "the second result"
     )

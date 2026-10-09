@@ -4,13 +4,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal as U
-import QtQuick.Dialogs
 import QtQuick.Layouts
 
 import Gremlin.Style
 import Gremlin.UI
 
 import "helpers.js" as Helpers
+import "confirm.js" as Confirm
 
 // Debug → Live Log Reader.
 // Config: what the program read and saved this run (logs.txt), for checking
@@ -62,6 +62,23 @@ ApplicationWindow {
     }
     onClosing: _stopAll()
     property bool _choicesBack: false
+    // The open Clear Log question (01 S140), for tests.
+    property var _question: null
+
+    // Asks once (01 S140, 01 S108); doClear runs only on the red button.
+    function _askClear(title, text, doClear) {
+        _question = Confirm.ask(_tabs, {
+            title: title,
+            text: text,
+            undoable: false,
+            action: "Clear Log",
+            onAccept: function() {
+                _win._question = null
+                doClear()
+            },
+            onCancel: function() { _win._question = null }
+        })
+    }
     Component.onDestruction: _stopAll()
 
     Timer {
@@ -351,16 +368,15 @@ ApplicationWindow {
 
                 RowLayout {
                     Layout.alignment: Qt.AlignRight
-                    Button {
+                    DangerButton {
+                        id: _clearConfig
                         text: qsTr("Clear Log")
-                        onClicked: {
-                            _clearGate.confirmThen("Clear Log?",
-                                "Clear everything shown here? (The log starts empty at every start anyway.)",
-                                "Clear", function() {
-                                    _configView.follow = true
-                                    _log.clear()
-                                }, null, true)
-                        }
+                        onClicked: _win._askClear("Clear the Config log?",
+                            "Everything shown here is removed. (The log starts empty at every start anyway.)",
+                            function() {
+                                _configView.follow = true
+                                _log.clear()
+                            })
                     }
                     Button {
                         text: qsTr("Copy All")
@@ -443,10 +459,15 @@ ApplicationWindow {
                         onActivated: _debug.level = currentText
                     }
 
-                    TextField {
+                    // The shared search box (01 S141); only the shown tab's
+                    // takes Ctrl+F.
+                    SearchBox {
+                        id: _debugFind
                         Layout.fillWidth: true
                         Layout.leftMargin: Style.dp(8)
-                        placeholderText: "Find"
+                        Layout.alignment: Qt.AlignTop
+                        placeholder: "Find"
+                        count: _debug.shownCount
                         onTextChanged: _debug.find = text
                     }
                 }
@@ -548,7 +569,8 @@ ApplicationWindow {
 
                         Item { Layout.fillWidth: true }
 
-                        Button {
+                        DangerButton {
+                            id: _clearDebug
                             // A session: empty the view only, never a file.
                             text: _debug.session ? qsTr("Clear View") : qsTr("Clear Log")
                             // All logs: one file at a time is cleared, not all.
@@ -559,13 +581,13 @@ ApplicationWindow {
                                     _debug.clearView()
                                     return
                                 }
-                                _clearGate.confirmThen("Clear Log?",
-                                    "Empty " + _debug.path.split(/[\\/]/).pop()
-                                        + "? Everything in it is removed for good.",
-                                    "Clear", function() {
+                                _win._askClear(
+                                    "Clear " + _debug.path.split(/[\\/]/).pop() + "?",
+                                    "Every line in the file is removed.",
+                                    function() {
                                         _debugView.follow = true
                                         _debug.clear()
-                                    }, null, true)
+                                    })
                             }
                         }
                         Button {
@@ -611,10 +633,13 @@ ApplicationWindow {
                         }
                     }
 
-                    TextField {
+                    SearchBox {
+                        id: _monitorFind
                         Layout.fillWidth: true
                         Layout.leftMargin: Style.dp(8)
-                        placeholderText: "Find"
+                        Layout.alignment: Qt.AlignTop
+                        placeholder: "Find"
+                        count: _monitor.shownCount
                         onTextChanged: _monitor.find = text
                     }
                 }
@@ -680,16 +705,14 @@ ApplicationWindow {
         }
     }
 
-    FileDialog {
+    // Opens in the last folder a log was saved to (01 S143).
+    FilePicker {
         id: _saveFeed
+        kind: "log"
+        mode: "save"
         title: "Save Feed"
-        fileMode: FileDialog.SaveFile
         defaultSuffix: "txt"
         nameFilters: ["Text files (*.txt)"]
-        onAccepted: _debug.saveTo(String(selectedFile))
-    }
-
-    DismissibleDialog {
-        id: _clearGate
+        onPicked: (selected) => _debug.saveTo(String(selected))
     }
 }

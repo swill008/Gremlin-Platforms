@@ -251,7 +251,7 @@ def test_a_failed_export_says_why_once_it_is_done(runs: dict, scale: str) -> Non
     assert before["failure"][0] is False
     after = result["failed-after"]
     assert after["busy"] is False
-    assert after["failure"] == [True, "Export Failed"]
+    assert after["failure"] == [True, True]
     ok, error = result["failed-saved"]
     assert ok is False and error
     assert result["failed-message"] == error
