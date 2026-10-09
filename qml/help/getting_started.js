@@ -216,6 +216,7 @@ function topics() {
             body: "<p>The program keeps three separate stores. Saving one does not save the others, except where noted.</p>"
                 + "<ul>"
                 + "<li>Profile (<b>File › Save Profile</b>): modes, actions, profile settings, scripts.</li>"
+                + "<li>Logical Device: its own module file, shared by every profile. <b>File › Save Profile</b> saves it too when it changed. See <a href=\"topic:logical-device-saved\">Where the Logical Device is saved</a>.</li>"
                 + "<li>Module file, one per device: claims, friendly names, the device picture, the Button Map layout, the Appearance of its Configuration page or Output View, and its calibration. Input and Output Module Setup, the Button Map, Calibration and the Appearance panels write it. Saving an output module also saves the profile when the profile already has a file.</li>"
                 + "<li>Program settings: Options, Home layout and card sizes, window sizes, HidHide choices, and the Logical Device's Appearance. They are kept in configuration.json in your Gremlin Platforms folder (%USERPROFILE%\\Gremlin Platforms), even when you move the data folder.</li>"
                 + "</ul>"

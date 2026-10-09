@@ -10,8 +10,10 @@ from abc import (
     abstractmethod,
 )
 from typing import (
+    Any,
     List,
     Optional,
+    cast,
     override,
 )
 from xml.etree import ElementTree
@@ -724,14 +726,35 @@ class LogicalDeviceCondition(AbstractCondition):
     logicalInputIdentifierChanged = QtCore.Signal()
 
     class State(AbstractState):
-        def __init__(self, input_type: InputType, input_id: int) -> None:
+        def __init__(
+            self, input_type: InputType, input_id: int, uid: str | None = None
+        ) -> None:
+            # The uid names the control; type and number are its current
+            # ones. A uid the Logical Device lacks is missing (D-04-LD-FILE).
+            from action_plugins.map_to_logical_device import (
+                resolve_logical_reference,
+            )
+
+            identifier, self.uid = resolve_logical_reference(
+                uid, input_type, input_id
+            )
+            if identifier is not None:
+                input_type, input_id = identifier.type, identifier.id
             self.input_type = input_type
             self.input_id = input_id
-            self.input = LogicalDevice()[
-                LogicalDevice.Input.Identifier(self.input_type, self.input_id)
-            ]
+            self.input = (
+                LogicalDevice()[identifier] if identifier is not None else None
+            )
+
+        @property
+        def missing(self) -> bool:
+            return self.input is None
 
         def get(self, value: Value) -> float | bool | HatDirection:
+            if self.input is None:
+                raise error.GremlinError(
+                    "LogicalDeviceCondition: the control is missing."
+                )
             match self.input_type:
                 case InputType.JoystickAxis:
                     return self.input.value
@@ -746,6 +769,8 @@ class LogicalDeviceCondition(AbstractCondition):
                     )
 
         def display_name(self) -> str:
+            if self.input is None:
+                return "(missing)"
             return self.input.label
 
     def __init__(self, parent: ta.OQO = None) -> None:
@@ -759,24 +784,32 @@ class LogicalDeviceCondition(AbstractCondition):
             self._states = [self.State(controls[0].type, controls[0].id)]
             self._create_comparator(self._states[0].input_type)
 
+    def __call__(self, value: Value) -> bool:
+        # A missing control never fulfils the condition.
+        if any(cast(LogicalDeviceCondition.State, s).missing for s in self._states):
+            return False
+        return super().__call__(value)
+
     def from_xml(self, node: ElementTree.Element) -> None:
         self._comparator_from_xml(node)
         self._states = [
             self.State(
                 util.read_property(node, "input-type", PropertyType.InputType),
                 util.read_property(node, "input-id", PropertyType.Int),
+                util.read_property(node, "uid", PropertyType.String, ""),
             )
         ]
 
     def to_xml(self) -> ElementTree.Element[str]:
         node = self._create_condition_node()
-        util.append_property_nodes(
-            node,
-            [
-                ("input-type", self._states[0].input_type, PropertyType.InputType),
-                ("input-id", self._states[0].input_id, PropertyType.Int),
-            ],
-        )
+        state = cast(LogicalDeviceCondition.State, self._states[0])
+        properties: list[tuple[str, Any, PropertyType]] = [
+            ("input-type", state.input_type, PropertyType.InputType),
+            ("input-id", state.input_id, PropertyType.Int),
+        ]
+        if state.uid:
+            properties.append(("uid", state.uid, PropertyType.String))
+        util.append_property_nodes(node, properties)
         return node
 
     def _update_comparator_if_needed(self, input_type: InputType) -> None:

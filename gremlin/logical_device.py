@@ -7,6 +7,7 @@ from __future__ import annotations
 import collections
 import re
 import threading
+import uuid
 from typing import cast
 
 import dill
@@ -53,6 +54,12 @@ class _RowData:
         self.label_lookup: dict = {}
         self.groups: list[str] = []
         self.order: list = []
+        # Changed since the Logical Device file was last saved or loaded.
+        self.dirty: bool = False
+
+    def changed(self) -> None:
+        self.dirty = True
+        note_edit()
 
 
 class LogicalRows:
@@ -60,8 +67,9 @@ class LogicalRows:
     inputs that can be used to combine and further modify inputs before
     ultimately feeding them to a vJoy device.
 
-    Each Profile owns one (its Logical Device rows, saved with it: 04 S2,
-    R3); LogicalDevice() shows the open profile's."""
+    Every row has a permanent random id (uid); its number is a display name
+    (06 S78). The rows are saved in the Logical Device module file
+    (decision D-04-LD-FILE); LogicalDevice() shows them."""
 
     device_guid = dill.UUID_LogicalDevice
 
@@ -77,12 +85,59 @@ class LogicalRows:
                 label: textual label associated with this input
                 index: per InputType index
             """
+            self._owner: _RowData | None = None
             self._label = label
             self._id = id
             self._value = None
-            self.user_label = ""
-            self.group = ""
-            self.hide_system = False
+            self._uid = uuid.uuid4().hex
+            self._user_label = ""
+            self._group = ""
+            self._hide_system = False
+
+        def _changed(self) -> None:
+            if self._owner is not None:
+                self._owner.changed()
+
+        @property
+        def uid(self) -> str:
+            """Permanent id: kept through rename, regroup, move and sort."""
+            return self._uid
+
+        @uid.setter
+        def uid(self, value: str) -> None:
+            if value != self._uid:
+                self._uid = value
+                self._changed()
+
+        @property
+        def user_label(self) -> str:
+            return self._user_label
+
+        @user_label.setter
+        def user_label(self, value: str) -> None:
+            if value != self._user_label:
+                self._user_label = value
+                self._changed()
+
+        @property
+        def group(self) -> str:
+            return self._group
+
+        @group.setter
+        def group(self, value: str) -> None:
+            if value != self._group:
+                self._group = value
+                self._changed()
+
+        @property
+        def hide_system(self) -> bool:
+            return self._hide_system
+
+        @hide_system.setter
+        def hide_system(self, value: bool) -> None:
+            if value != self._hide_system:
+                self._hide_system = value
+                self._changed()
 
         def update(self, value: float | bool | HatDirection) -> None:
             with _VALUE_LOCK:
@@ -238,6 +293,70 @@ class LogicalRows:
     def _order(self, value: list) -> None:
         self._data.order = value
 
+    @property
+    def dirty(self) -> bool:
+        """True when the rows changed since the last save or load."""
+        return self._data.dirty
+
+    def mark_saved(self) -> None:
+        self._data.dirty = False
+
+    def _changed(self) -> None:
+        self._data.changed()
+
+    def by_uid(self, uid: str) -> Input | None:
+        for item in self._inputs.values():
+            if item.uid == uid:
+                return item
+        return None
+
+    def uid_of(self, input_type: InputType, input_id: int) -> str | None:
+        item = self._inputs.get(self.Input.Identifier(input_type, int(input_id)))
+        return item.uid if item is not None else None
+
+    def identifier_of_uid(self, uid: str) -> Input.Identifier | None:
+        """The control's current type and number."""
+        item = self.by_uid(uid)
+        return item.identifier if item is not None else None
+
+    def to_dict(self) -> dict:
+        """The layout as stored in the module file; keys mirror the XML names."""
+        return {
+            "controls": [
+                {
+                    "uid": item.uid,
+                    "type": InputType.to_string(item.type),
+                    "id": item.id,
+                    "label": item.label,
+                    "user-label": item.user_label,
+                    "group": item.group,
+                    "hide-system": bool(item.hide_system),
+                }
+                for item in self.ordered()
+            ],
+            "groups": list(self._groups),
+        }
+
+    def load_dict(self, data: dict) -> None:
+        """Replaces the rows with a to_dict() layout, then counts as saved."""
+        self.reset()
+        self.set_groups(list(data.get("groups", [])))
+        for entry in data.get("controls", []):
+            kind = entry["type"]
+            if isinstance(kind, str):
+                kind = InputType.to_enum(kind)
+            made = self.create(
+                kind,
+                int(entry["id"]),
+                entry.get("label") or None,
+                user_label=entry.get("user-label", "") or "",
+                group=entry.get("group", "") or "",
+                uid=entry.get("uid") or None,
+            )
+            hidden = bool(entry.get("hide-system", False))
+            made.hide_system = hidden and bool(made.second_name)
+        self.mark_saved()
+
     def __getitem__(self, identifier_or_label: Input.Identifier | str) -> Input:
         return self._inputs[self._resolve_to_identifier(identifier_or_label)]
 
@@ -265,6 +384,7 @@ class LogicalRows:
         label: str | None = None,
         user_label: str = "",
         group: str = "",
+        uid: str | None = None,
     ) -> Input:
         """Creates a new input instance of the given type.
 
@@ -272,8 +392,9 @@ class LogicalRows:
             type: the type of input to create
             input_id: unique id identifying this input
             label: if given will be used as the label of the new input
+            uid: permanent id to keep; a new one when None
         """
-        note_edit()
+        self._changed()
         if label in self.labels_of_type():
             raise GremlinError(f"An input named {label} already exists")
 
@@ -300,6 +421,9 @@ class LogicalRows:
 
         # Create input store information and return it.
         new_input = do_create[type](label, input_id)
+        if uid:
+            new_input._uid = uid
+        new_input._owner = self._data
         new_input.user_label = (user_label or "").strip()
         new_input.group = (group or "").strip()
         if new_input.group and new_input.group not in self._groups:
@@ -318,7 +442,7 @@ class LogicalRows:
 
     def reset(self) -> None:
         """Resets the IO system to contain no entries."""
-        note_edit()
+        self._changed()
         self._inputs = {}
         self._label_lookup = {}
         self._groups = []
@@ -331,7 +455,7 @@ class LogicalRows:
             old_label: label of the instance to change the label of
             new_label: new label to use
         """
-        note_edit()
+        self._changed()
         if old_label == new_label:
             return
 
@@ -351,7 +475,7 @@ class LogicalRows:
         Args:
             identifier_or_label: Identifier or label of the input to delete
         """
-        note_edit()
+        self._changed()
         input = self[identifier_or_label]
         del self._inputs[input.identifier]
         del self._label_lookup[input.label]
@@ -469,7 +593,7 @@ class LogicalRows:
         return rows
 
     def set_groups(self, names: list[str]) -> None:
-        note_edit()
+        self._changed()
         self._groups = []
         for name in names:
             text = (name or "").strip()
@@ -485,13 +609,13 @@ class LogicalRows:
         A name that differs from an existing group only in capitals or spacing
         is that group, so a typo in case or spaces cannot make a look-alike.
         """
-        note_edit()
         text = " ".join((name or "").split())
         if not text:
             return text
         for existing in self._groups:
             if _same_group(existing, text):
                 return existing
+        self._changed()
         self._groups.append(text)
         return text
 
@@ -503,7 +627,7 @@ class LogicalRows:
         user_label: str = "",
     ) -> list[Input]:
         """Create up to 180 parents. A group name is the folder, not a copy on every row."""
-        note_edit()
+        self._changed()
         total = max(0, min(180, int(count)))
         folder = self.ensure_group(group)
         made: list[LogicalDevice.Input] = []
@@ -512,7 +636,7 @@ class LogicalRows:
         return made
 
     def set_user_label(self, identifier_or_label: Input.Identifier | str, text: str) -> None:
-        note_edit()
+        self._changed()
         item = self[identifier_or_label]
         cleaned = (text or "").strip()
         if cleaned == item.system_name:
@@ -522,12 +646,12 @@ class LogicalRows:
             item.hide_system = False
 
     def set_member_group(self, identifier_or_label: Input.Identifier | str, group: str) -> None:
-        note_edit()
+        self._changed()
         item = self[identifier_or_label]
         item.group = self.ensure_group(group)
 
     def rename_group(self, old_name: str, new_name: str) -> None:
-        note_edit()
+        self._changed()
         old = (old_name or "").strip()
         new = " ".join((new_name or "").split())
         if not old or old not in self._groups:
@@ -548,7 +672,7 @@ class LogicalRows:
 
     def delete_group(self, name: str) -> None:
         """Remove the folder. The parents stay, in Ungrouped."""
-        note_edit()
+        self._changed()
         text = (name or "").strip()
         self._groups = [entry for entry in self._groups if entry != text]
         for item in self._inputs.values():
@@ -561,7 +685,7 @@ class LogicalRows:
         group: str,
         before: Input.Identifier | None = None,
     ) -> None:
-        note_edit()
+        self._changed()
         item = self[identifier_or_label]
         item.group = self.ensure_group(group)
         ident = item.identifier
@@ -572,7 +696,7 @@ class LogicalRows:
             self._order.append(ident)
 
     def move_group_before(self, name: str, before: str | None) -> None:
-        note_edit()
+        self._changed()
         text = (name or "").strip()
         if text not in self._groups:
             return
@@ -584,7 +708,7 @@ class LogicalRows:
 
     def sort_within(self, key_name: str) -> None:
         """Reorder parents inside each group without mixing buttons, axes, and hats."""
-        note_edit()
+        self._changed()
         types = (
             InputType.JoystickButton,
             InputType.JoystickAxis,
@@ -612,7 +736,7 @@ class LogicalRows:
         self._order = new_order
 
     def sort_groups(self) -> None:
-        note_edit()
+        self._changed()
         self._groups.sort(key=_natural_key)
 
     def memento(self) -> dict:
@@ -626,13 +750,14 @@ class LogicalRows:
                     "user": item.user_label,
                     "group": item.group,
                     "hide": bool(item.hide_system),
+                    "uid": item.uid,
                 }
                 for item in self.ordered()
             ],
         }
 
     def restore(self, memo: dict) -> None:
-        note_edit()
+        self._changed()
         wanted = {
             (entry["type"], int(entry["id"])): entry for entry in memo.get("inputs", [])
         }
@@ -649,8 +774,11 @@ class LogicalRows:
                     entry["label"],
                     user_label=entry.get("user", ""),
                     group=entry.get("group", ""),
+                    uid=entry.get("uid"),
                 )
             item = self[ident]
+            if entry.get("uid"):
+                item.uid = entry["uid"]
             item.user_label = entry.get("user", "") or ""
             item.group = entry.get("group", "") or ""
             item.hide_system = bool(entry.get("hide", False)) and bool(item.second_name)
@@ -731,3 +859,37 @@ class LogicalDevice(LogicalRows, metaclass=SingletonMetaclass):
     def shows(self, rows: LogicalRows) -> bool:
         """True when these are the rows shown."""
         return self._data is rows._data
+
+
+def resolve_logical_reference(
+    uid: str | None, input_type: InputType | None, input_id: int | None
+) -> tuple[LogicalDevice.Input.Identifier | None, str | None]:
+    """Current (type, number) and uid of a saved Logical Device reference.
+
+    A uid wins; one the Logical Device doesn't have is missing (None), never
+    re-targeted by number (D-04-LD-FILE decision 4). No uid (old data): the
+    v14 load map (logical_device_file.current_uid_map, keyed by the XML type
+    name or the enum name), then type+number. (None, None): nothing matches.
+    """
+    logical = LogicalDevice()
+    if uid:
+        return logical.identifier_of_uid(uid), uid
+    if input_type is None or input_id is None:
+        return None, None
+    try:
+        from gremlin import logical_device_file
+
+        remap = getattr(logical_device_file, "current_uid_map", None) or {}
+    except ImportError:
+        remap = {}
+    for key in (
+        (InputType.to_string(input_type), int(input_id)),
+        (input_type.name, int(input_id)),
+    ):
+        mapped = remap.get(key)
+        if mapped:
+            return logical.identifier_of_uid(mapped), mapped
+    found = logical.uid_of(input_type, int(input_id))
+    if found is None:
+        return None, None
+    return LogicalDevice.Input.Identifier(input_type, int(input_id)), found

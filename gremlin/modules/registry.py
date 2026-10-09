@@ -91,9 +91,10 @@ def module_direction(doc: dict | None, slug: str = "", name: str = "") -> str:
 
 
 def is_built_in_input(module: Module) -> bool:
-    """True for the module file of a built-in input (Keyboard, OSC): not a
-    device (10 S6). Its bound id decides; a stick named "Keyboard" is a stick.
-    A file with no bound id is built-in by its name (03 S90b)."""
+    """True for the module file of a built-in input (Keyboard, OSC, Logical
+    Device): not a device (10 S6). Its bound id decides; a stick named
+    "Keyboard" is a stick. A file with no bound id is built-in by its name
+    (03 S90b)."""
     from gremlin.modules import device_class
 
     return device_class.can("library_builtin", module=module)

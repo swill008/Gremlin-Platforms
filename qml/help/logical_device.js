@@ -32,10 +32,28 @@ function topics() {
                 + _good([
                     "Editing is locked while the profile runs (\"Profile running: stop it to edit\").",
                     "Its values go back to neutral at Stop and at the start of each Run: axes at 0, buttons up, hats centred.",
-                    "Its card shows on <a href=\"topic:home-devices-home\">Home</a> once it has a module file."
+                    "Its card always shows on <a href=\"topic:home-devices-home\">Home</a>.",
+                    "Every profile uses the same Logical Device; see " + _link("logical-device-saved", "Where the Logical Device is saved") + "."
                 ]),
             related: ["logical-device-add-controls", "logical-device-assign-hardware", "modes-modes",
-                      "logical-device-send-to-xbox-vjoy"]
+                      "logical-device-send-to-xbox-vjoy", "logical-device-saved"]
+        },
+        {
+            id: "logical-device-saved",
+            section: main,
+            title: "Where the Logical Device is saved",
+            body: "<p>The Logical Device has its own module file, shared by every profile, as the Keyboard's is. Loading another profile keeps the same controls, groups and names.</p>"
+                + "<ul>"
+                + "<li><b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>) also saves the Logical Device when it changed. The <b>*</b> in the title and the question before New, Load or quit count its changes too; <b>Discard</b> there also throws away the Logical Device's unsaved changes.</li>"
+                + "<li>Each control keeps its own id for good. Actions that send to a control follow it, even when you rename it or its number changes.</li>"
+                + "<li>To keep other layouts, use the " + _link("device-library-built-in", "Device Library") + ": it lists the Logical Device under <b>Built-in inputs</b>, with <b>Save to Device Library…</b>, <b>Restore…</b> and <b>Export…</b>. A Logical Device pack from someone else comes in with <b>File › Import Device Pack…</b> there, then <b>Restore…</b>.</li>"
+                + "<li>Every save is kept in <a href=\"topic:tools-history\">History</a>, and the Logical Device can be restored there on its own.</li>"
+                + "</ul>"
+                + _good([
+                    "An action that names a control the Logical Device doesn't have is flagged, with an offer to add the control. It is never removed or moved to another control.",
+                    "Profiles from older versions kept their own Logical Device. The first time one opens, its controls are added to the shared Logical Device (nothing is removed), a note says which were added, and when you save the profile, the original file is kept beside it as <i>name</i>.xml.v14.bak."
+                ]),
+            related: ["logical-device-about", "logical-device-undo", "device-library-built-in", "tools-history"]
         },
         {
             id: "logical-device-add-controls",
@@ -121,7 +139,8 @@ function topics() {
                 + "<li>Or press <b>Ctrl+Z</b>, and <b>Ctrl+Y</b> or <b>Ctrl+Shift+Z</b>.</li>"
                 + "</ul>"
                 + _good([
-                    "To see a control's saved changes, right-click it and choose <b>History</b>; see <a href=\"topic:tools-history\">History</a>."
+                    "To see a control's saved changes, right-click it and choose <b>History</b>; see <a href=\"topic:tools-history\">History</a>.",
+                    "Undo steps stay when you load another profile; deleting a mode removes them."
                 ]),
             related: ["logical-device-menus"]
         },
@@ -243,6 +262,13 @@ function topics() {
             title: "Why does a macro or condition say \"Add a Logical Device control first.\"?",
             body: "<p>The Logical Device has no controls yet, and nothing is created for you. Add a button, axis or hat first; see " + _link("logical-device-add-controls", "Add buttons, axes and hats") + ".</p>",
             related: ["logical-device-add-controls", "configuration-actions-macro", "configuration-actions-condition"]
+        },
+        {
+            id: "logical-device-q-controls-added",
+            section: questions,
+            title: "Why did an older profile add controls to the Logical Device?",
+            body: "<p>Profiles from older versions kept their own Logical Device. Now every profile shares one, so the first time an older profile opens, its controls are added to the shared one (nothing is removed) and a note lists them. When you save the profile, the original file is kept beside it as <i>name</i>.xml.v14.bak.</p>",
+            related: ["logical-device-saved"]
         }
     ]
 }

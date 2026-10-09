@@ -14,7 +14,7 @@ function topics() {
             id: "home-devices-home",
             section: "Home",
             title: "Home and its cards",
-            body: "<p><b>Home</b> <a href=\"open:view.home\">Open ›</a> shows one card per device: your physical devices, the <b>Keyboard</b>, <b>OSC</b>, each vJoy device, the Xbox controller, and the <b>Logical Device</b> once it has a module file.</p>"
+            body: "<p><b>Home</b> <a href=\"open:view.home\">Open ›</a> shows one card per device: your physical devices, the <b>Keyboard</b>, <b>OSC</b>, each vJoy device, the Xbox controller, and the <b>Logical Device</b>.</p>"
                 + "<ul>"
                 + "<li>Double-click a card, or select it and press <b>Enter</b>, to open its Configuration page (or <b>Output View</b> for an output).</li>"
                 + "<li>The arrow keys move between cards.</li>"

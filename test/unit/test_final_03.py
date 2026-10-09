@@ -287,7 +287,7 @@ def test_s69_each_module_file_write_and_delete_is_one_history_entry(
 # --- H. Home cards ---------------------------------------------------------------
 
 
-def test_s70_s71_home_shows_each_device_and_the_logical_device_only_with_a_file(
+def test_s70_s71_home_shows_each_device_and_always_the_logical_device(
     modules: Path,
 ) -> None:
     setup_cards(modules)
@@ -301,7 +301,8 @@ def test_s70_s71_home_shows_each_device_and_the_logical_device_only_with_a_file(
     assert cards["Xbox 360 Controller"]["direction"] == "dest"
     assert cards["Keyboard"]["direction"] == "source"
     assert cards["OSC"]["direction"] == "source"
-    assert None in cards  # no Logical Device card without its file
+    # S71 changed 2026-10-09 (D-04-LD-FILE): the card shows without its file too.
+    assert cards["Logical Device"]["direction"] == "source"
     store.write_json(
         store.path_for("Logical Device", str(ids.LOGICAL_DEVICE)),
         {"kind": "control.hardware", "device": "Logical Device", "direction": "source"},

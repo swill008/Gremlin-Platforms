@@ -17,14 +17,28 @@ from pytestqt.qtbot import QtBot
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_a_profile_made_without_binding_leaves_the_shown_rows_alone() -> None:
+def test_a_profile_made_without_binding_leaves_the_logical_device_alone() -> None:
+    """One Logical Device for every profile (D-04-LD-FILE): no profile has
+    rows of its own, and making one, bound or not, changes nothing in it."""
     from gremlin.logical_device import LogicalDevice
     from gremlin.profile import Profile
+    from gremlin.types import InputType
 
-    shown = Profile()
-    other = Profile(bind=False)
-    assert LogicalDevice().shows(shown.logical_device)
-    assert not LogicalDevice().shows(other.logical_device)
+    shared = LogicalDevice()
+    before = shared.to_dict()
+    try:
+        shared.load_dict({"controls": [], "groups": []})
+        shared.create(InputType.JoystickButton, label="Fire")
+        shared.mark_saved()
+        layout = shared.to_dict()
+        shown = Profile()
+        other = Profile(bind=False)
+        assert not hasattr(shown, "logical_device")
+        assert not hasattr(other, "logical_device")
+        assert shared.to_dict() == layout
+        assert shared.dirty is False
+    finally:
+        shared.load_dict(before)
 
 
 def test_reading_a_profile_never_rebinds_the_shown_rows(

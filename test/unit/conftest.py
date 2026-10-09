@@ -66,6 +66,23 @@ def _settings_kept() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _logical_device_kept() -> Iterator[None]:
+    """The Logical Device is one shared layout now (D-04-LD-FILE): no profile
+    load resets it, so a test that adds controls must not leave them for a
+    later test in the same process."""
+    from gremlin.logical_device import LogicalDevice
+
+    rows = LogicalDevice()
+    kept, dirty = rows.to_dict(), rows.dirty
+    yield
+    rows = LogicalDevice()
+    if rows.to_dict() != kept or rows.dirty != dirty:
+        rows.load_dict(kept)
+        if dirty:
+            rows._changed()  # noqa: SLF001 - put the unsaved mark back
+
+
+@pytest.fixture(autouse=True)
 def _no_settings_notice_left() -> Iterator[None]:
     """A test that reads a damaged settings file must not leave the
     'Settings Reset' notice for a later test that builds the app."""

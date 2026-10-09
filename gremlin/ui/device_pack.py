@@ -614,6 +614,10 @@ def _collect_wires(
             node = None
         if node is not None:
             action_xml.append(ElementTree.tostring(node, encoding="unicode"))
+    try:
+        action_xml = _with_logical_uids(action_xml)
+    except Exception:
+        pass
     return {
         "modes": list(modes.values()),
         "actions": action_xml,
@@ -1525,9 +1529,10 @@ def _retarget_vjoy(action_xml: list[str], moves: dict[int, int]) -> list[str]:
     return out
 
 
-def _logical_targets(action_xml: list[str]) -> list[tuple[str, int]]:
-    """The Logical Device inputs these actions send to: (type, number)."""
-    found: list[tuple[str, int]] = []
+def _logical_targets(action_xml: list[str]) -> list[tuple[str, int, str]]:
+    """The Logical Device inputs these actions send to: (type, number,
+    uid); uid "" in an older pack, which has none."""
+    found: list[tuple[str, int, str]] = []
     for block in action_xml:
         node = ElementTree.fromstring(block)
         if node.get("type") != "map-to-logical-device":
@@ -1537,43 +1542,98 @@ def _logical_targets(action_xml: list[str]) -> list[tuple[str, int]]:
             for prop in node.findall("property")
         }
         kind = str(props.get("logical-input-type") or "").strip().lower()
+        uid = str(props.get("logical-input-uid") or "").strip().lower()
         try:
             number = int(str(props.get("logical-input-id") or "").strip())
         except ValueError:
             continue
-        if kind and (kind, number) not in found:
-            found.append((kind, number))
+        if kind and (kind, number, uid) not in found:
+            found.append((kind, number, uid))
     return found
 
 
+def _with_logical_uids(action_xml: list[str]) -> list[str]:
+    """The actions with each Logical Device target's permanent id written
+    in (logical-input-uid), so an import finds the same control by id."""
+    from gremlin.logical_device import LogicalDevice
+    from gremlin.types import InputType
+
+    out = []
+    for block in action_xml:
+        node = ElementTree.fromstring(block)
+        if node.get("type") != "map-to-logical-device":
+            out.append(block)
+            continue
+        props = {prop.findtext("name"): prop for prop in node.findall("property")}
+        if "logical-input-uid" in props:
+            out.append(block)
+            continue
+        try:
+            kind = InputType.to_enum(
+                str(props["logical-input-type"].findtext("value") or "").strip().lower()
+            )
+            number = int(str(props["logical-input-id"].findtext("value") or "").strip())
+            uid = LogicalDevice().uid_of(kind, number)
+        except Exception:
+            uid = None
+        if not uid:
+            out.append(block)
+            continue
+        prop = ElementTree.SubElement(node, "property", {"type": "string"})
+        ElementTree.SubElement(prop, "name").text = "logical-input-uid"
+        ElementTree.SubElement(prop, "value").text = str(uid)
+        out.append(ElementTree.tostring(node, encoding="unicode"))
+    return out
+
+
 def _rows_of(profile: object) -> object:
-    """A profile's Logical Device rows when it isn't the open one (None:
-    the open profile's, what LogicalDevice() shows)."""
+    """The Logical Device rows a profile that isn't open still carries: a
+    saved version 14 profile read without opening it keeps its own rows
+    until it is saved (pending_logical_rows; the shared file is not
+    changed by reading it). None: the Logical Device's module file, which
+    every other profile uses (D-04-LD-FILE)."""
     from gremlin import shared_state
 
     if profile is None or profile is shared_state.current_profile:
         return None
-    return getattr(profile, "logical_device", None)
+    pending = getattr(profile, "pending_logical_rows", None)
+    if not pending:
+        return None
+    if isinstance(pending, dict):
+        from gremlin.logical_device import LogicalRows
+
+        rows = LogicalRows()
+        rows.load_dict(pending)
+        return rows
+    return pending
 
 
 def _missing_logical(
     action_xml: list[str], rows: object = None
-) -> list[tuple[str, int]]:
-    """The Logical Device inputs these actions send to that rows (a
-    profile's Logical Device rows; None: the open profile's) lack. A
-    profile that isn't open is checked against its own rows (10 S24)."""
+) -> list[tuple[str, int, str]]:
+    """The Logical Device inputs these actions send to that the Logical
+    Device's module file lacks (one layout for every profile, D-04-LD-FILE).
+    A target with an id is found by its id (decision 4); one without (an
+    older pack) by type and number. rows: a saved version 14 profile's own
+    rows (_rows_of), checked by type and number as well."""
     from gremlin.logical_device import LogicalDevice
     from gremlin.types import InputType
 
-    shown = rows if rows is not None else LogicalDevice()
+    shared = LogicalDevice()
     missing = []
-    for kind, number in _logical_targets(action_xml):
+    for kind, number, uid in _logical_targets(action_xml):
+        if uid and shared.by_uid(uid) is not None:
+            continue
         try:
             ident = LogicalDevice.Input.Identifier(InputType.to_enum(kind), number)
         except Exception:
             continue
-        if not shown.exists(ident):  # type: ignore[attr-defined]
-            missing.append((kind, number))
+        if rows is not None:
+            if rows.exists(ident):  # type: ignore[attr-defined]
+                continue
+        elif not uid and shared.exists(ident):
+            continue
+        missing.append((kind, number, uid))
     return missing
 
 
@@ -1645,8 +1705,8 @@ def _plan_wires(
 ) -> dict:
     """What importing the ticked modes would write, before anything changes:
     their inputs (less the controls the device doesn't have) and only the
-    actions those inputs use. rows: the Logical Device rows of the profile
-    they go into (None: the open profile's)."""
+    actions those inputs use. rows: a saved version 14 profile's own
+    Logical Device rows (_rows_of; None: the Logical Device's module file)."""
     from gremlin.types import InputType
     from gremlin.util import read_subelement
 
@@ -1816,30 +1876,28 @@ def _apply_wires(
         # inputs and device list as they were (map 2, GL-099, GL-109).
         with profile.library.change():
             action_xml = _retarget_vjoy(plan["actions"], moves)
-            created_logical = []
+            created_logical: list[str] = []
+            made_names: list[str] = []
             missing = plan["missingLogical"]
             if missing and create_logical:
-                for kind, number in missing:
-                    # Into the profile changed (the open one: what
-                    # LogicalDevice() shows).
-                    rows = _rows_of(profile) or LogicalDevice()
-                    made = rows.create(  # type: ignore[attr-defined]
-                        InputType.to_enum(kind), input_id=number
+                for kind, number, pack_uid in missing:
+                    # Into the Logical Device's module file (one layout for
+                    # every profile), under the pack's id when it has one;
+                    # a number taken by another control: the lowest free one.
+                    made = LogicalDevice().create(
+                        InputType.to_enum(kind), input_id=number, uid=pack_uid or None
                     )
-                    created_logical.append(made.identifier)
+                    created_logical.append(made.uid)
+                    made_names.append(f"{kind.capitalize()} {made.id}")
                 notes.append(
-                    "Created on the Logical Device: "
-                    + ", ".join(
-                        f"{kind.capitalize()} {number}" for kind, number in missing
-                    )
-                    + "."
+                    "Created on the Logical Device: " + ", ".join(made_names) + "."
                 )
             elif missing:
                 notes.append(
                     "These wires send to Logical Device inputs that don't exist "
                     "here, so they do nothing until you add them: "
                     + ", ".join(
-                        f"{kind.capitalize()} {number}" for kind, number in missing
+                        f"{kind.capitalize()} {number}" for kind, number, _ in missing
                     )
                     + "."
                 )
@@ -1880,8 +1938,13 @@ def _apply_wires(
             + ", ".join(plan["leftOut"]) + "."
         )
     if created_logical:
+        from gremlin import logical_device_file
         from gremlin.signal import signal
 
+        try:
+            logical_device_file.save(who="Device Pack")
+        except OSError as exc:
+            notes.append(f"The Logical Device file could not be saved: {exc}")
         signal.logicalDeviceModified.emit()
     undo = {
         "profile": profile,
@@ -2067,8 +2130,10 @@ def undo_import(force: bool = False) -> dict:
                 ):
                     delete_mode(mode)
             kept = []
-            for ident in wires["logical"]:
-                if not LogicalDevice().exists(ident):
+            for made_uid in wires["logical"]:
+                # By its permanent id: the number may have changed since.
+                ident = LogicalDevice().identifier_of_uid(made_uid)
+                if ident is None:
                     continue
                 if _logical_has_actions(profile, ident):
                     # Actions added since the import stay with it (08 Q21).
@@ -2084,6 +2149,14 @@ def undo_import(force: bool = False) -> dict:
                     + ", ".join(kept)
                     + "."
                 )
+    if logical_changed:
+        # Out of the module file too (08 S80).
+        from gremlin import logical_device_file
+
+        try:
+            logical_device_file.save(who="Device Pack")
+        except OSError as exc:
+            notes.append(f"The Logical Device file could not be saved: {exc}")
     try:
         from gremlin.signal import signal
 
@@ -2238,7 +2311,7 @@ def preview_import(
             else False
         ),
         "profileOpen": profile_open,
-        "missingLogical": [f"{k.capitalize()} {n}" for k, n in plan["missingLogical"]],
+        "missingLogical": [f"{k.capitalize()} {n}" for k, n, _ in plan["missingLogical"]],
         "leftOut": left_out,
         "moves": [
             {"from": f"vJoy {a}", "to": f"vJoy {b}"} for a, b in sorted(moves.items())

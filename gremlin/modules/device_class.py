@@ -192,7 +192,12 @@ CAN: dict[str, frozenset] = {
     # A device row in the Device Library (input module files only).
     "library_device": frozenset({_EXT}),
     # The Library's Built-in inputs section (10 S6).
-    "library_builtin": frozenset({"keyboard", "osc"}),
+    "library_builtin": frozenset({"keyboard", "osc", "logical_device"}),
+    # Built-ins without hardware: an imported module file is not checked
+    # against a plugged-in device's buttons, axes and hats (10 S55).
+    "no_hardware_limits": frozenset({"keyboard", "logical_device"}),
+    # Keeps the keys of an imported module file (the Keyboard's claim).
+    "key_claim": frozenset({"keyboard"}),
     # Copy, swap and calibrate are for external devices only (S90b).
     "copy": frozenset({_EXT}),
     "swap": frozenset({_EXT}),

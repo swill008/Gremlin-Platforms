@@ -128,19 +128,43 @@ def test_profiles_using_sees_the_open_profile_as_it_is_in_memory(
     ]
 
 
-def test_read_profile_reasons_and_open_rows_kept(folders: dict) -> None:
+def test_read_profile_reasons_and_shared_logical_device_kept(folders: dict) -> None:
     profiles = folders["profiles"]
-    current = _open(None)
-    missing = library_profiles.read_profile(profiles / "gone.xml")
-    assert isinstance(missing, str) and "gone.xml" in missing
-    (profiles / "damaged.xml").write_text("<profile", encoding="utf-8")
-    damaged = library_profiles.read_profile(profiles / "damaged.xml")
-    assert isinstance(damaged, str) and "damaged.xml" in damaged
-    good = library_profiles.read_profile(_saved(profiles / "good.xml", _STICK, 2))
-    assert isinstance(good, Profile)
-    assert len(good.inputs[_STICK]) == 2
-    # Reading another profile doesn't change the Logical Device rows shown.
-    assert LogicalDevice().shows(current.logical_device)
+    _open(None)
+    before = LogicalDevice().to_dict()
+    try:
+        LogicalDevice().load_dict({"controls": [], "groups": []})
+        LogicalDevice().create(InputType.JoystickButton, label="Fire")
+        LogicalDevice().mark_saved()
+        shown = LogicalDevice().to_dict()
+        missing = library_profiles.read_profile(profiles / "gone.xml")
+        assert isinstance(missing, str) and "gone.xml" in missing
+        (profiles / "damaged.xml").write_text("<profile", encoding="utf-8")
+        damaged = library_profiles.read_profile(profiles / "damaged.xml")
+        assert isinstance(damaged, str) and "damaged.xml" in damaged
+        good = library_profiles.read_profile(_saved(profiles / "good.xml", _STICK, 2))
+        assert isinstance(good, Profile)
+        assert len(good.inputs[_STICK]) == 2
+        # A version 14 profile with rows of its own: read, not merged.
+        old = profiles / "old.xml"
+        text = (profiles / "good.xml").read_text(encoding="utf-8-sig")
+        text = text.replace('version="15"', 'version="14"', 1).replace(
+            "</profile>",
+            "<logical-device><input><input-type>button</input-type>"
+            "<input-id>5</input-id><label>Old</label></input></logical-device>"
+            "</profile>",
+        )
+        old.write_text(text, encoding="utf-8")
+        older = library_profiles.read_profile(old)
+        assert isinstance(older, Profile), older
+        assert older.pending_logical_rows is not None
+        assert not old.with_name("old.xml.v14.bak").exists()
+        # Reading other profiles doesn't change the shared Logical Device
+        # (one layout in its own module file, D-04-LD-FILE).
+        assert LogicalDevice().to_dict() == shown
+        assert LogicalDevice().dirty is False
+    finally:
+        LogicalDevice().load_dict(before)
 
 
 def test_batch_changes_each_and_names_the_ones_it_cant(folders: dict) -> None:

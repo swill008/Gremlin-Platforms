@@ -164,7 +164,8 @@ def test_home_cards_keep_an_unplugged_stick_in_its_place(
     monkeypatch.setattr(module_model, "_show_stubs", lambda: True)
     monkeypatch.setattr(module_model, "apply_bound_targets", lambda _rows: None)
     monkeypatch.setattr(module_model.ModuleListModel, "_stacks", lambda _self: [])
-    tail = ["keyboard", "osc", "xbox"]
+    # The Logical Device card always shows (03 S71, D-04-LD-FILE).
+    tail = ["keyboard", "osc", "xbox", "logical"]
     module_model._set_order(["throttle", "stick", "pedals", *tail])
 
     model = module_model.ModuleListModel()  # reloads

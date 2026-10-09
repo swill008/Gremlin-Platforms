@@ -239,7 +239,8 @@ def test_a_profile_of_another_version_raises(tmp_path: pathlib.Path) -> None:
     from gremlin.profile import Profile
 
     path = tmp_path / "old.xml"
-    root = ElementTree.Element("profile", version=str(Profile.current_version - 1))
+    # 14 and 15 are read (04 S25); 13 is the newest one refused.
+    root = ElementTree.Element("profile", version="13")
     ElementTree.ElementTree(root).write(path)
     with pytest.raises(error.ProfileError, match="version"):
         Profile().from_xml(path)

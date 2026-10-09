@@ -40,8 +40,9 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 - `gremlin/ui/vjoy_status.py` (187): `VJoyStatus` (QML `Gremlin.Device`): which vJoy devices are active, which vJoy and extra tabs (Keyboard, Logical, OSC, Xbox) are pinned on Home (settings `devices/display/vjoy-tabs`, `extra-tabs`), `xboxAvailable`. `EXTRA_ALLOWED` / `EXTRA_DEFAULT` are saved setting keys, allowed by the no-built-in-lists guard (03 S90b).
 
 **Logical Device**
-- `gremlin/logical_device.py` (618): `LogicalDevice` singleton: inputs (axis/button/hat, id, label, user name, group, hide system name), current values (`_value`), groups, order, `memento/restore` (for Undo).
-- `gremlin/ui/logical_layout.py` (1580): `LogicalLayoutModel` for the page: rows, filters, selection, groups, sort, Assign Hardware links (Map to Logical Device actions), the action pane (draft/commit), Undo/Redo (50 steps; each step carries a label, read by the Undo bar through `lastChange`, `undone`, `undoTip`, `redoTip`, signal `revisionChanged`), `parentCount` (rows shown, the Find count).
+- `gremlin/logical_device.py` (618): `LogicalDevice` singleton: inputs (axis/button/hat, id, permanent `uid` (04 S2a), label, user name, group, hide system name), current values (`_value`), groups, order, `memento/restore` (for Undo); `LogicalRows.create(..., uid=None)`, `by_uid`, `uid_of`, `identifier_of_uid`, `to_dict` / `load_dict`, `dirty` / `mark_saved`; module-level `resolve_logical_reference` (the one reader of a saved reference: uid, else the v14 map, else type and number; unknown uid = missing). No file IO.
+- `gremlin/logical_device_file.py` (new 2026-10-09, D-04-LD-FILE): the one owner of the Logical Device's module file (`store.path_of("logical_device")`, key `logical-device`, other keys kept): `load` (at start; missing file = empty layout), `save` / `save_if_dirty` (with File › Save Profile, through `store` so History records it), `merge_profile_rows` (version 14 profile rows → `MergeResult.uid_map`, `added`), `backup_v14`, `current_uid_map` (old (type, number) → uid while a version 14 profile loads). The file also carries the module-file identity keys (`kind`, `device`, `direction`, `boundName`, `boundGuidLocal`); a real version 14 merge saves whenever the file differs.
+- `gremlin/ui/logical_layout.py` (1580): `LogicalLayoutModel` for the page: rows, filters, selection, groups, sort, Assign Hardware links (Map to Logical Device actions), the action pane (draft/commit), Undo/Redo (50 steps; each step carries a label, read by the Undo bar through `lastChange`, `undone`, `undoTip`, `redoTip`, signal `revisionChanged`), `parentCount` (rows shown, the Find count). D-04-LD-FILE: `drop_steps` / `drop_logical_steps` (S83), connected to `signal.logicalDeviceReloaded`.
 - `qml/LogicalPage.qml` (2134): the page; `editorLocked` while running, menus, drag, filters, pane. Find and the Assign Hardware search are the shared `SearchBox` (`logicalFind`; "N found", ×); Undo / Redo is the shared `UndoBar` (`logicalUndoBar`); an empty list shows `EmptyState` with Clear Filters; Delete row(s), Delete Group, Clear Name and Delete action ask the shared question (`Confirm.ask`, S140).
 - `qml/LogicalDeviceSelector.qml` + `gremlin/ui/device.py` `LogicalDeviceSelectorModel` (674): Logical Device pickers in action editors. `device.py` `LogicalDeviceManagementModel` (486): older model with `createInput/changeName/deleteInput` (no QML user found).
 
@@ -54,7 +55,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 - `test/unit/test_audit3_run_stop.py` (9 tests: held keys, buttons, motion, Logical loop, stuck macro step), `test_audit2_macros.py` (4), `test_audit_runtime.py` (9), `test_action_fixes.py` (Run/Stop items), `test_audit2_coverage.py` (Run flag, release after a failing action, Load Profile restart).
 - `test_output_layer.py` (7), `test_vjoy_writers_use_firewall.py` (3), `test_device_fixes.py` (vJoy busy), `test_xbox_output_module.py` (9), `test_map_to_xbox.py`, `test_map_to_xbox_inputs.py`, `test_xbox_incoming_names.py` (3), `test_xbox_pads_told_apart.py` (4), `test_xbox_viewer_driver_check.py` (8), `test_one_copy_of_each_rule.py`.
 - `test_run_scope_only.py` (6): only CodeRunner begins and stops a Run; nothing keeps its own Run counter.
-- `test_logical_device.py` (8), `test_logical_layout.py`, `test_undo_bar_labels.py` (Logical step labels, `parentCount`), `test_config_pages_shared_pieces.py::test_logical_page_search_delete_and_undo_bar`, `test_logical_events_pass_gate.py` (2), `test_audit_editing.py` (Logical Undo), `test_audit3_actions_undo.py` (Logical Undo), `test_audit2_modes.py` (Logical pane mode).
+- `test_ld_model.py` (10), `test_ld_file.py` (15+), `test_ld_refs_a.py` (7), `test_ld_refs_b.py` (8+), `test_ld_refs_c.py`, `test_ld_pack.py` (5), `test_ld_profile.py` (7), `test_ld_lib.py` (7), `test_ld_ui.py` (D-04-LD-FILE), `test_logical_device.py` (8), `test_logical_layout.py`, `test_undo_bar_labels.py` (Logical step labels, `parentCount`), `test_config_pages_shared_pieces.py::test_logical_page_search_delete_and_undo_bar`, `test_logical_events_pass_gate.py` (2), `test_audit_editing.py` (Logical Undo), `test_audit3_actions_undo.py` (Logical Undo), `test_audit2_modes.py` (Logical pane mode).
 - `test_threads.py`, `test_bounded_waits.py`, `test_program_fixes.py` (sound), `test_play_sound_missing_file.py`, `test_mode_refresh_and_add_key.py`, `test_device_scan.py`, `test_device_reconnect.py`, `test_user_script.py`.
 - `test/action_interaction/test_macro.py` (9), `test_pause_resume.py`, `test_tempo.py`, `test_condition.py`.
 
@@ -79,9 +80,9 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | Opened vJoy devices | `VJoyProxy.vjoy_devices` (class dict, no lock) | opened by the first write or read (`_open_vjoy`), emptied by `reset_vjoy`; also by `device_initialization` when the vJoy device list changes |
 | Plugged Xbox pads | `XboxProxy._pads`, `_busp` (locked) | plugged on first `write_xbox`, unplugged by `reset_drivers` |
 | Gremlin's own pad list | `vigem/own_pads.py` (file in the data folder) | `note_device` |
-| Logical Device inputs, groups, order, names | `LogicalDevice` singleton | Logical page (`logical_layout`), profile load (`profile.py:859` reset + create), `backend.py:646` reset, Device Pack (`device_pack.py:1476`, `1622`), `macro.LogicalDeviceAction.create` (770, creates Button 1 when empty), old `LogicalDeviceManagementModel` |
+| Logical Device inputs, groups, order, names, permanent ids | `LogicalDevice` singleton, saved in its own module file by `logical_device_file` (D-04-LD-FILE; was saved in the profile) | `logical_device_file.load` at start (kept across profile loads), version 14 merge (`merge_profile_rows`), Logical page (`logical_layout`), Device Library Restore / Import (page 10), Device Pack (`device_pack.py:1476`, `1622`), `macro.LogicalDeviceAction.create` (770, creates Button 1 when empty), old `LogicalDeviceManagementModel` |
 | Logical Device values | `LogicalDevice.Input._value` | Map to Logical Device (main thread and its loop thread), macro Logical Device step (macro thread), release callback; reset only when the whole device is reset at profile load |
-| Logical page Undo | `LogicalLayoutModel._undo/_redo` (in memory, 50) | page actions; cleared on profile change and mode delete |
+| Logical page Undo | `LogicalLayoutModel._undo/_redo` (in memory, 50) | page actions; kept across profile loads except steps that changed the old profile's actions or links; all dropped on mode delete, Discard and `signal.logicalDeviceReloaded` (`drop_steps` / `drop_logical_steps`; S83, D-04-LD-FILE) |
 | Sound queue | `AudioPlayer._play_list`, `_currently_playing` | Play Sound; cleared at Stop |
 | Speech queue and engine | `TTSManager._queue`, `_engine` | Text to Speech; queue cleared at Stop, engine kept |
 | Script timers | `PeriodicRegistry._registry`, thread | scripts at Run; cleared at Stop |
@@ -114,6 +115,9 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | Relative axis (Map to vJoy, Map to Logical Device) | `threads.start` loop | writes every step; ends by vJoy release (vJoy) or Run number (Logical) |
 | Short pulse | `base_classes._pulse_event` 612 | release after 50 ms (`QTimer.singleShot` on main thread, `time.sleep` elsewhere); `flush_pulses` at Stop |
 | Viewers / Home cards read outputs | `live_input`, `pair_live`, `xbox_viewer`, `module_model` | `output.vjoy_state`, `vjoy_held`, `xbox_state` (never open a device) |
+| Program start | `joystick_gremlin.py` / `Backend` | `logical_device_file.load` (fills `LogicalDevice()` from its module file) |
+| A saved Logical Device reference is read (actions, conditions, macros, scripts, rule checks) | their `from_xml` / loaders | `logical_device.resolve_logical_reference` (04 S2a) |
+| File › Save Profile | `Backend.saveProfile` | `logical_device_file.save_if_dirty` (writes the module file when `LogicalDevice().dirty`; History records it) |
 | Logical page: Add Buttons/Axes/Hats (count up to 180) | `LogicalPage.qml` menu -> `addMany` 836 | `_apply` -> `LogicalDevice.create_many` |
 | Logical page: Rename, Hide system name | `setRowLabel` 882 / `setUserName` 873 | `set_user_label` |
 | Logical page: Clear Name | `Confirm.ask` (red, "Clear the name of X?") -> `setUserName` | `set_user_label` |
@@ -148,14 +152,15 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | Event listener / devices (`event_handler.EventListener`, `device_initialization`, `input_cache`, `input_refresh`) | `_refresh_axes` reads the vJoy readback from `input_cache` and queues `RefreshPhysicalInputs`; `vjoy_devices()` | `device_change_event` -> backend Stop/Run; `device_initialization` calls `output.reset_vjoy` |
 | Actions (`action_plugins/*`, `base_classes`, `plugin_manager`) | `CallbackObject` builds each root action's functor at Run | actions call output, macro, sendinput, audio, TTS, Logical Device, `ButtonReleaseActions`, `EventHandler.pause/resume`, `code_runner.run_number` |
 | Modes (`mode_manager`) | `switch_to` at Run, `flush_last_modes` at Stop, `resolve_start_mode` | `mode_changed` -> refresh axes, release-mode tracking |
-| Profile (`profile.py`) | reads inputs, scripts, settings, modes | profile load resets and refills `LogicalDevice` |
+| Profile (`profile.py`) | reads inputs, scripts, settings, modes | Save calls `logical_device_file.save_if_dirty`; a version 14 load calls `merge_profile_rows` / `backup_v14`; references resolve by uid (`identifier_of_uid`). Profile load no longer resets `LogicalDevice` (D-04-LD-FILE) |
+| Module file store (`modules/store.py`, page 03) | `logical_device_file` reads and writes the Logical Device's module file through `store.path_of` / `update_path` / `write_json` | - |
 | User scripts (`user_script.py`) | `_setup_user_scripts` (retry, reload), callback and periodic registries | scripts write vJoy through `ScriptVJoy`, keys through `keyboard` |
 | OSC (parked) | `OscRuntime().start/stop` at Run/Stop and again at quit | OSC emits `joystick_event` (always forwarded) |
 | Viewers and Home cards (`live_input`, `pair_live`, `xbox_viewer`, `xbox_device_model`, `output_modules`, `module_model`, `vjoy_status`) | - | `vjoy_state`, `vjoy_held`, `xbox_state`, `vjoy_modules`, `vjoy_in_use_elsewhere`, driver checks; `runtime_active()` |
 | Configuration page / Binding catalog | Logical page reuses its private draft helpers | `editorLocked` from `gremlinActive` |
 | Device Pack (`device_pack.py`) | - | creates and deletes Logical Device inputs; driver checks |
 | Auto Mapper (`modules/auto_map.py`) | - | `vjoy_modules()` |
-| History / saving | Logical Device and its links are saved with the profile | - |
+| History / saving | The Logical Device is saved in its own module file (History records it as a module file, 08 S4, S46); its links (Map to Logical Device) are saved with the profile | - |
 | Live Log Reader / input monitor | `input_monitor.record` in `process_event` | reads `gremlin_active` |
 | Process monitor (auto-load) | - | `process_changed` -> Stop/Run |
 | Run scope (`run_scope.py`) | `begin` / `stop`; actions, macros, scripts, keyboard, mouse and output register timers, loops, held keys and Stop steps | - |
@@ -304,12 +309,12 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 
 ### Logical Device
 - S77. It should be a device inside the program with buttons, axes and hats named by type and number (Button 1, Axis 1, Hat 1); its values are fed by Map to Logical Device and its controls have actions of their own. [help: Logical Device] [glossary: Logical Device]
-- S78. It should add up to 180 controls at once, reuse the lowest free number, and sort names by number (Button 2 before Button 10). [help: Controls, groups, and the menu] [test: test_logical_device.py::test_create_many_caps_at_180] [test: test_logical_device.py::test_index_reuse] [test: test_logical_device.py::test_labels_sorted_naturally]
+- S78. It should add up to 180 controls at once, reuse the lowest free number, and sort names by number (Button 2 before Button 10). The number is a display name only; references use the permanent id (04 S2a); a control brought in with an id (Device Pack) whose number is taken gets the lowest free number. [changed 2026-10-09, user: D-04-LD-FILE] [help: Controls, groups, and the menu] [test: test_logical_device.py::test_create_many_caps_at_180] [test: test_logical_device.py::test_index_reuse] [test: test_logical_device.py::test_labels_sorted_naturally]
 - S79. It should let the user rename a control, hide the system name, clear the name, group controls, move and sort them, and treat group names that differ only in capitals or spaces as the same group. [help: Controls, groups, and the menu] [user confirmed 2026-10-06; was code only for the group-name rule]
 - S80. It should list, in Assign Hardware, claimed physical controls of the same type (keys for buttons, OSC too) and add or remove a Map to Logical Device action in the page's mode; a vJoy used as output is never a source. [help: Assign hardware and actions] [test: test_logical_layout.py::test_named_vjoy_cannot_be_a_source_module]
 - S81. It should send on to Xbox or vJoy only through the control's own actions, never through Assign Hardware. [help: Sending to Xbox or vJoy]
 - S82. It should lock editing while the profile runs. [help: Logical Device]
-- S83. It should keep up to 50 Undo steps, drop them when another profile loads or a mode is deleted, record no step for a change to nothing, and leave everything as it was when a step can't be played. [tracker: AU-11] [tracker: AU-33] [test: test_audit_editing.py::test_logical_steps_end_with_the_profile] [test: test_audit_editing.py::test_a_logical_change_to_nothing_is_no_step] [test: test_audit3_actions_undo.py::test_logical_undo_with_a_damaged_input_copy_changes_nothing]
+- S83. It should keep up to 50 Undo steps, keep them when another profile loads (the Logical Device is shared by every profile) except the parts that changed the old profile's actions or links, which are dropped; drop all of them when a mode is deleted, on Discard, and when its file is read again (Restore, Import, History Restore) [changed 2026-10-09, user: D-04-LD-FILE], record no step for a change to nothing, and leave everything as it was when a step can't be played. [tracker: AU-11] [tracker: AU-33] [test: test_audit_editing.py::test_logical_layout_steps_stay_when_another_profile_loads] [test: test_audit_editing.py::test_a_logical_change_to_nothing_is_no_step] [test: test_audit3_actions_undo.py::test_logical_undo_with_a_damaged_input_copy_changes_nothing]
 - S84. It should close the action editor with a notice when its mode is deleted, and OK should go to the pane's own mode. [tracker: AU-89] [test: test_audit2_modes.py::test_logical_ok_goes_to_the_panes_own_mode]
 - S85. It should start each Run with its values at neutral. [user decision: R1 (Q1)] [changed 2026-10-07: open-gap note removed, fixed in batch 1]
 
@@ -355,6 +360,7 @@ Code against spec or rule:
 - G15. No lock on `VJoyProxy.vjoy_devices` or on Logical Device values, written from several threads (RB10, RB11). Suspected.
 - G16. Quit runs Stop twice and resets drivers, audio, TTS and OSC twice (RB8). Harmless today.
 - G17. `TTSManager.stop` leaves the engine and its signal connection alive across Runs (by design today; no `start` on a dead engine is possible).
+- G19. Logical Device stand-alone (D-04-LD-FILE, 2026-10-09): own module file, permanent ids, Save covers it, Undo kept across profile loads (S78, S83; 04 S2-S2b, S25). Being built 2026-10-09 (`logical_device_file.py` new). [to-do 60 stage A]
 - G18. Help "Run and status" wording matches the glossary, but the test plan rows TB-02 and W-06..09 still say "Toggle", "Active / Not Running", "Activate/Deactivate" (test-plan text only; no such words found on screen).
 
 From the to-do list:
@@ -372,7 +378,7 @@ Open tracker items for this subsystem:
 Things nothing owns:
 - (Done in batch 1, GL-046) "What a Run holds" is owned by `gremlin/run_scope.py`; Stop runs its stages in order.
 - The "locked while running" rule has no owner in Python; each QML page checks `gremlinActive` itself.
-- Logical Device values have no reset owner (only whole-device reset at profile load).
+- Logical Device values have no reset owner (Stop puts them to neutral, GL-050; the device is no longer reset at profile load, D-04-LD-FILE).
 - (Done in batch 3, GL-267) The keep-alive and the busy retry for vJoy are both in `output.py`.
 
 ## 11. Size and test coverage
@@ -422,6 +428,8 @@ and Q12 as written there). Every question answered as recommended:
 | Q17 | Map to vJoy relative axis ends with its Run |
 | Q18 | Remove the unused second Logical Device writer (after a grep confirms no user) |
 | Q19 | No Xbox pad outside a Run, ever |
+
+| S78, S83 | 2026-10-09: D-04-LD-FILE (number is a display name, references use the permanent id; Undo steps kept across profile loads) |
 
 The section 8 statements are now the definition of correct for this
 subsystem; where today's code differs (section 10 and the decisions above),

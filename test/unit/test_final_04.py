@@ -249,11 +249,19 @@ def test_s1_s62_profile_settings_stay_in_memory_until_saved(
     assert not profile.has_unsaved_changes()
 
 
-def test_s2_logical_osc_rows_and_device_names_are_in_the_profile_file(
-    profile: Profile, tmp_path: Path
+def test_s2_osc_rows_and_device_names_in_the_profile_logical_device_in_its_file(
+    profile: Profile, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """S2: the Logical Device and OSC rows and the device names list are
-    saved in the profile file and come back with it."""
+    """S2: the OSC rows and the device names list are saved in the profile
+    file and come back with it; the Logical Device has its own module file
+    (D-04-LD-FILE), which the profile's Save writes when it changed."""
+    from gremlin import logical_device_file
+    from gremlin.modules import store
+
+    modules = tmp_path / "modules"
+    modules.mkdir()
+    monkeypatch.setattr(store, "folder", lambda: modules)
+    LogicalDevice().load_dict({"controls": [], "groups": []})
     profile.bind_devices()
     LogicalDevice().create(InputType.JoystickButton, label="Fire")
     OscDevice().create(InputType.JoystickButton, label="/osc/fire")
@@ -261,15 +269,23 @@ def test_s2_logical_osc_rows_and_device_names_are_in_the_profile_file(
     profile.remember_device(_STICK, "Test Stick")
     path = tmp_path / "rows.xml"
     profile.to_xml(path)
+    text = path.read_text(encoding="utf-8-sig")
+    assert "/osc/fire" in text
+    assert "<logical-device" not in text and "Fire" not in text.replace("/osc/fire", "")
+    assert (modules / "logical_device.json").exists()
 
-    LogicalDevice().reset()
+    LogicalDevice().load_dict({"controls": [], "groups": []})
     OscDevice().reset()
     back = Profile()
     back.from_xml(path)
     back.bind_devices()
-    assert LogicalDevice().exists("Fire")
     assert OscDevice().find_address("/osc/fire") is not None
     assert back.device_database.devices[_STICK].name == "Test Stick"
+    # The Logical Device comes back from its own file, not the profile.
+    assert not LogicalDevice().exists("Fire")
+    logical_device_file.load()
+    assert LogicalDevice().exists("Fire")
+    LogicalDevice().load_dict({"controls": [], "groups": []})
 
 
 def test_s5_new_and_load_stop_the_running_profile_first(

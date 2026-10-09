@@ -224,6 +224,30 @@ def _sync_run_highlight_hold(runner: code_runner.CodeRunner) -> None:
         shared_state.release_input_highlighting("run")
 
 
+def _load_logical_device() -> None:
+    """Fills LogicalDevice() from its module file (D-04-LD-FILE)."""
+    from gremlin import logical_device_file
+
+    try:
+        logical_device_file.load()
+    except Exception:
+        logging.getLogger("system").exception("Could not read the Logical Device file")
+
+
+def _logical_unsaved() -> bool:
+    """The Logical Device has edits its file doesn't have yet."""
+    return bool(getattr(LogicalDevice(), "dirty", False))
+
+
+def logical_migration_text(added: list[str] | None) -> str:
+    """The one-time note after a version 14 profile's Logical Device moved
+    to the shared file; "" when nothing was added."""
+    names = [str(name) for name in (added or []) if str(name)]
+    if not names:
+        return ""
+    return "Logical Device moved to its own file: added " + ", ".join(names) + "."
+
+
 @common.SingletonDecorator
 class Backend(QtCore.QObject):
     windowTitleChanged = QtCore.Signal()
@@ -244,6 +268,9 @@ class Backend(QtCore.QObject):
     restartRequested = QtCore.Signal()
     # A recovery copy waits to be offered (takeRecoveryOffer, 04 S94).
     recoveryOfferChanged = QtCore.Signal()
+    # Something the "*" covers changed outside the profile (a Logical page
+    # edit): Main.qml checks the "*" again.
+    unsavedChanged = QtCore.Signal()
 
     def __init__(
         self, engine: QtQml.QQmlApplicationEngine, parent: ta.OQO = None
@@ -251,6 +278,9 @@ class Backend(QtCore.QObject):
         super().__init__(parent)
         self.engine = engine
         self.config = config.Configuration()
+        # One Logical Device for every profile, read from its module file
+        # once, before any profile (D-04-LD-FILE, 04 S2).
+        _load_logical_device()
         self.profile = profile.Profile()
         self.profile.mark_clean()
         shared_state.current_profile = self.profile
@@ -284,6 +314,8 @@ class Backend(QtCore.QObject):
         event_handler.EventListener().device_change_event.connect(self._device_change)
         event_handler.EventListener().joystick_event.connect(self._highlight_input)
         signal.uiScaleChanged.connect(self.uiScaleChanged)
+        # A Logical page edit changes the "*" (04 S2: Save writes it).
+        signal.logicalDeviceModified.connect(self.unsavedChanged)
         # Recovery copies of unsaved edits, kept about every minute (04 S94).
         self._recovery = profile_recovery.ProfileRecovery()
         self._recovery_offer: dict | None = None
@@ -335,8 +367,9 @@ class Backend(QtCore.QObject):
         # The open profile is set first: the start mode is worked out from
         # it, not from the profile open before (04 S52, GL-053).
         shared_state.current_profile = self.profile
-        # The screens and the runtime show this profile's Logical Device and
-        # OSC rows (the rows belong to the profile, GL-074).
+        # The screens and the runtime show this profile's OSC rows (GL-074).
+        # The Logical Device stays as it is: one layout from its own file,
+        # loaded at start, for every profile (D-04-LD-FILE).
         self.profile.bind_devices()
         user_script.forget_other_scripts(self.profile.scripts.scripts)
         mm = mode_manager.ModeManager()
@@ -645,6 +678,17 @@ class Backend(QtCore.QObject):
         signal.reloadCurrentInputItem.emit()
         return True
 
+    @QtCore.Slot()
+    def discardLogicalDevice(self) -> None:
+        """Discard on the save-changes question: the Logical Device's edits
+        go with the profile's, read again from its file (D-04-LD-FILE)."""
+        if not _logical_unsaved():
+            return
+        _load_logical_device()
+        # Its Undo steps would play the discarded edits again.
+        signal.logicalDeviceReloaded.emit()
+        signal.logicalDeviceModified.emit()
+
     @QtCore.Slot(str)
     def discardRecovery(self, fpath: str) -> None:
         """Discard: the recovery copy of fpath ("" for Untitled) goes."""
@@ -788,8 +832,9 @@ class Backend(QtCore.QObject):
 
     @QtCore.Property(bool, notify=propertyChanged)
     def profileContainsUnsavedChanges(self) -> bool:
-        """Exact: what the Save / Discard / Cancel questions ask about."""
-        return self.profile.has_unsaved_changes()
+        """Exact: what the Save / Discard / Cancel questions ask about.
+        Edits to the Logical Device count: Save writes them too (04 S2)."""
+        return self.profile.has_unsaved_changes() or _logical_unsaved()
 
     @QtCore.Property(bool, notify=propertyChanged)
     def profileLooksUnsaved(self) -> bool:
@@ -797,7 +842,7 @@ class Backend(QtCore.QObject):
         while no edit was noted, so a large profile isn't rebuilt each time
         (04 Q19). An edit no hook sees makes the "*" late, never a question
         skipped: those use profileContainsUnsavedChanges."""
-        return self.profile.looks_unsaved()
+        return self.profile.looks_unsaved() or _logical_unsaved()
 
     @QtCore.Property(type=ScriptListModel, notify=profileChanged)
     def scriptListModel(self) -> ScriptListModel:
@@ -837,8 +882,8 @@ class Backend(QtCore.QObject):
     def _read_profile(self, fpath: str) -> None:
         """Make the profile at fpath the open one; raises when it can't be
         read."""
-        # A new Profile has its own Logical Device and OSC rows: the open
-        # one keeps its own if this fails (GL-074).
+        # A new Profile has its own OSC rows: the open one keeps its own if
+        # this fails (GL-074). The Logical Device is shared (D-04-LD-FILE).
         new_profile = profile.Profile()
         new_profile.from_xml(Path(fpath))
         profile_folder = os.path.dirname(fpath)
@@ -853,6 +898,13 @@ class Backend(QtCore.QObject):
         for warning in getattr(new_profile, "load_warnings", []) or []:
             logging.getLogger("system").warning(warning)
             signal.showNotification.emit("Open Profile", warning)
+        # A version 14 profile's Logical Device moved to the shared file:
+        # said once, the first time it opens (04 S25, D-04-LD-FILE).
+        moved = getattr(new_profile, "logical_migration_note", None)
+        note = logical_migration_text(moved)
+        if note:
+            logging.getLogger("system").info(note)
+            signal.showNotification.emit("Logical Device", note)
 
     def _load_profile(self, fpath: str, report: bool = True) -> bool:
         """Opens a profile; False if it couldn't. report=False: the reason is

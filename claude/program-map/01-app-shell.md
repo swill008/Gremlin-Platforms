@@ -34,7 +34,7 @@ Python
 - `gremlin/ui/system_tray.py` (344): Win32 tray icon, its menu, minimize/close to tray, the one-time balloon.
 - `gremlin/ui/tray_memory.py` (77): unload pages and trim memory while hidden in the tray.
 - `gremlin/ui/window_placement.py` (519): window and tool window size/place memory (`WindowPlacement`, `ToolWindowMemory`).
-- `gremlin/signal.py` (58): the program-wide signals the shell listens to (`configChanged`, `showError`, `showNotification`, `uiScaleChanged`).
+- `gremlin/signal.py` (58): the program-wide signals the shell listens to (`configChanged`, `showError`, `showNotification`, `uiScaleChanged`). `logicalDeviceReloaded` (D-04-LD-FILE): emitted by `store._reload_logical_device` and `Backend.discardLogicalDevice`; the Logical page drops its Undo steps and redraws (06 S83).
 - `gremlin/ui/leave_text.py` (188): leaving a text box (S134, D-01-LEAVE-TEXT): one app-wide event filter (`install`, from `joystick_gremlin.py`); Esc or a press outside leaves the box and keeps the text; `leaveTextOnEscape: false` opts a window out of the Esc part (Module Setup).
 - `gremlin/ui/folder_memory.py` (120): the last folder per kind of file (S143), setting `global/internal/last-folders`; `FolderMemory` for `FilePicker.qml`.
 - `gremlin/ui/window_titles.py` (85): every title bar starts with the program name and version, then the window's own title (S57); writes the native title on Windows when a window shows or its title changes (event filter on the app), nothing off-screen. Test `test_window_titles.py`.

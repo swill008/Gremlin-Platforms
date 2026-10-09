@@ -18,7 +18,7 @@ import pathlib
 import sys
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 
 sys.path.append(".")
 
@@ -53,6 +53,25 @@ def no_history(monkeypatch: pytest.MonkeyPatch) -> None:
     from gremlin import history_profile
 
     monkeypatch.setattr(history_profile, "record_save", lambda *a, **k: None)
+
+
+@pytest.fixture(autouse=True)
+def own_logical_device(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[None]:
+    """The shared Logical Device starts empty and saved, and its module
+    file goes to a temporary modules folder (D-04-LD-FILE)."""
+    from gremlin.logical_device import LogicalDevice
+    from gremlin.modules import store
+
+    modules = tmp_path / "modules"
+    modules.mkdir()
+    monkeypatch.setattr(store, "folder", lambda: modules)
+    shared = LogicalDevice()
+    before = shared.to_dict()
+    shared.load_dict({"controls": [], "groups": []})
+    yield
+    shared.load_dict(before)
 
 
 _KEEP: list[QtCore.QObject] = []
@@ -219,7 +238,11 @@ def _vjoy_initial(profile: Profile) -> None:
 
 
 def _logical_row(profile: Profile) -> None:
-    profile.logical_device.create(InputType.JoystickButton)
+    # One shared layout in its own module file; the open profile's "*"
+    # covers it and its Save writes it (D-04-LD-FILE decision 2).
+    from gremlin.logical_device import LogicalDevice
+
+    LogicalDevice().create(InputType.JoystickButton)
 
 
 def _swap(profile: Profile) -> None:
@@ -266,6 +289,27 @@ def test_each_kind_of_edit_shows_unsaved_and_save_clears_it(
     built = _Counted(profile, monkeypatch)
     assert profile.looks_unsaved() is False
     assert built.calls == 0, "a save is the new baseline: nothing to rebuild"
+
+
+def test_a_logical_row_is_saved_to_its_own_file_with_the_profile(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from gremlin import logical_device_file
+    from gremlin.logical_device import LogicalDevice
+
+    profile, path = _saved_profile(tmp_path, monkeypatch)
+    LogicalDevice().create(InputType.JoystickButton, label="Fire")
+    assert profile.looks_unsaved() is True
+    profile.to_xml(path)
+    assert LogicalDevice().dirty is False
+    labels = [c.get("label") for c in logical_device_file.read_layout()["controls"]]
+    assert labels == ["Fire"]
+    assert "logical-device" not in path.read_text(encoding="utf-8-sig")
+    # A profile read without opening it never shows the shared "*".
+    other = Profile(bind=False)
+    other.from_xml(path)
+    LogicalDevice().create(InputType.JoystickButton, label="Other")
+    assert other._logical_unsaved() is False
 
 
 def test_script_setting_edit_shows_unsaved(

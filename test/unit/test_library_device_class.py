@@ -26,10 +26,11 @@ STICK_GUID = "{6C3D1E20-1111-2222-3333-444455556666}"
 OTHER = uuid.UUID("22222222-2222-3333-4444-555555555555")
 
 
-def test_built_in_guid_is_keyboard_and_osc_only() -> None:
+def test_built_in_guid_is_keyboard_osc_and_logical_device() -> None:
     assert library.is_built_in_guid(str(ids.KEYBOARD))
     assert library.is_built_in_guid("{" + str(ids.OSC).upper() + "}")
-    assert not library.is_built_in_guid(str(ids.LOGICAL_DEVICE))
+    # The Logical Device has its own module file (03 S90b, D-04-LD-FILE).
+    assert library.is_built_in_guid(str(ids.LOGICAL_DEVICE))
     assert not library.is_built_in_guid(str(ids.XBOX))
     assert not library.is_built_in_guid(KEYBOARD_STICK)
     assert not library.is_built_in_guid("")

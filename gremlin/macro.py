@@ -40,7 +40,7 @@ from gremlin.keyboard import (
     send_key_down,
     send_key_up,
 )
-from gremlin.logical_device import LogicalDevice
+from gremlin.logical_device import LogicalDevice, resolve_logical_reference
 from gremlin.modules import output
 from gremlin.types import (
     AxisMode,
@@ -761,12 +761,65 @@ class LogicalDeviceAction(AbstractAction):
             value: the value of the generated input
             axis_mode: if an axis is used, how to interpret the value
         """
-        self.input_type = input_type
+        # The stored permanent id is what the step names (D-04-LD-FILE);
+        # setting the type or number points it at that control's uid.
+        self._uid: str | None = None
+        self._input_type = input_type
+        self._input_id: int | None = None
         self.input_id = input_id
         self.value = value
         self.axis_mode = axis_mode
         self._event_listener = event_handler.EventListener()
         self._mode_manager = mode_manager.ModeManager()
+
+    @property
+    def input_type(self) -> InputType:
+        return self._input_type
+
+    @input_type.setter
+    def input_type(self, value: InputType) -> None:
+        self._input_type = value
+        self._repoint_uid()
+
+    @property
+    def input_id(self) -> int | None:
+        return self._input_id
+
+    @input_id.setter
+    def input_id(self, value: int | None) -> None:
+        self._input_id = value
+        self._repoint_uid()
+
+    @property
+    def uid(self) -> str | None:
+        """Permanent id of the named control (None: none chosen or known)."""
+        return self._uid
+
+    @uid.setter
+    def uid(self, value: str | None) -> None:
+        self._uid = value or None
+
+    def _repoint_uid(self) -> None:
+        if self._input_id is None:
+            self._uid = None
+            return
+        self._uid = LogicalDevice().uid_of(self._input_type, self._input_id)
+
+    def is_missing(self) -> bool:
+        """The stored uid names a control the Logical Device doesn't have."""
+        return self._uid is not None and (
+            LogicalDevice().identifier_of_uid(self._uid) is None
+        )
+
+    def current_identifier(self) -> LogicalDevice.Input.Identifier | None:
+        """The named control's current type and number (None: missing or
+        none chosen); without a uid (old data), the saved type+number."""
+        if self._uid is not None:
+            return LogicalDevice().identifier_of_uid(self._uid)
+        if self._input_id is None:
+            return None
+        ident = LogicalDevice.Input.Identifier(self._input_type, self._input_id)
+        return ident if LogicalDevice().exists(ident) else None
 
     @classmethod
     def create(cls) -> LogicalDeviceAction:
@@ -780,15 +833,14 @@ class LogicalDeviceAction(AbstractAction):
         return LogicalDeviceAction(first_input.type, first_input.id, first_input._value)
 
     def __call__(self) -> None:
-        if self.input_id is None:
-            return  # no control chosen
-        ld = LogicalDevice()[
-            LogicalDevice.Input.Identifier(self.input_type, self.input_id)
-        ]
+        ident = self.current_identifier()
+        if ident is None:
+            return  # no control chosen, or one the Logical Device doesn't have
+        ld = LogicalDevice()[ident]
         # Update the state of the logical device and then emit the corresponding
         # event to trigger further processing.
         value = None
-        match self.input_type:
+        match ident.type:
             case InputType.JoystickAxis:
                 if self.axis_mode == AxisMode.Absolute:
                     ld.update(self.value)
@@ -803,13 +855,13 @@ class LogicalDeviceAction(AbstractAction):
                 value = ld.direction
 
         is_pressed = (
-            ld.is_pressed if self.input_type == InputType.JoystickButton else None
+            ld.is_pressed if ident.type == InputType.JoystickButton else None
         )
 
         self._event_listener.joystick_event.emit(
             event_handler.Event(
-                event_type=self.input_type,
-                identifier=self.input_id,
+                event_type=ident.type,
+                identifier=ident.id,
                 device_guid=LogicalDevice.device_guid,
                 mode=self._mode_manager.current.name,
                 value=value,
@@ -820,13 +872,21 @@ class LogicalDeviceAction(AbstractAction):
 
     def to_xml(self) -> ElementTree.Element:
         node = self._create_node(self.tag)
+        # The control's current number when it has one; the uid is kept.
+        ident = self.current_identifier()
         util.append_property_nodes(
             node,
             [
                 ["input-type", self.input_type, PropertyType.InputType],
-                ["input-id", self.input_id, PropertyType.Int],
+                [
+                    "input-id",
+                    ident.id if ident is not None else self.input_id,
+                    PropertyType.Int,
+                ],
             ],
         )
+        if self._uid:
+            node.set("uid", self._uid)
         if self.input_type == InputType.JoystickAxis:
             util.append_property_nodes(
                 node,
@@ -850,6 +910,15 @@ class LogicalDeviceAction(AbstractAction):
     def from_xml(self, node: ElementTree.Element) -> None:
         self.input_type = util.read_property(node, "input-type", PropertyType.InputType)
         self.input_id = util.read_property(node, "input-id", PropertyType.Int)
+        saved_uid = node.get("uid") or None
+        ident, uid = resolve_logical_reference(
+            saved_uid, self.input_type, self.input_id
+        )
+        if ident is not None:
+            self._input_type = ident.type
+            self._input_id = ident.id
+        # A saved uid the Logical Device doesn't have stays: missing.
+        self._uid = uid
         if self.input_type == InputType.JoystickAxis:
             self.value = util.read_property(node, "value", PropertyType.Float)
             self.axis_mode = util.read_property(
@@ -861,7 +930,7 @@ class LogicalDeviceAction(AbstractAction):
             self.value = util.read_property(node, "value", PropertyType.HatDirection)
 
     def is_valid(self) -> bool:
-        return self.input_id is not None
+        return self.input_id is not None and not self.is_missing()
 
 
 class MouseButtonAction(AbstractAction):

@@ -39,7 +39,7 @@ from gremlin.event_handler import Event
 from gremlin.keyboard import Key, key_from_name
 from gremlin.macro import Macro, MacroManager, PauseAction
 from gremlin.profile import Profile
-from gremlin.types import AxisMode, InputType, MouseButton
+from gremlin.types import AxisMode, DataCreationMode, InputType, MouseButton
 
 _GUID = uuid.UUID("77777777-1111-2222-3333-444444444444")
 _APPS: list[QtCore.QCoreApplication] = []
@@ -240,7 +240,8 @@ def test_the_logical_device_relative_loop_ends_with_stop(
     )
 
     runner.start(Profile(), "Default")
-    data = MapToLogicalDeviceData(InputType.JoystickAxis)
+    data = MapToLogicalDeviceData.create(
+        DataCreationMode.Create, InputType.JoystickAxis)
     data.axis_mode = AxisMode.Relative
     functor = MapToLogicalDeviceFunctor(data)
     functor._event_listener = mock.MagicMock()  # counts this loop's events only

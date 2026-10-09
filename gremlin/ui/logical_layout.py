@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+import weakref
 from collections.abc import Callable
 from typing import Any
 from xml.etree import ElementTree
@@ -142,6 +143,17 @@ def _matches(item, search: str, type_filter: str) -> bool:
     return search.lower() in hay
 
 
+# The Logical pages open now, for drop_logical_steps.
+_MODELS: weakref.WeakSet = weakref.WeakSet()
+
+
+def drop_logical_steps() -> None:
+    """The Logical Device was read again from its file (Discard, Restore):
+    Undo / Redo steps would play edits that are gone, so they go."""
+    for model in list(_MODELS):
+        model.drop_steps()
+
+
 @ta.QmlElement
 class LogicalLayoutModel(QtCore.QAbstractListModel):
     """Rows for the logical page: group headers, parents, writers, and actions."""
@@ -200,7 +212,9 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         self._pane_base = ""
         self._pane_whole = False
         self._pane_new = False
+        _MODELS.add(self)
         signal.logicalDeviceModified.connect(self._on_external)
+        signal.logicalDeviceReloaded.connect(self._on_reloaded)
         signal.profileChanged.connect(self._on_profile)
         signal.modeRenamed.connect(self._on_mode_renamed)
         signal.modeDeleted.connect(self._on_mode_deleted)
@@ -233,10 +247,32 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             )
 
     def _on_profile(self) -> None:
-        # Another profile: the steps belong to the old one.
+        # The Logical Device is shared by every profile (D-04-LD-FILE), so
+        # its steps stay when another profile loads (06 S83). What a step did
+        # to the old profile's actions and links stays with that profile:
+        # those parts go, and a step with nothing else goes too.
+        self._undo = self._layout_steps(self._undo)
+        self._redo = self._layout_steps(self._redo)
+        self._on_external()
+
+    def drop_steps(self) -> None:
         self._undo.clear()
         self._redo.clear()
-        self._on_external()
+        self._just_undid = False
+        self.revisionChanged.emit()
+
+    @staticmethod
+    def _layout_steps(steps: list[dict]) -> list[dict]:
+        kept = []
+        for entry in steps:
+            if entry["before"] == entry["after"]:
+                continue
+            kept.append({**entry, "links": []})
+        return kept
+
+    def _on_reloaded(self) -> None:
+        self.drop_steps()
+        self._rebuild()
 
     def _on_external(self) -> None:
         if self._writing:

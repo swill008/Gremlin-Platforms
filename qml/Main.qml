@@ -48,6 +48,8 @@ ApplicationWindow {
         target: backend
         function onWindowTitleChanged() { Qt.callLater(refreshProfileDirty) }
         function onProfileChanged() { Qt.callLater(refreshProfileDirty) }
+        // A Logical Device edit (its file is saved with the profile, 04 S2).
+        function onUnsavedChanged() { Qt.callLater(refreshProfileDirty) }
     }
 
     // Unsaved profile edits a crash left (04 S94): Restore / Discard /
@@ -1387,6 +1389,9 @@ ApplicationWindow {
         }
         onDiscardChosen: {
             var action = takeAction()
+            // The Logical Device's edits are discarded with the profile's.
+            if (backend)
+                backend.discardLogicalDevice()
             if (action)
                 action()
         }

@@ -493,6 +493,29 @@ def update(
     return update_path(path_for(device_name, guid), change, who, report=report)
 
 
+def _reload_logical_device(path: Path) -> None:
+    """After the Logical Device's module file was replaced (Restore, Import,
+    Undo, History Restore), the Logical Device is read from it again
+    (D-04-LD-FILE). Its own saves don't come here."""
+    from gremlin import logical_device_file
+
+    try:
+        if Path(path).resolve() != logical_device_file.path().resolve():
+            return
+    except OSError:
+        return
+    try:
+        logical_device_file.load()
+    except Exception:  # noqa: BLE001 - the file is written; say it, go on
+        syslog.exception("Logical Device: reload after %s failed", path)
+        return
+    # Screens: the Logical page drops its Undo steps and redraws.
+    from gremlin.signal import signal
+
+    signal.logicalDeviceReloaded.emit()
+    signal.logicalDeviceModified.emit()
+
+
 def replace(path: Path, data: bytes, who: str = "", *, force: bool = False) -> None:
     """Writes a whole file (import, Device Pack, Undo, History Restore, and
     the backups they keep). A damaged module file is not written over
@@ -509,6 +532,7 @@ def replace(path: Path, data: bytes, who: str = "", *, force: bool = False) -> N
         registry.trace("SAVE", who or "Module files", "replace", path, "error")
         raise
     registry.trace("SAVE", who or "Module files", "replace", path, "ok")
+    _reload_logical_device(path)
 
 
 def write_json(path: Path, doc: dict, who: str = "") -> None:
@@ -523,6 +547,7 @@ def write_text(path: Path, text: str, who: str = "") -> None:
     """write_json for text as it is (History Restore)."""
     _write(Path(path), module_file.encode(text), text.replace("\r\n", "\n"))
     registry.trace("SAVE", who or "Module files", "write", path, "ok")
+    _reload_logical_device(path)
 
 
 # --- pictures ------------------------------------------------------------------
@@ -1522,8 +1547,13 @@ def import_file(
         return "A vJoy file cannot be copied onto a stick."
     if target == "dest" and source_direction == "source":
         return "A stick file cannot be copied onto a vJoy."
-    keyboard = name.lower() == "keyboard"
-    limits = (set(), set(), set()) if keyboard else connected_input_ids(guid)
+    # Built-ins without hardware (Keyboard, Logical Device) have no
+    # plugged-in buttons, axes and hats to check against: by class (03 S90b).
+    from gremlin.modules import device_class
+
+    keep_keys = device_class.can("key_claim", guid, name)
+    no_limits = device_class.can("no_hardware_limits", guid, name)
+    limits = (set(), set(), set()) if no_limits else connected_input_ids(guid)
     if limits is None:
         return "This device is not connected, so the file cannot be checked."
     buttons, axes, hats = limits
@@ -1547,7 +1577,7 @@ def import_file(
         buttons,
         axes,
         hats,
-        keep_keys=keyboard,
+        keep_keys=keep_keys,
         previous_image=previous_image,
     )
     try:

@@ -39,6 +39,10 @@ class Signal(QtCore.QObject):
 
     logicalDeviceModified = QtCore.Signal()
 
+    # The Logical Device was read again from its file (Discard, Restore,
+    # Import, History Restore): its Undo steps no longer apply (D-04-LD-FILE).
+    logicalDeviceReloaded = QtCore.Signal()
+
     # An input's actions changed where inputItemChanged isn't sent (the
     # Logical Device's action editor): summaries of the profile's actions,
     # such as a card's Driven by, check again.

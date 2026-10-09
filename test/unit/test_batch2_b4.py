@@ -88,7 +88,8 @@ def profile() -> Iterator[Profile]:
     shared_state.current_profile = p
     yield p
     shared_state.current_profile = before
-    LogicalDevice().reset()
+    # Empty and saved: reset() counts as an edit of the shared file.
+    LogicalDevice().load_dict({"controls": [], "groups": []})
 
 
 def _bind(
@@ -226,14 +227,20 @@ def test_an_unknown_startup_mode_loads_as_last_active(
 # --- GL-074: the Logical Device and OSC rows belong to the profile ----------
 
 
-def test_a_new_profile_object_keeps_another_profiles_rows(profile: Profile) -> None:
+def test_a_new_profile_object_leaves_the_shared_logical_device_rows_alone(
+    profile: Profile,
+) -> None:
+    """GL-074, now with one Logical Device for every profile (D-04-LD-FILE):
+    a throwaway Profile neither wipes the shared rows nor the open
+    profile's OSC rows; the Logical Device isn't in any profile file."""
     LogicalDevice().create(InputType.JoystickButton, label="Fire")
     OscDevice().create(InputType.JoystickButton, label="/osc/fire")
     other = Profile()  # a throwaway one used to wipe them
-    assert not LogicalDevice().exists("Fire")  # the new one is shown
+    assert LogicalDevice().exists("Fire")  # one layout, still there
     text = profile._xml_text()
-    assert "Fire" in text and "/osc/fire" in text
-    assert "Fire" not in other._xml_text()
+    assert "/osc/fire" in text
+    assert "<logical-device" not in text
+    assert "<logical-device" not in other._xml_text()
     profile.bind_devices()
     assert LogicalDevice().exists("Fire")
     assert OscDevice().find_address("/osc/fire") is not None

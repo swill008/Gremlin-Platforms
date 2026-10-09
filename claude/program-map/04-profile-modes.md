@@ -9,12 +9,12 @@ The profile is the file you open and save: the modes, the actions on every input
 ## 2. Files
 
 Python
-- `gremlin/profile.py` (2722 lines): `Profile` (load, save, unsaved check, input snapshots for Undo/History), `Settings` (startup mode, macro delay, vJoy as input, vJoy initial values), `Library` (every action by id; clone, pick lists, drop unused/invalid), `InputItem` / `InputItemBinding` (an input in a mode and its root actions), virtual buttons, `DeviceDatabase` (device names by id), `ModeHierarchy` (mode tree: add, rename, delete, parent), `ScriptManager` (the profile's script list).
+- `gremlin/profile.py` (2722 lines): `Profile` (load, save, unsaved check, input snapshots for Undo/History), `Settings` (startup mode, macro delay, vJoy as input, vJoy initial values), `Library` (every action by id; clone, pick lists, drop unused/invalid), `InputItem` / `InputItemBinding` (an input in a mode and its root actions), virtual buttons, `DeviceDatabase` (device names by id), `ModeHierarchy` (mode tree: add, rename, delete, parent), `ScriptManager` (the profile's script list). D-04-LD-FILE: `pending_logical_rows` and `logical_migration_note` (a version 14 file's Logical Device rows and the labels they add), `commit_pending_logical_rows(path)` (merges them into the Logical Device's module file and keeps the `.v14.bak`); a `bind=False` read of a version 14 profile changes nothing until it is saved.
 - `gremlin/base_classes.py` (737): `AbstractActionData` (id, label, activation mode, children per selector, to_xml/from_xml, `is_valid` from Error feedback), `AbstractFunctor` (runtime side, pulse helper), `UserFeedback`, `Value`.
 - `gremlin/tree.py` (250): `TreeNode`, the generic tree under the mode hierarchy (parent/children, cycle check, depth-first walks).
 - `gremlin/mode_manager.py` (435): run-time mode stack (`ModeManager`: switch, previous, unwind, cycle, temporary, rename, drop), `ModeSequence` (Cycle), `resolve_start_mode`, last mode per profile (kept in memory while running, `flush_last_modes`), option `action/change-mode/resolution-mode`.
 - `gremlin/ui/profile.py` (1540): QML models: `InputItemModel` and `InputItemBindingModel` (bindings on the Configuration page), `ModeListModel`, `ModeHierarchyModel` (Manage Modes), `rename_mode` / `delete_mode` (the one path every rename/delete uses), Undo Delete Mode (S46a: `_deleted_modes` per open profile, `undo_delete_mode`, `_rename_in_deletes` follows a renamed parent or child; `ModeHierarchyModel.canUndoDelete`, `undoDeleteName`, `undoDelete`), `StartupModeModel`, `ProfileSettingsModel` (macro delay), `VJoyInputOrOutputModel`, `OutputVJoyListModel`, `OutputVJoyInitialValuesModel`, `ProfileDeviceListModel` (Swap Devices list).
-- `gremlin/ui/backend.py` (901): `Backend` (new, load, save, save as, recent, forget, last profile at start, auto-load, unsaved flag, Run/Stop entry, toolbar mode pick; keeps, offers, restores and removes recovery copies, S94), `UIState` (the mode, device, input, tab and room shown).
+- `gremlin/ui/backend.py` (901): `Backend` (new, load, save, save as, recent, forget, last profile at start, auto-load, unsaved flag, Run/Stop entry, toolbar mode pick; keeps, offers, restores and removes recovery copies, S94), `UIState` (the mode, device, input, tab and room shown). D-04-LD-FILE: `unsavedChanged`, `discardLogicalDevice` (Discard reads the Logical Device file again, S2b), `_load_logical_device` (at start), `_logical_unsaved` (feeds the `*`), `logical_migration_text` (the one-time note, S25).
 - `gremlin/swap_devices.py` (265; `not_swappable` -> `device_class.can('swap', uid)` replaces the old `NOT_SWAPPABLE` list, 03 S90b, Q20): moves every binding, action reference and script variable from one device id to another (with limits); called by the Device Library (`library_swap.py`, `library_copy.py`, page 10).
 - `gremlin/profile_recovery.py` (200, new 2026-10-09, to-do 55): recovery copies of unsaved profile edits (S94, Q14). `ProfileRecovery.tick` keeps a copy about every minute while there are unsaved changes, in `<data folder>/recovery/profile-<stem>-<sha1>.json` (Untitled: `profile-untitled.json`); `restore`, `discard`, `forget_session` (Save, Discard, clean close remove this session's copies; Not now keeps it).
 - `gremlin/edits.py` (52): the edit count (Q19, D-04-Q19): `note_edit`, `EditNoted`, `edit_count`; the title `*` reuses its last answer while the count hasn't moved.
@@ -36,6 +36,7 @@ QML / JS
 - Help (Help book on page 01, `qml/help/`): topics Profiles, What is saved where, Run and status, Modes, Change Mode, Load Profile, Profile Settings, Scripts, History (Swap Devices replaced by the Device Library topic, 2026-10-08).
 
 Tests (main ones)
+- Logical Device file (D-04-LD-FILE): `test/unit/` `test_ld_model.py` (10), `test_ld_file.py` (15+), `test_ld_refs_a.py` (7), `test_ld_refs_b.py` (8+), `test_ld_refs_c.py`, `test_ld_pack.py` (5), `test_ld_profile.py` (7), `test_ld_lib.py` (7), `test_ld_ui.py`.
 - `test/unit/test_profile.py`, `test_tree.py`, `test_modes.py`, `test_mode_hierarchy_model.py`, `test_profile_settings.py`, `test_profile_unsaved.py`, `test_profile_save_safe.py`, `test_profile_unused_actions.py`, `test_profile_missing_child_action.py`, `test_library_invalid_children.py`, `test_recent_profiles.py`, `test_load_and_rename_safety.py`, `test_autoload_and_mode_prompts.py`, `test_audit_profile.py`, `test_audit2_modes.py`, `test_audit3_modes.py`, `test_audit_saving.py`, `test_audit2_saving.py`, `test_audit2_coverage.py`, `test_startup_messages.py`, `test_write_less.py`, `test_mode_refresh_and_add_key.py`, `test_swap_devices.py`, `test_library_device_class.py::test_swap_takes_a_stick_named_keyboard` (Q20), `test_audit3_screens.py` (Swap list), `test_undo_delete_mode.py`, `test_tools2_shared_pieces.py` (Manage Modes question and Undo bar), `test_main_shared_pieces.py` (profile choosers, Remove Script), `test_options_shared_pieces.py` (auto-load remove and choosers), `test_profile_recovery.py`, `profile_recovery_smoke.py` (app start), `test_user_script.py`, `test_user_script_load_errors.py`, `test_data_safety.py`.
 - `test/action_interaction/test_modes.py` (mode stack at run time), `test/integration/test_e2e_user_script.py`, `test_e2e_profile_simple.py`.
 
@@ -44,7 +45,8 @@ Tests (main ones)
 In memory
 - `Backend.profile`: the one open `Profile`. Mirrored in `shared_state.current_profile`, which every other part reads (set at `backend.py:239` and `:300` only).
 - Inside the profile: `inputs` (device id → list of `InputItem`, one per input per mode), `library` (action id → action, plus `_copied_from` for editor drafts), `settings`, `modes` (tree with a hidden root `""`), `scripts`, `device_database`, `fpath`, `_saved_snapshot` (the XML text as of the last load or save; the unsaved check compares against it).
-- Not in the profile object but saved with it: the Logical Device and OSC device rows (singletons `LogicalDevice()` / `OscDevice()`, reset by every `Profile()` constructor, `profile.py:859-860`).
+- Not in the profile object but saved with it: the OSC device rows (singleton `OscDevice()`, reset by every `Profile()` constructor, `profile.py:859-860`).
+- Not saved with it any more (D-04-LD-FILE, S2): the Logical Device rows (`LogicalDevice()`), loaded once from the Logical Device's module file by `gremlin/logical_device_file.py` and kept across profile loads; the profile only holds references by permanent id (S2a). `profile.logical_migration_note` (labels added from a version 14 file, for the one-time note).
 - `ModeManager._mode_stack` (singleton): the run-time mode history. Also changed by the toolbar Mode box while stopped.
 - `mode_manager._pending_last`: last mode per profile, kept in memory while running.
 - `UIState._current_mode`: the mode shown in the toolbar and edited.
@@ -52,7 +54,9 @@ In memory
 - `Backend._autoload_held` (auto-load target held back by unsaved edits), `Backend._action_state` (expanded/collapsed panes).
 
 Files
-- The profile XML (`profiles\<name>.xml`, version 14, UTF-8 with BOM), written only by `Profile.to_xml` through `module_file.write_text` (temp file then swap). Each save with a change also records a History entry (`history_profile.record_save`).
+- The profile XML (`profiles\<name>.xml`, version 15 since D-04-LD-FILE, reads 14 and 15; UTF-8 with BOM), written only by `Profile.to_xml` through `module_file.write_text` (temp file then swap). Each save with a change also records a History entry (`history_profile.record_save`).
+- `profiles\<name>.xml.v14.bak`: the original of a version 14 profile, kept once by the first save that writes over it after its Logical Device rows moved to the module file (S25, `logical_device_file.backup_v14`).
+- Save also writes the Logical Device's module file when it changed (`logical_device_file.save_if_dirty`, S2b); that file is owned by page 06.
 
 Settings keys (program settings, not the profile)
 - `global/internal/last-profile`, `global/internal/recent-profiles` (max 5): written by `Backend._record_profile_use` (load and save) and `forgetProfile`.
@@ -74,7 +78,8 @@ Who else changes profile data (not single-owner)
 | File › New Profile (Ctrl+N) | `Main.qml:499 requestNewProfile` | `guardUnsavedChanges` → `leaveDisplayThen` | `Backend.newProfile` 502: Stop, new `Profile()`, `mark_clean`, `profileChanged` |
 | File › Load Profile… (Ctrl+O) | `_loadProfileFileDialog` 868 | `guardUnsavedChanges` | `Backend.loadProfile` 570 → `_load_profile` 659 → `_read_profile` 643 → `Profile.from_xml` 862 |
 | File › Recent › file | `Main.qml:599 loadRecent` | same guard | `Backend.loadProfile` |
-| File › Save Profile (Ctrl+S) | `saveCurrentProfile` 505 | no path → Save As; else `saveProfileChecked` (asks if unfinished actions) | `Backend.unfinishedActions` 512, `Backend.saveProfile` 522 → `Profile.to_xml` 904 |
+| File › Save Profile (Ctrl+S) | `saveCurrentProfile` 505 | no path → Save As; else `saveProfileChecked` (asks if unfinished actions) | `Backend.unfinishedActions` 512, `Backend.saveProfile` 522 → `Profile.to_xml` 904 (version 15) and `logical_device_file.save_if_dirty` (S2b) |
+| Load of a version 14 profile with Logical Device rows (S25) | `Profile.from_xml` | | `logical_device_file.merge_profile_rows` (sets `current_uid_map` while references load, cleared after), `backup_v14`, `profile.logical_migration_note` → one-time note (`Main.qml`) |
 | File › Save Profile As… | `openSaveAs` 518, `_saveProfileFileDialog` 817 | `saveProfileChecked` | `Backend.saveProfile` (sets `fpath` only after the write) |
 | Quit / close window / restart / install update | `quitGremlin` 686, `onClosing` 1366 | tool windows, panes, then `guardUnsavedChanges(..., true)` | `deactivateThenQuit` → Stop → `Qt.quit`; `flush_last_modes` on Stop |
 | Program start | `joystick_gremlin.py:process_cmd_args` 978 | `--profile` path, else last profile | `Backend.loadProfile` or `Backend.openLastProfile` 577 (failure → `lastProfileFailed` → "Forget It" → `forgetProfile` 590) |
@@ -124,7 +129,8 @@ Who else changes profile data (not single-owner)
 | Output layer (`gremlin.modules.output`) | scripts' `vjoy` = `output.ScriptVJoy`; `VirtualInputVariable.remap` → `output.write_vjoy` | `code_runner._refresh_axes` writes initial values via `output.write_vjoy_axis_linear` |
 | Input layer (`gremlin.modules.inputs`) | scripts' `joy` / `keyboard` = `inputs.ScriptJoystick` / `ScriptKeyboard` | |
 | Devices (`device_initialization`) | `DeviceDatabase.update_for_uuids` (`device_for_uuid`), vJoy lists for Profile Settings, `physical_devices` for `UIState` | `device_initialization.input_devices/output_vjoy_devices` read `vjoy_as_input` |
-| Logical Device / OSC singletons | reset in `Profile()`, filled in `from_xml`, written in `_xml_text` | |
+| OSC singleton | reset in `Profile()`, filled in `from_xml`, written in `_xml_text` | |
+| Logical Device (`logical_device.py`, `logical_device_file.py`, page 06) | version 14 load: `merge_profile_rows`, `backup_v14`; Save: `save_if_dirty`; unsaved check reads `LogicalDevice().dirty`; `Library.change` rollback snapshots `LogicalDevice().to_dict()` | references resolve through `LogicalRows.identifier_of_uid` (S2a) |
 | Settings (`config.Configuration`, `deferred_write`) | last profile, recent, last mode, resolution mode, auto-load | Options window edits auto-load and resolution mode |
 | Process monitor | | `process_changed` → auto-load |
 | Main window (QML) | `profileChanged`, `windowTitleChanged`, `recentProfilesChanged`, `lastProfileFailed`, `saveNoted`, `reloadUi`, `reloadCurrentInputItem` | all slots in section 4 |
@@ -149,7 +155,7 @@ Who else changes profile data (not single-owner)
 |---|---|---|---|---|
 | R1 | Single owner | `ui/backend.py:257-261` vs `:300` | `ModeManager.reset` and `setCurrentMode` are connected before `_profile_change_handler`, so on Load / New they run while `shared_state.current_profile` still points at the old profile. The start mode is worked out from the old profile. | SUSPECTED (Qt calls same-thread slots in connection order; not run) |
 | R2 | Single owner | `profile.py:450-456`, `:513-516`, `:540-545`, `:730-737` | `Library` decides "in use" by looking up `shared_state.current_profile` instead of its own profile (also in `system-maps.md` § 2). | CONFIRMED |
-| R3 | Single owner | `profile.py:859-860`, `:1248-1325` | Logical Device and OSC rows are saved in the profile but live in global singletons; any `Profile()` (also a throwaway one) wipes them. | CONFIRMED |
+| R3 | Single owner | `profile.py:859-860`, `:1248-1325` | Logical Device and OSC rows are saved in the profile but live in global singletons; any `Profile()` (also a throwaway one) wipes them. | CONFIRMED. Logical Device part: owner is now the Logical Device's module file (`gremlin/logical_device_file.py`, D-04-LD-FILE, 2026-10-09); OSC part stands |
 | R4 | Duplicated logic | `profile.py:498-565` (`Library.remove_unused`) and `:1201-1214` (`Profile.drop_unused_actions`) | Two "remove actions nothing uses" paths; `InputItemBindingModel.remove_action` uses the first (`ui/profile.py:478`), `deleteActionSequnce` the second (`:704`). | CONFIRMED |
 | R5 | Duplicated logic | `ModeHierarchy.add_mode` 1610 (exact match) vs `ModeHierarchyModel.nameTaken` `ui/profile.py:897` (ignores case and spacing) | Name rule lives in the UI model only; Device Pack, tests and scripts adding modes skip it. | CONFIRMED |
 | R6 | Thread rules (time via `gremlin.clock`) | `user_script.py:208`, `:218`, `:229`, `:237` | Periodic loop reads and sleeps on `time` directly. | CONFIRMED |
@@ -169,7 +175,9 @@ Who else changes profile data (not single-owner)
 ### Profile file: New, Load, Save, Save As, Recent
 
 - S1. It should hold the modes, the actions on every input, the Profile Settings and the list of scripts, and save them only on Save / Save As. [help: Profiles] [help: What is saved where] [glossary: Profile]
-- S2. It should save the Logical Device and OSC rows and the device names list in the same file. [user confirmed 2026-10-06; was code only]
+- S2. It should save the OSC rows and the device names list in the same file. The Logical Device is not in the profile: it has its own module file (`store.path_of("logical_device")`, key `logical-device`), one layout shared by every profile, as the Keyboard's is; other layouts are kept in the Device Library (10 S6). [user confirmed 2026-10-06; was code only] [changed 2026-10-09, user: D-04-LD-FILE] (was: Logical Device rows saved in the profile)
+- S2a. Every Logical Device control should have a permanent random id (32 lowercase hex characters), given when the control is made and never changed. Every saved reference to a control (Map to Logical Device, conditions, macro steps, script variables and the like) names that id and still keeps the control's type and number; nothing saved points at the number alone (06 S78). A reference whose id the Logical Device doesn't have is flagged (rule check PROFILE-LOGICAL-MISSING) with an offer to add the control; it is never dropped silently and never moved to another control by number, and does nothing while running. A reference with no id (older files) is read by type and number. [changed 2026-10-09, user: D-04-LD-FILE]
+- S2b. File › Save Profile (Ctrl+S) should also save the Logical Device's module file when it changed; the `*` in the title (S7) and the Save / Discard / Cancel question (S4) count Logical Device changes too, and Discard there also throws away Logical Device edits (the file is read again, `Backend.discardLogicalDevice`). [changed 2026-10-09, user: D-04-LD-FILE]
 - S3. It should open File › New Profile, Load Profile…, Recent, Save Profile and Save Profile As… with Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S. [help: Profiles]
 - S4. It should ask Save / Discard / Cancel before New, Load, Recent and quit only when there are unsaved changes; with nothing changed it asks nothing. [help: Profiles] [test-plan: F-06a, WORKFLOW-HANDS-ON] [tracker: C1]
 - S5. It should stop a running profile before New or Load. [user confirmed 2026-10-06; was code only]
@@ -195,7 +203,7 @@ Who else changes profile data (not single-owner)
 - S22. It should, when the last profile won't open at start, say why once and offer Forget It (off the start-up and Recent lists; the file stays) or Keep. [tracker: APP17] [test: test_startup_messages.py]
 - S23. It should, when any load fails (bad XML, wrong version, unknown action type, missing child action, broken input), show the reason and reopen the profile that was open; only if that fails, open a new empty one and say so. [tracker: B11, ACT15] [test: test_load_and_rename_safety.py::test_failed_load_reopens_the_profile_that_was_open]
 - S24. It should not add a profile that failed to load to Recent or make it the last profile. [tracker: ACT15] [test-plan: S-05]
-- S25. It should read only profile version 14 and refuse others with a message. [user confirmed 2026-10-06; was code only]
+- S25. It should read profile versions 14 and 15 and refuse others with a message; it writes version 15, which has no Logical Device rows (S2). A version 14 profile's Logical Device rows are added to the Logical Device's module file on its first load, and nothing there is removed: a row with the same type, number and name reuses that control's id; any other row is added under the next free number with a new id, and the profile's references follow it. The first save over the original file keeps it beside it as `<name>.xml.v14.bak` (only when no such copy is there yet; opening alone writes nothing beside the profile), a one-time note says which controls were added, and the profile counts as changed so the next Save writes version 15. [user confirmed 2026-10-06; was code only] [changed 2026-10-09, user: D-04-LD-FILE] (was: version 14 only)
 - S26. It should finish loading (refuse with a message, never hang) when an action names a child action that is missing. [test-plan: PROFILE-LOAD-NO-HANG] [test: test_profile_missing_child_action.py]
 - S27. It should keep a mode whose parent is unknown, or whose parents loop, as a top-level mode. [test-plan: AUDIT-A-PROFILE, AUDIT2-F-H-REST] [test: test_audit_profile.py::test_a_mode_with_an_unknown_parent_is_kept]
 - S28. It should open a profile whose Play Sound or Load Profile file is missing, keep the action with a warning. [tracker: ACT11, AU-14] [test: test_audit_profile.py::test_a_missing_load_profile_file_still_loads]
@@ -336,7 +344,7 @@ Code differs from the spec or a rule
 15. Script removal does not remove its variables from `Script.variable_registry` (`profile.py:1825-1834`); `ScriptListModel.renameScript` signals rows 0..rowCount (one past the end, `ui/script.py:421-423`; AU-65 left Scripts dataChanged "not reproduced").
 16. `Settings.set_initial_vjoy_axis_value` does not clamp (load does). `profile.py:294-304`.
 17. Two "drop unused actions" paths (R4) and the Library looking up the current profile (R2); covered by the Actions redesign in `system-maps.md` § 2.
-18. Logical Device / OSC rows live in global singletons that any `Profile()` resets (R3).
+18. OSC rows live in a global singleton that any `Profile()` resets (R3). Logical Device part: being built 2026-10-09 to D-04-LD-FILE (own module file, permanent ids, version 15; S2, S2a, S2b, S25).
 19. The Load Profile action reaches into the UI Backend from the event pipeline (R11) and runs the new profile even if the load failed and a blank profile is open (`load_profile/__init__.py:79-80`).
 20. Glossary N20 lists file-picker titles in sentence case ("Open profile", "Save profile as"); the dialogs say "Open Profile" / "Save Profile As" (GLOSSARY-4 Title Case later). Minor; confirm which wins.
 21. Recovery copy of unsaved edits (S94, to-do 55): built 2026-10-09 (`gremlin/profile_recovery.py`, offer in `Main.qml`; tests `test_profile_recovery.py`, `profile_recovery_smoke.py`); in Help (configuration-actions-safety-net, 2026-10-09).
@@ -393,6 +401,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | Q13 | 2026-10-07: D-04-Q13-TIMELIMIT and D-04-Q13-RUNLIMIT (time limit at load, add and Run) |
 | S41, S52 | 2026-10-07: D-04-ALPHA-CASEFOLD (alphabetical ignores capitals) |
 | S86 | 2026-10-07: D-04-S86-RELATIVE |
+| S2, S2a, S2b, S25, R3 | 2026-10-09: D-04-LD-FILE (Logical Device in its own module file shared by every profile, permanent ids, Save covers it, version 14 rows merged once with a backup) |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

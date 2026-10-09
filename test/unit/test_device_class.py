@@ -85,7 +85,8 @@ def _today_plugged_in(guid: object, name: str) -> bool:
 def _today_is_built_in_guid(guid: object) -> bool:
     want = stored_guid_key(guid)
     return bool(want) and want in (
-        stored_guid_key(str(ids.KEYBOARD)), stored_guid_key(str(ids.OSC)))
+        stored_guid_key(str(ids.KEYBOARD)), stored_guid_key(str(ids.OSC)),
+        stored_guid_key(str(ids.LOGICAL_DEVICE)))
 
 
 def _today_swap_refused(guid: object) -> bool:
@@ -99,9 +100,11 @@ def _today_swap_refused(guid: object) -> bool:
 def _today_is_built_in_input(module: registry.Module) -> bool:
     bound = guid_key(module.bound_guid)
     if bound:
-        return bound in (guid_key(ids.KEYBOARD), guid_key(ids.OSC))
-    return module.slug in ("keyboard", "osc") or plain_slug(module.name) in (
-        "keyboard", "osc")
+        return bound in (guid_key(ids.KEYBOARD), guid_key(ids.OSC),
+                         guid_key(ids.LOGICAL_DEVICE))
+    # 2026-10-09 D-04-LD-FILE: the Logical Device is a Library built-in too.
+    return module.slug in ("keyboard", "osc", "logical_device") or plain_slug(
+        module.name) in ("keyboard", "osc", "logical_device")
 
 
 def _today_forwarded(guid: object) -> bool:

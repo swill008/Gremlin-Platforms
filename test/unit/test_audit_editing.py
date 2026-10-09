@@ -161,7 +161,7 @@ def test_removing_every_action_in_the_pane_then_ok_clears_the_input(
 def logical() -> Iterator[tuple[Any, Profile]]:
     from gremlin.ui.logical_layout import LogicalLayoutModel
 
-    LogicalDevice().reset()
+    LogicalDevice().load_dict({"controls": [], "groups": []})
     profile = Profile()
     shared_state.current_profile = profile
     LogicalDevice().create(InputType.JoystickButton)
@@ -200,15 +200,27 @@ def test_logical_edit_undoes_and_the_profile_still_loads(
     Profile().from_xml(str(path))  # loads
 
 
-def test_logical_steps_end_with_the_profile(logical: tuple[Any, Profile]) -> None:
+def test_logical_layout_steps_stay_when_another_profile_loads(
+    logical: tuple[Any, Profile],
+) -> None:
+    """06 S83 (D-04-LD-FILE): the Logical Device is shared by every profile,
+    so its page's steps stay when another profile loads; a step that only
+    changed the old profile's actions goes."""
     model, _profile = logical
-    model.beginNewAction("parent:button:1")
+    key = "parent:button:1"
+    model.setUserName(key, "Trigger")
+    model.beginNewAction(key)
     _draft_root(model).insert_action(_vjoy(3), "children")
     model.commitPane()
     model.endPane()
-    assert model.canUndo
+    assert len(model._undo) == 2
     shared_state.current_profile = Profile()
     signal.profileChanged.emit()
+    # The rename stays; the action step (old profile only) is dropped.
+    assert model.canUndo
+    assert len(model._undo) == 1
+    model.undo()
+    assert LogicalDevice().button(1).second_name == ""
     assert not model.canUndo
 
 

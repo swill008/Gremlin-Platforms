@@ -645,7 +645,8 @@ def _set_up() -> list[tuple[str, str, str]]:
 
 def _modules() -> list[tuple[str, str, str, bool]]:
     """(name, guid, slug, built-in) of each input module file here (S6):
-    Keyboard and OSC are built-in inputs (D-10-BUILTIN-SECTION)."""
+    Keyboard, OSC and the Logical Device are built-in inputs
+    (D-10-BUILTIN-SECTION, D-04-LD-FILE)."""
     from gremlin.modules import registry
 
     found = []
@@ -665,7 +666,8 @@ def _modules() -> list[tuple[str, str, str, bool]]:
 
 
 def is_built_in_guid(guid: str) -> bool:
-    """True for the device id of a built-in input, Keyboard or OSC (S6). By
+    """True for the device id of a built-in input, Keyboard, OSC or the
+    Logical Device (S6). By
     id only: a name never makes a device built-in here (03 S90b)."""
     from gremlin.modules import device_class, ids
 

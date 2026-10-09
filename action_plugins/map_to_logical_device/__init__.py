@@ -28,11 +28,15 @@ from gremlin.base_classes import (
     Value,
 )
 from gremlin.error import GremlinError
-from gremlin.logical_device import LogicalDevice
+from gremlin.logical_device import (
+    LogicalDevice,
+    resolve_logical_reference,
+)
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
     AxisMode,
+    DataCreationMode,
     InputType,
     PropertyType,
 )
@@ -54,6 +58,13 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         self._logical = LogicalDevice()
         self._event_listener = event_handler.EventListener()
         self._init_relative()
+        # Drives the control the uid names, by its current number; a missing
+        # one does nothing (D-04-LD-FILE).
+        self._identifier, _ = resolve_logical_reference(
+            instance.logical_input_uid,
+            instance.logical_input_type,
+            instance.logical_input_id,
+        )
 
     @override
     def __call__(
@@ -64,11 +75,9 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
     ) -> None:
         if not self._should_execute(value):
             return
-        input = self._logical[
-            LogicalDevice.Input.Identifier(
-                self.data.logical_input_type, self.data.logical_input_id
-            )
-        ]
+        if self._identifier is None or not self._logical.exists(self._identifier):
+            return
+        input = self._logical[self._identifier]
 
         # Determine correct event values and update the logical device's
         # internal state.
@@ -114,11 +123,8 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         )
 
     def _relative_axis(self) -> LogicalDevice.Input:
-        return self._logical[
-            LogicalDevice.Input.Identifier(
-                self.data.logical_input_type, self.data.logical_input_id
-            )
-        ]
+        assert self._identifier is not None
+        return self._logical[self._identifier]
 
     def _relative_read(self) -> float:
         return cast(LogicalDevice.Axis, self._relative_axis()).value
@@ -267,35 +273,96 @@ class MapToLogicalDeviceData(AbstractActionData):
     def __init__(self, behavior_type: InputType = InputType.JoystickButton) -> None:
         super().__init__(behavior_type)
 
-        # Select an initially valid logical input
-        logical = LogicalDevice()
-        input_type = (
-            behavior_type
-            if behavior_type != InputType.Keyboard
-            else InputType.JoystickButton
-        )
+        # The first control of the type; with none, number 1 and no uid.
+        # Building (profile read, copies) never adds a control: only a new
+        # action made in the editor does, in create() (D-04-LD-FILE).
+        input_type = self._control_type(behavior_type)
         try:
-            logical_input = logical.inputs_of_type([input_type])[0]
+            first_id = LogicalDevice().inputs_of_type([input_type])[0].id
         except (GremlinError, IndexError):
-            logical.create(input_type)
-            logical_input = logical.inputs_of_type([input_type])[0]
+            first_id = 1
 
-        # Model variables
-        self.logical_input_id = logical_input.id
-        self.logical_input_type = input_type
+        # Model variables; setting the type or number repoints the uid.
+        self._logical_input_uid: str | None = None
+        self._logical_input_type = input_type
+        self.logical_input_id = first_id
         self.axis_mode = AxisMode.Absolute
         self.axis_scaling = 1.0
         self.button_inverted = False
 
+    @staticmethod
+    def _control_type(behavior_type: InputType) -> InputType:
+        if behavior_type == InputType.Keyboard:
+            return InputType.JoystickButton
+        return behavior_type
+
+    @classmethod
+    @override
+    def create(
+        cls, mode: DataCreationMode, behavior_type: InputType = InputType.JoystickButton
+    ) -> AbstractActionData:
+        # A new action in the editor gets a control to drive: the first of
+        # its type, made when the Logical Device has none.
+        if mode == DataCreationMode.Create:
+            input_type = cls._control_type(behavior_type)
+            logical = LogicalDevice()
+            if not logical.inputs_of_type([input_type]):
+                logical.create(input_type)
+        return super().create(mode, behavior_type)
+
+    @property
+    def logical_input_type(self) -> InputType:
+        return self._logical_input_type
+
+    @logical_input_type.setter
+    def logical_input_type(self, value: InputType) -> None:
+        self._logical_input_type = value
+        self._repoint_uid()
+
+    @property
+    def logical_input_id(self) -> int:
+        return self._logical_input_id
+
+    @logical_input_id.setter
+    def logical_input_id(self, value: int) -> None:
+        self._logical_input_id = value
+        self._repoint_uid()
+
+    @property
+    def logical_input_uid(self) -> str | None:
+        """Permanent id of the control this action drives (None: unknown)."""
+        return self._logical_input_uid
+
+    def _repoint_uid(self) -> None:
+        if hasattr(self, "_logical_input_id"):
+            self._logical_input_uid = LogicalDevice().uid_of(
+                self._logical_input_type, int(self._logical_input_id)
+            )
+
+    @property
+    def logical_missing(self) -> bool:
+        """The saved control isn't on the Logical Device (D-04-LD-FILE)."""
+        identifier, _ = resolve_logical_reference(
+            self._logical_input_uid, self._logical_input_type, self._logical_input_id
+        )
+        return identifier is None
+
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:
         self._id = util.read_action_id(node)
-        self.logical_input_id = util.read_property(
-            node, "logical-input-id", PropertyType.Int
-        )
-        self.logical_input_type = util.read_property(
+        saved_id = util.read_property(node, "logical-input-id", PropertyType.Int)
+        saved_type = util.read_property(
             node, "logical-input-type", PropertyType.InputType
         )
+        saved_uid = util.read_property(
+            node, "logical-input-uid", PropertyType.String, ""
+        )
+        identifier, uid = resolve_logical_reference(saved_uid, saved_type, saved_id)
+        if identifier is not None:
+            saved_type, saved_id = identifier.type, identifier.id
+        self._logical_input_type = saved_type
+        self._logical_input_id = saved_id
+        self._logical_input_uid = uid
         if self.logical_input_type == InputType.JoystickAxis:
             self.axis_mode = util.read_property(
                 node, "axis-mode", PropertyType.AxisMode
@@ -321,6 +388,12 @@ class MapToLogicalDeviceData(AbstractActionData):
                 "logical-input-type", self.logical_input_type, PropertyType.InputType
             )
         )
+        if self._logical_input_uid:
+            node.append(
+                util.create_property_node(
+                    "logical-input-uid", self._logical_input_uid, PropertyType.String
+                )
+            )
         if self.logical_input_type == InputType.JoystickAxis:
             node.append(
                 util.create_property_node(

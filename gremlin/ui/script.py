@@ -170,6 +170,38 @@ class KeyboardVariableModel(AbstractVariableModel):
         self.evaluate_validity()
 
 
+def _resolve_logical(
+    uid: str | None, input_type: InputType, input_id: int
+) -> tuple[LogicalDevice.Input.Identifier | None, str | None]:
+    """Shared Logical Device reference resolver (D-04-LD-FILE)."""
+    try:
+        from gremlin.logical_device import resolve_logical_reference
+    except ImportError:
+        from action_plugins.map_to_logical_device import resolve_logical_reference
+    return resolve_logical_reference(uid, input_type, input_id)
+
+
+def _store_logical_uid(target: object, uid: str | None) -> None:
+    """Points a macro step / script variable at a control's permanent id."""
+    try:
+        setattr(target, "uid", uid)
+    except AttributeError:
+        pass  # data class without a stored uid
+
+
+def _shown_logical(
+    target: object, input_type: InputType, input_id: int | None
+) -> tuple[InputType, int | None]:
+    """Current type and number of the control the stored uid names; the saved
+    ones when it is missing or unset."""
+    uid = getattr(target, "uid", None)
+    if uid and input_id is not None:
+        ident, _ = _resolve_logical(uid, input_type, input_id)
+        if ident is not None:
+            return ident.type, ident.id
+    return input_type, input_id
+
+
 @ta.QmlElement
 class LogicalDeviceModel(AbstractVariableModel):
     changed = QtCore.Signal()
@@ -188,11 +220,12 @@ class LogicalDeviceModel(AbstractVariableModel):
         return [InputType.to_string(v) for v in self._variable.valid_types]
 
     def _get_logical_input_identifier(self) -> InputIdentifier:
+        variable = cast(user_script.LogicalDeviceVariable, self._variable)
+        # Saved type+number, kept even when the control is missing.
+        saved = cast(LogicalDevice.Input.Identifier, variable._identifier)
+        input_type, input_id = _shown_logical(self._variable, saved.type, saved.id)
         return InputIdentifier(
-            LogicalDevice.device_guid,
-            self._variable.value.type,
-            self._variable.value.id,
-            parent=self,
+            LogicalDevice.device_guid, input_type, input_id, parent=self
         )
 
     def _set_logical_input_identifier(self, identifier: InputIdentifier) -> None:
@@ -201,6 +234,11 @@ class LogicalDeviceModel(AbstractVariableModel):
 
         self._variable.value = LogicalDevice.Input.Identifier(
             identifier.input_type, identifier.input_id
+        )
+        # The variable points at the chosen control's permanent id (D-04-LD-FILE).
+        _store_logical_uid(
+            self._variable,
+            LogicalDevice().uid_of(identifier.input_type, identifier.input_id),
         )
         self.changed.emit()
 

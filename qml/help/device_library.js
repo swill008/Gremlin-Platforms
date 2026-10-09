@@ -93,11 +93,12 @@ function topics() {
             + "<p>Select the caret beside a device, or double-click the device, to show or hide its saved setups.</p>",
             ["device-library-saved-setups", "device-library-built-in", "device-library-twins"]),
         t("device-library-built-in", "Devices and saved setups", "Built-in inputs",
-            "<p>The program's built-in inputs, Keyboard and OSC, are listed last, under the <b>BUILT-IN INPUTS</b> heading. They are part of the program, so they are never plugged in, unplugged or removed.</p>"
+            "<p>The program's built-in inputs, Keyboard, OSC and the Logical Device, are listed last, under the <b>BUILT-IN INPUTS</b> heading. They are part of the program, so they are never plugged in, unplugged or removed.</p>"
             + "<ul>"
             + "<li>Their menu and buttons have only <b>Save to Device Library…</b>, <b>Restore…</b> (puts back their newest saved setup), <b>Export…</b>, <b>Rename…</b> and <b>Edit Description</b>.</li>"
+            + "<li>They need no plugged-in device, so Restore always works. Every profile uses the one Logical Device, so keep its other layouts here as saved setups. To bring in a Logical Device pack, choose <b>File › Import Device Pack…</b> (it is filed under the Logical Device), then <b>Restore…</b>.</li>"
             + "<li>They can't be copied, swapped, cleared or removed, and they have no state badge.</li>"
-            + "<li>The filters never hide them; a search that matches neither of them does.</li>"
+            + "<li>The filters never hide them; a search that matches none of them does.</li>"
             + "</ul>",
             ["device-library-devices", "device-library-menus"]),
         t("device-library-saved-setups", "Devices and saved setups", "Saved setups",

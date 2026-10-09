@@ -127,10 +127,10 @@ def profile(p: Profile) -> list[str]:
       no open pane draft holds (Library.draft_held). Deleted and
       replaced actions stay in memory for Undo (04 S14, S75).
     - PROFILE-LOGICAL-MISSING: a used action (Map to Logical Device, a
-      Logical Device condition) names a Logical Device input that doesn't
-      exist in the profile's own rows (Profile.logical_device, 04 S2, R3),
-      not the rows LogicalDevice() shows (another profile's, after another
-      Profile object was made or loaded).
+      Logical Device condition) names a Logical Device input that the
+      Logical Device file (LogicalDevice(), 04 R3) doesn't have: a saved
+      permanent id it doesn't know, or, with no id, a type+number it
+      doesn't have (D-04-LD-FILE decision 4).
     """
     out: list[str] = []
     modes: set[str] = set()
@@ -264,17 +264,34 @@ def _check_library(p: Profile, out: list[str], used: dict[uuid.UUID, Any]) -> No
             )
 
 
-def _logical_refs(action: Any) -> list[tuple[Any, Any]]:  # noqa: ANN401
-    """(input type, input id) of each Logical Device input the action names."""
-    refs: list[tuple[Any, Any]] = []
-    if hasattr(action, "logical_input_type") and hasattr(action, "logical_input_id"):
-        refs.append((action.logical_input_type, action.logical_input_id))
+def _logical_refs(
+    action: Any,  # noqa: ANN401
+    skip_own: bool = False,
+) -> list[tuple[Any, Any, str | None]]:
+    """(input type, input id, uid) of each Logical Device input the action
+    names; uid None for a reference saved before permanent ids. skip_own:
+    leave out a Map to Logical Device that reports logical_missing itself."""
+    refs: list[tuple[Any, Any, str | None]] = []
+    own = hasattr(action, "logical_input_type") and hasattr(action, "logical_input_id")
+    if own and not (skip_own and hasattr(action, "logical_missing")):
+        refs.append(
+            (
+                action.logical_input_type,
+                action.logical_input_id,
+                _uid_of_ref(action, "logical_input_uid"),
+            )
+        )
     for condition in getattr(action, "conditions", None) or []:
         if type(condition).__name__ != "LogicalDeviceCondition":
             continue
         for state in getattr(condition, "_states", None) or []:
-            refs.append((state.input_type, state.input_id))
+            refs.append((state.input_type, state.input_id, _uid_of_ref(state, "uid")))
     return refs
+
+
+def _uid_of_ref(holder: Any, name: str) -> str | None:  # noqa: ANN401
+    value = getattr(holder, name, None)
+    return value if isinstance(value, str) and value else None
 
 
 def _check_logical(p: Profile, out: list[str], used: dict[uuid.UUID, Any]) -> None:
@@ -282,15 +299,27 @@ def _check_logical(p: Profile, out: list[str], used: dict[uuid.UUID, Any]) -> No
         return
     from gremlin.logical_device import LogicalDevice
 
-    # The profile's own rows; LogicalDevice() shows the rows bound last.
-    logical = getattr(p, "logical_device", None)
-    if logical is None:
-        # Not made to be checked.
-        logical = _singleton(LogicalDevice)
+    # One Logical Device for every profile: its module file (D-04-LD-FILE).
+    logical = _singleton(LogicalDevice)
     if logical is None:
         return
     for action in used.values():
-        for input_type, input_id in _logical_refs(action):
+        if getattr(action, "logical_missing", False) is True:
+            # Map to Logical Device says itself (its uid, else type+number).
+            out.append(
+                f"PROFILE-LOGICAL-MISSING: {_name(action)} names Logical "
+                f"Device input {action.logical_input_type} "
+                f"{action.logical_input_id}, which the Logical Device doesn't have"
+            )
+        for input_type, input_id, uid in _logical_refs(action, skip_own=True):
+            if uid is not None:
+                if logical.identifier_of_uid(uid) is None:
+                    out.append(
+                        f"PROFILE-LOGICAL-MISSING: {_name(action)} names Logical "
+                        f"Device input {input_type} {input_id} (id {uid}), "
+                        "which the Logical Device doesn't have"
+                    )
+                continue
             ident = LogicalDevice.Input.Identifier(input_type, input_id)
             if not logical.exists(ident):
                 out.append(

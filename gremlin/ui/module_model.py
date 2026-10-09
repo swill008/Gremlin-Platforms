@@ -1744,8 +1744,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 hidden_names[slug] = name
                 return
             saved = module_exists(name, guid)
-            # Keyboard and OSC always have a card, with or without a module
-            # file (D-03-S71-ALWAYS); this only releases a kept card.
+            # Keyboard, OSC and the Logical Device always have a card, with
+            # or without a module file (D-03-S71-ALWAYS); this only releases
+            # a kept card.
             _show_unconfigured(slug, saved, show_stubs, kept, released)
             row = ModuleRow()
             row.slug = slug
@@ -1798,8 +1799,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
         extra("xbox", "Xbox 360 Controller", XBOX_GUID, "xbox", "XInput", "dest")
 
-        if module_exists("Logical Device", LOGICAL_GUID):
-            extra("logical", "Logical Device", LOGICAL_GUID, "logical", "Logical", "source")
+        # Always a card, as Keyboard and OSC (03 S71, D-04-LD-FILE).
+        extra("logical", "Logical Device", LOGICAL_GUID, "logical", "Logical", "source")
 
         if not self._focus and rows:
             src = next((r for r in rows if r.direction == "source" and r.status != "Stub"), None)

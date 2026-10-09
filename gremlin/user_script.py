@@ -46,7 +46,7 @@ from gremlin import (
     util,
 )
 from gremlin.edits import EditNoted, note_edit
-from gremlin.logical_device import LogicalDevice
+from gremlin.logical_device import LogicalDevice, resolve_logical_reference
 from gremlin.modules import inputs, output
 from gremlin.types import (
     HatDirection,
@@ -1260,20 +1260,46 @@ class LogicalDeviceVariable(AbstractVariable):
         if not inputs:
             inputs = [self._ld.create(self._valid_types[0])]
         self._identifier = inputs[0].identifier
+        # The stored permanent id is what the variable names (D-04-LD-FILE);
+        # _identifier is the type+number last known for it.
+        self._uid: str | None = inputs[0].uid
         self._initialize_from_registry()
+
+    @property
+    def uid(self) -> str | None:
+        """Permanent id of the named control (None: unknown, old data)."""
+        return self._uid
+
+    @uid.setter
+    def uid(self, value: str | None) -> None:
+        self._uid = value or None
+
+    def is_missing(self) -> bool:
+        """The stored uid names a control the Logical Device doesn't have."""
+        return self._uid is not None and self._ld.identifier_of_uid(self._uid) is None
+
+    def _current(self) -> LogicalDevice.Input.Identifier:
+        """The named control's current type and number (the last known one
+        when missing)."""
+        if self._uid is not None:
+            ident = self._ld.identifier_of_uid(self._uid)
+            if ident is not None:
+                return ident
+        return self._identifier
 
     def decorator(self, mode: ModeVariable) -> Callable:
         dec = self.create_decorator(mode.value)
-        match self._identifier.type:
+        ident = self._current()
+        match ident.type:
             case InputType.JoystickButton:
-                return dec.button(self._identifier.id)
+                return dec.button(ident.id)
             case InputType.JoystickAxis:
-                return dec.axis(self._identifier.id)
+                return dec.axis(ident.id)
             case InputType.JoystickHat:
-                return dec.hat(self._identifier.id)
+                return dec.hat(ident.id)
             case _:
                 raise error.GremlinError(
-                    f"Received invalid input type '{self._identifier.type}'"
+                    f"Received invalid input type '{ident.type}'"
                 )
 
     def create_decorator(self, mode: str) -> JoystickDecorator:
@@ -1286,35 +1312,59 @@ class LogicalDeviceVariable(AbstractVariable):
 
     @property
     def value(self) -> LogicalDevice.Input:
-        return self._ld[self._identifier]
+        return self._ld[self._current()]
 
     @value.setter
     def value(self, value: LogicalDevice.Input.Identifier) -> None:
         self._identifier = value
+        self._uid = self._ld.uid_of(value.type, value.id)
 
     @property
     def valid_types(self) -> list[InputType]:
         return self._valid_types
 
     def is_valid(self) -> bool:
-        return self._ld.exists(self._identifier)
+        return not self.is_missing() and self._ld.exists(self._current())
+
+    def to_xml(self) -> None | ElementTree.Element:
+        # A missing control is kept on save, never dropped (decision 4).
+        if not self.is_missing():
+            return super().to_xml()
+        node = ElementTree.Element("variable")
+        node.set("type", self.xml_tag)
+        util.append_property_nodes(node, [["name", self.name, PropertyType.String]])
+        self._to_xml(node)
+        return node
 
     def _from_xml(self, node: ElementTree.Element) -> None:
         input_type = util.read_property(node, "input-type", PropertyType.InputType)
         input_id = util.read_property(node, "input-id", PropertyType.Int)
-        self._identifier = LogicalDevice.Input.Identifier(input_type, input_id)
+        ident, uid = resolve_logical_reference(
+            node.get("uid") or None, input_type, input_id
+        )
+        self._identifier = (
+            ident
+            if ident is not None
+            else LogicalDevice.Input.Identifier(input_type, input_id)
+        )
+        # A saved uid the Logical Device doesn't have stays: missing.
+        self._uid = uid
 
     def _to_xml(self, node: ElementTree.Element) -> None:
+        ident = self._current()
         util.append_property_nodes(
             node,
             [
-                ["input-type", self._identifier.type, PropertyType.InputType],
-                ["input-id", self._identifier.id, PropertyType.Int],
+                ["input-type", ident.type, PropertyType.InputType],
+                ["input-id", ident.id, PropertyType.Int],
             ],
         )
+        if self._uid:
+            node.set("uid", self._uid)
 
     def _assign_value_from(self, other: LogicalDeviceVariable) -> None:
         self._identifier = other._identifier
+        self._uid = other._uid
 
 
 class ModeVariable(AbstractVariable):

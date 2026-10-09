@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterator
+from pathlib import Path
 
 sys.path.append(".")
 
@@ -16,8 +18,23 @@ from gremlin.profile import Profile
 
 
 @pytest.fixture(autouse=True)
-def reset_logical() -> None:
-    LogicalDevice().reset()
+def reset_logical() -> Iterator[None]:
+    # Empty and saved before and after: reset() counts as an edit of the
+    # shared Logical Device file (D-04-LD-FILE).
+    LogicalDevice().load_dict({"controls": [], "groups": []})
+    yield
+    LogicalDevice().load_dict({"controls": [], "groups": []})
+
+
+@pytest.fixture
+def modules(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """The Logical Device's module file in a temporary modules folder."""
+    from gremlin.modules import store
+
+    folder = tmp_path / "modules"
+    folder.mkdir()
+    monkeypatch.setattr(store, "folder", lambda: folder)
+    return folder
 
 
 def test_system_name_stays_when_the_user_renames() -> None:
@@ -131,20 +148,35 @@ def test_move_group_up_and_down() -> None:
     assert logical.group_names() == ["B", "A", "C"]
 
 
-def test_old_profile_label_becomes_user_name(tmp_path) -> None:
-    profile = Profile()
-    logical = LogicalDevice()
-    logical.create(InputType.JoystickButton, 1, "Trigger")
+def test_old_profile_label_becomes_user_name(tmp_path: Path, modules: Path) -> None:
+    """A version 14 profile's rows move into the Logical Device's file
+    (D-04-LD-FILE decision 3); a renamed control's name, kept in the label
+    by older files, becomes its user name there."""
     path = tmp_path / "old.xml"
-    profile.to_xml(path)
-    LogicalDevice().reset()
-    again = Profile()
-    again.from_xml(path)
-    restored = LogicalDevice()
-    button = restored.button(1)
+    Profile(bind=False).to_xml(path)
+    text = path.read_text(encoding="utf-8-sig")
+    assert 'version="15"' in text
+    path.write_text(
+        text.replace('version="15"', 'version="14"', 1).replace(
+            "</profile>",
+            "<logical-device><input><input-type>button</input-type>"
+            "<input-id>1</input-id><label>Trigger</label></input>"
+            "</logical-device></profile>",
+        ),
+        encoding="utf-8",
+    )
+    Profile().from_xml(path)
+    button = LogicalDevice().button(1)
     assert button.system_name == "Button 1"
     assert button.second_name == "Trigger"
     assert button.group == ""
+    # Read back from the file the same.
+    from gremlin import logical_device_file
+
+    logical_device_file.save()
+    LogicalDevice().load_dict({"controls": [], "groups": []})
+    logical_device_file.load()
+    assert LogicalDevice().button(1).second_name == "Trigger"
 
 
 def test_claimed_ids_are_sorted_and_unique() -> None:
@@ -256,7 +288,11 @@ def test_hide_system_name_shows_only_the_typed_name() -> None:
     assert item.row_title == "Button 1"
 
 
-def test_hide_system_name_is_saved(tmp_path) -> None:
+def test_hide_system_name_is_saved(tmp_path: Path, modules: Path) -> None:
+    """Hide-system goes to the Logical Device's own file with the profile's
+    Save and comes back from it (D-04-LD-FILE)."""
+    from gremlin import logical_device_file
+
     profile = Profile()
     logical = LogicalDevice()
     item = logical.create(InputType.JoystickButton)
@@ -264,8 +300,9 @@ def test_hide_system_name_is_saved(tmp_path) -> None:
     item.hide_system = True
     path = tmp_path / "hide.xml"
     profile.to_xml(path)
-    LogicalDevice().reset()
-    Profile().from_xml(path)
+    assert "hide-system" not in path.read_text(encoding="utf-8-sig")
+    LogicalDevice().load_dict({"controls": [], "groups": []})
+    logical_device_file.load()
     restored = LogicalDevice().button(1)
     assert restored.second_name == "Trigger"
     assert restored.hide_system is True

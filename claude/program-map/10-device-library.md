@@ -55,6 +55,8 @@ Code (built 2026-10-08/09):
 
 Callers elsewhere: `gremlin/ui/hardware_profile.py` (`_autosave`, `_autosave_before_pack`: the Delete Device, Delete File and Device Pack import autosaves), `gremlin/modules/store.py` (reads the list's records), `gremlin/ui/history_model.py` (Library entries' text and Restore), `qml/StatusCard.qml` / `StatusPage.qml` / `Main.qml` (card menu items, Tools menu, `libraryAction`), `qml/main_commands.js` (`tools.deviceLibrary`).
 
+Logical Device as a built-in (D-04-LD-FILE, 2026-10-09; S6, S6a): `device_class` puts it in `library_builtin`; `device_library.py` / `device_library_model.py` save, restore, export and import its layout (`LogicalRows.to_dict` / `load_dict`, written through `gremlin/logical_device_file.py`, page 06); `modules/store.py` and `registry.py` skip the plugged-in check for built-ins without hardware by class (`no_hardware_limits`); `store._reload_logical_device(path)`, called from `replace()` and `write_text()`, reloads the Logical Device after Restore, Import, Undo or a History restore of its file.
+
 Copy, Swap and Change vJoy Output change profiles only through the
 profile owner, and module files only through `modules/store.py`.
 
@@ -127,7 +129,8 @@ works on files and the profile through their owners.
 
 ### B. Devices
 
-- **S6** There should be one row per device: plugged in now (**Connected**), set up here but unplugged (**Not connected**), or deleted (**Deleted**). A device that came only from someone else's pack is **Not connected**: it can be copied from, never to. Each row shows its name, description, state and number of saved setups. [D-10-LIBRARY] [changed 2026-10-08 to follow D-10-STREAMLINE] The program's built-in inputs (Keyboard, OSC) are listed after the devices under their own heading **Built-in inputs**; for them only Save to Device Library…, Restore to This Stick… (here: Restore), Export…, Rename… and Edit Description are offered, never Remove from Library, Clear Setup, Copy, Swap or Change vJoy Output, and they have no Connected / Not connected badge. The heading sits under a thin divider after the last device, in small muted capitals, not clickable or foldable; the state filters (Connected, Not connected, Deleted) don't hide them, only a search does, and the heading hides when a search leaves none of them. [2026-10-09: D-10-BUILTIN-SECTION, replaces D-10-NO-BUILTINS]
+- **S6** There should be one row per device: plugged in now (**Connected**), set up here but unplugged (**Not connected**), or deleted (**Deleted**). A device that came only from someone else's pack is **Not connected**: it can be copied from, never to. Each row shows its name, description, state and number of saved setups. [D-10-LIBRARY] [changed 2026-10-08 to follow D-10-STREAMLINE] The program's built-in inputs (Keyboard, OSC, the Logical Device [changed 2026-10-09, user: D-04-LD-FILE]) are listed after the devices under their own heading **Built-in inputs**; for them only Save to Device Library…, Restore to This Stick… (here: Restore), Export…, Rename… and Edit Description are offered (no separate Import item: a Logical Device pack comes in with File › Import Device Pack…, which files it under the Logical Device row, then Restore puts it on), never Remove from Library, Clear Setup, Copy, Swap or Change vJoy Output, and they have no Connected / Not connected badge. The heading sits under a thin divider after the last device, in small muted capitals, not clickable or foldable; the state filters (Connected, Not connected, Deleted) don't hide them, only a search does, and the heading hides when a search leaves none of them. [2026-10-09: D-10-BUILTIN-SECTION, replaces D-10-NO-BUILTINS]
+- **S6a** Restore and Import Device Pack of a built-in input without hardware (Keyboard, the Logical Device) skip the plugged-in check, decided by its class through `device_class.can('no_hardware_limits')` (03 S90b), never by a list of names; the Logical Device's saved setups hold its layout (controls with their permanent ids, groups), and Restore puts it back into its module file as one History entry. [changed 2026-10-09, user: D-04-LD-FILE]
 - **S7** Every device and every saved setup can be renamed and given a description. A device set up here has one name: renaming it in the Library renames it on its Home card and the other way round. [D-10-NAMES]
 - **S8** Selecting a device should show its name, description, state, what inputs it has, and when it was last seen.
 - **S9** Deleted devices are the ones deleted since the Library exists (Delete Device, Delete File); files in an old deleted devices folder are not read, moved or removed. [D-10-DELETED] [changed 2026-10-08 to follow D-10-NO-DELETED-FOLDER]
@@ -223,6 +226,7 @@ works on files and the profile through their owners.
 Built 2026-10-08/09 (S1-S56). Swap Devices (04 S77-S83), Delete Device's
 "Save a copy" and the deleted devices folder are gone. Open:
 
+- D-04-LD-FILE (2026-10-09): the Logical Device under Built-in inputs (S6, S6a), being built 2026-10-09 (tests `test_ld_lib.py` (7), `test_ld_pack.py` (5)).
 - To-do 52 (after 1.0.30): the Library's delete and remove questions move
   onto the shared red button and question (01 S140-S143: DangerButton,
   ConfirmDialog); Tidy already uses it.
@@ -254,7 +258,7 @@ test_library_menu_refresh), the Guide (GC_guide) and built-in inputs
 (test_library_builtin_section, test_library_no_builtins). Plugged in by id
 (03 S90a): `test_library_plugged_in.py` (4: twins, double-spaced name, pack
 device not on this PC, Copy / Restore by live id). Device classes (03 S90b):
-`test_library_device_class.py` (`::test_built_in_guid_is_keyboard_and_osc_only`,
+`test_library_device_class.py` (`::test_built_in_guid_is_keyboard_osc_and_logical_device`,
 `::test_stick_named_keyboard_is_a_normal_library_device`,
 `::test_copy_skips_internal_inputs_and_placeholders_only`,
 `::test_swap_refuses_non_sticks_with_the_same_words`), `test_library_no_builtins.py`,
@@ -298,3 +302,4 @@ Approved by the user, 2026-10-08 (wording as drafted; Q1 dropped).
 | D-10-SWAP-REFS | Swap warns about references to controls the other stick lacks |
 | D-10-STREAMLINE | Undo puts the autosave back; autosaves always on; no profile backups (History covers whole files); Shared folded into Not connected; no Edit Description; drag-drop import and double-click to Copy |
 | D-10-NO-DELETED-FOLDER | The deleted devices folder and its setting go; Delete File autosaves into the Library; nothing carried over (beta) |
+| D-04-LD-FILE (2026-10-09) | The Logical Device is a built-in input (Save, Restore, Export, Rename, Edit Description; packs come in by Import Device Pack… then Restore); built-ins without hardware skip the plugged-in check, by class (S6, S6a) |

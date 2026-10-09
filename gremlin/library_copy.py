@@ -367,8 +367,9 @@ def _plan_copy(
             )
     # The bindings: from the saved setup's pack, or (current settings) from
     # each profile they go into.
-    # Each with the profile it goes into: its own Logical Device rows say
-    # which inputs are missing there (S24).
+    # Each with the profile it goes into: the Logical Device's module file
+    # (every profile's), or a saved version 14 profile's own rows, says
+    # which inputs are missing there (S24, D-04-LD-FILE).
     sources: list[tuple[dict, list[str], object]] = []
     source_modes: list[str] = []
     if checked["current"]:
@@ -396,7 +397,7 @@ def _plan_copy(
     left_out: list[str] = []
     counts: dict[str, int] = {}
     plan_modes: list[str] = []
-    logical: dict[str, list[tuple[str, int]]] = {}
+    logical: dict[str, list[tuple[str, int, str]]] = {}
     items: list[str] = []
     for each, pack_modes, into in sources:
         wires = _wire_items(pack_modes, parts, modes)
@@ -443,7 +444,7 @@ def _plan_copy(
             out["notes"].append(
                 "These bindings send to Logical Device inputs that aren't "
                 + (f"in {where}: " if where else "here: ")
-                + ", ".join(f"{k.capitalize()} {n}" for k, n in lacking)
+                + ", ".join(f"{k.capitalize()} {n}" for k, n, _ in lacking)
                 + "."
             )
     return out

@@ -297,21 +297,40 @@ def test_undo_on_an_unplugged_twin_never_writes_the_other_twin(
 
 # The open profile's import sends to a missing Logical Device input on purpose.
 @pytest.mark.validate_off
-def test_logical_notes_come_from_the_profile_changed(pack: dict) -> None:
+def test_logical_notes_come_from_the_rows_the_changed_profile_uses(pack: dict) -> None:
+    """A saved version 14 profile read without opening it keeps its own
+    Logical Device rows until it is saved: the note checks those. The open
+    profile uses the Logical Device's module file (D-04-LD-FILE)."""
+    from gremlin.logical_device import LogicalDevice, LogicalRows
     from gremlin.types import InputType
 
-    other = gremlin.profile.Profile(bind=False)
-    other.logical_device.create(InputType.JoystickButton, input_id=7)
-    result = device_pack.apply_zip(
-        pack["zip"], pack["name"], {"items": ["wire:Default"]}, other, record_undo=False
-    )
-    assert result["ok"], result
-    assert "Logical Device inputs that don't exist" not in result["report"]
-    # The open profile lacks it: said there.
-    result = device_pack.apply_zip(
-        pack["zip"], pack["name"], {"items": ["wire:Default"]}, record_undo=False
-    )
-    assert "Logical Device inputs that don't exist" in result["report"]
+    shared = LogicalDevice()
+    before = shared.to_dict()
+    shared.load_dict({"controls": [], "groups": []})
+    try:
+        own = LogicalRows()
+        own.create(InputType.JoystickButton, input_id=7)
+        other = gremlin.profile.Profile(bind=False)
+        other.pending_logical_rows = own.to_dict()
+        result = device_pack.apply_zip(
+            pack["zip"], pack["name"], {"items": ["wire:Default"]}, other,
+            record_undo=False,
+        )
+        assert result["ok"], result
+        assert "Logical Device inputs that don't exist" not in result["report"]
+        # The shared file lacks it: said for the open profile.
+        result = device_pack.apply_zip(
+            pack["zip"], pack["name"], {"items": ["wire:Default"]}, record_undo=False
+        )
+        assert "Logical Device inputs that don't exist" in result["report"]
+        # Once the file has it, no profile is told it's missing.
+        shared.create(InputType.JoystickButton, input_id=7)
+        result = device_pack.apply_zip(
+            pack["zip"], pack["name"], {"items": ["wire:Default"]}, record_undo=False
+        )
+        assert "Logical Device inputs that don't exist" not in result["report"]
+    finally:
+        shared.load_dict(before)
 
 
 # --- Item 10: a twin's pack lands under that twin (S35) ---
