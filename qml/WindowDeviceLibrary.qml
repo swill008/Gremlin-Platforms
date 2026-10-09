@@ -560,6 +560,30 @@ ApplicationWindow {
         objectName: "libraryRowMenu"
         build: _lib.rowMenuModel
     }
+
+    // S53: Library changes finish in the background, after the menu's own
+    // refresh; the open menu follows them (Undo/Redo, items going off/on).
+    // If what it was for is gone (an undo took the saved setup away), it
+    // closes rather than showing another thing's menu.
+    function _refreshRowMenu() {
+        if (!_rowMenu.opened)
+            return
+        if (menuKey.length && !_rowOf(menuKey)) {
+            _rowMenu.close()
+            return
+        }
+        var kindBefore = _rowMenu.model.kind
+        _rowMenu.refresh()
+        if (_rowMenu.model.kind !== kindBefore)
+            _rowMenu.close()
+    }
+    onUndoTextChanged: Qt.callLater(_refreshRowMenu)
+    onRedoTextChanged: Qt.callLater(_refreshRowMenu)
+    onBusyChanged: if (!busy) Qt.callLater(_refreshRowMenu)
+    Connections {
+        target: _lib.lib
+        function onChanged() { Qt.callLater(_lib._refreshRowMenu) }
+    }
     Shortcut { sequence: "Ctrl+F"; onActivated: { _search.forceActiveFocus(); _search.selectAll() } }
 
     FileDialog {
