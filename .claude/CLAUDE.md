@@ -89,6 +89,32 @@ Every piece of work, not only big batches:
    to it at once, and stagger an agent that must wait for a file another
    agent holds. Only call it one agent's job when that analysis shows the
    pieces really share the same files or must happen in order, and say which.
+   **Every time agents start (user, 2026-10-09: "why didn't you do an
+   analysis to determine the best amount of agents, without me telling
+   you?"), the agent count comes from that analysis, shown as a table
+   before spawning, never from a guess.** The table covers:
+   - one agent per independent group of program files;
+   - test-only agents that can run alongside: an end-to-end test on the real
+     path, proof that the change travels through every path that carries it
+     (Library, Export, Restore, History, Device Pack), and updating existing
+     tests that pin the old behaviour;
+   - spec, map and Help as their own agent;
+   - what was left out and why (same file, strict order, or over the ~8-10
+     limit).
+
+   **The split table is required in the message to the user (user,
+   2026-10-09: "make sure that table is in the rules too").** Every message
+   that starts agents, adds agents, or hands a follow-up to an agent opens
+   (after the status line) with this table, before any other text:
+
+   | Agent | Files | Job | Why parallel / why one |
+   |---|---|---|---|
+
+   Then a "Left out:" line naming anything not split and why. This applies
+   mid-task too: a fix found by a test agent, a CI failure, a follow-up. Any
+   time the work is down to one running agent, show the table with the
+   parallel work considered (test-only, end-to-end, carry-through, audit of
+   related paths, docs) and why each was or wasn't started.
 5. **Test runs (agents; user 2026-10-07).**
    - The full run is `python test/run_tests.py --random-order` (6 parts, ~3
      min): once, at the end, after the targeted tests pass.

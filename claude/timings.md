@@ -118,3 +118,16 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | LD stand-alone: reload signal + Undo drop on restore (lead) | fix | ~5 min | 2 min | 13:06–13:08 |
 | 2026-10-09 | LD: 4 full-run failures fixed + profile copies check (lead) | fix | ~10 min | 6 min | 13:14–13:20 |
 | 2026-10-09 | LD: backup moved to first save + full run #3 (lead) | fix | ~8 min | 9 min | 13:21–13:30 |
+| 2026-10-09 | LD stand-alone WHOLE BATCH (11 agents, 3 full runs, commit, tracker) | feature | 45-60 min | 36 min | 12:56–13:32 |
+| 2026-10-09 | LD card image: spec/map/Help (IMG-doc) | docs | ~8 min | 2 min | 13:45–13:47 |
+| 2026-10-09 | LD card image: Python slots (IMG-py) | feature | ~10 min | 2 min | 13:45–13:47 |
+| 2026-10-09 | LD card image: carry tests, found 2 gaps (IMG-carry) | test | ~12 min | 2 min | 13:46–13:48 |
+| 2026-10-09 | LD card image: menu items + page wiring (IMG-qml) | feature | ~10 min | 4 min | 13:45–13:49 |
+| 2026-10-09 | LD card image: card redraw on reload (IMG-py follow-up) | fix | ~4 min | 1 min | 13:49 |
+| 2026-10-09 | LD card image: end-to-end test (IMG-e2e) | test | ~12 min | 3 min | 13:46–13:49 |
+| 2026-10-09 | LD card image: Library Restore for built-ins (IMG-restore) | fix | ~12 min | 5 min | 13:49–13:54 |
+| 2026-10-09 | LD card image: map + Help for Restore (LIB-doc) | docs | ~6 min | 1 min | 13:56–13:57 |
+| 2026-10-09 | LD card image: Library window Restore e2e (LIB-e2e) | test | ~12 min | 3 min | 13:56–13:59 |
+| 2026-10-09 | LD card image: Library actions audit on built-ins (LIB-audit) | test | ~12 min | 3 min | 13:56–13:59 |
+| 2026-10-09 | LD card image: one-write Restore + Import carries layout (IMG-restore follow-up) | fix | ~8 min | 6 min | 13:54–14:00 |
+| 2026-10-09 | LD card image + built-in Restore: full run (lead) | test | ~5 min | 6 min | 14:01–14:07, 2 flakes not from this batch |
