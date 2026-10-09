@@ -85,6 +85,20 @@ part's result and the 10 slowest tests. Watch it live from another window:
 Get-Content "$env:TEMP\gremlin-test-run.log" -Wait -Tail 20
 ```
 
+Exit hangs (to-do 43): a part must end within 20 s of pytest's summary
+line. If it doesn't, the runner prints `!!! EXIT HANG` with the part's files,
+waits for the stacks the conftest deadman dumps, ends it, and lists it at the
+end (a warning until to-do 42 is fixed, then a failure: `EXIT_HANG_FAILS`).
+Report an exit hang; never count it as passed or slow.
+
+Real vJoy (to-do 44): tests never load the real vJoy driver.
+`test/vjoy_guard.py`, installed first in `test/conftest.py` and in programs
+the tests start, hands the program a stand-in `vJoyInterface.dll`; any other
+load fails the test, naming it. `test/integration` drives a real vJoy device,
+so it skips in normal runs and runs only with
+`poetry run python test/run_tests.py --real-vjoy` (one process, never stopped
+mid-run), and only when the user asks for it.
+
 Rhythm: while changing code, `--changed` (or the affected files with
 `--quick`); after a fix, `--failed`; before every commit, one full run, to
 the end. `--changed` follows imports two steps out, QML and JavaScript files

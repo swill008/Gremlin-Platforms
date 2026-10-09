@@ -12,6 +12,9 @@
                                              since the last commit (while working)
     python test/run_tests.py --random-order  any of the above in random order (the
                                              seed is printed; --seed N repeats it)
+    python test/run_tests.py --real-vjoy     test/integration against the real vJoy
+                                             device, in one process (only when asked;
+                                             every other run uses the stand-in vJoy)
 
 The folders run at the same time in separate pytest runs (test/unit can't
 share a process with the two that need the Gremlin app), and test/unit is
@@ -23,6 +26,10 @@ tests of all are done. A part that prints nothing for a while says which
 test it is in; a part that runs longer than LIMIT_S is stopped. At the end:
 each part's result, the total time and the slowest tests. The same output
 goes to a log file (its path is shown at the start and end).
+
+A part must end within EXIT_HANG_S of pytest's summary line. One that
+doesn't is an EXIT HANG: it is named with its files, its stacks are waited
+for (test/conftest.py's deadman prints them) and it is ended.
 """
 
 from __future__ import annotations
@@ -51,6 +58,18 @@ UNIT_PARTS = 6
 # machine: CI's 2 unit parts take ~8-11 min on the runner.
 LIMIT_S = int(os.environ.get("GREMLIN_TEST_PART_LIMIT", "600"))
 QUIET_S = 15  # say which test a part is in after this long without output
+# A part still running this long after pytest's summary line is an EXIT
+# HANG (claude/test-plan.md). test/conftest.py's deadman prints its stacks
+# about then; STACKS_S is how long to wait for them before ending it.
+EXIT_HANG_S = 20.0
+STACKS_S = 5.0
+# An exit hang is a warning until to-do 42 (the teardown hang of
+# test_data_safety + test_stage1_history_pack) is fixed; then set True so it
+# fails the run.
+EXIT_HANG_FAILS = False
+# Set only by --real-vjoy: test/integration then drives the real vJoy device.
+REAL_VJOY_ENV = "GREMLIN_REAL_VJOY"
+REAL_VJOY_NOTE = "Real vJoy run: drives your real vJoy device; don't stop it mid-run."
 
 _ROOT = pathlib.Path(__file__).parents[1]
 # GREMLIN_TEST_STATE moves the times and last-failed lists: CI keeps them
@@ -88,6 +107,19 @@ class Part:
     # When the last test result came: the time since then is the next one's.
     last_result: float = 0.0
     file_times: dict[str, float] = field(default_factory=dict)
+    # When pytest's summary line came, and when the part was found hung after it.
+    summary_at: float = 0.0
+    exit_hang_at: float = 0.0
+    # The real vJoy run: never ended from here (ending a process that has
+    # the vJoy device open crashed the PC once, to-do 44).
+    real_vjoy: bool = False
+
+    @property
+    def exit_hang(self) -> bool:
+        return self.exit_hang_at > 0.0
+
+    def files(self) -> list[str]:
+        return sorted({t.replace("\\", "/").split("::")[0] for t in self.targets})
 
 
 def _clock(start: float) -> str:
@@ -271,6 +303,20 @@ def _validate_report(part: Part) -> pathlib.Path:
     return pathlib.Path(tempfile.gettempdir()) / f"gremlin-validate-{part.name}.txt"
 
 
+def _child_env(part: Part) -> dict[str, str]:
+    """The environment of a part's pytest: the real vJoy only in the real
+    vJoy run, whatever this shell has set."""
+    env = dict(
+        os.environ,
+        PYTHONUNBUFFERED="1",
+        GREMLIN_VALIDATE_REPORT=str(_validate_report(part)),
+    )
+    env.pop(REAL_VJOY_ENV, None)
+    if part.real_vjoy:
+        env[REAL_VJOY_ENV] = "1"
+    return env
+
+
 def _start(
     part: Part, quick: bool, lines: queue.Queue, extra: tuple[str, ...] = ()
 ) -> None:
@@ -283,12 +329,7 @@ def _start(
         command.insert(4, "-x")
     part.process = subprocess.Popen(
         command, cwd=_ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, encoding="utf-8", errors="replace",
-        env=dict(
-            os.environ,
-            PYTHONUNBUFFERED="1",
-            GREMLIN_VALIDATE_REPORT=str(_validate_report(part)),
-        ),
+        text=True, encoding="utf-8", errors="replace", env=_child_env(part),
     )
     part.began = part.last_output = part.last_result = time.monotonic()
 
@@ -317,8 +358,9 @@ def _end(process: subprocess.Popen) -> None:
     )
 
 
-def run(
-    parts: list[Part], quick: bool, log, extra: tuple[str, ...] = ()  # noqa: ANN001
+def run(  # noqa: PLR0913
+    parts: list[Part], quick: bool, log, extra: tuple[str, ...] = (),  # noqa: ANN001
+    exit_hang_s: float = EXIT_HANG_S, stacks_s: float = STACKS_S,
 ) -> tuple[list[tuple[float, str]], float]:
     start = time.monotonic()
 
@@ -338,31 +380,70 @@ def run(
         if len(part.targets) > 3:
             what = f"{len(part.targets)} files"
         say(part, f"started: {what}")
-    slow: list[tuple[float, str]] = []
-    while not all(p.finished for p in parts):
-        try:
-            part, line = lines.get(timeout=1.0)
-        except queue.Empty:
-            now = time.monotonic()
-            for p in parts:
-                if p.finished:
-                    continue
-                if now - p.began > LIMIT_S:
+    def exit_hang(p: Part, text: str) -> None:
+        p.exit_hang_at = time.monotonic()
+        say(p, f"!!! EXIT HANG: {text} (files: {' '.join(p.files())})")
+
+    def check(now: float) -> None:
+        for p in parts:
+            if p.finished:
+                continue
+            assert p.process is not None
+            if p.exit_hang:
+                # Its stacks had their time (test/conftest.py's deadman).
+                if not p.real_vjoy and now - p.exit_hang_at > stacks_s:
+                    say(p, "!!! EXIT HANG: ending it")
+                    _end(p.process)
+                    p.exit_hang_at = float("inf")  # ended: not again
+            elif p.summary_at and now - p.summary_at > exit_hang_s:
+                exit_hang(p, f"still running {exit_hang_s:.0f} s after pytest's "
+                             "summary")
+                if p.real_vjoy:
+                    say(p, "!!! real vJoy run: not ending it (to-do 44); it has "
+                           "to end by itself")
+            elif now - p.began > LIMIT_S:
+                if not p.real_vjoy:
                     say(p, f"!!! over {LIMIT_S // 60} min, stopping it")
-                    assert p.process is not None
                     _end(p.process)
                     p.summary = f"STOPPED after {LIMIT_S // 60} min"
-                elif now - p.last_output > QUIET_S and now - p.last_note > QUIET_S:
+                elif now - p.last_note > QUIET_S:
                     p.last_note = now
-                    say(p, f"... still in {p.current or 'start-up'} "
-                           f"({int(now - p.last_output)} s)")
+                    say(p, f"!!! over {LIMIT_S // 60} min; real vJoy run: not "
+                           "stopping it (to-do 44)")
+            elif now - p.last_output > QUIET_S and now - p.last_note > QUIET_S:
+                p.last_note = now
+                where = ("after pytest's summary" if p.summary_at
+                         else f"in {p.current or 'start-up'}")
+                say(p, f"... still {where} ({int(now - p.last_output)} s)")
+
+    slow: list[tuple[float, str]] = []
+    poll = min(1.0, exit_hang_s / 4, stacks_s / 4)
+    checked = 0.0
+    while not all(p.finished for p in parts):
+        try:
+            part, line = lines.get(timeout=poll)
+        except queue.Empty:
+            part, line = None, ""
+        now = time.monotonic()
+        if now - checked >= poll:  # also while a part streams its stacks
+            checked = now
+            check(now)
+        if part is None:
             continue
         if line is None:
             assert part.process is not None
             part.process.wait()
             part.finished = True
-            part.took = time.monotonic() - part.began
-            say(part, f"=== {part.summary} ({part.took:.0f} s)")
+            ended = time.monotonic()
+            if part.summary_at:  # the time after the summary is no test's
+                part.took = part.summary_at - part.began
+                if not part.exit_hang and ended - part.summary_at > exit_hang_s:
+                    exit_hang(part, f"ended {ended - part.summary_at:.0f} s after "
+                                    "pytest's summary")
+            else:
+                part.took = ended - part.began
+            hung = " + EXIT HANG" if part.exit_hang else ""
+            say(part, f"=== {part.summary}{hung} ({part.took:.0f} s)")
             continue
         part.last_output = time.monotonic()
         if _COLLECTED.match(line):
@@ -377,6 +458,7 @@ def run(
                 part.failed.append(node)
         if m := _SUMMARY.search(line):
             part.summary = m.group(1)
+            part.summary_at = part.last_output
         if m := _SLOW.match(line):
             slow.append((float(m.group(1)), f"{m.group(2):<8} {m.group(3)}"))
         say(part, line)
@@ -406,9 +488,16 @@ def main() -> int:
                              "shuffles them; the seed is printed)")
     parser.add_argument("--seed", type=int, default=None,
                         help="the random order's seed (implies --random-order)")
+    parser.add_argument("--real-vjoy", action="store_true",
+                        help="run test/integration against the real vJoy device, "
+                             "in one process (other runs use the stand-in vJoy)")
     args = parser.parse_args()
 
-    if args.failed:
+    if args.real_vjoy:
+        if args.targets or args.failed or args.changed or args.quick:
+            parser.error("--real-vjoy runs test/integration only, on its own")
+        targets = ["test/integration"]
+    elif args.failed:
         targets = list(_load(_failed_file(), []))
         if not targets:
             print("Nothing failed in the last run.")
@@ -454,8 +543,18 @@ def _order_options(args: argparse.Namespace) -> tuple[str, ...]:
     return ("--random-order", f"--random-seed={seed}")
 
 
+def real_vjoy_parts() -> list[Part]:
+    """--real-vjoy: test/integration in one process, with the real vJoy."""
+    return [Part("integration", "test/integration", ["test/integration"],
+                 real_vjoy=True)]
+
+
 def _run_and_report(targets: list[str], args: argparse.Namespace) -> int:
-    parts = plan(targets, args.parts)
+    if args.real_vjoy:
+        print(REAL_VJOY_NOTE, flush=True)
+        parts = real_vjoy_parts()
+    else:
+        parts = plan(targets, args.parts)
     extra = _order_options(args)
     with _LOG.open("w", encoding="utf-8") as log:
         print(f"Log: {_LOG}", flush=True)
@@ -487,21 +586,48 @@ def _run_and_report(targets: list[str], args: argparse.Namespace) -> int:
             out.append("Slowest:")
             slowest = sorted(slow, reverse=True)[:10]
             out += [f"  {s:6.2f}s {what}" for s, what in slowest]
+        out += exit_hang_report(parts)
         out.append("Validate reports:")
         out += [f"  {p.name:<11} {_validate_report(p)}" for p in parts]
         out.append(f"Log: {_LOG}")
         for line in out:
             print(line, flush=True)
             log.write(line + "\n")
+    return 0 if passed(parts, failed) else 1
+
+
+def exit_hang_report(parts: list[Part]) -> list[str]:
+    """The final summary's lines about exit hangs (and, on GitHub Actions,
+    an annotation for each)."""
+    hung = [p for p in parts if p.exit_hang]
+    if not hung:
+        return []
+    kind = ("FAILURE" if EXIT_HANG_FAILS
+            else "WARNING (a failure once to-do 42 is fixed)")
+    out = [f"EXIT HANG ({len(hung)}), {kind}: the part didn't end within "
+           f"{EXIT_HANG_S:.0f} s of pytest's summary (stacks in the log above):"]
+    for p in hung:
+        out.append(f"  EXIT HANG {p.name}: {' '.join(p.files())}")
+        if os.environ.get("GITHUB_ACTIONS"):
+            level = "error" if EXIT_HANG_FAILS else "warning"
+            out.append(
+                f"::{level} title=EXIT HANG {p.name}::{p.name} didn't end within "
+                f"{EXIT_HANG_S:.0f} s of pytest's summary. Files: "
+                f"{' '.join(p.files())}"
+            )
+    return out
+
+
+def passed(parts: list[Part], failed: list[str]) -> bool:
     # A part that never reached pytest's summary (pytest missing, a crash)
     # is a failure too: CI once passed with no test run at all.
-    ok = not failed and all(
+    return not failed and all(
         " failed" not in p.summary and "STOPPED" not in p.summary
         and " error" not in p.summary
         and re.search(r"\d+ (passed|skipped|xfailed|deselected)", p.summary)
+        and not (EXIT_HANG_FAILS and p.exit_hang)
         for p in parts
     )
-    return 0 if ok else 1
 
 
 if __name__ == "__main__":

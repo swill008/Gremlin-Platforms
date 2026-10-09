@@ -66,7 +66,27 @@ def _stalled(report: str) -> None:
     stall_watch.end_process(3)
 
 
+def _guard_vjoy() -> None:
+    """The programs the tests start get the stand-in vJoy too (test/vjoy_guard.py)."""
+    import importlib.util
+
+    test_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path = os.path.join(test_folder, "vjoy_guard.py")
+    try:
+        guard = sys.modules.get("vjoy_guard")
+        if guard is None:
+            spec = importlib.util.spec_from_file_location("vjoy_guard", path)
+            assert spec is not None and spec.loader is not None
+            guard = importlib.util.module_from_spec(spec)
+            sys.modules["vjoy_guard"] = guard
+            spec.loader.exec_module(guard)
+        guard.install()
+    except Exception as e:
+        sys.stderr.write(f"vjoy guard not installed: {e!r}\n")
+
+
 if _LIMIT:
+    _guard_vjoy()
     import stall_watch
 
     threading.Thread(

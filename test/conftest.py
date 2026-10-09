@@ -31,17 +31,23 @@ from unittest.mock import Mock
 
 import pytest
 
-import gremlin.util
+# No test reaches the real vJoy driver (to-do 44): the guard goes in before
+# anything that could load vJoyInterface.dll. By its folder: as a plain module
+# (pytest -p conftest), "test" is Python's own.
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+import vjoy_guard  # noqa: E402  # pyright: ignore[reportMissingImports]
+
+vjoy_guard.install()
+
+import gremlin.util  # noqa: E402
 
 gremlin.util.userprofile_path = Mock(return_value=tempfile.mkdtemp())
+
+import fake_input  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import gremlin.ui.backend  # noqa: E402
 import gremlin.windows_event_hook  # noqa: E402
 import joystick_gremlin  # noqa: E402
-
-# By its folder: as a plain module (pytest -p conftest), "test" is Python's own.
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
-import fake_input  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 # Tests never hook the keyboard and mouse of the PC they run on, and never
 # send keys or mouse input to it (test/fake_input.py).
@@ -191,6 +197,7 @@ class _Stalls:
     reports: dict[str, str] = {}
     finished = 0
     exit_status = 0
+    exit_deadman: object = None
 
 
 @pytest.hookimpl(trylast=True)  # after pytest's faulthandler kept the real stderr
@@ -200,6 +207,8 @@ def pytest_configure(config: pytest.Config) -> None:
         "validate_off: leave the test out of the rule checks (it builds "
         "broken state on purpose)",
     )
+    if not config.pluginmanager.is_registered(vjoy_guard):
+        config.pluginmanager.register(vjoy_guard, "vjoy_guard")
     try:
         from _pytest.faulthandler import fault_handler_stderr_fd_key
 
@@ -257,11 +266,37 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     _Stalls.exit_status = int(exitstatus)
 
 
+# GREMLIN_TEST_EXIT_DEADMAN (seconds) shortens it for test_exit_hang.py.
+EXIT_DEADMAN_S = 20.0
+
+
+def _arm_exit_deadman() -> None:
+    try:
+        seconds = float(os.environ.get("GREMLIN_TEST_EXIT_DEADMAN") or EXIT_DEADMAN_S)
+    except ValueError:
+        seconds = EXIT_DEADMAN_S
+    try:
+        # Stacks by faulthandler, then TerminateProcess from a Windows timer:
+        # no Python, no GIL (see stall_watch._Deadman). Kept alive to the end.
+        deadman = stall_watch._Deadman(_Stalls.out)  # noqa: SLF001
+        deadman.arm(seconds)
+        _Stalls.exit_deadman = deadman
+    except Exception:
+        import faulthandler
+
+        faulthandler.dump_traceback_later(seconds, exit=True, file=_Stalls.out)
+
+
 @pytest.hookimpl(trylast=True)
 def pytest_unconfigure(config: pytest.Config) -> None:
     """The run is over: stop the program's threads, so none keeps the
     process open. Any that still won't stop is named, with its stack, and
-    the process ends with pytest's own result instead of waiting."""
+    the process ends with pytest's own result instead of waiting.
+
+    And a deadman: a process still alive EXIT_DEADMAN_S from here (stuck in
+    atexit or native teardown, to-do 42) prints every thread's stack and is
+    ended, an EXIT HANG test/run_tests.py also reports."""
+    _arm_exit_deadman()
     import gremlin.threads
 
     gremlin.threads.shutdown(timeout=2.0)

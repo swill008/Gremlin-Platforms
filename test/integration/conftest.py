@@ -10,6 +10,7 @@ sys.path.append(".")
 
 import json
 import logging
+import os
 import pathlib
 import shutil
 import tempfile
@@ -38,6 +39,16 @@ from vjoy import vjoy
 
 pytest.register_assert_rewrite("test.integration.app_tester")
 from test.integration import app_tester  # noqa: E402
+
+# These tests drive a real vJoy device (to-do 44): only when asked, with
+# GREMLIN_REAL_VJOY=1 (python test/run_tests.py --real-vjoy). Otherwise
+# (full runs, CI) the stand-in vJoy (test/vjoy_guard.py) and the fake
+# joystick driver, so no driver is reached, and every test skips.
+REAL_VJOY = os.environ.get("GREMLIN_REAL_VJOY") == "1"
+if not REAL_VJOY:
+    from test import fake_hardware  # noqa: E402
+
+    fake_hardware.install(vjoy_ids=())
 
 # +-------------------------------------------------------------------------
 # | Common fixtures, override in modules as needed.
@@ -204,10 +215,26 @@ def _gremlin_platforms_open() -> bool:
     return any(line.strip().isdigit() for line in found.stdout.splitlines())
 
 
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Without GREMLIN_REAL_VJOY=1 every test here skips, before any fixture
+    runs."""
+    if REAL_VJOY:
+        return
+    skip = pytest.mark.skip(
+        reason="The integration tests drive a real vJoy device: run them with "
+        "python test/run_tests.py --real-vjoy (GREMLIN_REAL_VJOY=1)."
+    )
+    here = pathlib.Path(__file__).parent
+    for item in items:
+        if here in pathlib.Path(str(item.path)).parents:
+            item.add_marker(skip)
+
+
 @pytest.fixture(scope="package", autouse=True)
 def _not_while_gremlin_is_open() -> None:
-    """These tests write to a real vJoy device: not while Gremlin-Platforms is
-    open, where the program (and any game) would see those inputs."""
+    """These tests write to a real vJoy device: only when asked
+    (GREMLIN_REAL_VJOY=1), and not while Gremlin-Platforms is open, where the
+    program (and any game) would see those inputs."""
     if _gremlin_platforms_open():
         pytest.skip(
             "Gremlin-Platforms is open: close it to run the integration tests "

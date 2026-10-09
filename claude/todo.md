@@ -184,6 +184,9 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     to-do 42 (exit hang may be vJoy unloading) and 43 (exit-hang check). Until done:
     one test process per agent, no kill-and-retry loops, the hanging pair off-limits.
     The vJoy driver version itself is the user's decision.
+    Decision 2026-10-08 (user): integration tests are opt-in for real vJoy. Normal runs
+    (full run, CI) use the stand-in vJoy; a separate, clearly named command runs them
+    against the real vJoy only when asked, one process, never killed mid-run.
 45. Button Map canvas editor into the shared Rename box (parked by the user 2026-10-08,
     D-01-CANVAS-EXEMPT). Plan: RenameField gets a row limit (Shift+Enter adds a row; chips 2),
     a per-place empty rule (keep / default label / allow empty) and a plain canvas look; the

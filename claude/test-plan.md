@@ -20,6 +20,19 @@ Rules for every batch:
    Python processes and hung windows.
 3. A failure is logged with steps and a screenshot. It is reported with problem, impact, the R16
    comparison and a proposed fix. It is not fixed until the user says "go".
+4. Exit hang check (to-do 43): every automated test run (each `test/run_tests.py` part, each
+   pytest an agent starts) has ended within 20 s of pytest's summary line. One that hasn't is an
+   EXIT HANG: reported with the part and its files, never counted as passed or as slow.
+
+Exit hangs (to-do 43, 2026-10-08): a test run must end within 20 s of pytest's summary line
+(`=== N passed in Xs ===`). One still running then is an EXIT HANG, whatever its result:
+`test/run_tests.py` prints `!!! EXIT HANG: still running 20 s after pytest's summary (files:
+...)`, waits 5 s for its stacks (the deadman `test/conftest.py` arms in `pytest_unconfigure`
+prints every thread's stack and ends a process still alive 20 s later), ends it, and lists it
+under `EXIT HANG` in the final summary (a `::warning::` on GitHub Actions). It is a warning until
+to-do 42 is fixed, then a failure (`EXIT_HANG_FAILS` in `test/run_tests.py`). The part's time
+stops at its summary. `python test/run_tests.py --real-vjoy` (test/integration against the real
+vJoy, one process, only when asked) reports an exit hang but never ends the process.
 
 Batch order: 1 Main window, 2 Home, 3 Configuration, 4 Output view, 5 Logical Device, 6 Scripts and
 Profile Settings, 7 Options, 8 Button Map, 9 Viewers, 10 Calibration and Configure Module,
