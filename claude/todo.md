@@ -286,6 +286,16 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     migration of existing profiles. Staged: A Logical Device own file (DONE 2026-10-09 with to-do 59), B device actions as
     items, C wiring as items, D pack manifest + migration. Several days.
 
+61. QUESTION (user 2026-10-09: to-do for now, new feature, decide later): should the Device Library
+    always list the built-ins (Keyboard, OSC, Logical Device), even with no module file and no saved
+    setups? Today a built-in gets a row only once it has a file or a saved setup
+    (gremlin/device_library.py _modules ~645, used ~832), while Home always shows the Logical Device card
+    (03 S71) and built-ins are always present (03 S90a). Suggestion: always list them in Built-in
+    inputs with an empty line ("Nothing saved yet. Set it up on its page, then Save to Device Library,
+    or bring one in with File > Import Device Pack..."), Save greyed until there is something to save;
+    display only, nothing created on disk. Spec addition to 10 S6. ~10-15 min + full run (agents:
+    Library rows py, empty line QML, spec/Help, one test). Found by LIB-audit; tracker T-lib-builtin-no-file-row.
+
 ## On hold / parked (user's choice)
 
 32. **N22** – Inconsistent controls in action editors (on hold).

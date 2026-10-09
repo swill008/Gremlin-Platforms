@@ -131,3 +131,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | LD card image: Library actions audit on built-ins (LIB-audit) | test | ~12 min | 3 min | 13:56–13:59 |
 | 2026-10-09 | LD card image: one-write Restore + Import carries layout (IMG-restore follow-up) | fix | ~8 min | 6 min | 13:54–14:00 |
 | 2026-10-09 | LD card image + built-in Restore: full run (lead) | test | ~5 min | 6 min | 14:01–14:07, 2 flakes not from this batch |
+| 2026-10-09 | History clear flake: cause found, test fixed (FLAKE-hc) | test | ~15 min | 3 min | 14:07–14:10 |
+| 2026-10-09 | Clear History reaches every Library Undo (FIX-lu) | fix | ~8 min | 2 min | 14:11–14:13 |
+| 2026-10-09 | Full run (Library undo fix) (lead) | test | ~5 min | 6 min | 14:14–14:20, all green |
