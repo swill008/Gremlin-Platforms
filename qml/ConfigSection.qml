@@ -12,6 +12,10 @@ import Gremlin.Style
 // searching (filterText set) it shows every section's matching settings,
 // each under its section's title. Used by the main Options window and the
 // Button Map's own options window.
+//
+// A section's groups are built the first time it shows (it is the current
+// section, or the search matches it) and then kept: building every section
+// at open made the window slow to open.
 ScrollView {
     id: _page
 
@@ -19,6 +23,12 @@ ScrollView {
     property int currentIndex: 0
     property string filterText: ""
     readonly property bool searching: filterText.trim().length > 0
+
+    // While searching: the indexes of the sections with a match, or null
+    // (not known: build them all).
+    readonly property var matching: searching && sectionModel
+        && typeof sectionModel.matchingSections === "function"
+        ? sectionModel.matchingSections(filterText) : null
 
     contentWidth: availableWidth
     clip: true
@@ -42,11 +52,20 @@ ScrollView {
                 spacing: 0
                 visible: _page.searching ? hasMatch() : index === _page.currentIndex
 
+                // Shown now: the current section, or one the search matches.
+                readonly property bool wanted: _page.searching
+                    ? (_page.matching === null || _page.matching.indexOf(index) >= 0)
+                    : index === _page.currentIndex
+                property bool built: false
+
                 // While searching: some group of this section shows.
                 function hasMatch() {
                     _page.filterText
-                    for (var i = 0; i < children.length; i++) {
-                        var g = children[i]
+                    var body = _groups.item
+                    if (!body)
+                        return false
+                    for (var i = 0; i < body.children.length; i++) {
+                        var g = body.children[i]
                         if (g.firstMatch !== undefined && g.firstMatch >= 0)
                             return true
                     }
@@ -63,12 +82,24 @@ ScrollView {
                     font.pixelSize: Style.dp(16)
                 }
 
-                Repeater {
-                    model: _section.groupModel
+                Loader {
+                    id: _groups
 
-                    delegate: ConfigGroup {
-                        Layout.fillWidth: true
-                        filterText: _page.filterText
+                    Layout.fillWidth: true
+                    active: _section.wanted || _section.built
+                    onLoaded: _section.built = true
+
+                    sourceComponent: ColumnLayout {
+                        spacing: 0
+
+                        Repeater {
+                            model: _section.groupModel
+
+                            delegate: ConfigGroup {
+                                Layout.fillWidth: true
+                                filterText: _page.filterText
+                            }
+                        }
                     }
                 }
             }

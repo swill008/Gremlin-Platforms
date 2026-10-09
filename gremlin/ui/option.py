@@ -295,6 +295,17 @@ _GROUP_ORDER = {
 }
 
 
+# What JavaScript's String.trim() removes.
+_JS_SPACE = (
+    " \t\n\v\f\r\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007"
+    "\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+)
+
+
+def _js_trim(text: str) -> str:
+    return text.strip(_JS_SPACE)
+
+
 @ta.QmlElement
 class ConfigSectionModel(QtCore.QAbstractListModel):
     """The sections an Options window lists, each with its groups.
@@ -350,6 +361,19 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
+
+    @QtCore.Slot(str, result=list)
+    def matchingSections(self, text: str) -> list[int]:  # noqa: N802 (QML)
+        """Rows of the sections with a setting the search text finds, matched
+        as ConfigGroup.matches does, from the models alone (no QML built)."""
+        needle = _js_trim(text).lower()
+        if not needle:
+            return []
+        return [
+            row
+            for row, (_title, groups) in enumerate(self._sections())
+            if ConfigGroupModel(self._scope, groups=groups).matches(needle)
+        ]
 
     def _sections(self) -> list[tuple[str, list | None]]:
         if self._scope:
@@ -407,6 +431,27 @@ class ConfigGroupModel(QtCore.QAbstractListModel):
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
+
+    def matches(self, needle: str) -> bool:
+        """Some row of some group contains needle (trimmed, lower case)."""
+        name_role = QtCore.Qt.ItemDataRole.UserRole + 5
+        text_role = QtCore.Qt.ItemDataRole.UserRole + 3
+        for title, keys, stored in self._combined_groups():
+            # As ConfigGroup.qml: "Other" only gathers, so its title never counts.
+            heading = "" if title == "Other" else title
+            entries = ConfigEntryModel(self._section_name, stored, keys=keys)
+            for row in range(entries.rowCount()):
+                ix = entries.index(row)
+                name = entries.data(ix, name_role) or ""
+                try:
+                    text = entries.data(ix, text_role) or ""
+                except KeyError:
+                    # A stored setting without a description: the page
+                    # shows none either.
+                    text = ""
+                if needle in f"{heading} {name} {text}".lower():
+                    return True
+        return False
 
     def _combined_groups(
         self,
